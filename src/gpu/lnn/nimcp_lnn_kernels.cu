@@ -1225,7 +1225,8 @@ bool nimcp_gpu_lnn_adjoint_step(
     const nimcp_gpu_tensor_t* input_at_t,
     float dt)
 {
-    if (!ctx || !layer || !adjoint || !x_at_t || !input_at_t) return false;
+    if (!ctx || !layer || !adjoint || !x_at_t) return false;
+    (void)input_at_t; /* Not used in adjoint step — only in accumulate_gradients */
 
     if (!nimcp_gpu_recovery_is_initialized()) {
         nimcp_gpu_recovery_init(NULL);

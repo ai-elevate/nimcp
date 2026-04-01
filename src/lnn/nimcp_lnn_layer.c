@@ -678,31 +678,38 @@ int lnn_layer_forward(
 {
     if (!layer || !input || !output) return LNN_ERROR_NULL_POINTER;
 
-    /* Hamiltonian dynamics dispatch — energy-conserving alternative to LTC */
+    /* Hamiltonian dynamics dispatch — energy-conserving alternative to LTC.
+     * Falls through to GPU/CPU LTC path if Hamiltonian fails (e.g. p not allocated). */
     if (layer->use_hamiltonian && layer->H_net) {
         extern int lnn_layer_forward_hamiltonian(lnn_layer_t*, const nimcp_tensor_t*,
                                                   nimcp_tensor_t*, float);
-        return lnn_layer_forward_hamiltonian(layer, input, output, dt);
+        int hnn_rc = lnn_layer_forward_hamiltonian(layer, input, output, dt);
+        if (hnn_rc == 0) return LNN_SUCCESS;
+        /* Fall through to LTC on failure */
     }
 
-    /* GPU LNN dispatch — full ODE step on GPU with CPU state sync.
-     * Pass NULL for ctx and input: nimcp_gpu_lnn_ode_step uses the layer's
-     * internal GPU-resident state and weights for derivative computation. */
-    if (layer->gpu_lnn_layer) {
+    /* GPU LNN dispatch — upload input to GPU, run ODE step, sync back */
+    if (layer->gpu_lnn_layer && layer->gpu_ctx) {
+        nimcp_gpu_context_t* gpu_ctx = (nimcp_gpu_context_t*)layer->gpu_ctx;
         nimcp_lnn_layer_gpu_t* gpu_layer = (nimcp_lnn_layer_gpu_t*)layer->gpu_lnn_layer;
 
-        nimcp_lnn_ode_config_t ode_cfg = nimcp_lnn_ode_default_config();
-        ode_cfg.method = layer->ode_method;
-        ode_cfg.dt = (dt > 0.0f) ? dt : layer->dt;
+        nimcp_gpu_tensor_t* gpu_input = nimcp_gpu_tensor_from_cpu(gpu_ctx, input);
+        if (gpu_input) {
+            nimcp_lnn_ode_config_t ode_cfg = nimcp_lnn_ode_default_config();
+            ode_cfg.method = layer->ode_method;
+            ode_cfg.dt = (dt > 0.0f) ? dt : layer->dt;
 
-        bool ok = nimcp_gpu_lnn_ode_step(NULL, gpu_layer, NULL, &ode_cfg);
-        if (ok) {
-            /* Sync GPU state back to CPU layer->x for downstream consumption */
-            if (nimcp_lnn_layer_gpu_to_cpu(gpu_layer, layer)) {
-                memcpy(nimcp_tensor_data(output),
-                       nimcp_tensor_data_const(layer->x),
-                       layer->n_neurons * sizeof(float));
-                return LNN_SUCCESS;
+            bool ok = nimcp_gpu_lnn_ode_step(gpu_ctx, gpu_layer, gpu_input, &ode_cfg);
+            nimcp_gpu_tensor_destroy(gpu_input);
+
+            if (ok) {
+                /* Sync GPU state back to CPU layer->x for downstream consumption */
+                if (nimcp_lnn_layer_gpu_to_cpu(gpu_layer, layer)) {
+                    memcpy(nimcp_tensor_data(output),
+                           nimcp_tensor_data_const(layer->x),
+                           layer->n_neurons * sizeof(float));
+                    return LNN_SUCCESS;
+                }
             }
         }
         /* GPU path failed — fall through to CPU path */

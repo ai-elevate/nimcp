@@ -115,6 +115,17 @@ int nimcp_wmt_predict(nimcp_world_model_trainer_t* wmt, void* brain,
  */
 float nimcp_wmt_get_prediction_error(const nimcp_world_model_trainer_t* wmt);
 
+/**
+ * @brief Connect a world prior (physics + chemistry + biology) to the trainer.
+ *
+ * When connected, the trainer adds a physics/chemistry/biology loss term to
+ * the prediction error, penalizing predictions that violate natural laws.
+ *
+ * @param wmt         Handle.
+ * @param world_prior World prior handle (world_prior_t*), or NULL to disconnect.
+ */
+void nimcp_wmt_set_world_prior(nimcp_world_model_trainer_t* wmt, void* world_prior);
+
 #ifdef __cplusplus
 }
 #endif

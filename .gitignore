@@ -226,3 +226,4 @@ teaching_state/
 build/
 data/multimodal/*.pkl
 models/*.gguf
+models/

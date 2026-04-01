@@ -43,7 +43,11 @@
 
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/training/nimcp_gradient_checkpoint.h"
+#include "gpu/context/nimcp_gpu_context.h"
 #endif
+
+/* Thread pool for parallel forward/backward passes */
+#include "utils/thread/nimcp_thread_pool.h"
 
 #include <math.h>
 #include <string.h>
@@ -58,6 +62,10 @@ extern bool nimcp_gpu_loss_mse(void* gpu_ctx, const float* pred, const float* ta
 extern bool nimcp_gpu_optim_adamw(void* gpu_ctx, float* params, float* grads, float* m, float* v,
                                     uint32_t n, float lr, float beta1, float beta2, float eps, float wd,
                                     uint64_t step);
+extern bool nimcp_gpu_bridge_gemv(void* gpu_ctx, const float* W, const float* x, const float* bias,
+                                   float* y, uint32_t rows, uint32_t cols,
+                                   void** p_d_W, void** p_d_x, void** p_d_y,
+                                   uint32_t* p_buf_rows, uint32_t* p_buf_cols);
 #endif
 
 //=============================================================================
@@ -349,6 +357,12 @@ void nimcp_utm_destroy(nimcp_unified_training_manager_t* mgr) {
         nimcp_free(b->bias_grad);
         nimcp_free(b->last_source_output);
         nimcp_free(b->last_target_input);
+#ifdef NIMCP_ENABLE_CUDA
+        /* Free persistent GPU device buffers */
+        if (mgr->gpu_ctx && b->gpu_d_W) nimcp_gpu_free((nimcp_gpu_context_t*)mgr->gpu_ctx, b->gpu_d_W);
+        if (mgr->gpu_ctx && b->gpu_d_x) nimcp_gpu_free((nimcp_gpu_context_t*)mgr->gpu_ctx, b->gpu_d_x);
+        if (mgr->gpu_ctx && b->gpu_d_y) nimcp_gpu_free((nimcp_gpu_context_t*)mgr->gpu_ctx, b->gpu_d_y);
+#endif
     }
 
     /* Destroy per-network anti-collapse state */
@@ -549,13 +563,91 @@ int nimcp_utm_add_bridge(nimcp_unified_training_manager_t* mgr,
 }
 
 //=============================================================================
+// Parallel Forward/Backward Task Contexts
+//=============================================================================
+
+/** @brief Context for a parallel forward pass task (one per network) */
+typedef struct {
+    nimcp_trainable_network_t* net;
+    const float* input;
+    uint32_t input_dim;
+    float* output;
+    uint32_t output_dim;
+    int rc;  /**< Return code from forward() */
+} utm_forward_task_t;
+
+/** @brief Thread pool task: run a single network's forward pass */
+static void utm_forward_task_fn(void* arg) {
+    utm_forward_task_t* t = (utm_forward_task_t*)arg;
+    t->rc = t->net->ops->forward(t->net->ctx, t->input, t->input_dim,
+                                  t->output, t->output_dim);
+}
+
+/** @brief Context for a parallel backward pass task (one per network) */
+typedef struct {
+    nimcp_trainable_network_t* net;
+    nimcp_anti_collapse_state_t* anti_collapse;
+    const float* net_output;
+    const float* target;
+    uint32_t out_dim;
+    uint32_t target_dim;
+    uint32_t loss_type;
+    float* dl_din;        /**< Output: input gradient (allocated by caller) */
+    uint32_t in_dim;
+    float div_loss;       /**< Output: diversity loss for this network */
+} utm_backward_task_t;
+
+/** @brief Thread pool task: compute loss gradient + diversity + backward for one network */
+static void utm_backward_task_fn(void* arg) {
+    utm_backward_task_t* t = (utm_backward_task_t*)arg;
+
+    /* Compute dL/dOutput */
+    float* dl_dout = (float*)nimcp_calloc(t->out_dim, sizeof(float));
+    if (!dl_dout) { t->div_loss = 0.0f; return; }
+
+    uint32_t cmp_dim = (t->out_dim < t->target_dim) ? t->out_dim : t->target_dim;
+    float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
+    switch (t->loss_type) {
+        case 1: /* MAE */
+            for (uint32_t j = 0; j < cmp_dim; j++) {
+                float diff = t->net_output[j] - t->target[j];
+                dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
+            }
+            break;
+        case 2: /* Cross-entropy */
+            for (uint32_t j = 0; j < cmp_dim; j++) {
+                float o = t->net_output[j];
+                if (o < 1e-7f) o = 1e-7f;
+                dl_dout[j] = -t->target[j] / o / n_cmp;
+            }
+            break;
+        default: /* MSE */
+            for (uint32_t j = 0; j < cmp_dim; j++) {
+                dl_dout[j] = 2.0f * (t->net_output[j] - t->target[j]) / n_cmp;
+            }
+            break;
+    }
+
+    /* Diversity loss gradient */
+    t->div_loss = nimcp_anti_collapse_diversity_loss(
+        t->anti_collapse, t->net_output, dl_dout, t->out_dim);
+
+    /* Backward through network */
+    t->net->ops->backward(t->net->ctx, dl_dout, t->out_dim, t->dl_din, t->in_dim);
+
+    nimcp_free(dl_dout);
+}
+
+//=============================================================================
 // Bridge Forward/Backward (internal)
 //=============================================================================
 
 static int bridge_forward(nimcp_cross_network_bridge_t* b,
                           const float* source_output,
-                          float* target_input) {
+                          float* target_input,
+                          void* gpu_ctx) {
     if (!b || !source_output || !target_input) return -1;
+    (void)gpu_ctx; /* Used only when NIMCP_ENABLE_CUDA is defined */
 
     /* Cache source output for backward */
     memcpy(b->last_source_output, source_output, b->source_dim * sizeof(float));
@@ -577,6 +669,20 @@ static int bridge_forward(nimcp_cross_network_bridge_t* b,
         case NIMCP_BRIDGE_LINEAR:
             if (!b->transform_weights) return -1; /* B8: null guard */
             /* target = W @ source + bias */
+#ifdef NIMCP_ENABLE_CUDA
+            if (gpu_ctx && b->source_dim >= 64) {
+                /* GPU path: cuBLAS gemv for large bridges */
+                if (nimcp_gpu_bridge_gemv(gpu_ctx, b->transform_weights,
+                                          source_output, b->transform_bias,
+                                          target_input, b->target_dim, b->source_dim,
+                                          &b->gpu_d_W, &b->gpu_d_x, &b->gpu_d_y,
+                                          &b->gpu_buf_rows, &b->gpu_buf_cols)) {
+                    break; /* GPU succeeded */
+                }
+                /* Fall through to CPU if GPU fails */
+            }
+#endif
+            /* CPU fallback */
             for (uint32_t t = 0; t < b->target_dim; t++) {
                 float sum = b->transform_bias ? b->transform_bias[t] : 0.0f;
                 for (uint32_t s = 0; s < b->source_dim; s++) {
@@ -839,51 +945,152 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     memset(net_outputs, 0, sizeof(net_outputs));
     memset(net_output_dims, 0, sizeof(net_output_dims));
 
+    /* Classify networks: has_incoming_bridge[i] = true if any enabled bridge
+     * targets network i. Non-bridged networks can run their forward pass in
+     * parallel (Phase 1); bridged networks run sequentially after their source
+     * networks complete (Phase 2). */
+    bool has_incoming_bridge[NIMCP_UTM_MAX_NETWORKS];
+    memset(has_incoming_bridge, 0, sizeof(has_incoming_bridge));
+    for (uint32_t b = 0; b < mgr->num_bridges; b++) {
+        if (mgr->bridges[b].enabled) {
+            has_incoming_bridge[mgr->bridges[b].target_idx] = true;
+        }
+    }
+
+    /* Pre-allocate output buffers and prepare input adaptation for all networks */
     for (uint32_t i = 0; i < mgr->num_networks; i++) {
         if (!mgr->networks[i].enabled) continue;
-
-        nimcp_trainable_network_t* net = &mgr->networks[i];
-        uint32_t out_dim = net->ops->get_output_dim(net->ctx);
+        uint32_t out_dim = mgr->networks[i].ops->get_output_dim(mgr->networks[i].ctx);
         if (out_dim == 0) {
             NIMCP_LOGGING_WARN("utm_step: Network '%s' has output_dim=0, skipping",
-                              net->ops->name);
+                              mgr->networks[i].ops->name);
             continue;
         }
         net_output_dims[i] = out_dim;
-
         net_outputs[i] = (float*)nimcp_calloc(out_dim, sizeof(float));
         if (!net_outputs[i]) goto cleanup;
+    }
 
-        /* Determine input: either from a bridge or from the raw input */
+    /* --- Phase 1: Non-bridged networks run in parallel --- */
+    {
+        utm_forward_task_t fwd_tasks[NIMCP_UTM_MAX_NETWORKS];
+        uint32_t parallel_count = 0;
+        /* Temporary per-network adapted inputs for parallel networks */
+        float* parallel_inputs[NIMCP_UTM_MAX_NETWORKS];
+        memset(parallel_inputs, 0, sizeof(parallel_inputs));
+
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+            if (has_incoming_bridge[i]) continue; /* Phase 2 */
+
+            nimcp_trainable_network_t* net = &mgr->networks[i];
+            uint32_t out_dim = net_output_dims[i];
+
+            /* Input adaptation (average-pool if needed) */
+            const float* net_input = input;
+            uint32_t net_input_dim = input_dim;
+            uint32_t net_in_dim = net->ops->get_input_dim(net->ctx);
+            if (net_in_dim > 0 && net_input_dim > net_in_dim) {
+                float* adapted = (float*)nimcp_calloc(net_in_dim, sizeof(float));
+                if (adapted) {
+                    float ratio = (float)net_input_dim / (float)net_in_dim;
+                    for (uint32_t j = 0; j < net_in_dim; j++) {
+                        uint32_t start = (uint32_t)(j * ratio);
+                        uint32_t end = (uint32_t)((j + 1) * ratio);
+                        if (end > net_input_dim) end = net_input_dim;
+                        if (end <= start) end = start + 1;
+                        float sum = 0.0f;
+                        for (uint32_t k = start; k < end; k++) {
+                            sum += net_input[k];
+                        }
+                        adapted[j] = sum / (float)(end - start);
+                    }
+                    parallel_inputs[i] = adapted;
+                    net_input = adapted;
+                    net_input_dim = net_in_dim;
+                }
+            }
+
+            utm_forward_task_t* t = &fwd_tasks[parallel_count];
+            t->net = net;
+            t->input = net_input;
+            t->input_dim = net_input_dim;
+            t->output = net_outputs[i];
+            t->output_dim = out_dim;
+            t->rc = 0;
+            parallel_count++;
+        }
+
+        if (parallel_count >= 2) {
+            /* Submit to thread pool for true parallelism */
+            nimcp_thread_pool_t* pool = nimcp_pool_create(parallel_count);
+            if (pool) {
+                for (uint32_t p = 0; p < parallel_count; p++) {
+                    nimcp_pool_submit(pool, utm_forward_task_fn, &fwd_tasks[p]);
+                }
+                nimcp_pool_wait(pool);
+                nimcp_pool_destroy(pool);
+            } else {
+                /* Fallback: run sequentially if pool creation fails */
+                for (uint32_t p = 0; p < parallel_count; p++) {
+                    utm_forward_task_fn(&fwd_tasks[p]);
+                }
+            }
+        } else {
+            /* Single network or none — run directly, no pool overhead */
+            for (uint32_t p = 0; p < parallel_count; p++) {
+                utm_forward_task_fn(&fwd_tasks[p]);
+            }
+        }
+
+        /* Check results and log warnings */
+        for (uint32_t p = 0; p < parallel_count; p++) {
+            if (fwd_tasks[p].rc != 0) {
+                NIMCP_LOGGING_WARN("utm_step: Forward failed for network '%s' (rc=%d)",
+                                  fwd_tasks[p].net->ops->name, fwd_tasks[p].rc);
+            }
+        }
+
+        /* Free adapted inputs */
+        for (uint32_t i = 0; i < NIMCP_UTM_MAX_NETWORKS; i++) {
+            nimcp_free(parallel_inputs[i]);
+        }
+    }
+
+    /* --- Phase 2: Bridged networks run sequentially (topology order) --- */
+    for (uint32_t i = 0; i < mgr->num_networks; i++) {
+        if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+        if (!has_incoming_bridge[i]) continue; /* Already done in Phase 1 */
+
+        nimcp_trainable_network_t* net = &mgr->networks[i];
+        uint32_t out_dim = net_output_dims[i];
+
+        /* Determine input: from a bridge source */
         const float* net_input = input;
         uint32_t net_input_dim = input_dim;
 
-        /* Check if any bridge feeds into this network (use first matching) */
         for (uint32_t b = 0; b < mgr->num_bridges; b++) {
             if (mgr->bridges[b].target_idx == i && mgr->bridges[b].enabled) {
                 uint32_t src = mgr->bridges[b].source_idx;
                 if (net_outputs[src]) {
-                    /* Bridge from source output to this network's input */
                     uint32_t bridged_dim = net->ops->get_input_dim(net->ctx);
                     float* bridged_input = (float*)nimcp_calloc(bridged_dim, sizeof(float));
                     if (bridged_input) {
-                        bridge_forward(&mgr->bridges[b], net_outputs[src], bridged_input);
+                        bridge_forward(&mgr->bridges[b], net_outputs[src], bridged_input, mgr->gpu_ctx);
                         net_input = bridged_input;
                         net_input_dim = bridged_dim;
-                        break; /* A1: Use first bridge only — prevents memory leak */
+                        break; /* A1: Use first bridge only */
                     }
                 }
             }
         }
 
-        /* Adapt input dimensions if network expects smaller input than provided.
-         * Use average-pooling to downsample (preserves signal magnitude). */
+        /* Adapt input dimensions (average-pool) */
         uint32_t net_in_dim = net->ops->get_input_dim(net->ctx);
         float* adapted_input = NULL;
         if (net_in_dim > 0 && net_input_dim > net_in_dim) {
             adapted_input = (float*)nimcp_calloc(net_in_dim, sizeof(float));
             if (adapted_input) {
-                /* Average-pool: each output = mean of (input_dim/net_dim) input elements */
                 float ratio = (float)net_input_dim / (float)net_in_dim;
                 for (uint32_t j = 0; j < net_in_dim; j++) {
                     uint32_t start = (uint32_t)(j * ratio);
@@ -896,7 +1103,6 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                     }
                     adapted_input[j] = sum / (float)(end - start);
                 }
-                /* If we had a bridged input, free it before replacing */
                 if (net_input != input) {
                     nimcp_free((void*)net_input);
                 }
@@ -908,7 +1114,6 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         int rc = net->ops->forward(net->ctx, net_input, net_input_dim,
                                    net_outputs[i], out_dim);
 
-        /* Free adapted or bridged input if we allocated one */
         if (net_input != input) {
             nimcp_free((void*)net_input);
         }
@@ -1111,11 +1316,85 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     float* dl_dinputs[NIMCP_UTM_MAX_NETWORKS];
     memset(dl_dinputs, 0, sizeof(dl_dinputs));
 
+    /* Classify networks for backward parallelism: networks that participate
+     * in any bridge (as source OR target) must run sequentially in reverse
+     * topology order for correct gradient flow. Non-bridged networks have no
+     * cross-network gradient dependencies and can run in parallel. */
+    bool in_bridge[NIMCP_UTM_MAX_NETWORKS];
+    memset(in_bridge, 0, sizeof(in_bridge));
+    for (uint32_t b = 0; b < mgr->num_bridges; b++) {
+        if (mgr->bridges[b].enabled) {
+            in_bridge[mgr->bridges[b].source_idx] = true;
+            in_bridge[mgr->bridges[b].target_idx] = true;
+        }
+    }
+
+    /* --- Backward Phase 1: Non-bridged networks in parallel --- */
+    {
+        utm_backward_task_t bwd_tasks[NIMCP_UTM_MAX_NETWORKS];
+        uint32_t bwd_indices[NIMCP_UTM_MAX_NETWORKS]; /* Map task slot -> network index */
+        uint32_t parallel_count = 0;
+
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+            if (in_bridge[i]) continue; /* Phase 2 */
+
+            nimcp_trainable_network_t* net = &mgr->networks[i];
+            uint32_t out_dim = net_output_dims[i];
+            uint32_t in_dim = net->ops->get_input_dim(net->ctx);
+            float* dl_din = (float*)nimcp_calloc(in_dim, sizeof(float));
+            if (!dl_din) continue;
+
+            utm_backward_task_t* t = &bwd_tasks[parallel_count];
+            t->net = net;
+            t->anti_collapse = &mgr->anti_collapse[i];
+            t->net_output = net_outputs[i];
+            t->target = target;
+            t->out_dim = out_dim;
+            t->target_dim = target_dim;
+            t->loss_type = loss_type;
+            t->dl_din = dl_din;
+            t->in_dim = in_dim;
+            t->div_loss = 0.0f;
+
+            bwd_indices[parallel_count] = i;
+            parallel_count++;
+        }
+
+        if (parallel_count >= 2) {
+            nimcp_thread_pool_t* pool = nimcp_pool_create(parallel_count);
+            if (pool) {
+                for (uint32_t p = 0; p < parallel_count; p++) {
+                    nimcp_pool_submit(pool, utm_backward_task_fn, &bwd_tasks[p]);
+                }
+                nimcp_pool_wait(pool);
+                nimcp_pool_destroy(pool);
+            } else {
+                for (uint32_t p = 0; p < parallel_count; p++) {
+                    utm_backward_task_fn(&bwd_tasks[p]);
+                }
+            }
+        } else {
+            for (uint32_t p = 0; p < parallel_count; p++) {
+                utm_backward_task_fn(&bwd_tasks[p]);
+            }
+        }
+
+        /* Collect results */
+        for (uint32_t p = 0; p < parallel_count; p++) {
+            uint32_t idx = bwd_indices[p];
+            dl_dinputs[idx] = bwd_tasks[p].dl_din;
+            local_result.diversity_loss += bwd_tasks[p].div_loss;
+        }
+    }
+
+    /* --- Backward Phase 2: Bridged networks sequentially (reverse order) --- */
     for (int i = (int)mgr->num_networks - 1; i >= 0; i--) {
         if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+        if (!in_bridge[i]) continue; /* Already done in Phase 1 */
+
         nimcp_trainable_network_t* net = &mgr->networks[i];
 
-        /* Compute dL/dOutput for this network (B2: loss-type-aware gradient) */
         uint32_t out_dim = net_output_dims[i];
         float* dl_dout = (float*)nimcp_calloc(out_dim, sizeof(float));
         if (!dl_dout) continue;
@@ -1123,33 +1402,31 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         uint32_t cmp_dim = (out_dim < target_dim) ? out_dim : target_dim;
         float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
         switch (loss_type) {
-            case 1: /* MAE gradient: sign(out-tgt)/n */
+            case 1: /* MAE gradient */
                 for (uint32_t j = 0; j < cmp_dim; j++) {
                     float diff = net_outputs[i][j] - target[j];
                     dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
                 }
                 break;
-            case 2: /* Cross-entropy gradient: -tgt/max(out,ε)/n */
+            case 2: /* Cross-entropy gradient */
                 for (uint32_t j = 0; j < cmp_dim; j++) {
                     float o = net_outputs[i][j];
                     if (o < 1e-7f) o = 1e-7f;
                     dl_dout[j] = -target[j] / o / n_cmp;
                 }
                 break;
-            default: /* MSE gradient: 2(y-target)/n */
+            default: /* MSE gradient */
                 for (uint32_t j = 0; j < cmp_dim; j++) {
                     dl_dout[j] = 2.0f * (net_outputs[i][j] - target[j]) / n_cmp;
                 }
                 break;
         }
 
-        /* Add gradient from any downstream bridge using the target network's
-         * input gradient (dl_dinputs[tgt]) instead of dl_dout approximation */
+        /* Add gradient from downstream bridges */
         if (mgr->config.enable_cross_network_gradients) {
             for (uint32_t b = 0; b < mgr->num_bridges; b++) {
                 if (mgr->bridges[b].source_idx == (uint32_t)i && mgr->bridges[b].enabled) {
                     uint32_t tgt = mgr->bridges[b].target_idx;
-                    /* Use target network's input gradient if available */
                     const float* tgt_grad = dl_dinputs[tgt];
                     if (tgt_grad) {
                         float* bridge_grad = (float*)nimcp_calloc(out_dim, sizeof(float));
@@ -1165,7 +1442,7 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             }
         }
 
-        /* Add diversity loss gradient (per-network anti-collapse) */
+        /* Diversity loss gradient */
         float div_loss = nimcp_anti_collapse_diversity_loss(
             &mgr->anti_collapse[i], net_outputs[i], dl_dout, out_dim);
         local_result.diversity_loss += div_loss;
@@ -1176,8 +1453,6 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         if (!dl_din) { nimcp_free(dl_dout); dl_dinputs[i] = NULL; continue; }
 
         net->ops->backward(net->ctx, dl_dout, out_dim, dl_din, in_dim);
-
-        /* Store input gradient for upstream bridge backward (don't free yet) */
         dl_dinputs[i] = dl_din;
 
         nimcp_free(dl_dout);

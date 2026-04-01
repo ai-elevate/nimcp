@@ -457,6 +457,17 @@ int gpu_plasticity_homeostatic_update(
     bool scale_ok = nimcp_gpu_homeostatic_compute_scaling(
         gpu_ctx, g_scaling, g_rates, &params);
 
+    /* Step 3: Apply scaling factors to rates
+     * rate_new = clamp(rate * scaling_factor, 0, max_rate)
+     * Without this step, scaling factors were computed but never used. */
+    if (scale_ok) {
+        nimcp_gpu_homeostatic_apply_scaling(
+            gpu_ctx, g_rates, g_scaling,
+            0.0f,   /* w_min: rates cannot go negative */
+            1000.0f  /* w_max: reasonable upper bound for firing rate (Hz) */
+        );
+    }
+
     int result = -1;
     if (scale_ok) {
         /* Download updated rates back to caller */

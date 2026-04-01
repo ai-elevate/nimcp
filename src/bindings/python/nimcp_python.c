@@ -104,6 +104,7 @@
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
+#include "lnn/nimcp_lnn_hamiltonian.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_types.h"
 #include "training/nimcp_cnn_training.h"
@@ -1628,7 +1629,10 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args) {
     if (status != NIMCP_OK) {
         NIMCP_THROW_IO(NIMCP_ERROR_FILE_WRITE, filepath,
                       "Brain_save: Failed to save brain to '%s'", filepath);
-        PyErr_SetString(PyExc_IOError, nimcp_get_error());
+        const char* err = nimcp_get_error();
+        char buf[512];
+        snprintf(buf, sizeof(buf), "Brain save failed (status=%d): %s", (int)status, err);
+        PyErr_SetString(PyExc_IOError, buf);
         return NULL;
     }
 
@@ -5255,6 +5259,134 @@ static PyObject* Brain_enable_multi_network(BrainObject* self, PyObject* args) {
 }
 
 /**
+ * WHAT: Enable/disable Hamiltonian dynamics on LNN layer 0.
+ * WHY:  Checkpoint load replaces LNN network (losing HNN from init).
+ *       This re-enables HNN on the loaded LNN after checkpoint restore.
+ * HOW:  Creates H_net + momentum tensor p on layer 0 if not present.
+ */
+static PyObject* Brain_enable_hamiltonian(BrainObject* self, PyObject* args) {
+    int enable = 1;
+    if (!PyArg_ParseTuple(args, "|p", &enable)) return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    brain_t brain = self->brain->internal_brain;
+
+    /* Create minimal LNN if not present (FAST/lazy init skips it, checkpoint load may provide it).
+     * Don't call init_lnn_subsystem — it wires bridges to subsystems that may not exist. */
+    if (!brain->lnn_network) {
+        lnn_init(1);
+        brain->lnn_network = lnn_network_create_ncp(128, 64, 32, 64);
+        if (!brain->lnn_network) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to create LNN network for Hamiltonian");
+            return NULL;
+        }
+        lnn_network_init_weights(brain->lnn_network, 42);
+    }
+    if (brain->lnn_network->n_layers == 0 || !brain->lnn_network->layers[0]) {
+        PyErr_SetString(PyExc_RuntimeError, "LNN has no layers — cannot enable Hamiltonian");
+        return NULL;
+    }
+
+    lnn_layer_t* layer0 = brain->lnn_network->layers[0];
+
+    if (enable && !layer0->use_hamiltonian) {
+        /* Create Hamiltonian network if not present */
+        if (!layer0->H_net) {
+            uint32_t state_dim = layer0->n_neurons;
+            extern lnn_hamiltonian_net_t* lnn_hamiltonian_net_create(uint32_t, const lnn_hamiltonian_config_t*);
+            extern void lnn_hamiltonian_config_default(lnn_hamiltonian_config_t*);
+
+            lnn_hamiltonian_config_t hnn_cfg;
+            lnn_hamiltonian_config_default(&hnn_cfg);
+            lnn_hamiltonian_net_t* H_net = lnn_hamiltonian_net_create(state_dim, &hnn_cfg);
+            if (!H_net) {
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create Hamiltonian network");
+                return NULL;
+            }
+            layer0->H_net = H_net;
+        }
+
+        /* Create momentum tensor if not present */
+        if (!layer0->p) {
+            uint32_t p_dims[1] = {layer0->n_neurons};
+            layer0->p = nimcp_tensor_create(p_dims, 1, NIMCP_DTYPE_F32);
+            if (layer0->p) {
+                float* p_data = (float*)nimcp_tensor_data(layer0->p);
+                if (p_data) {
+                    for (uint32_t i = 0; i < layer0->n_neurons; i++) {
+                        p_data[i] = 0.01f * ((float)rand() / (float)RAND_MAX - 0.5f);
+                    }
+                }
+            }
+        }
+
+        layer0->use_hamiltonian = true;
+        fprintf(stderr, "[HNN] Hamiltonian enabled on layer 0, state_dim=%u, p=%s\n",
+                layer0->n_neurons, layer0->p ? "ok" : "FAIL");
+    } else if (!enable && layer0->use_hamiltonian) {
+        layer0->use_hamiltonian = false;
+        fprintf(stderr, "[HNN] Hamiltonian disabled on layer 0\n");
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
+ * WHAT: Enable Thousand Brains world model bridge for Stage 2+ training.
+ * WHY:  World model learns to predict outcomes — needed for feedback learning.
+ *       Not useful in Stage 1 (no temporal sequences to predict).
+ * HOW:  Creates TB bridge, connects to omni world model, sets config flag.
+ */
+static PyObject* Brain_enable_world_model_bridge(BrainObject* self, PyObject* args) {
+    int enable = 1;
+    if (!PyArg_ParseTuple(args, "|p", &enable)) return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    brain_t brain = self->brain->internal_brain;
+
+    if (enable && !brain->wm_thousand_brains_bridge) {
+        /* Create and connect the bridge */
+        extern void wm_tb_bridge_config_default(void*);
+        extern void* wm_tb_bridge_create(const void*);
+        extern int wm_tb_bridge_connect_world_model(void*, void*);
+
+        /* Stack-allocate config (120 bytes max) */
+        char tb_config[256];
+        memset(tb_config, 0, sizeof(tb_config));
+        wm_tb_bridge_config_default(tb_config);
+
+        brain->wm_thousand_brains_bridge = wm_tb_bridge_create(tb_config);
+        if (brain->wm_thousand_brains_bridge) {
+            if (brain->omni_world_model) {
+                wm_tb_bridge_connect_world_model(brain->wm_thousand_brains_bridge,
+                                                  brain->omni_world_model);
+            }
+            brain->config.enable_wm_thousand_brains_bridge = true;
+            fprintf(stderr, "[WM] Thousand Brains bridge enabled\n");
+        } else {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to create Thousand Brains bridge");
+            return NULL;
+        }
+    } else if (enable && brain->wm_thousand_brains_bridge) {
+        /* Already created — just ensure flag is set */
+        brain->config.enable_wm_thousand_brains_bridge = true;
+    } else if (!enable) {
+        brain->config.enable_wm_thousand_brains_bridge = false;
+        fprintf(stderr, "[WM] Thousand Brains bridge disabled\n");
+    }
+
+    Py_RETURN_NONE;
+}
+
+/**
  * WHAT: Initialize all 4 cortex CNN processors with FNO spectral processing.
  * WHY:  Cortex CNNs need explicit init — lazy creation inside learn paths is unreliable
  *       on 2M neuron brains due to ensure_writable_network failures.
@@ -8007,6 +8139,14 @@ static PyMethodDef Brain_methods[] = {
     // Multi-network ensemble training
     {"enable_multi_network", (PyCFunction)Brain_enable_multi_network, METH_NOARGS,
      "Enable LNN + CNN ensemble training alongside adaptive SNN"},
+    {"enable_hamiltonian", (PyCFunction)Brain_enable_hamiltonian, METH_VARARGS,
+     "enable_hamiltonian(enable=True) -> None\n"
+     "Enable/disable Hamiltonian energy-conserving dynamics on LNN layer 0.\n"
+     "Creates H_net and momentum tensor p if not present."},
+    {"enable_world_model_bridge", (PyCFunction)Brain_enable_world_model_bridge, METH_VARARGS,
+     "enable_world_model_bridge(enable=True) -> None\n"
+     "Enable/disable Thousand Brains world model bridge.\n"
+     "Activates world model training during learn_vector (every 10th step)."},
     {"init_cortex_cnns", (PyCFunction)Brain_init_cortex_cnns, METH_NOARGS,
      "init_cortex_cnns() -> None\n"
      "Create all 4 cortex CNN processors (visual/audio/speech/somato) with FNO.\n"

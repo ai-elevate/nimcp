@@ -791,6 +791,36 @@ int sparse_synapse_add(
     return 0;
 }
 
+int sparse_synapse_storage_reserve(
+    sparse_synapse_pool_t pool,
+    sparse_synapse_storage_t* storage,
+    uint32_t count
+) {
+    if (!validate_pool(pool) || !validate_storage(storage)) return -1;
+    if (count == 0) return 0;
+
+    /* Embedded portion needs no allocation — it's inline.
+     * Only pre-allocate overflow if count > EMBEDDED_CAPACITY. */
+    if (count <= SPARSE_SYNAPSE_EMBEDDED_CAPACITY) return 0;
+
+    uint32_t overflow_needed = count - SPARSE_SYNAPSE_EMBEDDED_CAPACITY;
+    if (storage->overflow == NULL || storage->overflow_capacity < overflow_needed) {
+        /* Free existing undersized overflow if any */
+        if (storage->overflow) {
+            free_overflow(pool, storage->overflow, storage->overflow_capacity);
+            storage->overflow = NULL;
+            storage->overflow_capacity = 0;
+            storage->overflow_count = 0;
+        }
+        uint32_t actual = 0;
+        storage->overflow = allocate_overflow(pool, overflow_needed, &actual);
+        if (!storage->overflow) return -1;
+        storage->overflow_capacity = actual;
+        storage->overflow_count = 0;
+    }
+    return 0;
+}
+
 int sparse_synapse_remove(
     sparse_synapse_pool_t pool,
     sparse_synapse_storage_t* storage,
@@ -1277,6 +1307,10 @@ typedef struct synapse_metadata_pool_struct {
 
     // Thread safety
     nimcp_mutex_t mutex;
+
+    // Capacity flag — set once when pool reaches max size and can't grow.
+    // Read lock-free by fast-path rejection in allocate(). Monotonic false→true.
+    volatile bool at_capacity;
 } synapse_metadata_pool_struct_t;
 
 // Validation helper
@@ -1436,8 +1470,22 @@ void synapse_metadata_pool_destroy(synapse_metadata_pool_t pool) {
     LOG_DEBUG("Destroyed synapse metadata pool");
 }
 
+bool synapse_metadata_pool_is_full(synapse_metadata_pool_t pool) {
+    if (!pool) return true;
+    return pool->at_capacity;
+}
+
 uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
     if (!validate_metadata_pool(pool)) {
+        return SPARSE_SYNAPSE_NO_METADATA;
+    }
+
+    /* Fast-path rejection: once the pool has reached max capacity and failed
+     * at least once, it will never grow again. Skip the mutex entirely.
+     * Uses a sticky flag (at_capacity) set inside the mutex-protected path
+     * when growth fails — no race: monotonically false→true. */
+    if (pool->at_capacity) {
+        atomic_fetch_add(&pool->failed_allocations, 1);
         return SPARSE_SYNAPSE_NO_METADATA;
     }
 
@@ -1450,6 +1498,7 @@ uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool) {
     if (pool->free_count == 0) {
         uint32_t new_pool_size = pool->pool_size + SYNAPSE_METADATA_BLOCK_SIZE;
         if (new_pool_size > SPARSE_SYNAPSE_MAX_POOL_SIZE) {
+            pool->at_capacity = true;  /* Sticky flag — enables fast-path rejection */
             if (pool->config.thread_safe) {
                 nimcp_mutex_unlock(&pool->mutex);
             }

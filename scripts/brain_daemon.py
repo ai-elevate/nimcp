@@ -213,6 +213,7 @@ class BrainService:
     _WRITE_COMMANDS = frozenset({
         'learn_vector', 'learn_vector_bin',
         'learn_vector_batch', 'learn_vector_batch_bin',
+        'train_batch_text',
         'save', 'sleep_run_cycle', 'retrofit_synapse_metadata',
     })
 
@@ -338,6 +339,92 @@ class BrainService:
         if hasattr(self, 'checkpointer') and self.checkpointer:
             self.checkpointer.notify_training_step()
         return {"avg_loss": avg_loss}
+
+    def _cmd_train_batch_text(self, req):
+        """Batch training from raw text — ONNX encodes + learns in tight loop.
+
+        Protocol:
+            {"cmd": "train_batch_text",
+             "items": [{"text": "...", "label": "...", "target_text": "..."}, ...],
+             "learning_rate": 0.001  // optional
+            }
+
+        Each item: ONNX-encode text → compose features → make_semantic_target →
+        brain.learn_vector. All in daemon process, zero socket overhead between items.
+        """
+        import time
+        try:
+            from onnx_encoder import encode_batch
+        except ImportError:
+            return {"error": "ONNX encoder not available — install onnxruntime"}
+
+        items = req["items"]
+        n = len(items)
+        if n == 0:
+            return {"avg_loss": 0.0, "n_items": 0}
+
+        lr = req.get("learning_rate", None)
+
+        # Separate feature texts (description) and target texts (name + description)
+        feat_texts = [it.get("text", "") for it in items]
+        tgt_texts = [it.get("target_text", it.get("text", "")) for it in items]
+        labels = [it.get("label", "")[:50] for it in items]
+
+        t0 = time.time()
+        # Batch-encode both feature and target texts in two ONNX calls
+        feat_embs = encode_batch(feat_texts)    # [N, 1024] — input features
+        tgt_embs = encode_batch(tgt_texts)      # [N, 1024] — target embeddings
+        t_encode = time.time() - t0
+
+        # Get brain output dim for target tiling
+        out_dim = self.brain.config.num_outputs if hasattr(self.brain, 'config') else 4096
+        import numpy as _np
+
+        # Train each item — tight loop, no socket overhead between items
+        total_loss = 0.0
+        n_ok = 0
+        kwargs = {}
+        if lr is not None:
+            kwargs["learning_rate"] = lr
+
+        for i in range(n):
+            # Features: tiled to brain input dim
+            feat = feat_embs[i]
+            in_dim = self.brain.config.num_inputs if hasattr(self.brain, 'config') else 1024
+            if len(feat) < in_dim:
+                reps = (in_dim + len(feat) - 1) // len(feat)
+                feat = _np.tile(feat, reps)[:in_dim]
+            features = feat.tolist()
+
+            # Target: tiled to brain output dim
+            tgt = tgt_embs[i]
+            if len(tgt) < out_dim:
+                reps = (out_dim + len(tgt) - 1) // len(tgt)
+                tgt = _np.tile(tgt, reps)[:out_dim]
+            target = tgt.tolist()
+
+            label = labels[i] if i < len(labels) else ""
+
+            loss = self.brain.learn_vector(features, target,
+                                            label=label, confidence=0.65,
+                                            **kwargs)
+            if loss is not None and loss >= 0:
+                total_loss += loss
+                n_ok += 1
+
+        self._stats["learn_calls"] += n_ok
+        if hasattr(self, 'checkpointer') and self.checkpointer:
+            self.checkpointer.notify_training_step()
+
+        avg_loss = total_loss / n_ok if n_ok > 0 else 0.0
+        t_total = time.time() - t0
+        return {
+            "avg_loss": avg_loss,
+            "n_items": n_ok,
+            "encode_ms": t_encode * 1000,
+            "total_ms": t_total * 1000,
+            "ms_per_item": (t_total / n * 1000) if n > 0 else 0,
+        }
 
     # -- Inference --
 
@@ -1416,6 +1503,13 @@ def main():
     brain.fix_output_activation()
     logger.info("Output layer activation set to LINEAR")
 
+    # Enable HNN on LNN layer 0. Creates LNN if not present (FAST init skips it).
+    try:
+        brain.enable_hamiltonian(True)
+        logger.info("Hamiltonian dynamics enabled on LNN layer 0")
+    except Exception as e:
+        logger.warning("HNN enable failed (non-fatal): %s", e)
+
     # Eagerly create all 4 cortex CNNs — lazy creation was unreliable because
     # staged sensory data gets consumed between submit and learn calls.
     try:
@@ -1474,6 +1568,17 @@ def main():
             logger.info("All synapses already have metadata — no retrofit needed")
     except Exception as e:
         logger.warning("Metadata retrofit failed: %s", e)
+
+    # Pre-warm ONNX encoder (first call triggers 77s CUDA compilation)
+    try:
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from onnx_encoder import encode_text
+        logger.info("Pre-warming ONNX encoder (first call compiles CUDA graphs)...")
+        encode_text("warmup")
+        logger.info("ONNX encoder ready")
+    except Exception as e:
+        logger.warning("ONNX encoder not available: %s", e)
 
     logger.info("Brain daemon ready — accepting connections on %s", args.socket)
     print(f"Brain daemon ready on {args.socket} (PID {os.getpid()})",

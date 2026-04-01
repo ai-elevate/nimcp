@@ -253,6 +253,13 @@ struct nimcp_cross_network_bridge {
     float spike_threshold;          /**< Spike threshold (default: 0.5) */
 
     bool enabled;
+
+    /* Persistent GPU device buffers for bridge GEMV (avoids alloc/free per step) */
+    void* gpu_d_W;          /**< Device: weight matrix [target_dim x source_dim] */
+    void* gpu_d_x;          /**< Device: input vector [source_dim] */
+    void* gpu_d_y;          /**< Device: output vector [target_dim] */
+    uint32_t gpu_buf_rows;  /**< Allocated rows (target_dim) */
+    uint32_t gpu_buf_cols;  /**< Allocated cols (source_dim) */
 };
 
 //=============================================================================

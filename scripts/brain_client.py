@@ -62,6 +62,14 @@ class BrainProxy:
         self.socket_path = socket_path
         self.timeout = timeout
         self._consecutive_failures = 0
+        self._async_pool = None
+
+    def _send_fire_and_forget(self, req):
+        """Send without waiting for response — runs in background thread."""
+        from concurrent.futures import ThreadPoolExecutor
+        if self._async_pool is None:
+            self._async_pool = ThreadPoolExecutor(max_workers=2)
+        self._async_pool.submit(self._send_once, req)
 
     def _send_once(self, req):
         """Single send attempt — no retries."""
@@ -235,6 +243,17 @@ class BrainProxy:
         resp = self._send(req)
         return resp.get("avg_loss", 0.0)
 
+    def train_batch_text(self, items, learning_rate=None):
+        """Batch training from raw text — daemon ONNX-encodes + learns.
+
+        items: list of {"text": "...", "label": "...", "target_text": "..."}
+        Returns dict with avg_loss, n_items, ms_per_item.
+        """
+        req = {"cmd": "train_batch_text", "items": items}
+        if learning_rate is not None:
+            req["learning_rate"] = float(learning_rate)
+        return self._send(req)
+
     # -- Inference --
 
     def decide_full(self, features):
@@ -399,7 +418,7 @@ class BrainProxy:
         return resp.get("mode", 0)
 
     def bg_update_reward(self, reward, rpe=0.0):
-        self._send({"cmd": "bg_update_reward", "reward": reward, "rpe": rpe})
+        self._send_fire_and_forget({"cmd": "bg_update_reward", "reward": reward, "rpe": rpe})
 
     # -- Training config --
 
@@ -468,7 +487,7 @@ class BrainProxy:
         req = {"cmd": "submit_sensory", "modality": modality,
                "data": _to_list(data)}
         req.update(kwargs)
-        self._send(req)
+        self._send_fire_and_forget(req)
 
     # -- Arousal control --
 
@@ -507,7 +526,7 @@ class BrainProxy:
         self._send({"cmd": "ti_init_reasoning"})
 
     def ti_add_fact(self, fact, confidence=0.5):
-        self._send({"cmd": "ti_add_fact", "fact": fact,
+        self._send_fire_and_forget({"cmd": "ti_add_fact", "fact": fact,
                      "confidence": confidence})
 
     def ti_add_rule(self, rule, confidence=0.5):

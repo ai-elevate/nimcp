@@ -415,6 +415,13 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->train_lnn = true;
     config->training_mode_active = false;  // Set to true during training to skip cognitive modules
 
+    // Intuitive Physics defaults
+    config->enable_intuitive_physics = !minimal;
+    config->enable_physics_prior = !minimal;
+    config->intuitive_physics_dt = 0.01f;
+    config->intuitive_physics_max_objects = 128;
+    config->physics_prior_weight = 0.3f;
+
     // Fuzzy logic and Internal KG defaults
     config->enable_fuzzy_logic = !minimal;
     config->enable_internal_kg = !minimal;

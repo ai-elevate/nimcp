@@ -311,6 +311,7 @@ struct lnn_layer_s {
 
     /* GPU acceleration (NULL = CPU only) */
     void* gpu_lnn_layer;            /**< nimcp_lnn_layer_gpu_t* (GPU-resident layer state) */
+    void* gpu_ctx;                  /**< nimcp_gpu_context_t* for GPU tensor uploads */
 };
 
 /**

@@ -164,6 +164,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
                     network->layers[i]->gpu_lnn_layer =
                         nimcp_lnn_layer_gpu_create(gpu, network->layers[i]);
                     if (network->layers[i]->gpu_lnn_layer) {
+                        network->layers[i]->gpu_ctx = gpu;
                         NIMCP_LOGGING_INFO("GPU LNN layer %u created for network '%s'",
                                            i, network->name);
                     } else {
@@ -1383,7 +1384,7 @@ int lnn_network_save(const lnn_network_t* network, const char* path) {
 
     /* Header */
     uint32_t magic = 0x4C4E4E53; /* "LNNS" */
-    uint32_t version = 1;
+    uint32_t version = 2;  /* v2: adds layer->p (momentum) + use_hamiltonian */
     LNN_FWRITE(&magic, sizeof(uint32_t), 1);
     LNN_FWRITE(&version, sizeof(uint32_t), 1);
 
@@ -1418,6 +1419,10 @@ int lnn_network_save(const lnn_network_t* network, const char* path) {
         /* Save state tensors */
         nimcp_tensor_save(layer->x, f);
         nimcp_tensor_save(layer->tau, f);
+
+        /* Save Hamiltonian momentum (NULL-safe: nimcp_tensor_save writes 0 for NULL) */
+        nimcp_tensor_save(layer->p, f);
+        LNN_FWRITE(&layer->use_hamiltonian, sizeof(bool), 1);
     }
 
     #undef LNN_FWRITE
@@ -1470,7 +1475,7 @@ lnn_network_t* lnn_network_load(const char* path) {
         fclose(f);
         return NULL;
     }
-    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > 1) {
+    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > 2) {
         NIMCP_LOGGING_ERROR("lnn_network_load: unsupported version %u", version);
         fclose(f); return NULL;
     }
@@ -1689,6 +1694,39 @@ lnn_network_t* lnn_network_load(const char* path) {
                 }
             }
         }
+
+        /* v2: Load Hamiltonian momentum and flag */
+        nimcp_tensor_t* p_loaded = NULL;
+        bool use_hamiltonian_loaded = false;
+        if (version >= 2) {
+            p_loaded = nimcp_tensor_load(f);
+            if (fread(&use_hamiltonian_loaded, sizeof(bool), 1, f) != 1) {
+                use_hamiltonian_loaded = false;
+            }
+        }
+
+        if (i < restore_layers && net->layers[i]) {
+            lnn_layer_t* layer = net->layers[i];
+
+            /* Restore momentum if saved */
+            if (p_loaded && layer->n_neurons > 0) {
+                if (!layer->p || nimcp_tensor_numel(layer->p) != nimcp_tensor_numel(p_loaded)) {
+                    nimcp_tensor_destroy(layer->p);
+                    layer->p = p_loaded;
+                    p_loaded = NULL;
+                } else {
+                    memcpy(nimcp_tensor_data(layer->p),
+                           nimcp_tensor_data_const(p_loaded),
+                           nimcp_tensor_numel(p_loaded) * sizeof(float));
+                }
+            }
+
+            /* Restore use_hamiltonian flag — but don't enable without H_net */
+            if (use_hamiltonian_loaded && layer->H_net) {
+                layer->use_hamiltonian = true;
+            }
+        }
+        nimcp_tensor_destroy(p_loaded);
 
         /* Clean up any tensors not consumed */
         nimcp_tensor_destroy(W_in);

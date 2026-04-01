@@ -367,9 +367,9 @@
     <!-- Hero -->
     <header class="hero">
         <div class="container">
-            <div class="hero-badge">ACTIVELY TRAINING &mdash; STAGE 2 OF 4</div>
+            <div class="hero-badge">ACTIVELY TRAINING &mdash; STAGE 1 OF 4</div>
             <h1>A <span class="gradient">2.5 Million Neuron</span><br>Artificial Brain</h1>
-            <p>Not another chatbot. A brain that learns like a child, remembers without forgetting, and has safety you can't prompt-inject past. Running on a single desktop GPU.</p>
+            <p>Not another chatbot. A brain that learns like a child, remembers without forgetting, and has safety you can't prompt-inject past. Training on a single GPU.</p>
             <div class="hero-buttons">
                 <a href="https://github.com/redmage123/nimcp" class="btn btn-primary" target="_blank">
                     View Source Code
@@ -431,7 +431,7 @@
                 </div>
                 <div style="margin-bottom: 32px;">
                     <h3 style="color: var(--accent); font-size: 1.1rem; margin-bottom: 8px;">Any university lab can run it</h3>
-                    <p style="color: var(--text-dim); line-height: 1.7;">Training GPT-4 cost over $100 million in compute. NIMCP trains on a single desktop GPU that costs about &pound;1,200. This isn't about the hardware being impressive &mdash; it's about the architecture being efficient enough that AI safety research doesn't require a corporate budget. Anyone can verify, reproduce, and build on this work.</p>
+                    <p style="color: var(--text-dim); line-height: 1.7;">Training GPT-5 cost over $100 million in compute. NIMCP trains on a single NVIDIA RTX 5090 GPU rented by the hour. The entire training run &mdash; all four developmental stages, 60,000 steps, 2.5 million neurons &mdash; costs less than a week of cloud compute. This isn't about the hardware being impressive &mdash; it's about the architecture being efficient enough that AI safety research doesn't require a corporate budget. Anyone can verify, reproduce, and build on this work.</p>
                 </div>
                 <div>
                     <h3 style="color: var(--accent); font-size: 1.1rem; margin-bottom: 8px;">Athena is training right now</h3>
@@ -449,27 +449,27 @@
             <p>NIMCP doesn't train a single monolithic model. It trains six heterogeneous neural networks simultaneously, with gradient flow across network boundaries.</p>
 
             <div class="network-grid" style="margin-bottom: 48px;">
-                <div class="network-chip">
+                <div class="network-chip" onclick="openModal('net_adaptive')" style="cursor:pointer" title="Click for details">
                     <div class="name"><span class="dot" style="background: var(--accent);"></span>Adaptive</div>
                     <div class="desc">9-layer diamond, GPU-accelerated backprop</div>
                 </div>
-                <div class="network-chip">
+                <div class="network-chip" onclick="openModal('net_snn')" style="cursor:pointer" title="Click for details">
                     <div class="name"><span class="dot" style="background: var(--green);"></span>Spiking (SNN)</div>
                     <div class="desc">768 LIF neurons, BPTT surrogate gradients</div>
                 </div>
-                <div class="network-chip">
+                <div class="network-chip" onclick="openModal('net_lnn')" style="cursor:pointer" title="Click for details">
                     <div class="name"><span class="dot" style="background: var(--purple);"></span>Liquid (LNN)</div>
                     <div class="desc">Continuous-time ODE, adjoint gradients</div>
                 </div>
-                <div class="network-chip">
+                <div class="network-chip" onclick="openModal('net_cnn')" style="cursor:pointer" title="Click for details">
                     <div class="name"><span class="dot" style="background: var(--orange);"></span>Convolutional</div>
                     <div class="desc">4 cortex processors: visual, audio, speech, somato</div>
                 </div>
-                <div class="network-chip">
+                <div class="network-chip" onclick="openModal('net_fno')" style="cursor:pointer" title="Click for details">
                     <div class="name"><span class="dot" style="background: var(--cyan);"></span>Fourier (FNO)</div>
                     <div class="desc">Spectral convolution, frequency-domain learning</div>
                 </div>
-                <div class="network-chip">
+                <div class="network-chip" onclick="openModal('net_hnn')" style="cursor:pointer" title="Click for details">
                     <div class="name"><span class="dot" style="background: var(--red);"></span>Hamiltonian</div>
                     <div class="desc">Energy-conserving, physics-informed dynamics</div>
                 </div>
@@ -596,57 +596,65 @@
         <div class="container">
             <div class="section-label">Live Training</div>
             <h2>Athena is Learning Right Now</h2>
-            <p>A 2.5-million neuron brain named Athena is currently in Stage 2 of developmental training on a single NVIDIA RTX 4000 SFF Ada (20 GB VRAM).</p>
+            <p>A 2.5-million neuron brain named Athena is currently in Stage 1 of developmental training on an NVIDIA RTX 5090 (32 GB VRAM) via RunPod cloud GPU.</p>
 
             <div class="training-status">
                 <h3><span class="live-dot" id="liveDot"></span><span id="statusLabel">Training Status</span></h3>
                 <div class="training-grid">
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_stage')" style="cursor:pointer" title="Click for details">
                         <div class="label">Stage / Step</div>
-                        <div class="value" id="m-stage">2 / 4</div>
-                        <div class="label" style="margin-top:4px" id="m-step">Step ~6,000 / 20,000</div>
+                        <div class="value" id="m-stage">1 / 4</div>
+                        <div class="label" style="margin-top:4px" id="m-step">Step ~7,550 / 20,000</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_ann')" style="cursor:pointer" title="Click for details">
                         <div class="label">ANN Loss</div>
                         <div class="value" id="m-ann">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_cnn')" style="cursor:pointer" title="Click for details">
                         <div class="label">CNN Loss</div>
                         <div class="value" id="m-cnn">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_snn_loss')" style="cursor:pointer" title="Click for details">
                         <div class="label">SNN Loss</div>
                         <div class="value" id="m-snn-loss">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_lnn')" style="cursor:pointer" title="Click for details">
                         <div class="label">LNN Loss</div>
                         <div class="value" id="m-lnn">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_snn_rate')" style="cursor:pointer" title="Click for details">
                         <div class="label">SNN Firing Rate</div>
                         <div class="value" id="m-snn-rate">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_snn_sparsity')" style="cursor:pointer" title="Click for details">
                         <div class="label">SNN Sparsity</div>
                         <div class="value" id="m-snn-sparsity">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_snn_spikes')" style="cursor:pointer" title="Click for details">
                         <div class="label">SNN Spikes</div>
                         <div class="value" id="m-snn-spikes">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_fno')" style="cursor:pointer" title="Click for details">
+                        <div class="label">FNO Loss</div>
+                        <div class="value" id="m-fno-loss">—</div>
+                    </div>
+                    <div class="training-metric" onclick="openModal('metric_hnn')" style="cursor:pointer" title="Click for details">
+                        <div class="label">HNN Energy</div>
+                        <div class="value" id="m-hnn-energy">—</div>
+                    </div>
+                    <div class="training-metric" onclick="openModal('metric_step_loss')" style="cursor:pointer" title="Click for details">
                         <div class="label">Per-Step Loss</div>
                         <div class="value" id="m-step-loss">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_steps')" style="cursor:pointer" title="Click for details">
                         <div class="label">Training Steps</div>
                         <div class="value" id="m-steps">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_learns')" style="cursor:pointer" title="Click for details">
                         <div class="label">Learn Calls</div>
                         <div class="value" id="m-learns">—</div>
                     </div>
-                    <div class="training-metric">
+                    <div class="training-metric" onclick="openModal('metric_uptime')" style="cursor:pointer" title="Click for details">
                         <div class="label">Daemon Uptime</div>
                         <div class="value" id="m-uptime">—</div>
                     </div>
@@ -738,7 +746,14 @@
                         transition: background 0.2s;
                     " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='var(--accent)'">Send</button>
                 </div>
-                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px; text-align: center;" id="chat-status">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px;">
+                    <label style="color: var(--text-dim); font-size: 0.8rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="phi3-toggle" style="accent-color: var(--accent);">
+                        <span>Phi-3 language decoder</span>
+                    </label>
+                    <span onclick="openModal('chat_modes')" style="color: var(--accent); font-size: 0.75rem; cursor: pointer; text-decoration: underline;">What's this?</span>
+                </div>
+                <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 6px; text-align: center;" id="chat-status">
                     Connected to brain daemon via API
                 </p>
             </div>
@@ -803,6 +818,245 @@ brain.learn_vector(features, target, label='hello world')
 
     <script>
     const modalData = {
+        metric_stage: {
+            title: 'Training Stage and Step',
+            body: `
+                <p>Athena learns in <span class="highlight">four developmental stages</span>, each building on the representations formed in the previous one:</p>
+                <ul>
+                    <li><strong>Stage 0 — Sensory Awakening</strong> (10,000 steps): Breaking symmetry from random weights. The brain learns to produce different outputs for different inputs across all four sensory modalities.</li>
+                    <li><strong>Stage 1 — Association</strong> (20,000 steps): Cross-modal binding. "Look! That's a dog!" The brain learns to associate visual, audio, and text representations with labels.</li>
+                    <li><strong>Stage 2 — Feedback</strong> (20,000 steps): Error correction. The brain produces a response, receives feedback, and adjusts. Activates eligibility traces and cerebellar learning.</li>
+                    <li><strong>Stage 3 — Reasoning</strong> (10,000 steps): Abstract thought across 13 cognitive domains including ethics, causal reasoning, Theory of Mind, and imagination.</li>
+                </ul>
+                <p>The step counter shows progress within the current stage. Each step presents a training example, runs forward inference through all six networks, computes gradients, and updates weights.</p>
+            `
+        },
+        metric_ann: {
+            title: 'ANN Loss — Adaptive Neural Network',
+            body: `
+                <p>The <span class="highlight">Adaptive Neural Network</span> is the main network — a 9-layer diamond architecture with 2.5 million neurons. It handles general-purpose learning and is the backbone of the brain.</p>
+                <p><strong>What this number means:</strong> Cross-entropy loss between the network's output and the training target. Lower is better. A value of 1.0 means the network is barely better than random guessing; values below 0.1 indicate strong learning.</p>
+                <p><strong>Why it matters:</strong> This is the primary indicator of whether the brain is learning from its training curriculum. During early stages, expect values between 1.0 and 3.0 that gradually decrease.</p>
+                <p>The ANN uses GPU-accelerated backpropagation with AdamW optimiser, layer-wise learning rates, and gradient normalization to prevent mode collapse.</p>
+            `
+        },
+        metric_cnn: {
+            title: 'CNN Loss — Convolutional Neural Networks',
+            body: `
+                <p>NIMCP has <span class="highlight">four cortex-specific CNN processors</span>, one for each sensory modality:</p>
+                <ul>
+                    <li><strong>Visual Cortex</strong> — Processes images (CIFAR-100, ImageNet labels)</li>
+                    <li><strong>Audio Cortex</strong> — Processes environmental and speech sounds</li>
+                    <li><strong>Speech Cortex</strong> — Processes spoken language with formant analysis</li>
+                    <li><strong>Somatosensory Cortex</strong> — Processes texture, temperature, and pressure</li>
+                </ul>
+                <p><strong>What this number means:</strong> The aggregated loss across all four cortex CNN processors. Very small values (0.0001–0.001) are normal — the CNNs converge quickly because they have fewer parameters than the main network.</p>
+                <p>Each cortex CNN feeds its processed representations into the main adaptive network, giving the brain structured sensory input rather than raw data.</p>
+            `
+        },
+        metric_snn_loss: {
+            title: 'SNN Loss — Spiking Neural Network',
+            body: `
+                <p>The <span class="highlight">Spiking Neural Network</span> uses 768 Leaky Integrate-and-Fire (LIF) neurons that communicate through discrete voltage spikes — the same mechanism biological neurons use.</p>
+                <p><strong>What this number means:</strong> The BPTT (Backpropagation Through Time) loss computed over a 10ms simulation window with surrogate gradients. Higher values are expected early in training — SNN loss operates on a different scale than ANN loss because it measures spike-timing prediction error.</p>
+                <p><strong>Why it matters:</strong> The SNN captures temporal dynamics that the main network cannot. Spike patterns encode time-sensitive information like audio rhythms, speech cadence, and motor timing. SNN gradients flow into the main network through learnable bridges.</p>
+            `
+        },
+        metric_lnn: {
+            title: 'LNN Loss — Liquid Neural Network',
+            body: `
+                <p>The <span class="highlight">Liquid Neural Network</span> models continuous-time dynamics using ordinary differential equations (ODEs). Each neuron has a learnable time constant (tau) that controls how quickly it responds to inputs.</p>
+                <p><strong>What this number means:</strong> The adjoint-method gradient loss. The LNN computes gradients by solving the ODE backward in time — a technique from optimal control theory. Values around 0.5–2.0 are typical during early training.</p>
+                <p><strong>Why it matters:</strong> LNNs excel at modelling temporal sequences and continuous signals. They're particularly good at tasks where the timing between events matters, not just the events themselves. The LNN's tau parameters adapt to capture dynamics at different timescales.</p>
+                <p>LNN forward passes now run on the <span class="highlight">GPU via CUDA kernels</span>, using ODE solvers (Euler, Heun, RK4, or DOPRI5) accelerated on the RTX 5090.</p>
+            `
+        },
+        metric_snn_rate: {
+            title: 'SNN Firing Rate',
+            body: `
+                <p><strong>What this number means:</strong> The average number of spikes per second across all 768 SNN neurons, measured in Hertz (Hz).</p>
+                <p><strong>Healthy range:</strong> 10–100 Hz during active training. Biological cortical neurons typically fire at 1–40 Hz. Higher rates during training are expected because the BPTT simulation drives sustained activity.</p>
+                <p><strong>Warning signs:</strong></p>
+                <ul>
+                    <li><strong>0 Hz</strong> — All neurons are silent. The SNN isn't contributing to learning. Usually indicates threshold or input scaling issues.</li>
+                    <li><strong>>500 Hz</strong> — Runaway excitation. Homeostatic scaling should engage to bring this down.</li>
+                </ul>
+                <p>The firing rate is computed from actual spike events during the BPTT simulation window, not from membrane potentials.</p>
+            `
+        },
+        metric_snn_sparsity: {
+            title: 'SNN Sparsity',
+            body: `
+                <p><strong>What this number means:</strong> The fraction of SNN neurons that are <em>not</em> firing. A sparsity of 0.67 means 67% of neurons are silent and 33% are actively spiking.</p>
+                <p><strong>Why sparse is good:</strong> Sparse neural codes are more energy-efficient and have higher information capacity. Biological brains maintain ~95% sparsity. In NIMCP, sparsity between 0.5 and 0.9 indicates healthy, selective neural coding.</p>
+                <p><strong>Warning signs:</strong></p>
+                <ul>
+                    <li><strong>1.0</strong> — No neurons firing at all (dead network)</li>
+                    <li><strong>0.0</strong> — Every neuron firing on every step (no selectivity, likely mode collapse)</li>
+                </ul>
+                <p>K-Winner-Take-All (K-WTA) sparse coding ensures that only the most relevant neurons activate for each input, preventing mode collapse.</p>
+            `
+        },
+        metric_snn_spikes: {
+            title: 'SNN Total Spikes',
+            body: `
+                <p><strong>What this number means:</strong> The cumulative number of spike events generated by all SNN neurons since the daemon started. Each spike is a discrete voltage event where a neuron's membrane potential crossed its firing threshold.</p>
+                <p>This number should grow steadily during training. Sudden drops to zero or plateaus indicate the SNN has stopped contributing to learning.</p>
+                <p>In a biological brain, a single cortical neuron fires about 200,000 times per day. With 768 SNN neurons in NIMCP, millions of cumulative spikes per training session is normal.</p>
+            `
+        },
+        metric_step_loss: {
+            title: 'Per-Step Loss',
+            body: `
+                <p><strong>What this number means:</strong> The training loss for the most recent individual training step, across all active networks. This is more granular than the smoothed ANN/SNN/LNN losses which are exponential moving averages.</p>
+                <p>Per-step loss is noisy by nature — it varies significantly from one example to the next depending on the difficulty of the training item. The trend over 50–100 steps is more informative than any single value.</p>
+            `
+        },
+        metric_steps: {
+            title: 'Training Steps (Cumulative)',
+            body: `
+                <p><strong>What this number means:</strong> The total number of training steps completed across all sessions, including checkpoint restarts. This is the global progress counter.</p>
+                <p>Each training step presents one example from the developmental curriculum, runs forward inference through all six networks, computes gradients via backpropagation (ANN), BPTT (SNN), adjoint method (LNN), and standard backprop (CNN), then applies weight updates.</p>
+                <p>At the current training speed of approximately 6.5 seconds per step on the RTX 5090, completing all four stages (~60,000 total steps) takes roughly 4.5 days of continuous training.</p>
+            `
+        },
+        metric_learns: {
+            title: 'Learn Calls',
+            body: `
+                <p><strong>What this number means:</strong> The number of learn_vector API calls the brain daemon has processed since it started. Each call sends a feature vector and target to the brain, which triggers a full forward + backward pass across all networks.</p>
+                <p>This counter resets when the daemon restarts. Compare with Training Steps (cumulative) for the full historical count.</p>
+            `
+        },
+        metric_fno: {
+            title: 'FNO Loss — Fourier Neural Operator',
+            body: `
+                <p>The FNO operates as a <span class="highlight">spectral processing sub-module</span> inside the cortex CNN processors. It applies learnable Fourier transforms to sensory data — particularly useful for audio (detecting pitch, harmonics, rhythm) and visual patterns (spatial frequencies).</p>
+                <p><strong>What this number means:</strong> The FNO's contribution to the cortex CNN loss. A value of 0.0 means the FNO has converged on its embedding task — this is normal because the cortex CNN processors are small networks that learn quickly.</p>
+                <p>The FNO has 34,432 parameters and runs spectral convolutions via FFT on every forward pass. Its weights are updated through the CNN backward pass.</p>
+                <p><strong>Key difference from CNNs:</strong> CNNs learn local spatial patterns through sliding kernels. The FNO learns <em>global</em> frequency-domain patterns in a single layer — every point in the input can influence every point in the output. This makes it particularly powerful for periodic signals like audio waveforms.</p>
+            `
+        },
+        metric_hnn: {
+            title: 'HNN Energy — Hamiltonian Neural Network',
+            body: `
+                <p>The HNN is a <span class="highlight">physics-informed network</span> that learns energy-conserving dynamics. Instead of predicting trajectories directly, it discovers a conserved energy function (the Hamiltonian H) and derives dynamics from it.</p>
+                <p><strong>What this number means:</strong> The current value of the learned Hamiltonian energy function H(q,p), where q is the brain's neural state (position) and p is the conjugate momentum. In a perfectly energy-conserving system, H stays constant. The deviation from the initial energy measures how well the symplectic integrator preserves the energy invariant.</p>
+                <p><strong>Why it matters:</strong> Energy conservation provides a structural stability guarantee — the brain's dynamics cannot diverge to infinity because total energy is bounded. This is fundamentally different from unconstrained networks where activations can grow without limit.</p>
+                <p><strong>When HNN is inactive:</strong> If the energy shows as 0 or "—", the Hamiltonian module may not be enabled yet. It activates through the LNN layer 0 when the brain is initialised with Hamiltonian dynamics.</p>
+            `
+        },
+        metric_uptime: {
+            title: 'Daemon Uptime',
+            body: `
+                <p><strong>What this number means:</strong> How long the brain daemon process has been running continuously. The daemon keeps the 2.5-million neuron brain resident in memory (~44 GB RAM) so that training and inference requests don't require reloading from disk.</p>
+                <p>Loading the brain from a checkpoint takes approximately 10 minutes (8.1 GB checkpoint file + 223 million synapse connections + GPU initialization). Long uptimes indicate stability — the daemon hasn't crashed or been restarted.</p>
+            `
+        },
+        chat_modes: {
+            title: 'Chat Modes — Raw Brain vs. Phi-3 Decoder',
+            body: `
+                <p>Athena can respond in two modes. The toggle controls which decoder turns the brain's internal neural activation into readable text.</p>
+                <h4 style="color: var(--green); margin: 16px 0 8px;">Without Phi-3 (default) — Raw Brain Output</h4>
+                <p>The brain's 4096-dimensional output vector is decoded directly using Athena's <span class="highlight">brain-native vocabulary</span> — a set of tokens learned from neural activation patterns during training. This is the brain's own "voice."</p>
+                <ul>
+                    <li>Responses may be fragmented, repetitive, or nonsensical — especially in early training stages</li>
+                    <li>You're seeing the brain's actual internal state, unfiltered</li>
+                    <li>Omega-tokens (&Omega;) may appear — symbols the brain invented for concepts it doesn't have human words for</li>
+                    <li>This is the scientifically honest output — what the brain actually thinks</li>
+                </ul>
+                <h4 style="color: var(--purple); margin: 16px 0 8px;">With Phi-3 — Language Model Decoder</h4>
+                <p>The brain's output vector is projected into <span class="highlight">Phi-3-mini</span> (a 3.8B parameter language model) via a trained LoRA adapter. Phi-3 translates the brain's neural state into fluent English.</p>
+                <ul>
+                    <li>Responses are more coherent and readable</li>
+                    <li>The LoRA adapter was fine-tuned on 88,000 (brain output, text) pairs from training</li>
+                    <li>There is a tradeoff: fluency comes at the cost of fidelity — Phi-3 may "fill in" meaning that isn't actually in the brain's representation</li>
+                    <li>Requires the Phi-3 model to be loaded (uses additional GPU memory)</li>
+                </ul>
+                <p>Think of it like this: raw mode is a brain scan. Phi-3 mode is asking an interpreter to describe what the scan shows. Both are useful, for different reasons.</p>
+            `
+        },
+        net_adaptive: {
+            title: 'Adaptive Neural Network — The Backbone',
+            body: `
+                <p>The Adaptive Network is the <span class="highlight">main neural network</span> in the brain — a 9-layer diamond architecture containing 2.5 million neurons.</p>
+                <p><strong>Diamond architecture</strong> means the layers are not uniform. They expand from the input layer to a wide middle, then contract back to the output — like a diamond shape. Small brains (&lt;5K neurons) use 3 layers, medium (5K–100K) use 5, and large (100K+) use 7 or 9. This shape naturally creates a compression bottleneck that forces the network to learn efficient representations.</p>
+                <ul>
+                    <li><strong>Training</strong> — Standard backpropagation with AdamW optimiser, but with biological enhancements: gradient normalization (not clipping), layer-wise learning rates, and diversity loss to prevent mode collapse.</li>
+                    <li><strong>GPU acceleration</strong> — Forward pass, backward pass, and weight updates all run on the GPU via custom CUDA kernels. Weight caching minimises CPU↔GPU transfers.</li>
+                    <li><strong>Cross-network bridges</strong> — Learnable linear transforms connect the adaptive network to all five other networks. A useful representation discovered by the SNN or LNN can flow into the adaptive network's gradient updates, and vice versa.</li>
+                </ul>
+                <p>Every training step, the adaptive network receives a composed feature vector (text + image + audio + somatosensory), runs forward inference, computes loss against the curriculum target, and updates all 2.5M neuron weights.</p>
+            `
+        },
+        net_snn: {
+            title: 'Spiking Neural Network — Biological Timing',
+            body: `
+                <p>The SNN is the most <span class="highlight">biologically realistic</span> component of the brain. It uses 768 Leaky Integrate-and-Fire (LIF) neurons organised into populations, communicating through discrete voltage spikes.</p>
+                <p><strong>How it works:</strong> Each neuron maintains a membrane potential that accumulates incoming current from presynaptic spikes. When the potential crosses a threshold, the neuron fires a spike and resets. The "leaky" part means the potential decays exponentially between spikes, controlled by a time constant (tau_mem).</p>
+                <ul>
+                    <li><strong>BPTT with surrogate gradients</strong> — Spikes are non-differentiable (they're binary events), so we use a smooth surrogate function during the backward pass. This allows gradient-based learning in a spiking network — a technique from computational neuroscience.</li>
+                    <li><strong>10ms simulation window</strong> — Each training step simulates 10ms of neural dynamics at 1ms resolution, producing a spike train that encodes temporal information.</li>
+                    <li><strong>STDP</strong> — Spike-Timing-Dependent Plasticity strengthens synapses where the presynaptic neuron fires before the postsynaptic neuron (causal timing). This captures temporal relationships that backpropagation alone cannot.</li>
+                    <li><strong>Population coding</strong> — Neurons are grouped into populations with shared connectivity patterns, enabling ensemble representations.</li>
+                </ul>
+                <p><strong>What it contributes:</strong> The SNN excels at temporal pattern recognition — speech rhythms, motor timing sequences, cause-and-effect relationships. Its spike-based representations are complementary to the continuous-valued outputs of the other networks.</p>
+            `
+        },
+        net_lnn: {
+            title: 'Liquid Neural Network — Continuous-Time Dynamics',
+            body: `
+                <p>The LNN models neural dynamics as a <span class="highlight">system of ordinary differential equations (ODEs)</span>. Unlike traditional networks that compute discrete layer-by-layer transforms, the LNN evolves continuously in time.</p>
+                <p><strong>Liquid Time-Constant (LTC) neurons:</strong> Each neuron has a learnable time constant (tau) that controls its temporal responsiveness. A neuron with a small tau reacts quickly to inputs; a large tau creates a slow, smoothing response. The network learns which timescales matter for each task.</p>
+                <ul>
+                    <li><strong>ODE solvers</strong> — Four numerical integration methods available: Euler (fast, approximate), Heun (2nd order), RK4 (4th order, accurate), and DOPRI5 (adaptive step size). All now GPU-accelerated via custom CUDA kernels on the RTX 5090.</li>
+                    <li><strong>Adjoint method</strong> — Gradients are computed by solving the ODE backward in time, a technique from optimal control theory. This is more memory-efficient than storing all intermediate states (as BPTT does).</li>
+                    <li><strong>Recurrent wiring</strong> — LNN neurons can connect to each other (not just feedforward), creating recurrent dynamics that maintain state over time without explicit memory cells like LSTMs.</li>
+                    <li><strong>Hamiltonian extension</strong> — Some LNN layers can optionally use Hamiltonian dynamics, conserving a learned energy function for physics-informed stability.</li>
+                </ul>
+                <p><strong>What it contributes:</strong> The LNN captures smooth, continuous dynamics — fluid motion, gradual emotional changes, physical trajectories. It naturally handles irregularly-sampled time series without interpolation.</p>
+            `
+        },
+        net_cnn: {
+            title: 'Convolutional Neural Networks — Sensory Cortex',
+            body: `
+                <p>NIMCP has <span class="highlight">four cortex-specific CNN processors</span>, each dedicated to a sensory modality — mirroring the specialised cortical regions in the biological brain.</p>
+                <ul>
+                    <li><strong>Visual Cortex</strong> — Processes images through convolutional layers that detect edges, textures, shapes, and objects. Trained on CIFAR-100 (50,000 images, 100 classes) and ImageNet class labels. Outputs a compressed visual embedding.</li>
+                    <li><strong>Audio Cortex</strong> — Processes environmental sounds and music. Formant analysis and spectral features are extracted and run through convolutional layers optimised for frequency-domain patterns.</li>
+                    <li><strong>Speech Cortex</strong> — Specialised for human speech. Handles phoneme-level features, prosody (pitch contour, rhythm), and the exaggerated "parentese" speech used in early developmental stages.</li>
+                    <li><strong>Somatosensory Cortex</strong> — Processes touch, temperature, pressure, and texture information. A 64-dimensional encoding of tactile features feeds into convolutional layers for spatial pattern recognition.</li>
+                </ul>
+                <p>Each cortex CNN independently processes its modality, then feeds a compressed representation into the main adaptive network. This modular design means the visual cortex can learn visual features without interference from audio processing, and vice versa — just like in the biological brain.</p>
+                <p>During training, each cortex CNN has its own loss function and backward pass, plus a contribution to the global training objective through the Unified Training Manager.</p>
+            `
+        },
+        net_fno: {
+            title: 'Fourier Neural Operator — Spectral Learning',
+            body: `
+                <p>The FNO operates in the <span class="highlight">frequency domain</span>, learning patterns through spectral convolution rather than spatial convolution.</p>
+                <p><strong>How it works:</strong> Input signals are transformed into the frequency domain via the Fast Fourier Transform (FFT). Learnable weight matrices are applied to the frequency components, then the result is transformed back to the spatial domain via inverse FFT. This is equivalent to a global convolution — every point in the input can influence every point in the output in a single layer.</p>
+                <ul>
+                    <li><strong>Resolution-independent</strong> — Because FNO learns in frequency space, it naturally generalises across different input resolutions. A pattern learned at 32&times;32 works at 128&times;128 without retraining.</li>
+                    <li><strong>Global receptive field</strong> — Unlike CNNs, which build up large receptive fields through stacking layers, the FNO has a global receptive field from the first layer. This makes it powerful for tasks where long-range dependencies matter.</li>
+                    <li><strong>Spectral analysis</strong> — The FNO can learn to detect periodic patterns, harmonic relationships, and frequency signatures that spatial networks struggle with.</li>
+                </ul>
+                <p><strong>What it contributes:</strong> The FNO is particularly valuable for audio processing (detecting pitch, harmonics, rhythm), physical simulations (wave equations, diffusion), and any task where frequency-domain structure is important. Its gradients flow into the other networks through the cross-network bridges.</p>
+            `
+        },
+        net_hnn: {
+            title: 'Hamiltonian Neural Network — Energy Conservation',
+            body: `
+                <p>The HNN is a <span class="highlight">physics-informed network</span> that learns dynamics by discovering conserved energy functions, rather than directly predicting trajectories.</p>
+                <p><strong>Hamiltonian mechanics:</strong> In classical physics, many systems conserve total energy (kinetic + potential). The Hamiltonian H(q,p) defines this energy as a function of position (q) and momentum (p). Hamilton's equations then determine how the system evolves: dq/dt = &part;H/&part;p, dp/dt = &minus;&part;H/&part;q.</p>
+                <ul>
+                    <li><strong>Learned Hamiltonian</strong> — Instead of hand-coding the energy function, the HNN learns H from data using a neural network. The dynamics are then derived automatically from H, guaranteeing energy conservation by construction.</li>
+                    <li><strong>Symplectic integration</strong> — The ODE solver uses structure-preserving numerical methods that maintain the geometric properties of Hamiltonian systems, preventing energy drift over long simulations.</li>
+                    <li><strong>Stability guarantee</strong> — Because energy is conserved, HNN trajectories cannot diverge to infinity. This provides a natural stability guarantee that unconstrained networks lack.</li>
+                    <li><strong>Phase-space reasoning</strong> — The HNN reasons in terms of position-momentum pairs, which naturally captures oscillatory dynamics, orbital motion, and pendulum-like behaviours.</li>
+                </ul>
+                <p><strong>What it contributes:</strong> The HNN provides physically plausible dynamics for motor control, object trajectory prediction, and any task where conservation laws matter. It prevents the brain from learning physically impossible dynamics — a ball thrown upward must come back down, and the HNN enforces this structurally.</p>
+            `
+        },
         plasticity: {
             title: 'Biological Plasticity — Five Rules, Five Timescales',
             body: `
@@ -952,7 +1206,18 @@ brain.learn_vector(features, target, label='hello world')
         if (d.snn_rate_hz !== undefined) el('m-snn-rate').textContent = fmt(d.snn_rate_hz, 1) + ' Hz';
         if (d.snn_sparsity !== undefined) el('m-snn-sparsity').textContent = (d.snn_sparsity * 100).toFixed(0) + '%';
         if (d.snn_spikes !== undefined) el('m-snn-spikes').textContent = d.snn_spikes.toLocaleString();
+        // FNO metrics
+        if (d.fno_loss !== undefined) {
+            el('m-fno-loss').textContent = d.fno_steps > 0 ? fmt(d.fno_loss) + ' (' + d.fno_steps + ' steps)' : 'Inactive';
+        }
+        // HNN metrics
+        if (d.hnn_active) {
+            el('m-hnn-energy').textContent = fmt(d.hnn_energy, 4) + ' (dev: ' + fmt(d.hnn_energy_deviation, 6) + ')';
+        } else {
+            el('m-hnn-energy').textContent = d.hnn_active === false ? 'Not yet enabled' : '—';
+        }
         if (d.step_loss !== undefined) el('m-step-loss').textContent = fmt(d.step_loss);
+        else if (d.ann_loss !== undefined) el('m-step-loss').textContent = fmt(d.ann_loss);
         // Show cumulative step from training log (not per-session daemon counter)
         if (d.current_step) {
             el('m-steps').textContent = d.current_step.toLocaleString() + ' (cumulative)';
@@ -1069,7 +1334,7 @@ brain.learn_vector(features, target, label='hello world')
             const resp = await fetch(CHAT_API, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({message: msg})
+                body: JSON.stringify({message: msg, use_phi3: document.getElementById('phi3-toggle').checked})
             });
             const data = await resp.json();
             if (data.error) {

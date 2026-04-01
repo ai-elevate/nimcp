@@ -1846,6 +1846,13 @@ typedef struct {
     bool enable_wm_thousand_brains_bridge;        /**< Hawkins Thousand Brains cortical column integration bridge */
     bool enable_thousand_brains_integration;      /**< Enable full Thousand Brains integration hub (ref frames, voting, sequences + all wiring) */
 
+    // === INTUITIVE PHYSICS SUBSYSTEM ===
+    bool enable_intuitive_physics;                /**< Enable physics engine + entity tracker + scene graph (default: true if world_model) */
+    bool enable_physics_prior;                    /**< Enable physics prior on WM predictions (default: true if intuitive_physics) */
+    float intuitive_physics_dt;                   /**< Physics timestep in seconds (default: 0.01) */
+    uint32_t intuitive_physics_max_objects;       /**< Max tracked objects (default: 128) */
+    float physics_prior_weight;                   /**< Initial physics blend weight (default: 0.3) */
+
     // === FUZZY LOGIC INTEGRATION ===
     bool enable_fuzzy_logic;                      /**< Enable fuzzy logic utility module (default: true) */
 

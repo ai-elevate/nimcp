@@ -21,10 +21,12 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/training/nimcp_training_gpu.h"
+#include "gpu/context/nimcp_gpu_context.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/recovery/nimcp_gpu_recovery.h"
+#include <cublas_v2.h>
 
 #define LOG_MODULE "OPTIMIZER_GPU"
 
@@ -459,6 +461,95 @@ float nimcp_lr_exponential(float initial_lr, uint64_t step, float decay_rate)
     return initial_lr * expf(-decay_rate * (float)step);
 }
 
+//=============================================================================
+// Cross-network bridge GPU GEMV
+//=============================================================================
+
+/**
+ * @brief GPU-accelerated GEMV with persistent device buffers.
+ *
+ * On first call (or dimension change), allocates device memory and caches
+ * pointers in gpu_d_W/gpu_d_x/gpu_d_y/gpu_buf_rows/gpu_buf_cols (passed
+ * via the 6 trailing pointer args). Subsequent calls reuse the buffers,
+ * avoiding ~50μs alloc/free overhead per step.
+ */
+extern "C" bool nimcp_gpu_bridge_gemv(void* gpu_ctx, const float* W, const float* x,
+                            const float* bias, float* y,
+                            uint32_t rows, uint32_t cols,
+                            void** p_d_W, void** p_d_x, void** p_d_y,
+                            uint32_t* p_buf_rows, uint32_t* p_buf_cols) {
+    if (!gpu_ctx || !W || !x || !y || rows == 0 || cols == 0) return false;
+
+    nimcp_gpu_context_t* ctx = (nimcp_gpu_context_t*)gpu_ctx;
+    if (!ctx->cublas_initialized) return false;
+
+    cublasHandle_t handle = (cublasHandle_t)ctx->cublas_handle;
+
+    size_t W_bytes = (size_t)rows * cols * sizeof(float);
+    size_t x_bytes = (size_t)cols * sizeof(float);
+    size_t y_bytes = (size_t)rows * sizeof(float);
+
+    /* Reuse persistent buffers if dimensions match, else (re)allocate */
+    float* d_W = p_d_W ? (float*)*p_d_W : NULL;
+    float* d_x = p_d_x ? (float*)*p_d_x : NULL;
+    float* d_y = p_d_y ? (float*)*p_d_y : NULL;
+
+    if (!d_W || !d_x || !d_y ||
+        (p_buf_rows && *p_buf_rows != rows) ||
+        (p_buf_cols && *p_buf_cols != cols)) {
+        /* Free old buffers if dimensions changed */
+        if (d_W) nimcp_gpu_free(ctx, d_W);
+        if (d_x) nimcp_gpu_free(ctx, d_x);
+        if (d_y) nimcp_gpu_free(ctx, d_y);
+
+        d_W = (float*)nimcp_gpu_malloc(ctx, W_bytes);
+        d_x = (float*)nimcp_gpu_malloc(ctx, x_bytes);
+        d_y = (float*)nimcp_gpu_malloc(ctx, y_bytes);
+        if (!d_W || !d_x || !d_y) {
+            if (d_W) nimcp_gpu_free(ctx, d_W);
+            if (d_x) nimcp_gpu_free(ctx, d_x);
+            if (d_y) nimcp_gpu_free(ctx, d_y);
+            if (p_d_W) *p_d_W = NULL;
+            if (p_d_x) *p_d_x = NULL;
+            if (p_d_y) *p_d_y = NULL;
+            return false;
+        }
+
+        /* Cache for reuse */
+        if (p_d_W) *p_d_W = d_W;
+        if (p_d_x) *p_d_x = d_x;
+        if (p_d_y) *p_d_y = d_y;
+        if (p_buf_rows) *p_buf_rows = rows;
+        if (p_buf_cols) *p_buf_cols = cols;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(ctx);
+    cudaMemcpyAsync(d_W, W, W_bytes, cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(d_x, x, x_bytes, cudaMemcpyHostToDevice, stream);
+
+    if (bias) {
+        cudaMemcpyAsync(d_y, bias, y_bytes, cudaMemcpyHostToDevice, stream);
+    } else {
+        cudaMemsetAsync(d_y, 0, y_bytes, stream);
+    }
+
+    cublasSetStream(handle, stream);
+    float alpha = 1.0f;
+    float beta_val = bias ? 1.0f : 0.0f;
+
+    cublasStatus_t status = cublasSgemv(handle,
+        CUBLAS_OP_T, (int)cols, (int)rows, &alpha,
+        d_W, (int)cols, d_x, 1, &beta_val, d_y, 1);
+
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        return false;  /* Buffers stay allocated for retry */
+    }
+
+    cudaMemcpyAsync(y, d_y, y_bytes, cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+    return true;
+}
+
 #else // !NIMCP_ENABLE_CUDA
 
 #include "gpu/training/nimcp_training_gpu.h"
@@ -537,4 +628,6 @@ float nimcp_lr_exponential(float initial_lr, uint64_t step, float decay_rate)
     return initial_lr * expf(-decay_rate * (float)step);
 }
 
+//=============================================================================
+// Cross-Network Bridge GPU GEMV (Optimization #15)
 #endif // NIMCP_ENABLE_CUDA

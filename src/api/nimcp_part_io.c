@@ -12,7 +12,7 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
     bool success = brain_save(brain->internal_brain, filepath);
 
     if (!success) {
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_IO, "Failed to save brain");
+        API_CHECK_THROW(success, NIMCP_ERROR_IO, "Failed to save brain");
     }
 
     set_error("No error");

@@ -1194,7 +1194,7 @@ brain_t brain_create_custom(const brain_config_t* config)
 
         // BPTT: temporal gradient accumulation over recent examples
         brain->bptt_enabled = true;
-        brain->bptt_window_size = 8;
+        brain->bptt_window_size = 3;  /* Reduced from 8: steps 4-7 contribute <0.66 weight, not worth 5x compute. Increase for Stage 3. */
         brain->bptt_discount = 0.9f;
         brain->bptt_buffer = nimcp_calloc(brain->bptt_window_size,
                                           sizeof(*brain->bptt_buffer));
@@ -1432,6 +1432,12 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Dragonfly-Swarm Bridge: Coordinated multi-drone pursuit
     // DEPENDS ON: Dragonfly (for swarm bridge), Portia (global singleton)
     if (!init_edge_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Connect world prior to world model trainer (both created by this point)
+    if (brain->world_prior && brain->world_model_trainer) {
+        extern void nimcp_wmt_set_world_prior(void* wmt, void* world_prior);
+        nimcp_wmt_set_world_prior(brain->world_model_trainer, brain->world_prior);
+    }
 
     // ========================================================================
     // POST-INITIALIZATION

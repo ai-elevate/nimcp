@@ -141,32 +141,41 @@ int lnn_gradient_compute_adjoint(
         int ret = -1;
         {
             lnn_layer_t* out_layer = network->layers[network->n_layers - 1];
-            if (out_layer && out_layer->gpu_lnn_layer && network->gpu_ctx) {
+            if (out_layer && out_layer->gpu_lnn_layer && out_layer->gpu_ctx) {
                 nimcp_lnn_layer_gpu_t* gpu_layer =
                     (nimcp_lnn_layer_gpu_t*)out_layer->gpu_lnn_layer;
-                nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
-                /* GPU adjoint step operates on GPU tensors; x_current and adjoint
-                 * are CPU tensors.  The kernel reads them via the layer's internal
-                 * state which was synced during forward.  We pass NULL for x_at_t
-                 * and input_at_t since the GPU layer retains state from forward. */
-                bool ok = nimcp_gpu_lnn_adjoint_step(
-                    gpu, gpu_layer,
-                    NULL,  /* adjoint — GPU uses internal state */
-                    NULL,  /* x_at_t  — GPU retains forward state */
-                    NULL,  /* input_at_t */
-                    fabs(ctx->dt));
-                if (ok) {
-                    /* Sync GPU state back to CPU adjoint_next.
-                     * The GPU adjoint result is in the layer's dx_dt as a convention.
-                     * Copy to adjoint_next for the CPU normalize path below. */
-                    ret = lnn_gradient_adjoint_step(ctx, x_current, adjoint_current,
-                                                    t, ctx->dt, adjoint_next);
-                    /* Fall through — ret from CPU path is used as final result.
-                     * GPU accelerated the heavy Jacobian computation; CPU finalizes. */
+                nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)out_layer->gpu_ctx;
+
+                /* Upload CPU tensors to GPU — same pattern as forward step fix.
+                 * adjoint_current and x_current are CPU tensors; the GPU kernel
+                 * needs real GPU tensors, not NULL. */
+                nimcp_gpu_tensor_t* gpu_adjoint = nimcp_gpu_tensor_from_cpu(gpu, adjoint_current);
+                nimcp_gpu_tensor_t* gpu_x_at_t = nimcp_gpu_tensor_from_cpu(gpu, x_current);
+
+                if (gpu_adjoint && gpu_x_at_t) {
+                    bool ok = nimcp_gpu_lnn_adjoint_step(
+                        gpu, gpu_layer,
+                        gpu_adjoint,   /* adjoint state on GPU */
+                        gpu_x_at_t,    /* forward state at time t on GPU */
+                        NULL,          /* input_at_t — no input history available */
+                        fabs(ctx->dt));
+                    if (ok) {
+                        /* GPU adjoint succeeded — download result to CPU adjoint_next.
+                         * The GPU kernel updates gpu_adjoint in-place with λ(t-1). */
+                        if (nimcp_gpu_tensor_copy_to_cpu(gpu_adjoint, adjoint_next)) {
+                            ret = 0;  /* Mark success — skip CPU fallback */
+                        }
+                    } else {
+                        NIMCP_LOGGING_DEBUG("GPU adjoint step failed at step %d, falling back to CPU",
+                                            step);
+                    }
                 } else {
-                    NIMCP_LOGGING_DEBUG("GPU adjoint step failed at step %d, falling back to CPU",
+                    NIMCP_LOGGING_DEBUG("GPU tensor upload failed at step %d, falling back to CPU",
                                         step);
                 }
+
+                nimcp_gpu_tensor_destroy(gpu_adjoint);
+                nimcp_gpu_tensor_destroy(gpu_x_at_t);
             }
         }
         /* CPU fallback (or if GPU was not available) */

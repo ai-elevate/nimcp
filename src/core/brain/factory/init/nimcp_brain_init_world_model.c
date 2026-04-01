@@ -207,6 +207,92 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
     brain->last_world_model_update_us = 0;
     brain->world_model_update_interval_us = 10000;  /* Default: 10ms */
 
+    /* === Intuitive Physics Subsystem (independent of learned world model) === */
+    if (brain->config.enable_intuitive_physics) {
+        LOG_INFO(LOG_MODULE, "Initializing Intuitive Physics subsystem...");
+
+        extern struct intuitive_physics_engine* intuitive_physics_create(const void* config);
+        extern struct entity_tracker* entity_tracker_create(const void* config);
+        extern struct scene_graph* scene_graph_create(const void* config);
+        extern struct physics_prior* physics_prior_create(const void* config);
+        extern void physics_prior_connect(struct physics_prior* prior,
+                                           struct intuitive_physics_engine* physics,
+                                           struct entity_tracker* tracker,
+                                           struct scene_graph* scene);
+        extern uint32_t intuitive_physics_add_ground(struct intuitive_physics_engine* engine);
+
+        brain->intuitive_physics = intuitive_physics_create(NULL);
+        if (brain->intuitive_physics) {
+            intuitive_physics_add_ground(brain->intuitive_physics);
+            LOG_INFO(LOG_MODULE, "  - Intuitive physics engine: created (with ground plane)");
+        }
+
+        brain->entity_tracker = entity_tracker_create(NULL);
+        if (brain->entity_tracker)
+            LOG_INFO(LOG_MODULE, "  - Entity tracker: created");
+
+        brain->scene_graph = scene_graph_create(NULL);
+        if (brain->scene_graph)
+            LOG_INFO(LOG_MODULE, "  - Scene graph: created");
+
+        if (brain->config.enable_physics_prior) {
+            brain->physics_prior = physics_prior_create(NULL);
+            if (brain->physics_prior) {
+                physics_prior_connect(brain->physics_prior,
+                                       brain->intuitive_physics,
+                                       brain->entity_tracker,
+                                       brain->scene_graph);
+                LOG_INFO(LOG_MODULE, "  - Physics prior: created + connected");
+            }
+        }
+
+        /* Chemistry simulator */
+        extern struct chemistry_sim* chemistry_sim_create(const void* config);
+        extern void chemistry_sim_load_common_elements(struct chemistry_sim* sim);
+        extern void chemistry_sim_load_common_substances(struct chemistry_sim* sim);
+        extern void chemistry_sim_load_common_reactions(struct chemistry_sim* sim);
+
+        brain->chemistry_sim = chemistry_sim_create(NULL);
+        if (brain->chemistry_sim) {
+            chemistry_sim_load_common_elements(brain->chemistry_sim);
+            chemistry_sim_load_common_substances(brain->chemistry_sim);
+            chemistry_sim_load_common_reactions(brain->chemistry_sim);
+        }
+
+        /* Biology simulator */
+        extern struct biology_sim* biology_sim_create(const void* config);
+        extern void biology_sim_load_grassland(struct biology_sim* sim);
+        extern void biology_sim_load_human_body(struct biology_sim* sim);
+
+        brain->biology_sim = biology_sim_create(NULL);
+        if (brain->biology_sim) {
+            biology_sim_load_grassland(brain->biology_sim);
+            biology_sim_load_human_body(brain->biology_sim);
+        }
+
+        /* Unified world prior */
+        extern struct world_prior* world_prior_create(const void* config);
+        extern void world_prior_connect(struct world_prior* wp,
+                                         struct physics_prior* physics,
+                                         struct chemistry_sim* chemistry,
+                                         struct biology_sim* biology);
+
+        brain->world_prior = world_prior_create(NULL);
+        if (brain->world_prior) {
+            world_prior_connect(brain->world_prior,
+                                 brain->physics_prior,
+                                 brain->chemistry_sim,
+                                 brain->biology_sim);
+        }
+
+        brain->intuitive_physics_enabled = (brain->intuitive_physics != NULL);
+        LOG_INFO(LOG_MODULE, "World Model Prior: physics=%s chemistry=%s biology=%s unified=%s",
+                 brain->intuitive_physics ? "yes" : "no",
+                 brain->chemistry_sim ? "yes" : "no",
+                 brain->biology_sim ? "yes" : "no",
+                 brain->world_prior ? "yes" : "no");
+    }
+
     /* Check if world model is enabled in config */
     if (!brain->config.enable_world_model) {
         LOG_DEBUG(LOG_MODULE, "World model disabled in config - skipping initialization");
@@ -305,6 +391,8 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
               brain->multimodal_world_model ? "enabled" : "disabled");
     LOG_DEBUG(LOG_MODULE, "  - Thousand Brains: %s",
               brain->tb_integration_hub ? "enabled" : "disabled");
+    LOG_DEBUG(LOG_MODULE, "  - Intuitive Physics: %s",
+              brain->intuitive_physics ? "enabled" : "disabled");
 
     return true;
 }
@@ -345,6 +433,44 @@ void nimcp_brain_factory_destroy_world_model_subsystem(struct brain_struct* brai
         column_ref_frame_destroy(brain->tb_ref_frames);
         brain->tb_ref_frames = NULL;
     }
+
+    /* Destroy World Prior subsystem (unified + chemistry + biology + physics) */
+    if (brain->world_prior) {
+        extern void world_prior_destroy(struct world_prior* wp);
+        world_prior_destroy(brain->world_prior);
+        brain->world_prior = NULL;
+    }
+    if (brain->biology_sim) {
+        extern void biology_sim_destroy(struct biology_sim* sim);
+        biology_sim_destroy(brain->biology_sim);
+        brain->biology_sim = NULL;
+    }
+    if (brain->chemistry_sim) {
+        extern void chemistry_sim_destroy(struct chemistry_sim* sim);
+        chemistry_sim_destroy(brain->chemistry_sim);
+        brain->chemistry_sim = NULL;
+    }
+    if (brain->physics_prior) {
+        extern void physics_prior_destroy(struct physics_prior* prior);
+        physics_prior_destroy(brain->physics_prior);
+        brain->physics_prior = NULL;
+    }
+    if (brain->scene_graph) {
+        extern void scene_graph_destroy(struct scene_graph* graph);
+        scene_graph_destroy(brain->scene_graph);
+        brain->scene_graph = NULL;
+    }
+    if (brain->entity_tracker) {
+        extern void entity_tracker_destroy(struct entity_tracker* tracker);
+        entity_tracker_destroy(brain->entity_tracker);
+        brain->entity_tracker = NULL;
+    }
+    if (brain->intuitive_physics) {
+        extern void intuitive_physics_destroy(struct intuitive_physics_engine* engine);
+        intuitive_physics_destroy(brain->intuitive_physics);
+        brain->intuitive_physics = NULL;
+    }
+    brain->intuitive_physics_enabled = false;
 
     brain->world_model_enabled = false;
     brain->world_model_lazy_init = false;

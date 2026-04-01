@@ -453,6 +453,15 @@ int lnn_layer_forward_hamiltonian(
         return -1;
     }
 
+    /* Guard: momentum tensor must exist for Hamiltonian dynamics.
+     * p may be NULL if checkpoint was saved before HNN was enabled,
+     * or if allocation failed during init. Fall back to LTC. */
+    if (!layer->p || !layer->x) {
+        NIMCP_LOGGING_WARN("lnn_layer_forward_hamiltonian: p or x is NULL — "
+                           "falling back to regular LTC forward");
+        return -1;  /* Caller (lnn_layer_forward) will fall through to LTC */
+    }
+
     /* q = layer->x (state = position), p = layer->p (momentum) */
     int rc = lnn_hamiltonian_step_stormer_verlet(
         (lnn_hamiltonian_net_t*)layer->H_net, layer->x, layer->p, input, dt,

@@ -1108,6 +1108,14 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_tom_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_plasticity_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.c  # Hawkins Thousand Brains integration
+    # World Model Prior (physics + chemistry + biology simulation engines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_intuitive_physics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_entity_tracker.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_scene_graph.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_physics_prior.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_chemistry_sim.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_biology_sim.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_world_prior.c
     # Multimodal World Model (cross-modal prediction and fusion)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
     # Compositional and Counterfactual modules

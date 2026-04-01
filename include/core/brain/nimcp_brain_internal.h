@@ -1811,6 +1811,23 @@ struct brain_struct {
     struct column_voting_manager* tb_voting;                           // Column voting consensus
     struct dendritic_sequence_mgr* tb_sequences;                       // Dendritic sequence prediction
 
+    // === INTUITIVE PHYSICS SUBSYSTEM ===
+    //
+    // Rigid-body physics engine for world model grounding:
+    // - Object simulation (gravity, collisions, contacts, friction)
+    // - Entity tracking (persistent object identity, object permanence)
+    // - Scene graph (support/containment/proximity relations)
+    // - Physics prior (constrains learned WM predictions with physical laws)
+    //
+    struct intuitive_physics_engine* intuitive_physics;               // Physics simulation engine
+    struct entity_tracker* entity_tracker;                            // Persistent entity tracker
+    struct scene_graph* scene_graph;                                  // Spatial relation graph
+    struct physics_prior* physics_prior;                              // Physics-informed WM prior
+    struct chemistry_sim* chemistry_sim;                              // Chemistry reaction simulator
+    struct biology_sim* biology_sim;                                  // Biology ecosystem simulator
+    struct world_prior* world_prior;                                  // Unified world prior (phys+chem+bio)
+    bool intuitive_physics_enabled;                                   // Enable physics subsystem
+
     // === FUZZY LOGIC INTEGRATION ===
     //
     // Fuzzy logic provides graded membership reasoning across all modules:

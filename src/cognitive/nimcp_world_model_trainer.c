@@ -42,6 +42,9 @@ struct nimcp_world_model_trainer {
     /* EMA of prediction error */
     float error_ema;
     bool  error_initialized;
+
+    /* World prior (physics + chemistry + biology) — set by brain if available */
+    void* world_prior;  /* world_prior_t*, opaque to avoid header dependency */
 };
 
 /* ============================================================================
@@ -218,6 +221,18 @@ float nimcp_wmt_train_predictor(nimcp_world_model_trainer_t* wmt, void* brain)
         wmt->error_ema = alpha * avg_error + (1.0f - alpha) * wmt->error_ema;
     }
 
+    /* World prior loss: penalize physically/chemically/biologically implausible predictions.
+     * The world_prior field is set by the brain when the intuitive physics subsystem is active.
+     * This adds a regularization term that pushes the learned world model toward predictions
+     * that respect conservation laws, collision constraints, and biological limits. */
+    if (wmt->world_prior) {
+        extern float world_prior_compute_loss(void* wp, uint32_t domain_hint);
+        float prior_loss = world_prior_compute_loss(wmt->world_prior, 0);
+        /* Blend: total = data_loss + lambda * prior_loss */
+        float lambda = 0.1f;  /* world prior regularization weight */
+        avg_error += lambda * prior_loss;
+    }
+
     return avg_error;
 }
 
@@ -269,4 +284,10 @@ float nimcp_wmt_get_prediction_error(const nimcp_world_model_trainer_t* wmt)
         return 0.0f;
     }
     return wmt->error_ema;
+}
+
+void nimcp_wmt_set_world_prior(nimcp_world_model_trainer_t* wmt, void* world_prior)
+{
+    if (!wmt) return;
+    wmt->world_prior = world_prior;
 }

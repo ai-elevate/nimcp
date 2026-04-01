@@ -899,9 +899,12 @@ class MultimodalDataLoader:
 
         logger.info("Downloading ESC-50 via HuggingFace datasets...")
         try:
+            # Audio dataset decode causes std::bad_alloc on memory-constrained containers.
+            # Use synthetic audio instead — audio cortex CNN still trains on formant features.
+            if os.environ.get('NIMCP_SKIP_AUDIO_DOWNLOAD') or not os.path.exists(cache_path):
+                raise RuntimeError("Skipping audio download (NIMCP_SKIP_AUDIO_DOWNLOAD or no cache)")
             from datasets import load_dataset
-            ds = load_dataset("ashraq/esc50", split="train",
-                              trust_remote_code=True)
+            ds = load_dataset("ashraq/esc50", split="train", streaming=True)
         except Exception as e:
             logger.warning("ESC-50 download failed: %s", e)
             self._esc50 = {}
@@ -909,7 +912,12 @@ class MultimodalDataLoader:
             return
 
         by_label = {}
+        clip_count = 0
+        max_clips = 500  # Limit to prevent OOM on memory-constrained containers
         for item in ds:
+            if clip_count >= max_clips:
+                break
+            clip_count += 1
             label_idx = item["target"]
             if label_idx < len(ESC50_LABELS):
                 label_name = ESC50_LABELS[label_idx]
@@ -1016,9 +1024,11 @@ class MultimodalDataLoader:
 
         logger.info("Downloading Speech Commands via HuggingFace datasets...")
         try:
+            if os.environ.get('NIMCP_SKIP_AUDIO_DOWNLOAD') or not os.path.exists(cache_path):
+                raise RuntimeError("Skipping audio download (NIMCP_SKIP_AUDIO_DOWNLOAD or no cache)")
             from datasets import load_dataset
             ds = load_dataset("google/speech_commands", "v0.02",
-                              split="train", trust_remote_code=True)
+                              split="train", streaming=True)
         except Exception as e:
             logger.warning("Speech Commands download failed: %s", e)
             self._speech_cmds = {}
@@ -1032,8 +1042,12 @@ class MultimodalDataLoader:
 
         for item in ds:
             label = item.get("label")
-            # The dataset uses integer labels; get the string label
-            label_str = ds.features["label"].int2str(label)
+            # Streaming mode: label may be int or string depending on dataset version
+            if isinstance(label, int):
+                # Map integer to string using our known label list
+                label_str = SPEECH_COMMANDS_LABELS[label] if label < len(SPEECH_COMMANDS_LABELS) else f"word_{label}"
+            else:
+                label_str = str(label)
             if label_str not in target_labels:
                 continue
             if len(by_label[label_str]) >= max_per_label:

@@ -883,6 +883,7 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
         // Sum over outgoing synapses (neighbors)
         for (uint32_t s = 0; s < NEURON_OUT_COUNT(neuron); s++) {
             synapse_handle_t* syn = NEURON_OUT_HANDLE(neuron, s);
+            if (!syn) continue;
             uint32_t j = syn->target_neuron_id;
 
             if (!is_valid_neuron_id(j, num_neurons)) {
@@ -896,6 +897,7 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
         // Also consider incoming synapses for bidirectional diffusion
         for (uint32_t s = 0; s < NEURON_IN_COUNT(neuron); s++) {
             synapse_handle_t* syn = NEURON_IN_HANDLE(neuron, s);
+            if (!syn) continue;
             // Find source neuron (need to search network - optimization possible)
             // For simplicity, we assume bidirectional diffusion via outgoing only
             // In full implementation, track source_id in synapse
@@ -1222,6 +1224,7 @@ float spatial_neuromod_get_gradient(const spatial_neuromod_field_t* field,
 
     for (uint32_t s = 0; s < degree; s++) {
         synapse_handle_t* syn = NEURON_OUT_HANDLE(neuron, s);
+        if (!syn) continue;
         uint32_t j = syn->target_neuron_id;
 
         if (!is_valid_neuron_id(j, field->num_neurons)) continue;

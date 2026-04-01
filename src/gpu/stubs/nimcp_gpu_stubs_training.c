@@ -1518,3 +1518,23 @@ float nimcp_lr_exponential(
 {
     return initial_lr * expf(-decay_rate * (float)step);
 }
+
+/* 32. Cross-network bridge GPU GEMV stub — always returns false (CPU fallback) */
+bool nimcp_gpu_bridge_gemv(
+    void* gpu_ctx,
+    const float* W,
+    const float* x,
+    const float* bias,
+    float* y,
+    uint32_t rows,
+    uint32_t cols,
+    void** p_d_W,
+    void** p_d_x,
+    void** p_d_y,
+    uint32_t* p_buf_rows,
+    uint32_t* p_buf_cols)
+{
+    (void)gpu_ctx; (void)W; (void)x; (void)bias; (void)y; (void)rows; (void)cols;
+    (void)p_d_W; (void)p_d_x; (void)p_d_y; (void)p_buf_rows; (void)p_buf_cols;
+    return false; /* No GPU — caller falls back to CPU matmul */
+}

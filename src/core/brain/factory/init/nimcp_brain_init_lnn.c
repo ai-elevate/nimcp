@@ -65,9 +65,15 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
         return true;
     }
 
-    /* Skip if already created (idempotent) */
+    /* LNN already created (from checkpoint load) — but HNN may not be enabled yet.
+     * Check layer 0 for Hamiltonian and create if missing. */
     if (brain->lnn_network) {
-        LOG_INFO(LOG_MODULE, "LNN already initialized, skipping");
+        LOG_INFO(LOG_MODULE, "LNN already initialized — checking HNN status");
+        if (brain->lnn_network->n_layers > 0 && brain->lnn_network->layers[0] &&
+            !brain->lnn_network->layers[0]->use_hamiltonian) {
+            /* Fall through to HNN creation block below */
+            goto create_hnn;
+        }
         return true;
     }
 
@@ -99,10 +105,11 @@ bool nimcp_brain_factory_init_lnn_subsystem(brain_t brain)
     /* Initialize weights with deterministic seed for reproducibility */
     lnn_network_init_weights(brain->lnn_network, 42);
 
-    /* TODO: Re-enable HNN after fixing SIGSEGV in Hamiltonian forward path.
-     * The Störmer-Verlet integrator crashes during decide_full when
-     * lnn_layer_forward dispatches to lnn_layer_forward_hamiltonian. */
-    if (0 && brain->lnn_network->n_layers > 0 && brain->lnn_network->layers[0]) {
+    /* HNN: Hamiltonian energy-conserving dynamics on LNN layer 0.
+     * Previously disabled due to SIGSEGV — fixed by adding p null check
+     * with LTC fallback in lnn_layer_forward_hamiltonian. */
+create_hnn:
+    if (brain->lnn_network->n_layers > 0 && brain->lnn_network->layers[0]) {
         uint32_t state_dim = brain->lnn_network->layers[0]->n_neurons;
         if (state_dim > 0) {
             lnn_hamiltonian_config_t hnn_cfg;

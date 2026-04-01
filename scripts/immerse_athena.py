@@ -538,7 +538,7 @@ COLLAPSE_THRESHOLD = 0.99         # Cosine sim above this = collapsed
 COLLAPSE_CONSECUTIVE_LIMIT = 3    # Halt after N consecutive collapse detections
 
 # Cognitive training injection interval — every N sensory steps, train one cognitive item
-COGNITIVE_TRAIN_INTERVAL = 10     # 1 cognitive item per 10 sensory steps (~10% cognitive mix)
+COGNITIVE_TRAIN_INTERVAL = 5      # 1 cognitive item per 5 sensory steps (~20% cognitive mix)
 COGNITIVE_TRAIN_LR_BOOST = 1.5    # Slightly higher LR for cognitive items (they're conceptual)
 
 # =============================================================================
@@ -3089,6 +3089,54 @@ class StimulusSource:
         ("Energy cannot be created or destroyed only transformed", "physics"),
         ("Atoms are the tiny building blocks of all matter", "physics"),
         ("Electricity flows through conductors like metal wires", "physics"),
+        # Intuitive Physics (world model scenarios — predictions about physical outcomes)
+        ("A ball dropped from a height falls faster and faster until it hits the ground", "physics"),
+        ("A cup pushed off a table falls and breaks on the floor", "physics"),
+        ("If you stack blocks and remove one from the middle the blocks above fall", "physics"),
+        ("A ball thrown upward slows down stops then falls back down", "physics"),
+        ("Heavy objects and light objects fall at the same speed in vacuum", "physics"),
+        ("A rolling ball on a flat surface gradually slows down due to friction", "physics"),
+        ("When two billiard balls collide they exchange momentum", "physics"),
+        ("An object stays at rest unless a force acts on it", "physics"),
+        ("Spinning tops stay upright because of angular momentum", "physics"),
+        ("A pendulum swings back and forth trading height for speed", "physics"),
+        ("Objects float in water if they are less dense than water", "physics"),
+        ("Levers multiply force so a small push lifts a heavy load", "physics"),
+        ("A ball bounces lower each time because energy is lost to heat", "physics"),
+        ("Wind pushes objects in the direction it blows", "physics"),
+        ("Ice is slippery because friction is very low on its surface", "physics"),
+        # Chemistry (world model scenarios — predictions about chemical outcomes)
+        ("Mixing baking soda and vinegar creates bubbles of carbon dioxide gas", "chemistry"),
+        ("Iron left in rain slowly rusts as it reacts with oxygen and water", "chemistry"),
+        ("Salt dissolves in water because water molecules pull apart the crystals", "chemistry"),
+        ("Burning wood combines carbon with oxygen releasing heat and light", "chemistry"),
+        ("Mixing acids and bases neutralizes both and can produce salt and water", "chemistry"),
+        ("Heating water to one hundred degrees Celsius turns it into steam", "chemistry"),
+        ("Cooling water to zero degrees Celsius turns it into ice", "chemistry"),
+        ("Plants convert carbon dioxide and water into glucose using sunlight", "chemistry"),
+        ("Batteries convert chemical energy into electrical energy", "chemistry"),
+        ("Soap molecules have one end that grabs grease and one end that grabs water", "chemistry"),
+        ("Baking uses heat to trigger chemical reactions that make dough rise", "chemistry"),
+        ("Milk turns sour because bacteria convert lactose into lactic acid", "chemistry"),
+        ("Rust is iron oxide which forms when iron reacts with oxygen and moisture", "chemistry"),
+        ("The color of a flame depends on what chemical is burning", "chemistry"),
+        ("Carbon dioxide makes soda fizzy and escapes as bubbles when opened", "chemistry"),
+        # Biology (world model scenarios — predictions about biological outcomes)
+        ("Plants grow toward sunlight because cells on the dark side grow faster", "biology"),
+        ("When wolves were removed from Yellowstone the deer overpopulated and damaged forests", "biology"),
+        ("A cut on your skin heals because cells divide to replace the damaged ones", "biology"),
+        ("If you exercise regularly your muscles grow stronger and larger", "biology"),
+        ("Seeds need water warmth and sometimes light to germinate and grow", "biology"),
+        ("Antibiotics kill bacteria but do not work against viruses", "biology"),
+        ("Predator populations crash when prey populations decline", "biology"),
+        ("A child inherits half their DNA from each parent", "biology"),
+        ("Your body temperature stays near thirty-seven degrees through homeostasis", "biology"),
+        ("Trees lose their leaves in autumn to conserve water during winter", "biology"),
+        ("Coral bleaching happens when ocean water gets too warm", "biology"),
+        ("Vaccines teach your immune system to recognize pathogens before infection", "biology"),
+        ("Decomposers break down dead organisms returning nutrients to the soil", "biology"),
+        ("Ecosystems collapse when keystone species are removed", "biology"),
+        ("Photosynthesis in oceans produces most of the oxygen we breathe", "biology"),
         # Geography
         ("The Earth has seven continents and five oceans", "geography"),
         ("Mountains form when tectonic plates push together", "geography"),
@@ -4157,12 +4205,9 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(name + " " + description)
 
         submit_multimodal(brain, description)
-        result = brain.decide_full(features)
-
-        try:
-            brain.bg_update_reward(0.6, 0.4)
-        except Exception:
-            pass
+        # Skip decide_full — learn_vector does forward+backward internally.
+        # bg_update_reward and ti_add_fact are fire-and-forget (non-blocking).
+        brain.bg_update_reward(0.6, 0.4)
 
         narration = self._pop_content("_narrations")
         if narration:
@@ -4172,32 +4217,20 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         if _held_out_buffer.is_held_out(features):
             _held_out_buffer.add(features, target, domain="stage1_naming")
             self.interaction_count += 1
-            return 0.0, result
+            return 0.0, {}
 
         # Dense target trains adaptive network; label trains CNN classifier
         lr_kwargs = {"learning_rate": learning_rate} if learning_rate is not None else {}
         loss = brain.learn_vector(features, target, label=name[:50], confidence=0.65,
                                   **lr_kwargs)
 
-        # Train ALL cognitive modules on this text
-        self._train_cognitive(brain, name + ". " + description, domain=0)  # LANGUAGE
+        # Cognitive training now handled at COGNITIVE_TRAIN_INTERVAL in main loop
 
-        # Record pair for decoder vocabulary (display only, not evaluation)
-        if self.decoder:
-            output_vec = result.get("output_vector")
-            if output_vec is not None:
-                target_emb = encode_text(name + " " + description)
-                self.decoder.record_pair(output_vec, target_emb,
-                                         name + " " + description)
-
-        # Symbolic fact
-        try:
-            brain.ti_add_fact(f"is_a({name.replace(' ', '_')}, object)", 0.7)
-        except Exception:
-            pass
+        # Symbolic fact (fire-and-forget)
+        brain.ti_add_fact(f"is_a({name.replace(' ', '_')}, object)", 0.7)
 
         self.interaction_count += 1
-        return loss, result
+        return loss, {}
 
     # --- Stage 2: "Good try! Almost!" ---
 
@@ -5375,6 +5408,119 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
     # Stage 1 curriculum: start with tier 2 unlocked (basics already learned in Stage 0)
     _stage1_curriculum = CurriculumEscalator(unlock_threshold=200.0)
     _stage1_curriculum.current_tier = 2  # Start with reasoning tier unlocked
+    # Batch training: collect BATCH_SIZE items, send as one train_batch_text call.
+    # ONNX encoding + learn_vector happen inside the daemon — zero socket overhead.
+    BATCH_SIZE = 50
+    # Batch mode disabled — daemon's single-threaded worker blocks all requests
+    # while processing a batch (50 items × 13s = 11 min unresponsive).
+    # Single-step mode is more reliable at 13s/step.
+    _use_batch = False
+    print("  [Training] Single-step mode (13s/step with full biological modules)")
+
+    # === BATCH MODE ===
+    if _use_batch:
+        step = start_from
+        while step < num_stimuli:
+            # Mode collapse check
+            if (step > 0 and step % COLLAPSE_CHECK_INTERVAL == 0
+                    and step >= COLLAPSE_WARMUP_STEPS):
+                if collapse_detector.check(brain, step=step, stage=1):
+                    print("  Training halted due to mode collapse.", flush=True)
+                    return losses
+
+            action = clock.tick(brain)
+            if action == "sleep":
+                clock.do_sleep(brain, parent)
+            elif action == "consolidate":
+                clock.do_consolidate(brain)
+
+            # Collect a batch of items
+            batch_items = []
+            batch_end = min(step + BATCH_SIZE, num_stimuli)
+            for j in range(step, batch_end):
+                name, description = source.get_object()
+                narration = parent._pop_content("_narrations")
+                if narration:
+                    print(f"  Parent: {narration}")
+                batch_items.append({
+                    "text": description,
+                    "target_text": name + " " + description,
+                    "label": name[:50],
+                })
+
+            # Send entire batch — daemon ONNX-encodes + trains in tight loop
+            try:
+                result = brain.train_batch_text(batch_items,
+                                                 learning_rate=lr_ctrl.get_lr())
+            except Exception as e:
+                print(f"  [Batch] Error: {e} — falling back to single-step", flush=True)
+                _use_batch = False
+                break  # Will restart in single-step mode
+            if result.get("error"):
+                print(f"  [Batch] Daemon error: {result['error']}", flush=True)
+                _use_batch = False
+                break
+            avg_loss = result.get("avg_loss", 0.0)
+            n_items = result.get("n_items", len(batch_items))
+            ms_per = result.get("ms_per_item", 0)
+
+            for _ in range(n_items):
+                losses.append(avg_loss)
+
+            # Periodic logging
+            if batch_end % 50 == 0 or batch_end >= num_stimuli:
+                recent = losses[-50:]
+                rl = np.mean(recent) if recent else 0
+                print(f"    [{batch_end}] batch_loss={avg_loss:.4f} avg={rl:.4f} "
+                      f"({ms_per:.0f}ms/item, {n_items} items)", flush=True)
+
+            # Checkpoint
+            if batch_end % 50 == 0:
+                _save_checkpoint(brain, decoder, stage=1, step=batch_end)
+
+            # Cognitive training injection
+            if batch_end % COGNITIVE_TRAIN_INTERVAL == 0:
+                cog_loss = _inject_cognitive_training(
+                    brain, composer, step=batch_end, learning_rate=lr_ctrl.get_lr(),
+                    spectral_splitter=_spectral_splitter, fold_idx=_current_fold,
+                    curriculum=_stage1_curriculum)
+                if cog_loss is not None:
+                    losses.append(cog_loss)
+
+            # LNN + cerebellum (every 250 steps)
+            if batch_end % 250 == 0:
+                try:
+                    features = composer.compose(text=batch_items[-1]["text"])
+                    brain.lnn_forward_step(features[:128])
+                except Exception:
+                    pass
+                if avg_loss > 0.5:
+                    try:
+                        brain.cerebellum_process_error(avg_loss)
+                    except Exception:
+                        pass
+
+            # Progress report
+            if batch_end % 500 == 0:
+                avg500 = np.mean(losses[-500:]) if losses else 0
+                lr_ctrl.update(avg500, batch_end)
+                lr_ctrl.update_from_utm(brain, batch_end)
+                print(f"\n  [Stage 1] {batch_end}/{num_stimuli} — "
+                      f"avg_loss={avg500:.4f} lr={lr_ctrl.get_lr():.6f}")
+                _print_utm_health(brain)
+                _print_bio_stats(brain)
+
+            step = batch_end
+
+        if _use_batch:
+            # Batch completed all steps successfully
+            return losses
+        else:
+            # Batch failed partway — fall through to single-step from current position
+            print(f"  [Batch] Falling through to single-step at step {step}", flush=True)
+            start_from = step
+
+    # === SINGLE-STEP MODE (fallback) ===
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
         if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
@@ -5390,8 +5536,6 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             clock.do_consolidate(brain)
 
         # Get an object to name — with prefetched features for speed
-        # Pre-compose features in advance so sentence transformer encoding
-        # overlaps with the previous step's brain training
         if not hasattr(run_stage_1, '_prefetch'):
             from concurrent.futures import ThreadPoolExecutor
             run_stage_1._prefetch = ThreadPoolExecutor(max_workers=2)
@@ -5432,13 +5576,7 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 loss = brain.learn_vector(pre_features, pre_target,
                                           label=name[:50], confidence=0.65,
                                           **lr_kwargs)
-                parent._train_cognitive(brain, name + ". " + description, domain=0)
-                if parent.decoder:
-                    output_vec = result.get("output_vector")
-                    if output_vec is not None:
-                        target_emb = encode_text(name + " " + description)
-                        parent.decoder.record_pair(output_vec, target_emb,
-                                                    name + " " + description)
+                # Cognitive training moved to COGNITIVE_TRAIN_INTERVAL below
         else:
             # Slow path: first iteration, no prefetch yet
             loss, result = parent.show_and_name(brain, composer, name, description,
@@ -5452,13 +5590,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
 
         losses.append(loss if loss is not None else 0)
 
-        # Record for contrastive + diversity regularization
-        output_vec = result.get("output_vector") if result else None
-        if output_vec is not None:
-            input_emb = encode_text(name + " " + description)
-            features_for_cr = composer.compose(text=description, modality="text")
-            contrastive.record(input_emb, output_vec, features_for_cr)
-            diversity.record(output_vec, features_for_cr)
+        # Contrastive/diversity recording skipped — no output_vec without decide_full.
+        # Corrections still fire on schedule using buffered history.
 
         # Contrastive + diversity corrections (less frequent with batch)
         if contrastive.should_correct():
@@ -5483,15 +5616,16 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             if cog_loss is not None:
                 losses.append(cog_loss)
 
-        # LNN temporal step
-        try:
-            features = composer.compose(text=description)
-            brain.lnn_forward_step(features[:128])
-        except Exception:
-            pass
+        # LNN temporal step (every 5 steps to reduce round-trips)
+        if (i + 1) % 5 == 0:
+            try:
+                features = composer.compose(text=description)
+                brain.lnn_forward_step(features[:128])
+            except Exception:
+                pass
 
-        # Cerebellum error signal on high loss
-        if loss is not None and loss > 0.5:
+        # Cerebellum error signal on high loss (every 5 steps)
+        if (i + 1) % 5 == 0 and loss is not None and loss > 0.5:
             try:
                 brain.cerebellum_process_error(loss)
             except Exception:
@@ -5591,6 +5725,25 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     print("  STAGE 2: Good Try! Almost!")
     print("=" * 60)
 
+    # Enable world model for feedback learning — predicts outcomes,
+    # learns from prediction errors. Not needed in Stage 1 (no sequences).
+    try:
+        brain.enable_world_model_bridge(True)
+        print("  [World Model] Thousand Brains bridge enabled for Stage 2")
+    except Exception as e:
+        print(f"  [World Model] Enable failed (non-fatal): {e}")
+
+    # World model curriculum: experiential physics/chemistry/biology training.
+    # Runs a full epoch at stage start + periodic injections every 500 steps.
+    wm_curriculum = None
+    try:
+        from world_model_curriculum import WorldModelCurriculum
+        wm_curriculum = WorldModelCurriculum(brain_proxy=brain, max_level=2)
+        n = wm_curriculum.run_full_epoch(scenarios_per_level=3)
+        print(f"  [World Model Curriculum] Initial epoch: {n} transitions")
+    except Exception as e:
+        print(f"  [World Model Curriculum] Init failed (non-fatal): {e}")
+
     parent.pre_generate_content(stage=2, num_stimuli=num_stimuli)
 
     losses = []
@@ -5664,6 +5817,19 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                 curriculum=_stage2_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
+
+        # World model curriculum — periodic physics/chemistry/biology experience
+        if wm_curriculum and (i + 1) % 500 == 0:
+            try:
+                # Progressive difficulty: increase level every 5000 steps
+                level = min(3, 1 + (i + 1) // 5000)
+                n_wm = wm_curriculum.run_full_epoch(level=level, scenarios_per_level=2)
+                if (i + 1) % 2500 == 0:
+                    stats = wm_curriculum.get_stats()
+                    print(f"    [World Model] {n_wm} transitions (total: "
+                          f"{stats['total_transitions']})")
+            except Exception:
+                pass
 
         # Eligibility trace — every experience contributes to growth
         try:
@@ -5777,6 +5943,16 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         brain.set_plasticity_state("MAINTENANCE")
     except Exception:
         pass
+
+    # World model curriculum for Stage 3 (full difficulty)
+    wm_curriculum_s3 = None
+    try:
+        from world_model_curriculum import WorldModelCurriculum
+        wm_curriculum_s3 = WorldModelCurriculum(brain_proxy=brain, max_level=3)
+        n = wm_curriculum_s3.run_full_epoch(scenarios_per_level=3)
+        print(f"  [World Model Curriculum] Stage 3 initial: {n} transitions")
+    except Exception as e:
+        print(f"  [World Model Curriculum] Stage 3 init failed: {e}")
 
     # Adaptive mastery tracker
     mastery = MasteryTracker()
@@ -6927,14 +7103,7 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         except Exception:
             pass
 
-    state = {"stage": stage, "step": step,
-             "snapshot": snapshot_name,
-             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
-    try:
-        with open(STATE_FILE, "w") as f:
-            json.dump(state, f, indent=2)
-    except Exception:
-        pass
+    # State file already written in _save_checkpoint() before thread started
 
     # Prune old snapshots (keep 5)
     _prune_checkpoint_snapshots(max_snapshots=5)
@@ -6947,6 +7116,18 @@ def _save_checkpoint(brain, decoder, stage, step):
     """Non-blocking checkpoint save — runs in background thread."""
     global _checkpoint_thread
     from threading import Thread
+
+    # Update state file IMMEDIATELY so progress is visible
+    # (don't wait for the slow checkpoint write to finish)
+    state = {"stage": stage, "step": step,
+             "snapshot": f"athena_s{stage}_step{step}.bin",
+             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f, indent=2)
+    except Exception:
+        pass
+
     # Wait for previous checkpoint to finish (if still running)
     if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
         _checkpoint_thread.join(timeout=30)

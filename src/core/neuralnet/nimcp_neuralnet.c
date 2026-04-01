@@ -3939,7 +3939,34 @@ bool neural_network_rebuild_incoming(neural_network_t network)
         sparse_synapse_storage_init(&n->incoming);
     }
 
-    // Rebuild from outgoing data
+    /* Phase 1: Count incoming synapses per target neuron so we can pre-allocate */
+    uint32_t* incoming_counts = (uint32_t*)nimcp_calloc(network->num_neurons, sizeof(uint32_t));
+    if (!incoming_counts) {
+        NIMCP_LOGGING_ERROR("rebuild_incoming: failed to allocate count array");
+        return false;
+    }
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        neuron_t* src = &network->neurons[i];
+        uint32_t out_count = NEURON_OUT_COUNT(src);
+        for (uint32_t s = 0; s < out_count; s++) {
+            synapse_handle_t* out_h = NEURON_OUT_HANDLE(src, s);
+            if (!out_h || out_h->target_neuron_id >= network->num_neurons) continue;
+            incoming_counts[out_h->target_neuron_id]++;
+        }
+    }
+
+    /* Phase 2: Pre-allocate overflow for neurons with >EMBEDDED_CAPACITY incoming */
+    for (uint32_t i = 0; i < network->num_neurons; i++) {
+        if (incoming_counts[i] > SPARSE_SYNAPSE_EMBEDDED_CAPACITY) {
+            sparse_synapse_storage_reserve(network->synapse_handle_pool,
+                                            &network->neurons[i].incoming,
+                                            incoming_counts[i]);
+        }
+    }
+    nimcp_free(incoming_counts);
+
+    /* Phase 3: Direct-write incoming handles — bypass sparse_synapse_add.
+     * No validation, no pool locks (embedded is inline, overflow pre-allocated). */
     uint32_t added = 0, failed = 0;
     for (uint32_t i = 0; i < network->num_neurons; i++) {
         neuron_t* src = &network->neurons[i];
@@ -3949,26 +3976,31 @@ bool neural_network_rebuild_incoming(neural_network_t network)
             if (!out_h || out_h->target_neuron_id >= network->num_neurons) continue;
             neuron_t* tgt = &network->neurons[out_h->target_neuron_id];
 
-            // Add incoming handle WITHOUT metadata (handle-only)
-            // WHY: Incoming handles are reverse-lookup only. STP/BCM/eligibility
-            //       state lives on the outgoing side. Saves ~21 GB for 2M neurons.
-            int rc = sparse_synapse_add(
-                network->synapse_handle_pool, &tgt->incoming,
-                i,  // source neuron id stored in target_neuron_id field
-                out_h->weight);
-            if (rc != 0) { failed++; continue; }
-            added++;
-            {
-                uint32_t in_idx = NEURON_IN_COUNT(tgt) - 1;
-                synapse_handle_t* in_h = NEURON_IN_HANDLE(tgt, in_idx);
-                if (in_h) {
-                    in_h->strength = out_h->strength;
-                    in_h->peer_index = s;
-                    in_h->ternary_weight = out_h->ternary_weight;
-                    in_h->use_ternary_weight = out_h->use_ternary_weight;
-                    out_h->peer_index = in_idx;
-                }
+            /* Direct write to embedded or pre-allocated overflow */
+            synapse_handle_t handle = {
+                .target_neuron_id = i,
+                .weight = out_h->weight,
+                .strength = out_h->strength,
+                .metadata_index = SPARSE_SYNAPSE_NO_METADATA,
+                .peer_index = s,
+                .ternary_weight = out_h->ternary_weight,
+                .use_ternary_weight = out_h->use_ternary_weight
+            };
+
+            sparse_synapse_storage_t* inc = &tgt->incoming;
+            uint32_t in_idx;
+            if (inc->embedded_count < SPARSE_SYNAPSE_EMBEDDED_CAPACITY) {
+                in_idx = inc->embedded_count;
+                inc->embedded[inc->embedded_count++] = handle;
+            } else if (inc->overflow && inc->overflow_count < inc->overflow_capacity) {
+                in_idx = SPARSE_SYNAPSE_EMBEDDED_CAPACITY + inc->overflow_count;
+                inc->overflow[inc->overflow_count++] = handle;
+            } else {
+                failed++;
+                continue;
             }
+            out_h->peer_index = in_idx;
+            added++;
         }
     }
     NIMCP_LOGGING_INFO("rebuild_incoming: %u added, %u failed (total outgoing: %llu)",

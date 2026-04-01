@@ -2030,6 +2030,34 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         decision->confidence *= ood_result.confidence_adjustment;
     }
 
+    /* === WORLD PRIOR: Apply physics/chemistry/biology constraints on decision ===
+     *
+     * WHAT: Check if the decision output is physically/chemically/biologically plausible
+     * WHY:  Predictions that violate natural laws (objects floating, mass appearing from
+     *       nothing, populations exceeding carrying capacity) should have reduced confidence
+     * HOW:  Query the world prior for violations, reduce confidence proportionally.
+     *       Also feeds violation signal back as a learning signal to penalize implausible
+     *       predictions during future training.
+     *
+     * BIOLOGICAL BASIS: The parietal cortex continuously applies physics intuitions
+     * to perception — we automatically notice when something "looks wrong" (an object
+     * floating, a liquid flowing upward). This gate implements that automatic check.
+     */
+    if (brain->world_prior && decision) {
+        extern uint32_t world_prior_check_violations(void* wp);
+        uint32_t violations = world_prior_check_violations(brain->world_prior);
+        if (violations) {
+            /* Reduce confidence: each violated domain reduces by 10% */
+            uint32_t num_violated = 0;
+            if (violations & 0x01) num_violated++;  /* physics */
+            if (violations & 0x02) num_violated++;  /* chemistry */
+            if (violations & 0x04) num_violated++;  /* biology */
+            float penalty = 1.0f - 0.1f * (float)num_violated;
+            if (penalty < 0.5f) penalty = 0.5f;
+            decision->confidence *= penalty;
+        }
+    }
+
     // ========================================================================
     // STAGE 4.2: Trigger Memory Consolidation (Deep Sleep) - Phase 11 ACTIVE
     // ========================================================================
@@ -3939,6 +3967,15 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             decision->confidence *= 1.0f + 0.1f * pred_error;
             if (decision->confidence > 1.0f) decision->confidence = 1.0f;
         }
+    }
+
+    /* === WORLD PRIOR: Step simulation engines forward ===
+     * Keep the physics/chemistry/biology simulations in sync with the brain's
+     * internal time. This allows the world prior to detect violations in real-time
+     * and provides ground truth for the world model trainer's loss function. */
+    if (brain->world_prior) {
+        extern int world_prior_step(void* wp, float dt);
+        world_prior_step(brain->world_prior, 0.01f);
     }
 
     /* === DYNAMIC ARCHITECTURE: Record inference activation === */

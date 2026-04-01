@@ -457,6 +457,20 @@ NIMCP_EXPORT int sparse_synapse_add(
 );
 
 /**
+ * @brief Pre-allocate storage for a known number of synapses.
+ *
+ * WHAT: Reserve overflow capacity so subsequent adds don't need pool allocation.
+ * WHY:  Enables lock-free bulk synapse insertion for checkpoint restore.
+ * HOW:  If count > EMBEDDED_CAPACITY, allocates one overflow block upfront.
+ *       Subsequent sparse_synapse_add calls find space without pool locks.
+ */
+NIMCP_EXPORT int sparse_synapse_storage_reserve(
+    sparse_synapse_pool_t pool,
+    sparse_synapse_storage_t* storage,
+    uint32_t count
+);
+
+/**
  * @brief Remove synapse from storage
  *
  * WHAT: Remove synapse by index (swap-and-pop)
@@ -762,6 +776,9 @@ NIMCP_EXPORT synapse_metadata_pool_config_t synapse_metadata_pool_default_config
  * @param pool Pool handle
  * @return Index into pool (set to synapse_handle_t::metadata_index), or SPARSE_SYNAPSE_NO_METADATA on failure
  */
+/** @brief Check if metadata pool is at capacity (lock-free check). */
+NIMCP_EXPORT bool synapse_metadata_pool_is_full(synapse_metadata_pool_t pool);
+
 NIMCP_EXPORT uint32_t synapse_metadata_pool_allocate(synapse_metadata_pool_t pool);
 
 /**
