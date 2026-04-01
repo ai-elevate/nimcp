@@ -387,29 +387,34 @@ int spb_submit_to_brain(sim_perception_bridge_t* bridge,
     if (!bridge || !brain) return -1;
 
     /* Use the C API to submit sensory data.
-     * These are the same functions that the Python submit_sensory() calls. */
+     * These call into the brain's staged_sensory system (defined in nimcp_api_sensory.c).
+     * They may not exist yet if the API hasn't been extended — use weak symbols
+     * so the library links even without them. */
     extern int nimcp_brain_submit_sensory_visual(
         struct nimcp_brain_handle* brain, const uint8_t* pixels,
-        uint32_t width, uint32_t height, uint32_t channels);
+        uint32_t width, uint32_t height, uint32_t channels) __attribute__((weak));
     extern int nimcp_brain_submit_sensory_audio(
-        struct nimcp_brain_handle* brain, const float* data, uint32_t size);
+        struct nimcp_brain_handle* brain, const float* data, uint32_t size) __attribute__((weak));
     extern int nimcp_brain_submit_sensory_somatosensory(
-        struct nimcp_brain_handle* brain, const float* segments, uint32_t n_segments);
+        struct nimcp_brain_handle* brain, const float* segments, uint32_t n_segments) __attribute__((weak));
 
-    if (bridge->config.enable_visual && bridge->visual.framebuffer) {
+    if (bridge->config.enable_visual && bridge->visual.framebuffer &&
+        nimcp_brain_submit_sensory_visual) {
         nimcp_brain_submit_sensory_visual(brain,
             bridge->visual.framebuffer,
             bridge->visual.width, bridge->visual.height, bridge->visual.channels);
         bridge->stats.sensory_submissions++;
     }
 
-    if (bridge->config.enable_audio && bridge->audio.mel_features) {
+    if (bridge->config.enable_audio && bridge->audio.mel_features &&
+        nimcp_brain_submit_sensory_audio) {
         nimcp_brain_submit_sensory_audio(brain,
             bridge->audio.mel_features, bridge->audio.mel_bins);
         bridge->stats.sensory_submissions++;
     }
 
-    if (bridge->config.enable_haptic && bridge->haptic.segment_activations) {
+    if (bridge->config.enable_haptic && bridge->haptic.segment_activations &&
+        nimcp_brain_submit_sensory_somatosensory) {
         nimcp_brain_submit_sensory_somatosensory(brain,
             bridge->haptic.segment_activations, bridge->haptic.num_segments);
         bridge->stats.sensory_submissions++;

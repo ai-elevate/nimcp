@@ -1150,6 +1150,23 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_evolutionary_biology.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_physiology.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/physics/nimcp_world_simulator.c
+    # Pure Mathematics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_number_theory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_abstract_algebra.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_real_analysis.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_topology.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_graph_theory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_combinatorics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_logic.c
+    # Applied Mathematics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_linear_algebra.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_probability.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_numerical_methods.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_optimization.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_information_theory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_game_theory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_category_theory.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/math/nimcp_complexity_theory.c
     # Multimodal World Model (cross-modal prediction and fusion)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/extrapolation/nimcp_world_model_multimodal.c
     # Compositional and Counterfactual modules

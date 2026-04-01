@@ -8924,6 +8924,366 @@ __/cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.c.
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.c.s
 .PHONY : __/cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.c.s
 
+__/cognitive/math/nimcp_abstract_algebra.o: __/cognitive/math/nimcp_abstract_algebra.c.o
+.PHONY : __/cognitive/math/nimcp_abstract_algebra.o
+
+# target to build an object file
+__/cognitive/math/nimcp_abstract_algebra.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_abstract_algebra.c.o
+.PHONY : __/cognitive/math/nimcp_abstract_algebra.c.o
+
+__/cognitive/math/nimcp_abstract_algebra.i: __/cognitive/math/nimcp_abstract_algebra.c.i
+.PHONY : __/cognitive/math/nimcp_abstract_algebra.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_abstract_algebra.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_abstract_algebra.c.i
+.PHONY : __/cognitive/math/nimcp_abstract_algebra.c.i
+
+__/cognitive/math/nimcp_abstract_algebra.s: __/cognitive/math/nimcp_abstract_algebra.c.s
+.PHONY : __/cognitive/math/nimcp_abstract_algebra.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_abstract_algebra.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_abstract_algebra.c.s
+.PHONY : __/cognitive/math/nimcp_abstract_algebra.c.s
+
+__/cognitive/math/nimcp_category_theory.o: __/cognitive/math/nimcp_category_theory.c.o
+.PHONY : __/cognitive/math/nimcp_category_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_category_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_category_theory.c.o
+.PHONY : __/cognitive/math/nimcp_category_theory.c.o
+
+__/cognitive/math/nimcp_category_theory.i: __/cognitive/math/nimcp_category_theory.c.i
+.PHONY : __/cognitive/math/nimcp_category_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_category_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_category_theory.c.i
+.PHONY : __/cognitive/math/nimcp_category_theory.c.i
+
+__/cognitive/math/nimcp_category_theory.s: __/cognitive/math/nimcp_category_theory.c.s
+.PHONY : __/cognitive/math/nimcp_category_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_category_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_category_theory.c.s
+.PHONY : __/cognitive/math/nimcp_category_theory.c.s
+
+__/cognitive/math/nimcp_combinatorics.o: __/cognitive/math/nimcp_combinatorics.c.o
+.PHONY : __/cognitive/math/nimcp_combinatorics.o
+
+# target to build an object file
+__/cognitive/math/nimcp_combinatorics.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_combinatorics.c.o
+.PHONY : __/cognitive/math/nimcp_combinatorics.c.o
+
+__/cognitive/math/nimcp_combinatorics.i: __/cognitive/math/nimcp_combinatorics.c.i
+.PHONY : __/cognitive/math/nimcp_combinatorics.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_combinatorics.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_combinatorics.c.i
+.PHONY : __/cognitive/math/nimcp_combinatorics.c.i
+
+__/cognitive/math/nimcp_combinatorics.s: __/cognitive/math/nimcp_combinatorics.c.s
+.PHONY : __/cognitive/math/nimcp_combinatorics.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_combinatorics.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_combinatorics.c.s
+.PHONY : __/cognitive/math/nimcp_combinatorics.c.s
+
+__/cognitive/math/nimcp_complexity_theory.o: __/cognitive/math/nimcp_complexity_theory.c.o
+.PHONY : __/cognitive/math/nimcp_complexity_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_complexity_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_complexity_theory.c.o
+.PHONY : __/cognitive/math/nimcp_complexity_theory.c.o
+
+__/cognitive/math/nimcp_complexity_theory.i: __/cognitive/math/nimcp_complexity_theory.c.i
+.PHONY : __/cognitive/math/nimcp_complexity_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_complexity_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_complexity_theory.c.i
+.PHONY : __/cognitive/math/nimcp_complexity_theory.c.i
+
+__/cognitive/math/nimcp_complexity_theory.s: __/cognitive/math/nimcp_complexity_theory.c.s
+.PHONY : __/cognitive/math/nimcp_complexity_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_complexity_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_complexity_theory.c.s
+.PHONY : __/cognitive/math/nimcp_complexity_theory.c.s
+
+__/cognitive/math/nimcp_game_theory.o: __/cognitive/math/nimcp_game_theory.c.o
+.PHONY : __/cognitive/math/nimcp_game_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_game_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_game_theory.c.o
+.PHONY : __/cognitive/math/nimcp_game_theory.c.o
+
+__/cognitive/math/nimcp_game_theory.i: __/cognitive/math/nimcp_game_theory.c.i
+.PHONY : __/cognitive/math/nimcp_game_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_game_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_game_theory.c.i
+.PHONY : __/cognitive/math/nimcp_game_theory.c.i
+
+__/cognitive/math/nimcp_game_theory.s: __/cognitive/math/nimcp_game_theory.c.s
+.PHONY : __/cognitive/math/nimcp_game_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_game_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_game_theory.c.s
+.PHONY : __/cognitive/math/nimcp_game_theory.c.s
+
+__/cognitive/math/nimcp_graph_theory.o: __/cognitive/math/nimcp_graph_theory.c.o
+.PHONY : __/cognitive/math/nimcp_graph_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_graph_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_graph_theory.c.o
+.PHONY : __/cognitive/math/nimcp_graph_theory.c.o
+
+__/cognitive/math/nimcp_graph_theory.i: __/cognitive/math/nimcp_graph_theory.c.i
+.PHONY : __/cognitive/math/nimcp_graph_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_graph_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_graph_theory.c.i
+.PHONY : __/cognitive/math/nimcp_graph_theory.c.i
+
+__/cognitive/math/nimcp_graph_theory.s: __/cognitive/math/nimcp_graph_theory.c.s
+.PHONY : __/cognitive/math/nimcp_graph_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_graph_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_graph_theory.c.s
+.PHONY : __/cognitive/math/nimcp_graph_theory.c.s
+
+__/cognitive/math/nimcp_information_theory.o: __/cognitive/math/nimcp_information_theory.c.o
+.PHONY : __/cognitive/math/nimcp_information_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_information_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_information_theory.c.o
+.PHONY : __/cognitive/math/nimcp_information_theory.c.o
+
+__/cognitive/math/nimcp_information_theory.i: __/cognitive/math/nimcp_information_theory.c.i
+.PHONY : __/cognitive/math/nimcp_information_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_information_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_information_theory.c.i
+.PHONY : __/cognitive/math/nimcp_information_theory.c.i
+
+__/cognitive/math/nimcp_information_theory.s: __/cognitive/math/nimcp_information_theory.c.s
+.PHONY : __/cognitive/math/nimcp_information_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_information_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_information_theory.c.s
+.PHONY : __/cognitive/math/nimcp_information_theory.c.s
+
+__/cognitive/math/nimcp_linear_algebra.o: __/cognitive/math/nimcp_linear_algebra.c.o
+.PHONY : __/cognitive/math/nimcp_linear_algebra.o
+
+# target to build an object file
+__/cognitive/math/nimcp_linear_algebra.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_linear_algebra.c.o
+.PHONY : __/cognitive/math/nimcp_linear_algebra.c.o
+
+__/cognitive/math/nimcp_linear_algebra.i: __/cognitive/math/nimcp_linear_algebra.c.i
+.PHONY : __/cognitive/math/nimcp_linear_algebra.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_linear_algebra.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_linear_algebra.c.i
+.PHONY : __/cognitive/math/nimcp_linear_algebra.c.i
+
+__/cognitive/math/nimcp_linear_algebra.s: __/cognitive/math/nimcp_linear_algebra.c.s
+.PHONY : __/cognitive/math/nimcp_linear_algebra.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_linear_algebra.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_linear_algebra.c.s
+.PHONY : __/cognitive/math/nimcp_linear_algebra.c.s
+
+__/cognitive/math/nimcp_logic.o: __/cognitive/math/nimcp_logic.c.o
+.PHONY : __/cognitive/math/nimcp_logic.o
+
+# target to build an object file
+__/cognitive/math/nimcp_logic.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_logic.c.o
+.PHONY : __/cognitive/math/nimcp_logic.c.o
+
+__/cognitive/math/nimcp_logic.i: __/cognitive/math/nimcp_logic.c.i
+.PHONY : __/cognitive/math/nimcp_logic.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_logic.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_logic.c.i
+.PHONY : __/cognitive/math/nimcp_logic.c.i
+
+__/cognitive/math/nimcp_logic.s: __/cognitive/math/nimcp_logic.c.s
+.PHONY : __/cognitive/math/nimcp_logic.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_logic.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_logic.c.s
+.PHONY : __/cognitive/math/nimcp_logic.c.s
+
+__/cognitive/math/nimcp_number_theory.o: __/cognitive/math/nimcp_number_theory.c.o
+.PHONY : __/cognitive/math/nimcp_number_theory.o
+
+# target to build an object file
+__/cognitive/math/nimcp_number_theory.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_number_theory.c.o
+.PHONY : __/cognitive/math/nimcp_number_theory.c.o
+
+__/cognitive/math/nimcp_number_theory.i: __/cognitive/math/nimcp_number_theory.c.i
+.PHONY : __/cognitive/math/nimcp_number_theory.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_number_theory.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_number_theory.c.i
+.PHONY : __/cognitive/math/nimcp_number_theory.c.i
+
+__/cognitive/math/nimcp_number_theory.s: __/cognitive/math/nimcp_number_theory.c.s
+.PHONY : __/cognitive/math/nimcp_number_theory.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_number_theory.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_number_theory.c.s
+.PHONY : __/cognitive/math/nimcp_number_theory.c.s
+
+__/cognitive/math/nimcp_numerical_methods.o: __/cognitive/math/nimcp_numerical_methods.c.o
+.PHONY : __/cognitive/math/nimcp_numerical_methods.o
+
+# target to build an object file
+__/cognitive/math/nimcp_numerical_methods.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_numerical_methods.c.o
+.PHONY : __/cognitive/math/nimcp_numerical_methods.c.o
+
+__/cognitive/math/nimcp_numerical_methods.i: __/cognitive/math/nimcp_numerical_methods.c.i
+.PHONY : __/cognitive/math/nimcp_numerical_methods.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_numerical_methods.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_numerical_methods.c.i
+.PHONY : __/cognitive/math/nimcp_numerical_methods.c.i
+
+__/cognitive/math/nimcp_numerical_methods.s: __/cognitive/math/nimcp_numerical_methods.c.s
+.PHONY : __/cognitive/math/nimcp_numerical_methods.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_numerical_methods.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_numerical_methods.c.s
+.PHONY : __/cognitive/math/nimcp_numerical_methods.c.s
+
+__/cognitive/math/nimcp_optimization.o: __/cognitive/math/nimcp_optimization.c.o
+.PHONY : __/cognitive/math/nimcp_optimization.o
+
+# target to build an object file
+__/cognitive/math/nimcp_optimization.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_optimization.c.o
+.PHONY : __/cognitive/math/nimcp_optimization.c.o
+
+__/cognitive/math/nimcp_optimization.i: __/cognitive/math/nimcp_optimization.c.i
+.PHONY : __/cognitive/math/nimcp_optimization.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_optimization.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_optimization.c.i
+.PHONY : __/cognitive/math/nimcp_optimization.c.i
+
+__/cognitive/math/nimcp_optimization.s: __/cognitive/math/nimcp_optimization.c.s
+.PHONY : __/cognitive/math/nimcp_optimization.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_optimization.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_optimization.c.s
+.PHONY : __/cognitive/math/nimcp_optimization.c.s
+
+__/cognitive/math/nimcp_probability.o: __/cognitive/math/nimcp_probability.c.o
+.PHONY : __/cognitive/math/nimcp_probability.o
+
+# target to build an object file
+__/cognitive/math/nimcp_probability.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_probability.c.o
+.PHONY : __/cognitive/math/nimcp_probability.c.o
+
+__/cognitive/math/nimcp_probability.i: __/cognitive/math/nimcp_probability.c.i
+.PHONY : __/cognitive/math/nimcp_probability.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_probability.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_probability.c.i
+.PHONY : __/cognitive/math/nimcp_probability.c.i
+
+__/cognitive/math/nimcp_probability.s: __/cognitive/math/nimcp_probability.c.s
+.PHONY : __/cognitive/math/nimcp_probability.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_probability.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_probability.c.s
+.PHONY : __/cognitive/math/nimcp_probability.c.s
+
+__/cognitive/math/nimcp_real_analysis.o: __/cognitive/math/nimcp_real_analysis.c.o
+.PHONY : __/cognitive/math/nimcp_real_analysis.o
+
+# target to build an object file
+__/cognitive/math/nimcp_real_analysis.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_real_analysis.c.o
+.PHONY : __/cognitive/math/nimcp_real_analysis.c.o
+
+__/cognitive/math/nimcp_real_analysis.i: __/cognitive/math/nimcp_real_analysis.c.i
+.PHONY : __/cognitive/math/nimcp_real_analysis.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_real_analysis.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_real_analysis.c.i
+.PHONY : __/cognitive/math/nimcp_real_analysis.c.i
+
+__/cognitive/math/nimcp_real_analysis.s: __/cognitive/math/nimcp_real_analysis.c.s
+.PHONY : __/cognitive/math/nimcp_real_analysis.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_real_analysis.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_real_analysis.c.s
+.PHONY : __/cognitive/math/nimcp_real_analysis.c.s
+
+__/cognitive/math/nimcp_topology.o: __/cognitive/math/nimcp_topology.c.o
+.PHONY : __/cognitive/math/nimcp_topology.o
+
+# target to build an object file
+__/cognitive/math/nimcp_topology.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_topology.c.o
+.PHONY : __/cognitive/math/nimcp_topology.c.o
+
+__/cognitive/math/nimcp_topology.i: __/cognitive/math/nimcp_topology.c.i
+.PHONY : __/cognitive/math/nimcp_topology.i
+
+# target to preprocess a source file
+__/cognitive/math/nimcp_topology.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_topology.c.i
+.PHONY : __/cognitive/math/nimcp_topology.c.i
+
+__/cognitive/math/nimcp_topology.s: __/cognitive/math/nimcp_topology.c.s
+.PHONY : __/cognitive/math/nimcp_topology.s
+
+# target to generate assembly for a file
+__/cognitive/math/nimcp_topology.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/math/nimcp_topology.c.s
+.PHONY : __/cognitive/math/nimcp_topology.c.s
+
 __/cognitive/memory/core/nimcp_collective_memory.o: __/cognitive/memory/core/nimcp_collective_memory.c.o
 .PHONY : __/cognitive/memory/core/nimcp_collective_memory.o
 
@@ -56086,6 +56446,51 @@ help:
 	@echo "... __/cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.o"
 	@echo "... __/cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.i"
 	@echo "... __/cognitive/love_loyalty_friendship/nimcp_love_loyalty_friendship_fep_bridge.s"
+	@echo "... __/cognitive/math/nimcp_abstract_algebra.o"
+	@echo "... __/cognitive/math/nimcp_abstract_algebra.i"
+	@echo "... __/cognitive/math/nimcp_abstract_algebra.s"
+	@echo "... __/cognitive/math/nimcp_category_theory.o"
+	@echo "... __/cognitive/math/nimcp_category_theory.i"
+	@echo "... __/cognitive/math/nimcp_category_theory.s"
+	@echo "... __/cognitive/math/nimcp_combinatorics.o"
+	@echo "... __/cognitive/math/nimcp_combinatorics.i"
+	@echo "... __/cognitive/math/nimcp_combinatorics.s"
+	@echo "... __/cognitive/math/nimcp_complexity_theory.o"
+	@echo "... __/cognitive/math/nimcp_complexity_theory.i"
+	@echo "... __/cognitive/math/nimcp_complexity_theory.s"
+	@echo "... __/cognitive/math/nimcp_game_theory.o"
+	@echo "... __/cognitive/math/nimcp_game_theory.i"
+	@echo "... __/cognitive/math/nimcp_game_theory.s"
+	@echo "... __/cognitive/math/nimcp_graph_theory.o"
+	@echo "... __/cognitive/math/nimcp_graph_theory.i"
+	@echo "... __/cognitive/math/nimcp_graph_theory.s"
+	@echo "... __/cognitive/math/nimcp_information_theory.o"
+	@echo "... __/cognitive/math/nimcp_information_theory.i"
+	@echo "... __/cognitive/math/nimcp_information_theory.s"
+	@echo "... __/cognitive/math/nimcp_linear_algebra.o"
+	@echo "... __/cognitive/math/nimcp_linear_algebra.i"
+	@echo "... __/cognitive/math/nimcp_linear_algebra.s"
+	@echo "... __/cognitive/math/nimcp_logic.o"
+	@echo "... __/cognitive/math/nimcp_logic.i"
+	@echo "... __/cognitive/math/nimcp_logic.s"
+	@echo "... __/cognitive/math/nimcp_number_theory.o"
+	@echo "... __/cognitive/math/nimcp_number_theory.i"
+	@echo "... __/cognitive/math/nimcp_number_theory.s"
+	@echo "... __/cognitive/math/nimcp_numerical_methods.o"
+	@echo "... __/cognitive/math/nimcp_numerical_methods.i"
+	@echo "... __/cognitive/math/nimcp_numerical_methods.s"
+	@echo "... __/cognitive/math/nimcp_optimization.o"
+	@echo "... __/cognitive/math/nimcp_optimization.i"
+	@echo "... __/cognitive/math/nimcp_optimization.s"
+	@echo "... __/cognitive/math/nimcp_probability.o"
+	@echo "... __/cognitive/math/nimcp_probability.i"
+	@echo "... __/cognitive/math/nimcp_probability.s"
+	@echo "... __/cognitive/math/nimcp_real_analysis.o"
+	@echo "... __/cognitive/math/nimcp_real_analysis.i"
+	@echo "... __/cognitive/math/nimcp_real_analysis.s"
+	@echo "... __/cognitive/math/nimcp_topology.o"
+	@echo "... __/cognitive/math/nimcp_topology.i"
+	@echo "... __/cognitive/math/nimcp_topology.s"
 	@echo "... __/cognitive/memory/core/nimcp_collective_memory.o"
 	@echo "... __/cognitive/memory/core/nimcp_collective_memory.i"
 	@echo "... __/cognitive/memory/core/nimcp_collective_memory.s"
