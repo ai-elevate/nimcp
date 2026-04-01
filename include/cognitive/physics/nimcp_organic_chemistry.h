@@ -83,6 +83,7 @@ typedef struct {
     ochem_functional_group_t functional_groups[OCHEM_MAX_FGROUPS];
     uint32_t        num_fgroups;
     float           molecular_weight;
+    float           concentration;      /* mol/L (for kinetics) */
     float           logP;               /* partition coefficient (hydrophobicity) */
     uint32_t        degree_of_unsaturation;
     bool            is_aromatic;

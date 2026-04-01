@@ -279,15 +279,18 @@ int geochemistry_compute_carbonate(geochem_carbonate_state_t* state)
         float H_approx = sqrtf(GEOCHEM_KA1_CARBONIC * state->H2CO3);
         if (H_approx < CONC_EPSILON) H_approx = 1e-7f;
 
-        /* Iterative refinement (3 iterations) */
+        /* Iterative refinement with relaxation to prevent divergence */
         float H = H_approx;
-        for (int iter = 0; iter < 3; iter++) {
+        for (int iter = 0; iter < 5; iter++) {
             float hco3 = GEOCHEM_KA1_CARBONIC * state->H2CO3 / H;
             float co3 = GEOCHEM_KA2_CARBONIC * hco3 / H;
-            /* Charge balance: [H+] = [HCO3-] + 2[CO3^2-] + [OH-] */
             float OH = GEOCHEM_KW / H;
-            H = hco3 + 2.0f * co3 + OH;
-            if (H < CONC_EPSILON) H = CONC_EPSILON;
+            float H_new = hco3 + 2.0f * co3 + OH;
+            if (H_new < CONC_EPSILON) H_new = CONC_EPSILON;
+            /* Relaxation: blend old and new to stabilize convergence */
+            H = 0.5f * H + 0.5f * H_new;
+            /* Early exit if converged */
+            if (fabsf(H_new - H) < 1e-12f) break;
         }
 
         state->HCO3 = GEOCHEM_KA1_CARBONIC * state->H2CO3 / H;

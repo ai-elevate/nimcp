@@ -245,10 +245,12 @@ float analytical_chemistry_titration_pH(const anachem_titration_t* tit,
         if (mol_base < mol_acid - CONC_EPSILON) {
             /* Before equivalence: excess H+ */
             float H_excess = (mol_acid - mol_base) / total_vol_L;
+            if (H_excess < 1e-14f) H_excess = 1e-14f;  /* floor to avoid log(<=0) */
             return -log10f(H_excess);
         } else if (mol_base > mol_acid + CONC_EPSILON) {
             /* After equivalence: excess OH- */
             float OH_excess = (mol_base - mol_acid) / total_vol_L;
+            if (OH_excess < 1e-14f) OH_excess = 1e-14f;
             float pOH = -log10f(OH_excess);
             return 14.0f - pOH;
         } else {

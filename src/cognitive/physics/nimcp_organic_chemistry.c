@@ -293,29 +293,30 @@ int organic_chemistry_step(organic_chemistry_sim_t* sim, float dt)
         for (uint32_t j = 0; j < rxn->num_reactants; j++) {
             uint32_t rid = rxn->reactant_ids[j];
             if (rid < sim->num_molecules) {
-                rate *= sim->molecules[rid].molecular_weight > 0.0f
-                    ? sim->molecules[rid].molecular_weight * 0.001f
-                    : 1.0f;
-                /* Use molecular_weight as proxy for concentration here */
+                float conc = sim->molecules[rid].concentration;
+                rate *= (conc > 1e-12f) ? conc : 1e-3f; /* default 1mM if unset */
             }
         }
 
         float consumed = rate * dt;
 
-        /* Consume reactants */
+        /* Consume reactants (reduce concentration) */
         for (uint32_t j = 0; j < rxn->num_reactants; j++) {
             uint32_t rid = rxn->reactant_ids[j];
             if (rid < sim->num_molecules) {
-                float* mw = &sim->molecules[rid].molecular_weight;
-                if (consumed > *mw * 0.001f) consumed = *mw * 0.001f;
+                if (consumed > sim->molecules[rid].concentration)
+                    consumed = sim->molecules[rid].concentration;
+                sim->molecules[rid].concentration -= consumed;
+                if (sim->molecules[rid].concentration < 0)
+                    sim->molecules[rid].concentration = 0;
             }
         }
 
-        /* Produce products */
+        /* Produce products (increase concentration) */
         for (uint32_t j = 0; j < rxn->num_products; j++) {
             uint32_t pid = rxn->product_ids[j];
             if (pid < sim->num_molecules) {
-                sim->molecules[pid].molecular_weight += consumed * 1000.0f;
+                sim->molecules[pid].concentration += consumed;
             }
         }
 
