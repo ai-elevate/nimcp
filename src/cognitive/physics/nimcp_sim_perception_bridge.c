@@ -192,6 +192,7 @@ int spb_render_visual(sim_perception_bridge_t* bridge) {
         float vx = obj->velocity.vx * scale_x * 0.1f;
         float vz = obj->velocity.vz * scale_y * 0.1f;
         int steps = (int)(sqrtf(vx*vx + vz*vz));
+        if (steps < 0) steps = 0;
         if (steps > 20) steps = 20;
         for (int s = 0; s < steps; s++) {
             int px = cx + (int)(vx * s / (float)steps);

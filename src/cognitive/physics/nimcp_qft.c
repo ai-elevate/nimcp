@@ -355,15 +355,12 @@ int qft_lattice_metropolis_sweep(qft_sim_t* sim) {
         float neighbor_sum = 0;
         uint32_t stride = 1;
         for (uint32_t d = 0; d < dim; d++) {
+            /* Periodic boundary: neighbor at ±1 in dimension d.
+             * Compute flat indices directly to avoid unsigned subtraction issues. */
             uint32_t coord = (site / stride) % L;
-            uint32_t fwd = site + stride * ((coord + 1) % L == coord + 1 ? 1 : -(int)(coord));
-            uint32_t bwd = site - stride * (coord > 0 ? 1 : -(int)(L - 1));
-            /* Wrap properly */
-            fwd = site + (((coord + 1) % L - coord) * stride + total) % total - site + site;
-            bwd = site + (((coord + L - 1) % L - coord) * stride + total) % total - site + site;
-            /* Simplified: just use modular arithmetic on flat index */
-            uint32_t next = (site + stride) % total;
-            uint32_t prev = (site + total - stride) % total;
+            uint32_t base = site - coord * stride; /* site with coord=0 in this dim */
+            uint32_t next = base + ((coord + 1) % L) * stride;
+            uint32_t prev = base + ((coord + L - 1) % L) * stride;
             neighbor_sum += phi[next] + phi[prev];
             stride *= L;
         }

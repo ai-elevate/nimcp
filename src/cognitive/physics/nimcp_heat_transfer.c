@@ -193,7 +193,8 @@ static void apply_boundary_face(heat_transfer_sim_t* sim, int face,
             uint8_t mi = sim->material_map.data[ii];
             float k = sim->materials[mi].conductivity;
             float dx = sim->config.cell_size;
-            float ratio = bc->h_conv * dx / (k + 1e-20f);
+            if (k < 1e-6f) { T[bi] = T[ii]; break; }  /* insulator: adiabatic */
+            float ratio = bc->h_conv * dx / k;
             T[bi] = T[ii] - ratio * (T[ii] - bc->t_ambient);
             break;
         }
