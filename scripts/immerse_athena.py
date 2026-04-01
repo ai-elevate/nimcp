@@ -532,10 +532,16 @@ LR_WARMUP_STEPS = 500        # Linear warmup from MIN to BASE
 LR_COSINE_T_MAX = 20000      # Full cosine cycle length
 
 # Mode collapse detection constants
-COLLAPSE_CHECK_INTERVAL = 100     # Check every N steps
+COLLAPSE_CHECK_INTERVAL = 100     # Full probe check every N steps
 COLLAPSE_WARMUP_STEPS = 200       # Don't check during initial warmup
 COLLAPSE_THRESHOLD = 0.99         # Cosine sim above this = collapsed
 COLLAPSE_CONSECUTIVE_LIMIT = 3    # Halt after N consecutive collapse detections
+FAST_COLLAPSE_INTERVAL = 10       # Fast rolling check every N steps
+FAST_COLLAPSE_THRESHOLD = 0.995   # Output not changing at all
+FAST_COLLAPSE_WINDOW = 5          # Consecutive identical outputs before intervention
+LR_SPIKE_FACTOR = 10.0            # Multiply LR by this during collapse recovery
+LR_SPIKE_DURATION = 50            # Steps to maintain spiked LR
+DIVERSITY_INJECTION_COUNT = 20    # Number of diverse items to inject on collapse
 
 # Cognitive training injection interval — every N sensory steps, train one cognitive item
 COGNITIVE_TRAIN_INTERVAL = 5      # 1 cognitive item per 5 sensory steps (~20% cognitive mix)
@@ -1120,6 +1126,135 @@ class CollapseDetector:
             self.consecutive_collapses = 0
 
         return False
+
+
+class FastCollapseDetector:
+    """Fast rolling mode collapse detector — checks every 10 steps.
+
+    Tracks cosine similarity between consecutive outputs. If outputs are
+    nearly identical for FAST_COLLAPSE_WINDOW consecutive checks, triggers
+    intervention WITHOUT halting:
+      1. LR spike (10× for 50 steps) to escape the attractor
+      2. Diversity injection (20 items from different domains)
+
+    This catches collapse 5-10× faster than the full probe-based detector
+    and recovers without losing training progress.
+    """
+
+    def __init__(self, brain_ref=None, lr_controller=None):
+        self.prev_output = None
+        self.identical_count = 0
+        self.brain_ref = brain_ref
+        self.lr_controller = lr_controller
+        self.lr_spike_remaining = 0
+        self.total_interventions = 0
+        self.base_lr = None
+
+    def check_output(self, output_vec, step):
+        """Call every FAST_COLLAPSE_INTERVAL steps with the latest output.
+        Returns True if intervention was triggered."""
+        if output_vec is None:
+            return False
+
+        vec = np.array(output_vec, dtype=np.float32)
+        if self.prev_output is not None:
+            norm_a = np.linalg.norm(vec)
+            norm_b = np.linalg.norm(self.prev_output)
+            if norm_a > 1e-8 and norm_b > 1e-8:
+                sim = float(np.dot(vec, self.prev_output) / (norm_a * norm_b))
+                if sim > FAST_COLLAPSE_THRESHOLD:
+                    self.identical_count += 1
+                else:
+                    self.identical_count = 0
+            else:
+                self.identical_count += 1  # zero outputs = collapsed
+
+        self.prev_output = vec.copy()
+
+        if self.identical_count >= FAST_COLLAPSE_WINDOW:
+            self._intervene(step)
+            self.identical_count = 0
+            return True
+        return False
+
+    def _intervene(self, step):
+        """Fast intervention: LR spike + diversity injection."""
+        self.total_interventions += 1
+        print(f"\n    *** FAST COLLAPSE INTERVENTION #{self.total_interventions} "
+              f"at step {step} ***", flush=True)
+
+        # 1. LR spike — temporarily increase learning rate to escape attractor
+        if self.lr_controller:
+            self.base_lr = self.lr_controller.get_lr()
+            self.lr_spike_remaining = LR_SPIKE_DURATION
+            print(f"    >>> LR spike: {self.base_lr:.6f} → "
+                  f"{self.base_lr * LR_SPIKE_FACTOR:.6f} for {LR_SPIKE_DURATION} steps",
+                  flush=True)
+
+        # 2. Diversity injection — force diverse inputs across all domains
+        if self.brain_ref:
+            try:
+                self._inject_diversity()
+            except Exception as e:
+                print(f"    >>> Diversity injection failed: {e}", flush=True)
+
+        try:
+            with open("TRAINING_ALERT.txt", "a") as f:
+                f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] "
+                        f"Fast collapse intervention #{self.total_interventions} "
+                        f"at step {step}\n")
+        except OSError:
+            pass
+
+    def _inject_diversity(self):
+        """Feed deliberately diverse inputs to break the collapsed attractor."""
+        if not self.brain_ref:
+            return
+
+        diverse_texts = [
+            "The sun is a star that provides light and heat",
+            "Dogs are mammals that have been human companions",
+            "Water freezes at zero degrees Celsius",
+            "Two plus two equals four",
+            "A triangle has three sides and three angles",
+            "Ancient Egyptians built the pyramids",
+            "Kindness means treating others with warmth",
+            "Plants make their own food from sunlight",
+            "Gravity pulls everything toward Earth",
+            "Mixing baking soda and vinegar creates bubbles",
+            "A ball dropped from a height falls faster and faster",
+            "Predator populations crash when prey declines",
+            "Iron left in rain slowly rusts",
+            "Your body temperature stays near thirty seven degrees",
+            "Sound travels through air as waves of pressure",
+            "A seed contains a tiny plant waiting for water",
+            "Rivers flow from high ground toward the sea",
+            "Energy cannot be created or destroyed",
+            "Cells are the basic building blocks of all life",
+            "The heart pumps blood carrying oxygen to cells",
+        ]
+
+        injected = 0
+        for text in diverse_texts[:DIVERSITY_INJECTION_COUNT]:
+            try:
+                features = encode_text(text)
+                target = make_semantic_target(text)
+                lr = (self.base_lr or BASE_LEARNING_RATE) * LR_SPIKE_FACTOR
+                self.brain_ref.learn_vector(features, target,
+                                             label=text[:30],
+                                             learning_rate=lr)
+                injected += 1
+            except Exception:
+                pass
+
+        print(f"    >>> Injected {injected} diverse items across domains", flush=True)
+
+    def get_spiked_lr(self, base_lr):
+        """Returns spiked LR if in spike period, otherwise base_lr."""
+        if self.lr_spike_remaining > 0:
+            self.lr_spike_remaining -= 1
+            return base_lr * LR_SPIKE_FACTOR
+        return base_lr
 
 
 class CosineAnnealingLR:
@@ -5405,6 +5540,7 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         buffer_size=100, interval=50, num_corrections=16,
         strength=0.5, min_variance_ratio=0.3)  # Tighter for batch learning
     collapse_detector = CollapseDetector(brain_ref=brain)
+    fast_collapse = FastCollapseDetector(brain_ref=brain, lr_controller=lr_ctrl)
     # Stage 1 curriculum: start with tier 2 unlocked (basics already learned in Stage 0)
     _stage1_curriculum = CurriculumEscalator(unlock_threshold=200.0)
     _stage1_curriculum.current_tier = 2  # Start with reasoning tier unlocked
@@ -5572,7 +5708,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 _held_out_buffer.add(pre_features, pre_target, domain="stage1_naming")
                 loss = 0.0
             else:
-                lr_kwargs = {"learning_rate": lr_ctrl.get_lr()}
+                effective_lr = fast_collapse.get_spiked_lr(lr_ctrl.get_lr())
+                lr_kwargs = {"learning_rate": effective_lr}
                 loss = brain.learn_vector(pre_features, pre_target,
                                           label=name[:50], confidence=0.65,
                                           **lr_kwargs)
@@ -5589,6 +5726,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             run_stage_1._next_item = None
 
         losses.append(loss if loss is not None else 0)
+
+        # Fast collapse detection on output from decide_full (if available)
+        output_vec = result.get("output_vector") if isinstance(result, dict) else None
+        if (i + 1) % FAST_COLLAPSE_INTERVAL == 0 and output_vec is not None:
+            fast_collapse.check_output(output_vec, i + 1)
 
         # Contrastive/diversity recording skipped — no output_vec without decide_full.
         # Corrections still fire on schedule using buffered history.
@@ -5755,12 +5897,13 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
     collapse_detector = CollapseDetector(brain_ref=brain)
+    fast_collapse = FastCollapseDetector(brain_ref=brain, lr_controller=lr_ctrl)
     # Stage 2 curriculum: all tiers unlocked (Stages 0+1 covered basics+reasoning)
     _stage2_curriculum = CurriculumEscalator(unlock_threshold=100.0)
     _stage2_curriculum.current_tier = 3  # All domains available
 
     for i in range(start_from, num_stimuli):
-        # Mode collapse early detection
+        # Full mode collapse detection (every 100 steps)
         if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
                 and (i + 1) >= COLLAPSE_WARMUP_STEPS):
             if collapse_detector.check(brain, step=i + 1, stage=2):
@@ -5781,14 +5924,19 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             expected, description = source.get_object()
 
         # Athena experiences the stimulus and learns from it.
-        # The loss is a developmental signal — how new this is to her.
+        # Apply LR spike if fast collapse detector is in recovery mode.
+        effective_lr = fast_collapse.get_spiked_lr(lr_ctrl.get_lr())
         loss, result = parent.ask_and_encourage(
             brain, composer, expected, description,
-            learning_rate=lr_ctrl.get_lr())
+            learning_rate=effective_lr)
         losses.append(loss if loss is not None else 0)
 
-        # Record for contrastive + diversity regularization
+        # Fast collapse detection (every 10 steps — catches collapse in ~2 min)
         output_vec = result.get("output_vector") if result else None
+        if (i + 1) % FAST_COLLAPSE_INTERVAL == 0 and output_vec is not None:
+            fast_collapse.check_output(output_vec, i + 1)
+
+        # Record for contrastive + diversity regularization
         if output_vec is not None:
             input_emb = encode_text(expected + " " + description)
             features_for_cr = composer.compose(text=description, modality="text")
