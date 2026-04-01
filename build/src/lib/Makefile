@@ -15860,6 +15860,30 @@ __/cognitive/physics/nimcp_world_model_bridges.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_bridges.c.s
 .PHONY : __/cognitive/physics/nimcp_world_model_bridges.c.s
 
+__/cognitive/physics/nimcp_world_model_cognitive_integration.o: __/cognitive/physics/nimcp_world_model_cognitive_integration.c.o
+.PHONY : __/cognitive/physics/nimcp_world_model_cognitive_integration.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_world_model_cognitive_integration.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_cognitive_integration.c.o
+.PHONY : __/cognitive/physics/nimcp_world_model_cognitive_integration.c.o
+
+__/cognitive/physics/nimcp_world_model_cognitive_integration.i: __/cognitive/physics/nimcp_world_model_cognitive_integration.c.i
+.PHONY : __/cognitive/physics/nimcp_world_model_cognitive_integration.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_world_model_cognitive_integration.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_cognitive_integration.c.i
+.PHONY : __/cognitive/physics/nimcp_world_model_cognitive_integration.c.i
+
+__/cognitive/physics/nimcp_world_model_cognitive_integration.s: __/cognitive/physics/nimcp_world_model_cognitive_integration.c.s
+.PHONY : __/cognitive/physics/nimcp_world_model_cognitive_integration.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_world_model_cognitive_integration.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_world_model_cognitive_integration.c.s
+.PHONY : __/cognitive/physics/nimcp_world_model_cognitive_integration.c.s
+
 __/cognitive/physics/nimcp_world_prior.o: __/cognitive/physics/nimcp_world_prior.c.o
 .PHONY : __/cognitive/physics/nimcp_world_prior.o
 
@@ -57409,6 +57433,9 @@ help:
 	@echo "... __/cognitive/physics/nimcp_world_model_bridges.o"
 	@echo "... __/cognitive/physics/nimcp_world_model_bridges.i"
 	@echo "... __/cognitive/physics/nimcp_world_model_bridges.s"
+	@echo "... __/cognitive/physics/nimcp_world_model_cognitive_integration.o"
+	@echo "... __/cognitive/physics/nimcp_world_model_cognitive_integration.i"
+	@echo "... __/cognitive/physics/nimcp_world_model_cognitive_integration.s"
 	@echo "... __/cognitive/physics/nimcp_world_prior.o"
 	@echo "... __/cognitive/physics/nimcp_world_prior.i"
 	@echo "... __/cognitive/physics/nimcp_world_prior.s"
