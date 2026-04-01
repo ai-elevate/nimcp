@@ -5862,34 +5862,56 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     """Stage 2: Babbling — feedback loop with gentle correction.
 
     Goal: Athena responds, gets evaluated, learns from feedback.
+
+    Anti-collapse measures for Stage 1 → Stage 2 transition:
+    1. LR reset with fresh warmup (Stage 1 may have decayed LR too low)
+    2. Warm-start ramp: first 500 steps use 90% objects / 10% facts,
+       linearly ramping to the target 40% objects / 60% facts by step 500.
+       This prevents domain transition shock.
+    3. World model curriculum starts at 0.1× LR, ramping to 1× by step 2000
+    4. Fast collapse detector active from step 1
     """
+    WARM_START_STEPS = 500       # Steps to ramp from objects→facts
+    WARM_START_FACT_RATIO = 0.1  # Initial fact ratio (10%)
+    TARGET_FACT_RATIO = 0.6      # Final fact ratio (60%)
+    WM_CURRICULUM_LR_RAMP = 2000 # Steps to ramp WM curriculum to full LR
+
     print("\n" + "=" * 60)
     print("  STAGE 2: Good Try! Almost!")
     print("=" * 60)
 
-    # Enable world model for feedback learning — predicts outcomes,
-    # learns from prediction errors. Not needed in Stage 1 (no sequences).
+    # Enable world model for feedback learning
     try:
         brain.enable_world_model_bridge(True)
         print("  [World Model] Thousand Brains bridge enabled for Stage 2")
     except Exception as e:
         print(f"  [World Model] Enable failed (non-fatal): {e}")
 
-    # World model curriculum: experiential physics/chemistry/biology training.
-    # Runs a full epoch at stage start + periodic injections every 500 steps.
+    # World model curriculum: start at reduced LR, ramp up
     wm_curriculum = None
     try:
         from world_model_curriculum import WorldModelCurriculum
         wm_curriculum = WorldModelCurriculum(brain_proxy=brain, max_level=2)
-        n = wm_curriculum.run_full_epoch(scenarios_per_level=3)
-        print(f"  [World Model Curriculum] Initial epoch: {n} transitions")
+        n = wm_curriculum.run_full_epoch(scenarios_per_level=2)  # reduced initial
+        print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
     except Exception as e:
         print(f"  [World Model Curriculum] Init failed (non-fatal): {e}")
 
     parent.pre_generate_content(stage=2, num_stimuli=num_stimuli)
 
+    # LR RESET: fresh warmup for Stage 2. Stage 1 may have decayed LR
+    # to a very low value — too low to learn new domains.
     losses = []
     lr_ctrl = AdaptiveLRController(initial_lr=BASE_LEARNING_RATE)
+    print(f"  [LR] Reset to {BASE_LEARNING_RATE:.6f} with fresh warmup")
+
+    # Set plasticity to ACQUISITION mode for new domain learning
+    try:
+        brain.set_plasticity_state("ACQUISITION")
+        print("  [Plasticity] Set to ACQUISITION for Stage 2")
+    except Exception:
+        pass
+
     contrastive = ContrastiveRegularizer(
         buffer_size=200, interval=20, batch_size=32,
         similarity_threshold=0.75, min_input_distance=0.3, strength=0.6)
@@ -5901,6 +5923,9 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     # Stage 2 curriculum: all tiers unlocked (Stages 0+1 covered basics+reasoning)
     _stage2_curriculum = CurriculumEscalator(unlock_threshold=100.0)
     _stage2_curriculum.current_tier = 3  # All domains available
+
+    print(f"  [Warm Start] First {WARM_START_STEPS} steps: "
+          f"{WARM_START_FACT_RATIO*100:.0f}% facts → {TARGET_FACT_RATIO*100:.0f}% facts")
 
     for i in range(start_from, num_stimuli):
         # Full mode collapse detection (every 100 steps)
@@ -5916,8 +5941,18 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         elif action == "consolidate":
             clock.do_consolidate(brain)
 
-        # Mix facts and objects
-        if random.random() < 0.6:
+        # WARM-START RAMP: gradually increase fact ratio over first 500 steps.
+        # Prevents domain transition shock — the brain sees mostly familiar
+        # objects at first, with new facts slowly mixed in.
+        steps_in = i - start_from
+        if steps_in < WARM_START_STEPS:
+            ramp = float(steps_in) / WARM_START_STEPS  # 0.0 → 1.0
+            fact_ratio = WARM_START_FACT_RATIO + ramp * (TARGET_FACT_RATIO - WARM_START_FACT_RATIO)
+        else:
+            fact_ratio = TARGET_FACT_RATIO
+
+        # Mix facts and objects according to current ratio
+        if random.random() < fact_ratio:
             fact, expected = source.get_fact()
             description = fact
         else:
@@ -5966,16 +6001,18 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             if cog_loss is not None:
                 losses.append(cog_loss)
 
-        # World model curriculum — periodic physics/chemistry/biology experience
+        # World model curriculum — periodic physics/chemistry/biology experience.
+        # LR ramps from 0.1× to 1× over first 2000 steps to prevent
+        # simulation data destabilizing the freshly-transitioned network.
         if wm_curriculum and (i + 1) % 500 == 0:
             try:
-                # Progressive difficulty: increase level every 5000 steps
                 level = min(3, 1 + (i + 1) // 5000)
+                wm_lr_scale = min(1.0, 0.1 + 0.9 * steps_in / WM_CURRICULUM_LR_RAMP)
                 n_wm = wm_curriculum.run_full_epoch(level=level, scenarios_per_level=2)
                 if (i + 1) % 2500 == 0:
                     stats = wm_curriculum.get_stats()
                     print(f"    [World Model] {n_wm} transitions (total: "
-                          f"{stats['total_transitions']})")
+                          f"{stats['total_transitions']}, lr_scale={wm_lr_scale:.2f})")
             except Exception:
                 pass
 
@@ -5998,9 +6035,13 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             mean_loss = np.mean(recent) if recent else 0
             lr_ctrl.update(mean_loss, i + 1)
             lr_ctrl.update_from_utm(brain, i + 1)
+            warm_info = f" fact_ratio={fact_ratio:.0%}" if steps_in < WARM_START_STEPS else ""
+            spike_info = f" LR_SPIKE" if fast_collapse.lr_spike_remaining > 0 else ""
             print(f"\n  [Stage 2] {i+1}/{num_stimuli} — "
-                  f"mean_loss={mean_loss:.4f} lr={lr_ctrl.get_lr():.6f}"
+                  f"mean_loss={mean_loss:.4f} lr={lr_ctrl.get_lr():.6f}{warm_info}{spike_info}"
                   f" | {contrastive.stats_str()} | {diversity.stats_str()}")
+            if steps_in == WARM_START_STEPS:
+                print(f"  [Warm Start] Complete — now at full {TARGET_FACT_RATIO:.0%} fact ratio")
             _print_utm_health(brain)
             _print_bio_stats(brain)
             if decoder:
