@@ -54,7 +54,22 @@ struct entity_tracker;
 #define WMB_MAX_REPLAY_BUFFER   256
 #define WMB_LATENT_DIM          128     /* must match JEPA latent_dim */
 #define WMB_PHYSICAL_DIM        12      /* pos(3) + vel(3) + orient(4) + mass + radius */
+#define WMB_CHEM_DIM            16      /* concentrations + pH + temperature + pressure */
+#define WMB_BIO_DIM             8       /* populations + health + energy */
+#define WMB_TOTAL_STATE_DIM     (WMB_PHYSICAL_DIM + WMB_CHEM_DIM + WMB_BIO_DIM) /* 36 */
 #define WMB_SURPRISE_THRESHOLD  2.0f    /* prediction error > 2σ → store in resonance */
+
+/* ============================================================================
+ * Domain
+ * ============================================================================ */
+
+typedef enum {
+    WMB_DOMAIN_PHYSICS      = 0,
+    WMB_DOMAIN_CHEMISTRY    = 1,
+    WMB_DOMAIN_BIOLOGY      = 2,
+    WMB_DOMAIN_CROSS        = 3,    /* multi-domain event */
+    WMB_DOMAIN_COUNT
+} wmb_domain_t;
 
 /* ============================================================================
  * Physical State (decoded from / encoded to JEPA latent)
@@ -71,16 +86,58 @@ typedef struct {
 } wmb_physical_state_t;
 
 /* ============================================================================
+ * Chemical State (concentrations, pH, temperature, pressure)
+ * ============================================================================ */
+
+typedef struct {
+    float concentrations[8];    /* top-8 species concentrations (mol/L) */
+    float pH;
+    float temperature;          /* K */
+    float pressure;             /* Pa */
+    float total_mass;           /* conservation check */
+    float reaction_rate;        /* dominant reaction rate */
+    float energy_change;        /* ΔH from reactions (kJ) */
+    float equilibrium_shift;    /* deviation from equilibrium */
+    float catalyst_activity;    /* [0..1] */
+} wmb_chemical_state_t;
+
+/* ============================================================================
+ * Biological State (populations, health, energy)
+ * ============================================================================ */
+
+typedef struct {
+    float populations[4];       /* top-4 species populations */
+    float total_biomass;
+    float biodiversity;         /* Shannon index */
+    float health;               /* organism health [0..1] */
+    float energy_available;     /* ATP or metabolic energy */
+} wmb_biological_state_t;
+
+/* ============================================================================
+ * Unified World State (all three domains)
+ * ============================================================================ */
+
+typedef struct {
+    wmb_physical_state_t    physics;
+    wmb_chemical_state_t    chemistry;
+    wmb_biological_state_t  biology;
+} wmb_world_state_t;
+
+/* ============================================================================
  * Surprise Event (stored in prime resonance)
  * ============================================================================ */
 
 typedef struct {
-    wmb_physical_state_t predicted;  /* what JEPA predicted */
-    wmb_physical_state_t actual;     /* what simulation produced */
-    float prediction_error;          /* L2 norm of (predicted - actual) */
-    float surprise_score;            /* error / expected_variance */
+    wmb_world_state_t predicted;    /* what JEPA/extrapolation predicted */
+    wmb_world_state_t actual;       /* what simulation engines produced */
+    float prediction_error;         /* L2 norm of full state difference */
+    float physics_error;            /* physics-only error component */
+    float chemistry_error;          /* chemistry-only error component */
+    float biology_error;            /* biology-only error component */
+    float surprise_score;           /* error / expected_variance */
     float timestamp;
-    uint32_t scenario_type;          /* collision=0, fall=1, support=2, ... */
+    wmb_domain_t domain;            /* which domain was most surprising */
+    uint32_t scenario_type;         /* collision=0, reaction=1, extinction=2, ... */
     /* Latent representation for replay */
     float latent_before[WMB_LATENT_DIM];
     float latent_after[WMB_LATENT_DIM];
@@ -168,6 +225,8 @@ typedef struct world_model_bridge {
     struct world_simulator*         world_sim;
     struct scene_graph*             scene;
     struct entity_tracker*          tracker;
+    struct chemistry_sim*           chemistry;
+    struct biology_sim*             biology;
 
     /* Encoding/decoding weights (latent ↔ physical) */
     float*      encode_weights;     /* [PHYSICAL_DIM × LATENT_DIM] */
