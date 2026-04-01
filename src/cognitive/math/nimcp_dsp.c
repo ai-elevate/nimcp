@@ -39,22 +39,15 @@ static uint32_t next_power_of_two(uint32_t n) {
     return n + 1;
 }
 
-/** Modified Bessel function I0 for Kaiser window */
+/** Modified Bessel function I0 for Kaiser window.
+ *  I0(x) = Σ_{k=0}^∞ ((x²/4)^k / (k!)²) */
 static double bessel_i0(double x) {
     double sum = 1.0;
     double term = 1.0;
-    double x_half = x * 0.5;
-    for (int k = 1; k < 25; k++) {
-        term *= (x_half / (double)k);
-        sum += term * term;
-        /* Recompute: I0(x) = sum_{k=0}^{inf} ((x/2)^k / k!)^2 */
-    }
-    /* Correct computation */
-    sum = 1.0;
-    term = 1.0;
     for (int k = 1; k < 25; k++) {
         term *= (x * x) / (4.0 * (double)k * (double)k);
         sum += term;
+        if (term < 1e-16 * sum) break;  /* converged */
     }
     return sum;
 }
@@ -173,48 +166,13 @@ void dsp_window(double* out, uint32_t length, dsp_window_type_t type) {
 
 void dsp_apply_window(double* signal, uint32_t length, dsp_window_type_t type) {
     if (!signal || length == 0) return;
-
-    double N = (double)(length - 1);
-    if (N < 1.0) N = 1.0;
-
-    for (uint32_t i = 0; i < length; i++) {
-        double w = 1.0;
-        double n = (double)i;
-        switch (type) {
-        case DSP_WINDOW_HAMMING:
-            w = 0.54 - 0.46 * cos(2.0 * M_PI * n / N);
-            break;
-        case DSP_WINDOW_HANNING:
-            w = 0.5 * (1.0 - cos(2.0 * M_PI * n / N));
-            break;
-        case DSP_WINDOW_BLACKMAN:
-            w = 0.42 - 0.5 * cos(2.0 * M_PI * n / N)
-                     + 0.08 * cos(4.0 * M_PI * n / N);
-            break;
-        case DSP_WINDOW_KAISER: {
-            double alpha = 3.0;
-            double mid = N / 2.0;
-            double ratio = (n - mid) / mid;
-            double karg = 1.0 - ratio * ratio;
-            if (karg < 0.0) karg = 0.0;
-            w = bessel_i0(alpha * sqrt(karg)) / bessel_i0(alpha);
-            break;
-        }
-        case DSP_WINDOW_BARTLETT:
-            w = 1.0 - fabs(2.0 * n / N - 1.0);
-            break;
-        case DSP_WINDOW_FLAT_TOP:
-            w = 0.21557895 - 0.41663158 * cos(2.0 * M_PI * n / N)
-              + 0.277263158 * cos(4.0 * M_PI * n / N)
-              - 0.083578947 * cos(6.0 * M_PI * n / N)
-              + 0.006947368 * cos(8.0 * M_PI * n / N);
-            break;
-        default:
-            w = 1.0;
-            break;
-        }
-        signal[i] *= w;
-    }
+    /* Generate window, then multiply. Avoids duplicating all window formulas. */
+    double* win = (double*)nimcp_calloc(length, sizeof(double));
+    if (!win) return;
+    dsp_window(win, length, type);
+    for (uint32_t i = 0; i < length; i++)
+        signal[i] *= win[i];
+    nimcp_free(win);
 }
 
 /* ============================================================================
@@ -347,9 +305,8 @@ dsp_stft_result_t* dsp_stft(dsp_engine_t* engine, const double* signal,
     result->freq_resolution = result->sample_rate / (double)fft_size;
     result->time_resolution = (double)hop_size / result->sample_rate;
 
-    /* Generate window */
-    double win[DSP_MAX_FFT_SIZE];
-    dsp_window(win, fft_size, window);
+    /* Generate window using engine scratch buffer (avoids 65KB stack alloc) */
+    dsp_window(engine->window_scratch, fft_size, window);
 
     for (uint32_t f = 0; f < num_frames; f++) {
         uint32_t offset = f * hop_size;
@@ -358,7 +315,7 @@ dsp_stft_result_t* dsp_stft(dsp_engine_t* engine, const double* signal,
         /* Copy and window the frame */
         for (uint32_t i = 0; i < fft_size; i++) {
             uint32_t idx = offset + i;
-            frame[i].re = (idx < length) ? signal[idx] * win[i] : 0.0;
+            frame[i].re = (idx < length) ? signal[idx] * engine->window_scratch[i] : 0.0;
             frame[i].im = 0.0;
         }
 
@@ -400,15 +357,16 @@ double* dsp_istft(dsp_engine_t* engine, const dsp_stft_result_t* stft,
         return NULL;
     }
 
-    double win[DSP_MAX_FFT_SIZE];
-    dsp_window(win, fft_size, engine->config.default_window);
-
+    double* win = (double*)nimcp_calloc(fft_size, sizeof(double));
     dsp_complex_t* buf = (dsp_complex_t*)nimcp_calloc(fft_size, sizeof(dsp_complex_t));
-    if (!buf) {
+    if (!win || !buf) {
         nimcp_free(output);
         nimcp_free(window_sum);
+        nimcp_free(win);
+        nimcp_free(buf);
         return NULL;
     }
+    dsp_window(win, fft_size, engine->config.default_window);
 
     for (uint32_t f = 0; f < stft->num_frames; f++) {
         /* Copy frame and reconstruct full spectrum (mirror conjugate) */
@@ -436,6 +394,7 @@ double* dsp_istft(dsp_engine_t* engine, const dsp_stft_result_t* stft,
     }
 
     nimcp_free(buf);
+    nimcp_free(win);
     nimcp_free(window_sum);
     return output;
 }
@@ -482,8 +441,9 @@ dsp_psd_result_t* dsp_welch_psd(dsp_engine_t* engine, const double* signal,
         return NULL;
     }
 
-    /* Window */
-    double win[DSP_MAX_FFT_SIZE];
+    /* Window (use heap, not stack) */
+    double* win = (double*)nimcp_calloc(segment_size, sizeof(double));
+    if (!win) { dsp_psd_free(result); return NULL; }
     dsp_window(win, segment_size, engine->config.default_window);
 
     /* Window energy for normalization */
@@ -537,6 +497,7 @@ dsp_psd_result_t* dsp_welch_psd(dsp_engine_t* engine, const double* signal,
     }
 
     nimcp_free(buf);
+    nimcp_free(win);
     engine->stats.ffts_computed += num_segments;
     return result;
 }
@@ -595,7 +556,8 @@ dsp_complex_t* dsp_cross_psd(dsp_engine_t* engine, const double* x,
         return NULL;
     }
 
-    double win[DSP_MAX_FFT_SIZE];
+    double* win = (double*)nimcp_calloc(segment_size, sizeof(double));
+    if (!win) { nimcp_free(cpsd); nimcp_free(bx); nimcp_free(by); return NULL; }
     dsp_window(win, segment_size, engine->config.default_window);
 
     for (uint32_t seg = 0; seg < num_segments; seg++) {
@@ -625,6 +587,7 @@ dsp_complex_t* dsp_cross_psd(dsp_engine_t* engine, const double* x,
 
     nimcp_free(bx);
     nimcp_free(by);
+    nimcp_free(win);
     return cpsd;
 }
 
@@ -655,7 +618,8 @@ double* dsp_coherence(dsp_engine_t* engine, const double* x, const double* y,
         return NULL;
     }
 
-    double win[DSP_MAX_FFT_SIZE];
+    double* win = (double*)nimcp_calloc(segment_size, sizeof(double));
+    if (!win) { nimcp_free(pxx); nimcp_free(pyy); nimcp_free(pxy); nimcp_free(bx); nimcp_free(by); return NULL; }
     dsp_window(win, segment_size, engine->config.default_window);
 
     for (uint32_t seg = 0; seg < num_segments; seg++) {
@@ -688,7 +652,7 @@ double* dsp_coherence(dsp_engine_t* engine, const double* x, const double* y,
     }
 
     nimcp_free(pxx); nimcp_free(pyy); nimcp_free(pxy);
-    nimcp_free(bx); nimcp_free(by);
+    nimcp_free(bx); nimcp_free(by); nimcp_free(win);
     return coh;
 }
 
@@ -832,10 +796,13 @@ dsp_filter_t dsp_design_filter(dsp_filter_type_t type, dsp_filter_band_t band,
             /* General Nth-order: cascade of 2nd-order sections */
             /* Build as cascaded biquads into single polynomial */
             uint32_t n_sections = (f.order + 1) / 2;
-            double* acc_b = (double*)nimcp_calloc(f.order + 1, sizeof(double));
-            double* acc_a = (double*)nimcp_calloc(f.order + 1, sizeof(double));
-            double* tmp_b = (double*)nimcp_calloc(f.order + 1, sizeof(double));
-            double* tmp_a = (double*)nimcp_calloc(f.order + 1, sizeof(double));
+            /* Polynomial can grow to 2*n_sections+1 terms — allocate enough */
+            uint32_t max_poly = 2 * n_sections + 1;
+            if (max_poly < f.order + 1) max_poly = f.order + 1;
+            double* acc_b = (double*)nimcp_calloc(max_poly, sizeof(double));
+            double* acc_a = (double*)nimcp_calloc(max_poly, sizeof(double));
+            double* tmp_b = (double*)nimcp_calloc(max_poly, sizeof(double));
+            double* tmp_a = (double*)nimcp_calloc(max_poly, sizeof(double));
 
             if (!acc_b || !acc_a || !tmp_b || !tmp_a) {
                 nimcp_free(acc_b); nimcp_free(acc_a);
@@ -876,17 +843,17 @@ dsp_filter_t dsp_design_filter(dsp_filter_type_t type, dsp_filter_band_t band,
 
                 /* Convolve acc with section */
                 uint32_t new_len = acc_len + 2;
-                if (new_len > f.order + 1) new_len = f.order + 1;
-                memset(tmp_b, 0, (f.order + 1) * sizeof(double));
-                memset(tmp_a, 0, (f.order + 1) * sizeof(double));
+                if (new_len > max_poly) new_len = max_poly;
+                memset(tmp_b, 0, max_poly * sizeof(double));
+                memset(tmp_a, 0, max_poly * sizeof(double));
                 for (uint32_t i = 0; i < acc_len; i++) {
-                    for (uint32_t j = 0; j < 3 && (i + j) <= f.order; j++) {
+                    for (uint32_t j = 0; j < 3 && (i + j) < max_poly; j++) {
                         tmp_b[i + j] += acc_b[i] * sb[j];
                         tmp_a[i + j] += acc_a[i] * sa[j];
                     }
                 }
-                memcpy(acc_b, tmp_b, (f.order + 1) * sizeof(double));
-                memcpy(acc_a, tmp_a, (f.order + 1) * sizeof(double));
+                memcpy(acc_b, tmp_b, max_poly * sizeof(double));
+                memcpy(acc_a, tmp_a, max_poly * sizeof(double));
                 acc_len = new_len;
             }
 
@@ -1279,8 +1246,11 @@ double* dsp_idwt(const dsp_dwt_result_t* dwt, uint32_t* out_length) {
             return NULL;
         }
 
-        /* Upsample + filter (synthesis) */
-        for (uint32_t i = 0; i < current_len; i++) {
+        /* Upsample + filter (synthesis).
+         * Clamp detail index to detail_len to prevent overread when
+         * current_len (approx) differs from detail_len. */
+        uint32_t max_i = (current_len < detail_len) ? current_len : detail_len;
+        for (uint32_t i = 0; i < max_i; i++) {
             for (uint32_t j = 0; j < filt_len; j++) {
                 uint32_t idx = 2 * i + j;
                 if (idx < out_len) {
@@ -1520,18 +1490,12 @@ double dsp_adaptive_tick(dsp_adaptive_filter_t* filter,
             filter->weights[i] += k[i] * e;
         }
 
-        /* P = (1/lambda) * (P - k * x^T * P) */
+        /* P = (1/lambda) * (P - k * Px^T) — update in-place to avoid OOM risk */
         double inv_lambda = 1.0 / filter->lambda;
-        double* new_P = (double*)nimcp_calloc((size_t)N * N, sizeof(double));
-        if (new_P) {
-            for (uint32_t i = 0; i < N; i++) {
-                for (uint32_t j = 0; j < N; j++) {
-                    double kxP = k[i] * Px[j];
-                    new_P[i * N + j] = inv_lambda * (filter->P[i * N + j] - kxP);
-                }
+        for (uint32_t i = 0; i < N; i++) {
+            for (uint32_t j = 0; j < N; j++) {
+                filter->P[i * N + j] = inv_lambda * (filter->P[i * N + j] - k[i] * Px[j]);
             }
-            memcpy(filter->P, new_P, (size_t)N * N * sizeof(double));
-            nimcp_free(new_P);
         }
 
         nimcp_free(Px);
@@ -1615,7 +1579,9 @@ void dsp_mel_filterbank(const double* spectrum, uint32_t num_bins,
     for (uint32_t i = 0; i < num_points; i++) {
         mel_points[i] = mel_low + (mel_high - mel_low) * (double)i / (double)(num_points - 1);
         hz_points[i] = dsp_mel_to_hz(mel_points[i]);
-        bin_points[i] = (uint32_t)floor(hz_points[i] / (sample_rate / (2.0 * (double)(num_bins - 1))));
+        /* Standard formula: bin = floor((fft_size+1) * f / sr) where fft_size = 2*(num_bins-1) */
+        uint32_t fft_size_est = 2 * (num_bins - 1);
+        bin_points[i] = (uint32_t)floor((double)(fft_size_est + 1) * hz_points[i] / sample_rate);
         if (bin_points[i] >= num_bins) bin_points[i] = num_bins - 1;
     }
 
