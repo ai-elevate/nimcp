@@ -3009,6 +3009,19 @@ unit_math_test_complexity/fast:
 .PHONY : unit_math_test_complexity/fast
 
 #=============================================================================
+# Target rules for targets named unit_math_test_dsp
+
+# Build rule for target.
+unit_math_test_dsp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_math_test_dsp
+.PHONY : unit_math_test_dsp
+
+# fast build rule for target.
+unit_math_test_dsp/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_math_test_dsp.dir/build.make test/CMakeFiles/unit_math_test_dsp.dir/build
+.PHONY : unit_math_test_dsp/fast
+
+#=============================================================================
 # Target rules for targets named unit_math_test_graph_theory
 
 # Build rule for target.
@@ -7336,6 +7349,19 @@ test_information_theory: cmake_check_build_system
 test_information_theory/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_information_theory.dir/build.make test/CMakeFiles/test_information_theory.dir/build
 .PHONY : test_information_theory/fast
+
+#=============================================================================
+# Target rules for targets named test_dsp
+
+# Build rule for target.
+test_dsp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_dsp
+.PHONY : test_dsp
+
+# fast build rule for target.
+test_dsp/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_dsp.dir/build.make test/CMakeFiles/test_dsp.dir/build
+.PHONY : test_dsp/fast
 
 #=============================================================================
 # Target rules for targets named test_cross_engine_coupling
@@ -45679,6 +45705,7 @@ help:
 	@echo "... test_cortical_temporal"
 	@echo "... test_cross_engine_coupling"
 	@echo "... test_dendritic_bioasync"
+	@echo "... test_dsp"
 	@echo "... test_ecology"
 	@echo "... test_electromagnetic"
 	@echo "... test_ema_isfinite_guards"
@@ -46835,6 +46862,7 @@ help:
 	@echo "... unit_lnn_test_lnn_sleep_bridge"
 	@echo "... unit_math_test_combinatorics"
 	@echo "... unit_math_test_complexity"
+	@echo "... unit_math_test_dsp"
 	@echo "... unit_math_test_graph_theory"
 	@echo "... unit_math_test_information_theory"
 	@echo "... unit_math_test_knot_theory"

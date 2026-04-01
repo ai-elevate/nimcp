@@ -150,7 +150,9 @@ void dsp_window(double* out, uint32_t length, dsp_window_type_t type) {
             double alpha = 3.0; /* default beta */
             double mid = N / 2.0;
             double ratio = (n - mid) / mid;
-            out[i] = bessel_i0(alpha * sqrt(1.0 - ratio * ratio)) / bessel_i0(alpha);
+            double arg = 1.0 - ratio * ratio;
+            if (arg < 0.0) arg = 0.0;  /* clamp: edges can exceed [-1,1] */
+            out[i] = bessel_i0(alpha * sqrt(arg)) / bessel_i0(alpha);
             break;
         }
         case DSP_WINDOW_BARTLETT:
@@ -193,7 +195,9 @@ void dsp_apply_window(double* signal, uint32_t length, dsp_window_type_t type) {
             double alpha = 3.0;
             double mid = N / 2.0;
             double ratio = (n - mid) / mid;
-            w = bessel_i0(alpha * sqrt(1.0 - ratio * ratio)) / bessel_i0(alpha);
+            double karg = 1.0 - ratio * ratio;
+            if (karg < 0.0) karg = 0.0;
+            w = bessel_i0(alpha * sqrt(karg)) / bessel_i0(alpha);
             break;
         }
         case DSP_WINDOW_BARTLETT:
@@ -1650,6 +1654,7 @@ void dsp_mel_filterbank(const double* spectrum, uint32_t num_bins,
 void dsp_mfcc(dsp_engine_t* engine, const double* signal, uint32_t length,
                 double sample_rate, double* mfcc_out, uint32_t num_coeffs) {
     if (!engine || !signal || !mfcc_out || length == 0 || num_coeffs == 0) return;
+    memset(mfcc_out, 0, num_coeffs * sizeof(double));  /* zero output first */
 
     uint32_t fft_size = next_power_of_two(length);
     if (fft_size > DSP_MAX_FFT_SIZE) fft_size = DSP_MAX_FFT_SIZE;
@@ -1668,18 +1673,7 @@ void dsp_mfcc(dsp_engine_t* engine, const double* signal, uint32_t length,
         return;
     }
 
-    for (uint32_t i = 0; i < fft_size; i++) {
-        buf[i].re = (i < length) ? signal[i] : 0.0;
-        buf[i].im = 0.0;
-    }
-    dsp_apply_window((double*)buf, length, DSP_WINDOW_HAMMING);
-    /* Re-pack since apply_window works on doubles, not complex */
-    for (uint32_t i = 0; i < fft_size; i++) {
-        /* apply_window modified buf as raw doubles, so we need to reload */
-        /* Actually, just compute windowed signal properly */
-    }
-
-    /* Redo: window then FFT */
+    /* Window the signal, then pack into complex buffer for FFT */
     double* windowed = (double*)nimcp_calloc(fft_size, sizeof(double));
     if (!windowed) {
         nimcp_free(buf);
@@ -1687,9 +1681,8 @@ void dsp_mfcc(dsp_engine_t* engine, const double* signal, uint32_t length,
         nimcp_free(mel_energies);
         return;
     }
-    for (uint32_t i = 0; i < fft_size; i++) {
+    for (uint32_t i = 0; i < fft_size; i++)
         windowed[i] = (i < length) ? signal[i] : 0.0;
-    }
     dsp_apply_window(windowed, length, DSP_WINDOW_HAMMING);
 
     for (uint32_t i = 0; i < fft_size; i++) {

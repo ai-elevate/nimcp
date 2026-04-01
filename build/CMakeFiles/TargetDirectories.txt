@@ -321,6 +321,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_lib_cognitive_test_hierarchical.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_math_test_combinatorics.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_math_test_complexity.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_math_test_dsp.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_math_test_graph_theory.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_math_test_information_theory.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_math_test_knot_theory.dir
@@ -654,6 +655,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_complexity.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_optimization.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_information_theory.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/test_dsp.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_cross_engine_coupling.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_conservation_laws.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_known_formulas.dir

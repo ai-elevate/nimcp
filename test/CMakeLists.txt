@@ -3103,6 +3103,7 @@ add_sim_test(test_knot_theory           unit/math/test_knot_theory.cpp)
 add_sim_test(test_complexity            unit/math/test_complexity.cpp)
 add_sim_test(test_optimization          unit/math/test_optimization.cpp)
 add_sim_test(test_information_theory    unit/math/test_information_theory.cpp)
+add_sim_test(test_dsp                   unit/math/test_dsp.cpp)
 
 # Integration tests (cross-engine coupling)
 add_sim_test(test_cross_engine_coupling integration/world_model/test_cross_engine_coupling.cpp)
