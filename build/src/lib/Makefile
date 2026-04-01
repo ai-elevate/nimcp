@@ -15044,6 +15044,30 @@ __/cognitive/physics/nimcp_astrophysics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_astrophysics.c.s
 .PHONY : __/cognitive/physics/nimcp_astrophysics.c.s
 
+__/cognitive/physics/nimcp_audio_dsp_bridge.o: __/cognitive/physics/nimcp_audio_dsp_bridge.c.o
+.PHONY : __/cognitive/physics/nimcp_audio_dsp_bridge.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_audio_dsp_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_audio_dsp_bridge.c.o
+.PHONY : __/cognitive/physics/nimcp_audio_dsp_bridge.c.o
+
+__/cognitive/physics/nimcp_audio_dsp_bridge.i: __/cognitive/physics/nimcp_audio_dsp_bridge.c.i
+.PHONY : __/cognitive/physics/nimcp_audio_dsp_bridge.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_audio_dsp_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_audio_dsp_bridge.c.i
+.PHONY : __/cognitive/physics/nimcp_audio_dsp_bridge.c.i
+
+__/cognitive/physics/nimcp_audio_dsp_bridge.s: __/cognitive/physics/nimcp_audio_dsp_bridge.c.s
+.PHONY : __/cognitive/physics/nimcp_audio_dsp_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_audio_dsp_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_audio_dsp_bridge.c.s
+.PHONY : __/cognitive/physics/nimcp_audio_dsp_bridge.c.s
+
 __/cognitive/physics/nimcp_biochemistry.o: __/cognitive/physics/nimcp_biochemistry.c.o
 .PHONY : __/cognitive/physics/nimcp_biochemistry.o
 
@@ -57355,6 +57379,9 @@ help:
 	@echo "... __/cognitive/physics/nimcp_astrophysics.o"
 	@echo "... __/cognitive/physics/nimcp_astrophysics.i"
 	@echo "... __/cognitive/physics/nimcp_astrophysics.s"
+	@echo "... __/cognitive/physics/nimcp_audio_dsp_bridge.o"
+	@echo "... __/cognitive/physics/nimcp_audio_dsp_bridge.i"
+	@echo "... __/cognitive/physics/nimcp_audio_dsp_bridge.s"
 	@echo "... __/cognitive/physics/nimcp_biochemistry.o"
 	@echo "... __/cognitive/physics/nimcp_biochemistry.i"
 	@echo "... __/cognitive/physics/nimcp_biochemistry.s"

@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/physics/nimcp_sim_perception_bridge.h"
+#include "cognitive/physics/nimcp_audio_dsp_bridge.h"
 #include "cognitive/physics/nimcp_scene_graph.h"
 #include "cognitive/physics/nimcp_entity_tracker.h"
 #include "cognitive/physics/nimcp_surface_physics.h"
@@ -265,22 +266,31 @@ int spb_render_audio(sim_perception_bridge_t* bridge) {
     for (uint32_t i = 0; i < n; i++)
         buf[i] = spb_clamp(buf[i], -1.0f, 1.0f);
 
-    /* Compute mel-scale features (simplified: power in frequency bands) */
+    /* Compute mel-scale features via proper DSP pipeline:
+     * Hamming window → FFT → |X|² → mel filterbank → log normalize.
+     * Falls back to simple power-in-bins if DSP engine not available. */
     float* mel = bridge->audio.mel_features;
     uint32_t mel_bins = bridge->audio.mel_bins;
-    memset(mel, 0, mel_bins * sizeof(float));
 
-    /* Simple power estimate per mel bin (approximation without full FFT) */
-    uint32_t samples_per_bin = n / mel_bins;
-    if (samples_per_bin == 0) samples_per_bin = 1;
-    for (uint32_t b = 0; b < mel_bins; b++) {
-        float power = 0;
-        uint32_t start = b * samples_per_bin;
-        uint32_t end = start + samples_per_bin;
-        if (end > n) end = n;
-        for (uint32_t i = start; i < end; i++)
-            power += buf[i] * buf[i];
-        mel[b] = sqrtf(power / (float)samples_per_bin);
+    /* Try DSP-based mel extraction (proper spectral analysis) */
+    audio_dsp_bridge_t* adsp = audio_dsp_bridge_create(NULL);
+    if (adsp) {
+        audio_dsp_process(adsp, buf, n, mel);
+        audio_dsp_bridge_destroy(adsp);
+    } else {
+        /* Fallback: simple power estimate per bin */
+        memset(mel, 0, mel_bins * sizeof(float));
+        uint32_t samples_per_bin = n / mel_bins;
+        if (samples_per_bin == 0) samples_per_bin = 1;
+        for (uint32_t b = 0; b < mel_bins; b++) {
+            float power = 0;
+            uint32_t start = b * samples_per_bin;
+            uint32_t end = start + samples_per_bin;
+            if (end > n) end = n;
+            for (uint32_t i = start; i < end; i++)
+                power += buf[i] * buf[i];
+            mel[b] = sqrtf(power / (float)samples_per_bin);
+        }
     }
 
     bridge->stats.sounds_generated++;
