@@ -14948,6 +14948,30 @@ __/cognitive/physics/nimcp_scene_graph.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_scene_graph.c.s
 .PHONY : __/cognitive/physics/nimcp_scene_graph.c.s
 
+__/cognitive/physics/nimcp_sim_perception_bridge.o: __/cognitive/physics/nimcp_sim_perception_bridge.c.o
+.PHONY : __/cognitive/physics/nimcp_sim_perception_bridge.o
+
+# target to build an object file
+__/cognitive/physics/nimcp_sim_perception_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_sim_perception_bridge.c.o
+.PHONY : __/cognitive/physics/nimcp_sim_perception_bridge.c.o
+
+__/cognitive/physics/nimcp_sim_perception_bridge.i: __/cognitive/physics/nimcp_sim_perception_bridge.c.i
+.PHONY : __/cognitive/physics/nimcp_sim_perception_bridge.i
+
+# target to preprocess a source file
+__/cognitive/physics/nimcp_sim_perception_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_sim_perception_bridge.c.i
+.PHONY : __/cognitive/physics/nimcp_sim_perception_bridge.c.i
+
+__/cognitive/physics/nimcp_sim_perception_bridge.s: __/cognitive/physics/nimcp_sim_perception_bridge.c.s
+.PHONY : __/cognitive/physics/nimcp_sim_perception_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/physics/nimcp_sim_perception_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/physics/nimcp_sim_perception_bridge.c.s
+.PHONY : __/cognitive/physics/nimcp_sim_perception_bridge.c.s
+
 __/cognitive/physics/nimcp_surface_chemistry.o: __/cognitive/physics/nimcp_surface_chemistry.c.o
 .PHONY : __/cognitive/physics/nimcp_surface_chemistry.o
 
@@ -56407,6 +56431,9 @@ help:
 	@echo "... __/cognitive/physics/nimcp_scene_graph.o"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.i"
 	@echo "... __/cognitive/physics/nimcp_scene_graph.s"
+	@echo "... __/cognitive/physics/nimcp_sim_perception_bridge.o"
+	@echo "... __/cognitive/physics/nimcp_sim_perception_bridge.i"
+	@echo "... __/cognitive/physics/nimcp_sim_perception_bridge.s"
 	@echo "... __/cognitive/physics/nimcp_surface_chemistry.o"
 	@echo "... __/cognitive/physics/nimcp_surface_chemistry.i"
 	@echo "... __/cognitive/physics/nimcp_surface_chemistry.s"
