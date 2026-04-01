@@ -3490,6 +3490,19 @@ unit_physics_simulation_test_surface_physics/fast:
 .PHONY : unit_physics_simulation_test_surface_physics/fast
 
 #=============================================================================
+# Target rules for targets named unit_physics_simulation_test_world_model_bridges
+
+# Build rule for target.
+unit_physics_simulation_test_world_model_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_physics_simulation_test_world_model_bridges
+.PHONY : unit_physics_simulation_test_world_model_bridges
+
+# fast build rule for target.
+unit_physics_simulation_test_world_model_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_physics_simulation_test_world_model_bridges.dir/build.make test/CMakeFiles/unit_physics_simulation_test_world_model_bridges.dir/build
+.PHONY : unit_physics_simulation_test_world_model_bridges/fast
+
+#=============================================================================
 # Target rules for targets named unit_physics_simulation_test_world_simulator
 
 # Build rule for target.
@@ -6998,6 +7011,19 @@ test_world_simulator: cmake_check_build_system
 test_world_simulator/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_world_simulator.dir/build.make test/CMakeFiles/test_world_simulator.dir/build
 .PHONY : test_world_simulator/fast
+
+#=============================================================================
+# Target rules for targets named test_world_model_bridges
+
+# Build rule for target.
+test_world_model_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_world_model_bridges
+.PHONY : test_world_model_bridges
+
+# fast build rule for target.
+test_world_model_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/test_world_model_bridges.dir/build.make test/CMakeFiles/test_world_model_bridges.dir/build
+.PHONY : test_world_model_bridges/fast
 
 #=============================================================================
 # Target rules for targets named test_chemistry_sim
@@ -45945,6 +45971,7 @@ help:
 	@echo "... test_unification_engine"
 	@echo "... test_visual_processing_e2e"
 	@echo "... test_working_memory_reasoning"
+	@echo "... test_world_model_bridges"
 	@echo "... test_world_simulator"
 	@echo "... test_zeta"
 	@echo "... unit_active_neuron_tracking"
@@ -46982,6 +47009,7 @@ help:
 	@echo "... unit_physics_simulation_test_qft"
 	@echo "... unit_physics_simulation_test_relativistic"
 	@echo "... unit_physics_simulation_test_surface_physics"
+	@echo "... unit_physics_simulation_test_world_model_bridges"
 	@echo "... unit_physics_simulation_test_world_simulator"
 	@echo "... unit_physics_thermodynamics_test_thermodynamics"
 	@echo "... unit_physics_thermodynamics_test_thermodynamics_tls_fix"

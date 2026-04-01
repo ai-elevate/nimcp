@@ -3072,6 +3072,7 @@ add_sim_test(test_astrophysics          unit/physics/simulation/test_astrophysic
 add_sim_test(test_nuclear               unit/physics/simulation/test_nuclear.cpp)
 add_sim_test(test_surface_physics       unit/physics/simulation/test_surface_physics.cpp)
 add_sim_test(test_world_simulator       unit/physics/simulation/test_world_simulator.cpp)
+add_sim_test(test_world_model_bridges   unit/physics/simulation/test_world_model_bridges.cpp)
 
 # Chemistry simulation engine tests
 add_sim_test(test_chemistry_sim         unit/chemistry/simulation/test_chemistry_sim.cpp)

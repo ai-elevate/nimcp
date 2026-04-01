@@ -358,6 +358,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_physics_simulation_test_qft.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_physics_simulation_test_relativistic.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_physics_simulation_test_surface_physics.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_physics_simulation_test_world_model_bridges.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_physics_simulation_test_world_simulator.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_adaptive_test_adaptive.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_plasticity_adaptive_test_adaptive_bioasync.dir
@@ -628,6 +629,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_nuclear.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_surface_physics.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_world_simulator.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/test_world_model_bridges.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_chemistry_sim.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_surface_chemistry.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/test_biochemistry.dir
