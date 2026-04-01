@@ -28,13 +28,15 @@ extern "C" {
  * ============================================================ */
 
 TEST(EnergyConservation, ElasticCollision) {
-    /* Two equal spheres collide head-on with restitution=1.
-     * Total KE must be conserved after collision settles. */
-    auto* phys = intuitive_physics_create(NULL);
+    /* Two equal spheres collide head-on in free space (no ground, no gravity).
+     * With restitution=1 and friction=0, total KE must be conserved. */
+    ip_config_t cfg = intuitive_physics_default_config();
+    cfg.gravity_magnitude = 0;  /* disable gravity for pure elastic test */
+    auto* phys = intuitive_physics_create(&cfg);
     ASSERT_NE(phys, nullptr);
 
     ip_object_t ball_a = {};
-    ball_a.position = {-2.0f, 0.5f, 0.0f};
+    ball_a.position = {-2.0f, 0.0f, 0.0f};
     ball_a.velocity = {1.0f, 0.0f, 0.0f};
     ball_a.mass = 1.0f;
     ball_a.restitution = 1.0f;
@@ -45,22 +47,24 @@ TEST(EnergyConservation, ElasticCollision) {
     ball_a.active = true;
 
     ip_object_t ball_b = ball_a;
-    ball_b.position = {2.0f, 0.5f, 0.0f};
+    ball_b.position = {2.0f, 0.0f, 0.0f};
     ball_b.velocity = {-1.0f, 0.0f, 0.0f};
 
-    intuitive_physics_add_ground(phys);
     intuitive_physics_add_object(phys, &ball_a);
     intuitive_physics_add_object(phys, &ball_b);
 
-    /* Measure initial KE */
+    /* Step once to compute initial KE, then run */
+    intuitive_physics_step(phys, 0.001f);
     ip_stats_t s0 = intuitive_physics_get_stats(phys);
+    float ke0 = s0.total_kinetic_energy;
+    ASSERT_GT(ke0, 0.5f);  /* both balls moving at 1 m/s, mass 1 → KE = 1.0 */
+
     for (int i = 0; i < 1000; i++)
         intuitive_physics_step(phys, 0.01f);
     ip_stats_t s1 = intuitive_physics_get_stats(phys);
 
-    /* KE should be conserved within 10% (numerical dissipation from impulse solver) */
-    float ke0 = s0.total_kinetic_energy > 0 ? s0.total_kinetic_energy : 1.0f;
-    EXPECT_NEAR(s1.total_kinetic_energy, ke0, ke0 * 0.1f);
+    /* KE should be conserved within 5% (no ground friction, no gravity) */
+    EXPECT_NEAR(s1.total_kinetic_energy, ke0, ke0 * 0.05f);
 
     intuitive_physics_destroy(phys);
 }
