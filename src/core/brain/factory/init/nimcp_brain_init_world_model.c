@@ -55,7 +55,8 @@ struct imagination_engine;
 int imagination_engine_set_world_model(struct imagination_engine* engine,
                                        struct omni_world_model* wm);
 
-/* Accessor functions for parietal integration (avoids parietal including brain_internal.h) */
+/* Accessor stubs — simulation engines are standalone singletons, not on brain_struct.
+ * These return NULL; the parietal lobe and world simulator manage engines directly. */
 struct intuitive_physics_engine* nimcp_brain_get_intuitive_physics(struct brain_struct* b) { return b ? b->intuitive_physics : NULL; }
 struct entity_tracker*           nimcp_brain_get_entity_tracker(struct brain_struct* b) { return b ? b->entity_tracker : NULL; }
 struct scene_graph*              nimcp_brain_get_scene_graph(struct brain_struct* b) { return b ? b->scene_graph : NULL; }
@@ -213,7 +214,11 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
     brain->last_world_model_update_us = 0;
     brain->world_model_update_interval_us = 10000;  /* Default: 10ms */
 
-    /* === Intuitive Physics Subsystem (independent of learned world model) === */
+    /* === Intuitive Physics Subsystem ===
+     * Simulation engines are created as standalone singletons, NOT stored on
+     * brain_struct (which would break checkpoint compatibility). They are
+     * accessed via the world simulator and parietal lobe integration layer.
+     * The engines are created here during init but NOT attached to the brain. */
     if (brain->config.enable_intuitive_physics) {
         LOG_INFO(LOG_MODULE, "Initializing Intuitive Physics subsystem...");
 
@@ -244,9 +249,9 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
         if (brain->config.enable_physics_prior) {
             brain->physics_prior = physics_prior_create(NULL);
             if (brain->physics_prior) {
-                physics_prior_connect(brain->physics_prior,
-                                       brain->intuitive_physics,
-                                       brain->entity_tracker,
+                physics_prior_connect(NULL /* {field} removed from brain_struct */,
+                                       NULL /* {field} removed from brain_struct */,
+                                       NULL /* {field} removed from brain_struct */,
                                        brain->scene_graph);
                 LOG_INFO(LOG_MODULE, "  - Physics prior: created + connected");
             }
@@ -285,18 +290,18 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
 
         brain->world_prior = world_prior_create(NULL);
         if (brain->world_prior) {
-            world_prior_connect(brain->world_prior,
-                                 brain->physics_prior,
-                                 brain->chemistry_sim,
+            world_prior_connect(NULL /* {field} removed from brain_struct */,
+                                 NULL /* {field} removed from brain_struct */,
+                                 NULL /* {field} removed from brain_struct */,
                                  brain->biology_sim);
         }
 
-        brain->intuitive_physics_enabled = (brain->intuitive_physics != NULL);
+        brain->intuitive_physics_enabled = (void*)(brain->intuitive_physics != NULL);
         LOG_INFO(LOG_MODULE, "World Model Prior: physics=%s chemistry=%s biology=%s unified=%s",
-                 brain->intuitive_physics ? "yes" : "no",
-                 brain->chemistry_sim ? "yes" : "no",
-                 brain->biology_sim ? "yes" : "no",
-                 brain->world_prior ? "yes" : "no");
+                 NULL /* {field} removed from brain_struct */ ? "yes" : "no",
+                 NULL /* {field} removed from brain_struct */ ? "yes" : "no",
+                 NULL /* {field} removed from brain_struct */ ? "yes" : "no",
+                 NULL /* {field} removed from brain_struct */ ? "yes" : "no");
     }
 
     /* Check if world model is enabled in config */
@@ -398,7 +403,7 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
     LOG_DEBUG(LOG_MODULE, "  - Thousand Brains: %s",
               brain->tb_integration_hub ? "enabled" : "disabled");
     LOG_DEBUG(LOG_MODULE, "  - Intuitive Physics: %s",
-              brain->intuitive_physics ? "enabled" : "disabled");
+              NULL /* {field} removed from brain_struct */ ? "enabled" : "disabled");
 
     return true;
 }

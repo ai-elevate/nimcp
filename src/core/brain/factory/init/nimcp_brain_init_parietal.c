@@ -386,7 +386,7 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
     connect_parietal_to_brain_regions(parietal, brain);
 
     /* 10. World Model Simulation Engines — physics/chemistry/biology grounding */
-    if (brain->intuitive_physics_enabled) {
+    if (brain->config.enable_intuitive_physics) {
         extern int parietal_attach_simulation_engines(parietal_lobe_t* pl,
                                                        struct brain_struct* b);
         if (parietal_attach_simulation_engines(parietal, brain) == 0) {

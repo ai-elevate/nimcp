@@ -1434,9 +1434,9 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_edge_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // Connect world prior to world model trainer (both created by this point)
-    if (brain->world_prior && brain->world_model_trainer) {
+    if (NULL /* {field} removed from brain_struct */ && brain->world_model_trainer) {
         extern void nimcp_wmt_set_world_prior(void* wmt, void* world_prior);
-        nimcp_wmt_set_world_prior(brain->world_model_trainer, brain->world_prior);
+        nimcp_wmt_set_world_prior(brain->world_model_trainer, NULL /* {field} removed from brain_struct */);
     }
 
     // ========================================================================
