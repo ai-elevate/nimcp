@@ -285,6 +285,7 @@ int training_dispatch_snn_step(
     uint32_t input_dim = num_inputs;
 
     if (num_inputs > snn_in) {
+        /* Average-pool down to SNN input dimension */
         pooled_input = nimcp_calloc(snn_in, sizeof(float));
         if (pooled_input) {
             uint32_t stride = num_inputs / snn_in;
@@ -295,6 +296,14 @@ int training_dispatch_snn_step(
                 for (uint32_t j = start; j < end; j++) sum += inputs[j];
                 pooled_input[i] = sum / (float)(end - start);
             }
+            input_ptr = pooled_input;
+            input_dim = snn_in;
+        }
+    } else if (num_inputs < snn_in) {
+        /* Zero-pad up to SNN input dimension */
+        pooled_input = nimcp_calloc(snn_in, sizeof(float));
+        if (pooled_input) {
+            memcpy(pooled_input, inputs, num_inputs * sizeof(float));
             input_ptr = pooled_input;
             input_dim = snn_in;
         }
