@@ -1819,14 +1819,8 @@ struct brain_struct {
     // - Scene graph (support/containment/proximity relations)
     // - Physics prior (constrains learned WM predictions with physical laws)
     //
-    struct intuitive_physics_engine* intuitive_physics;               // Physics simulation engine
-    struct entity_tracker* entity_tracker;                            // Persistent entity tracker
-    struct scene_graph* scene_graph;                                  // Spatial relation graph
-    struct physics_prior* physics_prior;                              // Physics-informed WM prior
-    struct chemistry_sim* chemistry_sim;                              // Chemistry reaction simulator
-    struct biology_sim* biology_sim;                                  // Biology ecosystem simulator
-    struct world_prior* world_prior;                                  // Unified world prior (phys+chem+bio)
-    bool intuitive_physics_enabled;                                   // Enable physics subsystem
+    /* Intuitive physics fields moved to END of struct for checkpoint compatibility.
+     * See lines near 'dynamic_arch' below. */
 
     // === FUZZY LOGIC INTEGRATION ===
     //
@@ -2243,6 +2237,16 @@ struct brain_struct {
     void* contrastive_self;                      // nimcp_contrastive_self_t*
     void* self_curriculum;                       // nimcp_self_curriculum_t*
     void* dynamic_arch;                          // nimcp_dynamic_arch_t*
+
+    // === INTUITIVE PHYSICS SUBSYSTEM (appended at end for checkpoint compat) ===
+    struct intuitive_physics_engine* intuitive_physics;
+    struct entity_tracker* entity_tracker;
+    struct scene_graph* scene_graph;
+    struct physics_prior* physics_prior;
+    struct chemistry_sim* chemistry_sim;
+    struct biology_sim* biology_sim;
+    struct world_prior* world_prior;
+    bool intuitive_physics_enabled;
 };
 
 //=============================================================================
