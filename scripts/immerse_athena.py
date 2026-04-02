@@ -7869,6 +7869,7 @@ def main():
         # Full config via daemon — same as non-daemon but with try/except
         try:
             brain.set_fast_training(False)
+            brain.set_training_mode(True)  # Skip cognitive modules in brain_decide()
             brain.set_task_type("regression")
             brain.enable_biological_plasticity(True)
         except Exception as e:
@@ -7899,7 +7900,9 @@ def main():
     else:
         # --- CRITICAL: Disable fast training → ALL bio subsystems active ---
         brain.set_fast_training(False)
+        brain.set_training_mode(True)  # Skip cognitive modules in brain_decide()
         print("  Fast training: OFF (full biological pipeline)")
+        print("  Training mode: ON (skip cognitive modules in decide())")
 
         # --- CRITICAL: Use regression strategy (raw output, no softmax) ---
         brain.set_task_type("regression")

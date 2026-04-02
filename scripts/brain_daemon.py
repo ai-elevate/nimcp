@@ -642,6 +642,16 @@ class BrainService:
             self.brain.set_fast_training(req["enabled"])
         return {"ok": True}
 
+    def _cmd_set_training_mode(self, req):
+        """Toggle training-mode fast path in brain_decide().
+        When True, brain_decide() skips all cognitive modules (reasoning,
+        imagination, ToM, etc.) — only runs forward pass + label + confidence.
+        Essential during training to avoid SIGSEGV from lazy-init races."""
+        if True:  # RWLock in handle()
+            self.brain.set_training_mode(req["enabled"])
+        logger.info("Training mode: %s", "ON" if req["enabled"] else "OFF")
+        return {"ok": True}
+
     def _cmd_reinit_weights(self, req):
         if True:  # RWLock in handle()
             self.brain.reinit_weights()
@@ -1576,6 +1586,13 @@ def main():
         print("  [6/8] ✓ All 4 cortex CNNs ready", flush=True)
     except Exception as e:
         print(f"  [6/8] ⚠ Cortex CNNs deferred: {e}", flush=True)
+
+    # Enable training-mode fast path: skip cognitive modules in brain_decide()
+    # Without this, brain_decide() runs the full 3000+ line cognitive pipeline
+    # (reasoning, imagination, dialogue, ToM, etc.) which is unnecessary during
+    # training and causes SIGSEGV from lazy-init races under load.
+    brain.set_training_mode(True)
+    print("  [6.5/8] ✓ Training mode: ON (cognitive fast path)", flush=True)
 
     # Create service and daemon
     print("  [7/8] Creating brain service...", flush=True)
