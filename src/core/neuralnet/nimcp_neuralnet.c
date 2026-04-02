@@ -4495,6 +4495,15 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
         uint32_t expected_output = network->config.layer_sizes[network->config.num_layers - 1];
 
         if (input_size != expected_input || output_size != expected_output) {
+            static uint32_t _fwd_mismatch_count = 0;
+            if (_fwd_mismatch_count < 5) {
+                NIMCP_LOGGING_ERROR("neural_network_forward: dimension mismatch — "
+                    "got input=%u (expected %u), output=%u (expected %u), "
+                    "num_layers=%u, num_neurons=%u",
+                    input_size, expected_input, output_size, expected_output,
+                    network->config.num_layers, network->num_neurons);
+                _fwd_mismatch_count++;
+            }
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_forward: validation failed");
             return false;
         }
