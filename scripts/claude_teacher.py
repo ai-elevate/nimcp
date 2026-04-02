@@ -28,7 +28,10 @@ def _get_embed_model():
     # Force CPU for embeddings — GPU VRAM is reserved for nimcp brain training.
     # Text encoding is not the bottleneck; keeping GPU free prevents cudaMalloc
     # crashes during sparse weight upload (Thrust sort needs temp VRAM).
-    _embed_model = SentenceTransformer('BAAI/bge-large-en-v1.5', device='cpu')
+    # PyTorch 2.8+: low_cpu_mem_usage=True (default) uses meta tensors which
+    # crash on .to('cpu'). Disable to use real tensors from the start.
+    _embed_model = SentenceTransformer('BAAI/bge-large-en-v1.5', device='cpu',
+                                       model_kwargs={'low_cpu_mem_usage': False})
     return _embed_model
 
 
