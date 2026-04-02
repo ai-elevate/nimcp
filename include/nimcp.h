@@ -2735,6 +2735,19 @@ void nimcp_shutdown(void);
 void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active);
 
 /**
+ * @brief Eagerly initialize all cognitive subsystems that brain_decide() would lazy-init.
+ *
+ * BRAIN_ENSURE_* macros in brain_decide() are NOT thread-safe. Call this once after
+ * brain load (before concurrent access) to eliminate lazy-init race conditions.
+ * Initializes: working memory, executive, symbolic logic, global workspace,
+ * mirror neurons, glial, theory of mind, ethics, FEP orchestrator.
+ *
+ * @param brain Brain handle
+ * @return Number of subsystems newly initialized (0-9), -1 on error
+ */
+int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain);
+
+/**
  * @brief Enable/disable individual network types for ablation studies
  * @param train_cnn -1 = don't change, 0 = disable, 1 = enable
  * @param train_snn -1 = don't change, 0 = disable, 1 = enable

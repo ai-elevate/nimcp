@@ -6764,6 +6764,12 @@ static PyObject* Brain_set_training_mode_py(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_eager_init_cognitive_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_NONE;
+    int count = nimcp_brain_eager_init_cognitive(self->brain);
+    return PyLong_FromLong(count);
+}
+
 static PyObject* Brain_set_network_ablation_py(BrainObject* self, PyObject* args, PyObject* kwds) {
     if (!self->brain) Py_RETURN_NONE;
     static char* kwlist[] = {"train_cnn", "train_snn", "train_lnn", NULL};
@@ -8497,6 +8503,8 @@ static PyMethodDef Brain_methods[] = {
     // Ablation study support
     {"set_training_mode", (PyCFunction)Brain_set_training_mode_py, METH_VARARGS,
      "Enable/disable training-mode fast path: set_training_mode(active) -> None"},
+    {"eager_init_cognitive", (PyCFunction)Brain_eager_init_cognitive_py, METH_NOARGS,
+     "Eagerly init all cognitive subsystems (thread-safe): eager_init_cognitive() -> int (count)"},
     {"set_network_ablation", (PyCFunction)Brain_set_network_ablation_py,
      METH_VARARGS | METH_KEYWORDS,
      "Enable/disable network types: set_network_ablation(train_cnn=1, train_snn=1, train_lnn=1)"},

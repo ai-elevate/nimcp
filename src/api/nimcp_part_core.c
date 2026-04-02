@@ -3589,6 +3589,38 @@ void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active) {
     brain->internal_brain->config.training_mode_active = active;
 }
 
+int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return -1;
+    brain_t b = brain->internal_brain;
+    int count = 0;
+
+    /* Eagerly initialize all 9 subsystems that BRAIN_ENSURE_* would lazy-init
+     * during brain_decide(). Doing this up front eliminates the thread-safety
+     * hazard: BRAIN_ENSURE_* macros are NOT thread-safe and brain_decide() runs
+     * from the inference thread pool. */
+    extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_executive_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_mirror_neurons(brain_t);
+    extern bool nimcp_brain_factory_init_glial_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t);
+
+    if (!b->working_memory)  { nimcp_brain_factory_init_working_memory_subsystem(b);  if (b->working_memory)  count++; }
+    if (!b->executive)       { nimcp_brain_factory_init_executive_subsystem(b);       if (b->executive)       count++; }
+    if (!b->symbolic_logic)  { nimcp_brain_factory_init_symbolic_logic_subsystem(b);  if (b->symbolic_logic)  count++; }
+    if (!b->global_workspace){ nimcp_brain_factory_init_global_workspace_subsystem(b);if (b->global_workspace)count++; }
+    if (!b->mirror_neurons)  { nimcp_brain_factory_init_mirror_neurons(b);            if (b->mirror_neurons)  count++; }
+    if (!b->glial)           { nimcp_brain_factory_init_glial_subsystem(b);           if (b->glial)           count++; }
+    if (!b->theory_of_mind)  { nimcp_brain_factory_init_theory_of_mind_subsystem(b);  if (b->theory_of_mind)  count++; }
+    if (!b->ethics)          { nimcp_brain_factory_init_ethics_engine_subsystem(b);    if (b->ethics)          count++; }
+    if (!b->fep_orchestrator){ nimcp_brain_factory_init_fep_orchestrator_subsystem(b); if (b->fep_orchestrator) count++; }
+
+    return count;
+}
+
 void nimcp_brain_set_network_ablation(nimcp_brain_t brain,
                                        int train_cnn, int train_snn, int train_lnn) {
     if (!brain || !brain->internal_brain) return;

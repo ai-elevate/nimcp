@@ -1587,12 +1587,16 @@ def main():
     except Exception as e:
         print(f"  [6/8] ⚠ Cortex CNNs deferred: {e}", flush=True)
 
-    # Enable training-mode fast path: skip cognitive modules in brain_decide()
-    # Without this, brain_decide() runs the full 3000+ line cognitive pipeline
-    # (reasoning, imagination, dialogue, ToM, etc.) which is unnecessary during
-    # training and causes SIGSEGV from lazy-init races under load.
-    brain.set_training_mode(True)
-    print("  [6.5/8] ✓ Training mode: ON (cognitive fast path)", flush=True)
+    # Eagerly initialize all cognitive subsystems that brain_decide() would
+    # lazy-init via BRAIN_ENSURE_* macros. Those macros are NOT thread-safe,
+    # but brain_decide() runs from the inference thread pool. By initializing
+    # everything up front (single-threaded), we eliminate the race condition
+    # and keep the full cognitive pipeline active during training.
+    try:
+        count = brain.eager_init_cognitive()
+        print(f"  [6.5/8] ✓ Eager cognitive init: {count} subsystems created", flush=True)
+    except Exception as e:
+        print(f"  [6.5/8] ⚠ Eager cognitive init failed: {e} (non-fatal)", flush=True)
 
     # Create service and daemon
     print("  [7/8] Creating brain service...", flush=True)
