@@ -745,6 +745,7 @@ uint32_t neural_network_apply_reward_learning_active(neural_network_t network, f
     /* Phase 2: Set outgoing synapse traces for active neurons only */
     for (uint32_t i = 0; i < num_active; i++) {
         uint32_t n = active_ids[i];
+        if (n >= network->num_neurons) continue;  /* stale index guard */
         float activity = fabsf(network->neurons[n].state);
         neuron_t* neuron = &network->neurons[n];
         uint32_t out_count = NEURON_OUT_COUNT(neuron);

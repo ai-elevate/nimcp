@@ -421,7 +421,7 @@ int training_dispatch_snn_step(
                 snn_network_get_outputs(snn, predictions, snn_out);
 
                 // Get membrane potentials from output population neurons
-                if (snn->output_pop && snn->neural_net) {
+                if (snn->output_pop && snn->neural_net && snn->output_pop->neuron_ids) {
                     for (uint32_t i = 0; i < grad_dim && i < snn->output_pop->n_neurons; i++) {
                         neuron_t* n = neural_network_get_neuron(
                             snn->neural_net, snn->output_pop->neuron_ids[i]);
@@ -441,7 +441,7 @@ int training_dispatch_snn_step(
                 snn_surrogate_backward(ctx, output_grad, membrane_v, grad_dim, input_grad);
 
                 // Apply surrogate gradients to output population synapse weights
-                if (snn->output_pop && snn->neural_net) {
+                if (snn->output_pop && snn->neural_net && snn->output_pop->neuron_ids) {
                     float lr = snn->config.learning_rate;
                     if (lr <= 0.0f) lr = 0.001f;
                     for (uint32_t i = 0; i < grad_dim && i < snn->output_pop->n_neurons; i++) {

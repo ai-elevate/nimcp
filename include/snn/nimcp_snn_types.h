@@ -72,7 +72,7 @@ extern "C" {
 #define SNN_MAX_POPULATIONS 64
 
 /** Maximum spike buffer size per neuron */
-#define SNN_SPIKE_BUFFER_SIZE 256
+#define SNN_SPIKE_BUFFER_SIZE 1024  /* was 256 — 4× larger to reduce overflow pressure on 2.5M neuron brains */
 
 /** Default simulation timestep (ms) */
 #define SNN_DT_DEFAULT 0.1f

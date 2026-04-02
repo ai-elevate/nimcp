@@ -11790,3 +11790,43 @@ Thu Apr  2 02:06:41 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Ex
 Thu Apr  2 02:06:41 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 Thu Apr  2 02:07:15 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
 Thu Apr  2 02:07:15 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-02 02:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6158m old
+[2026-04-02 02:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6163m old
+[2026-04-02 02:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6168m old
+[2026-04-02 02:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6173m old
+[2026-04-02 02:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6178m old
+[2026-04-02 02:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6183m old
+[2026-04-02 02:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:40:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6188m old
+Thu Apr  2 02:40:28 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  2 02:40:28 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Apr  2 02:40:32 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  2 02:40:32 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Apr  2 02:40:54 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  2 02:40:54 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-02 02:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:45:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6193m old
+[2026-04-02 02:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:50:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6198m old
+[2026-04-02 02:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 02:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6203m old
+[2026-04-02 03:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 03:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6208m old
+[2026-04-02 03:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6213m old
+Thu Apr  2 03:07:40 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  2 03:07:40 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Apr  2 03:07:44 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  2 03:07:44 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Apr  2 03:08:06 AM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  2 03:08:06 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-02 03:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 03:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6218m old
+[2026-04-02 03:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 03:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6223m old
+[2026-04-02 03:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-02 03:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 6228m old

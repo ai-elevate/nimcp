@@ -2238,7 +2238,14 @@ struct brain_struct {
     void* self_curriculum;                       // nimcp_self_curriculum_t*
     void* dynamic_arch;                          // nimcp_dynamic_arch_t*
 
-    // === INTUITIVE PHYSICS SUBSYSTEM (appended at end for checkpoint compat) ===
+    /* === WORLD MODEL SIMULATION ENGINES ===
+     * These are appended at the END of the struct to preserve checkpoint
+     * compatibility. The checkpoint loader reads sizeof(brain_struct) bytes
+     * from the file — appending new fields means the old fields are read
+     * correctly, and the new fields are zero-initialized (NULL pointers).
+     * The brain init code then creates these engines after checkpoint load.
+     *
+     * CRITICAL: NEVER add fields BEFORE this section. New fields go HERE. */
     struct intuitive_physics_engine* intuitive_physics;
     struct entity_tracker* entity_tracker;
     struct scene_graph* scene_graph;
@@ -2247,6 +2254,7 @@ struct brain_struct {
     struct biology_sim* biology_sim;
     struct world_prior* world_prior;
     bool intuitive_physics_enabled;
+    uint8_t _pad_checkpoint[7];  /* pad bool to 8 bytes for alignment */
 };
 
 //=============================================================================
