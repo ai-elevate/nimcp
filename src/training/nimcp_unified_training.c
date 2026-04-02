@@ -1085,10 +1085,11 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             }
         }
 
-        /* Adapt input dimensions (average-pool) */
+        /* Adapt input dimensions: pool down or zero-pad up */
         uint32_t net_in_dim = net->ops->get_input_dim(net->ctx);
         float* adapted_input = NULL;
         if (net_in_dim > 0 && net_input_dim > net_in_dim) {
+            /* Average-pool down */
             adapted_input = (float*)nimcp_calloc(net_in_dim, sizeof(float));
             if (adapted_input) {
                 float ratio = (float)net_input_dim / (float)net_in_dim;
@@ -1103,6 +1104,17 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
                     }
                     adapted_input[j] = sum / (float)(end - start);
                 }
+                if (net_input != input) {
+                    nimcp_free((void*)net_input);
+                }
+                net_input = adapted_input;
+                net_input_dim = net_in_dim;
+            }
+        } else if (net_in_dim > 0 && net_input_dim < net_in_dim) {
+            /* Zero-pad up */
+            adapted_input = (float*)nimcp_calloc(net_in_dim, sizeof(float));
+            if (adapted_input) {
+                memcpy(adapted_input, net_input, net_input_dim * sizeof(float));
                 if (net_input != input) {
                     nimcp_free((void*)net_input);
                 }

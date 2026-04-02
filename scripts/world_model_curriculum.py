@@ -526,6 +526,11 @@ class WorldModelCurriculum:
         for state, action, next_state in transitions:
             features = state + action
             target = next_state
+            # Pad to brain input dim (1024) — raw sim states are 3-9 floats
+            if len(features) < 1024:
+                features = features + [0.0] * (1024 - len(features))
+            if len(target) < 1024:
+                target = target + [0.0] * (1024 - len(target))
             try:
                 self.brain.learn_vector(features, target, label=domain_label)
                 fed += 1
