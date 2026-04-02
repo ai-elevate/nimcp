@@ -8108,7 +8108,10 @@ def main():
         run_stage_0(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage0_stimuli,
                     start_from=start_step if start_stage == 0 else 0)
-        start_step = 0  # Reset for next stage
+        start_step = 0
+        # Save checkpoint at stage transition so --resume skips completed stages
+        _save_checkpoint(brain, decoder, stage=1, step=0)
+        print("  [Checkpoint] Stage 0 complete → saved as stage 1, step 0")
 
     if start_stage <= 1:
         training_progress[0], training_progress[1] = 1, 0
@@ -8116,6 +8119,8 @@ def main():
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
         start_step = 0
+        _save_checkpoint(brain, decoder, stage=2, step=0)
+        print("  [Checkpoint] Stage 1 complete → saved as stage 2, step 0")
 
     if start_stage <= 2:
         training_progress[0], training_progress[1] = 2, 0
@@ -8127,6 +8132,8 @@ def main():
             print(f"\n  Stage 2 complete — final mean loss: "
                   f"{np.mean(stage2_losses[-500:]):.4f}")
         start_step = 0
+        _save_checkpoint(brain, decoder, stage=3, step=0)
+        print("  [Checkpoint] Stage 2 complete → saved as stage 3, step 0")
 
     if start_stage <= 3:
         training_progress[0], training_progress[1] = 3, 0
