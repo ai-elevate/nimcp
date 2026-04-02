@@ -18,6 +18,7 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 _embed_model = None
+_use_onnx = None  # None = not checked, True/False = checked
 
 
 def _get_embed_model():
@@ -26,8 +27,6 @@ def _get_embed_model():
         return _embed_model
     from sentence_transformers import SentenceTransformer
     # Force CPU for embeddings — GPU VRAM is reserved for nimcp brain training.
-    # Text encoding is not the bottleneck; keeping GPU free prevents cudaMalloc
-    # crashes during sparse weight upload (Thrust sort needs temp VRAM).
     # PyTorch 2.8+: low_cpu_mem_usage=True (default) uses meta tensors which
     # crash on .to('cpu'). Disable to use real tensors from the start.
     _embed_model = SentenceTransformer('BAAI/bge-large-en-v1.5', device='cpu',
@@ -35,29 +34,57 @@ def _get_embed_model():
     return _embed_model
 
 
+def _try_onnx():
+    """Try ONNX encoder first — faster and avoids loading PyTorch."""
+    global _use_onnx
+    if _use_onnx is not None:
+        return _use_onnx
+    try:
+        from onnx_encoder import encode_text as _onnx_encode
+        # Smoke test
+        _onnx_encode("test")
+        _use_onnx = True
+        logger.info("Using ONNX encoder (faster, no PyTorch overhead)")
+    except Exception as e:
+        _use_onnx = False
+        logger.info("ONNX encoder unavailable (%s), falling back to SentenceTransformer", e)
+    return _use_onnx
+
+
 _encode_cache = {}
 _ENCODE_CACHE_MAX = 10000
 
 def encode_text(text: str):
-    """Encode text to 1024-dim embedding using sentence-transformers (BAAI/bge-large-en-v1.5).
+    """Encode text to 1024-dim embedding.
 
-    Caches results — same text returns cached embedding instantly (~0.001ms vs ~50ms).
-    Cache holds up to 10,000 entries (covers full training vocabulary).
+    Prefers ONNX encoder (GPU-accelerated, no PyTorch). Falls back to
+    SentenceTransformer if ONNX is unavailable.
+    Caches results — same text returns cached embedding instantly.
     """
     import numpy as np
     if text in _encode_cache:
-        return _encode_cache[text].copy()  # Return copy to prevent mutation
-    model = _get_embed_model()
-    emb = model.encode(text, convert_to_numpy=True)
-    result = np.asarray(emb, dtype=np.float32).ravel()
+        return _encode_cache[text].copy()
+
+    if _try_onnx():
+        from onnx_encoder import encode_text as onnx_encode
+        result = onnx_encode(text)
+    else:
+        model = _get_embed_model()
+        emb = model.encode(text, convert_to_numpy=True)
+        result = np.asarray(emb, dtype=np.float32).ravel()
+
     if len(_encode_cache) < _ENCODE_CACHE_MAX:
         _encode_cache[text] = result.copy()
     return result
 
 
 def batch_encode_texts(texts):
-    """Batch-encode multiple texts to 1024-dim embeddings — ~10x faster than encoding one-at-a-time."""
+    """Batch-encode multiple texts to 1024-dim embeddings."""
     import numpy as np
+    if _try_onnx():
+        from onnx_encoder import encode_batch as onnx_batch
+        embs = onnx_batch(texts)
+        return [np.asarray(e, dtype=np.float32).ravel() for e in embs]
     model = _get_embed_model()
     embs = model.encode(texts, convert_to_numpy=True, batch_size=64)
     return [np.asarray(e, dtype=np.float32).ravel() for e in embs]

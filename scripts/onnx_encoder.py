@@ -45,10 +45,16 @@ def encode_text(text: str, max_length: int = 128) -> np.ndarray:
     _init()
     tokens = _tokenizer(text, return_tensors='np', padding='max_length',
                         max_length=max_length, truncation=True)
-    result = _session.run(None, {
+    feeds = {
         'input_ids': tokens['input_ids'].astype(np.int64),
-        'attention_mask': tokens['attention_mask'].astype(np.int64)
-    })
+        'attention_mask': tokens['attention_mask'].astype(np.int64),
+    }
+    # BGE ONNX model requires token_type_ids (all zeros for single-sequence)
+    if 'token_type_ids' in tokens:
+        feeds['token_type_ids'] = tokens['token_type_ids'].astype(np.int64)
+    else:
+        feeds['token_type_ids'] = np.zeros_like(tokens['input_ids'], dtype=np.int64)
+    result = _session.run(None, feeds)
     # CLS token embedding (BGE convention)
     emb = result[0][0, 0, :].astype(np.float32)
     # L2 normalize (matches sentence-transformers default)
@@ -66,10 +72,15 @@ def encode_batch(texts: list, max_length: int = 128) -> np.ndarray:
     _init()
     tokens = _tokenizer(texts, return_tensors='np', padding='max_length',
                         max_length=max_length, truncation=True)
-    result = _session.run(None, {
+    feeds = {
         'input_ids': tokens['input_ids'].astype(np.int64),
-        'attention_mask': tokens['attention_mask'].astype(np.int64)
-    })
+        'attention_mask': tokens['attention_mask'].astype(np.int64),
+    }
+    if 'token_type_ids' in tokens:
+        feeds['token_type_ids'] = tokens['token_type_ids'].astype(np.int64)
+    else:
+        feeds['token_type_ids'] = np.zeros_like(tokens['input_ids'], dtype=np.int64)
+    result = _session.run(None, feeds)
     # CLS token for each item
     embs = result[0][:, 0, :].astype(np.float32)
     # L2 normalize each
