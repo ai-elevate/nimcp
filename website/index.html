@@ -603,8 +603,8 @@
                 <div class="training-grid">
                     <div class="training-metric" onclick="openModal('metric_stage')" style="cursor:pointer" title="Click for details">
                         <div class="label">Stage / Step</div>
-                        <div class="value" id="m-stage">1 / 4</div>
-                        <div class="label" style="margin-top:4px" id="m-step">Step ~7,550 / 20,000</div>
+                        <div class="value" id="m-stage">Loading...</div>
+                        <div class="label" style="margin-top:4px" id="m-step">—</div>
                     </div>
                     <div class="training-metric" onclick="openModal('metric_ann')" style="cursor:pointer" title="Click for details">
                         <div class="label">ANN Loss</div>
@@ -1334,10 +1334,13 @@ brain.learn_vector(features, target, label='hello world')
         }
 
         // Update stage display
-        if (d.current_stage) {
-            el('m-stage').textContent = d.current_stage + ' / 4';
-            const total = d.current_stage >= 2 ? 40000 : 20000;
-            if (d.current_step) {
+        if (d.current_stage !== undefined) {
+            const stageNames = {0: 'Sensory', 1: 'Naming', 2: 'Relations', 3: 'Dialogue'};
+            const stageName = stageNames[d.current_stage] || '';
+            el('m-stage').textContent = d.current_stage + ' / 4' + (stageName ? ' — ' + stageName : '');
+            const totals = {0: 20000, 1: 40000, 2: 40000, 3: 30000};
+            const total = totals[d.current_stage] || 40000;
+            if (d.current_step !== undefined) {
                 el('m-step').textContent = 'Step ' + d.current_step.toLocaleString() + ' / ' + total.toLocaleString();
             }
         }

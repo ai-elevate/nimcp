@@ -101,36 +101,48 @@ def collect():
     except Exception:
         pass
 
-    # Stage 2 dashboard metrics — read from training log tail
+    # Stage 2 dashboard metrics — combine daemon queries + training log parsing
     stage = metrics.get('current_stage', 0)
     if stage >= 2:
+        s2 = {}
+        s2['active_engines'] = 74  # 56 sim + 18 math engines
+
+        # Live metrics from daemon
+        r = query('get_network_metrics', 15)
+        if r:
+            m = r.get('metrics', r)
+            # FEP free energy from FNO/HNN metrics
+            if m.get('hnn_energy'):
+                s2['fep_free_energy'] = m.get('hnn_energy_deviation', 0)
+
+        # Parse training log for stage 2 progress
         try:
-            # Parse last progress line from training log
             result = subprocess.run(
                 ['ssh', 'root@74.2.96.55', '-p', '11008',
                  '-i', os.path.expanduser('~/.ssh/id_ed25519_runpod'),
                  '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no',
-                 'grep -E "Stage 2.*fact_ratio|COLLAPSE|World Model|Warm Start" '
-                 '/workspace/nimcp/training.log | tail -5'],
+                 'tail -200 /workspace/nimcp/training.log | '
+                 'grep -E "fact_ratio|COLLAPSE|World Model|Warm Start|domain="'],
                 capture_output=True, text=True, timeout=10)
-            s2 = {}
+            import re
             for line in result.stdout.strip().split('\n'):
                 if 'fact_ratio=' in line:
-                    import re
                     fr = re.search(r'fact_ratio=(\d+)%', line)
                     if fr: s2['fact_ratio'] = int(fr.group(1)) / 100.0
+                if 'domain=' in line:
+                    dm = re.search(r'domain=(\w+)', line)
+                    if dm: s2['current_domain'] = dm.group(1)
                 if 'COLLAPSE' in line.upper():
                     s2['collapse_events'] = s2.get('collapse_events', 0) + 1
                 if 'Warm Start' in line and 'Complete' in line:
                     s2['warm_start_complete'] = True
                 if 'World Model' in line:
-                    import re
                     wm = re.search(r'(\d+) transitions', line)
                     if wm: s2['wm_steps'] = int(wm.group(1))
-            s2['active_engines'] = 57  # we know this from the build
-            metrics['stage2'] = s2
         except Exception:
             pass
+
+        metrics['stage2'] = s2
 
     return metrics
 
