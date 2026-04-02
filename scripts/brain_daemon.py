@@ -869,6 +869,11 @@ class BrainService:
             self.brain.enable_world_model(req.get("enabled", True))
         return {"ok": True}
 
+    def _cmd_enable_world_model_bridge(self, req):
+        if True:  # RWLock in handle()
+            self.brain.enable_world_model_bridge(req.get("enabled", True))
+        return {"ok": True}
+
     def _cmd_enable_mixed_precision(self, req):
         if True:  # RWLock in handle()
             self.brain.enable_mixed_precision(req.get("enabled", True))
