@@ -662,55 +662,55 @@
 
                 <!-- Stage 2 Dashboard -->
                 <div id="stage2-dashboard" style="display:none; margin-top:20px; padding:16px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1)">
-                    <h4 style="margin:0 0 12px; color:var(--blue)">📊 Stage 2 Domain Dashboard</h4>
+                    <h4 style="margin:0 0 12px; color:var(--blue)">Stage 2 — Relations &amp; World Model</h4>
                     <div class="training-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))">
-                        <div class="training-metric">
+                        <div class="training-metric" onclick="openModal('s2_domain')" style="cursor:pointer" title="Click for details">
                             <div class="label">Current Domain</div>
                             <div class="value" id="m-domain" style="font-size:0.95em">—</div>
                         </div>
-                        <div class="training-metric">
+                        <div class="training-metric" onclick="openModal('s2_fact_ratio')" style="cursor:pointer" title="Click for details">
                             <div class="label">Fact Ratio</div>
                             <div class="value" id="m-fact-ratio">—</div>
                         </div>
-                        <div class="training-metric">
+                        <div class="training-metric" onclick="openModal('s2_warmstart')" style="cursor:pointer" title="Click for details">
                             <div class="label">Warm Start</div>
                             <div class="value" id="m-warmstart">—</div>
                         </div>
-                        <div class="training-metric">
-                            <div class="label">Surprises Stored</div>
-                            <div class="value" id="m-surprises">—</div>
+                        <div class="training-metric" onclick="openModal('s2_engines')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Sim Engines</div>
+                            <div class="value" id="m-engines">—</div>
                         </div>
-                        <div class="training-metric">
-                            <div class="label">Replays Done</div>
-                            <div class="value" id="m-replays">—</div>
-                        </div>
-                        <div class="training-metric">
-                            <div class="label">Collapse Events</div>
-                            <div class="value" id="m-collapse">0</div>
-                        </div>
-                        <div class="training-metric">
-                            <div class="label">Physics LR</div>
-                            <div class="value" id="m-lr-phys">—</div>
-                        </div>
-                        <div class="training-metric">
-                            <div class="label">Chemistry LR</div>
-                            <div class="value" id="m-lr-chem">—</div>
-                        </div>
-                        <div class="training-metric">
-                            <div class="label">Biology LR</div>
-                            <div class="value" id="m-lr-bio">—</div>
-                        </div>
-                        <div class="training-metric">
+                        <div class="training-metric" onclick="openModal('s2_fep')" style="cursor:pointer" title="Click for details">
                             <div class="label">FEP Free Energy</div>
                             <div class="value" id="m-fep-fe">—</div>
                         </div>
-                        <div class="training-metric">
+                        <div class="training-metric" onclick="openModal('s2_wm')" style="cursor:pointer" title="Click for details">
                             <div class="label">World Model Steps</div>
                             <div class="value" id="m-wm-steps">—</div>
                         </div>
-                        <div class="training-metric">
-                            <div class="label">Sim Engines Active</div>
-                            <div class="value" id="m-engines">—</div>
+                        <div class="training-metric" onclick="openModal('s2_collapse')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Collapse Events</div>
+                            <div class="value" id="m-collapse">0</div>
+                        </div>
+                        <div class="training-metric" onclick="openModal('s2_surprises')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Surprises</div>
+                            <div class="value" id="m-surprises">—</div>
+                        </div>
+                        <div class="training-metric" onclick="openModal('s2_replays')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Replays</div>
+                            <div class="value" id="m-replays">—</div>
+                        </div>
+                        <div class="training-metric" onclick="openModal('s2_lr_phys')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Physics LR</div>
+                            <div class="value" id="m-lr-phys">—</div>
+                        </div>
+                        <div class="training-metric" onclick="openModal('s2_lr_chem')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Chemistry LR</div>
+                            <div class="value" id="m-lr-chem">—</div>
+                        </div>
+                        <div class="training-metric" onclick="openModal('s2_lr_bio')" style="cursor:pointer" title="Click for details">
+                            <div class="label">Biology LR</div>
+                            <div class="value" id="m-lr-bio">—</div>
                         </div>
                     </div>
                 </div>
@@ -1211,6 +1211,110 @@ brain.learn_vector(features, target, label='hello world')
                     <li><strong>BPE-Style Tokenizer</strong> — Hash-table-backed vocabulary with brain-aware embedding learning. The tokenizer grows during training as the brain encounters new concepts.</li>
                 </ul>
                 <p>The vocabulary is expected to reach <span class="highlight">2,000-5,000 tokens</span> by the end of Stage 3. Whether the emergent language develops sufficient structure for meaningful communication is an open research question.</p>
+            `
+        },
+        s2_domain: {
+            title: 'Current Training Domain',
+            body: `
+                <p>Stage 2 trains across <span class="highlight">24 knowledge domains</span>, cycling through them in 10-fact batches. The current domain shows which subject area Athena is learning right now.</p>
+                <p>Domains include: physics, chemistry, biology, mathematics, history, geography, music, art, emotions, social, ethics, logic, language, astronomy, ecology, weather, cooking, sports, technology, medicine, law, economics, philosophy, and psychology.</p>
+                <p>Each domain has its own learning rate scaling factor to balance difficulty — abstract domains (philosophy, ethics) get higher learning rates because they're harder to ground in sensory experience.</p>
+            `
+        },
+        s2_fact_ratio: {
+            title: 'Fact Ratio — Curriculum Difficulty',
+            body: `
+                <p><strong>What this number means:</strong> The percentage of training examples that are factual (text descriptions with target embeddings) versus sensory (raw images, audio, touch). Higher = more abstract learning.</p>
+                <p><strong>Warm start ramp:</strong> Stage 2 begins with a 500-step warm start where the fact ratio ramps from 10% to 60%. This prevents catastrophic forgetting of Stage 1's sensory representations by gradually introducing abstract content.</p>
+                <p>After warm start: 60% facts, 40% sensory. This ratio ensures the brain maintains grounded sensory representations while building higher-order conceptual knowledge.</p>
+            `
+        },
+        s2_warmstart: {
+            title: 'Warm Start — Gradual Transition',
+            body: `
+                <p>Stage 2 uses a <span class="highlight">500-step warm start ramp</span> to transition from Stage 1's sensory-dominant curriculum to Stage 2's fact-heavy curriculum.</p>
+                <p>During warm start, the fact ratio linearly increases from 10% to 60%, the learning rate is reset to its initial value (preventing stale momentum from Stage 1), and per-domain learning rate scaling is gradually introduced.</p>
+                <p><strong>Why:</strong> Abruptly switching from sensory to factual training causes mode collapse — the sudden distribution shift overwhelms the network's learned representations. The warm start provides a smooth transition.</p>
+            `
+        },
+        s2_engines: {
+            title: 'Simulation Engines — World Knowledge',
+            body: `
+                <p>NIMCP has <span class="highlight">74 simulation engines</span> that provide ground-truth world knowledge:</p>
+                <ul>
+                    <li><strong>56 science engines</strong> — Newtonian/relativistic physics, EM, MHD, fluid dynamics, thermodynamics, acoustics, optics, nuclear, condensed matter, surface physics/chemistry, bulk chemistry, biochemistry, molecular biology, organic chemistry, chemical engineering, astrophysics, particle physics, QED, biology, ecology, immunology, neuroscience, and more.</li>
+                    <li><strong>18 math engines</strong> — Number theory, algebra, real analysis, topology, graph theory, combinatorics, logic, linear algebra, probability, numerical methods, optimization, information theory, game theory, category theory, complexity theory, zeta functions, knot theory, DSP.</li>
+                </ul>
+                <p>These engines don't just store facts — they <em>simulate</em> physical processes. When the brain predicts "a ball falls," the physics engine verifies the trajectory using Newtonian mechanics. Prediction errors from the engines drive surprise signals that strengthen memory encoding.</p>
+                <p>The engines feed into the brain's <strong>world prior</strong>, which constrains predictions to be physically/chemically/biologically plausible.</p>
+            `
+        },
+        s2_fep: {
+            title: 'FEP Free Energy — Prediction Error',
+            body: `
+                <p>The <span class="highlight">Free Energy Principle</span> (Karl Friston) states that intelligent systems minimize surprise by maintaining accurate internal models of the world.</p>
+                <p><strong>What this number means:</strong> The deviation of the Hamiltonian energy function from its initial value. In a perfectly predictive system, free energy is zero — every observation matches the brain's prediction. Higher values mean the brain is encountering surprising inputs it can't yet predict.</p>
+                <p><strong>During Stage 2:</strong> Free energy should start high (many surprising facts) and decrease as the brain builds accurate world models. Spikes indicate the introduction of a new domain or particularly surprising facts.</p>
+                <p>The FEP orchestrates learning across all subsystems: high free energy → increase learning rate, allocate more attention, encode to memory. Low free energy → coast on existing representations.</p>
+            `
+        },
+        s2_wm: {
+            title: 'World Model Steps',
+            body: `
+                <p>The <span class="highlight">world model</span> maintains an internal simulation of the environment. Each step: predict the next state → observe the actual state → compute prediction error → update the model.</p>
+                <p>The world model bridges connect to the 74 simulation engines through a predict→verify→surprise→replay loop. When the brain predicts something that violates physics (a ball floating upward), the simulation engine detects the violation, generates a surprise signal, and the experience is replayed for accelerated learning.</p>
+                <p>World model steps accumulate as the brain makes predictions about domain-specific scenarios during Stage 2 training.</p>
+            `
+        },
+        s2_collapse: {
+            title: 'Mode Collapse Events',
+            body: `
+                <p><strong>Mode collapse</strong> occurs when the brain produces nearly identical outputs regardless of input — all neurons converge to the same activation pattern, destroying learned representations.</p>
+                <p>Stage 2 has two collapse detectors:</p>
+                <ul>
+                    <li><strong>Full probe</strong> (every 100 steps) — Measures cosine similarity between outputs for different inputs. &gt;0.99 = collapsed.</li>
+                    <li><strong>Fast detector</strong> (every 10 steps) — Checks if consecutive outputs are identical (&gt;0.995 similarity for 5 consecutive checks).</li>
+                </ul>
+                <p><strong>Recovery:</strong> On detection, the system applies an LR spike (10x for 5 steps) + diversity injection (random noise to break symmetry). If collapse persists for 3 consecutive detections, training halts for investigation.</p>
+                <p><strong>Ideal value: 0.</strong> Any non-zero value means the network lost diversity at some point and had to be rescued.</p>
+            `
+        },
+        s2_surprises: {
+            title: 'Surprises Stored — Novelty Detection',
+            body: `
+                <p>When the brain encounters an input that significantly violates its predictions (loss &gt; 3x the EMA), it's marked as <span class="highlight">surprising</span> and encoded as a memory engram for later replay.</p>
+                <p>Surprises drive learning — the brain preferentially remembers and revisits things it got wrong. This is biologically inspired by the dopaminergic reward prediction error signal.</p>
+                <p>The world model bridges amplify this: a physics violation (ball going through a wall) generates a much stronger surprise signal than a simple prediction miss.</p>
+            `
+        },
+        s2_replays: {
+            title: 'Memory Replays — Hippocampal Consolidation',
+            body: `
+                <p>Replays are training steps where the brain revisits <span class="highlight">previously stored surprising experiences</span> rather than processing new input. This is analogous to hippocampal replay during sleep in biological brains.</p>
+                <p>The BPTT (Backpropagation Through Time) buffer stores the last N training examples with exponentially discounted learning rates, allowing the network to learn temporal dependencies across recent experience.</p>
+                <p>Additionally, the world model bridge triggers replays when a prediction error exceeds a threshold — replaying the surprising event multiple times to accelerate learning of the violated constraint.</p>
+            `
+        },
+        s2_lr_phys: {
+            title: 'Physics Learning Rate',
+            body: `
+                <p>Each knowledge domain has its own <span class="highlight">per-domain learning rate scaling factor</span>. The physics LR controls how aggressively the brain updates weights when processing physics-related training examples.</p>
+                <p><strong>Why per-domain LR:</strong> Different domains have different inherent difficulties. Physics concepts (force, gravity, energy) are relatively easy to ground in sensory experience (the brain has seen things fall). Abstract domains need higher LRs because they're harder to learn from examples alone.</p>
+                <p>The domain LR multiplies the base learning rate: effective_lr = base_lr × domain_scale × memory_factor.</p>
+            `
+        },
+        s2_lr_chem: {
+            title: 'Chemistry Learning Rate',
+            body: `
+                <p>Per-domain learning rate for chemistry training examples. Chemistry is more abstract than physics — reactions, bonds, and molecular structures aren't directly observable through sensory input.</p>
+                <p>The chemistry simulation engines (bulk chemistry, physical chemistry, organic chemistry, biochemistry, chemical engineering) provide ground-truth verification of predictions, but the concepts require more training iterations to learn.</p>
+            `
+        },
+        s2_lr_bio: {
+            title: 'Biology Learning Rate',
+            body: `
+                <p>Per-domain learning rate for biology training examples. Biology spans from concrete (anatomy, organism behaviour) to highly abstract (evolution, ecology, genetics).</p>
+                <p>The biology simulation engines (cell biology, molecular biology, immunology, neuroscience, ecology, evolutionary biology, physiology) provide multi-scale verification from molecular to ecosystem level.</p>
             `
         }
     };
