@@ -3594,20 +3594,103 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     brain_t b = brain->internal_brain;
     int count = 0;
 
-    /* Run the full factory init sequence — all 27 waves in dependency order.
-     * This initializes ALL 300+ subsystems that the brain needs. The factory
-     * functions are idempotent: they check if the subsystem already exists
-     * and skip if so. This replaces the hand-coded list of 30 inits that
-     * was missing 261 subsystems. */
-    extern bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* config);
+    /* Initialize subsystems that are NULL after checkpoint load.
+     *
+     * IMPORTANT: We CANNOT call nimcp_brain_parallel_init_subsystems() here.
+     * That function is designed for fresh brain creation — it NULLs GPU context,
+     * destroys inference pools, and reinitializes from scratch. On a loaded brain
+     * with active GPU/pool, it would leak CUDA memory and crash.
+     *
+     * Instead, we call individual factory init functions that are idempotent —
+     * they check if the subsystem exists before creating. We skip GPU, network,
+     * inference pool, and other subsystems that are loaded from checkpoint. */
 
-    /* Use the brain's own config (loaded from checkpoint) */
-    bool ok = nimcp_brain_parallel_init_subsystems(b, &b->config);
-    if (ok) {
-        /* Count how many subsystems are now non-NULL (approximate) */
-        /* Just report success — the parallel init handles everything */
-        count = 1;  /* At least 1 wave succeeded */
+    /* Core dependencies first */
+    if (!b->engram_system) {
+        extern engram_system_t* engram_system_create(void);
+        b->engram_system = engram_system_create();
+        if (b->engram_system) count++;
     }
+
+    /* Cognitive modules */
+    extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_executive_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_mirror_neurons(brain_t);
+    extern bool nimcp_brain_factory_init_glial_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_language_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_creative_subsystem(brain_t);
+
+    #define INIT_IF_NULL(field, fn) do { \
+        if (!(b->field)) { fn(b); if (b->field) count++; } \
+    } while(0)
+    #define INIT_IF_DISABLED(field, fn) do { \
+        if (!(b->field)) { fn(b); if (b->field) count++; } \
+    } while(0)
+
+    INIT_IF_NULL(working_memory, nimcp_brain_factory_init_working_memory_subsystem);
+    INIT_IF_NULL(executive, nimcp_brain_factory_init_executive_subsystem);
+    INIT_IF_NULL(symbolic_logic, nimcp_brain_factory_init_symbolic_logic_subsystem);
+    INIT_IF_NULL(global_workspace, nimcp_brain_factory_init_global_workspace_subsystem);
+    INIT_IF_NULL(mirror_neurons, nimcp_brain_factory_init_mirror_neurons);
+    INIT_IF_NULL(glial, nimcp_brain_factory_init_glial_subsystem);
+    INIT_IF_NULL(theory_of_mind, nimcp_brain_factory_init_theory_of_mind_subsystem);
+    INIT_IF_NULL(ethics, nimcp_brain_factory_init_ethics_engine_subsystem);
+    INIT_IF_NULL(fep_orchestrator, nimcp_brain_factory_init_fep_orchestrator_subsystem);
+    INIT_IF_NULL(language_layer, nimcp_brain_factory_init_language_subsystem);
+    INIT_IF_NULL(creative_orchestrator, nimcp_brain_factory_init_creative_subsystem);
+
+    /* Brain regions */
+    extern bool nimcp_brain_factory_init_broca_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_wernicke_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_cerebellum_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_hippocampus_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_medulla_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_parietal_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_intuition_subsystem(brain_t);
+
+    INIT_IF_NULL(broca, nimcp_brain_factory_init_broca_subsystem);
+    INIT_IF_NULL(wernicke, nimcp_brain_factory_init_wernicke_subsystem);
+    INIT_IF_NULL(cerebellum, nimcp_brain_factory_init_cerebellum_subsystem);
+    INIT_IF_NULL(hippocampus, nimcp_brain_factory_init_hippocampus_subsystem);
+    INIT_IF_NULL(hypothalamus, nimcp_brain_factory_init_hypothalamus_subsystem);
+    INIT_IF_DISABLED(medulla_enabled, nimcp_brain_factory_init_medulla_subsystem);
+    INIT_IF_NULL(basal_ganglia, nimcp_brain_factory_init_basal_ganglia_subsystem);
+    INIT_IF_NULL(parietal_cortex, nimcp_brain_factory_init_parietal_cortex_subsystem);
+    INIT_IF_NULL(parietal, nimcp_brain_factory_init_parietal_subsystem);
+    INIT_IF_NULL(intuition_system, nimcp_brain_factory_init_intuition_subsystem);
+
+    /* Monitoring & infrastructure */
+    extern bool nimcp_brain_factory_init_mental_health_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_core_directives_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_pink_noise_subsystem(brain_t);
+
+    INIT_IF_NULL(mental_health_monitor, nimcp_brain_factory_init_mental_health_subsystem);
+    INIT_IF_DISABLED(core_directives_enabled, nimcp_brain_factory_init_core_directives_subsystem);
+    INIT_IF_NULL(tb_integration_hub, nimcp_brain_factory_init_cortical_columns_subsystem);
+    INIT_IF_NULL(pink_noise, nimcp_brain_factory_init_pink_noise_subsystem);
+
+    /* Cognitive subsystems that use safer init patterns */
+    extern bool nimcp_brain_factory_init_curiosity_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_imagination_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_reasoning_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_introspection_subsystem(brain_t);
+
+    INIT_IF_NULL(curiosity, nimcp_brain_factory_init_curiosity_subsystem);
+    INIT_IF_NULL(imagination, nimcp_brain_factory_init_imagination_subsystem);
+    INIT_IF_NULL(reasoning_engine, nimcp_brain_factory_init_reasoning_subsystem);
+    INIT_IF_NULL(introspection, nimcp_brain_factory_init_introspection_subsystem);
+
+    #undef INIT_IF_NULL
+    #undef INIT_IF_DISABLED
 
     return count;
 }
