@@ -3603,12 +3603,15 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
      *
      * Enable config flags that gate region initialization.
      * These may be false in old checkpoints that didn't have these features. */
-    /* Enable config flags needed by region inits. */
+    /* Enable config flags needed by region inits.
+     * enable_parietal and enable_thousand_brains_integration are DISABLED —
+     * they cause SIGSEGV/SIGABRT crash loops on checkpoint-loaded brains
+     * despite connection guards. The factory inits or their subsystems
+     * have deep corruption when initialized after checkpoint load.
+     * 14/16 regions active without these. */
     b->config.enable_oscillations = true;
     b->config.enable_speech_cortex = true;
     b->config.enable_multimodal_integration = true;
-    b->config.enable_parietal = true;
-    b->config.enable_thousand_brains_integration = true;
 
     /* Core dependencies first */
     if (!b->engram_system) {
