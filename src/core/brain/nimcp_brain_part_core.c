@@ -1562,6 +1562,14 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    PROBE_STAGE(brain, PROBE_INF_PRE_FORWARD, {
+        float _in_norm = 0.0f;
+        for (uint32_t _i = 0; _i < num_features && _i < 1024; _i++)
+            _in_norm += features[_i] * features[_i];
+        PROBE_SET_FLOAT(&_ctx, "input_norm", sqrtf(_in_norm));
+        PROBE_SET_INT(&_ctx, "num_features", (int64_t)num_features);
+    });
+
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
     if (brain->recurrent_enabled && brain->recurrent_max_iterations > 1) {
@@ -1954,6 +1962,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             predictive_update_model(brain->predictive_network);
         }
 
+        PROBE_STAGE(brain, PROBE_INF_PREDICTION_ERR, {
+            PROBE_SET_FLOAT(&_ctx, "prediction_error", prediction_error);
+        });
+
         nimcp_free(prediction);
         prediction = NULL;
     }
@@ -2047,15 +2059,18 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         extern uint32_t world_prior_check_violations(void* wp);
         uint32_t violations = world_prior_check_violations(brain->world_prior);
         if (violations) {
-            /* Reduce confidence: each violated domain reduces by 10% */
             uint32_t num_violated = 0;
-            if (violations & 0x01) num_violated++;  /* physics */
-            if (violations & 0x02) num_violated++;  /* chemistry */
-            if (violations & 0x04) num_violated++;  /* biology */
+            if (violations & 0x01) num_violated++;
+            if (violations & 0x02) num_violated++;
+            if (violations & 0x04) num_violated++;
             float penalty = 1.0f - 0.1f * (float)num_violated;
             if (penalty < 0.5f) penalty = 0.5f;
             decision->confidence *= penalty;
         }
+        PROBE_STAGE(brain, PROBE_INF_WORLD_PRIOR, {
+            PROBE_SET_INT(&_ctx, "violations", (int64_t)violations);
+            PROBE_SET_FLOAT(&_ctx, "confidence", decision->confidence);
+        });
     }
 
     // ========================================================================
@@ -2188,6 +2203,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
 
         reasoning_chain_cleanup(&chain);
+
+        PROBE_STAGE(brain, PROBE_INF_REASONING, {
+            PROBE_SET_FLOAT(&_ctx, "reasoning_confidence", reasoning_confidence);
+            PROBE_SET_INT(&_ctx, "chain_steps", (int64_t)chain.num_steps);
+        });
     }
 
     // ========================================================================
@@ -3771,6 +3791,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             post_ctx._internal_args = NULL;
         }
     }
+
+    PROBE_STAGE(brain, PROBE_INF_COGNITIVE, {
+        PROBE_SET_INT(&_ctx, "post_forward_parallel", post_forward_submitted ? 1 : 0);
+    });
 
     // ========================================================================
     // HYPERLEDGER: Consensus-Gated Inference (multi-brain BFT voting)

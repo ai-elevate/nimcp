@@ -202,6 +202,13 @@ void brain_destroy(brain_t brain)
     // Unregister brain from signal handler (handler stays installed for safety)
     signal_handler_unregister_brain();
 
+    /* Destroy probe registry (before subsystems it might reference) */
+    if (brain->probe_registry) {
+        extern void probe_registry_destroy(struct probe_registry*);
+        probe_registry_destroy((struct probe_registry*)brain->probe_registry);
+        brain->probe_registry = NULL;
+    }
+
     // Destroy inference thread pool (before subsystems that tasks might reference)
     if (brain->inference_pool) {
         LOG_MODULE_DEBUG("BRAIN", "Destroying inference pool...");

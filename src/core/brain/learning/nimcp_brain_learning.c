@@ -942,6 +942,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
+    PROBE_STAGE(brain, PROBE_TRAIN_INPUT, {
+        PROBE_SET_INT(&_ctx, "num_features", (int64_t)num_features);
+        PROBE_SET_INT(&_ctx, "target_size", (int64_t)target_size);
+        PROBE_SET_FLOAT(&_ctx, "confidence", confidence);
+    });
+
     /* Pre-create cortex CNNs for any staged sensory data BEFORE ensure_writable_network.
      * ensure_writable_network may fail on first calls (COW/GPU warmup) but cortex CNN
      * creation is independent and should succeed regardless.
@@ -1276,6 +1282,11 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                     features, num_features,
                                     target, target_size,
                                     &utm_result);
+        PROBE_STAGE(brain, PROBE_TRAIN_UTM, {
+            PROBE_SET_INT(&_ctx, "utm_rc", (int64_t)utm_rc);
+            PROBE_SET_FLOAT(&_ctx, "composite_loss", utm_result.composite_loss);
+        });
+
         if (utm_rc == 0) {
             /* Blend unified composite loss with adaptive loss.
              * Guard against NaN/inf from UTM (e.g. LNN gradient explosion). */
@@ -1535,6 +1546,10 @@ sequential_training:
             if (has_snn) {
                 training_dispatch_result_t snn_res = {0};
                 training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
+                PROBE_STAGE(brain, PROBE_TRAIN_SNN, {
+                    PROBE_SET_FLOAT(&_ctx, "snn_loss", snn_res.loss);
+                    PROBE_SET_INT(&_ctx, "snn_steps", (int64_t)brain->network_metrics.snn_steps);
+                });
                 if (snn_res.loss >= 0.0f && isfinite(snn_res.loss)) {
                     const float a = 0.01f;
                     brain->network_metrics.last_snn_loss = snn_res.loss;
@@ -1545,6 +1560,10 @@ sequential_training:
             if (has_lnn) {
                 training_dispatch_result_t lnn_res = {0};
                 training_dispatch_lnn_step(brain, features, num_features, target, target_size, &lnn_res);
+                PROBE_STAGE(brain, PROBE_TRAIN_LNN, {
+                    PROBE_SET_FLOAT(&_ctx, "lnn_loss", lnn_res.loss);
+                    PROBE_SET_INT(&_ctx, "lnn_steps", (int64_t)brain->network_metrics.lnn_steps);
+                });
                 if (lnn_res.loss >= 0.0f && isfinite(lnn_res.loss)) {
                     const float a = 0.01f;
                     brain->network_metrics.last_lnn_loss = lnn_res.loss;
@@ -1936,6 +1955,13 @@ sequential_training:
                         brain->engram_system,
                         active_ids, activations, num_active,
                         MEMORY_TYPE_EPISODIC, emotion);
+
+                    PROBE_STAGE(brain, PROBE_TRAIN_ENGRAM, {
+                        PROBE_SET_INT(&_ctx, "engram_id", (int64_t)eid);
+                        PROBE_SET_FLOAT(&_ctx, "novelty", novelty);
+                        PROBE_SET_FLOAT(&_ctx, "emotion_intensity", emotion.intensity);
+                        PROBE_SET_INT(&_ctx, "active_neurons", (int64_t)num_active);
+                    });
 
                     if (eid > 0 && novelty > 5.0f) {
                         NIMCP_LOGGING_DEBUG("Engram encoded: id=%lu, neurons=%u, "

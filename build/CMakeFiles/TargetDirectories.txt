@@ -271,6 +271,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_neural_logic_connectivity.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_neuron_types_bio_async.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_neuron_types_test_v1_neurons.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_probes_test_brain_probes.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_types_test_synapse_compute_real.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_types_test_synapse_embeddings.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_synapse_types_test_synapse_types_real.dir

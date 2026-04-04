@@ -2359,6 +2359,19 @@ unit_core_neuron_types_test_v1_neurons/fast:
 .PHONY : unit_core_neuron_types_test_v1_neurons/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_probes_test_brain_probes
+
+# Build rule for target.
+unit_core_probes_test_brain_probes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_probes_test_brain_probes
+.PHONY : unit_core_probes_test_brain_probes
+
+# fast build rule for target.
+unit_core_probes_test_brain_probes/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_probes_test_brain_probes.dir/build.make test/CMakeFiles/unit_core_probes_test_brain_probes.dir/build
+.PHONY : unit_core_probes_test_brain_probes/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_synapse_types_test_synapse_compute_real
 
 # Build rule for target.
@@ -46567,6 +46580,7 @@ help:
 	@echo "... unit_core_neuron_types_test_v1_neurons"
 	@echo "... unit_core_oscillations_sleep_bridge"
 	@echo "... unit_core_pr_memory_quantum_bridge"
+	@echo "... unit_core_probes_test_brain_probes"
 	@echo "... unit_core_substrate_immune_bridge"
 	@echo "... unit_core_synapse_compute_bugs"
 	@echo "... unit_core_synapse_types_test_synapse_compute_real"
