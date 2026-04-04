@@ -661,25 +661,48 @@
                     </div>
                 </div>
 
-                <!-- Live Charts -->
+                <!-- Live Charts — Row 1: Network Losses + Brain Regions -->
                 <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
-                        <h4 style="margin:0 0 8px; color:var(--accent); font-size:0.9rem;">Loss Curves (last 60 updates)</h4>
-                        <canvas id="chart-loss" height="200"></canvas>
+                        <h4 style="margin:0 0 8px; color:var(--accent); font-size:0.9rem;">Network Loss Curves</h4>
+                        <canvas id="chart-loss" height="180"></canvas>
                     </div>
                     <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
-                        <h4 style="margin:0 0 8px; color:var(--green); font-size:0.9rem;">Brain Regions</h4>
-                        <canvas id="chart-regions" height="200"></canvas>
+                        <h4 style="margin:0 0 8px; color:var(--green); font-size:0.9rem;">Brain Regions (16)</h4>
+                        <canvas id="chart-regions" height="180"></canvas>
                     </div>
                 </div>
+                <!-- Row 2: Neuron Stats + Synapse Weights -->
                 <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
-                        <h4 style="margin:0 0 8px; color:var(--purple); font-size:0.9rem;">Neuron Activations</h4>
-                        <canvas id="chart-neurons" height="200"></canvas>
+                        <h4 style="margin:0 0 8px; color:var(--purple); font-size:0.9rem;">Neuron Activation Distribution</h4>
+                        <canvas id="chart-neurons" height="180"></canvas>
                     </div>
                     <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--cyan); font-size:0.9rem;">Synapse Weight Distribution</h4>
+                        <canvas id="chart-synapses" height="180"></canvas>
+                    </div>
+                </div>
+                <!-- Row 3: HNN Energy + Cognitive Module Steps -->
+                <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
                         <h4 style="margin:0 0 8px; color:var(--orange); font-size:0.9rem;">HNN Energy Conservation</h4>
-                        <canvas id="chart-hnn" height="200"></canvas>
+                        <canvas id="chart-hnn" height="180"></canvas>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--accent); font-size:0.9rem;">Cognitive Module Training</h4>
+                        <canvas id="chart-cognitive" height="180"></canvas>
+                    </div>
+                </div>
+                <!-- Row 4: Glial System + Inference Performance -->
+                <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--green); font-size:0.9rem;">Glial System Activity</h4>
+                        <canvas id="chart-glial" height="180"></canvas>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--red); font-size:0.9rem;">Training Throughput</h4>
+                        <canvas id="chart-throughput" height="180"></canvas>
                     </div>
                 </div>
 
@@ -1622,6 +1645,83 @@ brain.learn_vector(features, target, label='hello world')
         }
     });
 
+    // Chart 5: Synapse weight distribution
+    const synapseChart = new Chart(document.getElementById('chart-synapses'), {
+        type: 'line',
+        data: {
+            labels: history.labels,
+            datasets: [
+                {label: 'Weight Mean', data: [], borderColor: '#06b6d4', borderWidth: 1.5, pointRadius: 0, fill: false},
+                {label: 'Weight Std', data: [], borderColor: '#a78bfa', borderWidth: 1.5, pointRadius: 0, fill: false},
+                {label: 'E/I Ratio', data: [], borderColor: '#22c55e', borderWidth: 1, pointRadius: 0, borderDash: [3,3], fill: false},
+            ]
+        },
+        options: {
+            responsive: true, animation: false,
+            scales: {x: {display: false}, y: {ticks: {color: '#94a3b8', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}}},
+            plugins: {legend: {labels: {color: '#e2e8f0', font: {size: 10}, boxWidth: 12}}}
+        }
+    });
+    history.syn_mean = []; history.syn_std = []; history.syn_ei = [];
+
+    // Chart 6: Cognitive module training steps (bar)
+    const cogLabels = ['Lang', 'Knowledge', 'VAE', 'FEP', 'PhysNN', 'PredHier', 'JEPA', 'Creative', 'SelfHeal', 'Intuition', 'FEP Orch'];
+    const cogKeys = ['grounded_lang.steps', 'knowledge.steps', 'vae.steps', 'fep_parietal.steps', 'physics_nn.steps', 'pred_hierarchy.steps', 'jepa.steps', 'creative.steps', 'self_heal.steps', 'intuition.steps', 'fep_orch.steps'];
+    const cogChart = new Chart(document.getElementById('chart-cognitive'), {
+        type: 'bar',
+        data: {
+            labels: cogLabels,
+            datasets: [{data: new Array(11).fill(0), backgroundColor: 'rgba(59,130,246,0.6)', borderWidth: 0}]
+        },
+        options: {
+            responsive: true, animation: false,
+            scales: {x: {ticks: {color: '#94a3b8', font: {size: 8}, maxRotation: 45}, grid: {display: false}},
+                     y: {ticks: {color: '#94a3b8', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}}},
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    // Chart 7: Glial system (time series of cumulative counts)
+    history.glial_mod = []; history.glial_myel = []; history.glial_prune = [];
+    const glialChart = new Chart(document.getElementById('chart-glial'), {
+        type: 'line',
+        data: {
+            labels: history.labels,
+            datasets: [
+                {label: 'Modulations', data: history.glial_mod, borderColor: '#22c55e', borderWidth: 1.5, pointRadius: 0},
+                {label: 'Myelinations', data: history.glial_myel, borderColor: '#06b6d4', borderWidth: 1.5, pointRadius: 0},
+                {label: 'Prunings', data: history.glial_prune, borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0},
+            ]
+        },
+        options: {
+            responsive: true, animation: false,
+            scales: {x: {display: false}, y: {ticks: {color: '#94a3b8', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}}},
+            plugins: {legend: {labels: {color: '#e2e8f0', font: {size: 10}, boxWidth: 12}}}
+        }
+    });
+
+    // Chart 8: Training throughput (learn steps + inference time)
+    history.learn_steps = []; history.inf_time = [];
+    const throughputChart = new Chart(document.getElementById('chart-throughput'), {
+        type: 'line',
+        data: {
+            labels: history.labels,
+            datasets: [
+                {label: 'Learn Steps', data: history.learn_steps, borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, yAxisID: 'y'},
+                {label: 'Inference ms', data: history.inf_time, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, borderDash: [3,3], yAxisID: 'y1'},
+            ]
+        },
+        options: {
+            responsive: true, animation: false,
+            scales: {
+                x: {display: false},
+                y: {type: 'linear', position: 'left', ticks: {color: '#3b82f6', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}},
+                y1: {type: 'linear', position: 'right', ticks: {color: '#f59e0b', font: {size: 10}}, grid: {drawOnChartArea: false}}
+            },
+            plugins: {legend: {labels: {color: '#e2e8f0', font: {size: 10}, boxWidth: 12}}}
+        }
+    });
+
     // Update charts on each metrics poll
     const origUpdate = updateMetrics;
     updateMetrics = function(d) {
@@ -1655,9 +1755,10 @@ brain.learn_vector(features, target, label='hello world')
             v ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.3)');
         regionChart.update();
 
-        // Neuron stats (from probe_metrics if available)
-        if (d.probe_metrics && d.probe_metrics.neurons) {
-            const n = d.probe_metrics.neurons;
+        // Neuron stats
+        const pm = d.probe_metrics || {};
+        if (pm.neurons) {
+            const n = pm.neurons;
             pushHistory('neuron_mean', n['state.mean'] || 0);
             pushHistory('neuron_std', n['state.std'] || 0);
             pushHistory('neuron_max', n['state.max'] || 0);
@@ -1672,6 +1773,54 @@ brain.learn_vector(features, target, label='hello world')
         pushHistory('hnn_energy', d.hnn_energy || 0);
         pushHistory('hnn_deviation', d.hnn_energy_deviation || 0);
         hnnChart.update();
+
+        // Synapse weights
+        if (pm.synapses) {
+            const s = pm.synapses;
+            pushHistory('syn_mean', s['weight.mean'] || 0);
+            pushHistory('syn_std', s['weight.std'] || 0);
+            pushHistory('syn_ei', s['ei_ratio'] || 0);
+        } else {
+            pushHistory('syn_mean', null);
+            pushHistory('syn_std', null);
+            pushHistory('syn_ei', null);
+        }
+        synapseChart.data.datasets[0].data = history.syn_mean;
+        synapseChart.data.datasets[1].data = history.syn_std;
+        synapseChart.data.datasets[2].data = history.syn_ei;
+        synapseChart.update();
+
+        // Cognitive module steps (bar chart — current snapshot, not history)
+        if (pm.cognitive_stats) {
+            const c = pm.cognitive_stats;
+            cogKeys.forEach((k, i) => {
+                cogChart.data.datasets[0].data[i] = c[k] || 0;
+            });
+            cogChart.update();
+        }
+
+        // Glial system
+        if (pm.glial) {
+            const g = pm.glial;
+            pushHistory('glial_mod', g['total_modulations'] || 0);
+            pushHistory('glial_myel', g['total_myelinations'] || 0);
+            pushHistory('glial_prune', g['total_prunings'] || 0);
+        } else {
+            pushHistory('glial_mod', null);
+            pushHistory('glial_myel', null);
+            pushHistory('glial_prune', null);
+        }
+        glialChart.update();
+
+        // Training throughput
+        if (pm.inference) {
+            pushHistory('learn_steps', pm.inference['total_learn_steps'] || 0);
+            pushHistory('inf_time', (pm.inference['avg_inference_us'] || 0) / 1000);
+        } else {
+            pushHistory('learn_steps', d.learn_calls || 0);
+            pushHistory('inf_time', null);
+        }
+        throughputChart.update();
     };
 
     // Chat with Athena
