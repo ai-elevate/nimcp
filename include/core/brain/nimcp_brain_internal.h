@@ -2279,6 +2279,11 @@ struct brain_struct {
         uint32_t current_step;
         uint32_t active_engines;
     } training_dashboard;
+
+    /* === UNIFIED PROBE SYSTEM ===
+     * NULL until first probe created (lazy init via eager_init_cognitive or API).
+     * See include/core/probes/nimcp_brain_probes.h */
+    struct probe_registry* probe_registry;
 };
 
 //=============================================================================

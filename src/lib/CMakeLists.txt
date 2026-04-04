@@ -43,6 +43,10 @@ set(NIMCP_CORE_SOURCES
     # ENABLED: Type conflicts resolved, modules ready for integration
     # Modules extracted and ready in src/core/brain/{factory,learning,inference,persistence,distributed,strategy,biological}/
     # See BRAIN_MODULARIZATION_PLAN.md for integration roadmap
+    # Unified probe system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/probes/nimcp_brain_probes.c                                # Registry, create/destroy, sampler thread, query
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/probes/nimcp_probe_module_map.c                            # bio_module_id → void* resolution
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/probes/nimcp_probe_builtins.c                              # Built-in samplers (network, cognitive, dashboard, inference)
     # Brain factory (Phase 11: SRP Split - Refactored into 7 modules)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_factory.c                        # Main factory orchestration (685 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/nimcp_brain_parallel_init.c                  # Parallel wave-based subsystem init
