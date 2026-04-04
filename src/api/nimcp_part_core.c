@@ -3817,6 +3817,10 @@ int nimcp_brain_attach_builtin_probes(nimcp_brain_t brain, uint32_t interval_ms)
     if (probe_attach_cognitive_stats(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
     if (probe_attach_training_dashboard(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
     if (probe_attach_inference(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_glial(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_neurons(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_synapses(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_brain_regions(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
     return count;
 }
 

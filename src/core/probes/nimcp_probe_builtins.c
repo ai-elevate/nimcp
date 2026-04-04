@@ -263,3 +263,318 @@ probe_handle_t probe_attach_inference(probe_registry_t* reg, uint32_t interval_m
     return probe_create_active(reg, "inference", modules, 1,
                                 sample_inference, NULL, interval_ms);
 }
+
+/* ============================================================================
+ * Glial System Sampler — astrocytes, oligodendrocytes, microglia
+ * ============================================================================ */
+
+#include "glial/integration/nimcp_glial_integration.h"
+#include "glial/astrocytes/nimcp_astrocytes.h"
+#include "glial/microglia/nimcp_microglia.h"
+#include "glial/oligodendrocytes/nimcp_oligodendrocytes.h"
+
+static void sample_glial(
+    void* module_ptr, uint16_t module_id, brain_t brain,
+    probe_metric_t* metrics, uint32_t* count, void* user_data)
+{
+    (void)module_id; (void)user_data;
+    if (!brain || !metrics || !count) return;
+
+    glial_integration_t* gi = (glial_integration_t*)module_ptr;
+    if (!gi) { *count = 0; return; }
+
+    uint32_t max = *count;
+    uint32_t n = 0;
+    extern uint64_t nimcp_time_get_us(void);
+    uint64_t ts = nimcp_time_get_us();
+
+    #define EMIT_F(key, val) do { if (n < max) set_float(&metrics[n++], key, val, ts); } while(0)
+    #define EMIT_I(key, val) do { if (n < max) set_int(&metrics[n++], key, val, ts); } while(0)
+
+    /* Integration-level counters */
+    EMIT_I("total_modulations", (int64_t)gi->total_astrocyte_modulations);
+    EMIT_I("total_myelinations", (int64_t)gi->total_oligodendrocyte_myelinations);
+    EMIT_I("total_prunings", (int64_t)gi->total_microglia_prunings);
+    EMIT_I("total_neuromod_updates", (int64_t)gi->total_neuromod_updates);
+    EMIT_I("astro_enabled", gi->enable_astrocyte_modulation ? 1 : 0);
+    EMIT_I("oligo_enabled", gi->enable_oligodendrocyte_myelination ? 1 : 0);
+    EMIT_I("microglia_enabled", gi->enable_microglia_pruning ? 1 : 0);
+    EMIT_I("neuromod_enabled", gi->enable_spatial_neuromod ? 1 : 0);
+
+    /* Astrocyte network stats */
+    if (gi->astrocyte_network) {
+        astrocyte_network_t* an = gi->astrocyte_network;
+        /* Use public accessor if available, otherwise read struct directly */
+        extern bool brain_get_astrocyte_stats(brain_t, astrocyte_stats_t*);
+        astrocyte_stats_t ast_stats = {0};
+        if (brain_get_astrocyte_stats(brain, &ast_stats)) {
+            EMIT_I("astro.count", (int64_t)ast_stats.num_astrocytes);
+            EMIT_F("astro.avg_calcium_um", ast_stats.avg_calcium_um);
+            EMIT_I("astro.tripartite_synapses", (int64_t)ast_stats.num_tripartite_synapses);
+            EMIT_I("astro.modulations", (int64_t)ast_stats.total_modulations);
+            EMIT_F("astro.avg_modulation", ast_stats.avg_modulation_strength);
+        }
+    }
+
+    /* Oligodendrocyte network — report presence */
+    EMIT_I("oligo.active", gi->oligodendrocyte_network ? 1 : 0);
+
+    /* Microglia network — report presence + use integration counters */
+    EMIT_I("microglia.active", gi->microglia_network ? 1 : 0);
+
+    #undef EMIT_F
+    #undef EMIT_I
+
+    *count = n;
+}
+
+probe_handle_t probe_attach_glial(probe_registry_t* reg, uint32_t interval_ms) {
+    uint16_t modules[] = {0x0350};  /* BIO_MODULE_GLIAL */
+    return probe_create_active(reg, "glial", modules, 1,
+                                sample_glial, NULL, interval_ms);
+}
+
+/* ============================================================================
+ * Neuron Statistics Sampler — activation distribution across network
+ * ============================================================================ */
+
+#include "core/neuralnet/nimcp_neuralnet.h"
+#include "core/neuralnet/nimcp_neuralnet_internal.h"
+#include "plasticity/adaptive/nimcp_adaptive.h"
+#include "core/neuralnet/nimcp_sparse_synapse.h"
+
+static void sample_neurons(
+    void* module_ptr, uint16_t module_id, brain_t brain,
+    probe_metric_t* metrics, uint32_t* count, void* user_data)
+{
+    (void)module_id; (void)user_data;
+    if (!brain || !metrics || !count) return;
+
+    neural_network_t nn = adaptive_network_get_base_network(brain->network);
+    if (!nn || nn->num_neurons == 0) { *count = 0; return; }
+
+    uint32_t max = *count;
+    uint32_t n = 0;
+    extern uint64_t nimcp_time_get_us(void);
+    uint64_t ts = nimcp_time_get_us();
+
+    #define EMIT_F(key, val) do { if (n < max) set_float(&metrics[n++], key, val, ts); } while(0)
+    #define EMIT_I(key, val) do { if (n < max) set_int(&metrics[n++], key, val, ts); } while(0)
+
+    /* Sample neuron state distribution (read-only, no locks needed) */
+    uint32_t total = nn->num_neurons;
+    uint32_t sample_n = total < 10000 ? total : 10000;  /* Cap sampling to 10K */
+    uint32_t stride = total / sample_n;
+    if (stride < 1) stride = 1;
+
+    float sum = 0.0f, sum_sq = 0.0f;
+    float min_state = 1e30f, max_state = -1e30f;
+    uint32_t zero_count = 0, nan_count = 0, negative_count = 0;
+    uint32_t sampled = 0;
+
+    for (uint32_t i = 0; i < total && sampled < sample_n; i += stride) {
+        float s = nn->neurons[i].state;
+        if (!isfinite(s)) { nan_count++; continue; }
+        sum += s;
+        sum_sq += s * s;
+        if (s < min_state) min_state = s;
+        if (s > max_state) max_state = s;
+        if (fabsf(s) < 1e-7f) zero_count++;
+        if (s < 0.0f) negative_count++;
+        sampled++;
+    }
+
+    float mean = sampled > 0 ? sum / (float)sampled : 0.0f;
+    float variance = sampled > 1 ? (sum_sq / (float)sampled - mean * mean) : 0.0f;
+    if (variance < 0.0f) variance = 0.0f;
+    float std_dev = sqrtf(variance);
+    float sparsity = sampled > 0 ? (float)zero_count / (float)sampled : 0.0f;
+
+    EMIT_I("total", (int64_t)total);
+    EMIT_I("sampled", (int64_t)sampled);
+    EMIT_F("state.mean", mean);
+    EMIT_F("state.std", std_dev);
+    EMIT_F("state.min", min_state);
+    EMIT_F("state.max", max_state);
+    EMIT_F("state.sparsity", sparsity);
+    EMIT_I("state.nan_count", (int64_t)nan_count);
+    EMIT_I("state.negative", (int64_t)negative_count);
+
+    #undef EMIT_F
+    #undef EMIT_I
+    *count = n;
+}
+
+probe_handle_t probe_attach_neurons(probe_registry_t* reg, uint32_t interval_ms) {
+    uint16_t modules[] = {0x0500};  /* ADAPTIVE network */
+    return probe_create_active(reg, "neurons", modules, 1,
+                                sample_neurons, NULL, interval_ms);
+}
+
+/* ============================================================================
+ * Synapse Statistics Sampler — weight distribution, metadata pool health
+ * ============================================================================ */
+
+static void sample_synapses(
+    void* module_ptr, uint16_t module_id, brain_t brain,
+    probe_metric_t* metrics, uint32_t* count, void* user_data)
+{
+    (void)module_id; (void)user_data;
+    if (!brain || !metrics || !count) return;
+
+    neural_network_t nn = adaptive_network_get_base_network(brain->network);
+    if (!nn || nn->num_neurons == 0) { *count = 0; return; }
+
+    uint32_t max = *count;
+    uint32_t n = 0;
+    extern uint64_t nimcp_time_get_us(void);
+    uint64_t ts = nimcp_time_get_us();
+
+    #define EMIT_F(key, val) do { if (n < max) set_float(&metrics[n++], key, val, ts); } while(0)
+    #define EMIT_I(key, val) do { if (n < max) set_int(&metrics[n++], key, val, ts); } while(0)
+
+    /* Sample synapse weights from a subset of neurons */
+    uint32_t total_neurons = nn->num_neurons;
+    uint32_t sample_neurons = total_neurons < 1000 ? total_neurons : 1000;
+    uint32_t stride = total_neurons / sample_neurons;
+    if (stride < 1) stride = 1;
+
+    float w_sum = 0.0f, w_sum_sq = 0.0f;
+    float w_min = 1e30f, w_max = -1e30f;
+    uint32_t total_synapses = 0, zero_weights = 0;
+    uint32_t excitatory = 0, inhibitory = 0;
+
+    for (uint32_t i = 0; i < total_neurons && (i / stride) < sample_neurons; i += stride) {
+        neuron_t* neuron = &nn->neurons[i];
+        uint32_t syn_count = sparse_synapse_count(&neuron->incoming);
+
+        for (uint32_t s = 0; s < syn_count && s < 32; s++) {  /* Cap per-neuron to 32 */
+            synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+            if (!h) continue;
+
+            float w = h->weight;
+            if (!isfinite(w)) continue;
+
+            w_sum += w;
+            w_sum_sq += w * w;
+            if (w < w_min) w_min = w;
+            if (w > w_max) w_max = w;
+            if (fabsf(w) < 1e-7f) zero_weights++;
+            if (w > 0.0f) excitatory++;
+            else if (w < 0.0f) inhibitory++;
+            total_synapses++;
+        }
+    }
+
+    float w_mean = total_synapses > 0 ? w_sum / (float)total_synapses : 0.0f;
+    float w_var = total_synapses > 1 ?
+        (w_sum_sq / (float)total_synapses - w_mean * w_mean) : 0.0f;
+    if (w_var < 0.0f) w_var = 0.0f;
+
+    EMIT_I("sampled_synapses", (int64_t)total_synapses);
+    EMIT_F("weight.mean", w_mean);
+    EMIT_F("weight.std", sqrtf(w_var));
+    EMIT_F("weight.min", total_synapses > 0 ? w_min : 0.0f);
+    EMIT_F("weight.max", total_synapses > 0 ? w_max : 0.0f);
+    EMIT_I("weight.zero", (int64_t)zero_weights);
+    EMIT_I("excitatory", (int64_t)excitatory);
+    EMIT_I("inhibitory", (int64_t)inhibitory);
+    EMIT_F("ei_ratio", excitatory > 0 ?
+        (float)excitatory / (float)(excitatory + inhibitory) : 0.0f);
+
+    /* Metadata pool health — use total_slots from pool struct */
+    EMIT_I("metadata.pool_active", nn->synapse_metadata_pool ? 1 : 0);
+
+    #undef EMIT_F
+    #undef EMIT_I
+    *count = n;
+}
+
+probe_handle_t probe_attach_synapses(probe_registry_t* reg, uint32_t interval_ms) {
+    uint16_t modules[] = {0x0500};  /* ADAPTIVE network */
+    return probe_create_active(reg, "synapses", modules, 1,
+                                sample_synapses, NULL, interval_ms);
+}
+
+/* ============================================================================
+ * Brain Regions Sampler — all cortexes, subcortical, language areas
+ *
+ * Reports which regions are enabled and their update timestamps.
+ * Covers: cortex CNNs (visual/audio/speech/somato), broca, wernicke,
+ * hippocampus, amygdala, hypothalamus, basal ganglia, cerebellum,
+ * medulla, parietal, thalamic bridges, cortical columns.
+ * ============================================================================ */
+
+static void sample_brain_regions(
+    void* module_ptr, uint16_t module_id, brain_t brain,
+    probe_metric_t* metrics, uint32_t* count, void* user_data)
+{
+    (void)module_ptr; (void)module_id; (void)user_data;
+    if (!brain || !metrics || !count) return;
+
+    uint32_t max = *count;
+    uint32_t n = 0;
+    extern uint64_t nimcp_time_get_us(void);
+    uint64_t ts = nimcp_time_get_us();
+
+    #define EMIT_I(key, val) do { if (n < max) set_int(&metrics[n++], key, val, ts); } while(0)
+    #define EMIT_F(key, val) do { if (n < max) set_float(&metrics[n++], key, val, ts); } while(0)
+
+    /* Cortex CNN processors (4 modalities) */
+    EMIT_I("visual_cortex", brain->cortex_cnns[0] ? 1 : 0);
+    EMIT_I("audio_cortex", brain->cortex_cnns[1] ? 1 : 0);
+    EMIT_I("speech_cortex", brain->cortex_cnns[2] ? 1 : 0);
+    EMIT_I("somato_cortex", brain->cortex_cnns[3] ? 1 : 0);
+
+    /* Language regions */
+    EMIT_I("broca", brain->broca_enabled ? 1 : 0);
+    EMIT_I("wernicke", brain->wernicke_enabled ? 1 : 0);
+
+    /* Subcortical */
+    EMIT_I("hippocampus", brain->engram_system ? 1 : 0);
+    EMIT_I("amygdala", brain->emotional_learning ? 1 : 0);
+    EMIT_I("hypothalamus", brain->hypothalamus_enabled ? 1 : 0);
+    EMIT_I("basal_ganglia", brain->basal_ganglia_enabled ? 1 : 0);
+    EMIT_I("cerebellum", brain->cerebellum_enabled ? 1 : 0);
+    EMIT_I("medulla", brain->medulla_enabled ? 1 : 0);
+
+    /* Higher cortical */
+    EMIT_I("parietal", brain->parietal_enabled ? 1 : 0);
+    EMIT_I("prefrontal", brain->executive ? 1 : 0);
+
+    /* Cortical columns (Thousand Brains) */
+    EMIT_I("cortical_columns", brain->tb_integration_hub ? 1 : 0);
+
+    /* Thalamic bridges (count active) */
+    int thalamic_count = 0;
+    if (brain->broca_thalamic_bridge) thalamic_count++;
+    if (brain->language_thalamic_bridge) thalamic_count++;
+    if (brain->cerebellum_thalamic_bridge) thalamic_count++;
+    if (brain->hippocampus_thalamic_bridge) thalamic_count++;
+    if (brain->hypothalamus_thalamic_bridge) thalamic_count++;
+    if (brain->motor_thalamic_bridge) thalamic_count++;
+    if (brain->occipital_thalamic_bridge) thalamic_count++;
+    if (brain->temporal_thalamic_bridge) thalamic_count++;
+    EMIT_I("thalamic_bridges", (int64_t)thalamic_count);
+
+    /* Glial (already has dedicated probe, but summary here) */
+    EMIT_I("glial", brain->glial ? 1 : 0);
+
+    /* Count total active regions */
+    int total_active = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (metrics[i].type == PROBE_METRIC_INT && metrics[i].value.i > 0)
+            total_active++;
+    }
+    EMIT_I("total_active_regions", (int64_t)total_active);
+
+    #undef EMIT_I
+    #undef EMIT_F
+    *count = n;
+}
+
+probe_handle_t probe_attach_brain_regions(probe_registry_t* reg, uint32_t interval_ms) {
+    uint16_t modules[] = {0x0100};  /* BIO_MODULE_BRAIN */
+    return probe_create_active(reg, "brain_regions", modules, 1,
+                                sample_brain_regions, NULL, interval_ms);
+}

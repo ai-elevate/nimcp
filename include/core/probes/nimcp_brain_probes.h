@@ -262,6 +262,10 @@ probe_handle_t probe_attach_network_metrics(probe_registry_t* reg, uint32_t inte
 probe_handle_t probe_attach_cognitive_stats(probe_registry_t* reg, uint32_t interval_ms);
 probe_handle_t probe_attach_training_dashboard(probe_registry_t* reg, uint32_t interval_ms);
 probe_handle_t probe_attach_inference(probe_registry_t* reg, uint32_t interval_ms);
+probe_handle_t probe_attach_glial(probe_registry_t* reg, uint32_t interval_ms);
+probe_handle_t probe_attach_neurons(probe_registry_t* reg, uint32_t interval_ms);
+probe_handle_t probe_attach_synapses(probe_registry_t* reg, uint32_t interval_ms);
+probe_handle_t probe_attach_brain_regions(probe_registry_t* reg, uint32_t interval_ms);
 
 /* ============================================================================
  * Pipeline Stage Probes
