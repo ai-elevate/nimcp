@@ -3608,9 +3608,8 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     b->config.enable_oscillations = true;
     b->config.enable_speech_cortex = true;
     b->config.enable_multimodal_integration = true;
-    /* enable_parietal + enable_thousand_brains_integration cause SIGABRT/stack smash.
-     * Root cause: world model init or parietal init corrupts heap on loaded brain.
-     * 14/16 regions active without these. Needs dedicated reinit_after_load(). */
+    b->config.enable_parietal = true;          /* TEST: parietal alone */
+    /* b->config.enable_thousand_brains_integration = true; */  /* TEST: disabled */
 
     /* Core dependencies first */
     if (!b->engram_system) {
