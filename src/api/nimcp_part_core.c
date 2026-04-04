@@ -3619,6 +3619,13 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     extern bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t);
 
+    /* Core subsystems that other regions depend on */
+    if (!b->engram_system) {
+        extern engram_system_t* engram_system_create(void);
+        b->engram_system = engram_system_create();
+        if (b->engram_system) count++;
+    }
+
     /* Cognitive modules (original 10) */
     if (!b->working_memory)  { nimcp_brain_factory_init_working_memory_subsystem(b);  if (b->working_memory)  count++; }
     if (!b->executive)       { nimcp_brain_factory_init_executive_subsystem(b);       if (b->executive)       count++; }
