@@ -879,6 +879,16 @@ class BrainService:
             self.brain.enable_mixed_precision(req.get("enabled", True))
         return {"ok": True}
 
+    def _cmd_set_training_dashboard(self, req):
+        if True:  # RWLock in handle()
+            self.brain.set_training_dashboard(**{k: v for k, v in req.items() if k != "cmd"})
+        return {"ok": True}
+
+    def _cmd_get_training_dashboard(self, _req):
+        if True:  # RWLock in handle()
+            result = self.brain.get_training_dashboard()
+        return {"dashboard": result}
+
     def _cmd_enable_gradient_checkpointing(self, req):
         args = [req.get("enabled", True)]
         if "interval" in req:

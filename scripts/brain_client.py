@@ -551,6 +551,15 @@ class BrainProxy:
     def enable_world_model_bridge(self, enabled=True):
         self._send({"cmd": "enable_world_model_bridge", "enabled": enabled})
 
+    def set_training_dashboard(self, **kwargs):
+        req = {"cmd": "set_training_dashboard"}
+        req.update(kwargs)
+        self._send(req)
+
+    def get_training_dashboard(self):
+        resp = self._send({"cmd": "get_training_dashboard"})
+        return resp.get("dashboard", {})
+
     def enable_mixed_precision(self, enabled=True):
         self._send({"cmd": "enable_mixed_precision", "enabled": enabled})
 

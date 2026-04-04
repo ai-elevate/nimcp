@@ -3623,6 +3623,99 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     return count;
 }
 
+/* ============================================================================
+ * Training Dashboard Metrics — written by training script, read by exporter
+ * ============================================================================ */
+
+int nimcp_brain_set_training_dashboard(nimcp_brain_t brain,
+    uint32_t stage, uint32_t step, const char* domain,
+    float fact_ratio, bool warm_start_complete, uint32_t warm_start_step,
+    float lr_physics, float lr_chemistry, float lr_biology,
+    uint32_t wm_steps, uint32_t wm_phys, uint32_t wm_chem, uint32_t wm_bio,
+    uint32_t collapse_events, uint32_t surprises, uint32_t replays,
+    uint32_t vocab_size, float lang_confidence, uint32_t active_engines)
+{
+    if (!brain || !brain->internal_brain) return -1;
+    brain_t b = brain->internal_brain;
+    b->training_dashboard.current_stage = stage;
+    b->training_dashboard.current_step = step;
+    if (domain) {
+        strncpy(b->training_dashboard.current_domain, domain, 63);
+        b->training_dashboard.current_domain[63] = '\0';
+    }
+    b->training_dashboard.fact_ratio = fact_ratio;
+    b->training_dashboard.warm_start_complete = warm_start_complete;
+    b->training_dashboard.warm_start_step = warm_start_step;
+    b->training_dashboard.lr_physics = lr_physics;
+    b->training_dashboard.lr_chemistry = lr_chemistry;
+    b->training_dashboard.lr_biology = lr_biology;
+    b->training_dashboard.wm_steps = wm_steps;
+    b->training_dashboard.wm_physics_transitions = wm_phys;
+    b->training_dashboard.wm_chemistry_transitions = wm_chem;
+    b->training_dashboard.wm_biology_transitions = wm_bio;
+    b->training_dashboard.collapse_events = collapse_events;
+    b->training_dashboard.surprises_stored = surprises;
+    b->training_dashboard.replays_done = replays;
+    b->training_dashboard.vocab_size = vocab_size;
+    b->training_dashboard.language_confidence = lang_confidence;
+    b->training_dashboard.active_engines = active_engines;
+    return 0;
+}
+
+int nimcp_brain_get_training_dashboard(nimcp_brain_t brain,
+    uint32_t* stage, uint32_t* step, char* domain, uint32_t domain_max,
+    float* fact_ratio, bool* warm_start_complete, uint32_t* warm_start_step,
+    float* lr_physics, float* lr_chemistry, float* lr_biology,
+    uint32_t* wm_steps, uint32_t* wm_phys, uint32_t* wm_chem, uint32_t* wm_bio,
+    uint32_t* collapse_events, uint32_t* surprises, uint32_t* replays,
+    uint32_t* vocab_size, float* lang_confidence, uint32_t* active_engines,
+    /* Inference metrics */
+    float* inference_time_ms, uint32_t* active_neurons,
+    float* reasoning_hypotheses, float* reasoning_plausibility,
+    float* attention_strength, float* sleep_pressure)
+{
+    if (!brain || !brain->internal_brain) return -1;
+    brain_t b = brain->internal_brain;
+
+    #define SET_IF(ptr, val) do { if (ptr) *(ptr) = (val); } while(0)
+    SET_IF(stage, b->training_dashboard.current_stage);
+    SET_IF(step, b->training_dashboard.current_step);
+    if (domain && domain_max > 0) {
+        strncpy(domain, b->training_dashboard.current_domain, domain_max - 1);
+        domain[domain_max - 1] = '\0';
+    }
+    SET_IF(fact_ratio, b->training_dashboard.fact_ratio);
+    SET_IF(warm_start_complete, b->training_dashboard.warm_start_complete);
+    SET_IF(warm_start_step, b->training_dashboard.warm_start_step);
+    SET_IF(lr_physics, b->training_dashboard.lr_physics);
+    SET_IF(lr_chemistry, b->training_dashboard.lr_chemistry);
+    SET_IF(lr_biology, b->training_dashboard.lr_biology);
+    SET_IF(wm_steps, b->training_dashboard.wm_steps);
+    SET_IF(wm_phys, b->training_dashboard.wm_physics_transitions);
+    SET_IF(wm_chem, b->training_dashboard.wm_chemistry_transitions);
+    SET_IF(wm_bio, b->training_dashboard.wm_biology_transitions);
+    SET_IF(collapse_events, b->training_dashboard.collapse_events);
+    SET_IF(surprises, b->training_dashboard.surprises_stored);
+    SET_IF(replays, b->training_dashboard.replays_done);
+    SET_IF(vocab_size, b->training_dashboard.vocab_size);
+    SET_IF(lang_confidence, b->training_dashboard.language_confidence);
+    SET_IF(active_engines, b->training_dashboard.active_engines);
+
+    /* Inference metrics — from brain state directly */
+    SET_IF(inference_time_ms, b->stats.avg_inference_time_us / 1000.0f);
+    SET_IF(active_neurons, b->stats.num_active_synapses);  /* proxy: active synapses */
+    /* Reasoning — read from last reasoning chain */
+    SET_IF(reasoning_hypotheses, 0.0f);  /* TODO: expose from reasoning engine */
+    SET_IF(reasoning_plausibility, 0.0f);
+    /* Attention */
+    SET_IF(attention_strength, b->last_novelty_score);
+    /* Sleep */
+    SET_IF(sleep_pressure, 0.0f);  /* TODO: expose from sleep system */
+    #undef SET_IF
+
+    return 0;
+}
+
 void nimcp_brain_set_network_ablation(nimcp_brain_t brain,
                                        int train_cnn, int train_snn, int train_lnn) {
     if (!brain || !brain->internal_brain) return;

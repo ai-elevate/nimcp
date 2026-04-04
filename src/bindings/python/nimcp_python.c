@@ -6770,6 +6770,105 @@ static PyObject* Brain_eager_init_cognitive_py(BrainObject* self, PyObject* Py_U
     return PyLong_FromLong(count);
 }
 
+static PyObject* Brain_set_training_dashboard_py(BrainObject* self, PyObject* args, PyObject* kwds) {
+    if (!self->brain) Py_RETURN_NONE;
+    static char* kwlist[] = {
+        "stage", "step", "domain", "fact_ratio",
+        "warm_start_complete", "warm_start_step",
+        "lr_physics", "lr_chemistry", "lr_biology",
+        "wm_steps", "wm_phys", "wm_chem", "wm_bio",
+        "collapse_events", "surprises", "replays",
+        "vocab_size", "lang_confidence", "active_engines",
+        /* Stage 3 metrics */
+        "dialogue_turns", "coherence_score", "grounding_score",
+        NULL};
+    uint32_t stage=0, step=0, warm_start_step=0;
+    const char* domain = "";
+    float fact_ratio=0, lr_p=0, lr_c=0, lr_b=0, lang_conf=0;
+    int warm_start_complete=0;
+    uint32_t wm_steps=0, wm_phys=0, wm_chem=0, wm_bio=0;
+    uint32_t collapse=0, surprises=0, replays=0, vocab=0, engines=0;
+    uint32_t dialogue_turns=0;
+    float coherence=0, grounding=0;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IIsfiIfffIIIIIIIIfI" "Iff", kwlist,
+        &stage, &step, &domain, &fact_ratio,
+        &warm_start_complete, &warm_start_step,
+        &lr_p, &lr_c, &lr_b,
+        &wm_steps, &wm_phys, &wm_chem, &wm_bio,
+        &collapse, &surprises, &replays,
+        &vocab, &lang_conf, &engines,
+        &dialogue_turns, &coherence, &grounding))
+        return NULL;
+
+    extern int nimcp_brain_set_training_dashboard(nimcp_brain_t,
+        uint32_t, uint32_t, const char*, float, bool, uint32_t,
+        float, float, float, uint32_t, uint32_t, uint32_t, uint32_t,
+        uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t);
+    nimcp_brain_set_training_dashboard(self->brain,
+        stage, step, domain, fact_ratio, (bool)warm_start_complete, warm_start_step,
+        lr_p, lr_c, lr_b, wm_steps, wm_phys, wm_chem, wm_bio,
+        collapse, surprises, replays, vocab, lang_conf, engines);
+
+    /* Store stage 3 metrics in training_dashboard extended fields */
+    if (self->brain && self->brain->internal_brain) {
+        brain_t b = self->brain->internal_brain;
+        /* Reuse wm_ fields for stage 3 (they're unused in stage 3) */
+        if (dialogue_turns > 0) b->training_dashboard.wm_steps = dialogue_turns;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_training_dashboard_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_NONE;
+
+    uint32_t stage, step, warm_step, wm_steps, wm_phys, wm_chem, wm_bio;
+    uint32_t collapse, surprises, replays, vocab, engines;
+    char domain[64] = {0};
+    float fact_ratio, lr_p, lr_c, lr_b, lang_conf;
+    bool warm_complete;
+    float inf_time, attn;
+    uint32_t active_neurons;
+    float reason_hyp, reason_plaus, sleep_pres;
+
+    extern int nimcp_brain_get_training_dashboard(nimcp_brain_t,
+        uint32_t*, uint32_t*, char*, uint32_t,
+        float*, bool*, uint32_t*,
+        float*, float*, float*,
+        uint32_t*, uint32_t*, uint32_t*, uint32_t*,
+        uint32_t*, uint32_t*, uint32_t*,
+        uint32_t*, float*, uint32_t*,
+        float*, uint32_t*, float*, float*, float*, float*);
+    int rc = nimcp_brain_get_training_dashboard(self->brain,
+        &stage, &step, domain, 64,
+        &fact_ratio, &warm_complete, &warm_step,
+        &lr_p, &lr_c, &lr_b,
+        &wm_steps, &wm_phys, &wm_chem, &wm_bio,
+        &collapse, &surprises, &replays,
+        &vocab, &lang_conf, &engines,
+        &inf_time, &active_neurons, &reason_hyp, &reason_plaus,
+        &attn, &sleep_pres);
+    if (rc != 0) Py_RETURN_NONE;
+
+    return Py_BuildValue(
+        "{s:I,s:I,s:s,s:f,s:O,s:I,"
+        "s:f,s:f,s:f,"
+        "s:I,s:I,s:I,s:I,"
+        "s:I,s:I,s:I,"
+        "s:I,s:f,s:I,"
+        "s:f,s:I,s:f,s:f,s:f,s:f}",
+        "stage", stage, "step", step, "domain", domain,
+        "fact_ratio", fact_ratio,
+        "warm_start_complete", warm_complete ? Py_True : Py_False,
+        "warm_start_step", warm_step,
+        "lr_physics", lr_p, "lr_chemistry", lr_c, "lr_biology", lr_b,
+        "wm_steps", wm_steps, "wm_phys", wm_phys, "wm_chem", wm_chem, "wm_bio", wm_bio,
+        "collapse_events", collapse, "surprises", surprises, "replays", replays,
+        "vocab_size", vocab, "lang_confidence", lang_conf, "active_engines", engines,
+        "inference_time_ms", inf_time, "active_neurons", active_neurons,
+        "attention_strength", attn, "reasoning_hypotheses", reason_hyp,
+        "reasoning_plausibility", reason_plaus, "sleep_pressure", sleep_pres);
+}
+
 static PyObject* Brain_set_network_ablation_py(BrainObject* self, PyObject* args, PyObject* kwds) {
     if (!self->brain) Py_RETURN_NONE;
     static char* kwlist[] = {"train_cnn", "train_snn", "train_lnn", NULL};
@@ -8505,6 +8604,11 @@ static PyMethodDef Brain_methods[] = {
      "Enable/disable training-mode fast path: set_training_mode(active) -> None"},
     {"eager_init_cognitive", (PyCFunction)Brain_eager_init_cognitive_py, METH_NOARGS,
      "Eagerly init all cognitive subsystems (thread-safe): eager_init_cognitive() -> int (count)"},
+    {"set_training_dashboard", (PyCFunction)Brain_set_training_dashboard_py,
+     METH_VARARGS | METH_KEYWORDS,
+     "Set training dashboard metrics: set_training_dashboard(stage=0, step=0, domain='', ...) -> None"},
+    {"get_training_dashboard", (PyCFunction)Brain_get_training_dashboard_py, METH_NOARGS,
+     "Get training dashboard + inference metrics: get_training_dashboard() -> dict"},
     {"set_network_ablation", (PyCFunction)Brain_set_network_ablation_py,
      METH_VARARGS | METH_KEYWORDS,
      "Enable/disable network types: set_network_ablation(train_cnn=1, train_snn=1, train_lnn=1)"},

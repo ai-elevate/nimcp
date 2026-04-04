@@ -2246,6 +2246,39 @@ struct brain_struct {
     struct biology_sim* biology_sim;
     struct world_prior* world_prior;
     bool intuitive_physics_enabled;
+
+    /* === TRAINING DASHBOARD METRICS ===
+     * Written by training script via set_training_metrics API.
+     * Read by metrics exporter via get_training_metrics API.
+     * All fields zero-initialized by calloc. */
+    struct {
+        /* Per-domain learning rates */
+        float lr_physics;
+        float lr_chemistry;
+        float lr_biology;
+        /* World model */
+        uint32_t wm_steps;
+        uint32_t wm_physics_transitions;
+        uint32_t wm_chemistry_transitions;
+        uint32_t wm_biology_transitions;
+        /* Curriculum */
+        float fact_ratio;
+        char current_domain[64];
+        bool warm_start_complete;
+        uint32_t warm_start_step;
+        /* Collapse detection */
+        uint32_t collapse_events;
+        /* Surprise / replay */
+        uint32_t surprises_stored;
+        uint32_t replays_done;
+        /* Language */
+        uint32_t vocab_size;
+        float language_confidence;
+        /* General */
+        uint32_t current_stage;
+        uint32_t current_step;
+        uint32_t active_engines;
+    } training_dashboard;
 };
 
 //=============================================================================
