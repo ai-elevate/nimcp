@@ -206,10 +206,8 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
         return false;
     }
 
-    /* Initialize world model fields to defaults */
-    brain->omni_world_model = NULL;
-    brain->multimodal_world_model = NULL;
-    brain->world_model_enabled = false;
+    /* Do NOT NULL existing pointers — checkpoint may have loaded them.
+     * Only set defaults for fields that aren't already populated. */
     brain->world_model_lazy_init = false;
     brain->last_world_model_update_us = 0;
     brain->world_model_update_interval_us = 10000;  /* Default: 10ms */
@@ -371,18 +369,21 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
         }
 
         if (brain->tb_integration_hub) {
-            /* Connect TB components */
-            tb_integration_connect_tb(brain->tb_integration_hub,
-                                       brain->tb_ref_frames,
-                                       brain->tb_voting,
-                                       brain->tb_sequences);
+            /* Connect TB components — only if ALL three are non-NULL */
+            if (brain->tb_ref_frames && brain->tb_voting && brain->tb_sequences) {
+                tb_integration_connect_tb(brain->tb_integration_hub,
+                                           brain->tb_ref_frames,
+                                           brain->tb_voting,
+                                           brain->tb_sequences);
+            }
 
             /* Wire all available brain systems */
             int wired = tb_integration_wire_from_brain(brain->tb_integration_hub, brain);
             LOG_INFO(LOG_MODULE, "  - Thousand Brains: %d systems wired", wired);
 
-            /* Also connect TB to WM bridge if available */
-            if (brain->wm_thousand_brains_bridge && brain->tb_ref_frames) {
+            /* Also connect TB to WM bridge if available — check ALL pointers */
+            if (brain->wm_thousand_brains_bridge &&
+                brain->tb_ref_frames && brain->tb_voting && brain->tb_sequences) {
                 wm_tb_bridge_connect_ref_frames(brain->wm_thousand_brains_bridge,
                                                  brain->tb_ref_frames);
                 wm_tb_bridge_connect_voting(brain->wm_thousand_brains_bridge,
