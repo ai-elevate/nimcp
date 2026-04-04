@@ -344,23 +344,31 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
     if (brain->config.enable_thousand_brains_integration) {
         LOG_INFO(LOG_MODULE, "Initializing Thousand Brains integration...");
 
-        /* Create TB core components */
-        column_ref_frame_config_t rf_config;
-        column_ref_frame_config_default(&rf_config);
-        brain->tb_ref_frames = column_ref_frame_create(&rf_config);
+        /* Create TB core components — skip if already allocated (checkpoint load) */
+        if (!brain->tb_ref_frames) {
+            column_ref_frame_config_t rf_config;
+            column_ref_frame_config_default(&rf_config);
+            brain->tb_ref_frames = column_ref_frame_create(&rf_config);
+        }
 
-        column_voting_config_t vt_config;
-        column_voting_config_default(&vt_config);
-        brain->tb_voting = column_voting_create(&vt_config);
+        if (!brain->tb_voting) {
+            column_voting_config_t vt_config;
+            column_voting_config_default(&vt_config);
+            brain->tb_voting = column_voting_create(&vt_config);
+        }
 
-        dendritic_seq_config_t ds_config;
-        dendritic_seq_config_default(&ds_config);
-        brain->tb_sequences = dendritic_seq_create(&ds_config);
+        if (!brain->tb_sequences) {
+            dendritic_seq_config_t ds_config;
+            dendritic_seq_config_default(&ds_config);
+            brain->tb_sequences = dendritic_seq_create(&ds_config);
+        }
 
-        /* Create integration hub */
-        tb_integration_config_t tb_config;
-        tb_integration_config_default(&tb_config);
-        brain->tb_integration_hub = tb_integration_create(&tb_config);
+        /* Create integration hub — skip if already exists */
+        if (!brain->tb_integration_hub) {
+            tb_integration_config_t tb_config;
+            tb_integration_config_default(&tb_config);
+            brain->tb_integration_hub = tb_integration_create(&tb_config);
+        }
 
         if (brain->tb_integration_hub) {
             /* Connect TB components */

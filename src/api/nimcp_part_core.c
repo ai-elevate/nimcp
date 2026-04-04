@@ -3606,10 +3606,10 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     /* Enable config flags needed by region inits.
      * Testing one at a time to isolate SIGABRT source. */
     b->config.enable_oscillations = true;
-    b->config.enable_speech_cortex = true;        /* For broca + wernicke */
-    b->config.enable_multimodal_integration = true; /* For broca + wernicke + parietal */
-    /* b->config.enable_parietal = true; */         /* DISABLED: testing */
-    /* b->config.enable_thousand_brains_integration = true; */ /* DISABLED: testing */
+    b->config.enable_speech_cortex = true;
+    b->config.enable_multimodal_integration = true;
+    b->config.enable_parietal = true;
+    b->config.enable_thousand_brains_integration = true;
 
     /* Core dependencies first */
     if (!b->engram_system) {
