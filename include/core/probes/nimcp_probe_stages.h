@@ -11,8 +11,20 @@
 
 #include <stdint.h>
 
-/* Forward declaration */
+/* Forward declarations */
 struct probe_registry;
+
+/* Inline metric struct for stage context — avoids include cycle with nimcp_brain_probes.h */
+typedef struct probe_stage_metric {
+    char     key[64];
+    int      type;   /* 0=float, 1=int, 2=string */
+    union {
+        float   f;
+        int64_t i;
+        char    s[64];
+    } value;
+    uint64_t timestamp_us;
+} probe_stage_metric_t;
 
 /* ============================================================================
  * Pipeline Stage IDs
@@ -52,18 +64,11 @@ typedef enum {
  * Stage Context (stack-allocated by PROBE_STAGE macro)
  * ============================================================================ */
 
-#ifndef PROBE_MAX_METRICS
-#define PROBE_MAX_METRICS 64
-#endif
-
-/* Forward-declare probe_metric_t to avoid include cycle */
-struct probe_metric;
-
 typedef struct probe_stage_context {
-    probe_stage_id_t    stage_id;
-    uint64_t            timestamp_us;
-    struct probe_metric metrics[16];   /**< Stage-local metrics (max 16 per stage) */
-    uint32_t            metric_count;
+    probe_stage_id_t        stage_id;
+    uint64_t                timestamp_us;
+    probe_stage_metric_t    metrics[16];   /**< Stage-local metrics (max 16 per stage) */
+    uint32_t                metric_count;
 } probe_stage_context_t;
 
 /* ============================================================================
@@ -86,11 +91,11 @@ void probe_registry_record_stage(struct probe_registry* reg,
  *   });
  * ============================================================================ */
 
-#define PROBE_STAGE(brain, stage_id, code_block) do {                   \
+#define PROBE_STAGE(brain, _probe_sid, code_block) do {                 \
     if ((brain)->probe_registry) {                                      \
         probe_stage_context_t _ctx;                                     \
         __builtin_memset(&_ctx, 0, sizeof(_ctx));                       \
-        _ctx.stage_id = (stage_id);                                     \
+        _ctx.stage_id = (_probe_sid);                                   \
         extern uint64_t nimcp_time_get_us(void);                        \
         _ctx.timestamp_us = nimcp_time_get_us();                        \
         { code_block }                                                  \
@@ -100,41 +105,41 @@ void probe_registry_record_stage(struct probe_registry* reg,
 } while (0)
 
 /* Helper macros for filling stage context metrics */
-#define PROBE_SET_FLOAT(ctx, key_str, val) do {                         \
-    if ((ctx)->metric_count < 16) {                                     \
-        struct probe_metric* _m = &(ctx)->metrics[(ctx)->metric_count]; \
-        __builtin_strncpy(_m->key, (key_str), 63);                     \
-        _m->key[63] = '\0';                                            \
-        _m->type = 0; /* PROBE_METRIC_FLOAT */                         \
-        _m->value.f = (val);                                            \
-        _m->timestamp_us = (ctx)->timestamp_us;                         \
-        (ctx)->metric_count++;                                          \
-    }                                                                   \
+#define PROBE_SET_FLOAT(ctx, key_str, val) do {                              \
+    if ((ctx)->metric_count < 16) {                                          \
+        probe_stage_metric_t* _m = &(ctx)->metrics[(ctx)->metric_count];     \
+        __builtin_strncpy(_m->key, (key_str), 63);                          \
+        _m->key[63] = '\0';                                                 \
+        _m->type = 0; /* PROBE_METRIC_FLOAT */                              \
+        _m->value.f = (val);                                                 \
+        _m->timestamp_us = (ctx)->timestamp_us;                              \
+        (ctx)->metric_count++;                                               \
+    }                                                                        \
 } while (0)
 
-#define PROBE_SET_INT(ctx, key_str, val) do {                           \
-    if ((ctx)->metric_count < 16) {                                     \
-        struct probe_metric* _m = &(ctx)->metrics[(ctx)->metric_count]; \
-        __builtin_strncpy(_m->key, (key_str), 63);                     \
-        _m->key[63] = '\0';                                            \
-        _m->type = 1; /* PROBE_METRIC_INT */                           \
-        _m->value.i = (val);                                            \
-        _m->timestamp_us = (ctx)->timestamp_us;                         \
-        (ctx)->metric_count++;                                          \
-    }                                                                   \
+#define PROBE_SET_INT(ctx, key_str, val) do {                                \
+    if ((ctx)->metric_count < 16) {                                          \
+        probe_stage_metric_t* _m = &(ctx)->metrics[(ctx)->metric_count];     \
+        __builtin_strncpy(_m->key, (key_str), 63);                          \
+        _m->key[63] = '\0';                                                 \
+        _m->type = 1; /* PROBE_METRIC_INT */                                \
+        _m->value.i = (val);                                                 \
+        _m->timestamp_us = (ctx)->timestamp_us;                              \
+        (ctx)->metric_count++;                                               \
+    }                                                                        \
 } while (0)
 
-#define PROBE_SET_STRING(ctx, key_str, val) do {                        \
-    if ((ctx)->metric_count < 16) {                                     \
-        struct probe_metric* _m = &(ctx)->metrics[(ctx)->metric_count]; \
-        __builtin_strncpy(_m->key, (key_str), 63);                     \
-        _m->key[63] = '\0';                                            \
-        _m->type = 2; /* PROBE_METRIC_STRING */                        \
-        __builtin_strncpy(_m->value.s, (val), 63);                     \
-        _m->value.s[63] = '\0';                                        \
-        _m->timestamp_us = (ctx)->timestamp_us;                         \
-        (ctx)->metric_count++;                                          \
-    }                                                                   \
+#define PROBE_SET_STRING(ctx, key_str, val) do {                             \
+    if ((ctx)->metric_count < 16) {                                          \
+        probe_stage_metric_t* _m = &(ctx)->metrics[(ctx)->metric_count];     \
+        __builtin_strncpy(_m->key, (key_str), 63);                          \
+        _m->key[63] = '\0';                                                 \
+        _m->type = 2; /* PROBE_METRIC_STRING */                             \
+        __builtin_strncpy(_m->value.s, (val), 63);                          \
+        _m->value.s[63] = '\0';                                             \
+        _m->timestamp_us = (ctx)->timestamp_us;                              \
+        (ctx)->metric_count++;                                               \
+    }                                                                        \
 } while (0)
 
 /* ============================================================================

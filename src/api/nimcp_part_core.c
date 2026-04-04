@@ -3724,6 +3724,91 @@ void nimcp_brain_set_network_ablation(nimcp_brain_t brain,
     if (train_lnn >= 0) brain->internal_brain->config.train_lnn = (bool)train_lnn;
 }
 
+/* ============================================================================
+ * Unified Brain Probe System — Public API
+ * ============================================================================ */
+
+#include "core/probes/nimcp_brain_probes.h"
+
+static probe_registry_t* ensure_probe_registry(nimcp_brain_t brain) {
+    brain_t b = brain->internal_brain;
+    if (!b->probe_registry) {
+        b->probe_registry = (struct probe_registry*)probe_registry_create(b);
+        if (b->probe_registry) {
+            probe_registry_start((probe_registry_t*)b->probe_registry);
+        }
+    }
+    return (probe_registry_t*)b->probe_registry;
+}
+
+int nimcp_brain_create_probe(nimcp_brain_t brain,
+    const uint16_t* module_ids, uint32_t num_modules,
+    uint32_t interval_ms, uint32_t mode,
+    uint32_t* out_handle)
+{
+    if (!brain || !brain->internal_brain || !out_handle) return -1;
+
+    probe_registry_t* reg = ensure_probe_registry(brain);
+    if (!reg) return -1;
+
+    probe_handle_t h = PROBE_INVALID_HANDLE;
+    if (mode == PROBE_MODE_ACTIVE || mode == PROBE_MODE_HYBRID) {
+        /* For custom active probes without a sample_fn, use a generic sampler
+         * that just checks if the module exists */
+        h = probe_create_active(reg, "custom", module_ids, num_modules,
+                                NULL, NULL, interval_ms);
+    } else {
+        h = probe_create_passive(reg, "custom", module_ids, num_modules,
+                                  NULL, 0);
+    }
+
+    *out_handle = h;
+    return (h != PROBE_INVALID_HANDLE) ? 0 : -1;
+}
+
+int nimcp_brain_get_probe_metrics(nimcp_brain_t brain,
+    uint32_t handle,
+    nimcp_probe_metric_t* out, uint32_t max, uint32_t* count)
+{
+    if (!brain || !brain->internal_brain || !out || !count) return -1;
+    probe_registry_t* reg = (probe_registry_t*)brain->internal_brain->probe_registry;
+    if (!reg) return -1;
+
+    /* nimcp_probe_metric_t and probe_metric_t have identical layout */
+    *count = probe_get_metrics(reg, handle, (probe_metric_t*)out, max);
+    return 0;
+}
+
+int nimcp_brain_get_all_probe_metrics_json(nimcp_brain_t brain, char** out_json) {
+    if (!brain || !brain->internal_brain || !out_json) return -1;
+    probe_registry_t* reg = (probe_registry_t*)brain->internal_brain->probe_registry;
+    if (!reg) {
+        *out_json = NULL;
+        return -1;
+    }
+    *out_json = probe_get_all_metrics_json(reg);
+    return *out_json ? 0 : -1;
+}
+
+void nimcp_brain_destroy_probe(nimcp_brain_t brain, uint32_t handle) {
+    if (!brain || !brain->internal_brain) return;
+    probe_registry_t* reg = (probe_registry_t*)brain->internal_brain->probe_registry;
+    if (reg) probe_destroy(reg, handle);
+}
+
+int nimcp_brain_attach_builtin_probes(nimcp_brain_t brain, uint32_t interval_ms) {
+    if (!brain || !brain->internal_brain) return -1;
+    probe_registry_t* reg = ensure_probe_registry(brain);
+    if (!reg) return -1;
+
+    int count = 0;
+    if (probe_attach_network_metrics(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_cognitive_stats(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_training_dashboard(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_inference(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    return count;
+}
+
 bool nimcp_brain_get_network_metrics(nimcp_brain_t brain,
                                       float* ema_ann, float* ema_cnn,
                                       float* ema_snn, float* ema_lnn,

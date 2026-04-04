@@ -40,6 +40,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/signal/nimcp_signal_handler.h"
 #include "core/brain/nimcp_brain_lazy_init.h"
+#include "core/probes/nimcp_probe_stages.h"
 
 #define LOG_MODULE "BRAIN"
 #include <math.h>

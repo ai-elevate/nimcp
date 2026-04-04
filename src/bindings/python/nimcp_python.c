@@ -6770,6 +6770,56 @@ static PyObject* Brain_eager_init_cognitive_py(BrainObject* self, PyObject* Py_U
     return PyLong_FromLong(count);
 }
 
+/* ============================================================================
+ * Unified Brain Probe System — Python Bindings
+ * ============================================================================ */
+
+static PyObject* Brain_attach_builtin_probes_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    uint32_t interval_ms = 1000;
+    if (!PyArg_ParseTuple(args, "|I", &interval_ms)) return NULL;
+    int count = nimcp_brain_attach_builtin_probes(self->brain, interval_ms);
+    return PyLong_FromLong(count);
+}
+
+static PyObject* Brain_get_all_probe_metrics_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_NONE;
+    char* json = NULL;
+    int rc = nimcp_brain_get_all_probe_metrics_json(self->brain, &json);
+    if (rc != 0 || !json) Py_RETURN_NONE;
+
+    /* Parse JSON string into Python dict */
+    PyObject* json_module = PyImport_ImportModule("json");
+    if (!json_module) {
+        nimcp_free(json);
+        Py_RETURN_NONE;
+    }
+    PyObject* loads = PyObject_GetAttrString(json_module, "loads");
+    Py_DECREF(json_module);
+    if (!loads) {
+        nimcp_free(json);
+        Py_RETURN_NONE;
+    }
+    PyObject* py_json = PyUnicode_FromString(json);
+    nimcp_free(json);
+    if (!py_json) {
+        Py_DECREF(loads);
+        Py_RETURN_NONE;
+    }
+    PyObject* result = PyObject_CallOneArg(loads, py_json);
+    Py_DECREF(loads);
+    Py_DECREF(py_json);
+    return result ? result : Py_None;
+}
+
+static PyObject* Brain_destroy_probe_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    uint32_t handle;
+    if (!PyArg_ParseTuple(args, "I", &handle)) return NULL;
+    nimcp_brain_destroy_probe(self->brain, handle);
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_set_training_dashboard_py(BrainObject* self, PyObject* args, PyObject* kwds) {
     if (!self->brain) Py_RETURN_NONE;
     static char* kwlist[] = {
@@ -8609,6 +8659,14 @@ static PyMethodDef Brain_methods[] = {
      "Set training dashboard metrics: set_training_dashboard(stage=0, step=0, domain='', ...) -> None"},
     {"get_training_dashboard", (PyCFunction)Brain_get_training_dashboard_py, METH_NOARGS,
      "Get training dashboard + inference metrics: get_training_dashboard() -> dict"},
+    // Unified probe system
+    {"attach_builtin_probes", (PyCFunction)Brain_attach_builtin_probes_py, METH_VARARGS,
+     "Attach all 4 built-in probes (network, cognitive, dashboard, inference):\n"
+     "  attach_builtin_probes(interval_ms=1000) -> int (count attached)"},
+    {"get_all_probe_metrics", (PyCFunction)Brain_get_all_probe_metrics_py, METH_NOARGS,
+     "Get all probe metrics as dict: get_all_probe_metrics() -> dict"},
+    {"destroy_probe", (PyCFunction)Brain_destroy_probe_py, METH_VARARGS,
+     "Destroy a probe: destroy_probe(handle) -> None"},
     {"set_network_ablation", (PyCFunction)Brain_set_network_ablation_py,
      METH_VARARGS | METH_KEYWORDS,
      "Enable/disable network types: set_network_ablation(train_cnn=1, train_snn=1, train_lnn=1)"},

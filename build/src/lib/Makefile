@@ -31748,6 +31748,78 @@ __/core/prefrontal/nimcp_prefrontal_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/prefrontal/nimcp_prefrontal_thalamic_bridge.c.s
 .PHONY : __/core/prefrontal/nimcp_prefrontal_thalamic_bridge.c.s
 
+__/core/probes/nimcp_brain_probes.o: __/core/probes/nimcp_brain_probes.c.o
+.PHONY : __/core/probes/nimcp_brain_probes.o
+
+# target to build an object file
+__/core/probes/nimcp_brain_probes.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_brain_probes.c.o
+.PHONY : __/core/probes/nimcp_brain_probes.c.o
+
+__/core/probes/nimcp_brain_probes.i: __/core/probes/nimcp_brain_probes.c.i
+.PHONY : __/core/probes/nimcp_brain_probes.i
+
+# target to preprocess a source file
+__/core/probes/nimcp_brain_probes.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_brain_probes.c.i
+.PHONY : __/core/probes/nimcp_brain_probes.c.i
+
+__/core/probes/nimcp_brain_probes.s: __/core/probes/nimcp_brain_probes.c.s
+.PHONY : __/core/probes/nimcp_brain_probes.s
+
+# target to generate assembly for a file
+__/core/probes/nimcp_brain_probes.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_brain_probes.c.s
+.PHONY : __/core/probes/nimcp_brain_probes.c.s
+
+__/core/probes/nimcp_probe_builtins.o: __/core/probes/nimcp_probe_builtins.c.o
+.PHONY : __/core/probes/nimcp_probe_builtins.o
+
+# target to build an object file
+__/core/probes/nimcp_probe_builtins.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_probe_builtins.c.o
+.PHONY : __/core/probes/nimcp_probe_builtins.c.o
+
+__/core/probes/nimcp_probe_builtins.i: __/core/probes/nimcp_probe_builtins.c.i
+.PHONY : __/core/probes/nimcp_probe_builtins.i
+
+# target to preprocess a source file
+__/core/probes/nimcp_probe_builtins.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_probe_builtins.c.i
+.PHONY : __/core/probes/nimcp_probe_builtins.c.i
+
+__/core/probes/nimcp_probe_builtins.s: __/core/probes/nimcp_probe_builtins.c.s
+.PHONY : __/core/probes/nimcp_probe_builtins.s
+
+# target to generate assembly for a file
+__/core/probes/nimcp_probe_builtins.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_probe_builtins.c.s
+.PHONY : __/core/probes/nimcp_probe_builtins.c.s
+
+__/core/probes/nimcp_probe_module_map.o: __/core/probes/nimcp_probe_module_map.c.o
+.PHONY : __/core/probes/nimcp_probe_module_map.o
+
+# target to build an object file
+__/core/probes/nimcp_probe_module_map.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_probe_module_map.c.o
+.PHONY : __/core/probes/nimcp_probe_module_map.c.o
+
+__/core/probes/nimcp_probe_module_map.i: __/core/probes/nimcp_probe_module_map.c.i
+.PHONY : __/core/probes/nimcp_probe_module_map.i
+
+# target to preprocess a source file
+__/core/probes/nimcp_probe_module_map.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_probe_module_map.c.i
+.PHONY : __/core/probes/nimcp_probe_module_map.c.i
+
+__/core/probes/nimcp_probe_module_map.s: __/core/probes/nimcp_probe_module_map.c.s
+.PHONY : __/core/probes/nimcp_probe_module_map.s
+
+# target to generate assembly for a file
+__/core/probes/nimcp_probe_module_map.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/probes/nimcp_probe_module_map.c.s
+.PHONY : __/core/probes/nimcp_probe_module_map.c.s
+
 __/core/sensory/auditory/nimcp_auditory_substrate_bridge.o: __/core/sensory/auditory/nimcp_auditory_substrate_bridge.c.o
 .PHONY : __/core/sensory/auditory/nimcp_auditory_substrate_bridge.o
 
@@ -59467,6 +59539,15 @@ help:
 	@echo "... __/core/prefrontal/nimcp_prefrontal_thalamic_bridge.o"
 	@echo "... __/core/prefrontal/nimcp_prefrontal_thalamic_bridge.i"
 	@echo "... __/core/prefrontal/nimcp_prefrontal_thalamic_bridge.s"
+	@echo "... __/core/probes/nimcp_brain_probes.o"
+	@echo "... __/core/probes/nimcp_brain_probes.i"
+	@echo "... __/core/probes/nimcp_brain_probes.s"
+	@echo "... __/core/probes/nimcp_probe_builtins.o"
+	@echo "... __/core/probes/nimcp_probe_builtins.i"
+	@echo "... __/core/probes/nimcp_probe_builtins.s"
+	@echo "... __/core/probes/nimcp_probe_module_map.o"
+	@echo "... __/core/probes/nimcp_probe_module_map.i"
+	@echo "... __/core/probes/nimcp_probe_module_map.s"
 	@echo "... __/core/sensory/auditory/nimcp_auditory_substrate_bridge.o"
 	@echo "... __/core/sensory/auditory/nimcp_auditory_substrate_bridge.i"
 	@echo "... __/core/sensory/auditory/nimcp_auditory_substrate_bridge.s"

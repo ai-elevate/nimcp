@@ -560,6 +560,14 @@ class BrainProxy:
         resp = self._send({"cmd": "get_training_dashboard"})
         return resp.get("dashboard", {})
 
+    def attach_builtin_probes(self, interval_ms=1000):
+        resp = self._send({"cmd": "attach_builtin_probes", "interval_ms": interval_ms})
+        return resp.get("count", 0) if isinstance(resp, dict) else 0
+
+    def get_all_probe_metrics(self):
+        resp = self._send({"cmd": "get_probe_metrics"})
+        return resp.get("probe_metrics", {}) if isinstance(resp, dict) else {}
+
     def enable_mixed_precision(self, enabled=True):
         self._send({"cmd": "enable_mixed_precision", "enabled": enabled})
 

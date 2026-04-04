@@ -410,7 +410,11 @@ void probe_registry_record_stage(struct probe_registry* reg,
 
         for (uint32_t j = 0; j < ctx->metric_count && base + j < PROBE_MAX_METRICS; j++) {
             probe_metric_t* dst = &p->metrics[write_buf][base + j];
-            *dst = *(const probe_metric_t*)&ctx->metrics[j];
+            /* Copy from stage metric (identical layout) */
+            memcpy(dst->key, ctx->metrics[j].key, sizeof(dst->key));
+            dst->type = (probe_metric_type_t)ctx->metrics[j].type;
+            memcpy(&dst->value, &ctx->metrics[j].value, sizeof(dst->value));
+            dst->timestamp_us = ctx->metrics[j].timestamp_us;
 
             /* Prefix with stage name */
             if (stage_name) {

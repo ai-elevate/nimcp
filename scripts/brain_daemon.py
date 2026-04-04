@@ -889,6 +889,17 @@ class BrainService:
             result = self.brain.get_training_dashboard()
         return {"dashboard": result}
 
+    def _cmd_attach_builtin_probes(self, req):
+        interval = req.get("interval_ms", 1000)
+        if True:  # RWLock in handle()
+            count = self.brain.attach_builtin_probes(interval)
+        return {"ok": True, "count": count}
+
+    def _cmd_get_probe_metrics(self, _req):
+        if True:  # RWLock in handle()
+            result = self.brain.get_all_probe_metrics()
+        return {"probe_metrics": result}
+
     def _cmd_enable_gradient_checkpointing(self, req):
         args = [req.get("enabled", True)]
         if "interval" in req:

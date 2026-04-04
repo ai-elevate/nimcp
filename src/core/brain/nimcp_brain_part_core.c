@@ -3997,6 +3997,18 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                         "decision not cached (possible contention or corruption)");
     }
 
+    PROBE_STAGE(brain, PROBE_INF_DECISION, {
+        PROBE_SET_FLOAT(&_ctx, "confidence", decision->confidence);
+        float _dnorm = 0.0f;
+        for (uint32_t _i = 0; _i < decision->output_size; _i++)
+            _dnorm += decision->output_vector[_i] * decision->output_vector[_i];
+        PROBE_SET_FLOAT(&_ctx, "output_norm", sqrtf(_dnorm));
+        PROBE_SET_INT(&_ctx, "output_size", (int64_t)decision->output_size);
+        PROBE_SET_FLOAT(&_ctx, "inference_time_ms",
+            (float)decision->inference_time_us / 1000.0f);
+        PROBE_SET_STRING(&_ctx, "label", decision->label);
+    });
+
     // Free the defensive copy of features
     nimcp_free(local_features);
 

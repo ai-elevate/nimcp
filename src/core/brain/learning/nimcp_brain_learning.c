@@ -30,6 +30,7 @@
 
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "core/brain/nimcp_brain_lazy_init.h"
+#include "core/probes/nimcp_probe_stages.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "memory/nimcp_memory_store.h"
@@ -1061,6 +1062,14 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                          LEARN_MODE_DISTILLATION,
                                          effective_lr);
 
+    PROBE_STAGE(brain, PROBE_TRAIN_ADAPTIVE, {
+        PROBE_SET_FLOAT(&_ctx, "loss", loss);
+        PROBE_SET_FLOAT(&_ctx, "effective_lr", effective_lr);
+        PROBE_SET_FLOAT(&_ctx, "lr_memory_factor", lr_memory_factor);
+        PROBE_SET_INT(&_ctx, "num_features", (int64_t)num_features);
+        PROBE_SET_INT(&_ctx, "target_size", (int64_t)target_size);
+    });
+
     if (loss < 0.0f) {
         NIMCP_LOGGING_WARN("adaptive_network_learn returned %.2f: network=%p, input_size=%u, target_size=%u, lr=%.6f",
                            loss, (void*)brain->network,
@@ -1836,6 +1845,13 @@ sequential_training:
      * Gated to run every N steps (default: 5) to amortize cost. */
     brain_train_cognitive_subsystems(brain, features, num_features,
                                       target, target_size, label, loss);
+
+    PROBE_STAGE(brain, PROBE_TRAIN_COGNITIVE, {
+        PROBE_SET_FLOAT(&_ctx, "vae_loss", brain->cognitive_stats.vae_last_loss);
+        PROBE_SET_FLOAT(&_ctx, "jepa_loss", brain->cognitive_stats.jepa_last_loss);
+        PROBE_SET_FLOAT(&_ctx, "pred_hier_loss", brain->cognitive_stats.pred_hierarchy_last_loss);
+        PROBE_SET_INT(&_ctx, "cognitive_counter", (int64_t)brain->cognitive_train_counter);
+    });
 
     /* Co-occurrence tracking for semantic relation auto-creation */
     static uint64_t recent_concepts[8] = {0};

@@ -1,6 +1,1 @@
-{
-  "stage": 1,
-  "step": 20000,
-  "snapshot": "athena_s1_step20000.bin",
-  "timestamp": "2026-04-01 21:29:54"
-}
+{"stage": 2, "step": 14000, "snapshot": "athena_immersive.bin", "timestamp": "2026-04-03 20:00:00"}

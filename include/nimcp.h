@@ -2747,6 +2747,61 @@ void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active);
  */
 int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain);
 
+/* ============================================================================
+ * Unified Brain Probe System
+ * ============================================================================ */
+
+/** Probe metric value (matches probe_metric_t in nimcp_brain_probes.h) */
+typedef struct nimcp_probe_metric {
+    char     key[64];
+    int      type;        /**< 0=float, 1=int, 2=string */
+    union {
+        float   f;
+        int64_t i;
+        char    s[64];
+    } value;
+    uint64_t timestamp_us;
+} nimcp_probe_metric_t;
+
+/**
+ * @brief Create a probe that monitors brain modules or pipeline stages.
+ * @param module_ids   Array of bio_module_id values (0 = use built-in)
+ * @param num_modules  Number of module IDs
+ * @param interval_ms  Sampling interval (0 = event-driven only)
+ * @param mode         1=active, 2=passive, 3=hybrid
+ * @param out_handle   Receives probe handle
+ * @return 0 on success
+ */
+int nimcp_brain_create_probe(nimcp_brain_t brain,
+    const uint16_t* module_ids, uint32_t num_modules,
+    uint32_t interval_ms, uint32_t mode,
+    uint32_t* out_handle);
+
+/**
+ * @brief Get metrics from a single probe.
+ * @param handle       Probe handle from create_probe
+ * @param out          Caller-allocated metric array
+ * @param max          Size of out array
+ * @param count        Receives number of metrics written
+ * @return 0 on success
+ */
+int nimcp_brain_get_probe_metrics(nimcp_brain_t brain,
+    uint32_t handle,
+    nimcp_probe_metric_t* out, uint32_t max, uint32_t* count);
+
+/**
+ * @brief Get all probe metrics as JSON string.
+ * @param out_json     Receives heap-allocated JSON (caller must free)
+ * @return 0 on success
+ */
+int nimcp_brain_get_all_probe_metrics_json(nimcp_brain_t brain, char** out_json);
+
+/** @brief Destroy a probe. */
+void nimcp_brain_destroy_probe(nimcp_brain_t brain, uint32_t handle);
+
+/** @brief Attach built-in probes (network, cognitive, dashboard, inference). */
+int nimcp_brain_attach_builtin_probes(nimcp_brain_t brain, uint32_t interval_ms);
+
 /**
  * @brief Enable/disable individual network types for ablation studies
  * @param train_cnn -1 = don't change, 0 = disable, 1 = enable

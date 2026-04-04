@@ -1351,6 +1351,15 @@ sequential_fallback:
             brain->network, fwd_features, fwd_num, decision->output_vector, decision->output_size, 0);
     }
 
+    PROBE_STAGE(brain, PROBE_INF_ADAPTIVE_FWD, {
+        PROBE_SET_INT(&_ctx, "active_neurons", (int64_t)active_neurons);
+        float _out_norm = 0.0f;
+        for (uint32_t _i = 0; _i < decision->output_size; _i++)
+            _out_norm += decision->output_vector[_i] * decision->output_vector[_i];
+        PROBE_SET_FLOAT(&_ctx, "output_norm", sqrtf(_out_norm));
+        PROBE_SET_INT(&_ctx, "output_size", (int64_t)decision->output_size);
+    });
+
     /* 2. CNN forward — classification overlay (label from CNN, embedding from adaptive) */
     if (brain->cnn_trainer) {
         uint32_t input_dims[2] = {1, num_features};
@@ -1456,6 +1465,15 @@ sequential_fallback:
             nimcp_free(snn_output);
         }
         nimcp_free(snn_input);
+
+        PROBE_STAGE(brain, PROBE_INF_SNN_FWD, {
+            float _snn_norm = 0.0f;
+            for (uint32_t _i = 0; _i < snn_out_dim; _i++)
+                _snn_norm += decision->output_vector[_i] * decision->output_vector[_i];
+            PROBE_SET_FLOAT(&_ctx, "snn_output_norm", sqrtf(_snn_norm));
+            PROBE_SET_INT(&_ctx, "snn_in", (int64_t)snn_in);
+            PROBE_SET_INT(&_ctx, "snn_out", (int64_t)snn_out);
+        });
     }
 
     /* 3.5. SNN routing bridge — update cross-region spike routing */
@@ -1554,6 +1572,11 @@ lnn_gating:
         }
         if (lnn_input) nimcp_tensor_destroy(lnn_input);
         if (lnn_output) nimcp_tensor_destroy(lnn_output);
+
+        PROBE_STAGE(brain, PROBE_INF_LNN_GATE, {
+            PROBE_SET_INT(&_ctx, "lnn_in_size", (int64_t)lnn_in_size);
+            PROBE_SET_INT(&_ctx, "lnn_out_size", (int64_t)lnn_out_size);
+        });
     }
 
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);
