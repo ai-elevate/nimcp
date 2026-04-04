@@ -3638,7 +3638,7 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     if (!b->fep_orchestrator){ nimcp_brain_factory_init_fep_orchestrator_subsystem(b); if (b->fep_orchestrator) count++; }
     if (!b->language_layer)  { nimcp_brain_factory_init_language_subsystem(b);         if (b->language_layer)  count++; }
 
-    /* Brain regions (12 regions) */
+    /* Brain regions */
     if (!b->broca)           { nimcp_brain_factory_init_broca_subsystem(b);           if (b->broca)           count++; }
     if (!b->wernicke)        { nimcp_brain_factory_init_wernicke_subsystem(b);        if (b->wernicke)        count++; }
     if (!b->cerebellum)      { nimcp_brain_factory_init_cerebellum_subsystem(b);      if (b->cerebellum)      count++; }
@@ -3647,6 +3647,31 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     if (!b->medulla_enabled) { nimcp_brain_factory_init_medulla_subsystem(b);         if (b->medulla_enabled) count++; }
     if (!b->basal_ganglia)   { nimcp_brain_factory_init_basal_ganglia_subsystem(b);   if (b->basal_ganglia)   count++; }
     if (!b->parietal_cortex) { nimcp_brain_factory_init_parietal_cortex_subsystem(b); if (b->parietal_cortex) count++; }
+
+    /* Additional subsystems — perception, monitoring, architecture */
+    extern bool nimcp_brain_factory_init_parietal_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_intuition_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_mental_health_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_core_directives_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_health_agent_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_cycle_coordinator_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_pink_noise_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_state_manager_subsystem(brain_t);
+
+    if (!b->parietal)                   { nimcp_brain_factory_init_parietal_subsystem(b);          if (b->parietal)                   count++; }
+    if (!b->intuition_system)           { nimcp_brain_factory_init_intuition_subsystem(b);         if (b->intuition_system)           count++; }
+    if (!b->mental_health_monitor)      { nimcp_brain_factory_init_mental_health_subsystem(b);     if (b->mental_health_monitor)      count++; }
+    if (!b->core_directives_enabled)    { nimcp_brain_factory_init_core_directives_subsystem(b);   if (b->core_directives_enabled)    count++; }
+    if (!b->fault_tolerance_enabled)    { nimcp_brain_factory_init_fault_tolerance_subsystem(b);   if (b->fault_tolerance_enabled)    count++; }
+    if (!b->health_agent_enabled)       { nimcp_brain_factory_init_health_agent_subsystem(b);      if (b->health_agent_enabled)       count++; }
+    if (!b->cycle_coordinator_enabled)  { nimcp_brain_factory_init_cycle_coordinator_subsystem(b); if (b->cycle_coordinator_enabled)  count++; }
+    if (!b->pink_noise)                 { nimcp_brain_factory_init_pink_noise_subsystem(b);        if (b->pink_noise)                 count++; }
+    if (!b->dragonfly_enabled)          { nimcp_brain_factory_init_dragonfly_subsystem(b);         if (b->dragonfly_enabled)          count++; }
+    if (!b->tb_integration_hub)         { nimcp_brain_factory_init_cortical_columns_subsystem(b);  if (b->tb_integration_hub)         count++; }
+    if (!b->state_manager_enabled)      { nimcp_brain_factory_init_state_manager_subsystem(b);     if (b->state_manager_enabled)      count++; }
 
     return count;
 }
