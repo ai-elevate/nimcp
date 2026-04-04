@@ -1381,8 +1381,9 @@ uint32_t lexical_build_common_english(lexical_access_t* lex)
 
     /* Common English words with phoneme transcriptions */
     /* Format: word, phonemes, count, frequency (Zipf 1-7), concept_id */
+    /* Static to avoid stack pressure — this function is called deep in the init chain */
 
-    struct {
+    static const struct {
         const char* word;
         phoneme_t phonemes[10];
         uint32_t num_phonemes;
