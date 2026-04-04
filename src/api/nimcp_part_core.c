@@ -3603,10 +3603,11 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
      *
      * Enable config flags that gate region initialization.
      * These may be false in old checkpoints that didn't have these features. */
-    b->config.enable_speech_cortex = true;
-    b->config.enable_multimodal_integration = true;
-    b->config.enable_parietal = true;
-    b->config.enable_thousand_brains_integration = true;
+    /* Note: broca/wernicke need enable_speech_cortex, parietal needs enable_parietal,
+     * cortical columns need enable_thousand_brains_integration. These are NOT force-enabled
+     * here because their factory inits assume a fresh brain and can SIGABRT on a loaded brain
+     * with existing state. The 12 regions that init safely cover the critical paths.
+     * TODO: write dedicated reinit_after_load() that handles these safely. */
     b->config.enable_oscillations = true;
 
     /* Core dependencies first */
@@ -3681,13 +3682,6 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     INIT_IF_DISABLED(core_directives_enabled, nimcp_brain_factory_init_core_directives_subsystem);
     INIT_IF_NULL(pink_noise, nimcp_brain_factory_init_pink_noise_subsystem);
 
-    /* World model + Thousand Brains — world model creates tb_ref_frames,
-     * tb_voting, tb_sequences which are prerequisites for tb_integration_hub */
-    {
-        extern bool nimcp_brain_factory_init_world_model_subsystem(brain_t);
-        nimcp_brain_factory_init_world_model_subsystem(b);
-        if (b->tb_integration_hub) count++;
-    }
     INIT_IF_NULL(tb_integration_hub, nimcp_brain_factory_init_cortical_columns_subsystem);
 
     /* Cognitive subsystems that use safer init patterns */
