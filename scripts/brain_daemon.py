@@ -1531,8 +1531,8 @@ def main():
         if HAS_TQDM:
             # Brain load is blocking C code — we can't track real progress,
             # but we can show an estimated timer based on checkpoint size
-            import threading
-            load_done = threading.Event()
+            import threading as _threading
+            load_done = _threading.Event()
             load_result = [None, None]  # [brain, error]
 
             def _load():
@@ -1544,7 +1544,7 @@ def main():
                     load_result[1] = e
                 load_done.set()
 
-            t = threading.Thread(target=_load, daemon=True)
+            t = _threading.Thread(target=_load, daemon=True)
             t.start()
 
             # Estimated time: ~80s per GB of checkpoint
