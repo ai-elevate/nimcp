@@ -6090,6 +6090,30 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 300 == 0:
             parent.teach_speech(brain, composer, stage=2)
 
+        # Babbling loop every 50 steps — force decode output, feed back as input.
+        # Like infant babbling: produce sound → hear yourself → refine.
+        # Creates the language feedback loop that bootstraps vocabulary.
+        if (i + 1) % 50 == 0 and decoder:
+            try:
+                # Get current output for a familiar concept
+                babble_text = random.choice(["dog", "water", "sun", "tree", "happy", "big", "run", "eat"])
+                babble_emb = encode_text(babble_text)
+                babble_result = brain.decide_full(babble_emb.tolist())
+                if isinstance(babble_result, dict):
+                    ov = babble_result.get("output_vector", [])
+                    if ov:
+                        # Decode what the brain "says"
+                        decoded = decoder.decode_output_text(ov)
+                        # Feed the decoded text back as language learning
+                        if decoded and len(decoded) > 1:
+                            brain.learn_language(decoded)
+                            brain.train_language(babble_text, decoded)
+                        # Log babbling every 500 steps
+                        if (i + 1) % 500 == 0:
+                            print(f"    [Babble] \"{babble_text}\" → \"{decoded[:40] if decoded else '...'}\"")
+            except Exception:
+                pass  # Babbling failure is never fatal
+
         # Dragonfly tracking training — every 300 steps
         # Tracking is a stage 2 skill: relationships between objects in motion
         if (i + 1) % 300 == 0 and DRAGONFLY_TRAINING_DATA:

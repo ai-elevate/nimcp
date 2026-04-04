@@ -3607,6 +3607,7 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     extern bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_language_subsystem(brain_t);
 
     if (!b->working_memory)  { nimcp_brain_factory_init_working_memory_subsystem(b);  if (b->working_memory)  count++; }
     if (!b->executive)       { nimcp_brain_factory_init_executive_subsystem(b);       if (b->executive)       count++; }
@@ -3617,6 +3618,7 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     if (!b->theory_of_mind)  { nimcp_brain_factory_init_theory_of_mind_subsystem(b);  if (b->theory_of_mind)  count++; }
     if (!b->ethics)          { nimcp_brain_factory_init_ethics_engine_subsystem(b);    if (b->ethics)          count++; }
     if (!b->fep_orchestrator){ nimcp_brain_factory_init_fep_orchestrator_subsystem(b); if (b->fep_orchestrator) count++; }
+    if (!b->language_layer)  { nimcp_brain_factory_init_language_subsystem(b);         if (b->language_layer)  count++; }
 
     return count;
 }
