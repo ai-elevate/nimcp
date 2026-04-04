@@ -21,13 +21,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef __cplusplus
-#include <atomic>
-#define PROBE_ATOMIC(T) std::atomic<T>
-#else
-#include <stdatomic.h>
-#define PROBE_ATOMIC(T) _Atomic T
-#endif
+/* Use volatile + GCC __atomic builtins for cross C/C++ compatibility.
+ * Avoids C11 _Atomic (breaks in C++ extern "C") and std::atomic
+ * (breaks with memset). The .c files use __atomic_load_n / __atomic_store_n. */
 
 /* Forward declarations to avoid circular includes */
 struct brain_struct;
@@ -139,7 +135,7 @@ typedef struct probe {
      * Readers always read metrics[!active_buf] (stable snapshot). */
     probe_metric_t      metrics[2][PROBE_MAX_METRICS];
     uint32_t            metric_count[2];
-    PROBE_ATOMIC(uint32_t) active_buf;     /**< 0 or 1 — which buffer is "live" */
+    volatile uint32_t   active_buf;     /**< 0 or 1 — which buffer is "live" */
 } probe_t;
 
 /* ============================================================================
@@ -149,7 +145,7 @@ typedef struct probe {
 typedef struct probe_registry {
     probe_t             probes[PROBE_REGISTRY_MAX];
     uint32_t            count;
-    PROBE_ATOMIC(uint32_t) next_handle;
+    volatile uint32_t   next_handle;
 
     /* Sampler thread */
     void*               sampler_thread;     /**< nimcp_thread_t* */

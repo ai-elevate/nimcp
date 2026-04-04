@@ -560,12 +560,16 @@ static void sample_brain_regions(
     /* Glial (already has dedicated probe, but summary here) */
     EMIT_I("glial", brain->glial ? 1 : 0);
 
-    /* Count total active regions */
-    int total_active = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        if (metrics[i].type == PROBE_METRIC_INT && metrics[i].value.i > 0)
-            total_active++;
-    }
+    /* Count total active regions directly */
+    int total_active =
+        (brain->cortex_cnns[0] ? 1 : 0) + (brain->cortex_cnns[1] ? 1 : 0) +
+        (brain->cortex_cnns[2] ? 1 : 0) + (brain->cortex_cnns[3] ? 1 : 0) +
+        (brain->broca_enabled ? 1 : 0) + (brain->wernicke_enabled ? 1 : 0) +
+        (brain->engram_system ? 1 : 0) + (brain->emotional_learning ? 1 : 0) +
+        (brain->hypothalamus_enabled ? 1 : 0) + (brain->basal_ganglia_enabled ? 1 : 0) +
+        (brain->cerebellum_enabled ? 1 : 0) + (brain->medulla_enabled ? 1 : 0) +
+        (brain->parietal_enabled ? 1 : 0) + (brain->executive ? 1 : 0) +
+        (brain->tb_integration_hub ? 1 : 0) + (brain->glial ? 1 : 0);
     EMIT_I("total_active_regions", (int64_t)total_active);
 
     #undef EMIT_I

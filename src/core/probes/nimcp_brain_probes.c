@@ -56,7 +56,7 @@ static void sample_probe(probe_registry_t* reg, probe_t* probe) {
     if (!probe || !probe->active || !probe->sample_fn) return;
 
     /* Determine write buffer (opposite of active/read buffer) */
-    uint32_t read_buf = atomic_load_explicit(&probe->active_buf, memory_order_acquire);
+    uint32_t read_buf = __atomic_load_n(&probe->active_buf, __ATOMIC_ACQUIRE);
     uint32_t write_buf = 1 - read_buf;
 
     uint32_t total_count = 0;
@@ -96,7 +96,7 @@ static void sample_probe(probe_registry_t* reg, probe_t* probe) {
     probe->last_sample_us = nimcp_time_get_us();
 
     /* Atomic flip: make write buffer the new read buffer */
-    atomic_store_explicit(&probe->active_buf, write_buf, memory_order_release);
+    __atomic_store_n(&probe->active_buf, write_buf, __ATOMIC_RELEASE);
 }
 
 /* ============================================================================
@@ -111,7 +111,9 @@ static void* sampler_thread_fn(void* arg) {
         uint64_t now = nimcp_time_get_us();
         uint64_t min_sleep_us = 100000;  /* 100ms default sleep */
 
-        for (uint32_t i = 0; i < reg->count; i++) {
+        /* Snapshot count to avoid race with concurrent alloc_probe_slot */
+        uint32_t snap_count = reg->count;
+        for (uint32_t i = 0; i < snap_count && i < PROBE_REGISTRY_MAX; i++) {
             probe_t* p = &reg->probes[i];
             if (!p->active || !(p->mode & PROBE_MODE_ACTIVE)) continue;
             if (p->interval_ms == 0) continue;
@@ -147,7 +149,7 @@ probe_registry_t* probe_registry_create(brain_t brain) {
 
     reg->brain = brain;
     reg->event_bus = brain->event_bus;
-    atomic_store(&reg->next_handle, 1);
+    __atomic_store_n(&reg->next_handle, 1, __ATOMIC_SEQ_CST);
     reg->sampler_running = false;
 
     NIMCP_LOGGING_INFO("Probe registry created");
@@ -222,8 +224,16 @@ static probe_handle_t init_probe(
         return PROBE_INVALID_HANDLE;
     }
 
+    /* Clear stale stage subscriber bits before reuse (Bug 8 fix) */
+    uint32_t slot_idx = (uint32_t)(p - reg->probes);
+    if (slot_idx < 32) {
+        for (uint32_t s = 0; s < PROBE_STAGE_COUNT; s++) {
+            reg->stage_subscribers[s] &= ~(1u << slot_idx);
+        }
+    }
+
     memset(p, 0, sizeof(probe_t));
-    p->handle = atomic_fetch_add(&reg->next_handle, 1);
+    p->handle = __atomic_fetch_add(&reg->next_handle, 1, __ATOMIC_SEQ_CST);
     if (name) {
         strncpy(p->name, name, PROBE_NAME_LEN - 1);
     }
@@ -243,7 +253,7 @@ static probe_handle_t init_probe(
     p->last_sample_us = nimcp_time_get_us();
 
     /* Initialize double buffer */
-    atomic_store(&p->active_buf, 0);
+    __atomic_store_n(&p->active_buf, 0, __ATOMIC_SEQ_CST);
 
     /* Subscribe to all pipeline stages by default.
      * Probes that want specific stages can be filtered later.
@@ -312,7 +322,13 @@ bool probe_destroy(probe_registry_t* reg, probe_handle_t handle) {
     probe_t* p = find_probe(reg, handle);
     if (!p) return false;
 
-    /* TODO: unsubscribe event bus subscriptions */
+    /* Clear stage subscriber bits BEFORE deactivating (Bug 2 fix) */
+    uint32_t probe_idx = (uint32_t)(p - reg->probes);
+    if (probe_idx < 32) {
+        for (uint32_t s = 0; s < PROBE_STAGE_COUNT; s++) {
+            reg->stage_subscribers[s] &= ~(1u << probe_idx);
+        }
+    }
 
     p->active = false;
     NIMCP_LOGGING_INFO("Probe destroyed: \"%s\" (handle=%u)", p->name, handle);
@@ -335,7 +351,7 @@ uint32_t probe_get_metrics(
     if (!p) return 0;
 
     /* Read from the inactive (stable) buffer — lock-free */
-    uint32_t active = atomic_load_explicit(&p->active_buf, memory_order_acquire);
+    uint32_t active = __atomic_load_n(&p->active_buf, __ATOMIC_ACQUIRE);
     uint32_t read_buf = 1 - active;
     uint32_t count = p->metric_count[read_buf];
     if (count > max_metrics) count = max_metrics;
@@ -366,7 +382,7 @@ char* probe_get_all_metrics_json(probe_registry_t* reg) {
 
         pos += snprintf(buf + pos, buf_size - pos, "\"%s\":{", p->name);
 
-        uint32_t active = atomic_load_explicit(&p->active_buf, memory_order_acquire);
+        uint32_t active = __atomic_load_n(&p->active_buf, __ATOMIC_ACQUIRE);
         uint32_t read_buf = 1 - active;
         uint32_t count = p->metric_count[read_buf];
 
@@ -422,7 +438,7 @@ void probe_registry_record_stage(struct probe_registry* reg,
         if (!p->active) continue;
 
         /* Write stage metrics into probe's write buffer */
-        uint32_t read_buf = atomic_load_explicit(&p->active_buf, memory_order_acquire);
+        uint32_t read_buf = __atomic_load_n(&p->active_buf, __ATOMIC_ACQUIRE);
         uint32_t write_buf = 1 - read_buf;
 
         /* Append stage metrics (don't overwrite — accumulate from multiple stages) */
@@ -453,7 +469,7 @@ void probe_registry_record_stage(struct probe_registry* reg,
         /* Flip buffer after last stage in a cycle completes.
          * For simplicity, flip on every stage record. Readers get
          * the most recent complete stage's data. */
-        atomic_store_explicit(&p->active_buf, write_buf, memory_order_release);
+        __atomic_store_n(&p->active_buf, write_buf, __ATOMIC_RELEASE);
     }
 }
 
