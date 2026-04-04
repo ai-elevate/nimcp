@@ -3609,6 +3609,17 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     extern bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_language_subsystem(brain_t);
 
+    /* Brain regions */
+    extern bool nimcp_brain_factory_init_broca_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_wernicke_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_cerebellum_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_hippocampus_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_medulla_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_basal_ganglia_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t);
+
+    /* Cognitive modules (original 10) */
     if (!b->working_memory)  { nimcp_brain_factory_init_working_memory_subsystem(b);  if (b->working_memory)  count++; }
     if (!b->executive)       { nimcp_brain_factory_init_executive_subsystem(b);       if (b->executive)       count++; }
     if (!b->symbolic_logic)  { nimcp_brain_factory_init_symbolic_logic_subsystem(b);  if (b->symbolic_logic)  count++; }
@@ -3619,6 +3630,16 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     if (!b->ethics)          { nimcp_brain_factory_init_ethics_engine_subsystem(b);    if (b->ethics)          count++; }
     if (!b->fep_orchestrator){ nimcp_brain_factory_init_fep_orchestrator_subsystem(b); if (b->fep_orchestrator) count++; }
     if (!b->language_layer)  { nimcp_brain_factory_init_language_subsystem(b);         if (b->language_layer)  count++; }
+
+    /* Brain regions (12 regions) */
+    if (!b->broca)           { nimcp_brain_factory_init_broca_subsystem(b);           if (b->broca)           count++; }
+    if (!b->wernicke)        { nimcp_brain_factory_init_wernicke_subsystem(b);        if (b->wernicke)        count++; }
+    if (!b->cerebellum)      { nimcp_brain_factory_init_cerebellum_subsystem(b);      if (b->cerebellum)      count++; }
+    if (!b->hippocampus)     { nimcp_brain_factory_init_hippocampus_subsystem(b);     if (b->hippocampus)     count++; }
+    if (!b->hypothalamus)    { nimcp_brain_factory_init_hypothalamus_subsystem(b);    if (b->hypothalamus)    count++; }
+    if (!b->medulla_enabled) { nimcp_brain_factory_init_medulla_subsystem(b);         if (b->medulla_enabled) count++; }
+    if (!b->basal_ganglia)   { nimcp_brain_factory_init_basal_ganglia_subsystem(b);   if (b->basal_ganglia)   count++; }
+    if (!b->parietal_cortex) { nimcp_brain_factory_init_parietal_cortex_subsystem(b); if (b->parietal_cortex) count++; }
 
     return count;
 }
