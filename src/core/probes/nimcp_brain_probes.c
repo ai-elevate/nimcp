@@ -189,8 +189,16 @@ void probe_registry_stop(probe_registry_t* reg) {
     if (!reg || !reg->sampler_running) return;
 
     reg->sampler_running = false;
-    /* Give thread time to notice the flag and exit */
-    nimcp_time_sleep_us(200000);  /* 200ms */
+    /* Wait for sampler thread to exit (up to 1 second) */
+    if (reg->sampler_thread) {
+        for (int i = 0; i < 10; i++) {
+            nimcp_time_sleep_us(100000);  /* 100ms */
+            if (!reg->sampler_running) break;
+        }
+        /* Thread should have exited by now. Even if not, we'll
+         * proceed to destroy — the thread checks sampler_running
+         * at the top of each loop iteration. */
+    }
     reg->sampler_thread = NULL;
 }
 
@@ -236,6 +244,16 @@ static probe_handle_t init_probe(
 
     /* Initialize double buffer */
     atomic_store(&p->active_buf, 0);
+
+    /* Subscribe to all pipeline stages by default.
+     * Probes that want specific stages can be filtered later.
+     * The bitmask tracks which probe indices care about each stage. */
+    uint32_t probe_idx = (uint32_t)(p - reg->probes);
+    if (probe_idx < 32) {
+        for (uint32_t s = 0; s < PROBE_STAGE_COUNT; s++) {
+            reg->stage_subscribers[s] |= (1u << probe_idx);
+        }
+    }
 
     NIMCP_LOGGING_INFO("Probe created: \"%s\" (handle=%u, mode=%d, modules=%u)",
                        p->name, p->handle, mode, p->num_modules);
@@ -352,7 +370,10 @@ char* probe_get_all_metrics_json(probe_registry_t* reg) {
         uint32_t read_buf = 1 - active;
         uint32_t count = p->metric_count[read_buf];
 
-        for (uint32_t j = 0; j < count && pos < buf_size - 100; j++) {
+        /* Reserve space for largest possible metric entry:
+         * key (63) + value (63) + quotes/colon/comma (~10) ≈ 136 bytes */
+        #define PROBE_JSON_ENTRY_MAX 200
+        for (uint32_t j = 0; j < count && pos < buf_size - PROBE_JSON_ENTRY_MAX; j++) {
             probe_metric_t* m = &p->metrics[read_buf][j];
             if (j > 0) pos += snprintf(buf + pos, buf_size - pos, ",");
 
@@ -363,7 +384,7 @@ char* probe_get_all_metrics_json(probe_registry_t* reg) {
                     break;
                 case PROBE_METRIC_INT:
                     pos += snprintf(buf + pos, buf_size - pos,
-                                   "\"%s\":%ld", m->key, (long)m->value.i);
+                                   "\"%s\":%lld", m->key, (long long)m->value.i);
                     break;
                 case PROBE_METRIC_STRING:
                     pos += snprintf(buf + pos, buf_size - pos,

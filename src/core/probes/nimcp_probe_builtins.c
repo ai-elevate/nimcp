@@ -14,6 +14,40 @@
 #include <math.h>
 
 /* ============================================================================
+ * Generic Sampler — reports module existence and basic stats
+ * ============================================================================ */
+
+void probe_generic_sampler(
+    void* module_ptr, uint16_t module_id, brain_t brain,
+    probe_metric_t* metrics, uint32_t* count, void* user_data)
+{
+    (void)brain; (void)user_data;
+    if (!metrics || !count) return;
+    uint32_t max = *count;
+    uint32_t n = 0;
+    extern uint64_t nimcp_time_get_us(void);
+    uint64_t ts = nimcp_time_get_us();
+
+    const char* name = probe_module_name(module_id);
+    if (n < max) {
+        strncpy(metrics[n].key, "initialized", PROBE_KEY_LEN - 1);
+        metrics[n].type = PROBE_METRIC_INT;
+        metrics[n].value.i = module_ptr ? 1 : 0;
+        metrics[n].timestamp_us = ts;
+        n++;
+    }
+    if (n < max && name) {
+        strncpy(metrics[n].key, "module_name", PROBE_KEY_LEN - 1);
+        metrics[n].type = PROBE_METRIC_STRING;
+        strncpy(metrics[n].value.s, name, PROBE_STRING_LEN - 1);
+        metrics[n].timestamp_us = ts;
+        n++;
+    }
+
+    *count = n;
+}
+
+/* ============================================================================
  * Helper: set metric values (avoids repetitive boilerplate)
  * ============================================================================ */
 

@@ -3733,9 +3733,19 @@ void nimcp_brain_set_network_ablation(nimcp_brain_t brain,
 static probe_registry_t* ensure_probe_registry(nimcp_brain_t brain) {
     brain_t b = brain->internal_brain;
     if (!b->probe_registry) {
-        b->probe_registry = (struct probe_registry*)probe_registry_create(b);
-        if (b->probe_registry) {
-            probe_registry_start((probe_registry_t*)b->probe_registry);
+        /* Atomic CAS to prevent double-init race */
+        probe_registry_t* reg = probe_registry_create(b);
+        if (reg) {
+            struct probe_registry* expected = NULL;
+            if (__atomic_compare_exchange_n(
+                    (struct probe_registry**)&b->probe_registry,
+                    &expected, (struct probe_registry*)reg,
+                    false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+                probe_registry_start(reg);
+            } else {
+                /* Another thread won the race — destroy our duplicate */
+                probe_registry_destroy(reg);
+            }
         }
     }
     return (probe_registry_t*)b->probe_registry;
@@ -3753,10 +3763,11 @@ int nimcp_brain_create_probe(nimcp_brain_t brain,
 
     probe_handle_t h = PROBE_INVALID_HANDLE;
     if (mode == PROBE_MODE_ACTIVE || mode == PROBE_MODE_HYBRID) {
-        /* For custom active probes without a sample_fn, use a generic sampler
-         * that just checks if the module exists */
+        /* Generic sampler: reports whether each module is initialized */
+        extern void probe_generic_sampler(void*, uint16_t, brain_t,
+            probe_metric_t*, uint32_t*, void*);
         h = probe_create_active(reg, "custom", module_ids, num_modules,
-                                NULL, NULL, interval_ms);
+                                probe_generic_sampler, NULL, interval_ms);
     } else {
         h = probe_create_passive(reg, "custom", module_ids, num_modules,
                                   NULL, 0);
