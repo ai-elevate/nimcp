@@ -335,8 +335,10 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
         return false;
     }
 
-    /* Mark world model as enabled */
-    brain->world_model_enabled = true;
+    /* Only mark as enabled if a world model actually exists */
+    if (brain->omni_world_model || brain->multimodal_world_model) {
+        brain->world_model_enabled = true;
+    }
 
     /* === Thousand Brains Integration === */
     if (brain->config.enable_thousand_brains_integration) {
@@ -397,7 +399,14 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
                                                      brain->global_workspace);
                 }
             } else {
-                LOG_INFO(LOG_MODULE, "  - Thousand Brains: skipping bridge connections on loaded brain");
+                /* Loaded brain: the TB components were freshly created but NOT wired.
+                 * The wm_thousand_brains_bridge from checkpoint has stale internal
+                 * pointers (ref_frames, voting, sequences) that point to freed memory.
+                 * NULL it out so brain_learn_vector's wm_tb_bridge_step skips it. */
+                brain->wm_thousand_brains_bridge = NULL;
+                brain->config.enable_wm_thousand_brains_bridge = false;
+                brain->config.enable_thousand_brains_integration = false;
+                LOG_INFO(LOG_MODULE, "  - Thousand Brains: disabled on loaded brain (stale bridge pointers)");
             }
         } else {
             LOG_WARN(LOG_MODULE, "  - Failed to create TB integration hub");

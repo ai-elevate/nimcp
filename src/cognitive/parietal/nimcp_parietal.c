@@ -1948,10 +1948,8 @@ int parietal_set_fatigue(parietal_lobe_t* parietal, float level) {
 }
 
 int parietal_update_from_sleep(parietal_lobe_t* parietal) {
-    if (!parietal || !parietal->sleep) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_update_from_sleep: required parameter is NULL (parietal, parietal->sleep)");
-        return -1;
-    }
+    if (!parietal) return -1;
+    if (!parietal->sleep) return 0;  /* Not connected — no-op, not an error */
 
     /* Would query sleep system for current sleep quality */
     /* float quality = sleep_get_quality(parietal->sleep); */
@@ -1965,10 +1963,8 @@ int parietal_update_from_sleep(parietal_lobe_t* parietal) {
 }
 
 int parietal_update_from_immune(parietal_lobe_t* parietal) {
-    if (!parietal || !parietal->immune) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_update_from_immune: required parameter is NULL (parietal, parietal->immune)");
-        return -1;
-    }
+    if (!parietal) return -1;
+    if (!parietal->immune) return 0;  /* Not connected — no-op, not an error */
 
     /* Would query immune system for inflammation level */
     /* float inflammation = code_immune_get_inflammation(parietal->immune); */
