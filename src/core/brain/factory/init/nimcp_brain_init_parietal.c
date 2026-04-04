@@ -352,46 +352,34 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
     brain->parietal_enabled = true;
     brain->last_parietal_update_us = 0;
 
+    /* Connect to subsystems. On loaded brains (total_learning_steps > 0),
+     * some subsystems have existing state that can corrupt when reconnected.
+     * The parietal lobe itself is safe; only some connections may clash. */
     fprintf(stderr, "[PARIETAL] Parietal lobe created, connecting to subsystems...\n");
 
-    /* ====================================================================== */
-    /* CONNECT TO ALL AVAILABLE SUBSYSTEMS                                    */
-    /* ====================================================================== */
-
-    /* 1. Working Memory - Mathematical problem-solving */
     connect_parietal_to_working_memory(parietal, brain);
-
-    /* 2. Training Layer - Learning optimization */
-    connect_parietal_to_training(parietal, brain);
-
-    /* 3. Immune System - Inflammation affects precision */
-    connect_parietal_to_immune(parietal, brain);
-
-    /* 4. FEP Orchestrator - Free energy computation */
     connect_parietal_to_fep(parietal, brain);
-
-    /* 5. Sleep/Medulla - Fatigue modulation */
-    connect_parietal_to_sleep(parietal, brain);
-
-    /* 6. Logic Gates - Neural logic operations */
     connect_parietal_to_logic(parietal, brain);
-
-    /* 7. Perception System - Visual numerosity */
-    connect_parietal_to_perception(parietal, brain);
-
-    /* 8. Global Workspace - Conscious access */
     connect_parietal_to_global_workspace(parietal, brain);
 
-    /* 9. Brain Regions - Cortical architecture */
-    connect_parietal_to_brain_regions(parietal, brain);
-
-    /* 10. World Model Simulation Engines — physics/chemistry/biology grounding */
-    if (brain->config.enable_intuitive_physics) {
-        extern int parietal_attach_simulation_engines(parietal_lobe_t* pl,
-                                                       struct brain_struct* b);
-        if (parietal_attach_simulation_engines(parietal, brain) == 0) {
-            fprintf(stderr, "[PARIETAL] Connected to world model simulation engines\n");
+    /* These connections are safe on both fresh and loaded brains
+     * (they only set callback pointers, no buffer allocation) */
+    if (brain->stats.total_learning_steps == 0) {
+        /* Fresh brain — connect everything */
+        connect_parietal_to_training(parietal, brain);
+        connect_parietal_to_immune(parietal, brain);
+        connect_parietal_to_sleep(parietal, brain);
+        connect_parietal_to_perception(parietal, brain);
+        connect_parietal_to_brain_regions(parietal, brain);
+        if (brain->config.enable_intuitive_physics) {
+            extern int parietal_attach_simulation_engines(parietal_lobe_t* pl,
+                                                           struct brain_struct* b);
+            if (parietal_attach_simulation_engines(parietal, brain) == 0) {
+                fprintf(stderr, "[PARIETAL] Connected to world model simulation engines\n");
+            }
         }
+    } else {
+        fprintf(stderr, "[PARIETAL] Loaded brain: using safe connections only\n");
     }
 
     fprintf(stderr, "[PARIETAL] Parietal lobe initialization complete\n");
