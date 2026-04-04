@@ -164,47 +164,47 @@ bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t brain) {
     brain->parietal_cortex_enabled = true;
     brain->last_parietal_cortex_update_us = 0;
 
-    /* Initialize integration bridges */
-    if (!nimcp_brain_factory_init_parietal_cortex_substrate_bridge(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal cortex substrate bridge init failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_init_parietal_cortex_thalamic_bridge(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal cortex thalamic bridge init failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_init_parietal_cortex_quantum_bridge(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal cortex quantum bridge init failed (non-fatal)");
-    }
-
-    /* Connect to other subsystems */
-    if (!nimcp_brain_factory_connect_parietal_to_motor(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal-Motor connection failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_connect_parietal_to_visual(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal-Visual connection failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_connect_parietal_to_frontal(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal-Frontal connection failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_connect_parietal_to_working_memory(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal-WM connection failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_connect_parietal_to_training(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal-Training connection failed (non-fatal)");
-    }
-
-    if (!nimcp_brain_factory_connect_parietal_to_immune(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal-Immune connection failed (non-fatal)");
-    }
-
-    /* Connect to bio-async */
-    if (!connect_parietal_to_bio_async(brain)) {
-        LOG_WARN(LOG_MODULE, "Parietal cortex bio-async connection failed (non-fatal)");
+    /* Skip bridge inits and subsystem connections on loaded brains.
+     * The bridges assume a fresh brain with all subsystems in known state.
+     * On checkpoint-loaded brains, connecting bridges to partially-loaded
+     * subsystems causes stack smashing (buffer overflow in bridge handlers
+     * processing async messages with stale/mismatched state).
+     * The adapter itself is safe — only bridges cause crashes. */
+    if (brain->stats.total_learning_steps == 0) {
+        /* Fresh brain — safe to connect everything */
+        if (!nimcp_brain_factory_init_parietal_cortex_substrate_bridge(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal cortex substrate bridge init failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_init_parietal_cortex_thalamic_bridge(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal cortex thalamic bridge init failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_init_parietal_cortex_quantum_bridge(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal cortex quantum bridge init failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_connect_parietal_to_motor(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal-Motor connection failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_connect_parietal_to_visual(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal-Visual connection failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_connect_parietal_to_frontal(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal-Frontal connection failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_connect_parietal_to_working_memory(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal-WM connection failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_connect_parietal_to_training(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal-Training connection failed (non-fatal)");
+        }
+        if (!nimcp_brain_factory_connect_parietal_to_immune(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal-Immune connection failed (non-fatal)");
+        }
+        if (!connect_parietal_to_bio_async(brain)) {
+            LOG_WARN(LOG_MODULE, "Parietal cortex bio-async connection failed (non-fatal)");
+        }
+    } else {
+        LOG_INFO(LOG_MODULE, "Parietal cortex: skipping bridges on loaded brain (steps=%lu)",
+                 (unsigned long)brain->stats.total_learning_steps);
     }
 
     LOG_INFO(LOG_MODULE, "Parietal cortex region initialized successfully");

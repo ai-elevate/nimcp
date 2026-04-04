@@ -369,35 +369,35 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
         }
 
         if (brain->tb_integration_hub) {
-            /* Connect TB components — only if ALL three are non-NULL */
-            if (brain->tb_ref_frames && brain->tb_voting && brain->tb_sequences) {
-                tb_integration_connect_tb(brain->tb_integration_hub,
-                                           brain->tb_ref_frames,
-                                           brain->tb_voting,
-                                           brain->tb_sequences);
-            }
+            /* Skip TB bridge connections on loaded brains — the connect
+             * functions assume fresh state and can corrupt loaded brain data.
+             * The TB components themselves are safe. */
+            if (brain->stats.total_learning_steps == 0) {
+                /* Fresh brain — safe to wire everything */
+                if (brain->tb_ref_frames && brain->tb_voting && brain->tb_sequences) {
+                    tb_integration_connect_tb(brain->tb_integration_hub,
+                                               brain->tb_ref_frames,
+                                               brain->tb_voting,
+                                               brain->tb_sequences);
+                }
+                int wired = tb_integration_wire_from_brain(brain->tb_integration_hub, brain);
+                LOG_INFO(LOG_MODULE, "  - Thousand Brains: %d systems wired", wired);
 
-            /* Wire all available brain systems */
-            int wired = tb_integration_wire_from_brain(brain->tb_integration_hub, brain);
-            LOG_INFO(LOG_MODULE, "  - Thousand Brains: %d systems wired", wired);
-
-            /* Also connect TB to WM bridge if available — check ALL pointers */
-            if (brain->wm_thousand_brains_bridge &&
-                brain->tb_ref_frames && brain->tb_voting && brain->tb_sequences) {
-                wm_tb_bridge_connect_ref_frames(brain->wm_thousand_brains_bridge,
-                                                 brain->tb_ref_frames);
-                wm_tb_bridge_connect_voting(brain->wm_thousand_brains_bridge,
-                                             brain->tb_voting);
-                wm_tb_bridge_connect_sequences(brain->wm_thousand_brains_bridge,
-                                                brain->tb_sequences);
-                LOG_DEBUG(LOG_MODULE, "  - WM-TB bridge connected to TB components");
-            }
-
-            /* Connect voting to global workspace */
-            if (brain->tb_voting && brain->global_workspace) {
-                column_voting_connect_workspace(brain->tb_voting,
-                                                 brain->global_workspace);
-                LOG_DEBUG(LOG_MODULE, "  - Voting connected to global workspace");
+                if (brain->wm_thousand_brains_bridge &&
+                    brain->tb_ref_frames && brain->tb_voting && brain->tb_sequences) {
+                    wm_tb_bridge_connect_ref_frames(brain->wm_thousand_brains_bridge,
+                                                     brain->tb_ref_frames);
+                    wm_tb_bridge_connect_voting(brain->wm_thousand_brains_bridge,
+                                                 brain->tb_voting);
+                    wm_tb_bridge_connect_sequences(brain->wm_thousand_brains_bridge,
+                                                    brain->tb_sequences);
+                }
+                if (brain->tb_voting && brain->global_workspace) {
+                    column_voting_connect_workspace(brain->tb_voting,
+                                                     brain->global_workspace);
+                }
+            } else {
+                LOG_INFO(LOG_MODULE, "  - Thousand Brains: skipping bridge connections on loaded brain");
             }
         } else {
             LOG_WARN(LOG_MODULE, "  - Failed to create TB integration hub");
