@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NIMCP — Neuro-Inspired Modular Control Protocol</title>
     <meta name="description" content="A 2.5-million neuron artificial brain with six network types, biological plasticity, and developmental learning. Open source.">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -657,6 +658,28 @@
                     <div class="training-metric" onclick="openModal('metric_uptime')" style="cursor:pointer" title="Click for details">
                         <div class="label">Daemon Uptime</div>
                         <div class="value" id="m-uptime">—</div>
+                    </div>
+                </div>
+
+                <!-- Live Charts -->
+                <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--accent); font-size:0.9rem;">Loss Curves (last 60 updates)</h4>
+                        <canvas id="chart-loss" height="200"></canvas>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--green); font-size:0.9rem;">Brain Regions</h4>
+                        <canvas id="chart-regions" height="200"></canvas>
+                    </div>
+                </div>
+                <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--purple); font-size:0.9rem;">Neuron Activations</h4>
+                        <canvas id="chart-neurons" height="200"></canvas>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(255,255,255,0.1); padding:16px;">
+                        <h4 style="margin:0 0 8px; color:var(--orange); font-size:0.9rem;">HNN Energy Conservation</h4>
+                        <canvas id="chart-hnn" height="200"></canvas>
                     </div>
                 </div>
 
@@ -1479,6 +1502,177 @@ brain.learn_vector(features, target, label='hello world')
     // Poll immediately, then every 10 seconds
     pollMetrics();
     setInterval(pollMetrics, POLL_INTERVAL);
+
+    // ================================================================
+    // CHART.JS VISUALIZATIONS
+    // ================================================================
+    const MAX_POINTS = 60;
+    const chartColors = {
+        ann: '#3b82f6', cnn: '#22c55e', snn: '#f59e0b', lnn: '#a78bfa',
+        hnn: '#06b6d4', fno: '#ef4444'
+    };
+
+    // Time-series buffers
+    const history = {
+        labels: [],
+        ann: [], cnn: [], snn: [], lnn: [],
+        hnn_energy: [], hnn_deviation: [],
+        neuron_mean: [], neuron_std: [], neuron_max: [],
+    };
+
+    function pushHistory(key, val) {
+        history[key].push(val);
+        if (history[key].length > MAX_POINTS) history[key].shift();
+    }
+
+    // Chart 1: Loss curves
+    const lossChart = new Chart(document.getElementById('chart-loss'), {
+        type: 'line',
+        data: {
+            labels: history.labels,
+            datasets: [
+                {label: 'ANN', data: history.ann, borderColor: chartColors.ann, borderWidth: 1.5, pointRadius: 0, tension: 0.3},
+                {label: 'SNN', data: history.snn, borderColor: chartColors.snn, borderWidth: 1.5, pointRadius: 0, tension: 0.3},
+                {label: 'LNN', data: history.lnn, borderColor: chartColors.lnn, borderWidth: 1.5, pointRadius: 0, tension: 0.3},
+                {label: 'CNN', data: history.cnn, borderColor: chartColors.cnn, borderWidth: 1.5, pointRadius: 0, tension: 0.3},
+            ]
+        },
+        options: {
+            responsive: true,
+            animation: false,
+            scales: {
+                x: {display: false},
+                y: {type: 'logarithmic', ticks: {color: '#94a3b8', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}}
+            },
+            plugins: {legend: {labels: {color: '#e2e8f0', font: {size: 10}, boxWidth: 12}}}
+        }
+    });
+
+    // Chart 2: Brain regions (bar chart)
+    const regionLabels = ['Visual', 'Audio', 'Speech', 'Somato', 'Broca', 'Wernicke',
+        'Hippo', 'Amygdala', 'Hypothal', 'BG', 'Cerebel', 'Medulla',
+        'Parietal', 'Prefrontal', 'Glial', 'Columns'];
+    const regionKeys = ['visual_cortex', 'audio_cortex', 'speech_cortex', 'somato_cortex',
+        'broca', 'wernicke', 'hippocampus', 'amygdala', 'hypothalamus',
+        'basal_ganglia', 'cerebellum', 'medulla', 'parietal', 'prefrontal', 'glial', 'cortical_columns'];
+    let regionData = new Array(16).fill(0);
+
+    const regionChart = new Chart(document.getElementById('chart-regions'), {
+        type: 'bar',
+        data: {
+            labels: regionLabels,
+            datasets: [{
+                data: regionData,
+                backgroundColor: regionData.map(v => v ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.3)'),
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            animation: false,
+            indexAxis: 'y',
+            scales: {
+                x: {display: false, max: 1.2},
+                y: {ticks: {color: '#94a3b8', font: {size: 9}}, grid: {display: false}}
+            },
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    // Chart 3: Neuron activation stats
+    const neuronChart = new Chart(document.getElementById('chart-neurons'), {
+        type: 'line',
+        data: {
+            labels: history.labels,
+            datasets: [
+                {label: 'Mean', data: history.neuron_mean, borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, fill: false},
+                {label: 'Std Dev', data: history.neuron_std, borderColor: '#a78bfa', borderWidth: 1.5, pointRadius: 0, fill: false},
+                {label: 'Max', data: history.neuron_max, borderColor: '#ef4444', borderWidth: 1, pointRadius: 0, borderDash: [3,3], fill: false},
+            ]
+        },
+        options: {
+            responsive: true,
+            animation: false,
+            scales: {
+                x: {display: false},
+                y: {ticks: {color: '#94a3b8', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}}
+            },
+            plugins: {legend: {labels: {color: '#e2e8f0', font: {size: 10}, boxWidth: 12}}}
+        }
+    });
+
+    // Chart 4: HNN energy conservation
+    const hnnChart = new Chart(document.getElementById('chart-hnn'), {
+        type: 'line',
+        data: {
+            labels: history.labels,
+            datasets: [
+                {label: 'Energy H(q,p)', data: history.hnn_energy, borderColor: '#06b6d4', borderWidth: 2, pointRadius: 0, fill: false},
+                {label: 'Deviation', data: history.hnn_deviation, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, borderDash: [4,2], fill: false},
+            ]
+        },
+        options: {
+            responsive: true,
+            animation: false,
+            scales: {
+                x: {display: false},
+                y: {ticks: {color: '#94a3b8', font: {size: 10}}, grid: {color: 'rgba(255,255,255,0.05)'}}
+            },
+            plugins: {legend: {labels: {color: '#e2e8f0', font: {size: 10}, boxWidth: 12}}}
+        }
+    });
+
+    // Update charts on each metrics poll
+    const origUpdate = updateMetrics;
+    updateMetrics = function(d) {
+        origUpdate(d);
+
+        // Push time label
+        const now = new Date();
+        const label = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+        history.labels.push(label);
+        if (history.labels.length > MAX_POINTS) history.labels.shift();
+
+        // Loss curves
+        pushHistory('ann', d.ann_loss > 0 ? d.ann_loss : null);
+        pushHistory('cnn', d.cnn_loss > 0 ? d.cnn_loss : null);
+        pushHistory('snn', d.snn_loss > 0 ? d.snn_loss : null);
+        pushHistory('lnn', d.lnn_loss > 0 ? d.lnn_loss : null);
+        lossChart.update();
+
+        // Brain regions
+        if (d.probe_metrics && d.probe_metrics.brain_regions) {
+            const br = d.probe_metrics.brain_regions;
+            regionKeys.forEach((k, i) => {
+                regionData[i] = (br[k] && br[k] > 0) ? 1 : 0;
+            });
+        } else if (d.stage2 && d.stage2.active_engines) {
+            // Fallback: just show cortex CNNs as active
+            regionData = [1,1,1,1, 0,0, 0,0,0,0,0,0, 0,0,0,0];
+        }
+        regionChart.data.datasets[0].data = regionData;
+        regionChart.data.datasets[0].backgroundColor = regionData.map(v =>
+            v ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.3)');
+        regionChart.update();
+
+        // Neuron stats (from probe_metrics if available)
+        if (d.probe_metrics && d.probe_metrics.neurons) {
+            const n = d.probe_metrics.neurons;
+            pushHistory('neuron_mean', n['state.mean'] || 0);
+            pushHistory('neuron_std', n['state.std'] || 0);
+            pushHistory('neuron_max', n['state.max'] || 0);
+        } else {
+            pushHistory('neuron_mean', null);
+            pushHistory('neuron_std', null);
+            pushHistory('neuron_max', null);
+        }
+        neuronChart.update();
+
+        // HNN energy
+        pushHistory('hnn_energy', d.hnn_energy || 0);
+        pushHistory('hnn_deviation', d.hnn_energy_deviation || 0);
+        hnnChart.update();
+    };
 
     // Chat with Athena
     const CHAT_API = '/api/chat';

@@ -138,6 +138,13 @@ def collect():
 
         metrics['stage2'] = s2
 
+    # Probe metrics — brain regions, neurons, synapses (for charts)
+    r = query('get_probe_metrics', 20)
+    if r:
+        pm = r.get('probe_metrics', r)
+        if isinstance(pm, dict) and len(pm) > 0:
+            metrics['probe_metrics'] = pm
+
     return metrics
 
 
