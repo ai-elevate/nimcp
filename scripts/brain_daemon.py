@@ -1336,25 +1336,35 @@ class AutoCheckpointer:
                              self._save_count, self.min_steps)
                 return
 
-        path = os.path.join(self.checkpoint_dir, "athena_daemon.bin")
-        bak_path = path + ".bak"
+        # Save to athena_immersive.bin — same path the training script resumes from.
+        # Also save a timestamped copy so we have rollback history.
+        path = os.path.join(self.checkpoint_dir, "athena_immersive.bin")
+        # Resolve symlink to get the real path
+        real_path = os.path.realpath(path) if os.path.islink(path) else path
 
         try:
             if True:  # RWLock in handle()
-                # Rotate: current → .bak (so we always have a fallback)
-                if os.path.exists(path):
-                    try:
-                        # Copy instead of rename so .bak is a full independent copy
-                        import shutil
-                        shutil.copy2(path, bak_path)
-                    except Exception as e:
-                        logger.warning("Backup rotation failed: %s", e)
-
                 self.brain.save(path)
+
+            # Also save timestamped backup every 5th checkpoint (~2.5 hours)
+            if self._save_count % 5 == 0:
+                import time as _time
+                ts = _time.strftime("%Y%m%d_%H%M%S")
+                ts_path = os.path.join(self.checkpoint_dir, f"athena_auto_{ts}.bin")
+                try:
+                    import shutil
+                    shutil.copy2(path, ts_path)
+                    # Keep only last 3 timestamped backups
+                    import glob
+                    auto_files = sorted(glob.glob(os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
+                    while len(auto_files) > 3:
+                        os.remove(auto_files.pop(0))
+                except Exception as e:
+                    logger.warning("Timestamped backup failed: %s", e)
 
             logger.info("Checkpoint saved: %s (steps=%d)", path, self._save_count)
         except Exception as e:
-            logger.error("Checkpoint failed: %s — .bak preserved at %s", e, bak_path)
+            logger.error("Checkpoint failed: %s", e)
 
     def _run(self):
         while self._running:
