@@ -3681,13 +3681,21 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     /* Cognitive subsystems that use safer init patterns */
     extern bool nimcp_brain_factory_init_curiosity_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_imagination_subsystem(brain_t);
-    extern bool nimcp_brain_factory_init_reasoning_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_reasoning_engine_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_introspection_subsystem(brain_t);
 
     INIT_IF_NULL(curiosity, nimcp_brain_factory_init_curiosity_subsystem);
     INIT_IF_NULL(imagination, nimcp_brain_factory_init_imagination_subsystem);
-    INIT_IF_NULL(reasoning_engine, nimcp_brain_factory_init_reasoning_subsystem);
+    INIT_IF_NULL(reasoning_engine, nimcp_brain_factory_init_reasoning_engine_subsystem);
     INIT_IF_NULL(introspection, nimcp_brain_factory_init_introspection_subsystem);
+
+    /* Oscillation analyzer — no factory function, created directly */
+    if (!b->oscillations && b->config.enable_oscillations) {
+        extern brain_oscillation_analyzer_t* brain_oscillation_create(
+            brain_t, uint32_t, uint32_t);
+        b->oscillations = brain_oscillation_create(b, 1000, 1000);
+        if (b->oscillations) count++;
+    }
 
     #undef INIT_IF_NULL
     #undef INIT_IF_DISABLED
