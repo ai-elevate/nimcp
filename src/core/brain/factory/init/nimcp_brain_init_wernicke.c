@@ -55,29 +55,38 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_wernicke, MESH_ADAPTER_CATEGORY_SYSTEM)
 #include <string.h>
 #include <math.h>
 
-// Forward declarations and types to avoid header conflicts
-struct wernicke_adapter;
-typedef struct wernicke_adapter wernicke_adapter_t;
-
-// Wernicke config (duplicated to avoid header conflicts)
+/* Local duplicate of wernicke_config_t — MUST match the real definition
+ * in nimcp_wernicke_adapter.h EXACTLY. If fields are added there, add them
+ * here too, or wernicke_default_config() will overflow the stack.
+ * Cannot include the real header due to semantic_memory_t type conflict. */
 typedef struct {
     uint32_t max_phonemes;
     uint32_t max_words;
     uint32_t max_concepts;
     uint32_t lexicon_size;
+    bool enable_lexicon;
     uint32_t working_memory_slots;
+    bool enable_working_memory;
+    bool enable_phonological;
+    bool enable_lexical;
+    bool enable_semantic;
+    bool enable_syntactic;
     uint32_t embedding_dim;
-    float processing_window_ms;
     uint32_t formant_count;
-    bool enable_syntactic_parsing;
-    bool enable_semantic_spreading;
-    bool enable_predictive_coding;
-    bool enable_audiovisual_integration;
-} wernicke_config_local_t;
-
-// Wernicke API declarations (to avoid header conflicts)
-extern wernicke_config_local_t wernicke_default_config(void);
-extern wernicke_adapter_t* wernicke_create(const wernicke_config_local_t* config);
+    bool enable_audiovisual;
+    bool enable_prosody;
+    bool enable_broca_connection;
+    bool enable_semantic_memory;
+    bool enable_kg_registration;
+    bool enable_events;
+    bool enable_training;
+    float learning_rate;
+    float processing_window_ms;
+    bool enable_bio_async;
+    uint32_t default_channel;  /* nimcp_bio_channel_type_t */
+} wernicke_config_t;
+extern wernicke_config_t wernicke_default_config(void);
+extern wernicke_adapter_t* wernicke_create(const wernicke_config_t* config);
 extern void wernicke_destroy(wernicke_adapter_t* adapter);
 
 // Lexical access forward declarations for lexicon seeding
@@ -148,7 +157,7 @@ bool nimcp_brain_factory_init_wernicke_subsystem(brain_t brain) {
     }
 
     /* Create Wernicke adapter with default configuration */
-    wernicke_config_local_t wernicke_cfg = wernicke_default_config();
+    wernicke_config_t wernicke_cfg = wernicke_default_config();
 
     /* Scale configuration based on brain config */
     if (brain->config.working_memory_capacity > 0) {
