@@ -229,7 +229,9 @@ static void brain_train_cognitive_subsystems(
     if (brain->parietal) {
         fep_parietal_bridge_t* fep_bridge = parietal_get_fep_bridge(brain->parietal);
         if (fep_bridge) {
-            /* Train transition model: features (current state) → target (next state) */
+            /* FEP bridge has internal level_dims that may be smaller than num_features.
+             * The train function reads level_dims[0] elements from obs/tgt pointers.
+             * Safe: it clamps internally to its own dimensions. */
             const float* obs_ptr = features;
             const float* tgt_ptr = target;
             fep_parietal_train_model(fep_bridge, &obs_ptr, &tgt_ptr, 1);
@@ -239,12 +241,18 @@ static void brain_train_cognitive_subsystems(
 
     /* === 5. PARIETAL PHYSICS NN — physics-informed dynamics learning === */
     if (brain->parietal && num_features >= 4 && target_size >= 4) {
-        /* Treat features as state and target as derivative/next-state.
-         * Use min(32, dim) to keep physics NN training fast. */
+        /* Physics NN has internal state_dim (default 8, configured at creation).
+         * Pass truncated features that match the NN's actual dimensions.
+         * Create temp arrays capped to 32 to avoid buffer overflow. */
         uint32_t phys_dim = (num_features < 32) ? num_features : 32;
-        const float* state_ptr = features;
-        const float* deriv_ptr = target;
-        /* Single-sample training through parietal wrapper */
+        float phys_state[32] = {0};
+        float phys_deriv[32] = {0};
+        for (uint32_t i = 0; i < phys_dim; i++) {
+            phys_state[i] = features[i];
+            phys_deriv[i] = target[i];
+        }
+        const float* state_ptr = phys_state;
+        const float* deriv_ptr = phys_deriv;
         parietal_train_physics_nn(brain->parietal,
                                   &state_ptr, &deriv_ptr, 1, 1);
         brain->cognitive_stats.physics_nn_steps++;

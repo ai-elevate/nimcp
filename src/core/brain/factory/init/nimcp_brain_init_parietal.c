@@ -337,7 +337,26 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
     config.enable_sleep_modulation = brain->medulla_enabled;
     config.enable_logic_gates = (brain->logic != NULL);
 
-    /* Create parietal lobe with custom configuration */
+    /* Scale FEP hierarchy dimensions to avoid buffer overflow.
+     * brain_learn_vector passes features of size brain->config.num_inputs
+     * to fep_parietal_train_model which uses level_dims[0]. If level_dims[0]
+     * is smaller than num_inputs, the train function overflows its buffer.
+     * Cap at 32 to keep memory reasonable — the train function will
+     * truncate features to this size. */
+    if (brain->config.num_inputs > 0) {
+        uint32_t dim = brain->config.num_inputs;
+        if (dim > 32) dim = 32;
+        for (uint32_t i = 0; i < config.fep_parietal_config.num_levels; i++) {
+            if (config.fep_parietal_config.level_dims[i] == 0 ||
+                config.fep_parietal_config.level_dims[i] > dim) {
+                config.fep_parietal_config.level_dims[i] = dim;
+            }
+            /* Each level can be same or smaller */
+            dim = (dim > 8) ? dim / 2 : dim;
+        }
+    }
+
+    /* Create parietal lobe with dimension-matched configuration */
     parietal_lobe_t* parietal = parietal_create_custom(&config);
     if (!parietal) {
         fprintf(stderr, "[PARIETAL] ERROR: Failed to create parietal lobe\n");
@@ -352,34 +371,30 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
     brain->parietal_enabled = true;
     brain->last_parietal_update_us = 0;
 
-    /* Connect to subsystems. On loaded brains (total_learning_steps > 0),
-     * some subsystems have existing state that can corrupt when reconnected.
-     * The parietal lobe itself is safe; only some connections may clash. */
+    /* The parietal_create_custom function calloc's all internal state,
+     * so pending_requests array and num_pending are already zero.
+     * No need to clear — the fresh parietal starts clean. */
+
     fprintf(stderr, "[PARIETAL] Parietal lobe created, connecting to subsystems...\n");
 
+    /* Connect subsystems — all connections are safe because they only
+     * set callback/function pointers, not allocate buffers. */
     connect_parietal_to_working_memory(parietal, brain);
     connect_parietal_to_fep(parietal, brain);
     connect_parietal_to_logic(parietal, brain);
     connect_parietal_to_global_workspace(parietal, brain);
+    connect_parietal_to_training(parietal, brain);
+    connect_parietal_to_immune(parietal, brain);
+    connect_parietal_to_sleep(parietal, brain);
+    connect_parietal_to_perception(parietal, brain);
+    connect_parietal_to_brain_regions(parietal, brain);
 
-    /* These connections are safe on both fresh and loaded brains
-     * (they only set callback pointers, no buffer allocation) */
-    if (brain->stats.total_learning_steps == 0) {
-        /* Fresh brain — connect everything */
-        connect_parietal_to_training(parietal, brain);
-        connect_parietal_to_immune(parietal, brain);
-        connect_parietal_to_sleep(parietal, brain);
-        connect_parietal_to_perception(parietal, brain);
-        connect_parietal_to_brain_regions(parietal, brain);
-        if (brain->config.enable_intuitive_physics) {
-            extern int parietal_attach_simulation_engines(parietal_lobe_t* pl,
-                                                           struct brain_struct* b);
-            if (parietal_attach_simulation_engines(parietal, brain) == 0) {
-                fprintf(stderr, "[PARIETAL] Connected to world model simulation engines\n");
-            }
+    if (brain->config.enable_intuitive_physics) {
+        extern int parietal_attach_simulation_engines(parietal_lobe_t* pl,
+                                                       struct brain_struct* b);
+        if (parietal_attach_simulation_engines(parietal, brain) == 0) {
+            fprintf(stderr, "[PARIETAL] Connected to world model simulation engines\n");
         }
-    } else {
-        fprintf(stderr, "[PARIETAL] Loaded brain: using safe connections only\n");
     }
 
     fprintf(stderr, "[PARIETAL] Parietal lobe initialization complete\n");
