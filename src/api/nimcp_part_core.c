@@ -3603,12 +3603,13 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
      *
      * Enable config flags that gate region initialization.
      * These may be false in old checkpoints that didn't have these features. */
-    /* Note: broca/wernicke need enable_speech_cortex, parietal needs enable_parietal,
-     * cortical columns need enable_thousand_brains_integration. These are NOT force-enabled
-     * here because their factory inits assume a fresh brain and can SIGABRT on a loaded brain
-     * with existing state. The 12 regions that init safely cover the critical paths.
-     * TODO: write dedicated reinit_after_load() that handles these safely. */
+    /* Enable config flags needed by region inits.
+     * Testing one at a time to isolate SIGABRT source. */
     b->config.enable_oscillations = true;
+    b->config.enable_speech_cortex = true;        /* For broca + wernicke */
+    b->config.enable_multimodal_integration = true; /* For broca + wernicke + parietal */
+    /* b->config.enable_parietal = true; */         /* DISABLED: testing */
+    /* b->config.enable_thousand_brains_integration = true; */ /* DISABLED: testing */
 
     /* Core dependencies first */
     if (!b->engram_system) {
