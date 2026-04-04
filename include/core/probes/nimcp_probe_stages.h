@@ -11,6 +11,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Forward declarations */
 struct probe_registry;
 
@@ -147,5 +151,9 @@ void probe_registry_record_stage(struct probe_registry* reg,
  * ============================================================================ */
 
 const char* probe_stage_name(probe_stage_id_t id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NIMCP_PROBE_STAGES_H */

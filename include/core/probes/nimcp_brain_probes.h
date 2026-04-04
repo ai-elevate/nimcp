@@ -20,11 +20,22 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifdef __cplusplus
+#include <atomic>
+#define PROBE_ATOMIC(T) std::atomic<T>
+#else
 #include <stdatomic.h>
+#define PROBE_ATOMIC(T) _Atomic T
+#endif
 
 /* Forward declarations to avoid circular includes */
 struct brain_struct;
 typedef struct brain_struct* brain_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ============================================================================
  * Constants
@@ -128,7 +139,7 @@ typedef struct probe {
      * Readers always read metrics[!active_buf] (stable snapshot). */
     probe_metric_t      metrics[2][PROBE_MAX_METRICS];
     uint32_t            metric_count[2];
-    _Atomic uint32_t    active_buf;     /**< 0 or 1 — which buffer is "live" */
+    PROBE_ATOMIC(uint32_t) active_buf;     /**< 0 or 1 — which buffer is "live" */
 } probe_t;
 
 /* ============================================================================
@@ -138,7 +149,7 @@ typedef struct probe {
 typedef struct probe_registry {
     probe_t             probes[PROBE_REGISTRY_MAX];
     uint32_t            count;
-    _Atomic uint32_t    next_handle;
+    PROBE_ATOMIC(uint32_t) next_handle;
 
     /* Sampler thread */
     void*               sampler_thread;     /**< nimcp_thread_t* */
@@ -264,5 +275,9 @@ probe_handle_t probe_attach_inference(probe_registry_t* reg, uint32_t interval_m
 
 void* probe_resolve_module(brain_t brain, uint16_t module_id);
 const char* probe_module_name(uint16_t module_id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NIMCP_BRAIN_PROBES_H */
