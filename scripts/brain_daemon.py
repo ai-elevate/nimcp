@@ -1174,10 +1174,9 @@ class BrainDaemon:
             pass
 
     def start(self):
-        """Start the daemon server (main + read-only sockets)."""
+        """Start the daemon server."""
         self._acquire_socket_lock()
 
-        # Main socket
         if os.path.exists(self.socket_path):
             os.unlink(self.socket_path)
         self._server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -1186,26 +1185,32 @@ class BrainDaemon:
         self._server_sock.listen(16)
         self._server_sock.settimeout(1.0)
 
-        # Read-only socket — for eval/monitoring, never blocked by training
+        # Read-only socket for eval/monitoring
         if os.path.exists(self.ro_socket_path):
             os.unlink(self.ro_socket_path)
-        self._ro_server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self._ro_server_sock.bind(self.ro_socket_path)
-        os.chmod(self.ro_socket_path, 0o660)
-        self._ro_server_sock.listen(16)
-        self._ro_server_sock.settimeout(1.0)
+        try:
+            self._ro_server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self._ro_server_sock.bind(self.ro_socket_path)
+            os.chmod(self.ro_socket_path, 0o660)
+            self._ro_server_sock.listen(16)
+            self._ro_server_sock.settimeout(1.0)
+        except Exception as e:
+            logger.warning("Read-only socket failed: %s (non-fatal)", e)
+            self._ro_server_sock = None
 
         self._running = True
-        logger.info("Brain daemon listening on %s + %s (max_workers=%d)",
-                     self.socket_path, self.ro_socket_path, self.max_workers)
+        logger.info("Brain daemon listening on %s (max_workers=%d)",
+                     self.socket_path, self.max_workers)
 
     def serve_forever(self):
         """Main accept loop — select on both main and read-only sockets."""
         import select
+        listen_socks = [self._server_sock]
+        if self._ro_server_sock:
+            listen_socks.append(self._ro_server_sock)
         while self._running:
             try:
-                readable, _, _ = select.select(
-                    [self._server_sock, self._ro_server_sock], [], [], 1.0)
+                readable, _, _ = select.select(listen_socks, [], [], 1.0)
             except (OSError, ValueError):
                 if self._running:
                     logger.error("Socket select error")
