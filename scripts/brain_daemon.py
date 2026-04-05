@@ -1421,7 +1421,9 @@ class AutoCheckpointer:
         existing_size = os.path.getsize(canonical) if os.path.exists(canonical) else 0
 
         try:
-            # STEP 1: Save to temp file (never touch the real checkpoint)
+            # STEP 1: Save to temp file (never touch the real checkpoint).
+            # brain.save() automatically writes sidecars (.snn, .lnn, .cnn,
+            # .meta, .cortex_*, etc.) to tmp_path.snn, tmp_path.lnn, etc.
             self.brain.save(tmp_path)
 
             # STEP 2: Validate — temp file must be at least 100 MB
@@ -1443,8 +1445,16 @@ class AutoCheckpointer:
                 os.remove(tmp_path)
                 return
 
-            # STEP 4: Atomic rename — replaces old checkpoint in one operation
+            # STEP 4: Atomic rename core file + move all sidecars
             os.replace(tmp_path, canonical)
+            # Move sidecars: tmp_path.snn -> canonical.snn, etc.
+            import glob as _glob
+            for sidecar in _glob.glob(tmp_path + '.*'):
+                ext = sidecar[len(tmp_path):]  # e.g. ".snn", ".lnn"
+                try:
+                    os.replace(sidecar, canonical + ext)
+                except Exception:
+                    pass
 
             # STEP 5: Timestamped backup every 5th save (~2.5 hours)
             if self._save_count % 5 == 0:
@@ -1453,15 +1463,29 @@ class AutoCheckpointer:
                 ts_path = os.path.join(self.checkpoint_dir, f"athena_auto_{ts}.bin")
                 try:
                     shutil.copy2(canonical, ts_path)
+                    # Also copy sidecars
+                    for sc in _glob.glob(canonical + '.*'):
+                        ext = sc[len(canonical):]
+                        shutil.copy2(sc, ts_path + ext)
                 except Exception as e:
                     logger.warning("Timestamped backup failed: %s", e)
 
                 # Keep last 5 timestamped backups (increased from 3)
-                auto_files = sorted(glob.glob(
+                auto_files = sorted(_glob.glob(
                     os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
+                # Filter to only core files (not sidecars like .bin.snn)
+                auto_files = [f for f in auto_files if not any(
+                    f.endswith('.bin.' + ext) for ext in
+                    ['snn','lnn','cnn','meta','tokenizer','mirror_neurons',
+                     'executive','cortex_visual','cortex_audio',
+                     'cortex_speech','cortex_somato'])]
                 while len(auto_files) > 5:
+                    old = auto_files.pop(0)
                     try:
-                        os.remove(auto_files.pop(0))
+                        os.remove(old)
+                        # Also remove sidecars
+                        for sc in _glob.glob(old + '.*'):
+                            os.remove(sc)
                     except Exception:
                         pass
 
