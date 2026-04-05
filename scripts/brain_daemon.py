@@ -1394,44 +1394,81 @@ class AutoCheckpointer:
     def save_now(self, force=False):
         """Save checkpoint with safety guards.
 
-        Won't save a fresh untrained brain unless force=True.
-        Rotates previous checkpoint to .bak before overwriting.
+        CRITICAL SAFETY: Never overwrite trained data with untrained brain.
+        Uses temp file + size validation + atomic rename.
         """
-        if not force and not self._loaded_from_checkpoint:
-            if self._save_count < self.min_steps:
-                logger.debug("Checkpoint skipped: only %d steps (need %d)",
-                             self._save_count, self.min_steps)
-                return
+        import shutil, glob
 
-        # Save to athena_immersive.bin — same path the training script resumes from.
-        # Also save a timestamped copy so we have rollback history.
-        path = os.path.join(self.checkpoint_dir, "athena_immersive.bin")
-        # Resolve symlink to get the real path
-        real_path = os.path.realpath(path) if os.path.islink(path) else path
+        # GUARD 1: Never save a fresh/untrained brain
+        if self._save_count < self.min_steps and not force:
+            logger.debug("Checkpoint skipped: only %d steps (need %d)",
+                         self._save_count, self.min_steps)
+            return
+
+        # Use ABSOLUTE path — resolve symlinks to avoid path confusion
+        canonical = os.path.join(self.checkpoint_dir, "athena_immersive.bin")
+        if os.path.islink(canonical):
+            canonical = os.path.realpath(canonical)
+
+        tmp_path = canonical + ".tmp"
+        existing_size = os.path.getsize(canonical) if os.path.exists(canonical) else 0
 
         try:
-            if True:  # RWLock in handle()
-                self.brain.save(path)
+            # STEP 1: Save to temp file (never touch the real checkpoint)
+            self.brain.save(tmp_path)
 
-            # Also save timestamped backup every 5th checkpoint (~2.5 hours)
+            # STEP 2: Validate — temp file must be at least 100 MB
+            tmp_size = os.path.getsize(tmp_path)
+            if tmp_size < 100_000_000:  # 100 MB minimum for 2.5M neuron brain
+                logger.error("Checkpoint too small (%d bytes) — likely fresh brain, "
+                             "REFUSING to overwrite trained checkpoint (%d bytes)",
+                             tmp_size, existing_size)
+                os.remove(tmp_path)
+                return
+
+            # STEP 3: Never replace a larger file with a smaller one
+            # (trained brain should always be >= previous trained brain)
+            if existing_size > 0 and tmp_size < existing_size * 0.8:
+                logger.error("Checkpoint SHRANK from %d to %d bytes (%.0f%%) — "
+                             "REFUSING to overwrite (possible corruption)",
+                             existing_size, tmp_size,
+                             tmp_size / existing_size * 100)
+                os.remove(tmp_path)
+                return
+
+            # STEP 4: Atomic rename — replaces old checkpoint in one operation
+            os.replace(tmp_path, canonical)
+
+            # STEP 5: Timestamped backup every 5th save (~2.5 hours)
             if self._save_count % 5 == 0:
                 import time as _time
                 ts = _time.strftime("%Y%m%d_%H%M%S")
                 ts_path = os.path.join(self.checkpoint_dir, f"athena_auto_{ts}.bin")
                 try:
-                    import shutil
-                    shutil.copy2(path, ts_path)
-                    # Keep only last 3 timestamped backups
-                    import glob
-                    auto_files = sorted(glob.glob(os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
-                    while len(auto_files) > 3:
-                        os.remove(auto_files.pop(0))
+                    shutil.copy2(canonical, ts_path)
                 except Exception as e:
                     logger.warning("Timestamped backup failed: %s", e)
 
-            logger.info("Checkpoint saved: %s (steps=%d)", path, self._save_count)
+                # Keep last 5 timestamped backups (increased from 3)
+                auto_files = sorted(glob.glob(
+                    os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
+                while len(auto_files) > 5:
+                    try:
+                        os.remove(auto_files.pop(0))
+                    except Exception:
+                        pass
+
+            logger.info("Checkpoint saved: %s (%d bytes, steps=%d)",
+                        canonical, os.path.getsize(canonical), self._save_count)
+
         except Exception as e:
-            logger.error("Checkpoint failed: %s", e)
+            logger.error("Checkpoint FAILED: %s", e)
+            # Clean up temp file if it exists
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
 
     def _run(self):
         while self._running:
@@ -1467,8 +1504,8 @@ def main():
     parser.add_argument("--workers", type=int, default=4,
                         help="Max concurrent worker threads (default: 4)")
     parser.add_argument("--checkpoint-dir", type=str,
-                        default="/home/bbrelin/nimcp/checkpoints/athena",
-                        help="Auto-checkpoint directory")
+                        default=None,
+                        help="Auto-checkpoint directory (default: same dir as --checkpoint)")
     parser.add_argument("--checkpoint-interval", type=int, default=300,
                         help="Auto-checkpoint interval seconds (default: 300)")
     parser.add_argument("--log-file", type=str, default=None,
@@ -1571,8 +1608,19 @@ def main():
     nimcp.init()
     print("  [1/8] ✓ Library initialized", flush=True)
 
+    # Determine checkpoint dir — MUST be same directory as the checkpoint file
+    # to avoid saving to a different filesystem path
+    if args.checkpoint_dir is None:
+        if args.checkpoint:
+            args.checkpoint_dir = os.path.dirname(os.path.abspath(args.checkpoint))
+        else:
+            args.checkpoint_dir = os.path.join(os.getcwd(), "checkpoints", "athena")
+    args.checkpoint_dir = os.path.abspath(args.checkpoint_dir)
+
     # Determine checkpoint path
     checkpoint_path = args.checkpoint
+    if checkpoint_path:
+        checkpoint_path = os.path.abspath(checkpoint_path)
     if args.fresh:
         checkpoint_path = None
         logger.info("Fresh mode: ignoring checkpoints, creating new brain")
@@ -1652,6 +1700,14 @@ def main():
                     logger.error("Backup checkpoint also failed: %s", e2)
 
     if brain is None:
+        if checkpoint_path:
+            # CRITICAL: If a checkpoint was specified but failed to load,
+            # EXIT immediately. NEVER create a fresh brain that would
+            # overwrite trained data when the auto-checkpointer runs.
+            print(f"  [2/8] FATAL: Checkpoint load failed: {checkpoint_path}", flush=True)
+            print(f"  [2/8] Refusing to create fresh brain — would destroy trained data.", flush=True)
+            logger.critical("Checkpoint load failed for %s — exiting to protect data", checkpoint_path)
+            sys.exit(1)
         print(f"  [2/8] Creating new brain: {args.neuron_count:,} neurons, "
               f"mode={args.init_mode}", flush=True)
         brain = nimcp.Brain("athena",
