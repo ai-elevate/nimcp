@@ -217,6 +217,19 @@ class BrainService:
         'save', 'sleep_run_cycle', 'retrofit_synapse_metadata',
     })
 
+    def handle_readonly(self, req):
+        """Lock-free dispatch for read-only socket. Never blocks on training."""
+        cmd = req.get("cmd", "")
+        self._stats["total_requests"] += 1
+        try:
+            handler = getattr(self, f"_cmd_{cmd}", None)
+            if handler is None:
+                return {"error": f"Unknown command: {cmd}"}
+            return handler(req)
+        except Exception as e:
+            self._stats["errors"] += 1
+            return {"error": str(e)}
+
     def handle(self, req):
         """Dispatch a command dict and return a response dict.
 
@@ -1092,14 +1105,34 @@ class BrainService:
 # ---------------------------------------------------------------------------
 
 class BrainDaemon:
-    """Unix socket server that accepts IPC connections."""
+    """Unix socket server that accepts IPC connections.
+
+    Listens on TWO sockets:
+    - Main socket (brain.sock): all commands, uses locks for write commands
+    - Read-only socket (brain_ro.sock): only read commands, NO locks
+      Use this for eval, monitoring, probes — never blocked by training.
+    """
+
+    # Commands allowed on the read-only socket (no lock needed)
+    _READONLY_COMMANDS = frozenset({
+        'ping', 'status', 'keepalive',
+        'decide_full', 'predict', 'speak', 'generate_text',
+        'get_neuron_count', 'get_snn_stats', 'get_network_metrics',
+        'get_cortex_cnn_metrics', 'get_cognitive_stats',
+        'get_training_dashboard', 'get_probe_metrics',
+        'get_lateralization', 'get_cloud_stats',
+        'utm_forward_only', 'utm_get_training_health',
+        'attach_builtin_probes',
+    })
 
     def __init__(self, service, socket_path=SOCKET_PATH, max_workers=4):
         self.service = service
         self.socket_path = socket_path
+        self.ro_socket_path = socket_path.replace('.sock', '_ro.sock')
         self.lock_path = socket_path + ".lock"
         self.max_workers = max_workers
         self._server_sock = None
+        self._ro_server_sock = None
         self._lock_fd = None
         self._running = False
         self._worker_semaphore = threading.Semaphore(max_workers)
@@ -1141,48 +1174,70 @@ class BrainDaemon:
             pass
 
     def start(self):
-        """Start the daemon server."""
-        # Acquire exclusive lock before touching the socket
+        """Start the daemon server (main + read-only sockets)."""
         self._acquire_socket_lock()
 
-        # Clean up stale socket
+        # Main socket
         if os.path.exists(self.socket_path):
             os.unlink(self.socket_path)
-
         self._server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._server_sock.bind(self.socket_path)
         os.chmod(self.socket_path, 0o660)
         self._server_sock.listen(16)
         self._server_sock.settimeout(1.0)
-        self._running = True
 
-        logger.info("Brain daemon listening on %s (max_workers=%d)",
-                     self.socket_path, self.max_workers)
+        # Read-only socket — for eval/monitoring, never blocked by training
+        if os.path.exists(self.ro_socket_path):
+            os.unlink(self.ro_socket_path)
+        self._ro_server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._ro_server_sock.bind(self.ro_socket_path)
+        os.chmod(self.ro_socket_path, 0o660)
+        self._ro_server_sock.listen(16)
+        self._ro_server_sock.settimeout(1.0)
+
+        self._running = True
+        logger.info("Brain daemon listening on %s + %s (max_workers=%d)",
+                     self.socket_path, self.ro_socket_path, self.max_workers)
 
     def serve_forever(self):
-        """Main accept loop."""
+        """Main accept loop — select on both main and read-only sockets."""
+        import select
         while self._running:
             try:
-                conn, _ = self._server_sock.accept()
-            except socket.timeout:
-                continue
-            except OSError:
+                readable, _, _ = select.select(
+                    [self._server_sock, self._ro_server_sock], [], [], 1.0)
+            except (OSError, ValueError):
                 if self._running:
-                    logger.error("Socket accept error")
+                    logger.error("Socket select error")
                 break
 
-            # Handle in a worker thread
-            self._worker_semaphore.acquire()
-            t = threading.Thread(target=self._handle_conn, args=(conn,),
-                                 daemon=True)
-            t.start()
+            for sock in readable:
+                try:
+                    conn, _ = sock.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    continue
+
+                is_readonly = (sock is self._ro_server_sock)
+                self._worker_semaphore.acquire()
+                t = threading.Thread(
+                    target=self._handle_conn,
+                    args=(conn,),
+                    kwargs={'readonly': is_readonly},
+                    daemon=True)
+                t.start()
 
     # Heartbeat constants
     HEARTBEAT_WARN_SECONDS = 60
     HEARTBEAT_DEAD_SECONDS = 300
 
-    def _handle_conn(self, conn):
+    def _handle_conn(self, conn, readonly=False):
         """Handle a single client connection (may have multiple requests).
+
+        If readonly=True (from read-only socket), commands bypass locks and
+        only read-safe commands are allowed. This prevents eval/monitoring
+        from being blocked by training write locks.
 
         Tracks last_message_time for heartbeat detection:
         - 60s without a message: log a warning (client may be stalled)
@@ -1216,7 +1271,17 @@ class BrainDaemon:
 
                 last_message_time = time.monotonic()
                 warned = False
-                resp = self.service.handle(req)
+
+                if readonly:
+                    # Read-only socket: only allow safe commands, bypass all locks
+                    cmd = req.get("cmd", "")
+                    if cmd not in self._READONLY_COMMANDS:
+                        resp = {"error": f"Command '{cmd}' not allowed on read-only socket"}
+                    else:
+                        resp = self.service.handle_readonly(req)
+                else:
+                    resp = self.service.handle(req)
+
                 send_msg(conn, resp)
 
                 # Single-shot commands close after response
@@ -1260,16 +1325,18 @@ class BrainDaemon:
     def stop(self):
         """Stop the daemon."""
         self._running = False
-        if self._server_sock:
-            try:
-                self._server_sock.close()
-            except Exception:
-                pass
-        if os.path.exists(self.socket_path):
-            try:
-                os.unlink(self.socket_path)
-            except Exception:
-                pass
+        for sock in (self._server_sock, self._ro_server_sock):
+            if sock:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+        for path in (self.socket_path, self.ro_socket_path):
+            if os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except Exception:
+                    pass
         self._release_socket_lock()
         logger.info("Brain daemon stopped")
 
