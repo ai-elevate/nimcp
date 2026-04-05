@@ -1403,6 +1403,7 @@ class AutoCheckpointer:
 
         CRITICAL SAFETY: Never overwrite trained data with untrained brain.
         Uses temp file + size validation + atomic rename.
+        Checks disk space before writing.
         """
         import shutil, glob
 
@@ -1421,6 +1422,33 @@ class AutoCheckpointer:
         existing_size = os.path.getsize(canonical) if os.path.exists(canonical) else 0
 
         try:
+            # STEP 0: Check disk space — need at least 10 GB free
+            stat = os.statvfs(self.checkpoint_dir)
+            free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
+            if free_gb < 10.0:
+                logger.warning("Low disk space (%.1f GB free) — pruning old checkpoints", free_gb)
+                auto_files = sorted(glob.glob(
+                    os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
+                auto_files = [f for f in auto_files if not any(
+                    f.endswith('.bin.' + ext) for ext in
+                    ['snn','lnn','cnn','meta','tokenizer','mirror_neurons',
+                     'executive','cortex_visual','cortex_audio',
+                     'cortex_speech','cortex_somato'])]
+                while auto_files and free_gb < 10.0:
+                    old = auto_files.pop(0)
+                    try:
+                        os.remove(old)
+                        for sc in glob.glob(old + '.*'):
+                            os.remove(sc)
+                        logger.info("Pruned old checkpoint: %s", old)
+                    except Exception:
+                        pass
+                    stat = os.statvfs(self.checkpoint_dir)
+                    free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
+                if free_gb < 10.0:
+                    logger.error("Still only %.1f GB free after pruning — skipping save", free_gb)
+                    return
+
             # STEP 1: Save to temp file (never touch the real checkpoint).
             # brain.save() automatically writes sidecars (.snn, .lnn, .cnn,
             # .meta, .cortex_*, etc.) to tmp_path.snn, tmp_path.lnn, etc.
@@ -1479,7 +1507,7 @@ class AutoCheckpointer:
                     ['snn','lnn','cnn','meta','tokenizer','mirror_neurons',
                      'executive','cortex_visual','cortex_audio',
                      'cortex_speech','cortex_somato'])]
-                while len(auto_files) > 5:
+                while len(auto_files) > 1:
                     old = auto_files.pop(0)
                     try:
                         os.remove(old)
