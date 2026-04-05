@@ -1174,9 +1174,10 @@ class BrainDaemon:
             pass
 
     def start(self):
-        """Start the daemon server."""
+        """Start the daemon server (main + read-only sockets)."""
         self._acquire_socket_lock()
 
+        # Main socket
         if os.path.exists(self.socket_path):
             os.unlink(self.socket_path)
         self._server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -1185,17 +1186,19 @@ class BrainDaemon:
         self._server_sock.listen(16)
         self._server_sock.settimeout(1.0)
 
-        # Read-only socket for eval/monitoring
-        if os.path.exists(self.ro_socket_path):
-            os.unlink(self.ro_socket_path)
+        # Read-only socket for eval/monitoring — non-fatal if fails
+        self._ro_server_sock = None
         try:
+            if os.path.exists(self.ro_socket_path):
+                os.unlink(self.ro_socket_path)
             self._ro_server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self._ro_server_sock.bind(self.ro_socket_path)
             os.chmod(self.ro_socket_path, 0o660)
             self._ro_server_sock.listen(16)
             self._ro_server_sock.settimeout(1.0)
+            logger.info("Read-only socket: %s", self.ro_socket_path)
         except Exception as e:
-            logger.warning("Read-only socket failed: %s (non-fatal)", e)
+            logger.warning("Read-only socket failed: %s (eval will use main socket)", e)
             self._ro_server_sock = None
 
         self._running = True
@@ -1203,11 +1206,12 @@ class BrainDaemon:
                      self.socket_path, self.max_workers)
 
     def serve_forever(self):
-        """Main accept loop — select on both main and read-only sockets."""
+        """Main accept loop — select on main + read-only sockets."""
         import select
         listen_socks = [self._server_sock]
         if self._ro_server_sock:
             listen_socks.append(self._ro_server_sock)
+
         while self._running:
             try:
                 readable, _, _ = select.select(listen_socks, [], [], 1.0)
@@ -1219,12 +1223,10 @@ class BrainDaemon:
             for sock in readable:
                 try:
                     conn, _ = sock.accept()
-                except socket.timeout:
-                    continue
-                except OSError:
+                except (socket.timeout, OSError):
                     continue
 
-                is_readonly = (sock is self._ro_server_sock)
+                is_readonly = (self._ro_server_sock and sock is self._ro_server_sock)
                 self._worker_semaphore.acquire()
                 t = threading.Thread(
                     target=self._handle_conn,
