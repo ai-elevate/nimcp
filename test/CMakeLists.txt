@@ -3137,4 +3137,22 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/cognitive_dispatch")
 endif()
 endif() # GTest_FOUND cognitive dispatch
 
+# ============================================================================
+# Unified Checkpoint Tests
+# ============================================================================
+if(GTest_FOUND)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/persistence")
+    message(STATUS "Adding unified checkpoint unit tests...")
+    add_subdirectory(unit/core/persistence)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/persistence")
+    message(STATUS "Adding unified checkpoint integration tests...")
+    add_subdirectory(integration/core/persistence)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/persistence")
+    message(STATUS "Adding unified checkpoint regression tests...")
+    add_subdirectory(regression/core/persistence)
+endif()
+endif() # GTest_FOUND checkpoint
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

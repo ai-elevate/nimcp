@@ -43751,6 +43751,45 @@ regression_cognitive_dispatch/fast:
 .PHONY : regression_cognitive_dispatch/fast
 
 #=============================================================================
+# Target rules for targets named unit_unified_checkpoint
+
+# Build rule for target.
+unit_unified_checkpoint: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_unified_checkpoint
+.PHONY : unit_unified_checkpoint
+
+# fast build rule for target.
+unit_unified_checkpoint/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/persistence/CMakeFiles/unit_unified_checkpoint.dir/build.make test/unit/core/persistence/CMakeFiles/unit_unified_checkpoint.dir/build
+.PHONY : unit_unified_checkpoint/fast
+
+#=============================================================================
+# Target rules for targets named integration_unified_checkpoint
+
+# Build rule for target.
+integration_unified_checkpoint: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_unified_checkpoint
+.PHONY : integration_unified_checkpoint
+
+# fast build rule for target.
+integration_unified_checkpoint/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/persistence/CMakeFiles/integration_unified_checkpoint.dir/build.make test/integration/core/persistence/CMakeFiles/integration_unified_checkpoint.dir/build
+.PHONY : integration_unified_checkpoint/fast
+
+#=============================================================================
+# Target rules for targets named regression_checkpoint
+
+# Build rule for target.
+regression_checkpoint: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_checkpoint
+.PHONY : regression_checkpoint
+
+# fast build rule for target.
+regression_checkpoint/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/persistence/CMakeFiles/regression_checkpoint.dir/build.make test/regression/core/persistence/CMakeFiles/regression_checkpoint.dir/build
+.PHONY : regression_checkpoint/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -45111,6 +45150,7 @@ help:
 	@echo "... integration_training_test_cnn_cortex_integration"
 	@echo "... integration_training_test_training_integration"
 	@echo "... integration_training_vae"
+	@echo "... integration_unified_checkpoint"
 	@echo "... integration_utils_containers_test_queue_integration"
 	@echo "... integration_utils_encoding_test_pe_attention_integration"
 	@echo "... integration_utils_exception_test_exception_immune_integration"
@@ -45225,6 +45265,7 @@ help:
 	@echo "... regression_broca_comprehensive"
 	@echo "... regression_btree_test_btree_regression"
 	@echo "... regression_btree_test_ethics_btree_regression"
+	@echo "... regression_checkpoint"
 	@echo "... regression_chemistry_gasotransmitters_test_no_regression"
 	@echo "... regression_chemistry_ph_test_ph_regression"
 	@echo "... regression_cognitive_attention_bridge"
@@ -47347,6 +47388,7 @@ help:
 	@echo "... unit_training_test_quantization_ternary"
 	@echo "... unit_training_test_snn_backprop_stubs"
 	@echo "... unit_training_test_training_dispatch"
+	@echo "... unit_unified_checkpoint"
 	@echo "... unit_utils_algorithms_test_centrality"
 	@echo "... unit_utils_algorithms_test_community_detection"
 	@echo "... unit_utils_algorithms_test_graph_metrics"

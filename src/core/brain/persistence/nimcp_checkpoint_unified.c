@@ -122,6 +122,7 @@ typedef bool (*subsystem_save_fn)(brain_t brain, const char* tmp_path);
 
 /* Save adaptive network to temp path */
 static bool save_brain_core(brain_t brain, const char* tmp_path) {
+    if (!brain->network) return false;
     return adaptive_network_save(brain->network, tmp_path, 0 /* SERIALIZE_FORMAT_BINARY */);
 }
 
