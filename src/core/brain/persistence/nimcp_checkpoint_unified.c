@@ -282,8 +282,19 @@ bool brain_save_unified(brain_t brain, const char* filepath)
         unlink(_stmp); /* Always clean up temp file */ \
     } while(0)
 
-    /* Save all sections */
+    /* Save brain_core to temp file, then copy into unified.
+     * This requires ~8.1GB of temp disk space. If insufficient,
+     * the save fails and brain_save() falls back to legacy format
+     * (which the daemon manages with disk pruning). */
     SAVE_SECTION(NIMCP_SEC_BRAIN_CORE, save_brain_core(brain, _stmp));
+
+    if (num_sections == 0) {
+        /* brain_core is mandatory — if it failed, abort unified save */
+        LOG_WARN("brain_core save failed (disk full?) — falling back to legacy");
+        fclose(uf);
+        unlink(tmp_path);
+        return false;
+    }
 
     /* Metadata: nimcp_brain_save_metadata adds ".meta" suffix internally.
      * We pass the base path and then look for the .meta file. */
