@@ -47,7 +47,7 @@ typedef struct {
     uint64_t section_table_offset;      /**< Byte offset of section table from file start */
     uint64_t total_size;                /**< Total file size in bytes */
     uint32_t checksum;                  /**< CRC32 of all section data (header excluded) */
-    uint8_t  reserved[20];             /**< Padding to 64 bytes */
+    uint8_t  reserved[28];             /**< Padding to 64 bytes (4+4+4+4+8+8+4+28=64) */
 } nimcp_checkpoint_header_t;
 
 /**
