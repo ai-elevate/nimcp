@@ -482,5 +482,6 @@ void init_brain_stats(brain_stats_t* stats, const char* task_name, brain_size_t 
 #include "nimcp_brain_part_processing.c"  // 2 functions: processing
 #include "nimcp_brain_part_accessors.c"  // 12 functions: accessors
 #include "nimcp_brain_part_stats.c"  // 2 functions: stats
+#include "core/brain/nimcp_cognitive_dispatch.h"  // Parallel dispatch types
 #include "nimcp_brain_part_core.c"  // 14 functions: core
 #include "nimcp_brain_part_io.c"  // 4 functions: io

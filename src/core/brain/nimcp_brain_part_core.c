@@ -2171,7 +2171,32 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     } // end serial fallback for stages 3.8-3.11
 
     // ========================================================================
-    // STAGE 4.1: REASONING ENGINE (Causal/Abductive/Convergent)
+    // STAGE 4.1-4.3: PARALLEL REASONING DISPATCH (Actor Pattern)
+    // ========================================================================
+    // Reasoning, inner dialogue, imagination, recursive cognition run as
+    // independent actors. Coordinator merges confidence deltas.
+    {
+        extern decide_batch_result_t brain_decide_reasoning_parallel(
+            brain_t brain, const decide_snapshot_t* snap);
+        extern void decide_batch_apply(brain_decision_t* decision,
+                                        const decide_batch_result_t* batch);
+
+        if (brain->inference_pool) {
+            decide_snapshot_t snap = {0};
+            snap.confidence = decision->confidence;
+            strncpy(snap.label, decision->label, sizeof(snap.label) - 1);
+            snap.prediction_error = prediction_error;
+            snap.output_vector = decision->output_vector;
+            snap.output_size = decision->output_size;
+
+            decide_batch_result_t rbatch = brain_decide_reasoning_parallel(brain, &snap);
+            decide_batch_apply(decision, &rbatch);
+            goto skip_sequential_reasoning;
+        }
+    }
+
+    // ========================================================================
+    // STAGE 4.1: REASONING ENGINE (Causal/Abductive/Convergent) [SEQUENTIAL FALLBACK]
     // ========================================================================
     // WHAT: Execute multi-step reasoning on decision context
     // WHY:  Enable causal inference, evidence synthesis, epistemic verification
@@ -2336,6 +2361,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             }
         }
     }
+
+skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
 
     // ========================================================================
     // STAGE 4.4: COLLECTIVE COGNITION UPDATE (Multi-Brain Sync)
@@ -3057,7 +3084,34 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
-    // STAGE 7.8: Ethics Engine - Golden Rule Evaluation (NEWLY INTEGRATED)
+    // STAGE 7.8-9: PARALLEL EVALUATIVE DISPATCH (Actor Pattern)
+    // ========================================================================
+    // Ethics, epistemic, mirror neurons, ToM run as independent actors.
+    // Ethics blocking takes priority in coordinator merge.
+    {
+        extern decide_batch_result_t brain_decide_evaluative_parallel(
+            brain_t brain, const decide_snapshot_t* snap,
+            const float* features, uint32_t num_features);
+        extern void decide_batch_apply(brain_decision_t* decision,
+                                        const decide_batch_result_t* batch);
+
+        if (brain->inference_pool) {
+            decide_snapshot_t snap = {0};
+            snap.confidence = decision->confidence;
+            strncpy(snap.label, decision->label, sizeof(snap.label) - 1);
+            snap.prediction_error = prediction_error;
+            snap.output_vector = decision->output_vector;
+            snap.output_size = decision->output_size;
+
+            decide_batch_result_t ebatch = brain_decide_evaluative_parallel(
+                brain, &snap, features, num_features);
+            decide_batch_apply(decision, &ebatch);
+            goto skip_sequential_evaluative;
+        }
+    }
+
+    // ========================================================================
+    // STAGE 7.8: Ethics Engine - Golden Rule Evaluation [SEQUENTIAL FALLBACK]
     // ========================================================================
     // WHAT: Evaluate decision against Golden Rule ethics
     // WHY:  Prevent harmful actions that violate "do unto others" principle
@@ -3297,8 +3351,35 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+skip_sequential_evaluative: ; /* Label for parallel evaluative dispatch */
+
     // ========================================================================
-    // STAGE C5: COGNITIVE SUBSYSTEM INFERENCE
+    // STAGE C5/C6: PARALLEL COGNITIVE INFERENCE + ONLINE LEARNING
+    // ========================================================================
+    {
+        extern decide_batch_result_t brain_decide_cognitive_parallel(
+            brain_t brain, const decide_snapshot_t* snap,
+            const float* features, uint32_t num_features);
+        extern void decide_batch_apply(brain_decision_t* decision,
+                                        const decide_batch_result_t* batch);
+
+        if (brain->inference_pool) {
+            decide_snapshot_t snap = {0};
+            snap.confidence = decision->confidence;
+            strncpy(snap.label, decision->label, sizeof(snap.label) - 1);
+            snap.prediction_error = prediction_error;
+            snap.output_vector = decision->output_vector;
+            snap.output_size = decision->output_size;
+
+            decide_batch_result_t cbatch = brain_decide_cognitive_parallel(
+                brain, &snap, features, num_features);
+            decide_batch_apply(decision, &cbatch);
+            goto skip_sequential_c5c6;
+        }
+    }
+
+    // ========================================================================
+    // STAGE C5: COGNITIVE SUBSYSTEM INFERENCE [SEQUENTIAL FALLBACK]
     // ========================================================================
     // Run cognitive modules that enrich the decision with additional
     // information from parietal reasoning, predictive hierarchy, JEPA,
@@ -3810,6 +3891,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             decision->confidence *= 0.5f;
         }
     }
+
+skip_sequential_c5c6: ; /* Label for parallel C5/C6 dispatch */
 
     // Update statistics (after all post-decision processing)
     update_inference_stats(brain, decision);
