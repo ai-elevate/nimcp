@@ -3716,6 +3716,16 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
         }
     }
 
+    /* Inference thread pool for parallel cognitive dispatch.
+     * Not serialized in checkpoint — create on loaded brains. */
+    if (!b->inference_pool) {
+        extern nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads);
+        b->inference_pool = nimcp_pool_create(8);  /* 8 threads for parallel actors */
+        if (b->inference_pool) {
+            count++;
+        }
+    }
+
     return count;
 }
 

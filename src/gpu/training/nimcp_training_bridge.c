@@ -1355,7 +1355,29 @@ bool nimcp_gpu_backward_pass(
     }
 
     int* act_types = build_act_types(cache);
-    if (!act_types) return false;
+    if (!act_types) {
+        NIMCP_LOG_WARN("gpu_backward: build_act_types failed");
+        return false;
+    }
+
+    {
+        static int _bp_bridge = 0;
+        if (_bp_bridge++ < 5) {
+            NIMCP_LOG_INFO("gpu_backward: layers=%u sparse_ctx=%p",
+                           cache->num_layers, (void*)cache->sparse_ctx);
+            for (uint32_t _l = 0; _l < cache->num_layers; _l++) {
+                uint32_t sz = cache->layer_sizes ? cache->layer_sizes[_l] : 0;
+                int nnz = 0;
+                if (_l > 0 && cache->sparse_weights && cache->sparse_weights[_l-1] &&
+                    cache->sparse_weights[_l-1]->format == SPARSE_FORMAT_CSR) {
+                    nnz = cache->sparse_weights[_l-1]->data.csr.nnz;
+                }
+                NIMCP_LOG_INFO("  layer[%u]: size=%u nnz=%d act=%p",
+                               _l, sz, nnz,
+                               cache->activations ? (void*)cache->activations[_l] : NULL);
+            }
+        }
+    }
 
     bool ok = nimcp_gpu_sparse_backward_pass(
         cache->ctx, cache->sparse_ctx,

@@ -2222,15 +2222,36 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             bool gpu_backprop_done = false;
 
             if (num_layers >= 2 && layer_sizes && network->gpu_weight_cache) {
-                // Try GPU sparse backward pass (activations already on GPU from forward)
-                gpu_backprop_done = nimcp_gpu_backward_pass(
+                /* GPU backward with FP16 accumulation + flush.
+                 * This path uses nimcp_gpu_backward_accumulate() which:
+                 * 1. Enters FP16 autocast (if mixed_precision_enabled)
+                 * 2. Accumulates gradients on GPU (no PCIe download)
+                 * 3. Applies loss scaling for FP16 stability
+                 * Then nimcp_gpu_gradient_flush_and_sync() applies gradients
+                 * and downloads weights in a single PCIe transfer. */
+                bool accum_ok = nimcp_gpu_backward_accumulate(
                     network->gpu_weight_cache,
-                    network->base_network,
                     bp_target, output, example->target_size,
-                    effective_lr,
-                    network->config.base_config.min_weight,
-                    network->config.base_config.max_weight,
-                    &grad_norm);
+                    effective_lr);
+                if (accum_ok) {
+                    gpu_backprop_done = nimcp_gpu_gradient_flush_and_sync(
+                        network->gpu_weight_cache,
+                        network->base_network,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        &grad_norm);
+                }
+                if (!gpu_backprop_done) {
+                    /* Accumulate+flush failed — try direct backward as fallback */
+                    gpu_backprop_done = nimcp_gpu_backward_pass(
+                        network->gpu_weight_cache,
+                        network->base_network,
+                        bp_target, output, example->target_size,
+                        effective_lr,
+                        network->config.base_config.min_weight,
+                        network->config.base_config.max_weight,
+                        &grad_norm);
+                }
             }
 
             if (!gpu_backprop_done && num_layers >= 2 && layer_sizes) {
