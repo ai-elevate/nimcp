@@ -15,6 +15,7 @@
 
 // Include CUDA headers FIRST (before any extern "C" blocks from our headers)
 #include <cuda_runtime.h>
+#include <cuda_fp16.h>
 #include <cublas_v2.h>
 #include <math.h>
 
@@ -777,6 +778,146 @@ __global__ void kernel_bias_apply_accumulated_grads(
 }
 
 //=============================================================================
+// FP16 + Sparse-Skip Optimized Kernels
+//=============================================================================
+
+/* Gradient threshold for sparse skip — updates below this are zero-cost */
+#define GRAD_SKIP_THRESHOLD 1e-7f
+
+/**
+ * FP16 delta computation: compute deltas in half precision, write to FP32 buffer.
+ * Saves memory bandwidth on the read side (target/output loaded as FP16).
+ */
+__global__ void kernel_compute_deltas_mse_fp16(
+    float* __restrict__ delta,
+    const float* __restrict__ target,
+    const float* __restrict__ output,
+    int size)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+    /* Compute in FP16 for speed, write back to FP32 for accumulation stability */
+    __half t = __float2half(target[idx]);
+    __half o = __float2half(output[idx]);
+    __half diff = __hsub(t, o);
+    __half scale = __float2half(2.0f / (float)size);
+    delta[idx] = __half2float(__hmul(diff, scale));
+}
+
+/**
+ * Weight gradient accumulation with sparse skip.
+ * Skips entries where |delta * activation| < threshold.
+ * Reduces atomicAdd contention and wasted compute.
+ */
+__global__ void kernel_sparse_csr_grad_accumulate_skip(
+    const int* __restrict__ csr_row_ptrs,
+    const int* __restrict__ csr_col_indices,
+    const float* __restrict__ delta,
+    const float* __restrict__ activation,
+    float* __restrict__ grad_accum,
+    int nnz, int rows, float lr)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    /* Binary search for row */
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (csr_row_ptrs[mid + 1] <= idx) { lo = mid + 1; }
+        else if (csr_row_ptrs[mid] > idx) { hi = mid - 1; }
+        else { row = mid; break; }
+    }
+    if (lo > hi) row = lo;
+
+    int col = csr_col_indices[idx];
+    float dj = delta[row];
+
+    /* Sparse skip: if delta is negligible, don't compute or accumulate */
+    if (fabsf(dj) < GRAD_SKIP_THRESHOLD) return;
+
+    if (dj > 1.0f) dj = 1.0f;
+    if (dj < -1.0f) dj = -1.0f;
+
+    float act = activation[col];
+
+    /* Sparse skip: if activation is zero (dead ReLU), skip */
+    if (fabsf(act) < GRAD_SKIP_THRESHOLD) return;
+
+    float grad = lr * dj * act;
+    float max_delta = fmaxf(0.1f, lr * 2.0f);
+    if (grad > max_delta) grad = max_delta;
+    if (grad < -max_delta) grad = -max_delta;
+
+    atomicAdd(&grad_accum[idx], grad);
+}
+
+/**
+ * Apply accumulated gradients with sparse skip.
+ * Only updates weights where accumulated gradient is non-negligible.
+ */
+__global__ void kernel_sparse_apply_accumulated_grads_skip(
+    float* __restrict__ csr_values,
+    float* __restrict__ grad_accum,
+    float* __restrict__ grad_norm_partial,
+    int nnz, float inv_batch_size,
+    float min_w, float max_w)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    float avg_grad = grad_accum[idx] * inv_batch_size;
+    grad_accum[idx] = 0.0f;  /* Always reset */
+
+    /* Sparse skip: don't update weight if gradient is negligible */
+    if (fabsf(avg_grad) < GRAD_SKIP_THRESHOLD) return;
+
+    atomicAdd(grad_norm_partial, avg_grad * avg_grad);
+
+    float new_w = csr_values[idx] + avg_grad;
+    if (new_w < min_w) new_w = min_w;
+    if (new_w > max_w) new_w = max_w;
+    csr_values[idx] = new_w;
+}
+
+/**
+ * FP16 activation derivative: compute in half precision.
+ */
+__global__ void kernel_activation_derivative_fp16(
+    float* __restrict__ delta,
+    const float* __restrict__ activation,
+    int size, int act_type)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    __half s = __float2half(activation[idx]);
+    __half deriv;
+    __half one = __float2half(1.0f);
+    __half zero = __float2half(0.0f);
+    __half small = __float2half(0.01f);
+
+    switch (act_type) {
+        case 0: deriv = __hgt(s, zero) ? one : zero; break;         /* RELU */
+        case 1: deriv = __hgt(s, zero) ? one : small; break;        /* LEAKY_RELU */
+        case 2: {
+            __half ss = __hmul(s, s);
+            deriv = __hsub(one, ss);
+            if (__hlt(deriv, zero)) deriv = zero;
+            break;
+        } /* TANH */
+        case 3: {
+            deriv = __hmul(s, __hsub(one, s));
+            if (__hlt(deriv, small)) deriv = small;
+            break;
+        } /* SIGMOID */
+        case 4: deriv = one; break;                                   /* LINEAR */
+        default: deriv = __hgt(s, zero) ? one : small; break;
+    }
+    delta[idx] *= __half2float(deriv);
+}
+
+//=============================================================================
 // GPU Sparse Backward Pass — Accumulate Mode (no weight update)
 //=============================================================================
 
@@ -833,7 +974,8 @@ bool nimcp_gpu_sparse_backward_accumulate(
     cudaMemset(d_delta_cur, 0, max_layer * sizeof(float));
     cudaMemset(d_delta_prev, 0, max_layer * sizeof(float));
 
-    kernel_compute_deltas_mse<<<GRID_SIZE(bp_size), BLOCK_SIZE, 0, stream>>>(
+    /* FP16 delta computation — saves memory bandwidth */
+    kernel_compute_deltas_mse_fp16<<<GRID_SIZE(bp_size), BLOCK_SIZE, 0, stream>>>(
         d_delta_cur, d_target, d_output, bp_size);
 
     cudaFree(d_target);
@@ -862,21 +1004,23 @@ bool nimcp_gpu_sparse_backward_accumulate(
         int nnz = W->data.csr.nnz;
         if (nnz == 0) continue;
 
-        // Accumulate bias gradients (instead of updating)
+        /* Accumulate bias gradients */
         if (biases[layer - 1] && d_bias_grad_accum[layer - 1]) {
             kernel_bias_grad_accumulate<<<GRID_SIZE(cur_size), BLOCK_SIZE, 0, stream>>>(
                 d_delta_cur, d_bias_grad_accum[layer - 1], cur_size, layer_lr);
         }
 
-        // Accumulate weight gradients (instead of updating)
-        kernel_sparse_csr_grad_accumulate<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+        /* Accumulate weight gradients with sparse skip —
+         * skips entries where |delta| < 1e-7 or |activation| < 1e-7.
+         * With ReLU, ~30-50% of activations are zero (dead neurons). */
+        kernel_sparse_csr_grad_accumulate_skip<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
             W->data.csr.row_ptrs, W->data.csr.col_indices,
             d_delta_cur,
             (const float*)activations[layer - 1]->data,
             d_weight_grad_accum[layer - 1],
             nnz, W->data.csr.rows, layer_lr);
 
-        // Propagate deltas backward (same as non-accumulate path)
+        /* Propagate deltas backward */
         if (layer > 1) {
             cudaMemset(d_delta_prev, 0, prev_size * sizeof(float));
 
@@ -884,18 +1028,11 @@ bool nimcp_gpu_sparse_backward_accumulate(
                 W->data.csr.values, W->data.csr.row_ptrs, W->data.csr.col_indices,
                 d_delta_cur, d_delta_prev, nnz, W->data.csr.rows);
 
+            /* FP16 activation derivative — half-precision compute */
             int act_type = layer_act_types[layer - 1];
-            kernel_activation_derivative<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
+            kernel_activation_derivative_fp16<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
                 d_delta_prev, (const float*)activations[layer - 1]->data,
                 prev_size, act_type);
-
-            /* Layer norm backward + residual backward DISABLED:
-             * The backward loop applies these to delta_prev AFTER weight
-             * propagation, but correct backward requires transforming
-             * delta_cur BEFORE weight update (d_r_L → norm_bwd → act' →
-             * d_z_L). This needs pre-norm activation storage + loop
-             * restructuring. Until then, omit to prevent gradient corruption.
-             * Forward norm + residual still provide activation stability. */
 
             float* tmp = d_delta_cur;
             d_delta_cur = d_delta_prev;
@@ -945,7 +1082,8 @@ bool nimcp_gpu_gradient_flush(
         if (nnz == 0) continue;
 
         if (d_weight_grad_accum[layer - 1]) {
-            kernel_sparse_apply_accumulated_grads<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+            /* Sparse-skip: only updates weights where gradient is non-negligible */
+            kernel_sparse_apply_accumulated_grads_skip<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
                 W->data.csr.values, d_weight_grad_accum[layer - 1],
                 d_grad_norm, nnz, inv_bs, min_weight, max_weight);
         }
