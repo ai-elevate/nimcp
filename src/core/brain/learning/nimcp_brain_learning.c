@@ -1152,6 +1152,23 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                     brain->gpu_plasticity_state,
                     brain->plasticity_coordinator,
                     now_ms, 1.0f);
+
+                /* GPU-side plasticity weight updates: apply STDP/BCM/homeostatic
+                 * directly to CSR sparse weights on GPU. Avoids GPU→CPU→GPU
+                 * round-trip for plasticity modifications. */
+                if (brain->network) {
+                    extern struct nimcp_gpu_weight_cache_s*
+                        adaptive_network_get_gpu_weight_cache(adaptive_network_t);
+                    extern int gpu_plasticity_update_all_weights(
+                        void*, void*, struct nimcp_gpu_weight_cache_s*, float, float);
+                    struct nimcp_gpu_weight_cache_s* wc =
+                        adaptive_network_get_gpu_weight_cache(brain->network);
+                    if (wc) {
+                        gpu_plasticity_update_all_weights(
+                            brain->gpu_ctx, brain->gpu_plasticity_state, wc,
+                            brain->config.learning_rate, 5.0f);
+                    }
+                }
             }
             /* CPU coordinator still runs for registered mechanism callbacks */
             plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);

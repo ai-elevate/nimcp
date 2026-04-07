@@ -546,3 +546,168 @@ int gpu_plasticity_coordinator_update(
 
     return updates;
 }
+
+/* ============================================================================
+ * GPU Plasticity Weight Updates on CSR Sparse Weights
+ *
+ * These functions apply plasticity weight modifications directly to the
+ * GPU weight cache's CSR sparse tensors, avoiding GPU→CPU→GPU round-trips.
+ * Call AFTER trace/threshold/rate updates, BEFORE next forward pass.
+ * ============================================================================ */
+
+#include "gpu/sparse/nimcp_sparse_gpu.h"
+
+/**
+ * Apply STDP weight updates to CSR sparse weights on GPU.
+ *
+ * For each non-zero weight w[i] at (row, col):
+ *   pre_t = pre_traces[col], post_t = post_traces[row]
+ *   if pre_t > threshold: w[i] += a_plus * lr * pre_t    (LTP)
+ *   if post_t > threshold: w[i] -= a_minus * lr * post_t  (LTD)
+ *   w[i] = clamp(w[i], w_min, w_max)
+ */
+int gpu_plasticity_stdp_update_weights(
+    nimcp_gpu_context_t* gpu_ctx,
+    gpu_plasticity_state_t* state,
+    nimcp_sparse_tensor_t* sparse_weights,  /* CSR on GPU */
+    float learning_rate)
+{
+    if (!gpu_ctx || !state || !sparse_weights) return -1;
+    if (sparse_weights->format != SPARSE_FORMAT_CSR) return -1;
+    if (!state->pre_traces || !state->post_traces) return -1;
+
+    int nnz = sparse_weights->data.csr.nnz;
+    if (nnz == 0) return 0;
+
+    /* Call CUDA kernel: nimcp_gpu_stdp_weight_update defined in plasticity_gpu.h */
+    extern int nimcp_gpu_stdp_weight_update_csr(
+        nimcp_gpu_context_t* ctx,
+        float* csr_values, const int* row_ptrs, const int* col_indices,
+        const float* pre_traces, const float* post_traces,
+        int nnz, int rows,
+        float a_plus, float a_minus, float lr,
+        float min_trace, float w_min, float w_max);
+
+    return nimcp_gpu_stdp_weight_update_csr(
+        gpu_ctx,
+        sparse_weights->data.csr.values,
+        sparse_weights->data.csr.row_ptrs,
+        sparse_weights->data.csr.col_indices,
+        (const float*)state->pre_traces->data,
+        (const float*)state->post_traces->data,
+        nnz, sparse_weights->data.csr.rows,
+        state->stdp_params.A_plus,
+        state->stdp_params.A_minus,
+        learning_rate,
+        0.1f,  /* min_trace_threshold */
+        -1.0f, 1.0f);  /* weight bounds */
+}
+
+/**
+ * Apply BCM weight updates to CSR sparse weights on GPU.
+ *
+ * For each weight w[i] at (row, col):
+ *   phi = post_act[row] * (post_act[row] - threshold[row])
+ *   w[i] += lr * phi * pre_act[col]
+ *   w[i] = clamp(w[i], 0, 1)
+ */
+int gpu_plasticity_bcm_update_weights(
+    nimcp_gpu_context_t* gpu_ctx,
+    gpu_plasticity_state_t* state,
+    nimcp_sparse_tensor_t* sparse_weights,
+    float learning_rate)
+{
+    if (!gpu_ctx || !state || !sparse_weights) return -1;
+    if (sparse_weights->format != SPARSE_FORMAT_CSR) return -1;
+    if (!state->bcm_thresholds || !state->pre_activity || !state->post_activity) return -1;
+
+    int nnz = sparse_weights->data.csr.nnz;
+    if (nnz == 0) return 0;
+
+    extern int nimcp_gpu_bcm_weight_update_csr(
+        nimcp_gpu_context_t* ctx,
+        float* csr_values, const int* row_ptrs, const int* col_indices,
+        const float* post_activity, const float* pre_activity,
+        const float* thresholds,
+        int nnz, int rows,
+        float lr, float w_min, float w_max);
+
+    return nimcp_gpu_bcm_weight_update_csr(
+        gpu_ctx,
+        sparse_weights->data.csr.values,
+        sparse_weights->data.csr.row_ptrs,
+        sparse_weights->data.csr.col_indices,
+        (const float*)state->post_activity->data,
+        (const float*)state->pre_activity->data,
+        (const float*)state->bcm_thresholds->data,
+        nnz, sparse_weights->data.csr.rows,
+        learning_rate,
+        -1.0f, 1.0f);
+}
+
+/**
+ * Apply homeostatic synaptic scaling to CSR sparse weights on GPU.
+ *
+ * For each row (neuron): scale = target_rate / max(avg_rate[row], eps)
+ * For each weight w[i] in that row: w[i] *= clamp(scale, 0.1, 10.0)
+ */
+int gpu_plasticity_homeostatic_scale_weights(
+    nimcp_gpu_context_t* gpu_ctx,
+    gpu_plasticity_state_t* state,
+    nimcp_sparse_tensor_t* sparse_weights,
+    float target_rate)
+{
+    if (!gpu_ctx || !state || !sparse_weights) return -1;
+    if (sparse_weights->format != SPARSE_FORMAT_CSR) return -1;
+    if (!state->avg_rates) return -1;
+
+    int nnz = sparse_weights->data.csr.nnz;
+    if (nnz == 0) return 0;
+
+    extern int nimcp_gpu_homeostatic_scale_csr(
+        nimcp_gpu_context_t* ctx,
+        float* csr_values, const int* row_ptrs,
+        const float* avg_rates,
+        int nnz, int rows,
+        float target_rate, float min_scale, float max_scale);
+
+    return nimcp_gpu_homeostatic_scale_csr(
+        gpu_ctx,
+        sparse_weights->data.csr.values,
+        sparse_weights->data.csr.row_ptrs,
+        (const float*)state->avg_rates->data,
+        nnz, sparse_weights->data.csr.rows,
+        target_rate,
+        0.1f, 10.0f);
+}
+
+/* ============================================================================
+ * Wrapper: apply all three plasticity updates to all layers
+ * ============================================================================ */
+
+#include "gpu/training/nimcp_training_bridge.h"
+
+int gpu_plasticity_update_all_weights(
+    nimcp_gpu_context_t* gpu_ctx,
+    gpu_plasticity_state_t* state,
+    nimcp_gpu_weight_cache_t* wc,
+    float learning_rate,
+    float target_rate)
+{
+    if (!gpu_ctx || !state || !wc || !wc->sparse_weights) return -1;
+
+    int total = 0;
+    for (uint32_t li = 0; li + 1 < wc->num_layers; li++) {
+        nimcp_sparse_tensor_t* sw = wc->sparse_weights[li];
+        if (!sw) continue;
+
+        int rc;
+        rc = gpu_plasticity_stdp_update_weights(gpu_ctx, state, sw, learning_rate);
+        if (rc == 0) total++;
+        rc = gpu_plasticity_bcm_update_weights(gpu_ctx, state, sw, learning_rate * 0.1f);
+        if (rc == 0) total++;
+        rc = gpu_plasticity_homeostatic_scale_weights(gpu_ctx, state, sw, target_rate);
+        if (rc == 0) total++;
+    }
+    return total;
+}

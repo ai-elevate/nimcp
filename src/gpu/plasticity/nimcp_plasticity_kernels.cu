@@ -1872,6 +1872,183 @@ bool nimcp_gpu_calcium_get_regime(
     return true;
 }
 
+/*=============================================================================
+ * CSR Weight Update Kernels for GPU-Side Plasticity
+ *
+ * These operate directly on the GPU weight cache's CSR sparse tensors,
+ * eliminating the GPU→CPU→GPU round-trip for plasticity updates.
+ *=============================================================================*/
+
+/* STDP weight update on CSR */
+__global__ void kernel_stdp_weight_update_csr(
+    float* __restrict__ csr_values,
+    const int* __restrict__ row_ptrs,
+    const int* __restrict__ col_indices,
+    const float* __restrict__ pre_traces,
+    const float* __restrict__ post_traces,
+    int nnz, int rows,
+    float a_plus, float a_minus, float lr,
+    float min_trace, float w_min, float w_max)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    /* Binary search for row */
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (row_ptrs[mid + 1] <= idx) lo = mid + 1;
+        else if (row_ptrs[mid] > idx) hi = mid - 1;
+        else { row = mid; break; }
+    }
+    if (lo > hi) row = lo;
+
+    int col = col_indices[idx];
+    float pre_t = pre_traces[col];
+    float post_t = post_traces[row];
+    float dw = 0.0f;
+
+    /* LTP: pre trace significant → potentiate */
+    if (pre_t > min_trace) {
+        dw += a_plus * lr * pre_t;
+    }
+    /* LTD: post trace significant → depress */
+    if (post_t > min_trace) {
+        dw -= a_minus * lr * post_t;
+    }
+
+    if (dw != 0.0f) {
+        float new_w = csr_values[idx] + dw;
+        if (new_w < w_min) new_w = w_min;
+        if (new_w > w_max) new_w = w_max;
+        csr_values[idx] = new_w;
+    }
+}
+
+int nimcp_gpu_stdp_weight_update_csr(
+    nimcp_gpu_context_t* ctx,
+    float* csr_values, const int* row_ptrs, const int* col_indices,
+    const float* pre_traces, const float* post_traces,
+    int nnz, int rows,
+    float a_plus, float a_minus, float lr,
+    float min_trace, float w_min, float w_max)
+{
+    if (!ctx || !csr_values || nnz == 0) return -1;
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_stdp_weight_update_csr<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+        csr_values, row_ptrs, col_indices, pre_traces, post_traces,
+        nnz, rows, a_plus, a_minus, lr, min_trace, w_min, w_max);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return 0;
+}
+
+/* BCM weight update on CSR */
+__global__ void kernel_bcm_weight_update_csr(
+    float* __restrict__ csr_values,
+    const int* __restrict__ row_ptrs,
+    const int* __restrict__ col_indices,
+    const float* __restrict__ post_activity,
+    const float* __restrict__ pre_activity,
+    const float* __restrict__ thresholds,
+    int nnz, int rows,
+    float lr, float w_min, float w_max)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (row_ptrs[mid + 1] <= idx) lo = mid + 1;
+        else if (row_ptrs[mid] > idx) hi = mid - 1;
+        else { row = mid; break; }
+    }
+    if (lo > hi) row = lo;
+
+    int col = col_indices[idx];
+    float post = post_activity[row];
+    float theta = thresholds[row];
+    float phi = post * (post - theta);  /* BCM plasticity factor */
+    float pre = pre_activity[col];
+
+    float dw = lr * phi * pre;
+
+    /* Sparse skip: negligible updates */
+    if (fabsf(dw) < 1e-7f) return;
+
+    float new_w = csr_values[idx] + dw;
+    if (new_w < w_min) new_w = w_min;
+    if (new_w > w_max) new_w = w_max;
+    csr_values[idx] = new_w;
+}
+
+int nimcp_gpu_bcm_weight_update_csr(
+    nimcp_gpu_context_t* ctx,
+    float* csr_values, const int* row_ptrs, const int* col_indices,
+    const float* post_activity, const float* pre_activity,
+    const float* thresholds,
+    int nnz, int rows,
+    float lr, float w_min, float w_max)
+{
+    if (!ctx || !csr_values || nnz == 0) return -1;
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_bcm_weight_update_csr<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+        csr_values, row_ptrs, col_indices, post_activity, pre_activity,
+        thresholds, nnz, rows, lr, w_min, w_max);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return 0;
+}
+
+/* Homeostatic synaptic scaling on CSR */
+__global__ void kernel_homeostatic_scale_csr(
+    float* __restrict__ csr_values,
+    const int* __restrict__ row_ptrs,
+    const float* __restrict__ avg_rates,
+    int nnz, int rows,
+    float target_rate, float min_scale, float max_scale)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nnz) return;
+
+    int lo = 0, hi = rows - 1, row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (row_ptrs[mid + 1] <= idx) lo = mid + 1;
+        else if (row_ptrs[mid] > idx) hi = mid - 1;
+        else { row = mid; break; }
+    }
+    if (lo > hi) row = lo;
+
+    float rate = avg_rates[row];
+    if (rate < 1e-6f) rate = 1e-6f;  /* prevent division by zero */
+    float scale = target_rate / rate;
+
+    /* Clamp scaling factor */
+    if (scale < min_scale) scale = min_scale;
+    if (scale > max_scale) scale = max_scale;
+
+    /* Only scale if significantly different from 1.0 */
+    if (fabsf(scale - 1.0f) > 0.001f) {
+        csr_values[idx] *= scale;
+    }
+}
+
+int nimcp_gpu_homeostatic_scale_csr(
+    nimcp_gpu_context_t* ctx,
+    float* csr_values, const int* row_ptrs,
+    const float* avg_rates,
+    int nnz, int rows,
+    float target_rate, float min_scale, float max_scale)
+{
+    if (!ctx || !csr_values || nnz == 0) return -1;
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(ctx);
+    kernel_homeostatic_scale_csr<<<GRID_SIZE(nnz), BLOCK_SIZE, 0, stream>>>(
+        csr_values, row_ptrs, avg_rates, nnz, rows,
+        target_rate, min_scale, max_scale);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return 0;
+}
+
 #else  // !NIMCP_ENABLE_CUDA
 
 //=============================================================================
@@ -2216,5 +2393,15 @@ bool nimcp_gpu_calcium_get_regime(nimcp_gpu_context_t* ctx,
     LOG_ERROR(CUDA_NOT_ENABLED_MSG);
     return false;
 }
+
+/* CSR weight update stubs (no CUDA) */
+int nimcp_gpu_stdp_weight_update_csr(void* ctx, float* v, const int* rp, const int* ci,
+    const float* pt, const float* po, int nnz, int r, float ap, float am,
+    float lr, float mt, float wn, float wx) { (void)ctx;(void)v;(void)rp;(void)ci;(void)pt;(void)po;(void)nnz;(void)r;(void)ap;(void)am;(void)lr;(void)mt;(void)wn;(void)wx; return -1; }
+int nimcp_gpu_bcm_weight_update_csr(void* ctx, float* v, const int* rp, const int* ci,
+    const float* pa, const float* pr, const float* th, int nnz, int r,
+    float lr, float wn, float wx) { (void)ctx;(void)v;(void)rp;(void)ci;(void)pa;(void)pr;(void)th;(void)nnz;(void)r;(void)lr;(void)wn;(void)wx; return -1; }
+int nimcp_gpu_homeostatic_scale_csr(void* ctx, float* v, const int* rp,
+    const float* ar, int nnz, int r, float tr, float ms, float mx) { (void)ctx;(void)v;(void)rp;(void)ar;(void)nnz;(void)r;(void)tr;(void)ms;(void)mx; return -1; }
 
 #endif // NIMCP_ENABLE_CUDA
