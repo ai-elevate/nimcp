@@ -549,6 +549,9 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
         }
 
         if (nnz > 0) {
+            /* CSR format for backward pass and plasticity kernels.
+             * TODO: BSR format for cusparseSpMM forward (tensor core acceleration)
+             * requires updating backward/plasticity kernels to handle BSR. */
             cache->sparse_weights[l] = nimcp_sparse_from_coo(
                 cache->sparse_ctx,
                 cache->host_coo_values,

@@ -3237,6 +3237,7 @@ if(CUDAToolkit_FOUND)
         CUDA::cufft
         CUDA::curand
         CUDA::cusolver
+        CUDA::cusparse
     )
 endif()
 

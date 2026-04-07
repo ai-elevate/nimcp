@@ -899,6 +899,135 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
             return NULL;
         }
     }
+    else if (target_format == SPARSE_FORMAT_BSR) {
+        /* COO → CSR → BSR conversion for tensor core acceleration.
+         * Block size: 16x16 (optimal for Ampere/Ada tensor cores).
+         * cuSPARSE: Xcoo2csr → Xcsr2bsrNnz → Xcsr2bsr. */
+        const int block_dim = 16;
+
+        /* Step 1: COO → CSR (intermediate) */
+        int* d_csr_row_ptrs;
+        if (cudaMalloc(&d_csr_row_ptrs, (rows + 1) * sizeof(int)) != cudaSuccess) {
+            LOG_ERROR("BSR: cudaMalloc failed for CSR row ptrs");
+            cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
+            nimcp_free(sparse); return NULL;
+        }
+
+        /* Sort COO by row */
+        {
+            thrust::device_ptr<int> row_ptr(d_row_indices);
+            thrust::device_ptr<int> col_ptr(d_col_indices);
+            thrust::device_ptr<float> val_ptr(d_values);
+            thrust::sort_by_key(thrust::device, row_ptr, row_ptr + nnz,
+                thrust::make_zip_iterator(thrust::make_tuple(col_ptr, val_ptr)));
+        }
+
+        cusparseStatus_t st = cusparseXcoo2csr(
+            ctx->cusparse_handle, d_row_indices, nnz, rows,
+            d_csr_row_ptrs, CUSPARSE_INDEX_BASE_ZERO);
+        if (st != CUSPARSE_STATUS_SUCCESS) {
+            LOG_ERROR("BSR: cusparseXcoo2csr failed: %d", st);
+            cudaFree(d_csr_row_ptrs); cudaFree(d_values);
+            cudaFree(d_row_indices); cudaFree(d_col_indices);
+            nimcp_free(sparse); return NULL;
+        }
+
+        /* Step 2: Compute BSR dimensions */
+        int mb = (rows + block_dim - 1) / block_dim;  /* block rows */
+        int nb = (cols + block_dim - 1) / block_dim;  /* block cols */
+
+        /* Create CSR matrix descriptor for conversion */
+        cusparseMatDescr_t csr_desc;
+        cusparseCreateMatDescr(&csr_desc);
+        cusparseSetMatType(csr_desc, CUSPARSE_MATRIX_TYPE_GENERAL);
+        cusparseSetMatIndexBase(csr_desc, CUSPARSE_INDEX_BASE_ZERO);
+
+        cusparseMatDescr_t bsr_desc;
+        cusparseCreateMatDescr(&bsr_desc);
+        cusparseSetMatType(bsr_desc, CUSPARSE_MATRIX_TYPE_GENERAL);
+        cusparseSetMatIndexBase(bsr_desc, CUSPARSE_INDEX_BASE_ZERO);
+
+        /* Step 3: Count BSR non-zero blocks */
+        int* d_bsr_row_ptrs;
+        if (cudaMalloc(&d_bsr_row_ptrs, (mb + 1) * sizeof(int)) != cudaSuccess) {
+            LOG_ERROR("BSR: cudaMalloc failed for BSR row ptrs");
+            cusparseDestroyMatDescr(csr_desc); cusparseDestroyMatDescr(bsr_desc);
+            cudaFree(d_csr_row_ptrs); cudaFree(d_values);
+            cudaFree(d_row_indices); cudaFree(d_col_indices);
+            nimcp_free(sparse); return NULL;
+        }
+
+        int nnz_blocks = 0;
+        st = cusparseXcsr2bsrNnz(ctx->cusparse_handle,
+            CUSPARSE_DIRECTION_ROW, rows, cols,
+            csr_desc, d_csr_row_ptrs, d_col_indices,
+            block_dim, bsr_desc, d_bsr_row_ptrs, &nnz_blocks);
+        if (st != CUSPARSE_STATUS_SUCCESS || nnz_blocks <= 0) {
+            LOG_ERROR("BSR: cusparseXcsr2bsrNnz failed: %d (nnz_blocks=%d)", st, nnz_blocks);
+            cusparseDestroyMatDescr(csr_desc); cusparseDestroyMatDescr(bsr_desc);
+            cudaFree(d_bsr_row_ptrs); cudaFree(d_csr_row_ptrs);
+            cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
+            nimcp_free(sparse); return NULL;
+        }
+
+        /* Step 4: Allocate BSR values and column indices */
+        float* d_bsr_values;
+        int* d_bsr_col_indices;
+        size_t val_bytes = (size_t)nnz_blocks * block_dim * block_dim * sizeof(float);
+        size_t col_bytes = (size_t)nnz_blocks * sizeof(int);
+
+        if (cudaMalloc(&d_bsr_values, val_bytes) != cudaSuccess ||
+            cudaMalloc(&d_bsr_col_indices, col_bytes) != cudaSuccess) {
+            LOG_ERROR("BSR: cudaMalloc failed for BSR data (%.1f MB)",
+                      (float)val_bytes / (1024*1024));
+            cudaFree(d_bsr_values); cudaFree(d_bsr_col_indices);
+            cusparseDestroyMatDescr(csr_desc); cusparseDestroyMatDescr(bsr_desc);
+            cudaFree(d_bsr_row_ptrs); cudaFree(d_csr_row_ptrs);
+            cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
+            nimcp_free(sparse); return NULL;
+        }
+        cudaMemset(d_bsr_values, 0, val_bytes);
+
+        /* Step 5: Convert CSR → BSR */
+        st = cusparseScsr2bsr(ctx->cusparse_handle,
+            CUSPARSE_DIRECTION_ROW, rows, cols,
+            csr_desc, d_values, d_csr_row_ptrs, d_col_indices,
+            block_dim, bsr_desc, d_bsr_values, d_bsr_row_ptrs, d_bsr_col_indices);
+
+        /* Clean up intermediate CSR + descriptors */
+        cusparseDestroyMatDescr(csr_desc);
+        cusparseDestroyMatDescr(bsr_desc);
+        cudaFree(d_csr_row_ptrs);
+        cudaFree(d_values);
+        cudaFree(d_row_indices);
+        cudaFree(d_col_indices);
+
+        if (st != CUSPARSE_STATUS_SUCCESS) {
+            LOG_ERROR("BSR: cusparseScsr2bsr failed: %d", st);
+            cudaFree(d_bsr_values); cudaFree(d_bsr_col_indices);
+            cudaFree(d_bsr_row_ptrs);
+            nimcp_free(sparse); return NULL;
+        }
+
+        /* Populate sparse tensor */
+        sparse->format = SPARSE_FORMAT_BSR;
+        sparse->data.bsr.values = d_bsr_values;
+        sparse->data.bsr.col_indices = d_bsr_col_indices;
+        sparse->data.bsr.row_ptrs = d_bsr_row_ptrs;
+        sparse->data.bsr.rows = mb;
+        sparse->data.bsr.cols = nb;
+        sparse->data.bsr.block_size = block_dim;
+        sparse->data.bsr.nnz_blocks = nnz_blocks;
+
+        /* cuSPARSE descriptor: BSR uses legacy API (cusparseSbsrmm),
+         * not the modern cusparseSpMM. Set descriptor to NULL for now;
+         * BSR SpMM calls will create descriptors inline. */
+        sparse->cusparse_desc = NULL;
+
+        LOG_INFO("BSR conversion: %dx%d, %d blocks (block=%d, %.1f MB values)",
+                 mb, nb, nnz_blocks, block_dim,
+                 (float)val_bytes / (1024*1024));
+    }
     else {
         LOG_ERROR("Format %d not yet supported in from_coo", target_format);
         cudaFree(d_values);
