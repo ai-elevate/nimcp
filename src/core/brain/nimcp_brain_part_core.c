@@ -3374,7 +3374,7 @@ skip_sequential_evaluative: ; /* Label for parallel evaluative dispatch */
             decide_batch_result_t cbatch = brain_decide_cognitive_parallel(
                 brain, &snap, features, num_features);
             decide_batch_apply(decision, &cbatch);
-            goto skip_sequential_c5c6;
+            goto skip_sequential_c5;
         }
     }
 
@@ -3484,6 +3484,8 @@ skip_sequential_evaluative: ; /* Label for parallel evaluative dispatch */
             }
         }
     }
+
+skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger remain sequential) */
 
     // ========================================================================
     // STAGE C5.5: THOUSAND BRAINS INTEGRATION (Hawkins Cortical Columns)
@@ -3891,8 +3893,6 @@ skip_sequential_evaluative: ; /* Label for parallel evaluative dispatch */
             decision->confidence *= 0.5f;
         }
     }
-
-skip_sequential_c5c6: ; /* Label for parallel C5/C6 dispatch */
 
     // Update statistics (after all post-decision processing)
     update_inference_stats(brain, decision);

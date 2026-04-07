@@ -707,7 +707,7 @@ static void task_decide_inner_dialogue(void* arg) {
                     if (dialogue_result.final_agreement > 0.8f) {
                         r.confidence_delta = 1.1f; /* DIALOGUE_BOOST_FACTOR */
                     } else if (dialogue_result.final_agreement < 0.4f) {
-                        r.confidence_delta = 0.85f; /* DIALOGUE_REDUCE_FACTOR */
+                        r.confidence_delta = 0.8f; /* DIALOGUE_REDUCE_FACTOR */
                     } else {
                         r.confidence_delta = 1.0f; /* no change */
                     }
@@ -735,14 +735,14 @@ static void task_decide_imagination(void* arg) {
                 a->brain->imagination, IMAGINATION_MODE_PROSPECTIVE, NULL);
             if (scenario) {
                 bool sim_ok = true;
-                for (int s = 0; s < 5 && sim_ok; s++) { /* IMAGINATION_SIM_STEPS */
+                for (int s = 0; s < 3 && sim_ok; s++) { /* IMAGINATION_SIM_STEPS */
                     sim_ok = (imagination_step_scenario(a->brain->imagination, scenario) == 0);
                 }
+                r.executed = true;
+                r.success = true;
                 if (!sim_ok) {
                     r.confidence_is_multiplicative = true;
-                    r.confidence_delta = 0.9f; /* IMAGINATION_FAIL_PENALTY */
-                    r.executed = true;
-                    r.success = true;
+                    r.confidence_delta = 0.95f; /* IMAGINATION_FAIL_PENALTY */
                 }
                 imagination_end_scenario(a->brain->imagination, scenario);
             }
@@ -879,26 +879,24 @@ static void task_decide_epistemic(void* arg) {
 
         if (epistemic_assess_claim(a->brain->epistemic, a->snap.label,
                                     a->snap.confidence, &evidence, &assessment)) {
+            float mult = 1.0f;
             if (assessment.epistemic_quality < 0.5f) {
-                r.confidence_is_multiplicative = true;
-                r.confidence_delta = assessment.epistemic_quality;
-                r.executed = true;
-                r.success = true;
+                mult *= assessment.epistemic_quality;
             }
             if (assessment.num_biases_detected > 0) {
                 strncpy(r.label_suffix, " [BIAS-DETECTED]", sizeof(r.label_suffix) - 1);
                 float bias_penalty = assessment.num_biases_detected * 0.2f;
-                r.confidence_is_multiplicative = true;
-                r.confidence_delta = fmaxf(0.2f, 1.0f - bias_penalty);
-                r.executed = true;
-                r.success = true;
+                mult *= fmaxf(0.2f, 1.0f - bias_penalty);
             }
             float conspiracy = epistemic_check_conspiracy_pattern(
                 a->brain->epistemic, a->snap.label, &evidence);
             if (conspiracy > 0.7f) {
                 strncpy(r.label_suffix, " [CONSPIRACY-LIKE]", sizeof(r.label_suffix) - 1);
+                mult *= 0.1f;
+            }
+            if (mult < 1.0f) {
                 r.confidence_is_multiplicative = true;
-                r.confidence_delta = 0.1f;
+                r.confidence_delta = mult;
                 r.executed = true;
                 r.success = true;
             }
