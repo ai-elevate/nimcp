@@ -22676,6 +22676,30 @@ __/core/brain/nimcp_brain_state.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_state.c.s
 .PHONY : __/core/brain/nimcp_brain_state.c.s
 
+__/core/brain/nimcp_cognitive_dispatch.o: __/core/brain/nimcp_cognitive_dispatch.c.o
+.PHONY : __/core/brain/nimcp_cognitive_dispatch.o
+
+# target to build an object file
+__/core/brain/nimcp_cognitive_dispatch.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_cognitive_dispatch.c.o
+.PHONY : __/core/brain/nimcp_cognitive_dispatch.c.o
+
+__/core/brain/nimcp_cognitive_dispatch.i: __/core/brain/nimcp_cognitive_dispatch.c.i
+.PHONY : __/core/brain/nimcp_cognitive_dispatch.i
+
+# target to preprocess a source file
+__/core/brain/nimcp_cognitive_dispatch.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_cognitive_dispatch.c.i
+.PHONY : __/core/brain/nimcp_cognitive_dispatch.c.i
+
+__/core/brain/nimcp_cognitive_dispatch.s: __/core/brain/nimcp_cognitive_dispatch.c.s
+.PHONY : __/core/brain/nimcp_cognitive_dispatch.s
+
+# target to generate assembly for a file
+__/core/brain/nimcp_cognitive_dispatch.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_cognitive_dispatch.c.s
+.PHONY : __/core/brain/nimcp_cognitive_dispatch.c.s
+
 __/core/brain/nimcp_cognitive_transcript.o: __/core/brain/nimcp_cognitive_transcript.c.o
 .PHONY : __/core/brain/nimcp_cognitive_transcript.o
 
@@ -58405,6 +58429,9 @@ help:
 	@echo "... __/core/brain/nimcp_brain_state.o"
 	@echo "... __/core/brain/nimcp_brain_state.i"
 	@echo "... __/core/brain/nimcp_brain_state.s"
+	@echo "... __/core/brain/nimcp_cognitive_dispatch.o"
+	@echo "... __/core/brain/nimcp_cognitive_dispatch.i"
+	@echo "... __/core/brain/nimcp_cognitive_dispatch.s"
 	@echo "... __/core/brain/nimcp_cognitive_transcript.o"
 	@echo "... __/core/brain/nimcp_cognitive_transcript.i"
 	@echo "... __/core/brain/nimcp_cognitive_transcript.s"

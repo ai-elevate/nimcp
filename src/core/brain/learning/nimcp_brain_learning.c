@@ -182,6 +182,11 @@ extern int creative_training_submit_feedback(creative_training_bridge_t* bridge,
  * @param label Text label (can be NULL)
  * @param loss Current training loss from adaptive network
  */
+/* Parallel dispatch entry point — calls brain_train_cognitive_parallel() which
+ * submits all 12 modules to the thread pool as independent actors.
+ * Falls back to sequential if inference_pool is NULL. */
+#include "core/brain/nimcp_cognitive_dispatch.h"
+
 static void brain_train_cognitive_subsystems(
     brain_t brain,
     const float* features,
@@ -191,13 +196,24 @@ static void brain_train_cognitive_subsystems(
     const char* label,
     float loss)
 {
-    if (!brain) return;
+    brain_train_cognitive_parallel(brain, features, num_features,
+                                   target, target_size, label, loss);
+}
 
-    /* Interval gating: expensive subsystem training runs every N steps */
-    uint32_t interval = brain->cognitive_train_interval;
-    if (interval == 0) interval = 5;  /* default: every 5 steps */
-    brain->cognitive_train_counter++;
-    if ((brain->cognitive_train_counter % interval) != 0) return;
+/* Sequential fallback — original implementation kept for A/B comparison
+ * and as fallback when inference_pool is NULL.
+ * NOTE: Interval gating is handled by the caller (brain_train_cognitive_parallel).
+ * This function runs all modules unconditionally when called. */
+void brain_train_cognitive_subsystems_sequential(
+    brain_t brain,
+    const float* features,
+    uint32_t num_features,
+    const float* target,
+    uint32_t target_size,
+    const char* label,
+    float loss)
+{
+    if (!brain) return;
 
     /* === 1. GROUNDED LANGUAGE — distributional + syntactic learning === */
     if (brain->grounded_lang && label && label[0]) {

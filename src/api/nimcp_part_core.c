@@ -3706,6 +3706,16 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     #undef INIT_IF_NULL
     #undef INIT_IF_DISABLED
 
+    /* GPU inference: adaptive network weight cache + GPU forward path.
+     * Must run AFTER full brain restoration — adaptive_network_get_config()
+     * crashes on partially-restored state during nimcp_brain_load(). */
+    if (b->gpu_enabled && b->gpu_ctx && b->network) {
+        extern bool nimcp_brain_factory_init_gpu_inference(brain_t);
+        if (nimcp_brain_factory_init_gpu_inference(b)) {
+            count++;
+        }
+    }
+
     return count;
 }
 
@@ -3907,6 +3917,7 @@ int nimcp_brain_attach_builtin_probes(nimcp_brain_t brain, uint32_t interval_ms)
     if (probe_attach_neurons(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
     if (probe_attach_synapses(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
     if (probe_attach_brain_regions(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
+    if (probe_attach_dispatch(reg, interval_ms) != PROBE_INVALID_HANDLE) count++;
     return count;
 }
 

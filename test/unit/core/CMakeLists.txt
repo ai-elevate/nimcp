@@ -141,3 +141,4 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/synapse_compute/test_synapse_compute_bugs.
             LABELS "unit;core;synapse_compute;multimodal;bugfix"
             TIMEOUT 120)
 endif()
+

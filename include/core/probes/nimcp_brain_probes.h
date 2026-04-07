@@ -262,6 +262,7 @@ probe_handle_t probe_attach_glial(probe_registry_t* reg, uint32_t interval_ms);
 probe_handle_t probe_attach_neurons(probe_registry_t* reg, uint32_t interval_ms);
 probe_handle_t probe_attach_synapses(probe_registry_t* reg, uint32_t interval_ms);
 probe_handle_t probe_attach_brain_regions(probe_registry_t* reg, uint32_t interval_ms);
+probe_handle_t probe_attach_dispatch(probe_registry_t* reg, uint32_t interval_ms);
 
 /* ============================================================================
  * Pipeline Stage Probes

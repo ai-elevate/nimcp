@@ -582,3 +582,50 @@ probe_handle_t probe_attach_brain_regions(probe_registry_t* reg, uint32_t interv
     return probe_create_active(reg, "brain_regions", modules, 1,
                                 sample_brain_regions, NULL, interval_ms);
 }
+
+/* ============================================================================
+ * Cognitive Dispatch Sampler — parallel actor pattern metrics
+ * ============================================================================ */
+
+static void sample_dispatch(
+    void* module_ptr, uint16_t module_id, brain_t brain,
+    probe_metric_t* metrics, uint32_t* count, void* user_data)
+{
+    (void)module_ptr; (void)module_id; (void)user_data;
+    if (!brain || !metrics || !count) return;
+    uint32_t max = *count;
+    uint32_t n = 0;
+    extern uint64_t nimcp_time_get_us(void);
+    uint64_t ts = nimcp_time_get_us();
+
+    #define EMIT_F(key, val) do { if (n < max) set_float(&metrics[n++], key, val, ts); } while(0)
+    #define EMIT_I(key, val) do { if (n < max) set_int(&metrics[n++], key, val, ts); } while(0)
+
+    EMIT_I("dispatch.last_us",       (int64_t)brain->dispatch_metrics.last_dispatch_us);
+    EMIT_I("dispatch.modules_ran",   (int64_t)brain->dispatch_metrics.last_modules_executed);
+    EMIT_I("dispatch.modules_submitted", (int64_t)brain->dispatch_metrics.last_modules_submitted);
+    EMIT_I("dispatch.total_parallel",(int64_t)brain->dispatch_metrics.total_dispatches);
+    EMIT_I("dispatch.total_sequential",(int64_t)brain->dispatch_metrics.total_sequential);
+    EMIT_I("dispatch.cumulative_us", (int64_t)brain->dispatch_metrics.cumulative_dispatch_us);
+    EMIT_I("dispatch.pool_threads",  (int64_t)brain->dispatch_metrics.pool_thread_count);
+    EMIT_F("dispatch.slowest_us",    brain->dispatch_metrics.slowest_module_us);
+    EMIT_F("dispatch.avg_module_us", brain->dispatch_metrics.avg_module_us);
+
+    /* Compute average dispatch time if we have data */
+    if (brain->dispatch_metrics.total_dispatches > 0) {
+        float avg = (float)brain->dispatch_metrics.cumulative_dispatch_us /
+                    (float)brain->dispatch_metrics.total_dispatches;
+        EMIT_F("dispatch.avg_dispatch_us", avg);
+    }
+
+    #undef EMIT_F
+    #undef EMIT_I
+
+    *count = n;
+}
+
+probe_handle_t probe_attach_dispatch(probe_registry_t* reg, uint32_t interval_ms) {
+    uint16_t modules[] = {0x0100};  /* BIO_MODULE_BRAIN */
+    return probe_create_active(reg, "dispatch", modules, 1,
+                                sample_dispatch, NULL, interval_ms);
+}

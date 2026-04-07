@@ -145,10 +145,10 @@ extern "C" {
  * @brief Maximum allowed pool size
  * WHY:  Prevents multi-GB allocations; pool grows on-demand up to this limit
  * NOTE: 50M slots × ~52 bytes = ~2.6 GB max. Pool starts small and grows in blocks.
- *       100M was too aggressive — pre-allocated 5.3 GB causing 17 GB swap + OOM crashes.
- *       With graceful fallback, 50M is sufficient (handle-only synapses still work).
+ *       100M needed for 2.5M neuron brains — pool grows on demand (not pre-allocated).
+ *       RunPod has 1TB RAM; dev servers may need less.
  */
-#define SPARSE_SYNAPSE_MAX_POOL_SIZE 50000000
+#define SPARSE_SYNAPSE_MAX_POOL_SIZE 100000000
 
 /**
  * @brief Magic number for validation

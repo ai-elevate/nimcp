@@ -149,6 +149,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/learning/nimcp_circuit_compilation.c   # Neural circuit compilation (symbolic→neural)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_inference.c   # Prediction, forward propagation, results (502 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_parallel_stages.c     # Parallel cognitive stage dispatch
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_cognitive_dispatch.c       # Actor-based parallel cognitive training
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/inference/nimcp_brain_quantum_reasoning.c # Quantum SAT solving for logical inference
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_kg_snapshot.c # KG-based snapshot persistence (Phase SNAPSHOT-KG)

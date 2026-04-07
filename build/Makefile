@@ -5115,6 +5115,19 @@ integration_core_neuron_models_test_cognitive_neuron_integration/fast:
 .PHONY : integration_core_neuron_models_test_cognitive_neuron_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_core_probes_test_probe_integration
+
+# Build rule for target.
+integration_core_probes_test_probe_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_core_probes_test_probe_integration
+.PHONY : integration_core_probes_test_probe_integration
+
+# fast build rule for target.
+integration_core_probes_test_probe_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_core_probes_test_probe_integration.dir/build.make test/CMakeFiles/integration_core_probes_test_probe_integration.dir/build
+.PHONY : integration_core_probes_test_probe_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_synapse_compute_test_three_factor_network_learning
 
 # Build rule for target.
@@ -5906,6 +5919,19 @@ regression_core_integration_test_integration_regression: cmake_check_build_syste
 regression_core_integration_test_integration_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_integration_test_integration_regression.dir/build.make test/CMakeFiles/regression_core_integration_test_integration_regression.dir/build
 .PHONY : regression_core_integration_test_integration_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_probes_test_probe_regression
+
+# Build rule for target.
+regression_core_probes_test_probe_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_probes_test_probe_regression
+.PHONY : regression_core_probes_test_probe_regression
+
+# fast build rule for target.
+regression_core_probes_test_probe_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_core_probes_test_probe_regression.dir/build.make test/CMakeFiles/regression_core_probes_test_probe_regression.dir/build
+.PHONY : regression_core_probes_test_probe_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_synapse_compute_test_three_factor_backward_compat
@@ -43686,6 +43712,45 @@ unit_edge_test_sensorimotor/fast:
 .PHONY : unit_edge_test_sensorimotor/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_dispatch
+
+# Build rule for target.
+unit_cognitive_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_dispatch
+.PHONY : unit_cognitive_dispatch
+
+# fast build rule for target.
+unit_cognitive_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/cognitive_dispatch/CMakeFiles/unit_cognitive_dispatch.dir/build.make test/unit/core/cognitive_dispatch/CMakeFiles/unit_cognitive_dispatch.dir/build
+.PHONY : unit_cognitive_dispatch/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_dispatch
+
+# Build rule for target.
+integration_cognitive_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_dispatch
+.PHONY : integration_cognitive_dispatch
+
+# fast build rule for target.
+integration_cognitive_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/cognitive_dispatch/CMakeFiles/integration_cognitive_dispatch.dir/build.make test/integration/core/cognitive_dispatch/CMakeFiles/integration_cognitive_dispatch.dir/build
+.PHONY : integration_cognitive_dispatch/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_dispatch
+
+# Build rule for target.
+regression_cognitive_dispatch: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_dispatch
+.PHONY : regression_cognitive_dispatch
+
+# fast build rule for target.
+regression_cognitive_dispatch/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/cognitive_dispatch/CMakeFiles/regression_cognitive_dispatch.dir/build.make test/regression/core/cognitive_dispatch/CMakeFiles/regression_cognitive_dispatch.dir/build
+.PHONY : regression_cognitive_dispatch/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -44542,6 +44607,7 @@ help:
 	@echo "... integration_cognitive_curiosity_test_curiosity_qmc_integration"
 	@echo "... integration_cognitive_curiosity_test_curiosity_snn_plasticity_integration"
 	@echo "... integration_cognitive_curiosity_test_information_forager_integration"
+	@echo "... integration_cognitive_dispatch"
 	@echo "... integration_cognitive_emotion_integration"
 	@echo "... integration_cognitive_emotion_snn_plasticity"
 	@echo "... integration_cognitive_emotion_tensor_test_emotion_tensor_integration"
@@ -44719,6 +44785,7 @@ help:
 	@echo "... integration_core_neuralnet_homeostasis_immune"
 	@echo "... integration_core_neuralnet_spike_ring_buffer"
 	@echo "... integration_core_neuron_models_test_cognitive_neuron_integration"
+	@echo "... integration_core_probes_test_probe_integration"
 	@echo "... integration_core_synapse_compute_test_three_factor_network_learning"
 	@echo "... integration_core_topology_topology_integration_tests"
 	@echo "... integration_cortical_column_basic"
@@ -45171,6 +45238,7 @@ help:
 	@echo "... regression_cognitive_curiosity_enhanced"
 	@echo "... regression_cognitive_curiosity_qmc"
 	@echo "... regression_cognitive_curiosity_snn_plasticity"
+	@echo "... regression_cognitive_dispatch"
 	@echo "... regression_cognitive_emotion_bridge"
 	@echo "... regression_cognitive_emotion_performance"
 	@echo "... regression_cognitive_emotion_snn_plasticity"
@@ -45278,6 +45346,7 @@ help:
 	@echo "... regression_core_neuralnet_spike_ring_buffer"
 	@echo "... regression_core_neuron_types_regression"
 	@echo "... regression_core_pass3_fixes"
+	@echo "... regression_core_probes_test_probe_regression"
 	@echo "... regression_core_substrate_bridges"
 	@echo "... regression_core_synapse_compute_test_three_factor_backward_compat"
 	@echo "... regression_core_test_core_immune_regression"
@@ -46103,6 +46172,7 @@ help:
 	@echo "... unit_cognitive_curiosity_test_curiosity_qmc"
 	@echo "... unit_cognitive_curiosity_test_curiosity_snn_bridge"
 	@echo "... unit_cognitive_curiosity_test_information_forager"
+	@echo "... unit_cognitive_dispatch"
 	@echo "... unit_cognitive_emotion_substrate_bridge"
 	@echo "... unit_cognitive_emotion_tensor_test_emotion_fep_bridge"
 	@echo "... unit_cognitive_emotion_tensor_test_emotion_tensor"

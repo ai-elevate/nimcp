@@ -48,6 +48,10 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         nimcp_brain_factory_init_gpu_subsystem(handle->internal_brain);
     }
 
+    // NOTE: GPU inference (weight cache + adaptive network) is initialized
+    // via nimcp_brain_eager_init_cognitive() AFTER full brain restoration,
+    // because adaptive_network_get_config() may crash on partially-restored state.
+
     // Initialize sparse coding on loaded brain (not serialized in checkpoint)
     {
         brain_t b = handle->internal_brain;

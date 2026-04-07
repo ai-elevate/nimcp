@@ -1963,6 +1963,23 @@ struct brain_struct {
     } cognitive_stats;
 
     // =========================================================================
+    // COGNITIVE DISPATCH METRICS (Parallel Actor Pattern)
+    // =========================================================================
+    // Updated by brain_train_cognitive_parallel() after each dispatch.
+    // Read by probe sampler for monitoring dashboard.
+    struct {
+        uint64_t last_dispatch_us;       /**< Wall-clock for last parallel dispatch */
+        uint32_t last_modules_executed;  /**< Modules that actually ran in last dispatch */
+        uint32_t last_modules_submitted; /**< Modules submitted to pool */
+        uint64_t total_dispatches;       /**< Total parallel dispatch calls */
+        uint64_t total_sequential;       /**< Total sequential fallback calls */
+        uint64_t cumulative_dispatch_us; /**< Total time in parallel dispatch */
+        uint32_t pool_thread_count;      /**< Thread pool size (0 = sequential) */
+        float    slowest_module_us;      /**< Slowest module in last dispatch */
+        float    avg_module_us;          /**< Average module time in last dispatch */
+    } dispatch_metrics;
+
+    // =========================================================================
     // COGNITIVE TRANSCRIPT (Communication Layer Phase 1)
     // =========================================================================
     // Cached transcript from the most recent brain_decide() call.

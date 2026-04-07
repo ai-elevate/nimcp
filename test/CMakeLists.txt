@@ -3117,4 +3117,24 @@ add_sim_test(test_brain_simulation_pipeline e2e/test_brain_simulation_pipeline.c
 
 endif() # GTest_FOUND
 
+# ============================================================================
+# Cognitive Dispatch Tests (Parallel Actor Pattern)
+# ============================================================================
+if(GTest_FOUND)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/cognitive_dispatch")
+    message(STATUS "Adding cognitive dispatch unit tests...")
+    add_subdirectory(unit/core/cognitive_dispatch)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/core/cognitive_dispatch")
+    message(STATUS "Adding cognitive dispatch integration tests...")
+    add_subdirectory(integration/core/cognitive_dispatch)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/cognitive_dispatch")
+    message(STATUS "Adding cognitive dispatch regression tests...")
+    add_subdirectory(regression/core/cognitive_dispatch)
+endif()
+endif() # GTest_FOUND cognitive dispatch
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)
