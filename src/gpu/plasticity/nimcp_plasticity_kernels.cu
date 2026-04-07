@@ -1925,7 +1925,7 @@ __global__ void kernel_stdp_weight_update_csr(
     }
 }
 
-int nimcp_gpu_stdp_weight_update_csr(
+extern "C" int nimcp_gpu_stdp_weight_update_csr(
     nimcp_gpu_context_t* ctx,
     float* csr_values, const int* row_ptrs, const int* col_indices,
     const float* pre_traces, const float* post_traces,
@@ -1982,7 +1982,7 @@ __global__ void kernel_bcm_weight_update_csr(
     csr_values[idx] = new_w;
 }
 
-int nimcp_gpu_bcm_weight_update_csr(
+extern "C" int nimcp_gpu_bcm_weight_update_csr(
     nimcp_gpu_context_t* ctx,
     float* csr_values, const int* row_ptrs, const int* col_indices,
     const float* post_activity, const float* pre_activity,
@@ -2033,7 +2033,7 @@ __global__ void kernel_homeostatic_scale_csr(
     }
 }
 
-int nimcp_gpu_homeostatic_scale_csr(
+extern "C" int nimcp_gpu_homeostatic_scale_csr(
     nimcp_gpu_context_t* ctx,
     float* csr_values, const int* row_ptrs,
     const float* avg_rates,
