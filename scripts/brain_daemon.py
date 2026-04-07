@@ -1520,6 +1520,9 @@ class AutoCheckpointer:
             logger.info("Checkpoint saved: %s (%d bytes, steps=%d)",
                         canonical, os.path.getsize(canonical), self._save_count)
 
+            # STEP 6: Sync to Hetzner with CRC32 verification
+            self._sync_to_hetzner(canonical)
+
         except Exception as e:
             logger.error("Checkpoint FAILED: %s", e)
             # Clean up temp file if it exists
@@ -1528,6 +1531,80 @@ class AutoCheckpointer:
                     os.remove(tmp_path)
                 except Exception:
                     pass
+
+    def _sync_to_hetzner(self, checkpoint_path):
+        """Sync checkpoint + sidecars to Hetzner with CRC32 verification.
+
+        Copies the checkpoint file and all sidecars to the Hetzner dev server,
+        then verifies integrity by comparing CRC32 checksums computed on both ends.
+        """
+        import hashlib
+        import subprocess
+
+        HETZNER_HOST = "bbrelin@176.9.99.103"
+        HETZNER_DIR = "/home/bbrelin/nimcp/checkpoints/athena"
+
+        try:
+            # Compute local CRC32 (use md5 for speed on 8GB files)
+            local_hash = hashlib.md5()
+            with open(checkpoint_path, 'rb') as f:
+                while True:
+                    chunk = f.read(1024 * 1024)  # 1MB chunks
+                    if not chunk:
+                        break
+                    local_hash.update(chunk)
+            local_md5 = local_hash.hexdigest()
+            local_size = os.path.getsize(checkpoint_path)
+
+            # Collect files to sync: checkpoint + sidecars
+            import glob as _glob
+            files_to_sync = [checkpoint_path]
+            files_to_sync.extend(_glob.glob(checkpoint_path + '.*'))
+
+            # scp all files to Hetzner
+            scp_args = ['scp', '-o', 'StrictHostKeyChecking=no',
+                        '-o', 'ConnectTimeout=30',
+                        '-o', 'Compression=yes']
+            scp_args.extend(files_to_sync)
+            scp_args.append(f"{HETZNER_HOST}:{HETZNER_DIR}/")
+
+            logger.info("Syncing %d files to Hetzner (%s)...",
+                        len(files_to_sync), os.path.basename(checkpoint_path))
+            result = subprocess.run(scp_args, capture_output=True, text=True, timeout=600)
+
+            if result.returncode != 0:
+                logger.warning("Hetzner sync failed: %s", result.stderr.strip())
+                return
+
+            # Verify: compute MD5 on Hetzner and compare
+            remote_basename = os.path.basename(checkpoint_path)
+            remote_path = f"{HETZNER_DIR}/{remote_basename}"
+            verify_cmd = ['ssh', '-o', 'StrictHostKeyChecking=no',
+                          '-o', 'ConnectTimeout=10',
+                          HETZNER_HOST,
+                          f'md5sum {remote_path} && stat -c%s {remote_path}']
+            verify = subprocess.run(verify_cmd, capture_output=True, text=True, timeout=120)
+
+            if verify.returncode == 0:
+                lines = verify.stdout.strip().split('\n')
+                remote_md5 = lines[0].split()[0] if lines else ""
+                remote_size = int(lines[1]) if len(lines) > 1 else 0
+
+                if remote_md5 == local_md5 and remote_size == local_size:
+                    logger.info("Hetzner sync VERIFIED: %s (md5=%s, %d bytes)",
+                                remote_basename, local_md5[:12], local_size)
+                else:
+                    logger.error("Hetzner sync CHECKSUM MISMATCH: "
+                                 "local=%s/%d remote=%s/%d",
+                                 local_md5[:12], local_size,
+                                 remote_md5[:12], remote_size)
+            else:
+                logger.warning("Hetzner verify failed: %s", verify.stderr.strip())
+
+        except subprocess.TimeoutExpired:
+            logger.warning("Hetzner sync timed out (600s)")
+        except Exception as e:
+            logger.warning("Hetzner sync error: %s", e)
 
     def _run(self):
         while self._running:

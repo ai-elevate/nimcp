@@ -15541,3 +15541,17 @@ Sat Apr  4 06:28:06 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-07 17:55:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14303m old
 [2026-04-07 18:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-07 18:00:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14308m old
+[2026-04-07 18:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:05:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14313m old
+[2026-04-07 18:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:10:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14318m old
+[2026-04-07 18:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:15:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14323m old
+[2026-04-07 18:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:20:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14328m old
+[2026-04-07 18:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:25:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14333m old
+[2026-04-07 18:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:30:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14338m old
+[2026-04-07 18:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-07 18:35:01] [WARN] Checkpoint stale: athena_s1_step7500.bin is 14343m old
