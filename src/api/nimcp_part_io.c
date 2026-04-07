@@ -35,8 +35,11 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         goto cleanup;
     }
 
-    // Load internal brain
-    handle->internal_brain = brain_load(filepath);
+    // Load internal brain (auto-detect unified vs legacy format)
+    {
+        extern brain_t brain_load_auto(const char* filepath);
+        handle->internal_brain = brain_load_auto(filepath);
+    }
     if (!handle->internal_brain) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_brain_load: brain_load failed for given filepath");
         goto cleanup;

@@ -23324,6 +23324,30 @@ __/core/brain/persistence/nimcp_brain_persistence.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/persistence/nimcp_brain_persistence.c.s
 .PHONY : __/core/brain/persistence/nimcp_brain_persistence.c.s
 
+__/core/brain/persistence/nimcp_checkpoint_unified.o: __/core/brain/persistence/nimcp_checkpoint_unified.c.o
+.PHONY : __/core/brain/persistence/nimcp_checkpoint_unified.o
+
+# target to build an object file
+__/core/brain/persistence/nimcp_checkpoint_unified.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/persistence/nimcp_checkpoint_unified.c.o
+.PHONY : __/core/brain/persistence/nimcp_checkpoint_unified.c.o
+
+__/core/brain/persistence/nimcp_checkpoint_unified.i: __/core/brain/persistence/nimcp_checkpoint_unified.c.i
+.PHONY : __/core/brain/persistence/nimcp_checkpoint_unified.i
+
+# target to preprocess a source file
+__/core/brain/persistence/nimcp_checkpoint_unified.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/persistence/nimcp_checkpoint_unified.c.i
+.PHONY : __/core/brain/persistence/nimcp_checkpoint_unified.c.i
+
+__/core/brain/persistence/nimcp_checkpoint_unified.s: __/core/brain/persistence/nimcp_checkpoint_unified.c.s
+.PHONY : __/core/brain/persistence/nimcp_checkpoint_unified.s
+
+# target to generate assembly for a file
+__/core/brain/persistence/nimcp_checkpoint_unified.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/persistence/nimcp_checkpoint_unified.c.s
+.PHONY : __/core/brain/persistence/nimcp_checkpoint_unified.c.s
+
 __/core/brain/pretrained/nimcp_brain_pretrained.o: __/core/brain/pretrained/nimcp_brain_pretrained.c.o
 .PHONY : __/core/brain/pretrained/nimcp_brain_pretrained.o
 
@@ -58510,6 +58534,9 @@ help:
 	@echo "... __/core/brain/persistence/nimcp_brain_persistence.o"
 	@echo "... __/core/brain/persistence/nimcp_brain_persistence.i"
 	@echo "... __/core/brain/persistence/nimcp_brain_persistence.s"
+	@echo "... __/core/brain/persistence/nimcp_checkpoint_unified.o"
+	@echo "... __/core/brain/persistence/nimcp_checkpoint_unified.i"
+	@echo "... __/core/brain/persistence/nimcp_checkpoint_unified.s"
 	@echo "... __/core/brain/pretrained/nimcp_brain_pretrained.o"
 	@echo "... __/core/brain/pretrained/nimcp_brain_pretrained.i"
 	@echo "... __/core/brain/pretrained/nimcp_brain_pretrained.s"
