@@ -5733,8 +5733,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         losses.append(loss if loss is not None else 0)
 
         # === CORRUPTION GUARD ===
-        # Check for NaN/Inf in loss and output vector every step.
-        # If detected, HALT immediately before corrupted weights get checkpointed.
+        # Check for NaN/Inf in loss, output vector, AND GPU forward path.
+        # NaN can develop during training without appearing in learn_vector loss.
         import math as _math
         _corrupt = False
         if loss is not None and (_math.isnan(loss) or _math.isinf(loss)):
@@ -5749,6 +5749,19 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                     print(f"\n  *** CORRUPTION DETECTED: {_nan_count}/100 NaN in output "
                           f"at step {i+1} ***", flush=True)
                     _corrupt = True
+        # Every 100 steps: probe GPU forward path via decide_full
+        if not _corrupt and (i + 1) % 100 == 0:
+            try:
+                _probe_r = brain.decide_full(pre_features)
+                if isinstance(_probe_r, dict):
+                    _probe_ov = _probe_r.get("output_vector", [])
+                    _probe_nan = sum(1 for v in _probe_ov[:50] if _math.isnan(v))
+                    if _probe_nan > 0:
+                        print(f"\n  *** GPU CORRUPTION: {_probe_nan}/50 NaN in decide_full "
+                              f"at step {i+1} ***", flush=True)
+                        _corrupt = True
+            except Exception:
+                pass
         if _corrupt:
             import time as _time
             print(f"  *** REPAIRING: zeroing NaN weights and reducing LR ***", flush=True)
