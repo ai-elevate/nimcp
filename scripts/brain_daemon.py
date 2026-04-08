@@ -1520,6 +1520,34 @@ class AutoCheckpointer:
             logger.info("Checkpoint saved: %s (%d bytes, steps=%d)",
                         canonical, os.path.getsize(canonical), self._save_count)
 
+            # STEP 5b: Update immersive_state.json with current step
+            # The training script's _save_checkpoint should do this but may
+            # fail silently. The daemon knows total_learning_steps and can
+            # compute the approximate stage 2 step.
+            try:
+                import json as _json
+                state_file = os.path.join(self.checkpoint_dir, "immersive_state.json")
+                total_steps = self.brain.probe().get("total_learning_steps", 0)
+                # Read existing state to preserve stage info
+                state = {"stage": 2, "step": 0}
+                if os.path.exists(state_file):
+                    with open(state_file) as _sf:
+                        state = _json.load(_sf)
+                # Estimate current step from total_learning_steps delta
+                # Base: 98374 total = step 10600 in stage 2 (from session start)
+                base_total = 98374
+                base_step = 10600
+                if total_steps > base_total:
+                    estimated_step = base_step + (total_steps - base_total)
+                    state["step"] = estimated_step
+                    state["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    with open(state_file, "w") as _sf:
+                        _json.dump(state, _sf, indent=2)
+                    logger.info("State file updated: stage=%d step=%d (total=%d)",
+                                state["stage"], state["step"], total_steps)
+            except Exception as e:
+                logger.debug("State file update failed: %s", e)
+
             # STEP 6: Sync to Hetzner with CRC32 verification
             self._sync_to_hetzner(canonical)
 
@@ -1798,8 +1826,8 @@ def main():
             t = _threading.Thread(target=_load, daemon=True)
             t.start()
 
-            # Estimated time: ~80s per GB of checkpoint
-            est_seconds = int(ckpt_size * 80)
+            # Estimated time: ~120s per GB (increased from 80 for larger metadata pools)
+            est_seconds = int(ckpt_size * 120)
             pbar = tqdm(total=est_seconds, desc="  Loading brain",
                         unit="s", bar_format="  {desc}: {bar:40} {n_fmt}/{total_fmt}s",
                         ncols=70)
