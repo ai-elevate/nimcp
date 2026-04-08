@@ -983,8 +983,15 @@ static bool bsr_delta_propagate(
     const nimcp_sparse_bsr_t* bsr,
     const float* d_delta_cur,
     float* d_delta_prev,
-    int prev_size)
+    int prev_size,
+    int max_buf_size)   /* size of delta buffers in elements */
 {
+    /* BSR operates on padded dimensions. Check buffers are large enough. */
+    int padded_rows = bsr->rows * bsr->block_size;
+    int padded_cols = bsr->cols * bsr->block_size;
+    if (padded_rows > max_buf_size || padded_cols > max_buf_size) {
+        return false;  /* Buffers too small for BSR padded dimensions */
+    }
     cusparseMatDescr_t descr;
     cusparseCreateMatDescr(&descr);
     cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);
@@ -1242,7 +1249,8 @@ extern "C" bool nimcp_gpu_bsr_backward_accumulate(
                 bsr_ok = bsr_delta_propagate(
                     sparse_ctx->cusparse_handle,
                     &W_bsr->data.bsr,
-                    d_delta_cur, d_delta_prev, prev_size);
+                    d_delta_cur, d_delta_prev, prev_size,
+                    (int)max_layer);
             }
 
             if (!bsr_ok && W_csr && W_csr->format == SPARSE_FORMAT_CSR &&
