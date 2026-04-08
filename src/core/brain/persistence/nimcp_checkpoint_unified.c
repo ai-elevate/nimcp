@@ -473,8 +473,12 @@ brain_t brain_load_unified(const char* filepath)
         /* Use the legacy brain_load which handles adaptive_network_load +
          * metadata + brain struct allocation. We extract brain_core to a
          * temp file that looks like a legacy checkpoint. */
+        fprintf(stderr, "[UNIFIED] Calling brain_load on extracted core: %s\n", tmp_path);
         brain = brain_load(tmp_path);
+        fprintf(stderr, "[UNIFIED] brain_load returned: %p\n", (void*)brain);
         unlink(tmp_path);
+    } else {
+        fprintf(stderr, "[UNIFIED] EXTRACT_SECTION produced no tmp_path for brain_core\n");
     }
 
     if (!brain) {

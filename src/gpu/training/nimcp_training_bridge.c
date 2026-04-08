@@ -570,24 +570,9 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
                 SPARSE_FORMAT_CSR);
             if (!cache->sparse_weights[l]) return false;
 
-            /* Also create BSR for tensor-core-accelerated forward pass.
-             * Non-fatal: if BSR fails, forward falls back to CSR custom kernel. */
-            if (cache->bsr_weights) {
-                if (cache->bsr_weights[l]) {
-                    nimcp_sparse_tensor_destroy(cache->bsr_weights[l]);
-                    cache->bsr_weights[l] = NULL;
-                }
-                cache->bsr_weights[l] = nimcp_sparse_from_coo(
-                    cache->sparse_ctx,
-                    cache->host_coo_values,
-                    cache->host_coo_row_idx,
-                    cache->host_coo_col_idx,
-                    (int)dst_layer_size,
-                    (int)src_layer_size,
-                    (int)nnz,
-                    SPARSE_FORMAT_BSR);
-                /* NULL is OK — forward pass checks and falls back to CSR */
-            }
+            /* BSR DISABLED: dual CSR+BSR doubles VRAM for 204M weights.
+             * Random connectivity → ~6x BSR padding → CUDA OOM → GPU corruption.
+             * Infrastructure ready for structured sparsity or larger VRAM. */
         }
         // nnz == 0: sparse_weights[l] stays NULL (valid empty transition)
 

@@ -148,7 +148,7 @@ extern "C" {
  *       100M needed for 2.5M neuron brains — pool grows on demand (not pre-allocated).
  *       RunPod has 1TB RAM; dev servers may need less.
  */
-#define SPARSE_SYNAPSE_MAX_POOL_SIZE 200000000
+#define SPARSE_SYNAPSE_MAX_POOL_SIZE 300000000
 
 /**
  * @brief Magic number for validation
