@@ -15679,3 +15679,8 @@ Sat Apr  4 06:28:06 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-08 03:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-08 03:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-08 03:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-08 03:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-08 04:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-08 04:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-08 04:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-08 04:10:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 124m old

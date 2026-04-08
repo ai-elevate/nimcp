@@ -963,27 +963,30 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
             csr_desc, d_csr_row_ptrs, d_col_indices,
             block_dim, bsr_desc, d_bsr_row_ptrs, &nnz_blocks);
 
-        /* Check if BSR is memory-efficient. BSR stores nnz_blocks * bs^2 floats
-         * vs CSR's nnz floats. If BSR > 2x CSR memory, skip BSR. */
-        size_t bsr_mem = (size_t)nnz_blocks * block_dim * block_dim * sizeof(float);
-        size_t csr_mem = (size_t)nnz * sizeof(float);
-        if (nnz_blocks > 0 && bsr_mem > csr_mem * 2) {
-            LOG_INFO("BSR skipped: %d blocks = %.1f MB vs CSR %.1f MB (%.1fx overhead)",
-                     nnz_blocks, (float)bsr_mem/(1024*1024),
-                     (float)csr_mem/(1024*1024),
-                     (float)bsr_mem / fmaxf((float)csr_mem, 1.0f));
-            cusparseDestroyMatDescr(csr_desc); cusparseDestroyMatDescr(bsr_desc);
-            cudaFree(d_bsr_row_ptrs); cudaFree(d_csr_row_ptrs);
-            cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
-            nimcp_free(sparse); return NULL;
-        }
-
         if (st != CUSPARSE_STATUS_SUCCESS || nnz_blocks <= 0) {
             LOG_ERROR("BSR: cusparseXcsr2bsrNnz failed: %d (nnz_blocks=%d)", st, nnz_blocks);
             cusparseDestroyMatDescr(csr_desc); cusparseDestroyMatDescr(bsr_desc);
             cudaFree(d_bsr_row_ptrs); cudaFree(d_csr_row_ptrs);
             cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
             nimcp_free(sparse); return NULL;
+        }
+
+        /* Memory guard: BSR stores nnz_blocks * bs^2 floats vs CSR's nnz floats.
+         * With random connectivity, BSR can use MORE memory (block padding).
+         * Skip BSR if overhead > 2x to avoid VRAM exhaustion. */
+        {
+            size_t bsr_mem = (size_t)nnz_blocks * block_dim * block_dim * sizeof(float);
+            size_t csr_mem = (size_t)nnz * sizeof(float);
+            if (bsr_mem > csr_mem * 2) {
+                LOG_INFO("BSR skipped: %d blocks = %.1f MB vs CSR %.1f MB (%.1fx overhead)",
+                         nnz_blocks, (float)bsr_mem/(1024*1024),
+                         (float)csr_mem/(1024*1024),
+                         (float)bsr_mem / fmaxf((float)csr_mem, 1.0f));
+                cusparseDestroyMatDescr(csr_desc); cusparseDestroyMatDescr(bsr_desc);
+                cudaFree(d_bsr_row_ptrs); cudaFree(d_csr_row_ptrs);
+                cudaFree(d_values); cudaFree(d_row_indices); cudaFree(d_col_indices);
+                nimcp_free(sparse); return NULL;
+            }
         }
 
         /* Step 4: Allocate BSR values and column indices */
