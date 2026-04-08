@@ -326,6 +326,11 @@ class BrainProxy:
         resp = self._send({"cmd": "probe"})
         return resp.get("probe", {})
 
+    def repair_nan_weights(self):
+        """Zero out NaN/Inf weights in the adaptive network."""
+        resp = self._send({"cmd": "repair_nan_weights"})
+        return resp
+
     def get_network_metrics(self):
         resp = self._send({"cmd": "get_network_metrics"})
         return resp.get("metrics", {})

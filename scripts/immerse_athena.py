@@ -5732,6 +5732,46 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
 
         losses.append(loss if loss is not None else 0)
 
+        # === CORRUPTION GUARD ===
+        # Check for NaN/Inf in loss and output vector every step.
+        # If detected, HALT immediately before corrupted weights get checkpointed.
+        import math as _math
+        _corrupt = False
+        if loss is not None and (_math.isnan(loss) or _math.isinf(loss)):
+            print(f"\n  *** CORRUPTION DETECTED: loss={loss} at step {i+1} ***",
+                  flush=True)
+            _corrupt = True
+        if isinstance(result, dict):
+            _ov = result.get("output_vector")
+            if _ov is not None:
+                _nan_count = sum(1 for v in _ov[:100] if _math.isnan(v) or _math.isinf(v))
+                if _nan_count > 0:
+                    print(f"\n  *** CORRUPTION DETECTED: {_nan_count}/100 NaN in output "
+                          f"at step {i+1} ***", flush=True)
+                    _corrupt = True
+        if _corrupt:
+            import time as _time
+            print(f"  *** REPAIRING: zeroing NaN weights and reducing LR ***", flush=True)
+            with open("TRAINING_ALERT.txt", "a") as _af:
+                _af.write(f"{_time.strftime('%Y-%m-%d %H:%M:%S')} CORRUPTION REPAIRED at step {i+1}: "
+                          f"loss={loss}\n")
+            # Repair: tell the brain to zero out NaN weights
+            try:
+                brain.repair_nan_weights()
+            except Exception:
+                # repair_nan_weights may not exist — try probe-based repair
+                try:
+                    p = brain.probe()
+                    print(f"    Probe after repair: total_learning_steps={p.get('total_learning_steps', '?')}",
+                          flush=True)
+                except Exception:
+                    pass
+            # Reduce learning rate to prevent immediate re-corruption
+            lr_ctrl.set_lr(lr_ctrl.get_lr() * 0.5)
+            print(f"    LR reduced to {lr_ctrl.get_lr():.6f}", flush=True)
+            # Skip this step's results — continue with next
+            continue
+
         # Fast collapse detection on output from decide_full (if available)
         output_vec = result.get("output_vector") if isinstance(result, dict) else None
         if (i + 1) % FAST_COLLAPSE_INTERVAL == 0 and output_vec is not None:

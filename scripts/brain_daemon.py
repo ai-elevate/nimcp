@@ -1091,6 +1091,25 @@ class BrainService:
     def _cmd_keepalive(self, _req):
         return {"ok": True}
 
+    # -- Repair NaN weights --
+
+    def _cmd_repair_nan_weights(self, _req):
+        """Zero out any NaN/Inf weights in the adaptive network."""
+        import math
+        try:
+            count = self.brain.get_neuron_count()
+            fixed = 0
+            for i in range(min(count, 100000)):  # Check first 100K neurons
+                bias = self.brain.get_neuron_bias(i)
+                if bias is not None and (math.isnan(bias) or math.isinf(bias)):
+                    self.brain.set_neuron_bias(i, 0.0)
+                    fixed += 1
+            logger.warning("Repaired %d NaN/Inf biases in %d neurons", fixed, min(count, 100000))
+            return {"ok": True, "fixed": fixed, "checked": min(count, 100000)}
+        except Exception as e:
+            logger.error("NaN repair failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
     # -- Shutdown --
 
     def _cmd_shutdown(self, _req):
@@ -1826,8 +1845,9 @@ def main():
             t = _threading.Thread(target=_load, daemon=True)
             t.start()
 
-            # Estimated time: ~120s per GB (increased from 80 for larger metadata pools)
-            est_seconds = int(ckpt_size * 120)
+            # No timeout — let the load take as long as it needs.
+            # Large brains with grown metadata pools can take 15-20+ minutes.
+            est_seconds = int(ckpt_size * 300)  # ~40 min max for 8GB
             pbar = tqdm(total=est_seconds, desc="  Loading brain",
                         unit="s", bar_format="  {desc}: {bar:40} {n_fmt}/{total_fmt}s",
                         ncols=70)
