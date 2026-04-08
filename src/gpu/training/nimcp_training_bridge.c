@@ -245,6 +245,8 @@ nimcp_gpu_weight_cache_t* nimcp_gpu_weight_cache_create(
     // Sparse weights: NULL-initialized, populated during upload
     cache->sparse_weights = nimcp_calloc(num_transitions, sizeof(nimcp_sparse_tensor_t*));
     if (!cache->sparse_weights) goto fail;
+    cache->bsr_weights = nimcp_calloc(num_transitions, sizeof(nimcp_sparse_tensor_t*));
+    /* BSR allocation failure is non-fatal — falls back to CSR-only */
 
     // Dense bias tensors
     cache->biases = nimcp_calloc(num_transitions, sizeof(nimcp_gpu_tensor_t*));
@@ -312,12 +314,19 @@ void nimcp_gpu_weight_cache_destroy(nimcp_gpu_weight_cache_t* cache)
 
     uint32_t num_transitions = (cache->num_layers > 1) ? cache->num_layers - 1 : 0;
 
-    // Free sparse weight tensors
+    // Free sparse weight tensors (CSR)
     if (cache->sparse_weights) {
         for (uint32_t l = 0; l < num_transitions; l++) {
             if (cache->sparse_weights[l]) nimcp_sparse_tensor_destroy(cache->sparse_weights[l]);
         }
         nimcp_free(cache->sparse_weights);
+    }
+    // Free BSR weight tensors
+    if (cache->bsr_weights) {
+        for (uint32_t l = 0; l < num_transitions; l++) {
+            if (cache->bsr_weights[l]) nimcp_sparse_tensor_destroy(cache->bsr_weights[l]);
+        }
+        nimcp_free(cache->bsr_weights);
     }
 
     // Free sparse context
@@ -549,9 +558,7 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
         }
 
         if (nnz > 0) {
-            /* CSR format for backward pass and plasticity kernels.
-             * TODO: BSR format for cusparseSpMM forward (tensor core acceleration)
-             * requires updating backward/plasticity kernels to handle BSR. */
+            /* CSR for backward pass + plasticity, BSR for forward pass (tensor cores) */
             cache->sparse_weights[l] = nimcp_sparse_from_coo(
                 cache->sparse_ctx,
                 cache->host_coo_values,
@@ -562,6 +569,25 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
                 (int)nnz,
                 SPARSE_FORMAT_CSR);
             if (!cache->sparse_weights[l]) return false;
+
+            /* Also create BSR for tensor-core-accelerated forward pass.
+             * Non-fatal: if BSR fails, forward falls back to CSR custom kernel. */
+            if (cache->bsr_weights) {
+                if (cache->bsr_weights[l]) {
+                    nimcp_sparse_tensor_destroy(cache->bsr_weights[l]);
+                    cache->bsr_weights[l] = NULL;
+                }
+                cache->bsr_weights[l] = nimcp_sparse_from_coo(
+                    cache->sparse_ctx,
+                    cache->host_coo_values,
+                    cache->host_coo_row_idx,
+                    cache->host_coo_col_idx,
+                    (int)dst_layer_size,
+                    (int)src_layer_size,
+                    (int)nnz,
+                    SPARSE_FORMAT_BSR);
+                /* NULL is OK — forward pass checks and falls back to CSR */
+            }
         }
         // nnz == 0: sparse_weights[l] stays NULL (valid empty transition)
 
@@ -703,7 +729,25 @@ void nimcp_gpu_weight_cache_sync_activations(nimcp_gpu_weight_cache_t* cache, ne
 static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint32_t num_transitions)
 {
     // y = W[l] @ a[l]  (SpMV: sparse matrix-vector multiply)
-    if (cache->sparse_weights[l]) {
+    // Prefer BSR format if available (tensor core acceleration)
+    bool spmv_done = false;
+
+    if (cache->bsr_weights && cache->bsr_weights[l] &&
+        cache->bsr_weights[l]->format == SPARSE_FORMAT_BSR) {
+        /* BSR SpMV via cuSPARSE cusparseSbsrmv — uses tensor cores */
+        nimcp_sparse_bsr_t* bsr = &cache->bsr_weights[l]->data.bsr;
+        if (bsr->nnz_blocks > 0 && cache->activations[l] && cache->activations[l + 1]) {
+            extern bool nimcp_bsr_spmv(nimcp_sparse_ctx_t* ctx,
+                nimcp_sparse_tensor_t* A, nimcp_gpu_tensor_t* x,
+                nimcp_gpu_tensor_t* y);
+            spmv_done = nimcp_bsr_spmv(
+                cache->sparse_ctx, cache->bsr_weights[l],
+                cache->activations[l], cache->activations[l + 1]);
+        }
+    }
+
+    if (!spmv_done && cache->sparse_weights[l]) {
+        /* CSR fallback: custom SpMV kernel */
         nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
             cache->sparse_ctx,
             cache->sparse_weights[l],       // A = W[l] sparse CSR
@@ -715,12 +759,14 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
             NIMCP_LOG_ERROR("GPU SpMV failed for layer %u", l);
             return false;
         }
-        // If SpMV returned a new tensor, swap it in
         if (mv_result != cache->activations[l + 1]) {
             nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
             cache->activations[l + 1] = mv_result;
         }
-    } else {
+        spmv_done = true;
+    }
+
+    if (!spmv_done) {
         // sparse_weights[l] is NULL (nnz=0): zero the activation tensor
         uint32_t ls = cache->layer_sizes[l + 1];
         memset(cache->host_activation_buf, 0, ls * sizeof(float));

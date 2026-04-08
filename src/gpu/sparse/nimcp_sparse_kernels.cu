@@ -2264,6 +2264,61 @@ const char* nimcp_sparse_format_name(nimcp_sparse_format_t format)
     }
 }
 
+/*=============================================================================
+ * BSR SpMV via cuSPARSE cusparseSbsrmv — tensor core acceleration
+ *=============================================================================*/
+
+extern "C" bool nimcp_bsr_spmv(
+    nimcp_sparse_ctx_t* ctx,
+    nimcp_sparse_tensor_t* A,
+    nimcp_gpu_tensor_t* x,
+    nimcp_gpu_tensor_t* y)
+{
+    if (!ctx || !A || !x || !y) return false;
+    if (A->format != SPARSE_FORMAT_BSR) return false;
+
+    nimcp_sparse_bsr_t* bsr = &A->data.bsr;
+    if (bsr->nnz_blocks == 0) return false;
+
+    /* Create matrix descriptor for BSR */
+    cusparseMatDescr_t descr;
+    cusparseCreateMatDescr(&descr);
+    cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);
+    cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);
+
+    float alpha = 1.0f;
+    float beta = 0.0f;
+
+    /* cusparseSbsrmv: y = alpha * A * x + beta * y
+     * A is BSR (mb × nb blocks of block_dim × block_dim)
+     * x is dense vector of length nb * block_dim
+     * y is dense vector of length mb * block_dim */
+    cusparseStatus_t st = cusparseSbsrmv(
+        ctx->cusparse_handle,
+        CUSPARSE_DIRECTION_ROW,
+        CUSPARSE_OPERATION_NON_TRANSPOSE,
+        bsr->rows,            /* mb: block rows */
+        bsr->cols,            /* nb: block cols */
+        bsr->nnz_blocks,      /* nnzb: non-zero blocks */
+        &alpha,
+        descr,
+        bsr->values,           /* bsrVal */
+        bsr->row_ptrs,         /* bsrRowPtr */
+        bsr->col_indices,      /* bsrColInd */
+        bsr->block_size,       /* blockDim */
+        (const float*)x->data, /* x */
+        &beta,
+        (float*)y->data);      /* y */
+
+    cusparseDestroyMatDescr(descr);
+
+    if (st != CUSPARSE_STATUS_SUCCESS) {
+        LOG_ERROR("cusparseSbsrmv failed: %d", st);
+        return false;
+    }
+    return true;
+}
+
 #else // !NIMCP_ENABLE_CUDA
 
 //=============================================================================
@@ -2393,6 +2448,11 @@ const char* nimcp_sparse_format_name(nimcp_sparse_format_t format)
         case SPARSE_FORMAT_ELL: return "ELL";
         default: return "UNKNOWN";
     }
+}
+
+bool nimcp_bsr_spmv(void* ctx, void* A, void* x, void* y) {
+    (void)ctx; (void)A; (void)x; (void)y;
+    return false;
 }
 
 #endif // NIMCP_ENABLE_CUDA

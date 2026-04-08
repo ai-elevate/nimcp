@@ -69,7 +69,8 @@ typedef struct nimcp_gpu_weight_cache_s {
     uint32_t* layer_offsets;               /**< Neuron index offset per layer */
 
     // Per-layer GPU tensors (num_layers - 1 transitions)
-    nimcp_sparse_tensor_t** sparse_weights; /**< W[l] = CSR sparse (layer_sizes[l+1] x layer_sizes[l]) */
+    nimcp_sparse_tensor_t** sparse_weights; /**< W[l] = CSR sparse (backward/plasticity) */
+    nimcp_sparse_tensor_t** bsr_weights;    /**< W[l] = BSR sparse (forward pass, tensor cores) */
     nimcp_sparse_ctx_t* sparse_ctx;         /**< cuSPARSE context for sparse operations */
     nimcp_gpu_tensor_t** biases;           /**< b[l] = (layer_sizes[l+1]) */
     nimcp_gpu_tensor_t** activations;      /**< a[l] = (layer_sizes[l]) per-layer output */
