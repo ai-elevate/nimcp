@@ -918,6 +918,99 @@ __global__ void kernel_activation_derivative_fp16(
 }
 
 //=============================================================================
+// BSR Block Gradient Accumulation Kernel (tensor-core-friendly)
+//=============================================================================
+
+/**
+ * BSR block weight gradient accumulation.
+ * For each non-zero block (block_row, block_col):
+ *   grad_block[i][j] += lr * delta[block_row * bs + i] * act[block_col * bs + j]
+ *
+ * Each thread handles one element within a block.
+ * Block dimensions: block_size × block_size (e.g., 16×16 = 256 threads per block).
+ */
+__global__ void kernel_bsr_block_grad_accumulate(
+    const int* __restrict__ bsr_row_ptrs,
+    const int* __restrict__ bsr_col_indices,
+    const float* __restrict__ delta,
+    const float* __restrict__ activation,
+    float* __restrict__ bsr_grad_accum,   /* [nnz_blocks * bs * bs] */
+    int nnz_blocks, int mb, int block_size, float lr)
+{
+    int block_idx = blockIdx.x;
+    if (block_idx >= nnz_blocks) return;
+
+    int local_row = threadIdx.x / block_size;
+    int local_col = threadIdx.x % block_size;
+    if (local_row >= block_size || local_col >= block_size) return;
+
+    /* Find which block row this block belongs to via binary search on row_ptrs */
+    int lo = 0, hi = mb - 1, block_row = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (bsr_row_ptrs[mid + 1] <= block_idx) lo = mid + 1;
+        else if (bsr_row_ptrs[mid] > block_idx) hi = mid - 1;
+        else { block_row = mid; break; }
+    }
+    if (lo > hi) block_row = lo;
+
+    int block_col = bsr_col_indices[block_idx];
+
+    int global_row = block_row * block_size + local_row;
+    int global_col = block_col * block_size + local_col;
+
+    float d = delta[global_row];
+    float a = activation[global_col];
+
+    /* Sparse skip */
+    if (fabsf(d) < 1e-7f || fabsf(a) < 1e-7f) return;
+
+    float grad = lr * d * a;
+    float max_delta = fmaxf(0.1f, lr * 2.0f);
+    if (grad > max_delta) grad = max_delta;
+    if (grad < -max_delta) grad = -max_delta;
+
+    int elem_offset = block_idx * block_size * block_size + local_row * block_size + local_col;
+    atomicAdd(&bsr_grad_accum[elem_offset], grad);
+}
+
+/**
+ * BSR delta propagation via cuSPARSE transpose SpMV.
+ * delta_prev = W^T @ delta_cur
+ */
+static bool bsr_delta_propagate(
+    cusparseHandle_t handle,
+    const nimcp_sparse_bsr_t* bsr,
+    const float* d_delta_cur,
+    float* d_delta_prev,
+    int prev_size)
+{
+    cusparseMatDescr_t descr;
+    cusparseCreateMatDescr(&descr);
+    cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);
+    cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);
+
+    float alpha = 1.0f;
+    float beta = 0.0f;
+
+    /* Transpose SpMV: delta_prev = W^T @ delta_cur */
+    cusparseStatus_t st = cusparseSbsrmv(
+        handle,
+        CUSPARSE_DIRECTION_ROW,
+        CUSPARSE_OPERATION_TRANSPOSE,
+        bsr->rows, bsr->cols, bsr->nnz_blocks,
+        &alpha, descr,
+        bsr->values, bsr->row_ptrs, bsr->col_indices,
+        bsr->block_size,
+        d_delta_cur,
+        &beta,
+        d_delta_prev);
+
+    cusparseDestroyMatDescr(descr);
+    return (st == CUSPARSE_STATUS_SUCCESS);
+}
+
+//=============================================================================
 // GPU Sparse Backward Pass — Accumulate Mode (no weight update)
 //=============================================================================
 
@@ -1029,6 +1122,140 @@ bool nimcp_gpu_sparse_backward_accumulate(
                 d_delta_cur, d_delta_prev, nnz, W->data.csr.rows);
 
             /* FP16 activation derivative — half-precision compute */
+            int act_type = layer_act_types[layer - 1];
+            kernel_activation_derivative_fp16<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
+                d_delta_prev, (const float*)activations[layer - 1]->data,
+                prev_size, act_type);
+
+            float* tmp = d_delta_cur;
+            d_delta_cur = d_delta_prev;
+            d_delta_prev = tmp;
+        }
+    }
+
+    cudaStreamSynchronize(stream);
+    cudaFree(d_delta_cur);
+    cudaFree(d_delta_prev);
+    return true;
+}
+
+//=============================================================================
+// BSR Backward Accumulate — tensor core delta propagation + block gradients
+//=============================================================================
+
+extern "C" bool nimcp_gpu_bsr_backward_accumulate(
+    nimcp_gpu_context_t* gpu_ctx,
+    nimcp_sparse_ctx_t* sparse_ctx,
+    nimcp_sparse_tensor_t** csr_weights,    /* CSR for weight grad accum format */
+    nimcp_sparse_tensor_t** bsr_weights,    /* BSR for delta propagation */
+    nimcp_gpu_tensor_t** biases,
+    nimcp_gpu_tensor_t** activations,
+    float** d_weight_grad_accum,
+    float** d_bias_grad_accum,
+    int* layer_act_types,
+    uint32_t num_layers,
+    const uint32_t* layer_sizes,
+    const float* target_host,
+    const float* output_host,
+    uint32_t output_size,
+    float learning_rate)
+{
+    if (!gpu_ctx || !csr_weights || !bsr_weights || !activations
+        || !target_host || !output_host || num_layers < 2) {
+        return false;
+    }
+
+    cudaStream_t stream = nimcp_gpu_get_pool_stream(gpu_ctx);
+
+    uint32_t out_layer_size = layer_sizes[num_layers - 1];
+    uint32_t bp_size = out_layer_size < output_size ? out_layer_size : output_size;
+
+    /* Allocate delta buffers */
+    float* d_target;
+    float* d_output;
+    if (cudaMalloc(&d_target, bp_size * sizeof(float)) != cudaSuccess) return false;
+    if (cudaMalloc(&d_output, bp_size * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_target); return false;
+    }
+    cudaMemcpy(d_target, target_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_output, output_host, bp_size * sizeof(float), cudaMemcpyHostToDevice);
+
+    uint32_t max_layer = 0;
+    for (uint32_t l = 0; l < num_layers; l++) {
+        if (layer_sizes[l] > max_layer) max_layer = layer_sizes[l];
+    }
+
+    float* d_delta_cur;
+    float* d_delta_prev;
+    if (cudaMalloc(&d_delta_cur, max_layer * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_target); cudaFree(d_output); return false;
+    }
+    if (cudaMalloc(&d_delta_prev, max_layer * sizeof(float)) != cudaSuccess) {
+        cudaFree(d_delta_cur); cudaFree(d_target); cudaFree(d_output); return false;
+    }
+    cudaMemset(d_delta_cur, 0, max_layer * sizeof(float));
+    cudaMemset(d_delta_prev, 0, max_layer * sizeof(float));
+
+    /* FP16 delta computation */
+    kernel_compute_deltas_mse_fp16<<<GRID_SIZE(bp_size), BLOCK_SIZE, 0, stream>>>(
+        d_delta_cur, d_target, d_output, bp_size);
+    cudaFree(d_target);
+    cudaFree(d_output);
+
+    float output_lr_boost = 10.0f;
+
+    for (int32_t layer = (int32_t)num_layers - 1; layer >= 1; layer--) {
+        uint32_t cur_size = layer_sizes[layer];
+        uint32_t prev_size = layer_sizes[layer - 1];
+        bool is_output = (layer == (int32_t)num_layers - 1);
+
+        float layer_lr = is_output
+            ? learning_rate * output_lr_boost
+            : learning_rate / powf(fmaxf((float)prev_size, 1.0f), 0.25f);
+
+        /* Bias gradient accumulation (same for CSR/BSR) */
+        if (biases[layer - 1] && d_bias_grad_accum && d_bias_grad_accum[layer - 1]) {
+            kernel_bias_grad_accumulate<<<GRID_SIZE(cur_size), BLOCK_SIZE, 0, stream>>>(
+                d_delta_cur, d_bias_grad_accum[layer - 1], cur_size, layer_lr);
+        }
+
+        /* Weight gradient accumulation — use CSR format (grad accum buffers match CSR nnz) */
+        nimcp_sparse_tensor_t* W_csr = csr_weights[layer - 1];
+        if (W_csr && W_csr->format == SPARSE_FORMAT_CSR && W_csr->data.csr.nnz > 0) {
+            kernel_sparse_csr_grad_accumulate_skip<<<GRID_SIZE(W_csr->data.csr.nnz), BLOCK_SIZE, 0, stream>>>(
+                W_csr->data.csr.row_ptrs, W_csr->data.csr.col_indices,
+                d_delta_cur,
+                (const float*)activations[layer - 1]->data,
+                d_weight_grad_accum[layer - 1],
+                W_csr->data.csr.nnz, W_csr->data.csr.rows, layer_lr);
+        }
+
+        /* Delta propagation — use BSR with cuSPARSE transpose SpMV (tensor cores!) */
+        if (layer > 1) {
+            cudaMemset(d_delta_prev, 0, prev_size * sizeof(float));
+
+            nimcp_sparse_tensor_t* W_bsr = bsr_weights[layer - 1];
+            bool bsr_ok = false;
+            if (W_bsr && W_bsr->format == SPARSE_FORMAT_BSR &&
+                W_bsr->data.bsr.nnz_blocks > 0) {
+                cudaStreamSynchronize(stream);  /* Ensure prior kernels done */
+                bsr_ok = bsr_delta_propagate(
+                    sparse_ctx->cusparse_handle,
+                    &W_bsr->data.bsr,
+                    d_delta_cur, d_delta_prev, prev_size);
+            }
+
+            if (!bsr_ok && W_csr && W_csr->format == SPARSE_FORMAT_CSR &&
+                W_csr->data.csr.nnz > 0) {
+                /* CSR fallback for delta propagation */
+                kernel_sparse_delta_propagate<<<GRID_SIZE(W_csr->data.csr.nnz), BLOCK_SIZE, 0, stream>>>(
+                    W_csr->data.csr.values, W_csr->data.csr.row_ptrs,
+                    W_csr->data.csr.col_indices,
+                    d_delta_cur, d_delta_prev,
+                    W_csr->data.csr.nnz, W_csr->data.csr.rows);
+            }
+
+            /* FP16 activation derivative */
             int act_type = layer_act_types[layer - 1];
             kernel_activation_derivative_fp16<<<GRID_SIZE(prev_size), BLOCK_SIZE, 0, stream>>>(
                 d_delta_prev, (const float*)activations[layer - 1]->data,
@@ -1360,6 +1587,16 @@ bool nimcp_gpu_sparse_backward_accumulate(
     (void)activations; (void)d_weight_grad_accum; (void)d_bias_grad_accum;
     (void)layer_act_types; (void)num_layers; (void)layer_sizes;
     (void)target_host; (void)output_host; (void)output_size; (void)learning_rate;
+    return false;
+}
+
+bool nimcp_gpu_bsr_backward_accumulate(
+    void* a, void* b, void* c, void* d, void* e, void* f,
+    void* g, void* h, void* i, unsigned j, const void* k,
+    const void* l, const void* m, unsigned n, float o)
+{
+    (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;(void)g;(void)h;
+    (void)i;(void)j;(void)k;(void)l;(void)m;(void)n;(void)o;
     return false;
 }
 

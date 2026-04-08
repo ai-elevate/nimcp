@@ -1549,12 +1549,40 @@ bool nimcp_gpu_backward_accumulate(
         effective_lr = learning_rate * scale;
     }
 
-    bool ok = nimcp_gpu_sparse_backward_accumulate(
-        cache->ctx, cache->sparse_ctx,
-        cache->sparse_weights, cache->biases, cache->activations,
-        cache->d_weight_grad_accum, cache->d_bias_grad_accum,
-        act_types, cache->num_layers, cache->layer_sizes,
-        target, output, target_size, effective_lr);
+    /* Use BSR backward if available — tensor core acceleration for
+     * delta propagation (W^T @ delta) and block gradient accumulation.
+     * Falls back to CSR custom kernels if BSR not available. */
+    bool ok;
+    bool has_bsr = false;
+    if (cache->bsr_weights) {
+        for (uint32_t bl = 0; bl + 1 < cache->num_layers; bl++) {
+            if (cache->bsr_weights[bl]) { has_bsr = true; break; }
+        }
+    }
+
+    if (has_bsr) {
+        extern bool nimcp_gpu_bsr_backward_accumulate(
+            nimcp_gpu_context_t*, nimcp_sparse_ctx_t*,
+            nimcp_sparse_tensor_t**, nimcp_sparse_tensor_t**,
+            nimcp_gpu_tensor_t**, nimcp_gpu_tensor_t**,
+            float**, float**,
+            int*, uint32_t, const uint32_t*,
+            const float*, const float*, uint32_t, float);
+        ok = nimcp_gpu_bsr_backward_accumulate(
+            cache->ctx, cache->sparse_ctx,
+            cache->sparse_weights, cache->bsr_weights,
+            cache->biases, cache->activations,
+            cache->d_weight_grad_accum, cache->d_bias_grad_accum,
+            act_types, cache->num_layers, cache->layer_sizes,
+            target, output, target_size, effective_lr);
+    } else {
+        ok = nimcp_gpu_sparse_backward_accumulate(
+            cache->ctx, cache->sparse_ctx,
+            cache->sparse_weights, cache->biases, cache->activations,
+            cache->d_weight_grad_accum, cache->d_bias_grad_accum,
+            act_types, cache->num_layers, cache->layer_sizes,
+            target, output, target_size, effective_lr);
+    }
 
     nimcp_free(act_types);
 
