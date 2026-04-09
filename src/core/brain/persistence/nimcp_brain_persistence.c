@@ -1296,16 +1296,18 @@ brain_t brain_load(const char* filepath)
                          brain->config.num_inputs, brain->config.learning_rate);
     }
 
-    // CRITICAL: Restore actual dimensions from saved network config
-    // This is essential for resize+persistence compatibility
-    const adaptive_network_config_t* net_config = adaptive_network_get_config(network);
-    if (net_config) {
-        brain->config.num_inputs = net_config->base_config.input_size;
-        brain->config.num_outputs = net_config->base_config.output_size;
-    } else {
-        // Fallback if config not available
-        brain->config.num_inputs = 1;
-        brain->config.num_outputs = 1;
+    // Restore dimensions from saved network config ONLY if metadata didn't load.
+    // Metadata has the authoritative num_inputs/num_outputs (may differ from
+    // the adaptive network's base_config which stores the original creation values).
+    if (!metadata_loaded) {
+        const adaptive_network_config_t* net_config = adaptive_network_get_config(network);
+        if (net_config) {
+            brain->config.num_inputs = net_config->base_config.input_size;
+            brain->config.num_outputs = net_config->base_config.output_size;
+        } else {
+            brain->config.num_inputs = 1;
+            brain->config.num_outputs = 1;
+        }
     }
 
     // Create strategy for task

@@ -3751,7 +3751,9 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     }
                     if (add_rc == 0) {
                         total_synapses_added++;
-                        uint32_t idx = NEURON_OUT_COUNT(neuron) - 1;
+                        uint32_t out_count = NEURON_OUT_COUNT(neuron);
+                        if (out_count == 0) continue;  /* guard against underflow */
+                        uint32_t idx = out_count - 1;
                         synapse_handle_t* h = NEURON_OUT_HANDLE(neuron, idx);
                         if (h) h->strength = strength;
                         if (needs_metadata) {
