@@ -16670,3 +16670,57 @@ Thu Apr  9 07:13:43 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-09 20:30:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2544m old
 [2026-04-09 20:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-09 20:35:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2549m old
+[2026-04-09 20:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 20:40:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2554m old
+Thu Apr  9 08:40:58 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  9 08:40:58 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Apr  9 08:41:40 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  9 08:41:40 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Thu Apr  9 08:41:46 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Thu Apr  9 08:41:46 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-09 20:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 20:45:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2559m old
+[2026-04-09 20:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 20:50:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2564m old
+[2026-04-09 20:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 20:55:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2569m old
+[2026-04-09 21:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:00:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2574m old
+[2026-04-09 21:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:05:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2579m old
+[2026-04-09 21:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:10:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2584m old
+[2026-04-09 21:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:15:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2589m old
+[2026-04-09 21:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:20:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2594m old
+[2026-04-09 21:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:25:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2599m old
+[2026-04-09 21:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:30:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2604m old
+[2026-04-09 21:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:35:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2609m old
+[2026-04-09 21:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:40:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2614m old
+[2026-04-09 21:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:45:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2619m old
+[2026-04-09 21:50:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:50:02] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2624m old
+[2026-04-09 21:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 21:55:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2629m old
+[2026-04-09 22:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:00:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2634m old
+[2026-04-09 22:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:05:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2639m old
+[2026-04-09 22:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:10:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2644m old
+[2026-04-09 22:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:15:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2649m old
+[2026-04-09 22:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:20:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2654m old
+[2026-04-09 22:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:25:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2659m old
+[2026-04-09 22:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:30:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2664m old
+[2026-04-09 22:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-09 22:35:01] [WARN] Checkpoint stale: athena_s2_step4100.bin is 2669m old

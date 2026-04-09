@@ -565,16 +565,10 @@ bool brain_save(brain_t brain, const char* filepath)
         return false;
     }
 
-    /* === UNIFIED CHECKPOINT FORMAT ===
-     * Save all sections (brain core + sidecars) in a single atomic file.
-     * Falls through to legacy save if unified fails. */
-    {
-        extern bool brain_save_unified(brain_t brain, const char* filepath);
-        if (brain_save_unified(brain, filepath)) {
-            return true;
-        }
-        LOG_WARN("Unified save failed — falling back to legacy multi-file save");
-    }
+    /* UNIFIED SAVE DISABLED — brain_load_unified() has a SIGSEGV bug
+     * in temp file extraction at 8.1GB scale. Until fixed, saves use
+     * legacy format (NIMC) which loads reliably.
+     * The unified save code remains in nimcp_checkpoint_unified.c. */
 
     // P1-3 fix: Path traversal validation (uses persistence_path_is_safe which allows absolute paths)
     if (!persistence_path_is_safe(filepath)) {
