@@ -537,8 +537,8 @@ COLLAPSE_WARMUP_STEPS = 200       # Don't check during initial warmup
 COLLAPSE_THRESHOLD = 0.99         # Cosine sim above this = collapsed
 COLLAPSE_CONSECUTIVE_LIMIT = 3    # Halt after N consecutive collapse detections
 FAST_COLLAPSE_INTERVAL = 10       # Fast rolling check every N steps
-FAST_COLLAPSE_THRESHOLD = 0.995   # Output not changing at all
-FAST_COLLAPSE_WINDOW = 5          # Consecutive identical outputs before intervention
+FAST_COLLAPSE_THRESHOLD = 0.95    # Tightened from 0.995 — catch collapse earlier
+FAST_COLLAPSE_WINDOW = 3          # Reduced from 5 — intervene sooner
 LR_SPIKE_FACTOR = 10.0            # Multiply LR by this during collapse recovery
 LR_SPIKE_DURATION = 50            # Steps to maintain spiked LR
 DIVERSITY_INJECTION_COUNT = 20    # Number of diverse items to inject on collapse
@@ -5790,22 +5790,25 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         if (i + 1) % FAST_COLLAPSE_INTERVAL == 0 and output_vec is not None:
             fast_collapse.check_output(output_vec, i + 1)
 
-        # Contrastive/diversity recording skipped — no output_vec without decide_full.
-        # Corrections still fire on schedule using buffered history.
+        # Record output for contrastive/diversity (FIXED: was only in batch path)
+        if output_vec is not None and pre_features is not None:
+            contrastive.record(pre_target if pre_target is not None else pre_features,
+                               output_vec, pre_features)
+            diversity.record(output_vec, pre_features)
 
-        # Contrastive + diversity corrections (less frequent with batch)
+        # Contrastive + diversity corrections
         if contrastive.should_correct():
             n_corr, mean_sim = contrastive.apply_corrections(
                 brain, learning_rate=lr_ctrl.get_lr())
-            if n_corr > 0 and (i + 1) % 500 < contrastive.interval:
+            if n_corr > 0:
                 print(f"    [Contrastive] {n_corr} corrections, "
-                      f"mean_output_sim={mean_sim:.3f}")
+                      f"mean_output_sim={mean_sim:.3f}", flush=True)
         if diversity.should_correct():
             n_div, top_r, eff_r = diversity.apply_corrections(
                 brain, learning_rate=lr_ctrl.get_lr() * 0.3)
-            if n_div > 0 and (i + 1) % 500 < diversity.interval:
+            if n_div > 0:
                 print(f"    [Diversity] {n_div} corrections, "
-                      f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}")
+                      f"top_eig={top_r:.2f}, eff_rank={eff_r:.1f}", flush=True)
 
         # Cognitive module training injection (with curriculum for Stage 1)
         if (i + 1) % COGNITIVE_TRAIN_INTERVAL == 0:
