@@ -2222,59 +2222,18 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             bool gpu_backprop_done = false;
 
             if (num_layers >= 2 && layer_sizes && network->gpu_weight_cache) {
-                /* GPU backward with FP16 accumulation + batched flush.
-                 *
-                 * Phase 1: Accumulate gradients on GPU (FP16 compute, FP32 accum)
-                 *   - No PCIe download — gradients stay on GPU
-                 *   - Sparse skip: entries with |delta*act| < 1e-7 are skipped
-                 *   - FP16 deltas and activation derivatives (half bandwidth)
-                 *
-                 * Phase 2: Flush every GRAD_ACCUM_BATCH_SIZE steps
-                 *   - Average gradients over batch (reduces noise)
-                 *   - Apply sparse-skip on weight update (skip negligible grads)
-                 *   - Single PCIe download transfers all updated weights
-                 *
-                 * This reduces PCIe round-trips from 1/step to 1/batch. */
-                #define GRAD_ACCUM_BATCH_SIZE 4
-
-                bool accum_ok = nimcp_gpu_backward_accumulate(
+                /* REVERTED to direct backward pass (no FP16 accumulate, no batch).
+                 * FP16 + batch-4 suspected of introducing NaN via numerical
+                 * instability. Direct backward is stable — downloads weights
+                 * every step via PCIe but produces correct results. */
+                gpu_backprop_done = nimcp_gpu_backward_pass(
                     network->gpu_weight_cache,
+                    network->base_network,
                     bp_target, output, example->target_size,
-                    effective_lr);
-
-                if (accum_ok) {
-                    /* Flush when batch is full OR this is a plasticity step
-                     * (plasticity reads CPU weights, so they must be current) */
-                    uint32_t accum_count = network->gpu_weight_cache->grad_accum_count;
-                    bool plasticity_step = (network->total_learning_steps % 10 == 0);
-                    if (accum_count >= GRAD_ACCUM_BATCH_SIZE || plasticity_step) {
-                        gpu_backprop_done = nimcp_gpu_gradient_flush_and_sync(
-                            network->gpu_weight_cache,
-                            network->base_network,
-                            network->config.base_config.min_weight,
-                            network->config.base_config.max_weight,
-                            &grad_norm);
-                    } else {
-                        /* Accumulated but not flushed — still counts as done
-                         * (weights on GPU are being updated lazily) */
-                        gpu_backprop_done = true;
-                        grad_norm = 0.0f;  /* actual norm computed at flush */
-                    }
-                }
-
-                if (!gpu_backprop_done) {
-                    /* Accumulate+flush failed — direct backward as fallback */
-                    gpu_backprop_done = nimcp_gpu_backward_pass(
-                        network->gpu_weight_cache,
-                        network->base_network,
-                        bp_target, output, example->target_size,
-                        effective_lr,
-                        network->config.base_config.min_weight,
-                        network->config.base_config.max_weight,
-                        &grad_norm);
-                }
-
-                #undef GRAD_ACCUM_BATCH_SIZE
+                    effective_lr,
+                    network->config.base_config.min_weight,
+                    network->config.base_config.max_weight,
+                    &grad_norm);
             }
 
             if (!gpu_backprop_done && num_layers >= 2 && layer_sizes) {

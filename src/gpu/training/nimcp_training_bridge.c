@@ -714,31 +714,13 @@ void nimcp_gpu_weight_cache_sync_activations(nimcp_gpu_weight_cache_t* cache, ne
 static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint32_t num_transitions)
 {
     // y = W[l] @ a[l]  (SpMV: sparse matrix-vector multiply)
-    // Prefer BSR format if available (tensor core acceleration)
-    bool spmv_done = false;
-
-    if (cache->bsr_weights && cache->bsr_weights[l] &&
-        cache->bsr_weights[l]->format == SPARSE_FORMAT_BSR) {
-        /* BSR SpMV via cuSPARSE cusparseSbsrmv — uses tensor cores */
-        nimcp_sparse_bsr_t* bsr = &cache->bsr_weights[l]->data.bsr;
-        if (bsr->nnz_blocks > 0 && cache->activations[l] && cache->activations[l + 1]) {
-            extern bool nimcp_bsr_spmv(nimcp_sparse_ctx_t* ctx,
-                nimcp_sparse_tensor_t* A, nimcp_gpu_tensor_t* x,
-                nimcp_gpu_tensor_t* y);
-            spmv_done = nimcp_bsr_spmv(
-                cache->sparse_ctx, cache->bsr_weights[l],
-                cache->activations[l], cache->activations[l + 1]);
-        }
-    }
-
-    if (!spmv_done && cache->sparse_weights[l]) {
-        /* CSR fallback: custom SpMV kernel */
+    if (cache->sparse_weights[l]) {
         nimcp_gpu_tensor_t* mv_result = nimcp_sparse_mv(
             cache->sparse_ctx,
-            cache->sparse_weights[l],       // A = W[l] sparse CSR
-            cache->activations[l],          // x = a[l] (cols)
+            cache->sparse_weights[l],
+            cache->activations[l],
             1.0f, 0.0f,
-            cache->activations[l + 1]);     // y = a[l+1] (rows)
+            cache->activations[l + 1]);
 
         if (!mv_result) {
             NIMCP_LOG_ERROR("GPU SpMV failed for layer %u", l);
@@ -748,10 +730,7 @@ static bool forward_one_layer(nimcp_gpu_weight_cache_t* cache, uint32_t l, uint3
             nimcp_gpu_tensor_destroy(cache->activations[l + 1]);
             cache->activations[l + 1] = mv_result;
         }
-        spmv_done = true;
-    }
-
-    if (!spmv_done) {
+    } else {
         // sparse_weights[l] is NULL (nnz=0): zero the activation tensor
         uint32_t ls = cache->layer_sizes[l + 1];
         memset(cache->host_activation_buf, 0, ls * sizeof(float));
@@ -1534,40 +1513,13 @@ bool nimcp_gpu_backward_accumulate(
         effective_lr = learning_rate * scale;
     }
 
-    /* Use BSR backward if available — tensor core acceleration for
-     * delta propagation (W^T @ delta) and block gradient accumulation.
-     * Falls back to CSR custom kernels if BSR not available. */
-    bool ok;
-    bool has_bsr = false;
-    if (cache->bsr_weights) {
-        for (uint32_t bl = 0; bl + 1 < cache->num_layers; bl++) {
-            if (cache->bsr_weights[bl]) { has_bsr = true; break; }
-        }
-    }
-
-    if (has_bsr) {
-        extern bool nimcp_gpu_bsr_backward_accumulate(
-            nimcp_gpu_context_t*, nimcp_sparse_ctx_t*,
-            nimcp_sparse_tensor_t**, nimcp_sparse_tensor_t**,
-            nimcp_gpu_tensor_t**, nimcp_gpu_tensor_t**,
-            float**, float**,
-            int*, uint32_t, const uint32_t*,
-            const float*, const float*, uint32_t, float);
-        ok = nimcp_gpu_bsr_backward_accumulate(
-            cache->ctx, cache->sparse_ctx,
-            cache->sparse_weights, cache->bsr_weights,
-            cache->biases, cache->activations,
-            cache->d_weight_grad_accum, cache->d_bias_grad_accum,
-            act_types, cache->num_layers, cache->layer_sizes,
-            target, output, target_size, effective_lr);
-    } else {
-        ok = nimcp_gpu_sparse_backward_accumulate(
-            cache->ctx, cache->sparse_ctx,
-            cache->sparse_weights, cache->biases, cache->activations,
-            cache->d_weight_grad_accum, cache->d_bias_grad_accum,
-            act_types, cache->num_layers, cache->layer_sizes,
-            target, output, target_size, effective_lr);
-    }
+    /* CSR backward accumulate — BSR disabled due to NaN issues */
+    bool ok = nimcp_gpu_sparse_backward_accumulate(
+        cache->ctx, cache->sparse_ctx,
+        cache->sparse_weights, cache->biases, cache->activations,
+        cache->d_weight_grad_accum, cache->d_bias_grad_accum,
+        act_types, cache->num_layers, cache->layer_sizes,
+        target, output, target_size, effective_lr);
 
     nimcp_free(act_types);
 
