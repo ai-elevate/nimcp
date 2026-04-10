@@ -1290,14 +1290,24 @@ brain_t brain_load(const char* filepath)
                          brain->config.num_inputs, brain->config.learning_rate);
     }
 
-    // Restore dimensions from saved network config ONLY if metadata didn't load.
-    // Metadata has the authoritative num_inputs/num_outputs (may differ from
-    // the adaptive network's base_config which stores the original creation values).
-    if (!metadata_loaded) {
+    /* Restore dimensions from actual network layer sizes.
+     * Neither metadata nor base_config is reliable — metadata may have stale
+     * values, base_config has original creation values (before resizing).
+     * The network's actual layer_sizes array is ground truth. */
+    {
         const adaptive_network_config_t* net_config = adaptive_network_get_config(network);
-        if (net_config) {
-            brain->config.num_inputs = net_config->base_config.input_size;
-            brain->config.num_outputs = net_config->base_config.output_size;
+        if (net_config && net_config->base_config.num_layers >= 2 &&
+            net_config->base_config.layer_sizes) {
+            uint32_t nl = net_config->base_config.num_layers;
+            brain->config.num_inputs = net_config->base_config.layer_sizes[0];
+            brain->config.num_outputs = net_config->base_config.layer_sizes[nl - 1];
+            fprintf(stderr, "[INFO] Restored dimensions from network layers: "
+                    "inputs=%u, outputs=%u (layers=%u)\n",
+                    brain->config.num_inputs, brain->config.num_outputs, nl);
+        } else if (metadata_loaded) {
+            /* Keep metadata values if network config unavailable */
+            fprintf(stderr, "[INFO] Using metadata dimensions: inputs=%u, outputs=%u\n",
+                    brain->config.num_inputs, brain->config.num_outputs);
         } else {
             brain->config.num_inputs = 1;
             brain->config.num_outputs = 1;
