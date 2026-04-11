@@ -14,7 +14,11 @@ package nimcp
 #cgo LDFLAGS: -L${SRCDIR}/../../../build/lib -lnimcp -Wl,-rpath,${SRCDIR}/../../../build/lib
 #include "nimcp.h"
 #include "nimcp_go_helpers.h"
+#include "edge/nimcp_edge.h"
 #include "edge/nimcp_swarm_runtime.h"
+// Forward decls: SNN input scale (no public header)
+extern void nimcp_snn_set_input_scale(float);
+extern float nimcp_snn_get_input_scale(void);
 #include "edge/nimcp_sensor.h"
 #include "edge/nimcp_safety_watchdog.h"
 #include "edge/nimcp_ros2_bridge.h"
@@ -749,6 +753,78 @@ func (b *Brain) GetUtilizationMetrics() (utilization, saturation float32, ok boo
 	var cUtil, cSat C.float
 	result := C.nimcp_brain_get_utilization_metrics(b.handle, &cUtil, &cSat)
 	return float32(cUtil), float32(cSat), bool(result)
+}
+
+// --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+//
+// These setters flip a config flag read by brain_learn_vector on every
+// training step. Flips take effect immediately. Useful for ablation
+// studies, SNN-only recovery, and round-robin training.
+
+// SetTrainAnn enables or disables adaptive/ANN training.
+func (b *Brain) SetTrainAnn(enabled bool) {
+	C.nimcp_brain_set_train_ann(b.handle, C.bool(enabled))
+}
+
+// GetTrainAnn returns whether adaptive/ANN training is enabled.
+func (b *Brain) GetTrainAnn() bool {
+	return bool(C.nimcp_brain_get_train_ann(b.handle))
+}
+
+// SetTrainCnn enables or disables CNN (and cortex CNN) training.
+func (b *Brain) SetTrainCnn(enabled bool) {
+	C.nimcp_brain_set_train_cnn(b.handle, C.bool(enabled))
+}
+
+// GetTrainCnn returns whether CNN training is enabled.
+func (b *Brain) GetTrainCnn() bool {
+	return bool(C.nimcp_brain_get_train_cnn(b.handle))
+}
+
+// SetTrainSnn enables or disables SNN training.
+func (b *Brain) SetTrainSnn(enabled bool) {
+	C.nimcp_brain_set_train_snn(b.handle, C.bool(enabled))
+}
+
+// GetTrainSnn returns whether SNN training is enabled.
+func (b *Brain) GetTrainSnn() bool {
+	return bool(C.nimcp_brain_get_train_snn(b.handle))
+}
+
+// SetTrainLnn enables or disables LNN training.
+func (b *Brain) SetTrainLnn(enabled bool) {
+	C.nimcp_brain_set_train_lnn(b.handle, C.bool(enabled))
+}
+
+// GetTrainLnn returns whether LNN training is enabled.
+func (b *Brain) GetTrainLnn() bool {
+	return bool(C.nimcp_brain_get_train_lnn(b.handle))
+}
+
+// SetSnnOnlyRecovery enables the SNN-only recovery preset — freezes
+// ANN/CNN/LNN while keeping SNN training active. Used to let the SNN
+// re-converge against a stable ensemble after large BPTT behavior changes.
+func (b *Brain) SetSnnOnlyRecovery(enabled bool) {
+	C.nimcp_brain_set_snn_only_recovery(b.handle, C.bool(enabled))
+}
+
+// GetSnnOnlyRecovery returns whether SNN-only recovery mode is active.
+func (b *Brain) GetSnnOnlyRecovery() bool {
+	return bool(C.nimcp_brain_get_snn_only_recovery(b.handle))
+}
+
+// SetEnsembleWarmupScale sets a probabilistic gate on non-SNN training
+// updates in [0.0, 1.0]. 1.0 = full-rate (default), 0.0 = fully frozen,
+// intermediate values make each non-SNN training step run with that
+// probability (Monte-Carlo). Used to ramp ANN/CNN/LNN back in gradually
+// after SNN-only recovery. Out-of-range values are clamped on the C side.
+func (b *Brain) SetEnsembleWarmupScale(scale float32) {
+	C.nimcp_brain_set_ensemble_warmup_scale(b.handle, C.float(scale))
+}
+
+// GetEnsembleWarmupScale returns the current ensemble warmup scale.
+func (b *Brain) GetEnsembleWarmupScale() float32 {
+	return float32(C.nimcp_brain_get_ensemble_warmup_scale(b.handle))
 }
 
 // --- Named Snapshots ---

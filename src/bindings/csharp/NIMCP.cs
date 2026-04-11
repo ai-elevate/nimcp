@@ -867,6 +867,49 @@ namespace NIMCP
             IntPtr brain,
             [MarshalAs(UnmanagedType.LPStr)] string modality);
 
+        // --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern void nimcp_brain_set_train_ann(IntPtr brain,
+            [MarshalAs(UnmanagedType.I1)] bool enabled);
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_get_train_ann(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void nimcp_brain_set_train_cnn(IntPtr brain,
+            [MarshalAs(UnmanagedType.I1)] bool enabled);
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_get_train_cnn(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void nimcp_brain_set_train_snn(IntPtr brain,
+            [MarshalAs(UnmanagedType.I1)] bool enabled);
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_get_train_snn(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void nimcp_brain_set_train_lnn(IntPtr brain,
+            [MarshalAs(UnmanagedType.I1)] bool enabled);
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_get_train_lnn(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void nimcp_brain_set_snn_only_recovery(IntPtr brain,
+            [MarshalAs(UnmanagedType.I1)] bool enabled);
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool nimcp_brain_get_snn_only_recovery(IntPtr brain);
+
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void nimcp_brain_set_ensemble_warmup_scale(IntPtr brain, float scale);
+        [DllImport(Lib, CallingConvention = CallingConvention.Cdecl)]
+        public static extern float nimcp_brain_get_ensemble_warmup_scale(IntPtr brain);
+
         // --- Native structs ---
 
         [StructLayout(LayoutKind.Sequential)]
@@ -1448,6 +1491,50 @@ namespace NIMCP
             CheckOpen();
             return Native.nimcp_brain_get_neuron_count(handle);
         }
+
+        // --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+
+        public void SetTrainAnn(bool enabled)
+        { CheckOpen(); Native.nimcp_brain_set_train_ann(handle, enabled); }
+        public bool GetTrainAnn()
+        { CheckOpen(); return Native.nimcp_brain_get_train_ann(handle); }
+
+        public void SetTrainCnn(bool enabled)
+        { CheckOpen(); Native.nimcp_brain_set_train_cnn(handle, enabled); }
+        public bool GetTrainCnn()
+        { CheckOpen(); return Native.nimcp_brain_get_train_cnn(handle); }
+
+        public void SetTrainSnn(bool enabled)
+        { CheckOpen(); Native.nimcp_brain_set_train_snn(handle, enabled); }
+        public bool GetTrainSnn()
+        { CheckOpen(); return Native.nimcp_brain_get_train_snn(handle); }
+
+        public void SetTrainLnn(bool enabled)
+        { CheckOpen(); Native.nimcp_brain_set_train_lnn(handle, enabled); }
+        public bool GetTrainLnn()
+        { CheckOpen(); return Native.nimcp_brain_get_train_lnn(handle); }
+
+        /// <summary>
+        /// SNN-only recovery preset: freeze ANN/CNN/LNN while keeping SNN
+        /// training active. Used to let the SNN re-converge against a stable
+        /// ensemble after large BPTT behavior changes.
+        /// </summary>
+        public void SetSnnOnlyRecovery(bool enabled)
+        { CheckOpen(); Native.nimcp_brain_set_snn_only_recovery(handle, enabled); }
+        public bool GetSnnOnlyRecovery()
+        { CheckOpen(); return Native.nimcp_brain_get_snn_only_recovery(handle); }
+
+        /// <summary>
+        /// Probabilistic gate on non-SNN training updates [0.0, 1.0].
+        /// 1.0 = full-rate (default), 0.0 = fully frozen, intermediate =
+        /// Monte-Carlo skip. Used by the daemon plateau detector to ramp
+        /// ANN/CNN/LNN back in gradually after SNN-only recovery. Clamped
+        /// to [0.0, 1.0] on the native side.
+        /// </summary>
+        public void SetEnsembleWarmupScale(float scale)
+        { CheckOpen(); Native.nimcp_brain_set_ensemble_warmup_scale(handle, scale); }
+        public float GetEnsembleWarmupScale()
+        { CheckOpen(); return Native.nimcp_brain_get_ensemble_warmup_scale(handle); }
 
         public UtilizationMetrics GetUtilizationMetrics()
         {

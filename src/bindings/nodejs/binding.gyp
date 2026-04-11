@@ -4,8 +4,10 @@
       "target_name": "nimcp_nodejs",
       "sources": [ "binding.c" ],
       "include_dirs": [
-        "../../../include"
+        "../../../include",
+        "/usr/include/python3.12"
       ],
+      "defines": [ "_GNU_SOURCE" ],
       "libraries": [
         "-L<(module_root_dir)/../../../build/lib",
         "-lnimcp"

@@ -19,6 +19,7 @@
 #include <stdbool.h>
 
 /* Internal headers for sensory cortex, LNN/SNN/CNN stats, brain state */
+#include "api/nimcp_api_internal.h"  /* struct nimcp_brain_handle */
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain_state.h"
 #include "core/brain/learning/nimcp_brain_learning.h"
@@ -880,6 +881,85 @@ static napi_value BrainGetNeuronCount(napi_env env, napi_callback_info info) {
     napi_value result;
     napi_create_uint32(env, count, &result);
     return result;
+}
+
+/* === Per-network training toggles (runtime-dynamic, no rebuild required) ===
+ *
+ * Mirror the ablation + recovery + warmup APIs from the Python/Java/Rust/C++
+ * bindings. The N-API signatures are (brain, bool|float) for setters and
+ * (brain) for getters. Reads and writes hit brain->config.* directly. */
+
+#define NIMCP_NAPI_TRAIN_TOGGLE(Name, lower) \
+static napi_value BrainSetTrain##Name(napi_env env, napi_callback_info info) { \
+    size_t argc = 2; napi_value args[2], this_arg; \
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL)); \
+    if (argc < 2) { napi_throw_error(env, NULL, "brainSetTrain" #Name ": 2 args"); return NULL; } \
+    nimcp_brain_t brain = unwrap_brain(env, args[0]); \
+    if (!brain) return NULL; \
+    bool enabled = false; \
+    napi_get_value_bool(env, args[1], &enabled); \
+    nimcp_brain_set_train_##lower(brain, enabled); \
+    return NULL; \
+} \
+static napi_value BrainGetTrain##Name(napi_env env, napi_callback_info info) { \
+    size_t argc = 1; napi_value args[1], this_arg; \
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL)); \
+    if (argc < 1) { napi_throw_error(env, NULL, "brainGetTrain" #Name ": 1 arg"); return NULL; } \
+    nimcp_brain_t brain = unwrap_brain(env, args[0]); \
+    if (!brain) return NULL; \
+    bool v = nimcp_brain_get_train_##lower(brain); \
+    napi_value result; napi_get_boolean(env, v, &result); return result; \
+}
+
+NIMCP_NAPI_TRAIN_TOGGLE(Ann, ann)
+NIMCP_NAPI_TRAIN_TOGGLE(Cnn, cnn)
+NIMCP_NAPI_TRAIN_TOGGLE(Snn, snn)
+NIMCP_NAPI_TRAIN_TOGGLE(Lnn, lnn)
+
+#undef NIMCP_NAPI_TRAIN_TOGGLE
+
+static napi_value BrainSetSnnOnlyRecovery(napi_env env, napi_callback_info info) {
+    size_t argc = 2; napi_value args[2], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "brainSetSnnOnlyRecovery: 2 args"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    bool enabled = false;
+    napi_get_value_bool(env, args[1], &enabled);
+    nimcp_brain_set_snn_only_recovery(brain, enabled);
+    return NULL;
+}
+
+static napi_value BrainGetSnnOnlyRecovery(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "brainGetSnnOnlyRecovery: 1 arg"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    bool v = nimcp_brain_get_snn_only_recovery(brain);
+    napi_value result; napi_get_boolean(env, v, &result); return result;
+}
+
+static napi_value BrainSetEnsembleWarmupScale(napi_env env, napi_callback_info info) {
+    size_t argc = 2; napi_value args[2], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 2) { napi_throw_error(env, NULL, "brainSetEnsembleWarmupScale: 2 args"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    double scale = 1.0;
+    napi_get_value_double(env, args[1], &scale);
+    nimcp_brain_set_ensemble_warmup_scale(brain, (float)scale);
+    return NULL;
+}
+
+static napi_value BrainGetEnsembleWarmupScale(napi_env env, napi_callback_info info) {
+    size_t argc = 1; napi_value args[1], this_arg;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, &this_arg, NULL));
+    if (argc < 1) { napi_throw_error(env, NULL, "brainGetEnsembleWarmupScale: 1 arg"); return NULL; }
+    nimcp_brain_t brain = unwrap_brain(env, args[0]);
+    if (!brain) return NULL;
+    float v = nimcp_brain_get_ensemble_warmup_scale(brain);
+    napi_value result; napi_create_double(env, (double)v, &result); return result;
 }
 
 static napi_value BrainGetUtilizationMetrics(napi_env env, napi_callback_info info) {
@@ -3935,6 +4015,20 @@ static napi_value Init(napi_env env, napi_value exports) {
     EXPORT_FN(env, exports, "brainAutoResize", BrainAutoResize);
     EXPORT_FN(env, exports, "brainGetNeuronCount", BrainGetNeuronCount);
     EXPORT_FN(env, exports, "brainGetUtilizationMetrics", BrainGetUtilizationMetrics);
+
+    /* Per-network training toggles (runtime-dynamic, no rebuild required) */
+    EXPORT_FN(env, exports, "brainSetTrainAnn", BrainSetTrainAnn);
+    EXPORT_FN(env, exports, "brainGetTrainAnn", BrainGetTrainAnn);
+    EXPORT_FN(env, exports, "brainSetTrainCnn", BrainSetTrainCnn);
+    EXPORT_FN(env, exports, "brainGetTrainCnn", BrainGetTrainCnn);
+    EXPORT_FN(env, exports, "brainSetTrainSnn", BrainSetTrainSnn);
+    EXPORT_FN(env, exports, "brainGetTrainSnn", BrainGetTrainSnn);
+    EXPORT_FN(env, exports, "brainSetTrainLnn", BrainSetTrainLnn);
+    EXPORT_FN(env, exports, "brainGetTrainLnn", BrainGetTrainLnn);
+    EXPORT_FN(env, exports, "brainSetSnnOnlyRecovery", BrainSetSnnOnlyRecovery);
+    EXPORT_FN(env, exports, "brainGetSnnOnlyRecovery", BrainGetSnnOnlyRecovery);
+    EXPORT_FN(env, exports, "brainSetEnsembleWarmupScale", BrainSetEnsembleWarmupScale);
+    EXPORT_FN(env, exports, "brainGetEnsembleWarmupScale", BrainGetEnsembleWarmupScale);
 
     /* --- Named Snapshots --- */
     EXPORT_FN(env, exports, "brainSnapshotSave", BrainSnapshotSave);

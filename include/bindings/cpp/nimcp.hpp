@@ -1355,6 +1355,38 @@ public:
         nimcp_brain_set_network_ablation(handle_, train_cnn, train_snn, train_lnn);
     }
 
+    // --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+
+    void set_train_ann(bool enabled) { nimcp_brain_set_train_ann(handle_, enabled); }
+    bool get_train_ann() const { return nimcp_brain_get_train_ann(handle_); }
+
+    void set_train_cnn(bool enabled) { nimcp_brain_set_train_cnn(handle_, enabled); }
+    bool get_train_cnn() const { return nimcp_brain_get_train_cnn(handle_); }
+
+    void set_train_snn(bool enabled) { nimcp_brain_set_train_snn(handle_, enabled); }
+    bool get_train_snn() const { return nimcp_brain_get_train_snn(handle_); }
+
+    void set_train_lnn(bool enabled) { nimcp_brain_set_train_lnn(handle_, enabled); }
+    bool get_train_lnn() const { return nimcp_brain_get_train_lnn(handle_); }
+
+    /** Convenience preset: freeze ANN/CNN/LNN while keeping SNN training. */
+    void set_snn_only_recovery(bool enabled) {
+        nimcp_brain_set_snn_only_recovery(handle_, enabled);
+    }
+    bool get_snn_only_recovery() const {
+        return nimcp_brain_get_snn_only_recovery(handle_);
+    }
+
+    /** Ensemble warmup scale [0.0, 1.0] — probabilistic gate on non-SNN
+     *  training. 1.0 = full-rate (default), 0.0 = fully frozen,
+     *  intermediate = Monte-Carlo skip. Clamped to [0.0, 1.0] on the C side. */
+    void set_ensemble_warmup_scale(float scale) {
+        nimcp_brain_set_ensemble_warmup_scale(handle_, scale);
+    }
+    float get_ensemble_warmup_scale() const {
+        return nimcp_brain_get_ensemble_warmup_scale(handle_);
+    }
+
     // --- Sensory / Brain Regions ---
 
     void submit_sensory(std::string_view modality,

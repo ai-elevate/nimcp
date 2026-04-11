@@ -7,11 +7,12 @@
 # ============================================================================
 
 find_program(GO_EXECUTABLE go REQUIRED)
+find_package(Python3 COMPONENTS Development REQUIRED)
 
 add_custom_target(nimcp_go ALL
     COMMAND ${CMAKE_COMMAND} -E env
             "CGO_LDFLAGS=-L${CMAKE_BINARY_DIR}/lib -lnimcp -Wl,-rpath,${CMAKE_BINARY_DIR}/lib"
-            "CGO_CFLAGS=-I${CMAKE_SOURCE_DIR}/include"
+            "CGO_CFLAGS=-I${CMAKE_SOURCE_DIR}/include -I${Python3_INCLUDE_DIRS}"
             ${GO_EXECUTABLE} build -v ./...
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     DEPENDS nimcp

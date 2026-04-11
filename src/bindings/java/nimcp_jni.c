@@ -16,6 +16,7 @@
 #include <stdbool.h>
 
 /* Internal headers for methods that require brain internals */
+#include "api/nimcp_api_internal.h"  /* struct nimcp_brain_handle for brain->internal_brain deref */
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/accessors/nimcp_brain_accessors.h"
 #include "perception/nimcp_audio_cortex.h"
@@ -1274,8 +1275,9 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSpeechCortex
     jfloat *samps = (*env)->GetFloatArrayElements(env, samples, NULL);
     if (!samps) return NULL;
 
-    uint32_t feat_dim = speech_cortex_get_feature_dim(ib->speech_cortex);
-    if (feat_dim == 0) feat_dim = 128;
+    /* speech_cortex_t is opaque and feature_dim isn't queryable via a
+     * public getter; fall back to the default 128-dim output. */
+    uint32_t feat_dim = 128;
 
     float *features = (float *)nimcp_calloc(feat_dim, sizeof(float));
     if (!features) {
@@ -1283,8 +1285,10 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSpeechCortex
         return NULL;
     }
 
+    /* speech_cortex_process signature: (cortex, audio_data, num_samples, features)
+     * API drift cleanup — previously had an extra channel arg. */
     bool ok = speech_cortex_process(ib->speech_cortex, samps,
-                                     (uint32_t)len, 1, features);
+                                     (uint32_t)len, features);
     (*env)->ReleaseFloatArrayElements(env, samples, samps, JNI_ABORT);
 
     if (!ok) { nimcp_free(features); return (*env)->NewFloatArray(env, 0); }
@@ -1310,9 +1314,9 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetAvatarSta
     nimcp_status_t rc = nimcp_brain_get_avatar_state(brain, &state);
     if (rc != NIMCP_OK) return NULL;
 
-    /* Pack key fields: mouth(6), AUs(16), emotion(5), gaze+head(6), voice(3), meta(1) = 37 floats */
-    jfloatArray out = (*env)->NewFloatArray(env, 37);
-    jfloat vals[37] = {
+    /* Pack key fields: mouth(6), AUs(16), emotion(5), gaze+head(6), voice(3), meta(2) = 38 floats */
+    jfloatArray out = (*env)->NewFloatArray(env, 38);
+    jfloat vals[38] = {
         /* mouth */
         state.mouth_open, state.lip_round, state.lip_upper,
         state.lip_lower, state.tongue_position, (float)state.current_viseme,
@@ -1337,7 +1341,7 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetAvatarSta
         state.is_speaking ? 1.0f : 0.0f,
         (float)(state.timestamp_us / 1000000ULL) /* seconds, lossy */
     };
-    (*env)->SetFloatArrayRegion(env, out, 0, 37, vals);
+    (*env)->SetFloatArrayRegion(env, out, 0, 38, vals);
     return out;
 }
 
@@ -1615,12 +1619,27 @@ JNIEXPORT jfloatArray JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeLnnForwardSt
     memcpy(nimcp_tensor_data(input), feats, (size_t)flen * sizeof(float));
     (*env)->ReleaseFloatArrayElements(env, features, feats, JNI_ABORT);
 
-    nimcp_tensor_t *output = lnn_network_forward(brain->lnn_network, input, 0.01f);
+    /* API drift: use lnn_network_forward_step (takes pre-allocated output
+     * tensor, returns int status). Allocate output before the call. */
+    lnn_network_t* lnn = (lnn_network_t*)brain->lnn_network;
+    uint32_t n_out = lnn ? lnn->n_outputs : 0;
+    uint32_t out_shape[1] = { n_out };
+    nimcp_tensor_t *output = (n_out > 0)
+        ? nimcp_tensor_create(out_shape, 1, NIMCP_DTYPE_F32)
+        : NULL;
+    int forward_rc = -1;
+    if (output) {
+        forward_rc = lnn_network_forward_step(lnn, input, output, 0.01f);
+    }
     nimcp_tensor_destroy(input);
 
-    if (!output) return NULL;
+    if (!output || forward_rc != 0) {
+        if (output) nimcp_tensor_destroy(output);
+        return NULL;
+    }
 
-    uint32_t out_size = nimcp_tensor_total_elements(output);
+    /* nimcp_tensor_total_elements was renamed to nimcp_tensor_numel. */
+    size_t out_size = nimcp_tensor_numel(output);
     float *out_data = (float *)nimcp_tensor_data(output);
 
     jfloatArray out = (*env)->NewFloatArray(env, (jsize)out_size);
@@ -2978,4 +2997,73 @@ JNIEXPORT jobject JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeAuditSearch(
         nimcp_memory_search_result_destroy(res);
     }
     return list;
+}
+
+// ============================================================================
+// Per-network training toggles (runtime-dynamic, no rebuild required)
+// ============================================================================
+//
+// Expose brain->config.train_ann/cnn/snn/lnn ablation flags plus the
+// snn_only_recovery convenience preset and the ensemble_warmup_scale
+// gradual ramp used by the daemon plateau detector. The brain reads
+// these on every brain_learn_vector call so flips take effect
+// immediately with no rebuild or restart required.
+
+#define NIMCP_JNI_TRAIN_TOGGLE(Name, lower) \
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSetTrain##Name( \
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled) { \
+    (void)env; (void)cls; \
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h; \
+    if (!brain) return; \
+    nimcp_brain_set_train_##lower(brain, (bool)enabled); \
+} \
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetTrain##Name( \
+    JNIEnv *env, jclass cls, jlong h) { \
+    (void)env; (void)cls; \
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h; \
+    if (!brain) return JNI_FALSE; \
+    return nimcp_brain_get_train_##lower(brain) ? JNI_TRUE : JNI_FALSE; \
+}
+
+NIMCP_JNI_TRAIN_TOGGLE(Ann, ann)
+NIMCP_JNI_TRAIN_TOGGLE(Cnn, cnn)
+NIMCP_JNI_TRAIN_TOGGLE(Snn, snn)
+NIMCP_JNI_TRAIN_TOGGLE(Lnn, lnn)
+
+#undef NIMCP_JNI_TRAIN_TOGGLE
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSetSnnOnlyRecovery(
+    JNIEnv *env, jclass cls, jlong h, jboolean enabled)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return;
+    nimcp_brain_set_snn_only_recovery(brain, (bool)enabled);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetSnnOnlyRecovery(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return JNI_FALSE;
+    return nimcp_brain_get_snn_only_recovery(brain) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeSetEnsembleWarmupScale(
+    JNIEnv *env, jclass cls, jlong h, jfloat scale)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return;
+    nimcp_brain_set_ensemble_warmup_scale(brain, (float)scale);
+}
+
+JNIEXPORT jfloat JNICALL Java_com_nimcp_NIMCP_00024Brain_nativeGetEnsembleWarmupScale(
+    JNIEnv *env, jclass cls, jlong h)
+{
+    (void)env; (void)cls;
+    nimcp_brain_t brain = (nimcp_brain_t)(uintptr_t)h;
+    if (!brain) return 1.0f;
+    return (jfloat)nimcp_brain_get_ensemble_warmup_scale(brain);
 }

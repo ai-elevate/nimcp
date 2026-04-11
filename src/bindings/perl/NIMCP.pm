@@ -312,6 +312,20 @@ $ffi->attach('nimcp_brain_set_training_mode'  => ['opaque', 'int'] => 'void');
 $ffi->attach('nimcp_brain_set_network_ablation' =>
     ['opaque', 'int', 'int', 'int'] => 'void');
 
+# Per-network training toggles (runtime-dynamic, no rebuild required)
+$ffi->attach('nimcp_brain_set_train_ann' => ['opaque', 'int'] => 'void');
+$ffi->attach('nimcp_brain_get_train_ann' => ['opaque'] => 'int');
+$ffi->attach('nimcp_brain_set_train_cnn' => ['opaque', 'int'] => 'void');
+$ffi->attach('nimcp_brain_get_train_cnn' => ['opaque'] => 'int');
+$ffi->attach('nimcp_brain_set_train_snn' => ['opaque', 'int'] => 'void');
+$ffi->attach('nimcp_brain_get_train_snn' => ['opaque'] => 'int');
+$ffi->attach('nimcp_brain_set_train_lnn' => ['opaque', 'int'] => 'void');
+$ffi->attach('nimcp_brain_get_train_lnn' => ['opaque'] => 'int');
+$ffi->attach('nimcp_brain_set_snn_only_recovery' => ['opaque', 'int'] => 'void');
+$ffi->attach('nimcp_brain_get_snn_only_recovery' => ['opaque'] => 'int');
+$ffi->attach('nimcp_brain_set_ensemble_warmup_scale' => ['opaque', 'float'] => 'void');
+$ffi->attach('nimcp_brain_get_ensemble_warmup_scale' => ['opaque'] => 'float');
+
 # Brain sensory / cortex
 $ffi->attach('nimcp_brain_submit_sensory' =>
     ['opaque', 'string', 'float[]', 'uint32', 'uint32', 'uint32', 'uint32', 'uint32'] => 'int');
@@ -1356,6 +1370,76 @@ sub set_network_ablation {
         $self->{_handle}, $train_cnn, $train_snn, $train_lnn
     );
     return $self;
+}
+
+# --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+
+sub set_train_ann {
+    my ($self, $enabled) = @_;
+    $enabled //= 1;
+    NIMCP::nimcp_brain_set_train_ann($self->{_handle}, $enabled ? 1 : 0);
+    return $self;
+}
+sub get_train_ann {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_get_train_ann($self->{_handle}) ? 1 : 0;
+}
+
+sub set_train_cnn {
+    my ($self, $enabled) = @_;
+    $enabled //= 1;
+    NIMCP::nimcp_brain_set_train_cnn($self->{_handle}, $enabled ? 1 : 0);
+    return $self;
+}
+sub get_train_cnn {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_get_train_cnn($self->{_handle}) ? 1 : 0;
+}
+
+sub set_train_snn {
+    my ($self, $enabled) = @_;
+    $enabled //= 1;
+    NIMCP::nimcp_brain_set_train_snn($self->{_handle}, $enabled ? 1 : 0);
+    return $self;
+}
+sub get_train_snn {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_get_train_snn($self->{_handle}) ? 1 : 0;
+}
+
+sub set_train_lnn {
+    my ($self, $enabled) = @_;
+    $enabled //= 1;
+    NIMCP::nimcp_brain_set_train_lnn($self->{_handle}, $enabled ? 1 : 0);
+    return $self;
+}
+sub get_train_lnn {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_get_train_lnn($self->{_handle}) ? 1 : 0;
+}
+
+# Convenience preset: freeze ANN/CNN/LNN while keeping SNN training.
+sub set_snn_only_recovery {
+    my ($self, $enabled) = @_;
+    $enabled //= 1;
+    NIMCP::nimcp_brain_set_snn_only_recovery($self->{_handle}, $enabled ? 1 : 0);
+    return $self;
+}
+sub get_snn_only_recovery {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_get_snn_only_recovery($self->{_handle}) ? 1 : 0;
+}
+
+# Ensemble warmup scale [0.0, 1.0] — probabilistic gate on non-SNN training.
+sub set_ensemble_warmup_scale {
+    my ($self, $scale) = @_;
+    $scale //= 1.0;
+    NIMCP::nimcp_brain_set_ensemble_warmup_scale($self->{_handle}, $scale + 0.0);
+    return $self;
+}
+sub get_ensemble_warmup_scale {
+    my ($self) = @_;
+    return NIMCP::nimcp_brain_get_ensemble_warmup_scale($self->{_handle});
 }
 
 # --- Sensory / Cortex ---

@@ -878,6 +878,20 @@ extern "C" {
         train_cnn: c_int, train_snn: c_int, train_lnn: c_int,
     );
 
+    // Per-network training toggles (runtime-dynamic, no rebuild needed)
+    fn nimcp_brain_set_train_ann(brain: *mut NimcpBrainHandle, enabled: bool);
+    fn nimcp_brain_get_train_ann(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_set_train_cnn(brain: *mut NimcpBrainHandle, enabled: bool);
+    fn nimcp_brain_get_train_cnn(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_set_train_snn(brain: *mut NimcpBrainHandle, enabled: bool);
+    fn nimcp_brain_get_train_snn(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_set_train_lnn(brain: *mut NimcpBrainHandle, enabled: bool);
+    fn nimcp_brain_get_train_lnn(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_set_snn_only_recovery(brain: *mut NimcpBrainHandle, enabled: bool);
+    fn nimcp_brain_get_snn_only_recovery(brain: *mut NimcpBrainHandle) -> bool;
+    fn nimcp_brain_set_ensemble_warmup_scale(brain: *mut NimcpBrainHandle, scale: c_float);
+    fn nimcp_brain_get_ensemble_warmup_scale(brain: *mut NimcpBrainHandle) -> c_float;
+
     // --- Sensory / cortex ---
     fn nimcp_brain_submit_sensory(
         brain: *mut NimcpBrainHandle,
@@ -2061,6 +2075,57 @@ impl Brain {
 
     pub fn set_network_ablation(&mut self, train_cnn: i32, train_snn: i32, train_lnn: i32) {
         unsafe { nimcp_brain_set_network_ablation(self.handle, train_cnn, train_snn, train_lnn) }
+    }
+
+    // --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+
+    pub fn set_train_ann(&mut self, enabled: bool) {
+        unsafe { nimcp_brain_set_train_ann(self.handle, enabled) }
+    }
+    pub fn get_train_ann(&self) -> bool {
+        unsafe { nimcp_brain_get_train_ann(self.handle) }
+    }
+
+    pub fn set_train_cnn(&mut self, enabled: bool) {
+        unsafe { nimcp_brain_set_train_cnn(self.handle, enabled) }
+    }
+    pub fn get_train_cnn(&self) -> bool {
+        unsafe { nimcp_brain_get_train_cnn(self.handle) }
+    }
+
+    pub fn set_train_snn(&mut self, enabled: bool) {
+        unsafe { nimcp_brain_set_train_snn(self.handle, enabled) }
+    }
+    pub fn get_train_snn(&self) -> bool {
+        unsafe { nimcp_brain_get_train_snn(self.handle) }
+    }
+
+    pub fn set_train_lnn(&mut self, enabled: bool) {
+        unsafe { nimcp_brain_set_train_lnn(self.handle, enabled) }
+    }
+    pub fn get_train_lnn(&self) -> bool {
+        unsafe { nimcp_brain_get_train_lnn(self.handle) }
+    }
+
+    /// Convenience preset: freeze ANN/CNN/LNN while keeping SNN training.
+    /// Used for SNN-only recovery after large BPTT behavior changes.
+    pub fn set_snn_only_recovery(&mut self, enabled: bool) {
+        unsafe { nimcp_brain_set_snn_only_recovery(self.handle, enabled) }
+    }
+    pub fn get_snn_only_recovery(&self) -> bool {
+        unsafe { nimcp_brain_get_snn_only_recovery(self.handle) }
+    }
+
+    /// Ensemble warmup scale [0.0, 1.0] — probabilistic gate on non-SNN
+    /// training. 1.0 = full-rate (default), 0.0 = fully frozen,
+    /// intermediate = Monte-Carlo skip. Used by the daemon plateau
+    /// detector to ramp ANN/CNN/LNN back in gradually after snn-only
+    /// recovery. Out-of-range values are clamped on the C side.
+    pub fn set_ensemble_warmup_scale(&mut self, scale: f32) {
+        unsafe { nimcp_brain_set_ensemble_warmup_scale(self.handle, scale as c_float) }
+    }
+    pub fn get_ensemble_warmup_scale(&self) -> f32 {
+        unsafe { nimcp_brain_get_ensemble_warmup_scale(self.handle) as f32 }
     }
 
     // --- Sensory / Cortex ---

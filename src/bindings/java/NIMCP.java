@@ -374,6 +374,20 @@ public class NIMCP {
         private static native int nativeGetNeuronCount(long h);
         private static native float[] nativeGetUtilizationMetrics(long h);
 
+        // Per-network training toggles (runtime-dynamic, no rebuild required)
+        private static native void nativeSetTrainAnn(long h, boolean enabled);
+        private static native boolean nativeGetTrainAnn(long h);
+        private static native void nativeSetTrainCnn(long h, boolean enabled);
+        private static native boolean nativeGetTrainCnn(long h);
+        private static native void nativeSetTrainSnn(long h, boolean enabled);
+        private static native boolean nativeGetTrainSnn(long h);
+        private static native void nativeSetTrainLnn(long h, boolean enabled);
+        private static native boolean nativeGetTrainLnn(long h);
+        private static native void nativeSetSnnOnlyRecovery(long h, boolean enabled);
+        private static native boolean nativeGetSnnOnlyRecovery(long h);
+        private static native void nativeSetEnsembleWarmupScale(long h, float scale);
+        private static native float nativeGetEnsembleWarmupScale(long h);
+
         // Named snapshots
         private static native int nativeSnapshotSave(long h, String name, String desc);
         private static native long nativeSnapshotRestore(long h, String name);
@@ -590,6 +604,67 @@ public class NIMCP {
         public int getNeuronCount() throws NIMCPException {
             checkOpen();
             return nativeGetNeuronCount(handle);
+        }
+
+        // --- Per-network training toggles (runtime-dynamic, no rebuild required) ---
+        //
+        // Flip any subset of the four sub-networks' training on or off
+        // at runtime. The brain reads these flags on every learn call,
+        // so changes take effect immediately. Useful for ablation
+        // studies, SNN-only recovery, and round-robin training.
+
+        public void setTrainAnn(boolean enabled) throws NIMCPException {
+            checkOpen(); nativeSetTrainAnn(handle, enabled);
+        }
+        public boolean getTrainAnn() throws NIMCPException {
+            checkOpen(); return nativeGetTrainAnn(handle);
+        }
+
+        public void setTrainCnn(boolean enabled) throws NIMCPException {
+            checkOpen(); nativeSetTrainCnn(handle, enabled);
+        }
+        public boolean getTrainCnn() throws NIMCPException {
+            checkOpen(); return nativeGetTrainCnn(handle);
+        }
+
+        public void setTrainSnn(boolean enabled) throws NIMCPException {
+            checkOpen(); nativeSetTrainSnn(handle, enabled);
+        }
+        public boolean getTrainSnn() throws NIMCPException {
+            checkOpen(); return nativeGetTrainSnn(handle);
+        }
+
+        public void setTrainLnn(boolean enabled) throws NIMCPException {
+            checkOpen(); nativeSetTrainLnn(handle, enabled);
+        }
+        public boolean getTrainLnn() throws NIMCPException {
+            checkOpen(); return nativeGetTrainLnn(handle);
+        }
+
+        /**
+         * Convenience preset: freeze ANN/CNN/LNN while keeping SNN
+         * training active. Used to let the SNN re-converge against a
+         * stable ensemble after large BPTT behavior changes.
+         */
+        public void setSnnOnlyRecovery(boolean enabled) throws NIMCPException {
+            checkOpen(); nativeSetSnnOnlyRecovery(handle, enabled);
+        }
+        public boolean getSnnOnlyRecovery() throws NIMCPException {
+            checkOpen(); return nativeGetSnnOnlyRecovery(handle);
+        }
+
+        /**
+         * Probabilistic gate on non-SNN training updates [0.0, 1.0].
+         * 1.0 = full-rate (default), 0.0 = fully frozen, intermediate =
+         * Monte-Carlo skip. Used by the daemon plateau detector to ramp
+         * ANN/CNN/LNN back in gradually after SNN-only recovery.
+         * Clamped to [0.0, 1.0] on the native side.
+         */
+        public void setEnsembleWarmupScale(float scale) throws NIMCPException {
+            checkOpen(); nativeSetEnsembleWarmupScale(handle, scale);
+        }
+        public float getEnsembleWarmupScale() throws NIMCPException {
+            checkOpen(); return nativeGetEnsembleWarmupScale(handle);
         }
 
         public UtilizationMetrics getUtilizationMetrics() throws NIMCPException {
