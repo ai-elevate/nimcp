@@ -310,17 +310,30 @@ int training_dispatch_snn_step(
     }
 
     /* Apply SNN input scaling — boost weak inputs above firing threshold.
-     * Without scaling, Stage 1's show_and_name features may be sub-threshold. */
+     * Uses max-abs normalization so the strongest feature reaches the full
+     * scale (~70 mV), well above the ~20 mV firing threshold, while
+     * preserving relative magnitudes. An earlier implementation used L2
+     * unit-vector normalization (mag = sqrt(sum(x²))) which produced a
+     * per-element value of ~1/sqrt(N) * scale — for 2k-dim inputs that
+     * collapsed each element to ~1.5 mV, sub-threshold, and left the
+     * SNN silent (~1.6 Hz mean, 744 silent neurons) even though the
+     * inference path (which uses min-max [0,1] then *scale) fired normally.
+     * Max-abs keeps training and inference scaling compatible. */
     float _snn_input_scale = _snn_global_input_scale;
     if (input_ptr && input_dim > 0) {
         float* scaled = nimcp_calloc(input_dim, sizeof(float));
         if (scaled) {
-            /* Normalize to unit magnitude, then scale */
-            float mag = 0.0f;
-            for (uint32_t i = 0; i < input_dim; i++) mag += input_ptr[i] * input_ptr[i];
-            mag = sqrtf(mag + 1e-8f);
-            for (uint32_t i = 0; i < input_dim; i++)
-                scaled[i] = (input_ptr[i] / mag) * _snn_input_scale;
+            float max_abs = 0.0f;
+            for (uint32_t i = 0; i < input_dim; i++) {
+                float a = fabsf(input_ptr[i]);
+                if (a > max_abs) max_abs = a;
+            }
+            if (max_abs > 1e-8f) {
+                float inv = _snn_input_scale / max_abs;
+                for (uint32_t i = 0; i < input_dim; i++)
+                    scaled[i] = input_ptr[i] * inv;
+            }
+            /* else: all zeros — leave scaled[] at calloc'd 0.0 */
             snn_network_set_inputs(snn, scaled, input_dim);
             nimcp_free(scaled);
         } else {
