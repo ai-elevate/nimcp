@@ -185,6 +185,10 @@ extern "C" {
 
 typedef struct plasticity_coordinator plasticity_coordinator_t;
 
+/* Forward-declare tpb_context_t to avoid a circular include with the
+ * training-plasticity-bridge header (which depends on many cognitive types). */
+typedef struct tpb_context tpb_context_t;
+
 /* ============================================================================
  * Enumerations
  * ============================================================================ */
@@ -466,6 +470,13 @@ struct plasticity_coordinator {
     /* Runtime state */
     bool bio_async_connected;                      /**< Bio-async is connected */
     bool immune_connected;                         /**< Brain immune is connected */
+
+    /* Backprop gating: when set, plasticity_coordinator_update() skips all
+     * mechanism updates while nimcp_tpb_is_backprop_active() returns true.
+     * This prevents STDP/BCM/homeostatic updates from racing concurrent
+     * gradient-based weight updates during backprop. */
+    tpb_context_t* plasticity_bridge;              /**< Backprop gate (not owned) */
+    uint64_t backprop_gate_skip_count;             /**< Updates skipped due to gate */
 };
 
 /* ============================================================================
@@ -707,6 +718,30 @@ int plasticity_coordinator_resolve_conflict(
 int plasticity_coordinator_set_conflict_strategy(
     plasticity_coordinator_t* coordinator,
     conflict_resolution_strategy_t strategy
+);
+
+/**
+ * @brief Wire the training-plasticity bridge for backprop-aware gating
+ *
+ * WHAT: Register a tpb_context_t* so plasticity_coordinator_update() can
+ *       query nimcp_tpb_is_backprop_active() at the top of each tick and
+ *       early-return when backprop is running.
+ * WHY:  Biological plasticity (STDP/BCM/homeostatic) races the gradient-based
+ *       weight updates performed by backprop, corrupting both. The UTM-side
+ *       gate already protects UTM-owned networks; this closes the gap for
+ *       mechanisms registered with the old coordinator.
+ * HOW:  Store the (non-owned) context pointer on the coordinator. Passing
+ *       NULL disables the gate.
+ *
+ * THREAD-SAFE: Yes (atomic pointer write under coordinator mutex).
+ *
+ * @param coordinator Coordinator
+ * @param tpb         Plasticity bridge context (not owned; NULL to disable)
+ * @return 0 on success, -1 on error
+ */
+int plasticity_coordinator_set_plasticity_bridge(
+    plasticity_coordinator_t* coordinator,
+    tpb_context_t* tpb
 );
 
 /* ============================================================================

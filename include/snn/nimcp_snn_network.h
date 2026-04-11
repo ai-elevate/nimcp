@@ -122,6 +122,22 @@ int snn_network_step(snn_network_t* network, float dt);
  */
 int snn_network_run(snn_network_t* network, float duration_ms);
 
+/**
+ * @brief Update network->stats with derived firing-rate metrics.
+ *
+ * Shared helper so both the inference path (snn_network_run) and the BPTT
+ * training path (snn_backprop_forward) can update the same visible
+ * metrics — mean_firing_rate, max_firing_rate, sparsity, silent_neurons,
+ * hyperactive_neurons, spikes_per_sample. Previously only the inference
+ * path updated these, which made training-time SNN activity invisible
+ * via get_snn_stats RPC.
+ *
+ * @param network       The SNN network (stats will be overwritten).
+ * @param total_spikes  Total spikes accumulated during the run.
+ * @param duration_ms   Simulated duration in milliseconds (for Hz conversion).
+ */
+void snn_network_update_stats(snn_network_t* network, int total_spikes, float duration_ms);
+
 //=============================================================================
 // Performance-Optimized Stepping
 //=============================================================================

@@ -24,6 +24,7 @@
 
 #include "training/nimcp_snn_backprop.h"
 #include "training/nimcp_unified_training.h"
+#include "snn/nimcp_snn_network.h"  /* snn_network_update_stats() */
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "constants/nimcp_constants.h"
 #include "utils/validation/nimcp_common.h"
@@ -1009,9 +1010,12 @@ int snn_backprop_forward(
         snn_network_set_inputs(net, inputs, n_inputs);
     }
 
-    /* Simulate n_steps, recording activations at each step */
+    /* Simulate n_steps, recording activations at each step.
+     * Track cumulative spikes for get_snn_stats visibility into training. */
+    int fwd_total_spikes = 0;
     for (uint32_t t = 0; t < n_steps; t++) {
-        snn_network_step(net, dt);
+        int step_spikes = snn_network_step(net, dt);
+        if (step_spikes >= 0) fwd_total_spikes += step_spikes;
 
         /* Snapshot membrane_v and spike_output from each population */
         float* v_row = act_v + (size_t)t * N;
@@ -1066,6 +1070,18 @@ int snn_backprop_forward(
 
     ctx->last_timesteps = n_steps;
     ctx->stats.total_forward_time_ms += (float)n_steps * dt;
+
+    /* Update network->stats so get_snn_stats RPC reflects training activity,
+     * not just inference. Previously, BPTT ran its own step loop and never
+     * touched network->stats — making training-path spike rates invisible
+     * and hiding the fact that BPTT was silently producing no spikes for
+     * weeks. Uses the same counter pattern as snn_network_run(): accumulate
+     * from snn_network_step()'s return value inside the step loop above. */
+    {
+        float sim_duration_ms = (float)n_steps * dt;
+        snn_network_update_stats(net, fwd_total_spikes, sim_duration_ms);
+    }
+
     return SNN_SUCCESS;
 }
 

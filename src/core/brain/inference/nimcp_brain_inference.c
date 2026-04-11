@@ -47,6 +47,7 @@
 #include "async/nimcp_bio_messages.h"
 
 #include "core/brain/inference/nimcp_brain_inference.h"
+#include "core/brain/nimcp_cognitive_transcript.h"  /* transcript_free() */
 #include <math.h>
 #include <float.h>  // I-H3 FIX: FLT_MAX for NaN-safe argmax
 #include <stdint.h> // SIZE_MAX for W6-13 overflow guard
@@ -249,8 +250,14 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
             uint32_t snn_out = brain->snn_network->config.n_outputs;
             float* snn_buf = nimcp_calloc(snn_out, sizeof(float));
             if (snn_buf) {
+                /* 100ms forward window — LIF neurons with tau_mem=20ms need
+                 * ~61ms to propagate from input → hidden → output. The prior
+                 * value (1.0f ms) produced zero spikes and the SNN blend path
+                 * returned silence, silently zeroing the w_snn contribution to
+                 * decide() output. Matches nimcp_brain_part_helpers.c:978 and
+                 * :1447 which already used 100ms correctly. */
                 snn_network_forward((snn_network_t*)brain->snn_network,
-                                    features, num_features, snn_buf, snn_out, 1.0f);
+                                    features, num_features, snn_buf, snn_out, 100.0f);
                 uint32_t blend_dim = (snn_out < decision->output_size) ?
                                       snn_out : decision->output_size;
                 for (uint32_t j = 0; j < blend_dim; j++) {

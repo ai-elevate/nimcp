@@ -33,7 +33,6 @@
 #include "utils/logging/nimcp_logging.h"
 #include "core/topology/nimcp_community_detection.h"
 #include "utils/algorithms/nimcp_graph_metrics.h"
-#include "utils/containers/nimcp_graph.h"
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -47,78 +46,19 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_topology, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 
 //=============================================================================
-// Static Helper: Build Graph from Brain Topology
-//=============================================================================
-
-/**
- * @brief Build graph representation from brain network
- *
- * WHAT: Convert brain network to graph data structure
- * WHY:  Community detection and graph algorithms need graph format
- * HOW:  Extract neurons and synapses, build adjacency list graph
- *
- * ALGORITHM:
- * 1. Create empty graph
- * 2. Add vertex for each neuron
- * 3. Add edge for each synapse (with absolute weight)
- * 4. Return graph
- *
- * COMPLEXITY: O(N + E) where N = neurons, E = synapses
- *
- * @param brain Brain instance
- * @return Graph or NULL on error
- */
-static NimcpGraph* brain_build_topology_graph(brain_t brain) {
-    if (!brain || !brain->network) {
-        NIMCP_LOGGING_ERROR("brain_build_topology_graph: NULL brain or network");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_build_topology_graph: required parameter is NULL (brain, brain->network)");
-        return NULL;
-    }
-
-    // Create graph
-    NimcpGraph* graph = nimcp_graph_create();
-    if (!graph) {
-        NIMCP_LOGGING_ERROR("brain_build_topology_graph: failed to create graph");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
-
-        return NULL;
-    }
-
-    adaptive_network_t net = brain->network;
-    uint32_t num_neurons = adaptive_network_get_num_neurons(net);
-
-    // Add vertices (neurons)
-    for (uint32_t i = 0; i < num_neurons; i++) {
-        uint32_t vertex_idx = nimcp_graph_add_vertex(graph, i, 0.0F, 0.0F, 0.0F, 0);
-        if (vertex_idx == NIMCP_INVALID_VERTEX) {
-            NIMCP_LOGGING_WARN("Failed to add vertex %u to graph", i);
-        }
-    }
-
-    // Add edges (synapses)
-    // Get synapse connectivity from network
-    for (uint32_t i = 0; i < num_neurons; i++) {
-        for (uint32_t j = 0; j < num_neurons; j++) {
-            // Check if synapse exists from i to j
-            float weight = adaptive_network_get_synapse_weight(net, i, j);
-            if (weight != 0.0F) {
-                // Add edge with absolute weight (direction doesn't matter for community detection)
-                nimcp_weight_t edge_weight = fabsf(weight);
-                if (!nimcp_graph_add_edge(graph, i, j, edge_weight)) {
-                    NIMCP_LOGGING_WARN("Failed to add edge %u -> %u", i, j);
-                }
-            }
-        }
-    }
-
-    NIMCP_LOGGING_INFO("Built topology graph: %u neurons, %u synapses",
-                   graph->vertex_count, graph->edge_count);
-
-    return graph;
-}
-
-//=============================================================================
 // Community Detection
+//
+// NOTE: A former `brain_build_topology_graph()` helper used to live here.
+// It built a NimcpGraph over an O(N^2) dense pair-matrix scan. Every one of
+// its four callers (brain_detect_communities, brain_detect_hubs,
+// brain_compute_topology_metrics, brain_validate_topology) then discarded
+// the graph and passed the raw neural_network_t to community_detect() /
+// community_detect_hubs() / community_validate_topology() — all of which
+// build their own O(E) adjacency list internally via build_adjacency_list().
+// The NimcpGraph was pure dead computation. On a 2.5M-neuron brain the
+// dead-code scan looped at 5K failed-edge warnings per second for an hour
+// (incident Apr 11 2026, first log line nimcp.log.5 09:22:52 UTC, first
+// repair acd404322 + this removal). Helper deleted, callers simplified.
 //=============================================================================
 
 NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
@@ -131,32 +71,22 @@ NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
 
     brain_clear_error();
 
-    // 1. Build graph from brain topology
-    NimcpGraph* graph = brain_build_topology_graph(brain);
-    if (!graph) {
-        NIMCP_LOGGING_ERROR("brain_detect_communities: failed to build graph");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: graph is NULL");
-        return false;
-    }
-
-    // 2. Run Louvain algorithm
+    // Run Louvain algorithm directly on the base network — community_detect()
+    // builds its own O(E) adjacency list internally via build_adjacency_list().
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: failed to get adaptive network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: failed to get base network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: base_network is NULL");
         return false;
     }
     community_structure_t* communities = community_detect(base_network, NULL);
     if (!communities) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: Louvain algorithm failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: communities is NULL");
         return false;
@@ -184,7 +114,6 @@ NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
         }
     }
 
-    nimcp_graph_destroy(graph);
     return true;
 }
 
@@ -218,32 +147,22 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
 
     brain_clear_error();
 
-    // 1. Build graph from brain topology
-    NimcpGraph* graph = brain_build_topology_graph(brain);
-    if (!graph) {
-        NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to build graph");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: graph is NULL");
-        return false;
-    }
-
-    // 2. Run hub detection algorithm
+    // Run hub detection directly on the base network — community_detect_hubs()
+    // builds its own O(E) adjacency list internally via build_adjacency_list().
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to get adaptive network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to get base network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: base_network is NULL");
         return false;
     }
     hub_structure_t* hubs = community_detect_hubs(base_network, threshold);
     if (!hubs) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: hub detection failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: hubs is NULL");
         return false;
@@ -269,7 +188,6 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
         NIMCP_LOGGING_INFO("  ... (%u more hubs)", hubs->num_hubs - 10);
     }
 
-    nimcp_graph_destroy(graph);
     return true;
 }
 
@@ -309,26 +227,16 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
 
     brain_clear_error();
 
-    // 1. Build graph from brain topology
-    NimcpGraph* graph = brain_build_topology_graph(brain);
-    if (!graph) {
-        NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to build graph");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: graph is NULL");
-        return false;
-    }
-
-    // 2. Compute topology metrics using validate function
-    // Convert NimcpGraph to neural_network_t
+    // Compute topology metrics directly on the base network —
+    // community_validate_topology() builds its own O(E) adjacency list.
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to get network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to get base network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: base_network is NULL");
         return false;
@@ -336,13 +244,12 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
 
     topology_validation_t validation = community_validate_topology(base_network, 0.0F);
 
-    // 3. Store results (replace old if exists)
+    // Store results (replace old if exists)
     if (brain->topology_metrics) {
         nimcp_free(brain->topology_metrics);
     }
     brain->topology_metrics = nimcp_malloc(sizeof(topology_validation_t));
     if (!brain->topology_metrics) {
-        nimcp_graph_destroy(graph);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_compute_topology_metrics: brain->topology_metrics is NULL");
         return false;
     }
@@ -372,7 +279,6 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
         NIMCP_LOGGING_WARN("  → Not small-world (σ < 1.0)");
     }
 
-    nimcp_graph_destroy(graph);
     return true;
 }
 
@@ -386,25 +292,16 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
 
     brain_clear_error();
 
-    // 1. Build graph from brain topology
-    NimcpGraph* graph = brain_build_topology_graph(brain);
-    if (!graph) {
-        NIMCP_LOGGING_ERROR("brain_validate_topology: failed to build graph");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: graph is NULL");
-        return false;
-    }
-
-    // 2. Run validation
+    // Run validation directly on the base network —
+    // community_validate_topology() builds its own O(E) adjacency list.
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_validate_topology: failed to get network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
-        nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_validate_topology: failed to get base network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: base_network is NULL");
         return false;
@@ -420,7 +317,6 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
         NIMCP_LOGGING_INFO("Topology validation passed: network is healthy");
     }
 
-    nimcp_graph_destroy(graph);
     return is_valid;
 }
 

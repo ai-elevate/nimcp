@@ -2478,8 +2478,13 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
         if (explanation_generate_from_decision(brain->explanation_gen, brain, decision, &nat_exp)) {
             // Enhance the decision->explanation with natural explanation
             // Format: "WHAT: <what> | WHY: <why> | CONF: <confidence>"
+            /* decision->explanation is 256 bytes; cap each field so the
+             * formatted string can't overflow. nat_exp.what/why/confidence
+             * are 256/512/128 bytes so they could easily exceed the buffer
+             * without field-level truncation. Totals: 6 + 80 + 8 + 120 + 9
+             * + 30 = 253 + null = 254, fits in 256. */
             snprintf(decision->explanation, sizeof(decision->explanation),
-                    "WHAT: %s | WHY: %s | CONF: %s",
+                    "WHAT: %.80s | WHY: %.120s | CONF: %.30s",
                     nat_exp.what, nat_exp.why, nat_exp.confidence);
 
             // Optional: Add symbolic logic proof if available and enabled

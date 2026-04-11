@@ -970,12 +970,17 @@ int genius_snn_send_heartbeat(genius_snn_bridge_t* bridge) {
     return 0;
 }
 
-uint64_t genius_snn_get_last_heartbeat(genius_snn_bridge_t* bridge) {
+uint64_t genius_snn_get_last_heartbeat(const genius_snn_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->base.mutex);
-    uint64_t last_hb = bridge->last_heartbeat_us;
-    nimcp_mutex_unlock(bridge->base.mutex);
+    /* Cast away const for the mutex lock — reading last_heartbeat_us is
+     * logically a read-only operation, but the mutex lock/unlock requires
+     * non-const access. This is a standard C idiom for "logically const"
+     * getters that use mutable internal synchronization. */
+    genius_snn_bridge_t* mut = (genius_snn_bridge_t*)bridge;
+    nimcp_mutex_lock(mut->base.mutex);
+    uint64_t last_hb = mut->last_heartbeat_us;
+    nimcp_mutex_unlock(mut->base.mutex);
     return last_hb;
 }
 

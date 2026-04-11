@@ -626,10 +626,11 @@ int genius_snn_send_heartbeat(genius_snn_bridge_t* bridge);
 
 /**
  * @brief Get last heartbeat timestamp
- * @param bridge Bridge handle
+ * @param bridge Bridge handle (logically const — mutex lock is an
+ *               implementation detail)
  * @return Last heartbeat timestamp in microseconds, 0 on error
  */
-uint64_t genius_snn_get_last_heartbeat(genius_snn_bridge_t* bridge);
+uint64_t genius_snn_get_last_heartbeat(const genius_snn_bridge_t* bridge);
 
 /**
  * @brief Check if heartbeat is stale

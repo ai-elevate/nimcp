@@ -13,6 +13,7 @@
 #include "snn/nimcp_snn.h"
 #include "perception/nimcp_visual_cortex.h"
 #include "training/nimcp_cortex_cnn.h"
+#include "training/nimcp_cnn_training.h"  /* cnn_get_layer_count, cnn_count_parameters */
 
 // =========================================================================
 // Group 0 — Cortex CNN Initialization

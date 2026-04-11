@@ -753,25 +753,23 @@ int snn_network_step(snn_network_t* network, float dt) {
     return total_spikes;
 }
 
-int snn_network_run(snn_network_t* network, float duration_ms) {
-    if (!network) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_network_run: null network pointer");
-        return SNN_ERROR_NULL_POINTER;
-    }
+/**
+ * @brief Compute per-population derived firing-rate stats and write to network->stats.
+ *
+ * Shared helper so both the inference path (snn_network_run) and the BPTT
+ * training path (snn_backprop_forward in src/training/nimcp_snn_backprop.c)
+ * can update the same visible metrics. Before this was extracted, only
+ * snn_network_run updated network->stats, so get_snn_stats RPC reflected
+ * inference activity exclusively — training-time spiking was invisible.
+ * Discovered Apr 11 2026 while verifying the unroll_steps=1000 fix.
+ *
+ * @param network     The network whose populations have just been stepped.
+ * @param total_spikes Total spike count from the run (sum across populations).
+ * @param duration_ms  Simulated duration in milliseconds (for Hz conversion).
+ */
+void snn_network_update_stats(snn_network_t* network, int total_spikes, float duration_ms) {
+    if (!network) return;
 
-    float dt_ms = network->config.dt;
-    int n_steps = (int)(duration_ms / dt_ms);
-    int total_spikes = 0;
-
-    for (int i = 0; i < n_steps; i++) {
-        int spikes = snn_network_step(network, dt_ms);
-        if (spikes < 0) {
-            return spikes;  /* Error code */
-        }
-        total_spikes += spikes;
-    }
-
-    /* Compute derived stats after run completes */
     float duration_s = duration_ms / 1000.0f;
     uint32_t total_neurons = 0;
     uint32_t silent = 0;
@@ -797,7 +795,6 @@ int snn_network_run(snn_network_t* network, float duration_ms) {
         total_neurons += pop->n_neurons;
     }
 
-    /* Update network stats */
     if (total_neurons > 0) {
         network->stats.mean_firing_rate = (duration_s > 0.0f) ?
             (float)total_spikes / (float)total_neurons / duration_s : 0.0f;
@@ -807,7 +804,27 @@ int snn_network_run(snn_network_t* network, float duration_ms) {
         network->stats.hyperactive_neurons = hyperactive;
         network->stats.spikes_per_sample = (float)total_spikes / (float)total_neurons;
     }
+}
 
+int snn_network_run(snn_network_t* network, float duration_ms) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_network_run: null network pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+
+    float dt_ms = network->config.dt;
+    int n_steps = (int)(duration_ms / dt_ms);
+    int total_spikes = 0;
+
+    for (int i = 0; i < n_steps; i++) {
+        int spikes = snn_network_step(network, dt_ms);
+        if (spikes < 0) {
+            return spikes;  /* Error code */
+        }
+        total_spikes += spikes;
+    }
+
+    snn_network_update_stats(network, total_spikes, duration_ms);
     return total_spikes;
 }
 
@@ -1163,6 +1180,8 @@ int snn_network_run_sparse(snn_network_t* network, float duration_ms,
             : 0.0f;
     }
 
+    /* Update network-level stats so get_snn_stats reflects sparse-path runs too. */
+    snn_network_update_stats(network, total_spikes, duration_ms);
     return total_spikes;
 }
 
@@ -1992,15 +2011,28 @@ snn_network_t* snn_network_load(const char* path) {
             if (version >= 2) {
                 target_ids = nimcp_malloc(n_synapses * sizeof(uint32_t));
             }
+            bool synapse_read_truncated = false;
             for (uint32_t s = 0; s < n_synapses; s++) {
                 float w = 0.0f;
-                (void)fread(&w, sizeof(float), 1, f);
+                if (fread(&w, sizeof(float), 1, f) != 1) {
+                    synapse_read_truncated = true;
+                    break;
+                }
                 if (weights) weights[s] = w;
                 if (version >= 2) {
                     uint32_t tid = 0;
-                    (void)fread(&tid, sizeof(uint32_t), 1, f);
+                    if (fread(&tid, sizeof(uint32_t), 1, f) != 1) {
+                        synapse_read_truncated = true;
+                        break;
+                    }
                     if (target_ids) target_ids[s] = tid;
                 }
+            }
+            if (synapse_read_truncated) {
+                NIMCP_LOGGING_WARN("snn_network_load: truncated synapse data at neuron %u", i);
+                nimcp_free(weights);
+                nimcp_free(target_ids);
+                break;
             }
         }
 

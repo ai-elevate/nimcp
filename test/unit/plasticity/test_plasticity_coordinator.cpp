@@ -236,14 +236,19 @@ TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullCoordinator) {
     EXPECT_EQ(result, -1);
 }
 
-TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullHandle) {
+TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullHandleIsAllowed) {
+    /* The coordinator's contract explicitly allows NULL handle and NULL
+     * update_fn for declaration-only registrations — brain init registers
+     * its mechanisms this way (see init_plasticity_coordinator.c where all
+     * 8 bio mechanisms are registered with NULL/NULL). Regressing from
+     * "allowed" to "error" would break brain startup. */
     uint32_t mechanism_id = 0;
 
     int result = plasticity_coordinator_register_mechanism(
         coordinator,
         "test",
         PLASTICITY_TYPE_STDP,
-        nullptr,  // NULL handle
+        nullptr,  // NULL handle — declaration-only
         mock_mechanism_update,
         nullptr,
         0.5f,
@@ -252,10 +257,14 @@ TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullHandle) {
         &mechanism_id
     );
 
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, 0);
+    EXPECT_NE(mechanism_id, 0u);
 }
 
-TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullUpdateFn) {
+TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullUpdateFnIsAllowed) {
+    /* Same rationale as above: NULL update_fn is a valid declaration-only
+     * registration that the coordinator skips during update() (see the
+     * `if (!entry->update_fn) continue;` in plasticity_coordinator_update). */
     MockPlasticityMechanism mock;
     uint32_t mechanism_id = 0;
 
@@ -264,7 +273,7 @@ TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullUpdateFn) {
         "test",
         PLASTICITY_TYPE_STDP,
         &mock,
-        nullptr,  // NULL update function
+        nullptr,  // NULL update_fn — declaration-only
         nullptr,
         0.5f,
         1.0f,
@@ -272,10 +281,15 @@ TEST_F(PlasticityCoordinatorTest, RegisterMechanismNullUpdateFn) {
         &mechanism_id
     );
 
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, 0);
+    EXPECT_NE(mechanism_id, 0u);
 }
 
 TEST_F(PlasticityCoordinatorTest, RegisterAllMechanismTypes) {
+    /* PLASTICITY_TYPE_COUNT is 9 (STRUCTURAL was added after this test was
+     * written). Register all 9 so ids[] is fully initialized — prior version
+     * only registered 8 and left ids[8] as uninitialized stack memory, which
+     * coincidentally compared equal to a legitimate id and spuriously failed. */
     MockPlasticityMechanism mocks[PLASTICITY_TYPE_COUNT];
     uint32_t ids[PLASTICITY_TYPE_COUNT];
 
@@ -287,11 +301,13 @@ TEST_F(PlasticityCoordinatorTest, RegisterAllMechanismTypes) {
     ids[5] = RegisterMockMechanism(&mocks[5], PLASTICITY_TYPE_STP, "stp");
     ids[6] = RegisterMockMechanism(&mocks[6], PLASTICITY_TYPE_ADAPTIVE, "adaptive");
     ids[7] = RegisterMockMechanism(&mocks[7], PLASTICITY_TYPE_PREDICTIVE, "predictive");
+    ids[8] = RegisterMockMechanism(&mocks[8], PLASTICITY_TYPE_STRUCTURAL, "structural");
 
     // All IDs should be unique
     for (int i = 0; i < PLASTICITY_TYPE_COUNT; i++) {
         for (int j = i + 1; j < PLASTICITY_TYPE_COUNT; j++) {
-            EXPECT_NE(ids[i], ids[j]);
+            EXPECT_NE(ids[i], ids[j])
+                << "types " << i << " and " << j << " share id " << ids[i];
         }
     }
 }
@@ -1102,6 +1118,81 @@ TEST_F(PlasticityCoordinatorTest, FailingMechanismUpdate) {
     // Update should handle failure gracefully
     int result = plasticity_coordinator_update(coordinator, 100, 0.01f);
     EXPECT_GE(result, 0);  // Should not return error for mechanism failure
+}
+
+/* ============================================================================
+ * Backprop Gate Tests (Apr 11 2026 storm regression)
+ *
+ * These tests pin down the behavior of the plasticity_bridge gate added
+ * after the edge-storm incident. Without the gate, STDP/BCM/homeostatic
+ * mechanisms raced backprop's gradient writes; the fix was to let the
+ * coordinator query nimcp_tpb_is_backprop_active() at the top of update().
+ * ============================================================================ */
+
+#include "middleware/training/nimcp_training_plasticity_bridge.h"
+
+TEST_F(PlasticityCoordinatorTest, SetPlasticityBridgeNullCoordinatorFails) {
+    tpb_config_t cfg = tpb_config_default();
+    tpb_context_t* tpb = tpb_create(&cfg);
+    ASSERT_NE(tpb, nullptr);
+
+    EXPECT_EQ(plasticity_coordinator_set_plasticity_bridge(nullptr, tpb), -1);
+
+    tpb_destroy(tpb);
+}
+
+TEST_F(PlasticityCoordinatorTest, SetPlasticityBridgeAcceptsNullTpb) {
+    // Passing NULL should disable the gate, not error.
+    int result = plasticity_coordinator_set_plasticity_bridge(coordinator, nullptr);
+    EXPECT_EQ(result, 0);
+}
+
+TEST_F(PlasticityCoordinatorTest, BackpropGateBlocksUpdates) {
+    tpb_config_t cfg = tpb_config_default();
+    tpb_context_t* tpb = tpb_create(&cfg);
+    ASSERT_NE(tpb, nullptr);
+
+    MockPlasticityMechanism mock;
+    RegisterMockMechanism(&mock, PLASTICITY_TYPE_STDP, "stdp", 0.9f, 1.0f, 1);
+
+    EXPECT_EQ(plasticity_coordinator_set_plasticity_bridge(coordinator, tpb), 0);
+
+    // Backprop INACTIVE -> update should run normally.
+    nimcp_tpb_set_backprop_active(tpb, false);
+    plasticity_coordinator_update(coordinator, 100, 0.01f);
+    EXPECT_EQ(mock.update_count, 1);
+
+    // Backprop ACTIVE -> update should early-return; mechanism untouched.
+    nimcp_tpb_set_backprop_active(tpb, true);
+    plasticity_coordinator_update(coordinator, 200, 0.01f);
+    EXPECT_EQ(mock.update_count, 1);  // still 1 — gate prevented the tick
+
+    // Backprop INACTIVE again -> updates resume.
+    nimcp_tpb_set_backprop_active(tpb, false);
+    plasticity_coordinator_update(coordinator, 300, 0.01f);
+    EXPECT_EQ(mock.update_count, 2);
+
+    tpb_destroy(tpb);
+}
+
+TEST_F(PlasticityCoordinatorTest, BackpropGateClearedWhenBridgeNull) {
+    tpb_config_t cfg = tpb_config_default();
+    tpb_context_t* tpb = tpb_create(&cfg);
+    ASSERT_NE(tpb, nullptr);
+    nimcp_tpb_set_backprop_active(tpb, true);
+
+    MockPlasticityMechanism mock;
+    RegisterMockMechanism(&mock, PLASTICITY_TYPE_STDP, "stdp", 0.9f, 1.0f, 1);
+
+    // Gate first ON, then cleared.
+    plasticity_coordinator_set_plasticity_bridge(coordinator, tpb);
+    plasticity_coordinator_set_plasticity_bridge(coordinator, nullptr);
+
+    // With no bridge, tpb's backprop_active flag must not affect updates.
+    plasticity_coordinator_update(coordinator, 100, 0.01f);
+    EXPECT_EQ(mock.update_count, 1);
+
+    tpb_destroy(tpb);
 }
 
 /* ============================================================================

@@ -117,6 +117,7 @@
 #include "gpu/plasticity/nimcp_gpu_plasticity_bridge.h"
 
 #include "core/brain_regions/nimcp_brain_regions.h"
+#include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 
 // Thousand Brains integration (Hawkins cortical columns)
 #include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"
@@ -2249,14 +2250,12 @@ sequential_training:
             tom_observe(brain->theory_of_mind, &obs);
         }
 
-        /* Step 3: Mirror neurons — simulate action observation.
-         * Every 50 training steps, feed current features to mirror neurons
-         * so they learn observation-based representations. */
-        if (brain->mirror_neurons && brain->config.enable_mirror_neurons
-            && (brain->stats.total_learning_steps % 50 == 0)) {
-            brain_observe_action(brain, features, num_features,
-                                  0 /* agent_id: self */);
-        }
+        /* Step 3: Mirror neurons — self-rehearsal removed.
+         * Previously called brain_observe_action(..., agent_id=0) here, but
+         * that API rejects agent_id=0 by contract (0 is reserved as "self"
+         * and the function only accepts observations of *other* agents).
+         * The call was throwing every 50 steps without updating mirror neurons.
+         * A dedicated self-rehearsal API would be needed if this is wanted. */
     }
 
     /* === RECURSIVE COGNITION: Exercise decomposition during training ===
@@ -2364,9 +2363,22 @@ sequential_training:
         }
     }
 
-    /* === INTROSPECTION: Self-monitoring during metacognition training === */
+    /* === INTROSPECTION: Self-monitoring during metacognition training ===
+     * Community detection internally builds an O(E) adjacency list (via
+     * build_adjacency_list in community_detection.c) and runs Louvain.
+     * For a 2.5M-neuron brain at ~150 avg fan-out, a full pass is tens of
+     * seconds of CPU — tolerable occasionally but lethal if fired on every
+     * matching training step. Throttle to at most once per N learning steps
+     * rather than on every metacog/awareness/introspect label.
+     *
+     * History: the Apr 11 2026 incident stalled training for ~1 hour per
+     * call because a former brain_build_topology_graph() helper did an O(N^2)
+     * dense-pair scan (now deleted). The cost today is O(E), but O(E) on
+     * hundreds of millions of synapses is still too expensive to run every
+     * step. */
     if (label && brain->introspection &&
-        (strstr(label, "metacog") || strstr(label, "awareness") || strstr(label, "introspect"))) {
+        (strstr(label, "metacog") || strstr(label, "awareness") || strstr(label, "introspect")) &&
+        (brain->stats.total_learning_steps % 1000 == 0)) {
         connectivity_health_config_t intro_cfg = {0};
         introspection_assess_connectivity_health(brain->introspection, &intro_cfg);
     }
@@ -4529,6 +4541,36 @@ int brain_enable_multi_network_training(brain_t brain)
             if (brain->snn_network) {
                 if (!brain->snn_backprop_ctx) {
                     snn_backprop_config_t bp_cfg = snn_backprop_default_config(SNN_TRAIN_BPTT);
+                    /* BPTT forward window must cover the LIF first-spike latency.
+                     * At dt=0.1ms with tau_mem=20ms, a neuron receiving
+                     * suprathreshold input (scale=70 × feature=0.3 → 21mV)
+                     * first fires at ~61ms. To see multi-layer spike propagation
+                     * (input → hidden → output), BPTT needs a 100ms window.
+                     *
+                     * snn_bptt_default_config(50) sets unroll_steps=50, which
+                     * at dt=0.1ms is only 5ms of simulation — the input layer
+                     * barely gets through its first-spike latency and hidden/
+                     * output layers never receive enough synaptic input to
+                     * spike themselves. Result: zero cross-layer gradient flow,
+                     * i.e. the SNN couldn't learn from BPTT at all despite
+                     * being wired up correctly.
+                     *
+                     * Override to 1000 (the SNN_BPTT_MAX_UNROLL ceiling), which
+                     * gives 100ms of forward simulation. Training throughput
+                     * per SNN step drops ~20× (from 5ms to 100ms sim time) but
+                     * this is the minimum for the SNN to actually learn.
+                     * truncation_length=100 caps the backward pass at 10ms of
+                     * gradient propagation (memory-bounded) while forward
+                     * stays full-length.
+                     *
+                     * History: session 67-68 (Mar 14-15 2026) validated
+                     * "1777 spikes, 23.1Hz, 68% sparsity" on the inference
+                     * path (snn_network_run, no unroll cap). The BPTT path
+                     * has been silently stuck at 5ms sim since snn_backprop
+                     * was first wired, producing essentially no SNN learning.
+                     * Discovered Apr 11 2026 via chat-eval + code walkthrough. */
+                    bp_cfg.bptt.unroll_steps = 1000;
+                    bp_cfg.bptt.truncation_length = 100;
                     bp_cfg.use_gradient_normalization = true;
                     bp_cfg.diversity_loss_weight = 0.1f;
                     brain->snn_backprop_ctx = snn_backprop_create(brain->snn_network, &bp_cfg);
@@ -4656,7 +4698,7 @@ int brain_enable_multi_network_training(brain_t brain)
                                   "suppressed during backprop");
             }
             if (brain->plasticity_coordinator && brain->plasticity_coordinator_enabled) {
-                neural_plasticity_set_plasticity_bridge(
+                plasticity_coordinator_set_plasticity_bridge(
                     brain->plasticity_coordinator, brain->plasticity_bridge);
                 NIMCP_LOGGING_INFO("Plasticity coordinator bridge wired — STDP/BCM gated "
                                   "during backprop");

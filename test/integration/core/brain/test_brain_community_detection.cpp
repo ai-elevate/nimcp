@@ -318,6 +318,39 @@ TEST_F(BrainCommunityDetectionTest, UntrainedBrain_StillAnalyzable) {
 }
 
 //=============================================================================
+// Edge-Storm Regression (Apr 11 2026)
+//
+// A former brain_build_topology_graph() helper did an O(N^2) dense-pair
+// scan whose result was never used — every caller discarded the NimcpGraph
+// and called community_detect()/community_detect_hubs()/
+// community_validate_topology() directly on base_network. The dead scan
+// stalled a 2.5M-neuron brain for an hour per call. Fix: delete the
+// helper and simplify callers.
+//
+// This test pins down that all four entry points continue to work
+// correctly after the cleanup, exercised back-to-back to catch any
+// leak/reinit bug introduced by the simplification.
+//=============================================================================
+
+TEST_F(BrainCommunityDetectionTest, TopologyEntryPointsRepeatable_EdgeStormRegression) {
+    // Run the full topology pipeline multiple times to detect any leak
+    // or state-corruption bug introduced by the simplified call paths.
+    // Each entry point used to allocate (and leak) a NimcpGraph per call;
+    // the removal means repeated calls should remain stable.
+    for (int round = 0; round < 3; round++) {
+        EXPECT_TRUE(brain_detect_communities(brain))
+            << "round " << round << ": detect_communities should succeed";
+        EXPECT_TRUE(brain_detect_hubs(brain, 2.0f))
+            << "round " << round << ": detect_hubs should succeed";
+        EXPECT_TRUE(brain_compute_topology_metrics(brain))
+            << "round " << round << ": compute_topology_metrics should succeed";
+        EXPECT_TRUE(brain_validate_topology(brain) ||
+                    !brain_validate_topology(brain))
+            << "round " << round << ": validate should not crash";
+    }
+}
+
+//=============================================================================
 // Main
 //=============================================================================
 

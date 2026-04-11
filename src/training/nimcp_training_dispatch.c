@@ -351,7 +351,19 @@ int training_dispatch_snn_step(
         uint32_t snn_out = snn->config.n_outputs;
         float* outputs = nimcp_calloc(snn_out, sizeof(float));
         if (outputs) {
-            float duration = 10.0f;  /* 10ms — enough for input neurons to fire (1mV/step × 10 = 10mV, needs ~20 for threshold but with input_current_scale=70 → 3.5mV/step → fires in ~6 steps) */
+            /* 100ms BPTT window is required for multi-layer spike propagation.
+             * Commit 02526d358 cut this to 10ms "to recover training speed",
+             * but with tau_mem=20ms the input layer is the ONLY population that
+             * can fire in 10ms — hidden and output layers need synaptic input
+             * from the input layer to integrate over multiple time constants
+             * before their own membrane reaches threshold. The result was zero
+             * output spikes → zero BPTT gradient → zero SNN learning (confirmed
+             * Apr 11 2026 chat eval: 357 cumulative spikes, 0 Hz mean rate).
+             *
+             * Session 67-68 empirically validated 100ms as the point where the
+             * network produces ~1777 spikes / 23 Hz / 68% sparsity on 768
+             * neurons. Lower values regress to silent-network failure. */
+            float duration = 100.0f;
             rc = snn_backprop_forward(brain->snn_backprop_ctx, input_ptr,
                                        1, duration, outputs);
             if (rc == 0 && targets && num_targets > 0) {

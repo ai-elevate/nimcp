@@ -124,6 +124,19 @@ bool nimcp_brain_factory_init_plasticity_coordinator_subsystem(brain_t brain) {
     brain->plasticity_coordinator = coord;
     brain->plasticity_coordinator_enabled = true;
 
+    /* Wire training-plasticity bridge immediately if already created (it is,
+     * because Wave 12 — nimcp_brain_factory_init_training_subsystem — runs
+     * before this Wave 24 init). This avoids a window where STDP/BCM would
+     * run concurrently with backprop if brain_enable_multi_network_training()
+     * is never called (e.g., inference-only brains that still run
+     * biological plasticity via the coordinator). */
+    if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
+        if (plasticity_coordinator_set_plasticity_bridge(coord, brain->plasticity_bridge) == 0) {
+            NIMCP_LOGGING_DEBUG("Plasticity coordinator wired to training-plasticity bridge "
+                               "for backprop gating");
+        }
+    }
+
     /* Register biological plasticity mechanisms with their update intervals.
      * These drive real-time STDP, BCM, homeostatic scaling, eligibility traces,
      * dendritic computation, STP, adaptive thresholds, and predictive coding. */

@@ -13,6 +13,12 @@
 #include <time.h>
 #include "utils/exception/nimcp_exception_macros.h"
 
+/* Forward declaration of the one tpb API we need here, to avoid pulling in
+ * nimcp_training_plasticity_bridge.h (which transitively includes a large
+ * chunk of cognitive/training headers). tpb_context_t is already forward-
+ * declared in nimcp_plasticity_coordinator.h. */
+extern bool nimcp_tpb_is_backprop_active(tpb_context_t* ctx);
+
 /* ============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
  * ============================================================================ */
@@ -474,6 +480,24 @@ int plasticity_coordinator_update(
     }
     if (dt <= 0.0f) return 0;
 
+    /* Backprop gate: skip all plasticity updates while gradient-based
+     * training is running. Prevents STDP/BCM/homeostatic from racing
+     * the optimizer's weight writes.
+     *
+     * The pointer read uses __atomic_load_n(ACQUIRE) to pair with the
+     * __atomic_store_n(RELEASE) in the setter — so whichever thread
+     * reads sees either the old or the new pointer, never a torn value,
+     * and any writes the setter made prior to storing the pointer are
+     * visible to the reader. The skip counter uses __atomic_fetch_add
+     * to avoid a lost-update race under contention. */
+    tpb_context_t* bridge = __atomic_load_n(&coordinator->plasticity_bridge,
+                                            __ATOMIC_ACQUIRE);
+    if (bridge && nimcp_tpb_is_backprop_active(bridge)) {
+        __atomic_fetch_add(&coordinator->backprop_gate_skip_count, 1,
+                           __ATOMIC_RELAXED);
+        return 0;
+    }
+
     /* Phase 8: Send heartbeat at start of plasticity update */
     plasticity_heartbeat("plasticity_update", 0.0f);
 
@@ -899,6 +923,33 @@ int plasticity_coordinator_set_conflict_strategy(
             conflict_resolution_strategy_to_string(strategy));
     }
 
+    return 0;
+}
+
+int plasticity_coordinator_set_plasticity_bridge(
+    plasticity_coordinator_t* coordinator,
+    tpb_context_t* tpb
+) {
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "plasticity_coordinator_set_plasticity_bridge: coordinator is NULL");
+        return -1;
+    }
+
+    /* Pair with the __ATOMIC_ACQUIRE load in plasticity_coordinator_update().
+     * Mutex is still held so the config-side invariants are consistent, but
+     * the store itself is atomic-release so readers that skip the lock (the
+     * update loop) see a coherent pointer without mutex contention. */
+    nimcp_platform_mutex_lock(coordinator->mutex);
+    __atomic_store_n(&coordinator->plasticity_bridge, tpb, __ATOMIC_RELEASE);
+    __atomic_store_n(&coordinator->backprop_gate_skip_count, 0U, __ATOMIC_RELAXED);
+    nimcp_platform_mutex_unlock(coordinator->mutex);
+
+    if (coordinator->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Plasticity bridge %s — STDP/BCM/homeostatic will be "
+                           "gated during backprop",
+                           tpb ? "wired" : "cleared");
+    }
     return 0;
 }
 

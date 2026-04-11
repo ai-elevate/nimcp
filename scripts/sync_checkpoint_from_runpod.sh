@@ -5,7 +5,7 @@
 
 RKEY="$HOME/.ssh/id_ed25519_runpod"
 RHOST="root@74.2.96.55"
-RPORT=11008
+RPORT=17653
 REMOTE_DIR="/workspace/nimcp/checkpoints/athena"
 LOCAL_DIR="$HOME/nimcp/checkpoints/athena"
 LOG="$HOME/nimcp/sync_checkpoint.log"
