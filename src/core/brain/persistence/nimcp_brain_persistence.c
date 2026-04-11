@@ -381,13 +381,29 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
 
     // Write configuration
     fwrite(&brain->config, sizeof(brain_config_t), 1, meta_file);
-    fwrite(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file);
+
+    /* Guard against inconsistent state: if output_labels is NULL but
+     * num_output_labels > 0 (which can happen if a prior load's cleanup
+     * path freed the array without zeroing the counter), coerce the
+     * counter to zero so we don't iterate a NULL pointer below. */
+    uint32_t save_num_labels = brain->num_output_labels;
+    if (brain->output_labels == NULL) {
+        save_num_labels = 0;
+    }
+    fwrite(&save_num_labels, sizeof(uint32_t), 1, meta_file);
 
     // Write output labels
-    for (uint32_t i = 0; i < brain->num_output_labels; i++) {
-        uint32_t len = strlen(brain->output_labels[i]) + 1;
+    for (uint32_t i = 0; i < save_num_labels; i++) {
+        const char* lbl = brain->output_labels[i];
+        if (lbl == NULL) {
+            /* Skip NULL entries inside the array (partially populated). */
+            uint32_t zero_len = 0;
+            fwrite(&zero_len, sizeof(uint32_t), 1, meta_file);
+            continue;
+        }
+        uint32_t len = (uint32_t)strlen(lbl) + 1;
         fwrite(&len, sizeof(uint32_t), 1, meta_file);
-        fwrite(brain->output_labels[i], len, 1, meta_file);
+        fwrite(lbl, len, 1, meta_file);
     }
 
     // Phase 10.2: Save working memory state
@@ -1246,6 +1262,7 @@ cleanup:
     }
     nimcp_free(brain->output_labels);
     brain->output_labels = NULL;
+    brain->num_output_labels = 0;  /* keep counter consistent with array */
     fclose(meta_file);
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;
