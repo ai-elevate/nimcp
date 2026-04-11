@@ -198,22 +198,27 @@ int lnn_gradient_compute_adjoint(
             NIMCP_LOGGING_WARN("Failed to accumulate gradients at step %d", step);
         }
 
-        // Normalize adjoint per step to target norm (preserves direction, controls magnitude).
-        // Hard clipping to 100.0 crushed gradient variance — optimizer saw constant signal.
-        // Normalization to 10.0 keeps gradient information while preventing explosion.
+        /* Per-step adjoint magnitude guard: clip only when exceeding the
+         * ceiling. Previously this forced norm to exactly 10.0 every
+         * step (both amplifying tiny grads and crushing large ones),
+         * which erased all magnitude information and left the optimizer
+         * seeing a constant-magnitude signal regardless of actual loss
+         * slope. Now: pass-through when norm <= ceiling, scale down when
+         * exceeding (standard gradient clipping). */
         {
             float* nd = (float*)nimcp_tensor_data(adjoint_next);
             size_t nn = nimcp_tensor_numel(adjoint_next);
             float norm_sq = 0.0f;
             for (size_t k = 0; k < nn; k++) norm_sq += nd[k] * nd[k];
             float norm = sqrtf(norm_sq);
-            float target_adjoint_norm = 10.0f;
-            float min_adjoint_norm = 1e-6f;
-            if (norm > min_adjoint_norm) {
-                float scale = target_adjoint_norm / norm;
+            const float adjoint_ceiling = 100.0f;
+            if (norm > adjoint_ceiling) {
+                float scale = adjoint_ceiling / norm;
                 for (size_t k = 0; k < nn; k++) nd[k] *= scale;
-            } else if (norm > 0.0f) {
-                /* Tiny norm — zero out to prevent noise amplification */
+            }
+            /* isfinite check: if any NaN/Inf slipped through, zero out
+             * rather than propagate. */
+            if (!isfinite(norm)) {
                 for (size_t k = 0; k < nn; k++) nd[k] = 0.0f;
             }
         }
@@ -244,16 +249,19 @@ int lnn_gradient_compute_adjoint(
     }
     ctx->last_input_grad = adjoint_current;  /* Transfer ownership */
 
-    // Normalize accumulated parameter gradients to target norm.
-    // This preserves gradient direction (which encodes WHAT to update) while
-    // controlling magnitude (which the optimizer's LR handles).
-    // The downstream training loop applies its own gradient_target_norm (1.0).
+    /* Post-accumulation parameter gradient guard: clip only when
+     * exceeding a ceiling. Preserve magnitude info below the ceiling so
+     * the optimizer can distinguish large vs small loss slopes. The
+     * downstream training loop still applies its own normalization. */
     ctx->gradient_norm = lnn_gradient_norm(ctx);
-    float post_target = 10.0f;  // Match per-step target
-    if (ctx->gradient_norm > 1e-6f) {
-        float scale = post_target / ctx->gradient_norm;
+    const float param_ceiling = 100.0f;
+    if (isfinite(ctx->gradient_norm) && ctx->gradient_norm > param_ceiling) {
+        float scale = param_ceiling / ctx->gradient_norm;
         lnn_gradient_scale(ctx, scale);
-        ctx->gradient_norm = post_target;
+        ctx->gradient_norm = param_ceiling;
+    } else if (!isfinite(ctx->gradient_norm)) {
+        lnn_gradient_reset(ctx);
+        ctx->gradient_norm = 0.0f;
     }
     ctx->max_gradient = fmaxf(ctx->max_gradient, ctx->gradient_norm);
 
