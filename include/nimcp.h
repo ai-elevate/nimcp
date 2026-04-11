@@ -2734,6 +2734,38 @@ void nimcp_shutdown(void);
  */
 void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active);
 
+/* Per-network training ablation (Apr 11 2026).
+ * Toggle whether a given sub-network participates in brain_learn_vector.
+ * Reads occur every training call so flips take effect immediately —
+ * no rebuild or restart required after initial deployment.
+ *
+ * Example: disable CNN training while keeping ANN/SNN/LNN active:
+ *   nimcp_brain_set_train_cnn(brain, false);
+ *
+ * snn_only_recovery is a convenience preset equivalent to
+ *   set_train_ann(false); set_train_cnn(false); set_train_lnn(false);
+ * while leaving train_snn unchanged. Used to let the SNN re-converge
+ * against a frozen ensemble after large BPTT behavior changes.
+ */
+void nimcp_brain_set_train_ann(nimcp_brain_t brain, bool enabled);
+bool nimcp_brain_get_train_ann(nimcp_brain_t brain);
+void nimcp_brain_set_train_cnn(nimcp_brain_t brain, bool enabled);
+bool nimcp_brain_get_train_cnn(nimcp_brain_t brain);
+void nimcp_brain_set_train_snn(nimcp_brain_t brain, bool enabled);
+bool nimcp_brain_get_train_snn(nimcp_brain_t brain);
+void nimcp_brain_set_train_lnn(nimcp_brain_t brain, bool enabled);
+bool nimcp_brain_get_train_lnn(nimcp_brain_t brain);
+void nimcp_brain_set_snn_only_recovery(nimcp_brain_t brain, bool enabled);
+bool nimcp_brain_get_snn_only_recovery(nimcp_brain_t brain);
+
+/* Ensemble warmup scale [0.0, 1.0] — probabilistic gate on non-SNN
+ * training. 1.0 = full-rate (default), 0.0 = fully frozen (same effect
+ * as snn_only_recovery for non-SNN networks), intermediate = Monte-Carlo
+ * skip. Used to ramp ANN/CNN/LNN back in gradually after snn-only
+ * recovery to avoid co-adaptation shock. Clamped to [0.0, 1.0]. */
+void nimcp_brain_set_ensemble_warmup_scale(nimcp_brain_t brain, float scale);
+float nimcp_brain_get_ensemble_warmup_scale(nimcp_brain_t brain);
+
 /**
  * @brief Eagerly initialize all cognitive subsystems that brain_decide() would lazy-init.
  *

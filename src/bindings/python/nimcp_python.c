@@ -6764,6 +6764,53 @@ static PyObject* Brain_set_training_mode_py(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* Per-network training toggles + SNN-only recovery preset.
+ * All accept a single bool and return None; getters take no args and
+ * return a bool. Reads take effect on the next brain_learn_vector call. */
+#define NIMCP_DEFINE_TRAIN_TOGGLE(name) \
+static PyObject* Brain_set_train_##name##_py(BrainObject* self, PyObject* args) { \
+    if (!self->brain) Py_RETURN_NONE; \
+    int enabled; \
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL; \
+    nimcp_brain_set_train_##name(self->brain, (bool)enabled); \
+    Py_RETURN_NONE; \
+} \
+static PyObject* Brain_get_train_##name##_py(BrainObject* self, PyObject* Py_UNUSED(args)) { \
+    if (!self->brain) Py_RETURN_FALSE; \
+    return PyBool_FromLong(nimcp_brain_get_train_##name(self->brain)); \
+}
+
+NIMCP_DEFINE_TRAIN_TOGGLE(ann)
+NIMCP_DEFINE_TRAIN_TOGGLE(cnn)
+NIMCP_DEFINE_TRAIN_TOGGLE(snn)
+NIMCP_DEFINE_TRAIN_TOGGLE(lnn)
+
+#undef NIMCP_DEFINE_TRAIN_TOGGLE
+
+static PyObject* Brain_set_snn_only_recovery_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    int enabled;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_brain_set_snn_only_recovery(self->brain, (bool)enabled);
+    Py_RETURN_NONE;
+}
+static PyObject* Brain_get_snn_only_recovery_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) Py_RETURN_FALSE;
+    return PyBool_FromLong(nimcp_brain_get_snn_only_recovery(self->brain));
+}
+
+static PyObject* Brain_set_ensemble_warmup_scale_py(BrainObject* self, PyObject* args) {
+    if (!self->brain) Py_RETURN_NONE;
+    float scale;
+    if (!PyArg_ParseTuple(args, "f", &scale)) return NULL;
+    nimcp_brain_set_ensemble_warmup_scale(self->brain, scale);
+    Py_RETURN_NONE;
+}
+static PyObject* Brain_get_ensemble_warmup_scale_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) return PyFloat_FromDouble(1.0);
+    return PyFloat_FromDouble((double)nimcp_brain_get_ensemble_warmup_scale(self->brain));
+}
+
 static PyObject* Brain_eager_init_cognitive_py(BrainObject* self, PyObject* Py_UNUSED(args)) {
     if (!self->brain) Py_RETURN_NONE;
     int count = nimcp_brain_eager_init_cognitive(self->brain);
@@ -8652,6 +8699,33 @@ static PyMethodDef Brain_methods[] = {
     // Ablation study support
     {"set_training_mode", (PyCFunction)Brain_set_training_mode_py, METH_VARARGS,
      "Enable/disable training-mode fast path: set_training_mode(active) -> None"},
+    // Per-network training toggles (dynamic, no rebuild)
+    {"set_train_ann", (PyCFunction)Brain_set_train_ann_py, METH_VARARGS,
+     "Enable/disable adaptive/ANN training: set_train_ann(enabled) -> None"},
+    {"get_train_ann", (PyCFunction)Brain_get_train_ann_py, METH_NOARGS,
+     "Query adaptive/ANN training enable state: get_train_ann() -> bool"},
+    {"set_train_cnn", (PyCFunction)Brain_set_train_cnn_py, METH_VARARGS,
+     "Enable/disable CNN training (includes cortex CNNs): set_train_cnn(enabled) -> None"},
+    {"get_train_cnn", (PyCFunction)Brain_get_train_cnn_py, METH_NOARGS,
+     "Query CNN training enable state: get_train_cnn() -> bool"},
+    {"set_train_snn", (PyCFunction)Brain_set_train_snn_py, METH_VARARGS,
+     "Enable/disable SNN training: set_train_snn(enabled) -> None"},
+    {"get_train_snn", (PyCFunction)Brain_get_train_snn_py, METH_NOARGS,
+     "Query SNN training enable state: get_train_snn() -> bool"},
+    {"set_train_lnn", (PyCFunction)Brain_set_train_lnn_py, METH_VARARGS,
+     "Enable/disable LNN training: set_train_lnn(enabled) -> None"},
+    {"get_train_lnn", (PyCFunction)Brain_get_train_lnn_py, METH_NOARGS,
+     "Query LNN training enable state: get_train_lnn() -> bool"},
+    {"set_snn_only_recovery", (PyCFunction)Brain_set_snn_only_recovery_py, METH_VARARGS,
+     "Enable/disable SNN-only recovery mode (freezes ANN/CNN/LNN, keeps SNN): "
+     "set_snn_only_recovery(enabled) -> None"},
+    {"get_snn_only_recovery", (PyCFunction)Brain_get_snn_only_recovery_py, METH_NOARGS,
+     "Query SNN-only recovery mode: get_snn_only_recovery() -> bool"},
+    {"set_ensemble_warmup_scale", (PyCFunction)Brain_set_ensemble_warmup_scale_py, METH_VARARGS,
+     "Set probabilistic gate on non-SNN training [0.0..1.0]: "
+     "set_ensemble_warmup_scale(scale) -> None"},
+    {"get_ensemble_warmup_scale", (PyCFunction)Brain_get_ensemble_warmup_scale_py, METH_NOARGS,
+     "Query ensemble warmup scale: get_ensemble_warmup_scale() -> float"},
     {"eager_init_cognitive", (PyCFunction)Brain_eager_init_cognitive_py, METH_NOARGS,
      "Eagerly init all cognitive subsystems (thread-safe): eager_init_cognitive() -> int (count)"},
     {"set_training_dashboard", (PyCFunction)Brain_set_training_dashboard_py,
@@ -9346,7 +9420,11 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
         int compiled_hash = (int)(compiled_h & 0x7FFFFFFFu);
         int runtime_hash = nimcp_abi_layout_hash();
         if (compiled_hash != runtime_hash) {
-            char msg[256];
+            /* Buffer sized for the full message with both 32-bit ints
+             * (up to 11 chars each) substituted in. The message template
+             * itself is ~290 bytes, so 400 gives headroom without risking
+             * snprintf truncation. */
+            char msg[400];
             snprintf(msg, sizeof(msg),
                 "NIMCP ABI mismatch: Python .so was compiled with struct layout hash %d "
                 "but libnimcp.so has hash %d. Rebuild and reinstall: "

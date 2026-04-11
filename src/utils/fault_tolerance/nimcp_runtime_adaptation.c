@@ -527,8 +527,19 @@ bool runtime_adaptation_load_config(
         return false;
     }
 
-    fread(&ctx->parameters, sizeof(float), RUNTIME_PARAM_COUNT, f);
-    fread(&ctx->features, sizeof(bool), RUNTIME_FEATURE_COUNT, f);
+    /* Track short reads so a truncated file is logged rather than silently
+     * restoring partial state. */
+    size_t got_params = fread(&ctx->parameters, sizeof(float),
+                               RUNTIME_PARAM_COUNT, f);
+    size_t got_features = fread(&ctx->features, sizeof(bool),
+                                 RUNTIME_FEATURE_COUNT, f);
+    if (got_params != RUNTIME_PARAM_COUNT ||
+        got_features != RUNTIME_FEATURE_COUNT) {
+        LOG_WARN("runtime_adaptation_load_config: truncated file %s "
+                 "(params %zu/%d, features %zu/%d)",
+                 filepath, got_params, RUNTIME_PARAM_COUNT,
+                 got_features, RUNTIME_FEATURE_COUNT);
+    }
 
     fclose(f);
     LOG_INFO("Loaded runtime configuration from %s", filepath);

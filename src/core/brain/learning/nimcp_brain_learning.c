@@ -118,6 +118,7 @@
 
 #include "core/brain_regions/nimcp_brain_regions.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
+#include "utils/thread/nimcp_thread_rand.h"  /* NIMCP_TL_RANDF for warmup Monte-Carlo gate */
 
 // Thousand Brains integration (Hawkins cortical columns)
 #include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"
@@ -1087,11 +1088,42 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     }
 
     /* Step 1: Adaptive learns FIRST (primary network, GPU-accelerated)
-     * Must complete before SNN training since SNN may share neural_network_t weights */
+     * Must complete before SNN training since SNN may share neural_network_t weights.
+     *
+     * Ablation gate (Apr 11 2026): the adaptive backprop is gated on
+     * train_ann (default true). When either train_ann is false or
+     * snn_only_recovery_mode is true, the ANN is frozen this step and
+     * loss is set to 0.0 so downstream metrics/guards don't see NaN.
+     *
+     * Warmup gate: if ensemble_warmup_scale < 1.0, the ANN trains with
+     * probability equal to the scale (Monte-Carlo gating). Used to
+     * gradually bring the ANN back online after snn-only recovery
+     * without a sudden co-adaptation jolt. The SNN is exempt.
+     *
+     * Toggleable at runtime via set_train_ann / set_snn_only_recovery /
+     * set_ensemble_warmup_scale. */
     float effective_lr = brain->config.learning_rate * lr_memory_factor;
-    float loss = adaptive_network_learn(brain->network, &example,
-                                         LEARN_MODE_DISTILLATION,
-                                         effective_lr);
+    bool ann_frozen = !brain->config.train_ann || brain->config.snn_only_recovery_mode;
+    /* Apply warmup gate ONLY when not already frozen. The gate uses
+     * NIMCP_TL_RANDF() (thread-local rand_r-based PRNG, seeded per
+     * thread) instead of bare rand() — rand() is global, unseeded by
+     * default, and not thread-safe. Scale == 1.0 always trains; 0.3
+     * trains ~30% of the time; 0.0 never trains. Note: reusing
+     * ann_frozen below means "did not train this step", which also
+     * correctly suppresses the ann_steps metric increment. */
+    if (!ann_frozen && brain->config.ensemble_warmup_scale < 1.0f) {
+        if (NIMCP_TL_RANDF() >= brain->config.ensemble_warmup_scale) {
+            ann_frozen = true;  /* this step only, not a config change */
+        }
+    }
+    float loss;
+    if (ann_frozen) {
+        loss = 0.0f;  /* frozen — ANN weights unchanged this step */
+    } else {
+        loss = adaptive_network_learn(brain->network, &example,
+                                      LEARN_MODE_DISTILLATION,
+                                      effective_lr);
+    }
 
     PROBE_STAGE(brain, PROBE_TRAIN_ADAPTIVE, {
         PROBE_SET_FLOAT(&_ctx, "loss", loss);
@@ -1273,8 +1305,11 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (brain->bptt_count < w) brain->bptt_count++;
 
         /* Replay: walk backward through temporal buffer with discounted LR.
-         * Skip the most recent entry (already learned above). */
-        if (brain->bptt_count > 1) {
+         * Skip the most recent entry (already learned above).
+         * Gated on ann_frozen — BPTT replay is an ANN-specific training
+         * augmentation, so if the ANN is frozen in snn_only_recovery mode
+         * or via train_ann=false, its replay must also be frozen. */
+        if (brain->bptt_count > 1 && !ann_frozen) {
             float discount = brain->bptt_discount;
             float gamma = discount;
             float bptt_lr = brain->config.learning_rate;
@@ -1306,7 +1341,57 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     if (brain->unified_training && brain->config.use_unified_training) {
         /* Unified training path: single composite loss across all networks.
          * Each network receives direct ground truth supervision via MSE gradient,
-         * plus cross-network gradient bridges, shared AdamW + LR scheduling. */
+         * plus cross-network gradient bridges, shared AdamW + LR scheduling.
+         *
+         * Apply dynamic ablation flags BEFORE the UTM step: walk the UTM's
+         * registered networks and enable/disable each based on brain->config
+         * so per-network training toggles affect UTM-managed networks too.
+         * Without this, UTM ignores the flags and trains everything it has
+         * registered regardless. Apr 11 2026 — added to make set_train_*
+         * and set_snn_only_recovery work on the UTM path. */
+        {
+            nimcp_unified_training_manager_t* utm = brain->unified_training;
+            bool recovery = brain->config.snn_only_recovery_mode;
+            float warmup = brain->config.ensemble_warmup_scale;
+            /* Monte-Carlo gate: for each non-SNN network, if warmup < 1.0
+             * and not already frozen, roll a random coin and disable this
+             * step with probability (1 - warmup). Each network rolls
+             * independently so warmup doesn't sync across them. */
+            for (uint32_t n = 0; n < utm->num_networks; n++) {
+                if (!utm->networks[n].ops) continue;
+                bool want_enabled = true;
+                nimcp_trainable_type_t t = utm->networks[n].ops->type;
+                switch (t) {
+                    case NIMCP_TRAINABLE_ADAPTIVE:
+                        want_enabled = brain->config.train_ann && !recovery;
+                        break;
+                    case NIMCP_TRAINABLE_CNN:
+                        want_enabled = brain->config.train_cnn && !recovery;
+                        break;
+                    case NIMCP_TRAINABLE_SNN:
+                        want_enabled = brain->config.train_snn;
+                        break;
+                    case NIMCP_TRAINABLE_LNN:
+                        want_enabled = brain->config.train_lnn && !recovery;
+                        break;
+                    default:
+                        /* Custom/unknown — respect recovery (default freeze). */
+                        want_enabled = !recovery;
+                        break;
+                }
+                /* Apply warmup scale to everything except SNN when not
+                 * already frozen. Uses NIMCP_TL_RANDF (thread-safe) so
+                 * each network's roll is independent and doesn't
+                 * deterministically repeat across runs. */
+                if (want_enabled && t != NIMCP_TRAINABLE_SNN && warmup < 1.0f) {
+                    if (NIMCP_TL_RANDF() >= warmup) {
+                        want_enabled = false;  /* skip this step only */
+                    }
+                }
+                utm->networks[n].enabled = want_enabled;
+            }
+        }
+
         nimcp_utm_step_result_t utm_result = {0};
         int utm_rc = nimcp_utm_step(brain->unified_training,
                                     features, num_features,
@@ -1455,38 +1540,53 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
                 brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
 
+            /* Cortex CNN training gate: frozen if train_cnn is false OR if
+             * in SNN-only recovery mode. Forward pass still runs (for any
+             * downstream embedding consumers), only backward is skipped.
+             * Warmup scale also applies — during warmup, each cortex CNN
+             * backward is rolled independently. */
+            bool cortex_cnn_freeze = !brain->config.train_cnn ||
+                                     brain->config.snn_only_recovery_mode;
+            if (!cortex_cnn_freeze && brain->config.ensemble_warmup_scale < 1.0f) {
+                if (NIMCP_TL_RANDF() >= brain->config.ensemble_warmup_scale) {
+                    cortex_cnn_freeze = true;  /* this step only */
+                }
+            }
+
             if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
                 const float* emb = cortex_cnn_forward_visual(brain->cortex_cnns[0],
                     brain->staged_sensory.visual_frame,
                     brain->staged_sensory.visual_width,
                     brain->staged_sensory.visual_height,
                     brain->staged_sensory.visual_channels);
-                if (emb) cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
+                if (emb && !cortex_cnn_freeze) cortex_cnn_backward(brain->cortex_cnns[0], label, num_out);
             }
             if (brain->cortex_cnns[1] && brain->staged_sensory.audio_data) {
                 const float* emb = cortex_cnn_forward_audio(brain->cortex_cnns[1],
                     brain->staged_sensory.audio_data,
                     brain->staged_sensory.audio_size);
-                if (emb) cortex_cnn_backward(brain->cortex_cnns[1], label, num_out);
+                if (emb && !cortex_cnn_freeze) cortex_cnn_backward(brain->cortex_cnns[1], label, num_out);
             }
             if (brain->cortex_cnns[2] && brain->staged_sensory.speech_data) {
                 const float* emb = cortex_cnn_forward_speech(brain->cortex_cnns[2],
                     brain->staged_sensory.speech_data,
                     brain->staged_sensory.speech_size);
-                if (emb) cortex_cnn_backward(brain->cortex_cnns[2], label, num_out);
+                if (emb && !cortex_cnn_freeze) cortex_cnn_backward(brain->cortex_cnns[2], label, num_out);
             }
             if (brain->cortex_cnns[3] && brain->staged_sensory.somato_data) {
                 const float* emb = cortex_cnn_forward_somato(brain->cortex_cnns[3],
                     brain->staged_sensory.somato_data,
                     brain->staged_sensory.somato_segments);
-                if (emb) cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
+                if (emb && !cortex_cnn_freeze) cortex_cnn_backward(brain->cortex_cnns[3], label, num_out);
             }
         }
 
         /* SNN step: run spiking network with current input features.
          * The UTM adapter may or may not step the SNN (depends on registration timing).
-         * Call directly here to guarantee the SNN gets stepped every learn_vector. */
-        if (brain->snn_network && brain->snn_training_ctx) {
+         * Call directly here to guarantee the SNN gets stepped every learn_vector.
+         * Gated on train_snn so disabling SNN training at runtime actually
+         * disables it in the UTM path as well. */
+        if (brain->snn_network && brain->snn_training_ctx && brain->config.train_snn) {
             training_dispatch_result_t snn_res = {0};
             training_dispatch_snn_step(brain, features, num_features,
                                        target, target_size, &snn_res);
@@ -1502,10 +1602,16 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             }
         }
     } else {
-        /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes) */
-        bool has_cnn = (label && label[0]) && brain->config.train_cnn;
+        /* Legacy path: secondary networks learn IN PARALLEL (after adaptive completes).
+         * Each has_* gate reads the per-network train_* flag, plus the
+         * snn_only_recovery_mode override (which freezes everything
+         * except SNN when set). SNN respects train_snn even in recovery
+         * mode — the whole point of recovery mode is SNN-only training,
+         * so disabling train_snn while in recovery makes no sense. */
+        bool recovery = brain->config.snn_only_recovery_mode;
+        bool has_cnn = (label && label[0]) && brain->config.train_cnn && !recovery;
         bool has_snn = (brain->snn_network && brain->snn_training_ctx && brain->config.train_snn);
-        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && brain->config.train_lnn);
+        bool has_lnn = (brain->lnn_network && brain->lnn_training_ctx && brain->config.train_lnn && !recovery);
         int secondary_count = (has_cnn ? 1 : 0) + (has_snn ? 1 : 0) + (has_lnn ? 1 : 0);
 
         if (brain->inference_pool && secondary_count >= 2) {
@@ -1834,8 +1940,12 @@ sequential_training:
         loss = l_sum / w_sum;
     }
 
-    /* --- Per-network metrics tracking (ablation analysis) --- */
-    {
+    /* --- Per-network metrics tracking (ablation analysis) ---
+     * Only update ANN metrics when the ANN was actually trained this call.
+     * Without this guard, ann_steps climbs even when the ANN is frozen
+     * via snn_only_recovery_mode or train_ann=false, making monitoring
+     * misleading. */
+    if (!ann_frozen) {
         const float ema_alpha = 0.01f;
         brain->network_metrics.last_ann_loss = loss;
         brain->network_metrics.ann_steps++;

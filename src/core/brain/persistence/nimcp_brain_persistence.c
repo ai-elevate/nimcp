@@ -848,6 +848,25 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
      * This handles struct growth across versions without breaking checkpoints. */
     memset(&brain->config, 0, sizeof(brain_config_t));
     size_t config_bytes = fread(&brain->config, 1, sizeof(brain_config_t), meta_file);
+
+    /* Post-load migration for fields added without a checkpoint version
+     * bump. The offsetof-based detection approach was fragile across the
+     * Apr 11 2026 struct-shift incident (where one build had fields
+     * inserted mid-struct, then a later build moved them to the end —
+     * making it hard to compute "was this field in the file" via raw size
+     * comparisons). Instead, we unconditionally re-apply the defaults for
+     * trailing fields that have specific non-zero defaults, AFTER the
+     * fread. Users who want different values (e.g. set_train_ann(false)
+     * for an ablation study) must call the setter RPC after load; the
+     * saved-vs-loaded round-trip is not preserved for these flags.
+     *
+     * This is a stopgap until the checkpoint format gets a proper version
+     * header + field-list manifest. For now it keeps training_mode_active
+     * (existing pre-Apr-11 field), train_ann (Apr 11), and
+     * snn_only_recovery_mode (Apr 11) at their correct init-config defaults. */
+    brain->config.train_ann = true;  /* default: ANN training enabled */
+    brain->config.snn_only_recovery_mode = false;  /* default: normal joint training */
+    brain->config.ensemble_warmup_scale = 1.0f;    /* default: full-rate, no warmup */
     if (config_bytes == 0) {
         fprintf(stderr, "ERROR: Failed to read brain config (0 bytes)\n");
         fclose(meta_file);
@@ -1122,10 +1141,14 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
             if (fread(&saved_lr, sizeof(float), 1, meta_file) == 1 && saved_lr > 0.0f) {
                 brain->config.learning_rate = saved_lr;
             }
-            (void)fread(&brain->last_curiosity_drive, sizeof(float), 1, meta_file);
-            (void)fread(&brain->last_novelty_score, sizeof(float), 1, meta_file);
-            (void)fread(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
-            (void)fread(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
+            /* These 4 fields are optional-tail data; short reads leave the
+             * memset defaults which is acceptable. Track the return values
+             * to silence -Wunused-result, but don't bail on truncation. */
+            size_t _r1 = fread(&brain->last_curiosity_drive, sizeof(float), 1, meta_file);
+            size_t _r2 = fread(&brain->last_novelty_score, sizeof(float), 1, meta_file);
+            size_t _r3 = fread(&brain->stats.total_inferences, sizeof(uint64_t), 1, meta_file);
+            size_t _r4 = fread(&brain->stats.total_learning_steps, sizeof(uint64_t), 1, meta_file);
+            (void)_r1; (void)_r2; (void)_r3; (void)_r4;
         }
         fprintf(stderr, "[INFO] Restored training state: LR=%.6f, loss_count=%u, "
                 "inferences=%lu, learning_steps=%lu\n",
@@ -1994,18 +2017,24 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
         return false;
     }
 
-    // Delete metadata file if it exists
+    /* Delete metadata file if it exists. Source and dest buffers are both
+     * NIMCP_DWARF_PATH_SIZE; appending a suffix could overflow if the base
+     * path is at max length. Cap source to (SIZE - suffix length - 1) via
+     * %.*s so the result always fits. Longest suffix is ".knowledge" = 10. */
     char meta_path[NIMCP_DWARF_PATH_SIZE];
-    snprintf(meta_path, sizeof(meta_path), "%s.info", snapshot_path);
+    snprintf(meta_path, sizeof(meta_path), "%.*s.info",
+             (int)(NIMCP_DWARF_PATH_SIZE - 6), snapshot_path);
     remove(meta_path);  // Ignore error
 
     // Delete .meta file if it exists
-    snprintf(meta_path, sizeof(meta_path), "%s.meta", snapshot_path);
+    snprintf(meta_path, sizeof(meta_path), "%.*s.meta",
+             (int)(NIMCP_DWARF_PATH_SIZE - 6), snapshot_path);
     remove(meta_path);  // Ignore error
 
     // Delete .knowledge file if it exists
     char knowledge_path[NIMCP_DWARF_PATH_SIZE];
-    snprintf(knowledge_path, sizeof(knowledge_path), "%s.knowledge", snapshot_path);
+    snprintf(knowledge_path, sizeof(knowledge_path), "%.*s.knowledge",
+             (int)(NIMCP_DWARF_PATH_SIZE - 11), snapshot_path);
     remove(knowledge_path);  // Ignore error
 
     // Update statistics

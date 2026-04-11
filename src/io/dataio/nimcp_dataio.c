@@ -2096,19 +2096,21 @@ float brain_train_from_dataset_streaming(brain_t brain, dataset_t dataset, uint3
             break;  // End of dataset
         }
 
-        // Train on batch using nimcp_brain_learn_example for each sample
-        // WHAT: Train brain on each sample in the batch
-        // WHY: Implements actual training that was previously stubbed
-        // HOW: Call nimcp_brain_learn_example with features, label, and full confidence
+        /* Train on batch using the internal brain_learn_example (brain_t
+         * overload). The public nimcp_brain_learn_example() takes
+         * nimcp_brain_t (public handle) but our local `brain` is the
+         * internal brain_t pointer, so use the internal entry point
+         * directly. Returns loss (<0 on error) rather than nimcp_status_t. */
         uint32_t num_features = dataset->config.num_feature_columns;
         for (uint32_t i = 0; i < batch.num_samples; i++) {
-            nimcp_status_t result = nimcp_brain_learn_example(
+            float loss_val = brain_learn_example(
                 brain,
                 batch.features[i],
                 num_features,
                 batch.labels[i],
                 1.0F  // Full confidence for training examples
             );
+            nimcp_status_t result = (loss_val >= 0.0f) ? NIMCP_OK : NIMCP_ERROR;
             if (result == NIMCP_OK) {
                 // Training succeeded - accumulate for average loss computation
                 // Note: nimcp_brain_learn_example doesn't return loss directly,

@@ -410,8 +410,11 @@ int core_directives_evaluate(core_directives_system_t* system,
             if (comb_result.is_combinatorial_harm) {
                 evaluation->result = DIRECTIVE_RESULT_BLOCK_COMBINATORIAL;
                 evaluation->combinatorial_passed = false;
+                /* Cap harm_description to leave room for the prefix in a
+                 * DIRECTIVE_REASON_MAX (512) buffer. "Combinatorial harm: "
+                 * is 20 chars + null = 21, so 490 chars fit cleanly. */
                 snprintf(evaluation->blocking_reason, DIRECTIVE_REASON_MAX,
-                         "Combinatorial harm: %s", comb_result.harm_description);
+                         "Combinatorial harm: %.490s", comb_result.harm_description);
                 system->stats.blocked_combinatorial++;
                 goto evaluation_complete;
             }

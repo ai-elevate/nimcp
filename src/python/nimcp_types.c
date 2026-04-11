@@ -287,7 +287,7 @@ static PyObject* Brain_set_active_modalities(BrainObject* self, PyObject* args)
         PyErr_SetString(NIMCPError, "Brain not initialized");
         return NULL;
     }
-    brain_set_active_modalities(self->brain, (uint32_t)flags);
+    brain_set_active_modalities(self->brain->internal_brain, (uint32_t)flags);
     Py_RETURN_NONE;
 }
 
@@ -298,7 +298,7 @@ static PyObject* Brain_get_active_modalities(BrainObject* self, PyObject* Py_UNU
         PyErr_SetString(NIMCPError, "Brain not initialized");
         return NULL;
     }
-    uint32_t flags = brain_get_active_modalities(self->brain);
+    uint32_t flags = brain_get_active_modalities(self->brain->internal_brain);
     return PyLong_FromUnsignedLong(flags);
 }
 
@@ -375,7 +375,7 @@ static PyObject* Brain_submit_sensory(BrainObject* self, PyObject* args, PyObjec
         raw_data = (uint8_t*)float_buf;
         data_size = (uint32_t)(n * sizeof(float));
         // Call submit, then free
-        int rc = brain_submit_sensory(self->brain, modality_flag,
+        int rc = brain_submit_sensory(self->brain->internal_brain, modality_flag,
                                        raw_data, data_size, width, height, channels);
         free(float_buf);
         if (rc != 0) {
@@ -390,7 +390,7 @@ static PyObject* Brain_submit_sensory(BrainObject* self, PyObject* args, PyObjec
     }
 
     // Buffer protocol path
-    int rc = brain_submit_sensory(self->brain, modality_flag,
+    int rc = brain_submit_sensory(self->brain->internal_brain, modality_flag,
                                    raw_data, data_size, width, height, channels);
     PyBuffer_Release(&buf);
     if (rc != 0) {

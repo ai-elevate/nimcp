@@ -243,7 +243,9 @@ vcs_type_t vcs_detect_type(const char* path) {
     char* last_slash = strrchr(parent, '/');
     while (last_slash && last_slash != parent) {
         *last_slash = '\0';
-        snprintf(git_path, sizeof(git_path), "%s/.git", parent);
+        /* Cap source to VCS_MAX_PATH - 6 (/.git + null) so the
+         * destination can't overflow. */
+        snprintf(git_path, sizeof(git_path), "%.506s/.git", parent);
         if (stat(git_path, &st) == 0) {
             return VCS_TYPE_GIT;
         }
@@ -277,12 +279,14 @@ int vcs_write_fix(
 
     nimcp_mutex_lock(vcs->mutex);
 
-    /* Check file exists */
+    /* Check file exists. error_message is 256 bytes; source_file can be
+     * up to VCS_MAX_PATH (512). Cap the path so "File not found: <path>"
+     * (16 + path + null) fits in 256 → path limit 239. */
     struct stat st;
     if (stat(request->source_file, &st) != 0) {
         result->error = VCS_ERR_FILE_NOT_FOUND;
         snprintf(result->error_message, sizeof(result->error_message),
-                 "File not found: %s", request->source_file);
+                 "File not found: %.239s", request->source_file);
         nimcp_mutex_unlock(vcs->mutex);
         return VCS_ERR_FILE_NOT_FOUND;
     }
@@ -301,13 +305,13 @@ int vcs_write_fix(
         vcs->stats.backups_created++;
     }
 
-    /* Read existing file */
+    /* Read existing file. Same 239-char path cap as above. */
     char** lines = NULL;
     uint32_t line_count = 0;
     if (read_file_lines(request->source_file, &lines, &line_count) != 0) {
         result->error = VCS_ERR_WRITE_FAILED;
         snprintf(result->error_message, sizeof(result->error_message),
-                 "Failed to read file: %s", request->source_file);
+                 "Failed to read file: %.234s", request->source_file);
         nimcp_mutex_unlock(vcs->mutex);
         return VCS_ERR_WRITE_FAILED;
     }
@@ -385,7 +389,7 @@ int vcs_write_fix(
         free_file_lines(lines, line_count);
         result->error = VCS_ERR_WRITE_FAILED;
         snprintf(result->error_message, sizeof(result->error_message),
-                 "Failed to write file: %s", request->source_file);
+                 "Failed to write file: %.233s", request->source_file);
         nimcp_mutex_unlock(vcs->mutex);
         return VCS_ERR_WRITE_FAILED;
     }
@@ -483,29 +487,34 @@ int vcs_git_commit(
 
     nimcp_mutex_lock(vcs->mutex);
 
-    /* Build commit command */
-    char cmd[VCS_MAX_PATH * 2];
+    /* Build commit command. cmd must be large enough to hold
+     *   git commit --author="<256> <<256>>" -m "<1024>"
+     * plus fixed chars. Worst case ≈ 1600 bytes. Size cmd generously. */
+    char cmd[VCS_MAX_COMMIT_MSG + (VCS_MAX_AUTHOR * 2) + 128];
     char message[VCS_MAX_COMMIT_MSG];
 
     if (request->message[0]) {
         strncpy(message, request->message, sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';
     } else {
-        /* Auto-generate message */
+        /* Auto-generate message. commit_prefix[64] + literal(19) +
+         * file_path up to 512 = ~595 bytes, fits in 1024. */
         snprintf(message, sizeof(message),
-                 "%sAutonomous fix for %s",
+                 "%.60sAutonomous fix for %.500s",
                  vcs->config.commit_prefix,
                  request->file_path[0] ? request->file_path : "code issue");
     }
 
-    /* Build command with author if set */
+    /* Build command with author if set. Field-level caps keep the
+     * formatted total under cmd's capacity. */
     if (vcs->config.author_name[0] && vcs->config.author_email[0]) {
         snprintf(cmd, sizeof(cmd),
-                 "git commit --author=\"%s <%s>\" -m \"%s\"",
+                 "git commit --author=\"%.255s <%.255s>\" -m \"%.1020s\"",
                  vcs->config.author_name,
                  vcs->config.author_email,
                  message);
     } else {
-        snprintf(cmd, sizeof(cmd), "git commit -m \"%s\"", message);
+        snprintf(cmd, sizeof(cmd), "git commit -m \"%.1020s\"", message);
     }
 
     char output[NIMCP_LOG_BUFFER_SIZE];

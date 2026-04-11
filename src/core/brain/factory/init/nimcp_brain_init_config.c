@@ -409,11 +409,15 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->enable_executive_control = !minimal;
     config->enable_epistemic_filter = !minimal;
 
-    // Network ablation flags (all enabled by default)
+    // Network ablation flags (all enabled by default). Dynamically
+    // toggleable at runtime via the set_train_ann/cnn/snn/lnn RPCs.
+    config->train_ann = true;
     config->train_cnn = true;
     config->train_snn = true;
     config->train_lnn = true;
     config->training_mode_active = false;  // Set to true during training to skip cognitive modules
+    config->snn_only_recovery_mode = false;  // Normal joint training by default
+    config->ensemble_warmup_scale = 1.0f;    // Full-rate ensemble training by default
 
     // Intuitive Physics defaults
     config->enable_intuitive_physics = !minimal;

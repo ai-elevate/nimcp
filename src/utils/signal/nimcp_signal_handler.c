@@ -127,7 +127,11 @@ typedef struct {
     volatile sigjmp_buf buf;
 } volatile_jmpbuf_t;
 static __thread volatile_jmpbuf_t g_recovery_jump_wrapper;
-#define g_recovery_jump_buf (g_recovery_jump_wrapper.buf)
+/* Cast away volatile when passing to sigsetjmp/siglongjmp, which don't
+ * accept volatile-qualified arguments. The volatile on the wrapper field
+ * ensures compiler-level memory ordering around the jmp_buf storage;
+ * the runtime functions operate on the raw bytes regardless. */
+#define g_recovery_jump_buf (*(sigjmp_buf*)(void*)&g_recovery_jump_wrapper.buf)
 
 /**
  * @brief Flag indicating crash is being handled by code immune
@@ -217,7 +221,11 @@ static size_t safe_strlen(const char* s)
 static void safe_write(const char* msg)
 {
     if (msg) {
-        write(STDERR_FILENO, msg, safe_strlen(msg));
+        /* Discard return value: we're in a signal handler with no safe
+         * way to recover from a failed write. The `_r; (void)_r` dance
+         * satisfies gcc's __warn_unused_result__ on glibc write(). */
+        ssize_t _r = write(STDERR_FILENO, msg, safe_strlen(msg));
+        (void)_r;
     }
 }
 
@@ -279,9 +287,10 @@ static void safe_write_int(int value)
         buf[i++] = '-';
     }
 
-    // Write in forward order
+    // Write in forward order (signal handler — discard return value)
     for (int j = i - 1; j >= 0; j--) {
-        write(STDERR_FILENO, &buf[j], 1);
+        ssize_t _r = write(STDERR_FILENO, &buf[j], 1);
+        (void)_r;
     }
 }
 
@@ -312,9 +321,10 @@ static void safe_write_hex(uintptr_t value)
     const char* hex = "0123456789abcdef";
     int i = 0;
 
-    /* Handle zero specially */
+    /* Handle zero specially (signal handler — discard return value) */
     if (value == 0) {
-        write(STDERR_FILENO, "0x0", 3);
+        ssize_t _r = write(STDERR_FILENO, "0x0", 3);
+        (void)_r;
         return;
     }
 
@@ -324,12 +334,16 @@ static void safe_write_hex(uintptr_t value)
         value >>= 4;
     }
 
-    /* Write "0x" prefix */
-    write(STDERR_FILENO, "0x", 2);
+    /* Write "0x" prefix. We're in a signal handler — if the write fails
+     * there's nothing safe we can do about it (no LOG, no errno handling),
+     * so we explicitly discard the return value via a comma expression.
+     * Plain `(void)write(...)` is rejected by gcc's __warn_unused_result__
+     * attribute on glibc's write(); the `if (r) {}` idiom satisfies it. */
+    { ssize_t _r = write(STDERR_FILENO, "0x", 2); (void)_r; }
 
     /* Write in forward order */
     for (int j = i - 1; j >= 0; j--) {
-        write(STDERR_FILENO, &buf[j], 1);
+        ssize_t _r = write(STDERR_FILENO, &buf[j], 1); (void)_r;
     }
 }
 

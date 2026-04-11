@@ -341,16 +341,20 @@ static bool filesystem_initialize(void** context, const replication_config_t* co
         }
     }
 
-    // Create brains subdirectory
+    /* Create brains/nodes subdirectories. shared_dir and the *_dir
+     * destination are both NIMCP_METRICS_PATH_SIZE=512 bytes, so
+     * appending a suffix could overflow without capping the source.
+     * Longest fixed suffix here is "/brains" (7 bytes + null). Keep
+     * a 500-byte cap so any suffix up to 11 bytes fits cleanly. */
     char brains_dir[NIMCP_METRICS_PATH_SIZE];
-    snprintf(brains_dir, sizeof(brains_dir), "%s/brains", fs_ctx->shared_dir);
+    snprintf(brains_dir, sizeof(brains_dir), "%.500s/brains", fs_ctx->shared_dir);
     if (stat(brains_dir, &st) == -1) {
         mkdir(brains_dir, 0755);
     }
 
     // Create nodes subdirectory for heartbeats
     char nodes_dir[NIMCP_METRICS_PATH_SIZE];
-    snprintf(nodes_dir, sizeof(nodes_dir), "%s/nodes", fs_ctx->shared_dir);
+    snprintf(nodes_dir, sizeof(nodes_dir), "%.500s/nodes", fs_ctx->shared_dir);
     if (stat(nodes_dir, &st) == -1) {
         mkdir(nodes_dir, 0755);
     }
@@ -375,10 +379,13 @@ static void filesystem_shutdown(void* context)
 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
-    // Remove heartbeat file
+    /* Remove heartbeat file. node_id is up to 64 bytes, so we need
+     * shared_dir capped at 512 - 7 (/nodes/) - 64 (id) - 10 (.heartbeat) - 1
+     * ≈ 430 to safely fit. Use 420 for margin. */
     char heartbeat_path[NIMCP_METRICS_PATH_SIZE];
-    snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
-             fs_ctx->node_id);
+    snprintf(heartbeat_path, sizeof(heartbeat_path),
+             "%.420s/nodes/%.64s.heartbeat",
+             fs_ctx->shared_dir, fs_ctx->node_id);
     remove(heartbeat_path);
 
     nimcp_free(fs_ctx);
@@ -405,9 +412,13 @@ static bool filesystem_store_brain(void* context, const char* brain_name, const 
 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
-    // Create brain file path
+    /* Create brain file path. shared_dir[512] + "/brains/" (8) +
+     * brain_name (up to ~128) + ".nimcp" (6) must fit in 512. Cap
+     * shared_dir to 350, brain_name to 128, leaving safe headroom.
+     * tmp_path appends ".tmp" (4) — also cap brain_path in that copy. */
     char brain_path[NIMCP_METRICS_PATH_SIZE];
-    snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
+    snprintf(brain_path, sizeof(brain_path), "%.350s/brains/%.128s.nimcp",
+             fs_ctx->shared_dir, brain_name);
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(brain_path)) {
@@ -418,7 +429,7 @@ static bool filesystem_store_brain(void* context, const char* brain_name, const 
 
     // Write to temporary file first (atomic operation)
     char tmp_path[NIMCP_METRICS_PATH_SIZE];
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", brain_path);
+    snprintf(tmp_path, sizeof(tmp_path), "%.500s.tmp", brain_path);
 
     // P1-3 fix: Path traversal validation for temp path
     if (!nimcp_path_is_safe(tmp_path)) {
@@ -479,9 +490,11 @@ static bool filesystem_retrieve_brain(void* context, const char* brain_name, voi
 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
-    // Create brain file path
+    /* Create brain file path (retrieve). Same cap as filesystem_store_brain
+     * above: shared_dir ≤ 350, brain_name ≤ 128, fits in 512 with suffix. */
     char brain_path[NIMCP_METRICS_PATH_SIZE];
-    snprintf(brain_path, sizeof(brain_path), "%s/brains/%s.nimcp", fs_ctx->shared_dir, brain_name);
+    snprintf(brain_path, sizeof(brain_path), "%.350s/brains/%.128s.nimcp",
+             fs_ctx->shared_dir, brain_name);
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(brain_path)) {
@@ -553,7 +566,7 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
     char nodes_dir[NIMCP_METRICS_PATH_SIZE];
-    snprintf(nodes_dir, sizeof(nodes_dir), "%s/nodes", fs_ctx->shared_dir);
+    snprintf(nodes_dir, sizeof(nodes_dir), "%.500s/nodes", fs_ctx->shared_dir);
 
     // Open directory
     DIR* dir = opendir(nodes_dir);
@@ -582,9 +595,11 @@ static uint32_t filesystem_get_nodes(void* context, cluster_node_t* nodes, uint3
         if (!strstr(entry->d_name, ".heartbeat"))
             continue;
 
-        // Get file stats
+        /* Get file stats. dirent.d_name is up to 256 bytes (NAME_MAX),
+         * so cap nodes_dir to leave room. */
         char heartbeat_path[NIMCP_METRICS_PATH_SIZE];
-        snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/%s", nodes_dir, entry->d_name);
+        snprintf(heartbeat_path, sizeof(heartbeat_path), "%.250s/%.256s",
+                 nodes_dir, entry->d_name);
 
         struct stat st;
         if (stat(heartbeat_path, &st) != 0)
@@ -633,9 +648,12 @@ static bool filesystem_heartbeat(void* context, const char* node_id)
 
     filesystem_context_t* fs_ctx = (filesystem_context_t*) context;
 
+    /* Heartbeat path: shared_dir ≤ 420, node_id ≤ 64 (NIMCP_ID_BUFFER_SIZE),
+     * "/nodes/" = 7, ".heartbeat" = 10. Total ≤ 502, fits in 512. */
     char heartbeat_path[NIMCP_METRICS_PATH_SIZE];
-    snprintf(heartbeat_path, sizeof(heartbeat_path), "%s/nodes/%s.heartbeat", fs_ctx->shared_dir,
-             node_id);
+    snprintf(heartbeat_path, sizeof(heartbeat_path),
+             "%.420s/nodes/%.64s.heartbeat",
+             fs_ctx->shared_dir, node_id);
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(heartbeat_path)) {
@@ -1105,9 +1123,16 @@ bool replication_sync_push(replication_cluster_t cluster, const char* brain_name
         return false;
     }
 
-    fread(data, 1, size, f);
+    /* Read the full serialized brain data. A short read indicates the
+     * temp file got truncated between ftell and now — treat as failure. */
+    size_t got = fread(data, 1, size, f);
     fclose(f);
     remove(tmp_path);
+    if (got != (size_t)size) {
+        nimcp_free(data);
+        set_replication_error("Truncated temp file: %zu/%ld bytes", got, size);
+        return false;
+    }
 
     // Store via backend
     bool success = cluster->strategy->store_brain(cluster->backend_context, brain_name, data, size);

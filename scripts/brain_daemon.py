@@ -65,6 +65,7 @@ systemd: see /etc/systemd/system/athena-brain.service
 """
 
 import argparse
+import collections
 import json
 import logging
 import os
@@ -540,6 +541,61 @@ class BrainService:
     def _cmd_get_neuron_count(self, _req):
         if True:  # RWLock in handle()
             return {"neuron_count": self.brain.get_neuron_count()}
+
+    # --- Per-network training toggles (dynamic, no rebuild required) ---
+
+    def _cmd_set_train_ann(self, req):
+        self.brain.set_train_ann(bool(req.get("enabled", True)))
+        return {"ok": True, "train_ann": self.brain.get_train_ann()}
+
+    def _cmd_set_train_cnn(self, req):
+        self.brain.set_train_cnn(bool(req.get("enabled", True)))
+        return {"ok": True, "train_cnn": self.brain.get_train_cnn()}
+
+    def _cmd_set_train_snn(self, req):
+        self.brain.set_train_snn(bool(req.get("enabled", True)))
+        return {"ok": True, "train_snn": self.brain.get_train_snn()}
+
+    def _cmd_set_train_lnn(self, req):
+        self.brain.set_train_lnn(bool(req.get("enabled", True)))
+        return {"ok": True, "train_lnn": self.brain.get_train_lnn()}
+
+    def _cmd_set_snn_only_recovery(self, req):
+        self.brain.set_snn_only_recovery(bool(req.get("enabled", True)))
+        return {"ok": True, "snn_only_recovery": self.brain.get_snn_only_recovery()}
+
+    def _cmd_set_ensemble_warmup_scale(self, req):
+        scale = float(req.get("scale", 1.0))
+        self.brain.set_ensemble_warmup_scale(scale)
+        return {"ok": True, "warmup_scale": self.brain.get_ensemble_warmup_scale()}
+
+    def _cmd_get_training_flags(self, _req):
+        return {
+            "train_ann": self.brain.get_train_ann(),
+            "train_cnn": self.brain.get_train_cnn(),
+            "train_snn": self.brain.get_train_snn(),
+            "train_lnn": self.brain.get_train_lnn(),
+            "snn_only_recovery": self.brain.get_snn_only_recovery(),
+            "ensemble_warmup_scale": self.brain.get_ensemble_warmup_scale(),
+        }
+
+    # --- Plateau detector RPCs (live-tunable, no rebuild needed) ---
+
+    def _cmd_get_plateau_detector_params(self, _req):
+        """Return the current plateau detector parameters + state."""
+        if not hasattr(self, "plateau_detector") or self.plateau_detector is None:
+            return {"error": "plateau detector not attached"}
+        return self.plateau_detector.get_params()
+
+    def _cmd_set_plateau_detector_params(self, req):
+        """Update plateau detector parameters at runtime. Accepts any subset of:
+        poll_interval_s, window_size, slope_threshold, min_steps_in_recovery,
+        max_steps_in_recovery, absolute_loss_target, warmup_initial_scale,
+        warmup_steps. Unknown keys are ignored."""
+        if not hasattr(self, "plateau_detector") or self.plateau_detector is None:
+            return {"error": "plateau detector not attached"}
+        params = {k: v for k, v in req.items() if k != "cmd"}
+        return self.plateau_detector.set_params(**params)
 
     def _cmd_retrofit_synapse_metadata(self, _req):
         if True:  # RWLock in handle()
@@ -1142,6 +1198,8 @@ class BrainDaemon:
         'get_lateralization', 'get_cloud_stats',
         'utm_forward_only', 'utm_get_training_health',
         'attach_builtin_probes',
+        'get_training_flags',
+        'get_plateau_detector_params',
     })
 
     def __init__(self, service, socket_path=SOCKET_PATH, max_workers=4):
@@ -1661,6 +1719,337 @@ class AutoCheckpointer:
 
 
 # ---------------------------------------------------------------------------
+# SNN Recovery Plateau Detector
+# ---------------------------------------------------------------------------
+
+class SnnRecoveryPlateauDetector:
+    """Background watchdog that auto-unfreezes ANN/CNN/LNN training when the
+    SNN's loss has plateaued during snn-only recovery mode, then gradually
+    warms the ensemble back in to avoid co-adaptation shock.
+
+    === PHASE 1: plateau detection (while recovery mode is ON) ===
+
+    Criteria (ALL must hold to fire the unfreeze):
+      - At least `min_steps_in_recovery` SNN training steps since recovery
+        was entered (floor — don't fire too early).
+      - Sliding-window slope of snn_loss over last `window_size` samples
+        is below `slope_threshold` in absolute value (plateau).
+
+    Additional fire triggers (ANY):
+      - Total steps in recovery >= `max_steps_in_recovery` (ceiling).
+      - snn_loss drops below `absolute_loss_target` ("good enough").
+
+    === PHASE 2: ensemble warmup (after plateau fires) ===
+
+    Instead of immediately flipping recovery off with a sudden jolt, the
+    detector:
+      1. Sets ensemble_warmup_scale to `warmup_initial_scale` (e.g. 0.05)
+      2. Sets snn_only_recovery = false
+      3. Each subsequent poll tick, ramps warmup_scale up by
+         (1.0 - initial) / warmup_ticks until it reaches 1.0
+      4. Once warmup_scale == 1.0, normal joint training resumed.
+
+    During warmup, non-SNN networks train probabilistically (Monte-Carlo
+    gate in the C learning path) at a rate equal to the current scale. A
+    scale of 0.3 means ANN/CNN/LNN each train ~30% of steps. Each network
+    rolls independently — no synchronized oscillation.
+
+    Bidirectional: if the user re-enables recovery mode mid-warmup,
+    warmup aborts and the detector re-arms for the next plateau.
+    """
+
+    # Plateau phase states
+    STATE_IDLE = 0      # Recovery mode off, detector armed but inactive
+    STATE_WATCHING = 1  # Recovery on, watching for plateau
+    STATE_WARMUP = 2    # Plateau fired, warmup ramp in progress
+
+    def __init__(self, brain,
+                 poll_interval_s=10.0,
+                 window_size=100,
+                 slope_threshold=0.05,
+                 min_steps_in_recovery=500,
+                 max_steps_in_recovery=5000,
+                 absolute_loss_target=5.0,
+                 warmup_initial_scale=0.05,
+                 warmup_steps=100):
+        """Construct the plateau detector. All tunables can be adjusted
+        at runtime via set_params() / the daemon's set_plateau_detector_params
+        RPC — no rebuild needed to iterate on thresholds.
+
+        poll_interval_s: how often to sample brain state (seconds)
+        window_size: slope is computed over the last N loss samples
+        slope_threshold: |slope| below this (loss-units per sample)
+                         counts as a plateau
+        min_steps_in_recovery: minimum SNN training steps in recovery
+                               before plateau detection can fire (floor)
+        max_steps_in_recovery: hard ceiling — always fire after this
+                               many steps regardless of plateau status
+        absolute_loss_target: fire if snn_loss drops below this
+                              ("good enough" escape)
+        warmup_initial_scale: warmup_scale value at warmup start
+                              (must be > 0 so non-SNN nets get some
+                              gradient signal immediately)
+        warmup_steps: number of SNN training steps over which the
+                      warmup scale ramps from initial → 1.0. This is
+                      step-based, not wall-clock — warmup advances
+                      proportionally to actual training throughput so
+                      slower runs get proportionally longer warmups.
+        """
+        self.brain = brain
+        self._thread = None
+        self._running = False
+        self._lock = threading.Lock()
+
+        # Tunable parameters (also settable via set_params at runtime)
+        self.poll_interval_s = float(poll_interval_s)
+        self.window_size = int(window_size)
+        self.slope_threshold = float(slope_threshold)
+        self.min_steps_in_recovery = int(min_steps_in_recovery)
+        self.max_steps_in_recovery = int(max_steps_in_recovery)
+        self.absolute_loss_target = float(absolute_loss_target)
+        self.warmup_initial_scale = float(warmup_initial_scale)
+        self.warmup_steps = int(warmup_steps)
+
+        # Phase machine
+        self._state = self.STATE_IDLE
+        self._entry_snn_steps = None
+        self._warmup_start_snn_steps = None
+        self._loss_history = collections.deque(maxlen=self.window_size)
+
+    def start(self):
+        self._running = True
+        self._thread = threading.Thread(target=self._run, daemon=True,
+                                        name="snn-recovery-plateau")
+        self._thread.start()
+        logger.info("SNN recovery plateau detector started (%s)", self._describe_params())
+
+    def stop(self):
+        self._running = False
+
+    def _describe_params(self):
+        return ("poll=%.1fs window=%d slope<%.4f min=%d max=%d "
+                "target=%.2f warmup_initial=%.2f warmup_steps=%d") % (
+            self.poll_interval_s, self.window_size, self.slope_threshold,
+            self.min_steps_in_recovery, self.max_steps_in_recovery,
+            self.absolute_loss_target, self.warmup_initial_scale,
+            self.warmup_steps)
+
+    def get_params(self):
+        """Return current parameter values as a dict."""
+        with self._lock:
+            return {
+                "poll_interval_s": self.poll_interval_s,
+                "window_size": self.window_size,
+                "slope_threshold": self.slope_threshold,
+                "min_steps_in_recovery": self.min_steps_in_recovery,
+                "max_steps_in_recovery": self.max_steps_in_recovery,
+                "absolute_loss_target": self.absolute_loss_target,
+                "warmup_initial_scale": self.warmup_initial_scale,
+                "warmup_steps": self.warmup_steps,
+                "state": {0: "IDLE", 1: "WATCHING", 2: "WARMUP"}.get(self._state, "UNKNOWN"),
+            }
+
+    def set_params(self, **kwargs):
+        """Update tunable parameters at runtime. Only the keys present in
+        kwargs are modified; others keep their current value. Clamps and
+        type-coerces values for safety. Returns the updated params dict."""
+        with self._lock:
+            if "poll_interval_s" in kwargs:
+                v = float(kwargs["poll_interval_s"])
+                if v >= 1.0:  # Avoid spinning
+                    self.poll_interval_s = v
+            if "window_size" in kwargs:
+                v = int(kwargs["window_size"])
+                if v >= 2:
+                    self.window_size = v
+                    # Rebuild the deque with the new maxlen, preserving recent samples
+                    old = list(self._loss_history)[-v:]
+                    self._loss_history = collections.deque(old, maxlen=v)
+            if "slope_threshold" in kwargs:
+                v = float(kwargs["slope_threshold"])
+                if v >= 0.0:
+                    self.slope_threshold = v
+            if "min_steps_in_recovery" in kwargs:
+                self.min_steps_in_recovery = max(0, int(kwargs["min_steps_in_recovery"]))
+            if "max_steps_in_recovery" in kwargs:
+                self.max_steps_in_recovery = max(1, int(kwargs["max_steps_in_recovery"]))
+            if "absolute_loss_target" in kwargs:
+                v = float(kwargs["absolute_loss_target"])
+                if v > 0.0:
+                    self.absolute_loss_target = v
+            if "warmup_initial_scale" in kwargs:
+                v = float(kwargs["warmup_initial_scale"])
+                self.warmup_initial_scale = max(0.0, min(1.0, v))
+            if "warmup_steps" in kwargs:
+                self.warmup_steps = max(1, int(kwargs["warmup_steps"]))
+        logger.info("Plateau detector params updated: %s", self._describe_params())
+        return self.get_params()
+
+    def _get_state(self):
+        """Snapshot the values we need to make a decision this tick."""
+        try:
+            metrics = self.brain.get_network_metrics() or {}
+            snn_loss = float(metrics.get("snn_loss", 0.0) or 0.0)
+            snn_steps = int(metrics.get("snn_steps", 0) or 0)
+        except Exception as e:
+            logger.debug("plateau detector: get_network_metrics failed: %s", e)
+            return None
+        try:
+            in_recovery = bool(self.brain.get_snn_only_recovery())
+            warmup_scale = float(self.brain.get_ensemble_warmup_scale())
+        except Exception as e:
+            logger.debug("plateau detector: state query failed: %s", e)
+            return None
+        return snn_loss, snn_steps, in_recovery, warmup_scale
+
+    @staticmethod
+    def _linear_slope(ys):
+        """Simple linear-regression slope of a 1D series against index."""
+        n = len(ys)
+        if n < 2:
+            return 0.0
+        mean_x = (n - 1) / 2.0
+        mean_y = sum(ys) / n
+        num = 0.0
+        den = 0.0
+        for i, y in enumerate(ys):
+            dx = i - mean_x
+            num += dx * (y - mean_y)
+            den += dx * dx
+        return num / den if den > 0 else 0.0
+
+    def _enter_warmup(self, reason, snn_loss, snn_steps, slope):
+        """Plateau fired — transition from STATE_WATCHING to STATE_WARMUP.
+        Set warmup scale to initial value, flip recovery off, and anchor
+        the step counter. From this tick on, non-SNN networks will
+        probabilistically train at the warmup rate, ramping up as the
+        SNN accumulates warmup_steps additional training steps."""
+        try:
+            self.brain.set_ensemble_warmup_scale(self.warmup_initial_scale)
+            self.brain.set_snn_only_recovery(False)
+        except Exception as e:
+            logger.error("plateau detector: transition to warmup failed: %s", e)
+            return
+        logger.warning(
+            "[SNN-RECOVERY AUTO-UNFREEZE] %s (snn_loss=%.3f, snn_steps=%d, slope=%.5f) — "
+            "entering ensemble warmup (initial scale=%.2f, ramp over %d SNN steps)",
+            reason, snn_loss, snn_steps, slope,
+            self.warmup_initial_scale, self.warmup_steps)
+        self._state = self.STATE_WARMUP
+        self._warmup_start_snn_steps = snn_steps
+        self._loss_history.clear()
+
+    def _advance_warmup(self, snn_loss, snn_steps):
+        """Advance warmup_scale based on SNN training steps elapsed since
+        warmup started. Progress is strictly step-based so warmup takes
+        the same amount of *training* regardless of wall-clock throughput.
+
+        When steps_elapsed >= warmup_steps, transition to IDLE."""
+        start = self._warmup_start_snn_steps
+        if start is None:
+            start = snn_steps
+            self._warmup_start_snn_steps = start
+        steps_elapsed = max(0, snn_steps - start)
+        progress = min(1.0, steps_elapsed / max(1, self.warmup_steps))
+        new_scale = (self.warmup_initial_scale +
+                     (1.0 - self.warmup_initial_scale) * progress)
+        try:
+            self.brain.set_ensemble_warmup_scale(new_scale)
+        except Exception as e:
+            logger.error("plateau detector: warmup advance failed: %s", e)
+            return
+        if progress >= 1.0:
+            logger.warning(
+                "[SNN-RECOVERY] Warmup complete — full joint training resumed "
+                "(snn_loss=%.3f, %d/%d SNN steps consumed, scale=1.0)",
+                snn_loss, steps_elapsed, self.warmup_steps)
+            self._state = self.STATE_IDLE
+            self._entry_snn_steps = None
+            self._warmup_start_snn_steps = None
+        else:
+            logger.info(
+                "[SNN-RECOVERY] Warmup progress %.1f%% (%d/%d steps), "
+                "scale=%.3f, snn_loss=%.3f",
+                progress * 100.0, steps_elapsed, self.warmup_steps,
+                new_scale, snn_loss)
+
+    def _abort_warmup(self):
+        """User re-enabled recovery mode mid-warmup — clean up and rearm."""
+        try:
+            self.brain.set_ensemble_warmup_scale(1.0)
+        except Exception:
+            pass
+        logger.info("[SNN-RECOVERY] Warmup aborted — user re-entered recovery")
+        self._state = self.STATE_WATCHING
+        self._entry_snn_steps = None
+        self._warmup_start_snn_steps = None
+        self._loss_history.clear()
+
+    def _run(self):
+        while self._running:
+            try:
+                state = self._get_state()
+                if state is None:
+                    time.sleep(self.poll_interval_s)
+                    continue
+                snn_loss, snn_steps, in_recovery, _warmup = state
+
+                with self._lock:
+                    # ---- Transition logic ----
+                    if self._state == self.STATE_IDLE:
+                        if in_recovery:
+                            self._state = self.STATE_WATCHING
+                            self._entry_snn_steps = snn_steps
+                            self._loss_history.clear()
+                            logger.info(
+                                "[SNN-RECOVERY] Armed at snn_steps=%d, snn_loss=%.3f",
+                                snn_steps, snn_loss)
+
+                    elif self._state == self.STATE_WATCHING:
+                        if not in_recovery:
+                            # User turned it off manually — reset without warming up
+                            logger.info(
+                                "[SNN-RECOVERY] Disarmed (recovery manually off)")
+                            self._state = self.STATE_IDLE
+                            self._entry_snn_steps = None
+                            self._loss_history.clear()
+                        else:
+                            self._loss_history.append(snn_loss)
+                            steps_in_recovery = snn_steps - (self._entry_snn_steps or 0)
+
+                            if steps_in_recovery >= self.max_steps_in_recovery:
+                                self._enter_warmup(
+                                    "max-steps ceiling (%d >= %d)" % (
+                                        steps_in_recovery, self.max_steps_in_recovery),
+                                    snn_loss, snn_steps, 0.0)
+                            elif snn_loss > 0.0 and snn_loss < self.absolute_loss_target:
+                                self._enter_warmup(
+                                    "loss below target (%.3f < %.3f)" % (
+                                        snn_loss, self.absolute_loss_target),
+                                    snn_loss, snn_steps, 0.0)
+                            elif (steps_in_recovery >= self.min_steps_in_recovery and
+                                  len(self._loss_history) >= self.window_size):
+                                slope = self._linear_slope(list(self._loss_history))
+                                if abs(slope) < self.slope_threshold:
+                                    self._enter_warmup(
+                                        "plateau detected (|slope|=%.5f < %.5f, "
+                                        "window=%d samples)" % (
+                                            abs(slope), self.slope_threshold,
+                                            len(self._loss_history)),
+                                        snn_loss, snn_steps, slope)
+
+                    elif self._state == self.STATE_WARMUP:
+                        if in_recovery:
+                            self._abort_warmup()
+                        else:
+                            self._advance_warmup(snn_loss, snn_steps)
+            except Exception as e:
+                logger.error("plateau detector loop error: %s", e)
+
+            time.sleep(self.poll_interval_s)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1977,9 +2366,16 @@ def main():
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGHUP, handle_sighup)
 
+    # SNN recovery plateau detector — auto-unfreezes ANN/CNN/LNN with
+    # gradual warmup after the SNN plateaus during snn_only_recovery mode.
+    # No-op when recovery mode is off.
+    plateau_detector = SnnRecoveryPlateauDetector(brain)
+    service.plateau_detector = plateau_detector  # Exposed for potential RPC control
+
     # Start
     daemon.start()
     checkpointer.start()
+    plateau_detector.start()
 
     # Retrofit synapse metadata — restores plasticity for ALL synapses created
     # without metadata (pool exhaustion, backbone repair, sub-network init).
@@ -2027,6 +2423,12 @@ def main():
 
     logger.info("Shutdown: stopping auto-checkpointer...")
     checkpointer.stop()
+
+    logger.info("Shutdown: stopping plateau detector...")
+    try:
+        plateau_detector.stop()
+    except Exception:
+        pass
 
     # Wait for any in-flight requests to finish (workers hold the brain lock)
     logger.info("Shutdown: waiting for in-flight requests to complete...")

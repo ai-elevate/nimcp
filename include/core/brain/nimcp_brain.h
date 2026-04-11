@@ -942,8 +942,16 @@ typedef struct {
 
     // === NETWORK ABLATION FLAGS ===
     // Each flag controls whether a network type participates in training.
-    // All default to true. Set to false to disable for ablation studies.
-    bool train_cnn;                /**< Enable CNN training (default: true) */
+    // All default to true. Set to false to disable for ablation studies
+    // or to freeze a sub-network while others continue training. All are
+    // toggleable at runtime via the per-network set_train_* daemon RPCs
+    // (no rebuild required — the learning path reads brain->config.train_*
+    // on every brain_learn_vector call).
+    //
+    // NOTE: train_ann is in the appended-fields section at the end of
+    // the struct because it was added Apr 11 2026 and inserting it here
+    // would break checkpoint forward-compat (see APPENDED FIELDS below).
+    bool train_cnn;                /**< Enable CNN + cortex CNN training (default: true) */
     bool train_snn;                /**< Enable SNN training (default: true) */
     bool train_lnn;                /**< Enable LNN training (default: true) */
     bool training_mode_active;     /**< When true, skip expensive cognitive modules in brain_decide() */
@@ -1943,6 +1951,35 @@ typedef struct {
     float intuitive_physics_dt;                   /**< Physics timestep (default: 0.01) */
     uint32_t intuitive_physics_max_objects;       /**< Max tracked objects (default: 128) */
     float physics_prior_weight;                   /**< Initial physics blend weight (default: 0.3) */
+
+    /* Appended Apr 11 2026 — must stay at the END of the struct for
+     * checkpoint forward compat. See nimcp_brain_persistence.c — the
+     * loader memsets to 0 then reads as many bytes as the on-disk
+     * checkpoint has, so new fields added here default to 0/false when
+     * loading older checkpoints. The loader unconditionally re-applies
+     * init_config defaults for these trailing fields post-read to avoid
+     * stale zeros. */
+    bool train_ann;                /**< Enable adaptive/ANN training (default: true) */
+
+    /* SNN-only recovery mode convenience preset. When true, learn_vector
+     * behaves as if train_ann=train_cnn=train_lnn=false while leaving
+     * train_snn alone. Toggleable at runtime via set_snn_only_recovery. */
+    bool snn_only_recovery_mode;
+
+    /* Ensemble warmup scale [0.0, 1.0]. Probabilistic gate on non-SNN
+     * training updates. Used after snn-only recovery to gradually bring
+     * the ANN/CNN/LNN back into training without a sudden co-adaptation
+     * jolt. On each brain_learn_vector call:
+     *   - If >= 1.0 (default), non-SNN networks train every step.
+     *   - If 0.0, non-SNN networks are fully frozen (equivalent to
+     *     snn_only_recovery_mode without the explicit flag).
+     *   - If intermediate (e.g. 0.3), non-SNN networks train with
+     *     probability 0.3 per step, Monte-Carlo style — no LR math,
+     *     no optimizer state interactions, each network independently
+     *     rolled so warmup doesn't sync across them.
+     * The SNN is never affected — it always trains when train_snn=true.
+     * Toggle via set_ensemble_warmup_scale(brain, 0.0..1.0). */
+    float ensemble_warmup_scale;
 } brain_config_t;
 
 /**

@@ -3589,6 +3589,76 @@ void nimcp_brain_set_training_mode(nimcp_brain_t brain, bool active) {
     brain->internal_brain->config.training_mode_active = active;
 }
 
+/* SNN-only recovery mode: freezes adaptive/CNN/LNN/cortex-CNN training so
+ * the SNN can re-converge against a stable ensemble after the Apr 11 2026
+ * unroll_steps=1000 fix exposed co-adaptation drift. Toggle via the daemon
+ * set_snn_only_recovery RPC. */
+void nimcp_brain_set_snn_only_recovery(nimcp_brain_t brain, bool enabled) {
+    if (!brain || !brain->internal_brain) return;
+    brain->internal_brain->config.snn_only_recovery_mode = enabled;
+}
+
+bool nimcp_brain_get_snn_only_recovery(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return false;
+    return brain->internal_brain->config.snn_only_recovery_mode;
+}
+
+/* Per-network training ablation setters. Dynamically toggle whether a
+ * given sub-network participates in brain_learn_vector updates. Reads
+ * are made on every learn call, so flips take effect immediately with
+ * no rebuild required. Paired getters return the current state. */
+
+void nimcp_brain_set_train_ann(nimcp_brain_t brain, bool enabled) {
+    if (!brain || !brain->internal_brain) return;
+    brain->internal_brain->config.train_ann = enabled;
+}
+bool nimcp_brain_get_train_ann(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return false;
+    return brain->internal_brain->config.train_ann;
+}
+
+void nimcp_brain_set_train_cnn(nimcp_brain_t brain, bool enabled) {
+    if (!brain || !brain->internal_brain) return;
+    brain->internal_brain->config.train_cnn = enabled;
+}
+bool nimcp_brain_get_train_cnn(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return false;
+    return brain->internal_brain->config.train_cnn;
+}
+
+void nimcp_brain_set_train_snn(nimcp_brain_t brain, bool enabled) {
+    if (!brain || !brain->internal_brain) return;
+    brain->internal_brain->config.train_snn = enabled;
+}
+bool nimcp_brain_get_train_snn(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return false;
+    return brain->internal_brain->config.train_snn;
+}
+
+void nimcp_brain_set_train_lnn(nimcp_brain_t brain, bool enabled) {
+    if (!brain || !brain->internal_brain) return;
+    brain->internal_brain->config.train_lnn = enabled;
+}
+bool nimcp_brain_get_train_lnn(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return false;
+    return brain->internal_brain->config.train_lnn;
+}
+
+/* Ensemble warmup scale [0.0, 1.0] — probabilistic gate on non-SNN
+ * training updates. Used by the plateau detector to ramp ANN/CNN/LNN
+ * back in gradually after snn-only recovery. Out-of-range values are
+ * clamped to [0.0, 1.0]. */
+void nimcp_brain_set_ensemble_warmup_scale(nimcp_brain_t brain, float scale) {
+    if (!brain || !brain->internal_brain) return;
+    if (scale < 0.0f) scale = 0.0f;
+    if (scale > 1.0f) scale = 1.0f;
+    brain->internal_brain->config.ensemble_warmup_scale = scale;
+}
+float nimcp_brain_get_ensemble_warmup_scale(nimcp_brain_t brain) {
+    if (!brain || !brain->internal_brain) return 1.0f;
+    return brain->internal_brain->config.ensemble_warmup_scale;
+}
+
 int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     if (!brain || !brain->internal_brain) return -1;
     brain_t b = brain->internal_brain;

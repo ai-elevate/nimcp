@@ -87,8 +87,9 @@ static void generate_failure_signature(
 ) {
     if (!diagnosis || !signature || size == 0) return;
 
-    // Create signature from error type and key symptoms
-    snprintf(signature, size, "%s_%d_0x%04x",
+    /* Cap root_cause to 240 chars so the total signature fits in a 256-byte
+     * destination buffer (root_cause[512] could otherwise overflow). */
+    snprintf(signature, size, "%.240s_%d_0x%04x",
         diagnosis->root_cause,
         diagnosis->severity,
         diagnosis->error_type & 0xFFFF);
@@ -689,16 +690,28 @@ brain_recovery_context_t brain_recovery_load(
         return NULL;
     }
 
-    // Read statistics
-    fread(&ctx->total_recoveries, sizeof(uint32_t), 1, f);
-    fread(&ctx->successful_recoveries, sizeof(uint32_t), 1, f);
-    fread(&ctx->brain_decisions, sizeof(uint32_t), 1, f);
-    fread(&ctx->brain_correct_predictions, sizeof(uint32_t), 1, f);
+    /* Read statistics. Each fread returns the number of items read;
+     * a short read (!= 1) indicates a truncated file. On error we log
+     * and bail rather than silently using stale zeros. */
+    bool read_ok = true;
+    read_ok &= (fread(&ctx->total_recoveries, sizeof(uint32_t), 1, f) == 1);
+    read_ok &= (fread(&ctx->successful_recoveries, sizeof(uint32_t), 1, f) == 1);
+    read_ok &= (fread(&ctx->brain_decisions, sizeof(uint32_t), 1, f) == 1);
+    read_ok &= (fread(&ctx->brain_correct_predictions, sizeof(uint32_t), 1, f) == 1);
 
     // Read patterns
-    fread(&ctx->pattern_count, sizeof(uint32_t), 1, f);
-    if (ctx->pattern_count <= ctx->pattern_capacity) {
-        fread(ctx->patterns, sizeof(recovery_pattern_t), ctx->pattern_count, f);
+    read_ok &= (fread(&ctx->pattern_count, sizeof(uint32_t), 1, f) == 1);
+    if (read_ok && ctx->pattern_count <= ctx->pattern_capacity) {
+        size_t got = fread(ctx->patterns, sizeof(recovery_pattern_t),
+                           ctx->pattern_count, f);
+        if (got != ctx->pattern_count) {
+            LOG_WARN("brain_recovery_load: truncated patterns (%zu/%u)",
+                     got, ctx->pattern_count);
+            ctx->pattern_count = (uint32_t)got;
+        }
+    }
+    if (!read_ok) {
+        LOG_WARN("brain_recovery_load: truncated header in %s", filepath);
     }
 
     fclose(f);

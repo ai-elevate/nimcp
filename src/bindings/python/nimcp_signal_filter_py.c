@@ -21,6 +21,9 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 
+/* Opt into the NumPy 1.7+ API and silence the deprecated-API #warning
+ * emitted by npy_1_7_deprecated_api.h when this define is missing. */
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 #include "utils/signal/nimcp_signal_filter.h"
 #include "utils/logging/nimcp_logging.h"
@@ -318,11 +321,23 @@ static PyTypeObject SignalFilterType = {
 // Module Initialization
 //=============================================================================
 
+/* NumPy's import_array() macro expands to `return NUMPY_IMPORT_ARRAY_RETVAL`
+ * which is NULL (void*) on Python 3 / modern NumPy. It can't return from an
+ * int-returning function, so we wrap it in a void*-returning helper that
+ * returns a non-NULL sentinel on success. The caller treats NULL as failure. */
+static void* _import_numpy_array_api(void) {
+    import_array();  /* on failure: return NULL */
+    return (void*)1; /* non-NULL sentinel on success */
+}
+
 int init_signal_filter_module(PyObject* module) {
     LOG_MODULE_DEBUG("bindings.python.signal_filter", "Initializing signal filter Python module");
 
-    // Import NumPy array API
-    import_array();
+    // Import NumPy array API via wrapper (see comment above)
+    if (_import_numpy_array_api() == NULL) {
+        LOG_MODULE_ERROR("bindings.python.signal_filter", "NumPy import_array failed");
+        return -1;
+    }
 
     // Initialize SignalFilter type
     if (PyType_Ready(&SignalFilterType) < 0) {

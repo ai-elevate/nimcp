@@ -3131,8 +3131,15 @@ int32_t swarm_memory_import_patterns(
         return -1;
     }
 
-    fread(&version, sizeof(uint32_t), 1, fp);
-    fread(&pattern_count, sizeof(uint32_t), 1, fp);
+    if (fread(&version, sizeof(uint32_t), 1, fp) != 1 ||
+        fread(&pattern_count, sizeof(uint32_t), 1, fp) != 1) {
+        fclose(fp);
+        nimcp_platform_mutex_unlock(memory->mutex);
+        LOG_ERROR("Truncated file header (version/pattern_count)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "swarm_memory_import_patterns: header truncated");
+        return -1;
+    }
 
     if (version != 1) {
         fclose(fp);
