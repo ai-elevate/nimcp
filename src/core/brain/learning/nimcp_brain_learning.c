@@ -436,6 +436,14 @@ uint32_t nimcp_brain_learning_get_or_create_label_index(brain_t brain, const cha
         }
     }
 
+    /* Guard: num_outputs == 0 means there are no slots to hash into.
+     * Without this guard, the overflow path below would compute
+     * `result = h % 0` and divide by zero. Just return 0. */
+    if (brain->config.num_outputs == 0) {
+        result = 0;
+        goto done;
+    }
+
     // Guard: Check capacity — labels exceed output neurons
     if (brain->num_output_labels >= brain->config.num_outputs) {
         // Hash overflow labels across existing outputs instead of always index 0
@@ -462,6 +470,25 @@ uint32_t nimcp_brain_learning_get_or_create_label_index(brain_t brain, const cha
         LOG_WARN("Label capacity at 90%%: %u of %u output slots used. "
                  "New labels beyond capacity will be hash-mapped to existing outputs.",
                  brain->num_output_labels, brain->config.num_outputs);
+    }
+
+    /* Lazy-allocate output_labels if it's NULL. This handles brains
+     * loaded from checkpoints where the load path bailed early
+     * (label_capacity == 0 → output_labels = NULL), or any other path
+     * that left the array unset while num_outputs > 0. Without this,
+     * the assignment below dereferences NULL and SIGSEGVs the daemon.
+     * The label_index hash table also gets created if missing. */
+    if (brain->output_labels == NULL) {
+        brain->output_labels = nimcp_calloc(brain->config.num_outputs, sizeof(char*));
+        if (!brain->output_labels) {
+            LOG_ERROR("get_or_create_label_index: failed to lazy-allocate "
+                      "output_labels (num_outputs=%u)", brain->config.num_outputs);
+            result = 0;
+            goto done;
+        }
+        /* num_output_labels may have been non-zero from a stale counter
+         * — reset it since we just created an empty array. */
+        brain->num_output_labels = 0;
     }
 
     // Create new label (use nimcp_malloc to match nimcp_free in brain_destroy)
