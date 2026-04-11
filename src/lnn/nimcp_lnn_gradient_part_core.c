@@ -1458,13 +1458,22 @@ int lnn_network_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad
     }
 
     /* Gradient computation via adjoint method if grad_ctx is available,
-     * otherwise fall back to BPTT. */
+     * otherwise fall back to BPTT. After either path, mirror the final
+     * gradient magnitude from the gradient context into network->stats
+     * so lnn_get_stats() reports a meaningful value — otherwise
+     * backward_steps stays 0 forever and dashboards see "LNN not
+     * training" even when it is. */
     if (network->grad_ctx) {
         /* Use adjoint method (preferred for LTC networks) */
         int rc = lnn_gradient_compute_adjoint(network->grad_ctx, network, loss_grad);
         if (rc != 0) {
             NIMCP_LOGGING_WARN("lnn_network_backward: adjoint failed (rc=%d), trying BPTT", rc);
             rc = lnn_gradient_compute_bptt(network->grad_ctx, network, loss_grad);
+        }
+        if (rc == 0) {
+            network->stats.backward_steps++;
+            network->stats.gradient_norm = network->grad_ctx->gradient_norm;
+            network->stats.ode_evaluations += network->grad_ctx->adjoint_steps;
         }
         return rc;
     }
@@ -1480,6 +1489,11 @@ int lnn_network_backward(lnn_network_t* network, const nimcp_tensor_t* loss_grad
     int rc = lnn_gradient_compute_adjoint(tmp_ctx, network, loss_grad);
     if (rc != 0) {
         rc = lnn_gradient_compute_bptt(tmp_ctx, network, loss_grad);
+    }
+    if (rc == 0) {
+        network->stats.backward_steps++;
+        network->stats.gradient_norm = tmp_ctx->gradient_norm;
+        network->stats.ode_evaluations += tmp_ctx->adjoint_steps;
     }
 
     lnn_gradient_ctx_destroy(tmp_ctx);

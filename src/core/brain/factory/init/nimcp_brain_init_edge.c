@@ -38,6 +38,7 @@
 #include "cognitive/language/nimcp_tokenizer.h"
 #include "portia/nimcp_portia_swarm_bridge.h"
 #include "swarm/nimcp_swarm_dragonfly_bridge.h"
+#include "cognitive/memory/nimcp_episodic_replay.h"
 #include "portia/nimcp_portia.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
@@ -302,7 +303,10 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
 
     /* === COGNITIVE ENHANCEMENTS (always created, lightweight) === */
     {
-        extern void* nimcp_episodic_replay_create(const void*);
+        /* Episodic replay's public API rejects NULL config (logs
+         * "[EPISODIC_REPLAY] NULL config" and returns NULL), so
+         * construct the default config and pass it explicitly.
+         * The other modules below accept NULL and self-default. */
         extern void* nimcp_emotional_learning_create(const void*);
         extern void* nimcp_contrastive_self_create(const void*);
         extern void* nimcp_self_curriculum_create(const void*);
@@ -313,7 +317,8 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
         extern void* nimcp_analogical_create(const void*);
         extern void* nimcp_multiscale_create(const void*);
 
-        brain->episodic_replay = nimcp_episodic_replay_create(NULL);
+        nimcp_episodic_replay_config_t _er_cfg = nimcp_episodic_replay_config_default();
+        brain->episodic_replay = nimcp_episodic_replay_create(&_er_cfg);
         brain->emotional_learning = nimcp_emotional_learning_create(NULL);
         brain->contrastive_self = nimcp_contrastive_self_create(NULL);
         brain->self_curriculum = nimcp_self_curriculum_create(NULL);
