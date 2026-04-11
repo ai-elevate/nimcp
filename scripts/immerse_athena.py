@@ -403,9 +403,12 @@ def submit_multimodal(brain, description):
     desc_words = set(desc_lower.split())
     batch_modalities = {}
 
-    if desc_words & _VISUAL_KW:
-        batch_modalities["visual"] = generate_visual_frame(description)
-        _sensory_submitted.append("V")
+    # Always submit visual — the visual cortex CNN stays untrained otherwise.
+    # generate_visual_frame synthesizes a deterministic frame from the
+    # description (color/shape/texture heuristics inside), so every concept
+    # gets at least some pixel-space grounding even if keyword-free.
+    batch_modalities["visual"] = generate_visual_frame(description)
+    _sensory_submitted.append("V")
 
     # Always submit audio — every description can be synthesized as sound.
     # Audio cortex needs continuous data to train (0 backward without this).

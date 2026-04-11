@@ -23,6 +23,7 @@
  * - validate_creation_params() - Validate brain creation parameters
  */
 
+#include <math.h>  /* NAN sentinel for cognitive_stats._last_loss fields */
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_lifecycle.h"
 #include "core/brain/nimcp_brain_internal.h"
@@ -401,6 +402,22 @@ brain_t allocate_brain(void)
     brain->last_input = NULL;
     brain->cached_decision = NULL;
     brain->input_size = 0;
+
+    /* Seed cognitive_stats._last_loss fields with NaN so callers of
+     * get_cognitive_stats can distinguish "no loss reported yet" from
+     * "actual zero loss" for modules whose task functions don't always
+     * write r->loss. calloc zeroed them; overwrite with NaN. */
+    brain->cognitive_stats.grounded_lang_last_loss = NAN;
+    brain->cognitive_stats.knowledge_last_loss     = NAN;
+    brain->cognitive_stats.vae_last_loss           = NAN;
+    brain->cognitive_stats.fep_parietal_last_loss  = NAN;
+    brain->cognitive_stats.physics_nn_last_loss    = NAN;
+    brain->cognitive_stats.pred_hierarchy_last_loss= NAN;
+    brain->cognitive_stats.jepa_last_loss          = NAN;
+    brain->cognitive_stats.creative_last_loss      = NAN;
+    brain->cognitive_stats.self_heal_last_loss     = NAN;
+    brain->cognitive_stats.intuition_last_loss     = NAN;
+    brain->cognitive_stats.fep_orchestrator_last_loss = NAN;
 
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "allocate_brain: failed to initialize cache mutex");

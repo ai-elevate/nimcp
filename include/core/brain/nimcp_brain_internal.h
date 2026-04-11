@@ -1943,23 +1943,35 @@ struct brain_struct {
     uint32_t cognitive_train_interval;                // How often to train subsystems (default: every 5 steps)
     uint32_t cognitive_train_counter;                 // Internal counter for interval gating
 
-    // Per-module cognitive training statistics
+    /* Per-module cognitive training statistics. _last_loss fields are
+     * set from the underlying task's r->loss when it writes one; modules
+     * whose underlying learners don't expose a scalar loss leave their
+     * field at the NaN sentinel initialized by the brain factory. The
+     * get_cognitive_stats API returns the sentinel unchanged so callers
+     * can tell "no loss signal yet" from "actual zero loss". */
     struct {
         uint32_t grounded_lang_steps;
         float    grounded_lang_last_loss;
         uint32_t knowledge_steps;
+        float    knowledge_last_loss;
         uint32_t vae_steps;
         float    vae_last_loss;
         uint32_t fep_parietal_steps;
+        float    fep_parietal_last_loss;
         uint32_t physics_nn_steps;
+        float    physics_nn_last_loss;
         uint32_t pred_hierarchy_steps;
         float    pred_hierarchy_last_loss;
         uint32_t jepa_steps;
         float    jepa_last_loss;
         uint32_t creative_steps;
+        float    creative_last_loss;
         uint32_t self_heal_steps;
+        float    self_heal_last_loss;
         uint32_t intuition_steps;
+        float    intuition_last_loss;
         uint32_t fep_orchestrator_steps;
+        float    fep_orchestrator_last_loss;
     } cognitive_stats;
 
     // =========================================================================

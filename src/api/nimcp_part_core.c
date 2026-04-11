@@ -2845,29 +2845,30 @@ nimcp_status_t nimcp_brain_get_cognitive_stats(
     brain_t brain = handle->internal_brain;
     if (!brain) return NIMCP_ERROR_NOT_INITIALIZED;
 
-    /* 11 cognitive modules tracked */
+    /* 11 cognitive modules tracked. NaN is the "no signal yet" sentinel
+     * for modules whose underlying task doesn't write r->loss. */
     out_stats[0]  = brain->cognitive_stats.grounded_lang_steps;
     out_losses[0] = brain->cognitive_stats.grounded_lang_last_loss;
     out_stats[1]  = brain->cognitive_stats.knowledge_steps;
-    out_losses[1] = 0.0f;
+    out_losses[1] = brain->cognitive_stats.knowledge_last_loss;
     out_stats[2]  = brain->cognitive_stats.vae_steps;
     out_losses[2] = brain->cognitive_stats.vae_last_loss;
     out_stats[3]  = brain->cognitive_stats.fep_parietal_steps;
-    out_losses[3] = 0.0f;
+    out_losses[3] = brain->cognitive_stats.fep_parietal_last_loss;
     out_stats[4]  = brain->cognitive_stats.physics_nn_steps;
-    out_losses[4] = 0.0f;
+    out_losses[4] = brain->cognitive_stats.physics_nn_last_loss;
     out_stats[5]  = brain->cognitive_stats.pred_hierarchy_steps;
     out_losses[5] = brain->cognitive_stats.pred_hierarchy_last_loss;
     out_stats[6]  = brain->cognitive_stats.jepa_steps;
     out_losses[6] = brain->cognitive_stats.jepa_last_loss;
     out_stats[7]  = brain->cognitive_stats.creative_steps;
-    out_losses[7] = 0.0f;
+    out_losses[7] = brain->cognitive_stats.creative_last_loss;
     out_stats[8]  = brain->cognitive_stats.self_heal_steps;
-    out_losses[8] = 0.0f;
+    out_losses[8] = brain->cognitive_stats.self_heal_last_loss;
     out_stats[9]  = brain->cognitive_stats.intuition_steps;
-    out_losses[9] = 0.0f;
+    out_losses[9] = brain->cognitive_stats.intuition_last_loss;
     out_stats[10] = brain->cognitive_stats.fep_orchestrator_steps;
-    out_losses[10] = 0.0f;
+    out_losses[10] = brain->cognitive_stats.fep_orchestrator_last_loss;
     *out_count = 11;
     return NIMCP_OK;
 }

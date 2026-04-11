@@ -68,8 +68,16 @@ bool nimcp_brain_factory_init_gpu_inference(brain_t brain)
         return true;  // No base network, nothing to do
     }
 
-    // If adaptive network already has GPU, we're done
-    if (adaptive_network_is_gpu_enabled(brain->network)) {
+    /* On a freshly-created brain, adaptive_network_create() has already
+     * built the weight cache and we're done. On a loaded brain,
+     * gpu_enabled is serialized as true but gpu_weight_cache is NOT
+     * (pointers can't cross a checkpoint), so the "already enabled"
+     * early return bypassed cache rebuild and the hot path silently
+     * fell back to CPU. Check BOTH the flag and the cache pointer so
+     * post-load brains actually rebuild the cache instead of lying to
+     * callers via an unchecked flag. */
+    if (adaptive_network_is_gpu_enabled(brain->network) &&
+        adaptive_network_get_gpu_weight_cache(brain->network) != NULL) {
         LOG_INFO("Adaptive network already has GPU inference enabled");
         return true;
     }

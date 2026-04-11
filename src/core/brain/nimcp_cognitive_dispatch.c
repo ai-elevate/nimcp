@@ -383,9 +383,11 @@ static void dispatch_update_stats(brain_t brain, const cognitive_batch_result_t*
         switch (r->module_id) {
         case COG_MODULE_GROUNDED_LANG:
             brain->cognitive_stats.grounded_lang_steps++;
+            brain->cognitive_stats.grounded_lang_last_loss = r->loss;
             break;
         case COG_MODULE_KNOWLEDGE:
             brain->cognitive_stats.knowledge_steps++;
+            brain->cognitive_stats.knowledge_last_loss = r->loss;
             break;
         case COG_MODULE_VAE:
             brain->cognitive_stats.vae_steps++;
@@ -394,9 +396,11 @@ static void dispatch_update_stats(brain_t brain, const cognitive_batch_result_t*
             break;
         case COG_MODULE_FEP_PARIETAL:
             brain->cognitive_stats.fep_parietal_steps++;
+            brain->cognitive_stats.fep_parietal_last_loss = r->loss;
             break;
         case COG_MODULE_PHYSICS_NN:
             brain->cognitive_stats.physics_nn_steps++;
+            brain->cognitive_stats.physics_nn_last_loss = r->loss;
             break;
         case COG_MODULE_PRED_HIERARCHY:
             brain->cognitive_stats.pred_hierarchy_steps++;
@@ -408,15 +412,19 @@ static void dispatch_update_stats(brain_t brain, const cognitive_batch_result_t*
             break;
         case COG_MODULE_CREATIVE:
             brain->cognitive_stats.creative_steps++;
+            brain->cognitive_stats.creative_last_loss = r->loss;
             break;
         case COG_MODULE_SELF_HEAL:
             brain->cognitive_stats.self_heal_steps++;
+            brain->cognitive_stats.self_heal_last_loss = r->loss;
             break;
         case COG_MODULE_INTUITION:
             brain->cognitive_stats.intuition_steps++;
+            brain->cognitive_stats.intuition_last_loss = r->loss;
             break;
         case COG_MODULE_FEP_ORCHESTRATOR:
             brain->cognitive_stats.fep_orchestrator_steps++;
+            brain->cognitive_stats.fep_orchestrator_last_loss = r->loss;
             if (brain->fep_orchestrator) {
                 brain->fep_orchestrator->fep_metrics.free_energy = r->loss;
                 brain->fep_orchestrator->fep_metrics.prediction_error = r->loss;
