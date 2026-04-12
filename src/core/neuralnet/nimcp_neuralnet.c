@@ -916,9 +916,15 @@ neural_network_t neural_network_create(const network_config_t* config)
         }
         if (meta_initial < 100000) meta_initial = 100000;
         if (meta_initial > SPARSE_SYNAPSE_MAX_POOL_SIZE) meta_initial = SPARSE_SYNAPSE_MAX_POOL_SIZE;
-        // Cap initial allocation to 5M slots (~260 MB) — pool grows on demand.
-        // Pre-allocating 50M+ slots wastes 2.6+ GB upfront and causes swap thrashing.
-        if (meta_initial > 5000000) meta_initial = 5000000;
+        /* The old 5M cap was removed. On a 2.5M-neuron brain the pool
+         * needs ~213M slots (11 GB). The 5M cap forced 3200+ incremental
+         * block-by-block grows at ~0.5s each = ~27 minutes of pure pool
+         * growth during brain_load. Pre-allocating the estimated amount
+         * in one shot takes ~15 seconds instead. Machines without
+         * enough RAM will still hit SPARSE_SYNAPSE_MAX_POOL_SIZE above,
+         * and the pool grows on demand as a fallback if the estimate is
+         * too low, so this is strictly an optimization, not a
+         * correctness change. */
         mpool_cfg.pool_size = meta_initial;
         mpool_cfg.enable_statistics = true;
         mpool_cfg.thread_safe = true;
