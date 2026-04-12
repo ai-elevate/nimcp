@@ -41,22 +41,25 @@ typedef struct {
 } snn_tier_def_t;
 
 static const snn_tier_def_t TIER_DEFS[] = {
-    /* Tier 0: Input — sensory encoding */
-    { 4, 20000, "input",      0.05f, 0.0f   },
+    /* Tier 0: Input — sensory encoding
+     * Connectivity scaled for 125 GB RAM budget (~1B synapse cap).
+     * Each inter-tier connection creates n_src × n_dst × connectivity synapses
+     * PER population pair, summed across all src×dst pop combinations. */
+    { 4, 20000, "input",      0.005f, 0.0f    },
     /* Tier 1: L1 — feature extraction */
-    { 6, 22000, "L1_feature",  0.04f, 0.0f   },
+    { 6, 22000, "L1_feature",  0.004f, 0.0f    },
     /* Tier 2: L2 — pattern binding */
-    { 8, 30000, "L2_pattern",  0.03f, 0.005f },
+    { 8, 30000, "L2_pattern",  0.003f, 0.0005f },
     /* Tier 3: L3 — conceptual (recurrent for working memory) */
-    { 8, 45000, "L3_concept",  0.02f, 0.01f  },
+    { 8, 45000, "L3_concept",  0.002f, 0.001f  },
     /* Tier 4: L4 — integration peak (recurrent for attractor dynamics) */
-    { 6, 58000, "L4_integr",   0.02f, 0.01f  },
+    { 6, 58000, "L4_integr",   0.002f, 0.001f  },
     /* Tier 5: L5 — executive/planning (recurrent) */
-    { 6, 44000, "L5_exec",     0.03f, 0.01f  },
+    { 6, 44000, "L5_exec",     0.003f, 0.001f  },
     /* Tier 6: L6 — output projection */
-    { 4, 30000, "L6_project",  0.04f, 0.0f   },
+    { 4, 30000, "L6_project",  0.004f, 0.0f    },
     /* Tier 7: Output — motor/response */
-    { 4, 64000, "output",      0.0f,  0.0f   },
+    { 4, 64000, "output",      0.0f,  0.0f     },
 };
 #define NUM_TIERS (sizeof(TIER_DEFS) / sizeof(TIER_DEFS[0]))
 
@@ -68,16 +71,16 @@ typedef struct {
 } snn_skip_def_t;
 
 static const snn_skip_def_t SKIP_DEFS[] = {
-    { 1, 5, 0.005f },  /* L1 → L5: fast sensory-to-executive shortcut */
-    { 2, 6, 0.005f },  /* L2 → L6: pattern-to-output projection */
+    { 1, 5, 0.0005f },  /* L1 → L5: fast sensory-to-executive shortcut */
+    { 2, 6, 0.0005f },  /* L2 → L6: pattern-to-output projection */
 };
 #define NUM_SKIPS (sizeof(SKIP_DEFS) / sizeof(SKIP_DEFS[0]))
 
 /* Input fan-out and output convergence wiring parameters */
-#define SNN_INPUT_FANOUT_CONNECTIVITY   0.10f  /**< input_pop → tier 0 connectivity */
+#define SNN_INPUT_FANOUT_CONNECTIVITY   0.01f  /**< input_pop → tier 0 connectivity */
 #define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.3f   /**< AMPA synapse weight mean */
 #define SNN_INPUT_FANOUT_WEIGHT_STD     0.1f   /**< Weight standard deviation */
-#define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.05f  /**< tier 7 → output_pop connectivity */
+#define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.005f /**< tier 7 → output_pop connectivity */
 #define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.2f   /**< AMPA synapse weight mean */
 #define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.1f   /**< Weight standard deviation */
 
