@@ -94,7 +94,7 @@
 #include "snn/nimcp_snn_network.h"
 /* Forward-declare R-STDP reward setter (full snn_training.h conflicts
  * with snn_backprop.h due to duplicate snn_surrogate_config_t typedef) */
-extern void snn_rstdp_set_reward(struct snn_training_ctx_s* ctx, float reward);
+extern void snn_rstdp_set_reward(snn_training_ctx_t* ctx, float reward);
 #include "lnn/nimcp_lnn_hamiltonian.h"
 #include "training/nimcp_cortex_cnn.h"
 #include "cognitive/vae/nimcp_vae.h"

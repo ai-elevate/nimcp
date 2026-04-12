@@ -119,9 +119,11 @@ snn_network_t* snn_create_hierarchical_network(
         return NULL;
     }
 
-    /* Track population indices per tier for wiring */
+    /* Track population indices per tier for wiring.
+     * Initialize all entries to 0 so early goto wire_connections
+     * leaves unset tiers with safe (empty) ranges. */
     uint32_t tier_start_pop[NUM_TIERS + 1];
-    tier_start_pop[0] = net->n_populations;  /* after the 3 initial pops (input/hidden/output) */
+    memset(tier_start_pop, 0, sizeof(tier_start_pop));
 
     /* Note: snn_network_create already created input/hidden/output populations.
      * We need to add the additional populations. The initial 3 populations
@@ -163,9 +165,8 @@ snn_network_t* snn_create_hierarchical_network(
             flat_idx++;
         }
     }
-    tier_start_pop[NUM_TIERS] = flat_idx;
-
 wire_connections:
+    tier_start_pop[NUM_TIERS] = flat_idx;  /* Always set, even on partial creation */
     LOG_INFO("Created %u populations (target %u). Wiring connections...", flat_idx, total_pops);
 
     /* Wire feedforward connections between adjacent tiers */

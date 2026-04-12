@@ -523,7 +523,7 @@ int training_dispatch_snn_step(
             float* output_grad = nimcp_calloc(grad_dim, sizeof(float));
             float* membrane_v = nimcp_calloc(grad_dim, sizeof(float));
             float* input_grad = nimcp_calloc(grad_dim, sizeof(float));
-            if (predictions && output_grad && membrane_v && input_grad) {
+            if (predictions && output_grad && membrane_v && input_grad && targets) {
                 /* predictions already extracted above the switch */
 
                 // Get membrane potentials from output population neurons
