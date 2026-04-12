@@ -395,6 +395,8 @@ def submit_multimodal(brain, description):
     Called before brain.decide_full() so the SNN sensory bridges get native
     modality data instead of interpreting text embeddings as pixels/MFCCs.
     """
+    import sys
+    print(f"[SMM-TRACE] submit_multimodal called: desc='{str(description)[:40]}'", file=sys.stderr, flush=True)
     desc_lower = description.lower()
 
     # Prepare all sensory data locally, then submit in a single batched call.
@@ -5214,6 +5216,9 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
 
     Goal: Get neurons responding. Self-reconstruction of sensory patterns.
     """
+    if start_from >= num_stimuli:
+        print(f"  [Stage 0] Already complete (step {start_from} >= {num_stimuli}) — skipping")
+        return []
     print("\n" + "=" * 60)
     print("  STAGE 0: Welcome to the World, Little One")
     print("=" * 60)
@@ -5540,6 +5545,9 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
 
     Goal: Seeing/hearing a concept + its name → same internal representation.
     """
+    if start_from >= num_stimuli:
+        print(f"  [Stage 1] Already complete (step {start_from} >= {num_stimuli}) — skipping")
+        return []
     print("\n" + "=" * 60)
     print("  STAGE 1: Look! That's a ___!")
     print("=" * 60)
@@ -5947,6 +5955,9 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     3. World model curriculum starts at 0.1× LR, ramping to 1× by step 2000
     4. Fast collapse detector active from step 1
     """
+    if start_from >= num_stimuli:
+        print(f"  [Stage 2] Already complete (step {start_from} >= {num_stimuli}) — skipping")
+        return []
     WARM_START_STEPS = 500       # Steps to ramp from objects→facts
     WARM_START_FACT_RATIO = 0.1  # Initial fact ratio (10%)
     TARGET_FACT_RATIO = 0.6      # Final fact ratio (60%)
