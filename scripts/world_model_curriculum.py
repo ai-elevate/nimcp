@@ -542,29 +542,21 @@ class WorldModelCurriculum:
         if not pairs:
             return 0
 
-        # Send in mini-batches of 16 to avoid gradient explosion.
-        # learn_vector_batch accumulates gradients across the batch —
-        # 100 transitions at once produces 100× the gradient of a single
-        # learn_vector, which blew ANN loss from 2→300+. Mini-batches
-        # of 16 with scaled LR keep gradient magnitude reasonable while
-        # still reducing RPC overhead from 2800 calls to ~175.
-        BATCH_SIZE = 16
+        # Individual learn_vector with reduced LR. Batch mode
+        # (learn_vector_batch) was tried but blew ANN loss from 2→300+
+        # even with batch_size=16 and lr=0.0005 — the padded physics
+        # state vectors (3-9 dims padded to 1024 zeros) create
+        # pathological gradients that the batch accumulator amplifies.
+        # Individual calls are slower (~3s each) but stable.
         fed = 0
-        for start in range(0, len(pairs), BATCH_SIZE):
-            chunk = pairs[start:start + BATCH_SIZE]
+        for features, target in pairs:
             try:
-                self.brain.learn_vector_batch(
-                    chunk, learning_rate=0.0005)  # reduced LR for sim data
-                fed += len(chunk)
+                self.brain.learn_vector(features, target,
+                                        label=domain_label,
+                                        learning_rate=0.0005)
+                fed += 1
             except Exception:
-                # Fallback: per-sample
-                for features, target in chunk:
-                    try:
-                        self.brain.learn_vector(features, target,
-                                                label=domain_label)
-                        fed += 1
-                    except Exception:
-                        pass
+                pass
         return fed
 
     def run_physics_epoch(self, level=None, scenarios_per_level=5):
