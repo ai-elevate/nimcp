@@ -571,23 +571,19 @@ class WorldModelCurriculum:
         if not pairs:
             return 0
 
-        # Batch in chunks of 16
-        BATCH_SIZE = 16
+        # Individual learn_vector with spread encoding + reduced LR.
+        # Batch mode blows ANN loss even with spread encoding —
+        # learn_vector_batch accumulates gradients too aggressively
+        # for this brain's weight scale regardless of input distribution.
         fed = 0
-        for start in range(0, len(pairs), BATCH_SIZE):
-            chunk = pairs[start:start + BATCH_SIZE]
+        for features, target in pairs:
             try:
-                self.brain.learn_vector_batch(chunk, learning_rate=0.0005)
-                fed += len(chunk)
+                self.brain.learn_vector(features, target,
+                                        label=domain_label,
+                                        learning_rate=0.0005)
+                fed += 1
             except Exception:
-                for features, target in chunk:
-                    try:
-                        self.brain.learn_vector(features, target,
-                                                label=domain_label,
-                                                learning_rate=0.0005)
-                        fed += 1
-                    except Exception:
-                        pass
+                pass
         return fed
 
     def run_physics_epoch(self, level=None, scenarios_per_level=5):
