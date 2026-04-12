@@ -3436,6 +3436,12 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         return NULL;
     }
 
+    struct timespec _ts_load_start, _ts_load_end;
+    clock_gettime(CLOCK_MONOTONIC, &_ts_load_start);
+    #define LOAD_ELAPSED_S() ({ struct timespec _now; clock_gettime(CLOCK_MONOTONIC, &_now); \
+        (_now.tv_sec - _ts_load_start.tv_sec) + (_now.tv_nsec - _ts_load_start.tv_nsec) * 1e-9; })
+    fprintf(stderr, "[LOAD-TIMING] config+create: %.1fs\n", LOAD_ELAPSED_S());
+
     // Read neuron count
     uint32_t num_neurons = 0;
     if (fread(&num_neurons, sizeof(uint32_t), 1, file) != 1) {
@@ -3495,6 +3501,8 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         if (!isfinite(ns->membrane_potential))
             ns->membrane_potential = 0.0f;
     }
+
+    fprintf(stderr, "[LOAD-TIMING] neuron_states: %.1fs (%u neurons)\n", LOAD_ELAPSED_S(), num_neurons);
 
     // Read label map
     uint32_t num_labels = 0;
@@ -3660,6 +3668,8 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                 return network;
             }
 
+            fprintf(stderr, "[LOAD-TIMING] pre-synapse-loop: %.1fs\n", LOAD_ELAPSED_S());
+
             // C-2: Track load errors from inner synapse loop so we can break out of
             // the outer neuron loop too, preventing file position misalignment
             bool load_error = false;
@@ -3819,6 +3829,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
                     break;
                 }
             }
+            fprintf(stderr, "[LOAD-TIMING] synapse-loop: %.1fs\n", LOAD_ELAPSED_S());
             fprintf(stderr, "[CHECKPOINT] Synapse restore: read=%lu added=%lu dropped=%lu (%.1f%% success)\n",
                     (unsigned long)total_synapses_read, (unsigned long)total_synapses_added,
                     (unsigned long)total_synapses_dropped,
@@ -3833,9 +3844,11 @@ adaptive_network_t adaptive_network_load(const char* filepath)
 
     fclose(file);
 
+    fprintf(stderr, "[LOAD-TIMING] pre-rebuild: %.1fs\n", LOAD_ELAPSED_S());
     // Rebuild incoming synapses from outgoing for forward pass
     if (network->base_network) {
         neural_network_rebuild_incoming(network->base_network);
+        fprintf(stderr, "[LOAD-TIMING] rebuild-incoming: %.1fs\n", LOAD_ELAPSED_S());
 
         // POST-LOAD BACKBONE REPAIR: Verify both input→hidden and hidden→output
         // connections exist. Old checkpoints may be missing either direction due to
