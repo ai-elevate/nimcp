@@ -3796,6 +3796,17 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     #undef INIT_IF_NULL
     #undef INIT_IF_DISABLED
 
+    /* Unified Training Manager: not serialized in checkpoint.
+     * Without UTM, the cortex CNN training block (which gates on
+     * brain->unified_training != NULL) is entirely skipped, leaving
+     * all 4 cortex processors at forward_steps=0. */
+    if (!b->unified_training) {
+        extern int brain_enable_multi_network_training(brain_t);
+        if (brain_enable_multi_network_training(b) >= 0) {
+            count++;
+        }
+    }
+
     /* GPU inference: adaptive network weight cache + GPU forward path.
      * Must run AFTER full brain restoration — adaptive_network_get_config()
      * crashes on partially-restored state during nimcp_brain_load(). */
