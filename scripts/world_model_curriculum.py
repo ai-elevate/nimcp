@@ -518,25 +518,44 @@ class WorldModelCurriculum:
             self._phys = PhysicsAPI(self._lib)
 
     def _feed_transitions(self, transitions, domain_label):
-        """Feed transitions to the brain via learn_vector."""
+        """Feed transitions to the brain via batched learn_vector.
+
+        Uses learn_vector_batch to send all transitions in one RPC instead
+        of one learn_vector per transition. On a 2.5M-neuron brain with
+        ~3s per RPC, this cuts a 2800-transition epoch from ~2.3 hours
+        to ~1 minute (28 batch calls of ~100 transitions each).
+        """
         if not self.brain:
             return len(transitions)
 
-        fed = 0
+        # Build padded pairs
+        pairs = []
         for state, action, next_state in transitions:
             features = state + action
             target = next_state
-            # Pad to brain input dim (1024) — raw sim states are 3-9 floats
             if len(features) < 1024:
                 features = features + [0.0] * (1024 - len(features))
             if len(target) < 1024:
                 target = target + [0.0] * (1024 - len(target))
-            try:
-                self.brain.learn_vector(features, target, label=domain_label)
-                fed += 1
-            except Exception:
-                pass
-        return fed
+            pairs.append((features, target))
+
+        if not pairs:
+            return 0
+
+        # Send as batch — single RPC call for all transitions
+        try:
+            self.brain.learn_vector_batch(pairs)
+            return len(pairs)
+        except Exception:
+            # Fallback: per-sample if batch fails
+            fed = 0
+            for features, target in pairs:
+                try:
+                    self.brain.learn_vector(features, target, label=domain_label)
+                    fed += 1
+                except Exception:
+                    pass
+            return fed
 
     def run_physics_epoch(self, level=None, scenarios_per_level=5):
         """Run physics scenarios and feed transitions to brain."""
