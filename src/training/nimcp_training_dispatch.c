@@ -27,7 +27,7 @@
 /* Public API: Set SNN input scaling factor at runtime.
  * Called from Python or C to adjust how aggressively SNN inputs are amplified.
  * Higher values = more spiking; lower = less spiking. Default = 70.0. */
-static float _snn_global_input_scale = 20.0f;
+static float _snn_global_input_scale = 45.0f;
 void nimcp_snn_set_input_scale(float scale) {
     if (scale > 0.0f && scale < 10000.0f) {
         _snn_global_input_scale = scale;
