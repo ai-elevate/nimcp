@@ -18149,3 +18149,34 @@ Sun Apr 12 11:08:11 AM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-12 21:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-12 21:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-12 21:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-12 21:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-12 22:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Sun Apr 12 10:10:38 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:10:38 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:10:44 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:10:44 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:10:45 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:10:45 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:16:49 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:16:49 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:16:55 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:16:55 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:16:56 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:16:56 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-12 22:20:01] [WARN] Checkpoint stale: athena_s2_step26500.bin is 120m old
+Sun Apr 12 10:23:01 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:23:01 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:23:07 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:23:07 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:23:08 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:23:08 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-12 22:25:01] [WARN] Checkpoint stale: athena_s2_step26500.bin is 125m old
+Sun Apr 12 10:29:12 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:29:12 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:29:18 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:29:18 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 12 10:29:19 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:29:19 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-12 22:30:01] [WARN] Checkpoint stale: athena_s2_step26500.bin is 130m old
+Sun Apr 12 10:35:24 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 12 10:35:24 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***

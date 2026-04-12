@@ -412,8 +412,8 @@ def submit_multimodal(brain, description):
     # so use the same path for visual. This bypasses submit_sensory_batch.
     try:
         _vf = generate_visual_frame(description)
-        _pixels = _vf.flatten().tolist()
-        brain.submit_sensory("visual", _pixels, width=32, height=32, channels=3)
+        _pixels = list(_vf[0])  # _vf is (bytes, w, h, ch) tuple
+        brain.submit_sensory("visual", _pixels, width=_vf[1], height=_vf[2], channels=_vf[3])
         _sensory_submitted.append("V")
     except Exception as _ve:
         import traceback
