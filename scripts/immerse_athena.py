@@ -5979,8 +5979,11 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     try:
         from world_model_curriculum import WorldModelCurriculum
         wm_curriculum = WorldModelCurriculum(brain_proxy=brain, max_level=2)
-        n = wm_curriculum.run_full_epoch(scenarios_per_level=2)  # reduced initial
-        print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
+        if start_from == 0:
+            n = wm_curriculum.run_full_epoch(scenarios_per_level=2)
+            print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
+        else:
+            print(f"  [World Model Curriculum] Skipped initial epoch (resuming from step {start_from})")
     except Exception as e:
         print(f"  [World Model Curriculum] Init failed (non-fatal): {e}")
 
