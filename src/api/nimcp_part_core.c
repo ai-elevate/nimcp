@@ -207,7 +207,27 @@ float nimcp_brain_learn_vector_batch(
         examples[i].target = (float*)targets_array[i];
         examples[i].target_size = target_size;
         examples[i].confidence = 1.0f;
+
+        /* Derive a label string from the target vector's argmax so the
+         * downstream cortex CNN training block (which gates on label[0])
+         * actually fires. Without this, batch training bypasses all
+         * cortex CNN forward+backward, leaving them permanently at 0
+         * steps even though sensory data is staged. */
         examples[i].label[0] = '\0';
+        if (ib->output_labels && ib->num_output_labels > 0) {
+            uint32_t best = 0;
+            float best_v = targets_array[i][0];
+            for (uint32_t k = 1; k < target_size && k < ib->num_output_labels; k++) {
+                if (targets_array[i][k] > best_v) {
+                    best_v = targets_array[i][k];
+                    best = k;
+                }
+            }
+            if (best < ib->num_output_labels && ib->output_labels[best]) {
+                strncpy(examples[i].label, ib->output_labels[best], sizeof(examples[i].label) - 1);
+                examples[i].label[sizeof(examples[i].label) - 1] = '\0';
+            }
+        }
     }
 
     // Pre-create cortex CNNs BEFORE batch training (needs staged sensory data).
