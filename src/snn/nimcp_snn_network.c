@@ -16,6 +16,7 @@
  */
 
 #include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_synapse.h"
 #include "snn/nimcp_snn_config.h"
 #include "gpu/snn/nimcp_snn_gpu.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
@@ -40,6 +41,9 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_network)
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
+
+/* Forward declarations */
+static void snn_population_destroy_internal(snn_population_t* pop);
 
 /**
  * @brief Allocate and initialize a population structure
@@ -120,6 +124,46 @@ static snn_population_t* snn_population_create_internal(
 }
 
 /**
+ * @brief Create a lightweight population (no neuron_t allocation)
+ *
+ * Same as snn_population_create_internal but allocates external_current[]
+ * and incoming_csr instead of relying on neural_network_t neurons.
+ * Neuron IDs are logical: (pop_id << 20) | neuron_index.
+ */
+static snn_population_t* snn_population_create_lightweight(
+    uint32_t id,
+    uint32_t n_neurons,
+    neuron_type_t type,
+    const char* name)
+{
+    /* Reuse the standard create with dummy start_neuron_id */
+    uint32_t logical_base = ((uint32_t)id << 20);
+    snn_population_t* pop = snn_population_create_internal(
+        id, n_neurons, type, name, logical_base);
+    if (!pop) return NULL;
+
+    /* Allocate lightweight-specific storage */
+    pop->lightweight = true;
+    pop->external_current = nimcp_calloc(n_neurons, sizeof(float));
+    pop->incoming_csr = snn_csr_create(n_neurons, n_neurons * 20);
+
+    if (!pop->external_current || !pop->incoming_csr) {
+        snn_population_destroy_internal(pop);
+        return NULL;
+    }
+
+    /* Initialize membrane potential to resting potential */
+    float* v = (float*)nimcp_tensor_data(pop->membrane_v);
+    if (v) {
+        for (uint32_t i = 0; i < n_neurons; i++) {
+            v[i] = -65.0f;  /* v_rest default */
+        }
+    }
+
+    return pop;
+}
+
+/**
  * @brief Destroy a population structure
  */
 static void snn_population_destroy_internal(snn_population_t* pop) {
@@ -130,6 +174,12 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
     if (pop->refractory) nimcp_tensor_destroy(pop->refractory);
     if (pop->spike_trains) nimcp_free(pop->spike_trains);
     if (pop->neuron_ids) nimcp_free(pop->neuron_ids);
+
+    /* Lightweight mode cleanup */
+    if (pop->external_current) nimcp_free(pop->external_current);
+    if (pop->incoming_csr) {
+        snn_csr_destroy(pop->incoming_csr);
+    }
 
     nimcp_free(pop);
 }
@@ -680,31 +730,71 @@ int snn_network_step(snn_network_t* network, float dt) {
         float tau_mem = network->config.tau_mem;
 
         /* Update each neuron */
+        if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized) {
+            /* ===== LIGHTWEIGHT CSR PATH ===== */
+            for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                spike_data[n] = 0.0f;
+
+                if (ref_data[n] > 0.0f) {
+                    ref_data[n] -= dt_ms;
+                    continue;
+                }
+
+                /* I_syn from external_current + CSR incoming synapses */
+                float I_syn = pop->external_current ? pop->external_current[n] : 0.0f;
+
+                uint32_t syn_count;
+                snn_csr_synapse_t* syns = snn_csr_get_incoming(
+                    pop->incoming_csr, n, &syn_count);
+                for (uint32_t s = 0; s < syn_count; s++) {
+                    snn_population_t* src_pop = network->populations[syns[s].src_pop];
+                    if (!src_pop || !src_pop->spike_output) continue;
+                    float* src_spikes = (float*)nimcp_tensor_data(src_pop->spike_output);
+                    if (src_spikes && syns[s].src_neuron < src_pop->n_neurons
+                        && src_spikes[syns[s].src_neuron] > 0.5f) {
+                        I_syn += syns[s].weight;
+                    }
+                }
+
+                /* LIF dynamics */
+                float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
+                v_data[n] += dv;
+
+                if (v_data[n] >= v_thresh) {
+                    spike_data[n] = 1.0f;
+                    v_data[n] = v_reset;
+                    ref_data[n] = network->config.t_ref;
+                    record_spike(&pop->spike_trains[n], network->sim->current_time_us);
+                    total_spikes++;
+                    pop->total_spikes++;
+                }
+            }
+            /* Clear external_current for next step (input is per-step) */
+            if (pop->external_current) {
+                memset(pop->external_current, 0, pop->n_neurons * sizeof(float));
+            }
+        } else {
+        /* ===== LEGACY NEURON_T PATH ===== */
         for (uint32_t n = 0; n < pop->n_neurons; n++) {
             spike_data[n] = 0.0f;
 
-            /* Check refractory period */
             if (ref_data[n] > 0.0f) {
                 ref_data[n] -= dt_ms;
                 continue;
             }
 
-            /* Get synaptic input: external current + weighted sum of presynaptic spikes */
             float I_syn = 0.0f;
             if (network->neural_net && n < pop->n_neurons) {
                 neuron_t* neuron = neural_network_get_neuron(
                     network->neural_net, pop->neuron_ids[n]);
                 if (neuron) {
                     I_syn = neuron->external_current;
-                    /* Sum incoming synaptic currents from neurons that spiked last step.
-                     * Each incoming synapse contributes weight * presynaptic_spike. */
                     uint32_t in_count = neuron->incoming.embedded_count
                                       + neuron->incoming.overflow_count;
                     for (uint32_t s = 0; s < in_count; s++) {
                         synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
                         if (!h) continue;
-                        /* Check if presynaptic neuron spiked (look up its spike output) */
-                        uint32_t pre_id = h->target_neuron_id; /* incoming: target = source */
+                        uint32_t pre_id = h->target_neuron_id;
                         neuron_t* pre = neural_network_get_neuron(network->neural_net, pre_id);
                         if (pre && pre->state > 0.5f) {
                             I_syn += h->weight;
@@ -713,29 +803,23 @@ int snn_network_step(snn_network_t* network, float dt) {
                 }
             }
 
-            /* LIF dynamics: dV/dt = (V_rest - V + I) / tau_mem */
             float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
             v_data[n] += dv;
 
-            /* Spike generation */
             if (v_data[n] >= v_thresh) {
                 spike_data[n] = 1.0f;
                 v_data[n] = v_reset;
                 ref_data[n] = network->config.t_ref;
-
-                /* Record spike + propagate to neural_net for synaptic current summation */
                 record_spike(&pop->spike_trains[n], network->sim->current_time_us);
                 total_spikes++;
                 pop->total_spikes++;
 
-                /* Set activation=1 on underlying neuron so downstream neurons detect the spike */
                 if (network->neural_net) {
                     neuron_t* spiked = neural_network_get_neuron(
                         network->neural_net, pop->neuron_ids[n]);
                     if (spiked) spiked->state = 1.0f;
                 }
             } else {
-                /* No spike: clear activation for this step */
                 if (network->neural_net) {
                     neuron_t* quiet = neural_network_get_neuron(
                         network->neural_net, pop->neuron_ids[n]);
@@ -743,6 +827,7 @@ int snn_network_step(snn_network_t* network, float dt) {
                 }
             }
         }
+        } /* end legacy */
     }
     } /* end CPU fallback */
 
@@ -1218,22 +1303,27 @@ int snn_network_set_inputs(snn_network_t* network,
 
     /* For now, set inputs as external currents on input neurons */
     /* A full implementation would use the encoder to generate spikes */
+    /* Lightweight path: write directly to population's external_current array */
+    if (network->input_pop->lightweight && network->input_pop->external_current) {
+        float scale = network->config.input_current_scale;
+        for (uint32_t i = 0; i < n_inputs && i < network->input_pop->n_neurons; i++) {
+            float inp = inputs[i];
+            network->input_pop->external_current[i] = (inp > 0.0f) ? inp * scale : 0.0f;
+        }
+        return SNN_SUCCESS;
+    }
+
+    /* Legacy path: write to neuron_t external_current */
     for (uint32_t i = 0; i < n_inputs; i++) {
         if (network->neural_net && i < network->config.n_inputs) {
             neuron_t* neuron = neural_network_get_neuron(
                 network->neural_net, network->input_pop->neuron_ids[i]);
             if (neuron) {
-                /* Scale input to current.
-             * Neurons need ~20mV above resting (-70mV) to reach threshold (-50mV).
-             * After average-pooling, BERT features are typically [-0.5, 0.5].
-             * Apply ReLU (only positive features drive spikes) then scale.
-             * Scale factor maps: input 0.3 → 21mV (fires), 0.1 → 7mV (sub).
-             * This creates sparse activation from the strongest features. */
                 float inp = inputs[i];
                 if (inp > 0.0f) {
                     neuron->external_current = inp * network->config.input_current_scale;
                 } else {
-                    neuron->external_current = 0.0f;  /* No inhibitory drive from negative features */
+                    neuron->external_current = 0.0f;
                 }
             }
         }
@@ -1571,6 +1661,28 @@ int snn_network_add_population(snn_network_t* network,
     return (int)pop_id;
 }
 
+int snn_network_add_population_lightweight(snn_network_t* network,
+                                           uint32_t n_neurons,
+                                           neuron_type_t neuron_type,
+                                           const char* name) {
+    if (!network) return -1;
+    if (n_neurons == 0) return -1;
+    if (network->n_populations >= SNN_MAX_POPULATIONS) return -1;
+
+    uint32_t pop_id = network->n_populations;
+    snn_population_t* pop = snn_population_create_lightweight(
+        pop_id, n_neurons, neuron_type, name);
+    if (!pop) return -1;
+
+    network->populations[pop_id] = pop;
+    network->n_populations++;
+
+    NIMCP_LOGGING_DEBUG("snn_network_add_population_lightweight: added '%s' "
+                        "with %u neurons (CSR mode)", name ? name : "unnamed", n_neurons);
+
+    return (int)pop_id;
+}
+
 int snn_network_connect_populations(snn_network_t* network,
                                     uint32_t src_pop,
                                     uint32_t dst_pop,
@@ -1599,11 +1711,53 @@ int snn_network_connect_populations(snn_network_t* network,
 
     int n_connections = 0;
 
-    /* For large populations with sparse random connectivity, the O(N×M)
-     * all-pairs iteration is catastrophic (50K×50K = 2.5B iterations).
-     * Use direct sampling instead: for each source neuron, pick k random
-     * targets where k = ceil(dst_size × connectivity). This is O(N×k)
-     * where k is typically 10-500, making it 10000× faster for large pops. */
+    /* Helper: generate Gaussian random weight */
+    #define RANDOM_WEIGHT(mean, std) ({ \
+        float _w = (mean); \
+        if ((std) > 0.0f) { \
+            float _u1 = (float)nimcp_tl_rand() / (float)RAND_MAX; \
+            float _u2 = (float)nimcp_tl_rand() / (float)RAND_MAX; \
+            if (_u1 < 1e-7f) _u1 = 1e-7f; \
+            _w += sqrtf(-2.0f * logf(_u1)) * cosf(NIMCP_TWO_PI_F * _u2) * (std); \
+        } _w; })
+
+    /* Lightweight CSR path: store synapses in dst population's CSR storage
+     * instead of the neural_network_t sparse synapse system. */
+    if (dst->lightweight && dst->incoming_csr) {
+        bool use_ds = (topology == SNN_TOPO_RANDOM && connectivity < 0.1f &&
+                       (uint64_t)src->n_neurons * dst->n_neurons > 1000000);
+        if (use_ds) {
+            uint32_t k = (uint32_t)(dst->n_neurons * connectivity + 0.5f);
+            if (k == 0) k = 1;
+            if (k > dst->n_neurons) k = dst->n_neurons;
+            for (uint32_t i = 0; i < src->n_neurons; i++) {
+                for (uint32_t c = 0; c < k; c++) {
+                    uint32_t j = (uint32_t)(nimcp_tl_rand() % dst->n_neurons);
+                    float w = RANDOM_WEIGHT(weight_mean, weight_std);
+                    if (snn_csr_add_entry(dst->incoming_csr, j,
+                                          src_pop, i, w) == 0)
+                        n_connections++;
+                }
+            }
+        } else {
+            for (uint32_t i = 0; i < src->n_neurons; i++) {
+                for (uint32_t j = 0; j < dst->n_neurons; j++) {
+                    if (topology == SNN_TOPO_RANDOM) {
+                        float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                        if (r > connectivity) continue;
+                    }
+                    float w = RANDOM_WEIGHT(weight_mean, weight_std);
+                    if (snn_csr_add_entry(dst->incoming_csr, j,
+                                          src_pop, i, w) == 0)
+                        n_connections++;
+                }
+            }
+        }
+        goto done;
+    }
+
+    /* Legacy neuron_t path (for non-lightweight populations) */
+    {
     bool use_direct_sampling = (topology == SNN_TOPO_RANDOM &&
                                  connectivity < 0.1f &&
                                  (uint64_t)src->n_neurons * dst->n_neurons > 1000000);
@@ -1616,15 +1770,7 @@ int snn_network_connect_populations(snn_network_t* network,
         for (uint32_t i = 0; i < src->n_neurons; i++) {
             for (uint32_t c = 0; c < k; c++) {
                 uint32_t j = (uint32_t)(nimcp_tl_rand() % dst->n_neurons);
-
-                float weight = weight_mean;
-                if (weight_std > 0.0f) {
-                    float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                    float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                    if (u1 < 1e-7f) u1 = 1e-7f;
-                    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
-                    weight += z * weight_std;
-                }
+                float weight = RANDOM_WEIGHT(weight_mean, weight_std);
 
                 bool success = neural_network_add_connection_typed(
                     network->neural_net,
@@ -1636,22 +1782,13 @@ int snn_network_connect_populations(snn_network_t* network,
             }
         }
     } else {
-        /* Original O(N×M) path — fine for small populations or dense connectivity */
         for (uint32_t i = 0; i < src->n_neurons; i++) {
             for (uint32_t j = 0; j < dst->n_neurons; j++) {
                 if (topology == SNN_TOPO_RANDOM) {
                     float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
                     if (r > connectivity) continue;
                 }
-
-                float weight = weight_mean;
-                if (weight_std > 0.0f) {
-                    float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                    float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                    if (u1 < 1e-7f) u1 = 1e-7f;
-                    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
-                    weight += z * weight_std;
-                }
+                float weight = RANDOM_WEIGHT(weight_mean, weight_std);
 
                 bool success = neural_network_add_connection_typed(
                     network->neural_net,
@@ -1663,11 +1800,30 @@ int snn_network_connect_populations(snn_network_t* network,
             }
         }
     }
+    } /* end legacy block */
+
+done:
+    #undef RANDOM_WEIGHT
 
     NIMCP_LOGGING_DEBUG("snn_network_connect_populations: created %d connections",
                        n_connections);
 
     return n_connections;
+}
+
+int snn_network_finalize_connections(snn_network_t* network) {
+    if (!network) return -1;
+    int finalized = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (pop && pop->lightweight && pop->incoming_csr && !pop->incoming_csr->finalized) {
+            if (snn_csr_finalize(pop->incoming_csr) == 0) {
+                finalized++;
+            }
+        }
+    }
+    NIMCP_LOGGING_INFO("Finalized CSR for %d lightweight populations", finalized);
+    return finalized;
 }
 
 snn_population_t* snn_network_get_population(snn_network_t* network,

@@ -323,6 +323,13 @@ struct snn_population_s {
     float mean_rate;                /**< Population mean firing rate (Hz) */
     float population_synchrony;     /**< Synchrony measure [0, 1] */
     uint64_t total_spikes;          /**< Total spikes since reset */
+
+    /* Lightweight mode (CSR synapse storage — replaces neuron_t dependency).
+     * When lightweight=true, neurons are NOT in the neural_network_t.
+     * All state lives in population tensors + CSR storage. */
+    bool lightweight;                        /**< true = CSR mode, false = legacy */
+    float* external_current;                 /**< [n_neurons] input currents */
+    struct snn_csr_storage_s* incoming_csr;  /**< CSR incoming synapses (owned) */
 };
 
 /**

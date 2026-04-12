@@ -110,11 +110,11 @@ snn_network_t* snn_create_hierarchical_network(
     memset(&cfg, 0, sizeof(cfg));
     cfg.n_inputs = n_inputs;
     cfg.n_outputs = n_outputs;
-    /* n_hidden must accommodate ALL tier neurons that will be added via
-     * snn_network_add_population(). The base network pre-allocates the
-     * underlying neural_network_t with capacity for n_inputs + n_hidden +
-     * n_outputs. Without enough headroom, add_neuron silently fails. */
-    cfg.n_hidden = actual_total;
+    /* Lightweight mode: tier populations use CSR synapse storage, NOT
+     * neural_network_t neurons. Set n_hidden = 0 so the base network only
+     * allocates input_pop + output_pop (tiny: ~3K neurons × 14KB = 43KB).
+     * The 1.8M tier neurons use ~1 GB CSR instead of ~25 GB neuron_t. */
+    cfg.n_hidden = 0;
     cfg.dt = 1.0f;  /* 1ms timestep */
     cfg.v_rest = -65.0f;
     cfg.v_reset = -70.0f;
@@ -167,7 +167,7 @@ snn_network_t* snn_create_hierarchical_network(
             char pop_name[64];
             snprintf(pop_name, sizeof(pop_name), "%s_%u",
                      TIER_DEFS[t].name, p);
-            int rc = snn_network_add_population(net,
+            int rc = snn_network_add_population_lightweight(net,
                 TIER_DEFS[t].neurons_per_pop,
                 ntype, pop_name);
 
@@ -308,6 +308,12 @@ wire_connections:
     }
     LOG_INFO("Output convergence: tier 7 → output_pop: %u connections",
              output_converge_conn);
+
+    /* Finalize CSR storage on all lightweight populations.
+     * This sorts the COO entries by destination neuron and builds
+     * the row_ptr index for O(1) per-neuron lookup during stepping. */
+    extern int snn_network_finalize_connections(snn_network_t* network);
+    snn_network_finalize_connections(net);
 
     LOG_INFO("Hierarchical SNN complete: %u neurons, %u connections "
              "(ff=%u, rec=%u, skip=%u, in_fan=%u, out_conv=%u)",

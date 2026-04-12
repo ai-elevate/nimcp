@@ -49241,6 +49241,30 @@ __/snn/nimcp_snn_network.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_network.c.s
 .PHONY : __/snn/nimcp_snn_network.c.s
 
+__/snn/nimcp_snn_synapse.o: __/snn/nimcp_snn_synapse.c.o
+.PHONY : __/snn/nimcp_snn_synapse.o
+
+# target to build an object file
+__/snn/nimcp_snn_synapse.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_synapse.c.o
+.PHONY : __/snn/nimcp_snn_synapse.c.o
+
+__/snn/nimcp_snn_synapse.i: __/snn/nimcp_snn_synapse.c.i
+.PHONY : __/snn/nimcp_snn_synapse.i
+
+# target to preprocess a source file
+__/snn/nimcp_snn_synapse.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_synapse.c.i
+.PHONY : __/snn/nimcp_snn_synapse.c.i
+
+__/snn/nimcp_snn_synapse.s: __/snn/nimcp_snn_synapse.c.s
+.PHONY : __/snn/nimcp_snn_synapse.s
+
+# target to generate assembly for a file
+__/snn/nimcp_snn_synapse.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/snn/nimcp_snn_synapse.c.s
+.PHONY : __/snn/nimcp_snn_synapse.c.s
+
 __/snn/nimcp_snn_ternary.o: __/snn/nimcp_snn_ternary.c.o
 .PHONY : __/snn/nimcp_snn_ternary.o
 
@@ -61795,6 +61819,9 @@ help:
 	@echo "... __/snn/nimcp_snn_network.o"
 	@echo "... __/snn/nimcp_snn_network.i"
 	@echo "... __/snn/nimcp_snn_network.s"
+	@echo "... __/snn/nimcp_snn_synapse.o"
+	@echo "... __/snn/nimcp_snn_synapse.i"
+	@echo "... __/snn/nimcp_snn_synapse.s"
 	@echo "... __/snn/nimcp_snn_ternary.o"
 	@echo "... __/snn/nimcp_snn_ternary.i"
 	@echo "... __/snn/nimcp_snn_ternary.s"
