@@ -418,6 +418,9 @@ int training_dispatch_snn_step(
         rc = snn_network_step(snn, dt);
         if (rc < 0) {
             NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
+            nimcp_free(pooled_input);
+            nimcp_free(_snn_scaled_input);
+            _snn_scaled_input = NULL;
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
                 "training_dispatch_snn_step: SNN network step failed");
             return -1;
