@@ -403,14 +403,20 @@ def submit_multimodal(brain, description):
     desc_words = set(desc_lower.split())
     batch_modalities = {}
 
-    # Always submit visual — the visual cortex CNN stays untrained otherwise.
-    # generate_visual_frame synthesizes a deterministic frame from the
-    # description (color/shape/texture heuristics inside), so every concept
-    # gets at least some pixel-space grounding even if keyword-free.
-    # submit_sensory_batch expects visual as (pixels, w, h, ch) tuple.
-    _vf = generate_visual_frame(description)
-    batch_modalities["visual"] = (_vf.flatten().tolist(), 32, 32, 3)
-    _sensory_submitted.append("V")
+    # Always submit visual — individually, not via batch. The batch RPC
+    # path silently drops visual data (the batch JSON with 3072 pixels
+    # either fails serialization or the daemon's batch handler skips it).
+    # Individual fire-and-forget submit works reliably for audio/speech,
+    # so use the same path for visual. This bypasses submit_sensory_batch.
+    try:
+        _vf = generate_visual_frame(description)
+        _pixels = _vf.flatten().tolist()
+        brain.submit_sensory("visual", _pixels, width=32, height=32, channels=3)
+        _sensory_submitted.append("V")
+    except Exception as _ve:
+        import traceback
+        print(f"  [VISUAL-ERR] submit_sensory visual failed: {_ve}", flush=True)
+        traceback.print_exc()
 
     # Always submit audio — every description can be synthesized as sound.
     # Audio cortex needs continuous data to train (0 backward without this).
@@ -444,14 +450,18 @@ def submit_multimodal(brain, description):
 
     # Single batched socket call for all modalities
     if batch_modalities:
+        _has_vis = "visual" in batch_modalities
         try:
             brain.submit_sensory_batch(batch_modalities)
         except Exception as e:
+            if _has_vis:
+                print(f"  [VISUAL-TRACE] batch failed: {e}", flush=True)
             # Fallback: submit individually
             for mod, data in batch_modalities.items():
                 try:
                     if mod == "visual":
                         pixels, w, h, ch = data
+                        print(f"  [VISUAL-TRACE] fallback submit: {len(pixels)} pixels, {w}x{h}x{ch}", flush=True)
                         brain.submit_sensory("visual", pixels, width=w, height=h, channels=ch)
                     elif mod == "somatosensory":
                         vec, n_seg = data
@@ -6030,6 +6040,10 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             description = fact
         else:
             expected, description = source.get_object()
+
+        # Stage sensory data for cortex CNN training (visual/audio/speech).
+        # Without this, cortex CNNs get zero forward steps in stage 2.
+        submit_multimodal(brain, description)
 
         # Athena experiences the stimulus and learns from it.
         # Apply LR spike if fast collapse detector is in recovery mode.

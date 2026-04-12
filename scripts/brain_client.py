@@ -492,7 +492,13 @@ class BrainProxy:
         req = {"cmd": "submit_sensory", "modality": modality,
                "data": _to_list(data)}
         req.update(kwargs)
-        self._send_fire_and_forget(req)
+        if modality == "visual":
+            import sys
+            print(f"  [VISUAL-CLIENT] sending {len(req['data'])} elements via _send", file=sys.stderr, flush=True)
+            resp = self._send(req)
+            print(f"  [VISUAL-CLIENT] response: {resp}", file=sys.stderr, flush=True)
+        else:
+            self._send_fire_and_forget(req)
 
     # -- Arousal control --
 
