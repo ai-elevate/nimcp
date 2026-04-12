@@ -73,6 +73,14 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 };
 #define NUM_SKIPS (sizeof(SKIP_DEFS) / sizeof(SKIP_DEFS[0]))
 
+/* Input fan-out and output convergence wiring parameters */
+#define SNN_INPUT_FANOUT_CONNECTIVITY   0.10f  /**< input_pop → tier 0 connectivity */
+#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.3f   /**< AMPA synapse weight mean */
+#define SNN_INPUT_FANOUT_WEIGHT_STD     0.1f   /**< Weight standard deviation */
+#define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.05f  /**< tier 7 → output_pop connectivity */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.2f   /**< AMPA synapse weight mean */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.1f   /**< Weight standard deviation */
+
 
 snn_network_t* snn_create_hierarchical_network(
     uint32_t n_inputs,
@@ -245,8 +253,9 @@ wire_connections:
             int nc = snn_network_connect_populations(net,
                 0,  /* pop 0 = input_pop */
                 pop_map[dp],
-                SNN_TOPO_RANDOM, 0.10f,
-                SYNAPSE_AMPA, 0.3f, 0.1f);
+                SNN_TOPO_RANDOM, SNN_INPUT_FANOUT_CONNECTIVITY,
+                SYNAPSE_AMPA, SNN_INPUT_FANOUT_WEIGHT_MEAN,
+                SNN_INPUT_FANOUT_WEIGHT_STD);
             if (nc > 0) input_fanout_conn += (uint32_t)nc;
         }
     }
@@ -264,8 +273,9 @@ wire_connections:
             int nc = snn_network_connect_populations(net,
                 pop_map[sp],
                 2,  /* pop 2 = output_pop */
-                SNN_TOPO_RANDOM, 0.05f,
-                SYNAPSE_AMPA, 0.2f, 0.1f);
+                SNN_TOPO_RANDOM, SNN_OUTPUT_CONVERGE_CONNECTIVITY,
+                SYNAPSE_AMPA, SNN_OUTPUT_CONVERGE_WEIGHT_MEAN,
+                SNN_OUTPUT_CONVERGE_WEIGHT_STD);
             if (nc > 0) output_converge_conn += (uint32_t)nc;
         }
     }

@@ -87,6 +87,13 @@ SOCKET_LOCK = "/var/run/athena/brain.sock.lock"
 PID_FILE = "/var/run/athena/brain.pid"
 MAX_MSG_SIZE = 50 * 1024 * 1024  # 50 MB (batch learning can be large)
 
+# SNN-primary architecture defaults
+DEFAULT_ANN_NEURONS = 150_000      # ANN teacher (SNN is primary learner)
+DEFAULT_SNN_NEURONS = 1_800_000    # Hierarchical SNN target
+DEFAULT_LNN_NEURONS = 256          # LNN cap (O(n²) adjoint)
+CHECKPOINT_MIN_BYTES_PER_NEURON = 50  # Minimum checkpoint bytes per neuron
+CHECKPOINT_MIN_SIZE = 5_000_000    # Absolute minimum checkpoint size (5 MB)
+
 # ---------------------------------------------------------------------------
 # Protocol helpers
 # ---------------------------------------------------------------------------
@@ -1545,8 +1552,8 @@ class AutoCheckpointer:
             try:
                 n_count = self.brain.get_neuron_count()
             except Exception:
-                n_count = 150_000
-            min_size = max(5_000_000, n_count * 50)
+                n_count = DEFAULT_ANN_NEURONS
+            min_size = max(CHECKPOINT_MIN_SIZE, n_count * CHECKPOINT_MIN_BYTES_PER_NEURON)
             if tmp_size < min_size:
                 logger.error("Checkpoint too small (%d bytes, min %d for %d neurons) "
                              "— likely fresh brain, REFUSING to overwrite trained "
@@ -2080,12 +2087,12 @@ def main():
     parser.add_argument("--init-mode", type=str, default="full",
                         choices=["full", "fast", "minimal"],
                         help="Brain init mode (default: full)")
-    parser.add_argument("--neuron-count", type=int, default=150_000,
-                        help="ANN neuron count (default: 150000, SNN is primary)")
-    parser.add_argument("--snn-neuron-count", type=int, default=1_800_000,
-                        help="SNN target neuron count (default: 1800000)")
-    parser.add_argument("--lnn-neuron-count", type=int, default=256,
-                        help="LNN neuron count (default: 256)")
+    parser.add_argument("--neuron-count", type=int, default=DEFAULT_ANN_NEURONS,
+                        help=f"ANN neuron count (default: {DEFAULT_ANN_NEURONS}, SNN is primary)")
+    parser.add_argument("--snn-neuron-count", type=int, default=DEFAULT_SNN_NEURONS,
+                        help=f"SNN target neuron count (default: {DEFAULT_SNN_NEURONS})")
+    parser.add_argument("--lnn-neuron-count", type=int, default=DEFAULT_LNN_NEURONS,
+                        help=f"LNN neuron count (default: {DEFAULT_LNN_NEURONS})")
     parser.add_argument("--num-inputs", type=int, default=1024,
                         help="Input dimension (default: 1024)")
     parser.add_argument("--num-outputs", type=int, default=2048,

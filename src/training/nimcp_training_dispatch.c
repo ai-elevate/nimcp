@@ -24,9 +24,16 @@
 #include <math.h>
 #include "snn/nimcp_snn_training.h"
 
+/* SNN training dispatch constants */
+#define SNN_LARGE_NETWORK_THRESHOLD   100000   /**< Force R-STDP above this neuron count */
+#define SNN_RSTDP_DEFAULT_TRACE_DIM   256      /**< Fallback eligibility trace dimension */
+#define SNN_RSTDP_ACTIVITY_THRESHOLD  0.01f    /**< Min activation for eligibility update */
+#define SNN_RSTDP_TRACE_CLAMP         10.0f    /**< Eligibility trace clamping bound */
+#define SNN_RSTDP_NORM_EPSILON        1e-6f    /**< Normalization denominator floor */
+
 /* Public API: Set SNN input scaling factor at runtime.
  * Called from Python or C to adjust how aggressively SNN inputs are amplified.
- * Higher values = more spiking; lower = less spiking. Default = 70.0. */
+ * Higher values = more spiking; lower = less spiking. Default = 45.0. */
 static float _snn_global_input_scale = 45.0f;
 void nimcp_snn_set_input_scale(float scale) {
     if (scale > 0.0f && scale < 10000.0f) {
@@ -117,15 +124,15 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
      * the per-synapse STDP in the SNN step function). */
     uint32_t trace_pre  = brain->snn_network->config.n_inputs;
     uint32_t trace_post = brain->snn_network->config.n_outputs;
-    if (trace_pre == 0) trace_pre = 256;
-    if (trace_post == 0) trace_post = 256;
+    if (trace_pre == 0) trace_pre = SNN_RSTDP_DEFAULT_TRACE_DIM;
+    if (trace_post == 0) trace_post = SNN_RSTDP_DEFAULT_TRACE_DIM;
 
     /* Force R-STDP for large SNN networks (>100K neurons).
      * BPTT/surrogate gradient methods are O(n²) in memory and infeasible
      * at this scale. R-STDP uses local eligibility traces + reward signal,
      * scaling linearly with neuron count. */
     nimcp_snn_train_method_t effective_method = config->snn_method;
-    if (n_neurons > 100000 &&
+    if (n_neurons > SNN_LARGE_NETWORK_THRESHOLD &&
         effective_method != NIMCP_SNN_TRAIN_R_STDP &&
         effective_method != NIMCP_SNN_TRAIN_STDP) {
         NIMCP_LOGGING_INFO("SNN has %u neurons (>100K) — forcing R-STDP "
@@ -486,20 +493,19 @@ int training_dispatch_snn_step(
                         float v = fabsf(predictions[j]);
                         if (v > max_post) max_post = v;
                     }
-                    float inv_pre  = (max_pre  > 1e-6f) ? 1.0f / max_pre  : 0.0f;
-                    float inv_post = (max_post > 1e-6f) ? 1.0f / max_post : 0.0f;
+                    float inv_pre  = (max_pre  > SNN_RSTDP_NORM_EPSILON) ? 1.0f / max_pre  : 0.0f;
+                    float inv_post = (max_post > SNN_RSTDP_NORM_EPSILON) ? 1.0f / max_post : 0.0f;
 
                     for (uint32_t i = 0; i < n_pre; i++) {
                         float pre_act = input_ptr[i] * inv_pre;
-                        if (pre_act < 0.01f) continue;
+                        if (pre_act < SNN_RSTDP_ACTIVITY_THRESHOLD) continue;
                         for (uint32_t j = 0; j < n_post; j++) {
                             float post_act = predictions[j] * inv_post;
-                            if (post_act > 0.01f) {
+                            if (post_act > SNN_RSTDP_ACTIVITY_THRESHOLD) {
                                 float e = elig_data[i * elig_cols + j]
                                         + pre_act * post_act;
-                                /* Clamp trace to [-10, 10] */
-                                if (e > 10.0f) e = 10.0f;
-                                if (e < -10.0f) e = -10.0f;
+                                if (e > SNN_RSTDP_TRACE_CLAMP) e = SNN_RSTDP_TRACE_CLAMP;
+                                if (e < -SNN_RSTDP_TRACE_CLAMP) e = -SNN_RSTDP_TRACE_CLAMP;
                                 elig_data[i * elig_cols + j] = e;
                             }
                         }

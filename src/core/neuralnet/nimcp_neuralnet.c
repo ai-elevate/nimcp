@@ -973,7 +973,8 @@ neural_network_t neural_network_create(const network_config_t* config)
         if (est_conn == 0) est_conn = (uint64_t)actual_neurons * 20;
         uint32_t emb_cap = (uint32_t)((est_conn / 20) < UINT32_MAX ? (est_conn / 20) : UINT32_MAX);
         if (emb_cap < 1024) emb_cap = 1024;  // Minimum pool
-        if (emb_cap > 500000) emb_cap = 500000;  // Cap at 500K (~4 GB for 2048D)
+        #define EMBEDDING_POOL_CAP 500000  /* ~4 GB for 2048D */
+        if (emb_cap > EMBEDDING_POOL_CAP) emb_cap = EMBEDDING_POOL_CAP;
         embedding_pool_create(network, emb_cap, NIMCP_DEFAULT_EMBEDDING_DIM);
     }
 
@@ -1145,10 +1146,10 @@ neural_network_t neural_network_create(const network_config_t* config)
                         uint32_t skip_fan = SKIP_FAN_IN;
                         if (skip_fan > input_size) skip_fan = input_size;
 
-                        // Cap skip connections: max 500K per skip layer
+                        #define SKIP_CONNECTION_CAP 500000
                         uint32_t skip_dst_wired = skip_dst_size;
-                        if ((uint64_t)skip_dst_wired * skip_fan > 500000) {
-                            skip_dst_wired = 500000 / skip_fan;
+                        if ((uint64_t)skip_dst_wired * skip_fan > SKIP_CONNECTION_CAP) {
+                            skip_dst_wired = SKIP_CONNECTION_CAP / skip_fan;
                         }
 
                         float skip_scale = 0.5F / sqrtf((float)skip_fan);  // weaker than direct

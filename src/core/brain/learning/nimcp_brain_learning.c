@@ -4367,7 +4367,7 @@ int brain_enable_multi_network_training(brain_t brain)
         // the cap, lnn_train_step() average-pools the input and truncates targets
         // to match the LNN's smaller dimensions.
         uint32_t lnn_cap = brain->config.lnn_target_neurons;
-        if (lnn_cap == 0) lnn_cap = 256;  /* Default: 256 */
+        if (lnn_cap == 0) lnn_cap = NIMCP_DEFAULT_LNN_NEURONS;
         uint32_t lnn_in = (num_inputs > lnn_cap) ? lnn_cap : num_inputs;
         uint32_t lnn_out = (num_outputs > lnn_cap) ? lnn_cap : num_outputs;
         uint32_t n_inter = (lnn_in + lnn_out) / 2;
@@ -4521,7 +4521,8 @@ int brain_enable_multi_network_training(brain_t brain)
                 if (brain->snn_fno_populations) {
                     snn_fno_config_t fno_cfg;
                     snn_fno_config_default(&fno_cfg);
-                    uint32_t fno_cap = 1024;  /* Max neurons for FNO model */
+                    #define SNN_FNO_POPULATION_NEURON_CAP 1024
+                    uint32_t fno_cap = SNN_FNO_POPULATION_NEURON_CAP;
                     for (uint32_t p = 0; p < snn->n_populations; p++) {
                         uint32_t pop_n = snn->populations[p] ?
                             snn->populations[p]->n_neurons : 256;

@@ -198,7 +198,8 @@ uint32_t nimcp_compute_optimal_neurons(const nimcp_device_profile_t* device) {
     /* Edge devices run the ANN teacher (default 150K neurons).
      * Cap scales with available resources, hard ceiling at 500K
      * (edge devices shouldn't need more — the SNN is the primary learner). */
-    uint32_t max_neurons = 500000;
+    #define EDGE_MAX_ANN_NEURONS 500000
+    uint32_t max_neurons = EDGE_MAX_ANN_NEURONS;
     uint64_t by_ram_64 = (uint64_t)device->ram_mb * 150;
     uint32_t by_ram = (by_ram_64 > max_neurons) ? max_neurons : (uint32_t)by_ram_64;
     uint32_t by_latency = (uint32_t)fminf(device->target_inference_ms * 50000.0f, (float)max_neurons);

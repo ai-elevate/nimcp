@@ -1982,10 +1982,15 @@ typedef struct {
     float ensemble_warmup_scale;
 
     /* SNN-primary architecture: target neuron counts for sub-networks.
-     * 0 means "use default" (1.8M for SNN, 256 for LNN). */
-    uint32_t snn_target_neurons;            /**< Target SNN neuron count (0 = default 1.8M) */
-    uint32_t lnn_target_neurons;            /**< Target LNN neuron count (0 = default 256) */
+     * 0 means "use default" (NIMCP_DEFAULT_SNN_NEURONS / NIMCP_DEFAULT_LNN_NEURONS). */
+    uint32_t snn_target_neurons;            /**< Target SNN neuron count (0 = default) */
+    uint32_t lnn_target_neurons;            /**< Target LNN neuron count (0 = default) */
 } brain_config_t;
+
+/* SNN-primary architecture defaults */
+#define NIMCP_DEFAULT_SNN_NEURONS       1800000  /**< 1.8M hierarchical SNN */
+#define NIMCP_DEFAULT_LNN_NEURONS       256      /**< LNN cap (O(n²) adjoint) */
+#define NIMCP_DEFAULT_ANN_NEURONS       150000   /**< ANN teacher (SNN is primary) */
 
 /**
  * @brief Create brain with preset size and task

@@ -523,6 +523,13 @@ PRIMARY_DIM = 640      # [16:656] primary modality features
 TEXT_DIM = 256         # [656:912] text semantic embedding (1024-dim model truncated to fit)
 CONTEXT_DIM = 112      # [912:1024] biological context (arousal, sleep, dopamine, etc.)
 
+# SNN-primary architecture defaults
+DEFAULT_ANN_NEURONS = 150_000
+DEFAULT_SNN_NEURONS = 1_800_000
+DEFAULT_LNN_NEURONS = 256
+CHECKPOINT_MIN_BYTES_PER_NEURON = 50
+CHECKPOINT_MIN_SIZE = 5_000_000
+
 CHECKPOINT_DIR = "checkpoints/athena"
 DECODER_DIR = "checkpoints/athena/decoder"
 STATE_FILE = "checkpoints/athena/immersive_state.json"
@@ -7349,7 +7356,7 @@ def _check_disk_space(min_gb=5.0):
         return True
 
 
-def _register_checkpoint_questdb(ckpt_path, stage, step, neuron_count=150000):
+def _register_checkpoint_questdb(ckpt_path, stage, step, neuron_count=DEFAULT_ANN_NEURONS):
     """Register checkpoint metadata in QuestDB via ILP protocol."""
     try:
         import socket
@@ -7444,8 +7451,8 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         try:
             n_count = brain.get_neuron_count()
         except Exception:
-            n_count = 150_000
-        min_size = max(5_000_000, n_count * 50)
+            n_count = DEFAULT_ANN_NEURONS
+        min_size = max(CHECKPOINT_MIN_SIZE, n_count * CHECKPOINT_MIN_BYTES_PER_NEURON)
         if tmp_size < min_size:
             logger.error("Checkpoint too small (%d bytes) — likely truncated, discarding",
                          tmp_size)
@@ -7499,7 +7506,7 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
     try:
         nc = brain.get_neuron_count()
     except Exception:
-        nc = 150_000
+        nc = DEFAULT_ANN_NEURONS
     _register_checkpoint_questdb(snapshot_path, stage, step, neuron_count=nc)
 
 
@@ -7886,12 +7893,12 @@ def main():
                         help="Disable Claude parent (silent mode)")
     parser.add_argument("--num-inputs", type=int, default=BRAIN_INPUT_DIM)
     parser.add_argument("--num-outputs", type=int, default=BRAIN_OUTPUT_DIM)
-    parser.add_argument("--neuron-count", type=int, default=150000,
-                        help="ANN neuron count (default: 150000, SNN is primary)")
-    parser.add_argument("--snn-neuron-count", type=int, default=1800000,
-                        help="SNN target neuron count (default: 1800000)")
-    parser.add_argument("--lnn-neuron-count", type=int, default=256,
-                        help="LNN neuron count (default: 256)")
+    parser.add_argument("--neuron-count", type=int, default=DEFAULT_ANN_NEURONS,
+                        help=f"ANN neuron count (default: {DEFAULT_ANN_NEURONS}, SNN is primary)")
+    parser.add_argument("--snn-neuron-count", type=int, default=DEFAULT_SNN_NEURONS,
+                        help=f"SNN target neuron count (default: {DEFAULT_SNN_NEURONS})")
+    parser.add_argument("--lnn-neuron-count", type=int, default=DEFAULT_LNN_NEURONS,
+                        help=f"LNN neuron count (default: {DEFAULT_LNN_NEURONS})")
     parser.add_argument("--stage0-stimuli", type=int, default=20000)
     parser.add_argument("--stage1-stimuli", type=int, default=40000)
     parser.add_argument("--stage2-stimuli", type=int, default=40000)

@@ -1326,7 +1326,8 @@ sequential_fallback:
                     }
                 }
             }
-            if (max_fused == 0) max_fused = 256 + 256 + 128 + 128;  /* Fallback */
+            #define CORTEX_CNN_MAX_FUSED_EMBED_DIM  768  /* 256+256+128+128 */
+            if (max_fused == 0) max_fused = CORTEX_CNN_MAX_FUSED_EMBED_DIM;
             if (!brain->cortex_cnn_fused_embedding ||
                 brain->cortex_cnn_fused_dim < max_fused) {
                 nimcp_free(brain->cortex_cnn_fused_embedding);

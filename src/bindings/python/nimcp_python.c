@@ -5635,7 +5635,7 @@ static PyObject* Brain_create_full(PyTypeObject* type, PyObject* args, PyObject*
     int task = NIMCP_TASK_CLASSIFICATION;
     unsigned int num_inputs = 1024;
     unsigned int num_outputs = 2048;
-    unsigned int neuron_count = 150000;
+    unsigned int neuron_count = NIMCP_DEFAULT_ANN_NEURONS;
 
     static char* kwlist[] = {"name", "task", "num_inputs", "num_outputs", "neuron_count", NULL};
 
