@@ -220,7 +220,19 @@ wire_connections:
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, rec_conn,
                     type, w_mean, 0.05f);
-                if (nc > 0) recurrent_connections += (uint32_t)nc;
+                if (nc > 0) {
+                    recurrent_connections += (uint32_t)nc;
+                } else if (nc < 0) {
+                    LOG_ERROR("Recurrent connect failed: pop %u→%u, tier %u, rc=%d",
+                              pop_map[sp], pop_map[dp], t, nc);
+                } else {
+                    LOG_WARN("Recurrent connect returned 0: pop %u→%u (src=%u dst=%u neurons), "
+                             "connectivity=%.6f, tier %u",
+                             pop_map[sp], pop_map[dp],
+                             net->populations[pop_map[sp]] ? net->populations[pop_map[sp]]->n_neurons : 0,
+                             net->populations[pop_map[dp]] ? net->populations[pop_map[dp]]->n_neurons : 0,
+                             rec_conn, t);
+                }
             }
         }
     }
@@ -281,7 +293,14 @@ wire_connections:
                 SNN_TOPO_RANDOM, SNN_OUTPUT_CONVERGE_CONNECTIVITY,
                 SYNAPSE_AMPA, SNN_OUTPUT_CONVERGE_WEIGHT_MEAN,
                 SNN_OUTPUT_CONVERGE_WEIGHT_STD);
-            if (nc > 0) output_converge_conn += (uint32_t)nc;
+            if (nc > 0) {
+                output_converge_conn += (uint32_t)nc;
+            } else {
+                LOG_WARN("Output convergence returned %d: pop %u→2 (src=%u, dst=%u neurons)",
+                         nc, pop_map[sp],
+                         net->populations[pop_map[sp]] ? net->populations[pop_map[sp]]->n_neurons : 0,
+                         net->output_pop ? net->output_pop->n_neurons : 0);
+            }
         }
     }
     LOG_INFO("Output convergence: tier 7 → output_pop: %u connections",
