@@ -68,8 +68,10 @@ extern "C" {
 // Constants
 //=============================================================================
 
-/** Maximum number of populations in an SNN network */
-#define SNN_MAX_POPULATIONS 64
+/** Maximum number of populations in an SNN network.
+ *  Raised from 64 to 128 for hierarchical cortical-layer topology
+ *  at 1.8M-neuron scale (46 populations across 8 tiers). */
+#define SNN_MAX_POPULATIONS 128
 
 /** Maximum spike buffer size per neuron */
 #define SNN_SPIKE_BUFFER_SIZE 256  /* DO NOT CHANGE — baked into checkpoint format (snn_neuron_t.spike_times[]) */

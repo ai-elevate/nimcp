@@ -137,7 +137,7 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
 /**
  * @brief Initialize simulation context
  */
-static snn_simulation_t* snn_simulation_create_internal(float dt_ms) {
+static snn_simulation_t* snn_simulation_create_internal(float dt_ms, uint32_t total_neurons) {
     snn_simulation_t* sim = (snn_simulation_t*)nimcp_malloc(sizeof(snn_simulation_t));
     if (!sim) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_simulation_t),
@@ -149,8 +149,11 @@ static snn_simulation_t* snn_simulation_create_internal(float dt_ms) {
     sim->dt_ms = dt_ms;
     sim->health = SNN_STATE_HEALTHY;
 
-    /* Allocate spike queue */
-    sim->queue_capacity = 10000;
+    /* Allocate spike queue — scale with total neuron count.
+     * At 1.8M neurons with ~5% firing rate per step, need ~90K queue slots.
+     * Cap at 2M to avoid excessive memory on huge networks. */
+    sim->queue_capacity = (total_neurons > 20000) ? total_neurons / 2 : 10000;
+    if (sim->queue_capacity > 2000000) sim->queue_capacity = 2000000;
     sim->spike_queue = (snn_spike_t*)nimcp_malloc(
         sim->queue_capacity * sizeof(snn_spike_t));
     if (!sim->spike_queue) {
@@ -306,7 +309,8 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     memset(network->populations, 0, max_populations * sizeof(snn_population_t*));
 
     /* Create simulation context */
-    network->sim = snn_simulation_create_internal(config->dt);
+    uint32_t total_snn_neurons = config->n_inputs + config->n_hidden + config->n_outputs;
+    network->sim = snn_simulation_create_internal(config->dt, total_snn_neurons);
     if (!network->sim) {
         /* Exception already thrown by snn_simulation_create_internal */
         nimcp_free(network->populations);
@@ -1595,34 +1599,68 @@ int snn_network_connect_populations(snn_network_t* network,
 
     int n_connections = 0;
 
-    for (uint32_t i = 0; i < src->n_neurons; i++) {
-        for (uint32_t j = 0; j < dst->n_neurons; j++) {
-            /* Apply connectivity probability */
-            if (topology == SNN_TOPO_RANDOM) {
-                float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                if (r > connectivity) continue;
+    /* For large populations with sparse random connectivity, the O(N×M)
+     * all-pairs iteration is catastrophic (50K×50K = 2.5B iterations).
+     * Use direct sampling instead: for each source neuron, pick k random
+     * targets where k = ceil(dst_size × connectivity). This is O(N×k)
+     * where k is typically 10-500, making it 10000× faster for large pops. */
+    bool use_direct_sampling = (topology == SNN_TOPO_RANDOM &&
+                                 connectivity < 0.1f &&
+                                 (uint64_t)src->n_neurons * dst->n_neurons > 1000000);
+
+    if (use_direct_sampling) {
+        uint32_t k = (uint32_t)(dst->n_neurons * connectivity + 0.5f);
+        if (k == 0) k = 1;
+        if (k > dst->n_neurons) k = dst->n_neurons;
+
+        for (uint32_t i = 0; i < src->n_neurons; i++) {
+            for (uint32_t c = 0; c < k; c++) {
+                uint32_t j = (uint32_t)(nimcp_tl_rand() % dst->n_neurons);
+
+                float weight = weight_mean;
+                if (weight_std > 0.0f) {
+                    float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                    float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                    if (u1 < 1e-7f) u1 = 1e-7f;
+                    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
+                    weight += z * weight_std;
+                }
+
+                bool success = neural_network_add_connection_typed(
+                    network->neural_net,
+                    src->neuron_ids[i],
+                    dst->neuron_ids[j],
+                    weight,
+                    synapse_type);
+                if (success) n_connections++;
             }
+        }
+    } else {
+        /* Original O(N×M) path — fine for small populations or dense connectivity */
+        for (uint32_t i = 0; i < src->n_neurons; i++) {
+            for (uint32_t j = 0; j < dst->n_neurons; j++) {
+                if (topology == SNN_TOPO_RANDOM) {
+                    float r = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                    if (r > connectivity) continue;
+                }
 
-            /* Compute weight */
-            float weight = weight_mean;
-            if (weight_std > 0.0f) {
-                /* Box-Muller for normal distribution */
-                float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
-                if (u1 < 1e-7f) u1 = 1e-7f;
-                float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
-                weight += z * weight_std;
+                float weight = weight_mean;
+                if (weight_std > 0.0f) {
+                    float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                    float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+                    if (u1 < 1e-7f) u1 = 1e-7f;
+                    float z = sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_TWO_PI_F * u2);
+                    weight += z * weight_std;
+                }
+
+                bool success = neural_network_add_connection_typed(
+                    network->neural_net,
+                    src->neuron_ids[i],
+                    dst->neuron_ids[j],
+                    weight,
+                    synapse_type);
+                if (success) n_connections++;
             }
-
-            /* Add connection with synapse type */
-            bool success = neural_network_add_connection_typed(
-                network->neural_net,
-                src->neuron_ids[i],
-                dst->neuron_ids[j],
-                weight,
-                synapse_type);
-
-            if (success) n_connections++;
         }
     }
 

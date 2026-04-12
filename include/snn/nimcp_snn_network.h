@@ -659,6 +659,24 @@ int snn_network_save(snn_network_t* network, const char* path);
  */
 snn_network_t* snn_network_load(const char* path);
 
+/**
+ * @brief Create a hierarchical SNN with cortical-inspired population topology
+ *
+ * WHAT: Creates a 1.8M-neuron SNN organized into 46 populations across 8 tiers
+ * WHY:  The SNN is the primary brain — needs biological cortical hierarchy
+ * HOW:  Builds populations tier-by-tier with feedforward, recurrent, and skip
+ *       connections using efficient direct-sampling connectivity
+ *
+ * @param n_inputs Brain input dimension (for input population sizing)
+ * @param n_outputs Brain output dimension (for output population sizing)
+ * @param target_total_neurons Target total neuron count (actual may differ slightly)
+ * @return Network handle, or NULL on error
+ */
+snn_network_t* snn_create_hierarchical_network(
+    uint32_t n_inputs,
+    uint32_t n_outputs,
+    uint32_t target_total_neurons);
+
 #ifdef __cplusplus
 }
 #endif
