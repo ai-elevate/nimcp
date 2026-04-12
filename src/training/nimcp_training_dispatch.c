@@ -369,7 +369,9 @@ int training_dispatch_snn_step(
     } else {
         snn_network_set_inputs(snn, input_ptr, input_dim);
     }
-    nimcp_free(pooled_input);
+    /* NOTE: pooled_input is freed AFTER the training switch because
+     * input_ptr (which may alias pooled_input) is used in R-STDP
+     * eligibility accumulation. See the nimcp_free(pooled_input) below. */
 
     // Use BPTT forward if backprop context is available
     float dt = (snn->sim && snn->sim->dt_ms > 0.0f) ? snn->sim->dt_ms : 1.0F;
@@ -461,7 +463,7 @@ int training_dispatch_snn_step(
             /* 2. Accumulate eligibility from input×output co-activation.
              * Uses continuous-valued input and SNN output predictions as
              * proxies for spike correlations (avoids opaque tensor access).
-             * trace[i][j] += input[i] * output[j]  (outer product) */
+             * Both are normalized to [0,1] to keep traces bounded. */
             if (ctx->eligibility && input_ptr && predictions) {
                 float* elig_data = (float*)nimcp_tensor_data(ctx->eligibility);
                 const nimcp_tensor_shape_t* sh = nimcp_tensor_shape(ctx->eligibility);
@@ -471,13 +473,31 @@ int training_dispatch_snn_step(
                     uint32_t n_pre = (snn_in < elig_rows) ? snn_in : elig_rows;
                     uint32_t n_post = (snn_out < elig_cols) ? snn_out : elig_cols;
 
+                    /* Find max activation for normalization */
+                    float max_pre = 0.0f, max_post = 0.0f;
                     for (uint32_t i = 0; i < n_pre; i++) {
-                        float pre_act = input_ptr[i];
+                        float v = fabsf(input_ptr[i]);
+                        if (v > max_pre) max_pre = v;
+                    }
+                    for (uint32_t j = 0; j < n_post; j++) {
+                        float v = fabsf(predictions[j]);
+                        if (v > max_post) max_post = v;
+                    }
+                    float inv_pre  = (max_pre  > 1e-6f) ? 1.0f / max_pre  : 0.0f;
+                    float inv_post = (max_post > 1e-6f) ? 1.0f / max_post : 0.0f;
+
+                    for (uint32_t i = 0; i < n_pre; i++) {
+                        float pre_act = input_ptr[i] * inv_pre;
                         if (pre_act < 0.01f) continue;
                         for (uint32_t j = 0; j < n_post; j++) {
-                            float post_act = predictions[j];
+                            float post_act = predictions[j] * inv_post;
                             if (post_act > 0.01f) {
-                                elig_data[i * elig_cols + j] += pre_act * post_act;
+                                float e = elig_data[i * elig_cols + j]
+                                        + pre_act * post_act;
+                                /* Clamp trace to [-10, 10] */
+                                if (e > 10.0f) e = 10.0f;
+                                if (e < -10.0f) e = -10.0f;
+                                elig_data[i * elig_cols + j] = e;
                             }
                         }
                     }
@@ -549,6 +569,11 @@ int training_dispatch_snn_step(
         default:
             break;
     }
+
+    /* Deferred free: pooled_input may have been aliased by input_ptr,
+     * which was used in the R-STDP eligibility accumulation above. */
+    nimcp_free(pooled_input);
+    pooled_input = NULL;
 
     /* For non-surrogate modes, compute MSE loss from output spike rates
      * so callers get meaningful loss metrics for all SNN training methods. */
