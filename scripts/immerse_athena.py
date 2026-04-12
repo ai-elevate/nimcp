@@ -407,7 +407,9 @@ def submit_multimodal(brain, description):
     # generate_visual_frame synthesizes a deterministic frame from the
     # description (color/shape/texture heuristics inside), so every concept
     # gets at least some pixel-space grounding even if keyword-free.
-    batch_modalities["visual"] = generate_visual_frame(description)
+    # submit_sensory_batch expects visual as (pixels, w, h, ch) tuple.
+    _vf = generate_visual_frame(description)
+    batch_modalities["visual"] = (_vf.flatten().tolist(), 32, 32, 3)
     _sensory_submitted.append("V")
 
     # Always submit audio — every description can be synthesized as sound.
