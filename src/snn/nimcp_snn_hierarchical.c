@@ -233,11 +233,51 @@ wire_connections:
     }
     LOG_INFO("Skip: %u connections", skip_connections);
 
+    /* Wire input_pop (pop 0) → tier 0 populations.
+     * The base network's input_pop has n_inputs neurons (e.g. 1024).
+     * Tier 0 has 4 × 20K = 80K neurons. We fan out from input_pop to
+     * all tier 0 populations so each input drives multiple tier-0 neurons.
+     * Connectivity 10% = each input neuron drives ~2000 tier-0 neurons. */
+    uint32_t input_fanout_conn = 0;
+    if (tier_start_pop[0] < flat_idx) {
+        for (uint32_t dp = tier_start_pop[0]; dp < tier_start_pop[1] && dp < flat_idx; dp++) {
+            int nc = snn_network_connect_populations(net,
+                0,  /* pop 0 = input_pop */
+                pop_map[dp],
+                SNN_TOPO_RANDOM, 0.10f,
+                SYNAPSE_AMPA, 0.3f, 0.1f);
+            if (nc > 0) input_fanout_conn += (uint32_t)nc;
+        }
+    }
+    LOG_INFO("Input fan-out: input_pop → tier 0: %u connections", input_fanout_conn);
+
+    /* Wire tier 7 populations → output_pop (pop 2).
+     * Tier 7 has 4 × 64K = 256K neurons. The output_pop has n_outputs
+     * neurons (e.g. 2048). We converge tier 7 activity into output_pop
+     * so snn_network_get_outputs() captures the hierarchy's final state.
+     * Connectivity 5% = each output neuron receives from ~12800 tier-7 neurons. */
+    uint32_t output_converge_conn = 0;
+    if (NUM_TIERS > 0 && tier_start_pop[NUM_TIERS - 1] < flat_idx) {
+        for (uint32_t sp = tier_start_pop[NUM_TIERS - 1];
+             sp < tier_start_pop[NUM_TIERS] && sp < flat_idx; sp++) {
+            int nc = snn_network_connect_populations(net,
+                pop_map[sp],
+                2,  /* pop 2 = output_pop */
+                SNN_TOPO_RANDOM, 0.05f,
+                SYNAPSE_AMPA, 0.2f, 0.1f);
+            if (nc > 0) output_converge_conn += (uint32_t)nc;
+        }
+    }
+    LOG_INFO("Output convergence: tier 7 → output_pop: %u connections",
+             output_converge_conn);
+
     LOG_INFO("Hierarchical SNN complete: %u neurons, %u connections "
-             "(ff=%u, rec=%u, skip=%u)",
+             "(ff=%u, rec=%u, skip=%u, in_fan=%u, out_conv=%u)",
              actual_total,
-             total_connections + recurrent_connections + skip_connections,
-             total_connections, recurrent_connections, skip_connections);
+             total_connections + recurrent_connections + skip_connections
+                 + input_fanout_conn + output_converge_conn,
+             total_connections, recurrent_connections, skip_connections,
+             input_fanout_conn, output_converge_conn);
 
     return net;
 }

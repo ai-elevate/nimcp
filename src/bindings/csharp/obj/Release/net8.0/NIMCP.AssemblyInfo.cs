@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NIMCP")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+066216c5355e12bcd97fec14a60ba1f04be7ce01")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+142edaff8a8c54d7ae0600eea20fb05f9c7dabe6")]
 [assembly: System.Reflection.AssemblyProductAttribute("NIMCP")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NIMCP")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

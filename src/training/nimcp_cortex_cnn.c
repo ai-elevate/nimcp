@@ -24,10 +24,10 @@
 /* Default embedding dimensions per modality                                  */
 /* ========================================================================= */
 
-#define VISUAL_DEFAULT_EMBED_DIM   64
-#define AUDIO_DEFAULT_EMBED_DIM    64
-#define SPEECH_DEFAULT_EMBED_DIM   32
-#define SOMATO_DEFAULT_EMBED_DIM   32
+#define VISUAL_DEFAULT_EMBED_DIM   256
+#define AUDIO_DEFAULT_EMBED_DIM    256
+#define SPEECH_DEFAULT_EMBED_DIM   128
+#define SOMATO_DEFAULT_EMBED_DIM   128
 
 #define CORTEX_CNN_MAX_LABELS     4096
 #define CORTEX_CNN_ATTENTION_TEMP  0.5f

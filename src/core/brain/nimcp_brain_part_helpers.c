@@ -2,6 +2,8 @@
 // Part of nimcp_brain.c (SRP #include-based split)
 // DO NOT compile separately - #included from nimcp_brain.c
 
+#include "training/nimcp_cortex_cnn.h"
+
 
 /**
  * @brief Publish brain state change event via bio-async
@@ -1311,8 +1313,20 @@ sequential_fallback:
                     brain->staged_sensory.somato_segments);
             }
 
-            /* Fuse embeddings via cross-modal attention */
-            uint32_t max_fused = 64 + 64 + 32 + 32;  /* Max total embedding dim */
+            /* Fuse embeddings via cross-modal attention.
+             * Sum actual embedding dims from active cortex CNNs.
+             * SNN-primary: visual/audio=256, speech/somato=128 → total 768. */
+            uint32_t max_fused = 0;
+            for (int ci = 0; ci < 4; ci++) {
+                if (brain->cortex_cnns[ci]) {
+                    cortex_cnn_metrics_t m;
+                    if (cortex_cnn_get_metrics(
+                            (cortex_cnn_processor_t*)brain->cortex_cnns[ci], &m) == 0) {
+                        max_fused += m.embedding_dim;
+                    }
+                }
+            }
+            if (max_fused == 0) max_fused = 256 + 256 + 128 + 128;  /* Fallback */
             if (!brain->cortex_cnn_fused_embedding ||
                 brain->cortex_cnn_fused_dim < max_fused) {
                 nimcp_free(brain->cortex_cnn_fused_embedding);

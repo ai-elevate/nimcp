@@ -9,16 +9,16 @@
  *       registers via UTM vtable for composite loss / cross-network bridges,
  *       and fuses embeddings via cross-modal attention before adaptive network
  *
- * Architecture:
+ * Architecture (SNN-primary, scaled embeddings):
  *   Visual (64x64x3): Conv2d(3->16,3x3)->BN->ReLU->Pool->Conv2d(16->32)->BN->ReLU->Pool
- *                      ->Conv2d(32->64)->BN->ReLU->GlobalAvgPool->Dense(64->64) => 64-dim
+ *                      ->Conv2d(32->64)->BN->ReLU->GlobalAvgPool->Dense(64->256) => 256-dim
  *   Audio (1x128):     Conv2d(1->16,1x5)->BN->ReLU->Pool->Conv2d(16->32,1x3)->BN->ReLU
- *                      ->GlobalAvgPool->Dense(32->64) => 64-dim
+ *                      ->GlobalAvgPool->Dense(32->256) => 256-dim
  *   Speech (1x64):     Conv2d(1->16,1x3)->BN->ReLU->Conv2d(16->32,1x3)->BN->ReLU
- *                      ->GlobalAvgPool->Dense(32->32) => 32-dim
- *   Somato (45):       Dense(45->64)->ReLU->Dense(64->32) => 32-dim
+ *                      ->GlobalAvgPool->Dense(32->128) => 128-dim
+ *   Somato (45):       Dense(45->64)->ReLU->Dense(64->128) => 128-dim
  *
- * ~46K total params, <1MB memory, CPU-first.
+ * ~180K total params, <2MB memory, CPU-first.
  */
 
 #ifndef NIMCP_CORTEX_CNN_H

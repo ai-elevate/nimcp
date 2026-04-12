@@ -411,6 +411,32 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_training_dispatch.c)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# SNN-Primary Architecture Tests (steps 5-10)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_primary_architecture.c)
+    add_executable(unit_training_test_snn_primary_architecture
+        test_snn_primary_architecture.c
+    )
+    target_include_directories(unit_training_test_snn_primary_architecture PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_training_test_snn_primary_architecture PRIVATE c_std_11)
+    target_compile_options(unit_training_test_snn_primary_architecture PRIVATE
+        -Wall -Wextra
+    )
+    target_link_libraries(unit_training_test_snn_primary_architecture PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME unit_training_test_snn_primary_architecture
+             COMMAND unit_training_test_snn_primary_architecture
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_training_test_snn_primary_architecture
+        PROPERTIES
+            LABELS "unit;training;snn-primary"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
 # Cross-Network Bridge Validation Tests (Phase D)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cross_network_bridges.cpp)
     add_executable(unit_training_test_cross_network_bridges

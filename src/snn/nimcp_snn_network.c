@@ -150,8 +150,8 @@ static snn_simulation_t* snn_simulation_create_internal(float dt_ms, uint32_t to
     sim->health = SNN_STATE_HEALTHY;
 
     /* Allocate spike queue — scale with total neuron count.
-     * At 1.8M neurons with ~5% firing rate per step, need ~90K queue slots.
-     * Cap at 2M to avoid excessive memory on huge networks. */
+     * At 1.8M SNN neurons with ~5% firing rate per step, need ~90K queue slots.
+     * queue = total/2 handles bursts; cap at 2M prevents runaway alloc. */
     sim->queue_capacity = (total_neurons > 20000) ? total_neurons / 2 : 10000;
     if (sim->queue_capacity > 2000000) sim->queue_capacity = 2000000;
     sim->spike_queue = (snn_spike_t*)nimcp_malloc(

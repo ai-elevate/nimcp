@@ -240,18 +240,18 @@ consolidation_config_t consolidation_auto_config(uint32_t num_neurons)
 {
     consolidation_config_t config = consolidation_default_config();
 
-    if (num_neurons > 2000000) {
-        /* > 2M neurons: minimal work */
+    if (num_neurons > 500000) {
+        /* > 500K neurons: minimal work (SNN-primary arch: ANN is 150K) */
         config.consolidation_cycles = 2;
         config.neuron_sample_rate = 0.05F;
         config.max_prune_passes = 1;
-    } else if (num_neurons > 500000) {
-        /* 500K-2M neurons */
+    } else if (num_neurons > 100000) {
+        /* 100K-500K neurons (typical SNN-primary ANN range) */
         config.consolidation_cycles = 3;
         config.neuron_sample_rate = 0.10F;
         config.max_prune_passes = 1;
     } else if (num_neurons > 10000) {
-        /* 10K-500K neurons */
+        /* 10K-100K neurons */
         config.consolidation_cycles = 5;
         config.neuron_sample_rate = 0.50F;
         config.max_prune_passes = 1;

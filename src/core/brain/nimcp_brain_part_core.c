@@ -1652,7 +1652,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
      * information. This adds spectral richness to the decision. */
     if (brain->snn_fno_populations && brain->snn_fno_count > 0 &&
         decision && decision->output_vector && decision->output_size > 0) {
-        extern float snn_fno_get_train_mse(const void*);
+        /* snn_fno_get_train_mse declared in snn/nimcp_snn_fno.h */
         /* Record the FNO's last training MSE for monitoring.
          * The actual spectral augmentation happens via the SNN-FNO bridge
          * during the SNN forward step (already wired in the network forward). */

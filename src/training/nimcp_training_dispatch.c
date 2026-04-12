@@ -109,7 +109,31 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
                        + brain->snn_network->config.n_hidden
                        + brain->snn_network->config.n_outputs;
 
-    switch (config->snn_method) {
+    /* Eligibility trace dimensions for training context allocation.
+     * For large hierarchical SNNs (>100K neurons), the dense n×n eligibility
+     * matrix would be infeasible (1.5M² = 9TB). Use the brain I/O dims instead
+     * — the training context only needs traces for the input→output mapping,
+     * not the full internal connectivity (internal plasticity is handled by
+     * the per-synapse STDP in the SNN step function). */
+    uint32_t trace_pre  = brain->snn_network->config.n_inputs;
+    uint32_t trace_post = brain->snn_network->config.n_outputs;
+    if (trace_pre == 0) trace_pre = 256;
+    if (trace_post == 0) trace_post = 256;
+
+    /* Force R-STDP for large SNN networks (>100K neurons).
+     * BPTT/surrogate gradient methods are O(n²) in memory and infeasible
+     * at this scale. R-STDP uses local eligibility traces + reward signal,
+     * scaling linearly with neuron count. */
+    nimcp_snn_train_method_t effective_method = config->snn_method;
+    if (n_neurons > 100000 &&
+        effective_method != NIMCP_SNN_TRAIN_R_STDP &&
+        effective_method != NIMCP_SNN_TRAIN_STDP) {
+        NIMCP_LOGGING_INFO("SNN has %u neurons (>100K) — forcing R-STDP "
+                           "(was method=%d)", n_neurons, effective_method);
+        effective_method = NIMCP_SNN_TRAIN_R_STDP;
+    }
+
+    switch (effective_method) {
         case NIMCP_SNN_TRAIN_STDP: {
             snn_stdp_config_t stdp_cfg;
             snn_stdp_config_default(&stdp_cfg);
@@ -124,7 +148,7 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
             snn_rstdp_config_default(&rstdp_cfg);
             rstdp_cfg.eligibility_tau = config->snn_eligibility_tau;
             rstdp_cfg.reward_tau = config->snn_reward_tau;
-            ctx = snn_training_create_rstdp(&rstdp_cfg, n_neurons, n_neurons);
+            ctx = snn_training_create_rstdp(&rstdp_cfg, trace_pre, trace_post);
             break;
         }
 
@@ -133,7 +157,7 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
             snn_eprop_config_default(&eprop_cfg);
             eprop_cfg.learning_rate = config->learning_rate;
             eprop_cfg.eligibility_tau = config->snn_eligibility_tau;
-            ctx = snn_training_create_eprop(&eprop_cfg, n_neurons, n_neurons);
+            ctx = snn_training_create_eprop(&eprop_cfg, trace_pre, trace_post);
             break;
         }
 
@@ -142,7 +166,7 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
             snn_surrogate_config_default(&surr_cfg);
             surr_cfg.beta = config->snn_surrogate_beta;
             surr_cfg.learning_rate = config->learning_rate;
-            ctx = snn_training_create_surrogate(&surr_cfg, n_neurons, n_neurons);
+            ctx = snn_training_create_surrogate(&surr_cfg, trace_pre, trace_post);
             break;
         }
 
@@ -167,7 +191,8 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
     }
 
     brain->snn_training_ctx = ctx;
-    NIMCP_LOGGING_INFO("Initialized SNN training with method=%d", config->snn_method);
+    NIMCP_LOGGING_INFO("Initialized SNN training with method=%d (%u neurons)",
+                       effective_method, n_neurons);
     return 0;
 }
 
@@ -280,6 +305,7 @@ int training_dispatch_snn_step(
 
     /* Set inputs on SNN (average-pool if brain dims > SNN dims) */
     uint32_t snn_in = snn->config.n_inputs;
+    uint32_t snn_out = snn->config.n_outputs;
     float* pooled_input = NULL;
     const float* input_ptr = inputs;
     uint32_t input_dim = num_inputs;
@@ -358,7 +384,6 @@ int training_dispatch_snn_step(
                                           uint32_t batch_size);
         extern void snn_backprop_step(void* ctx, float learning_rate);
 
-        uint32_t snn_out = snn->config.n_outputs;
         float* outputs = nimcp_calloc(snn_out, sizeof(float));
         if (outputs) {
             float duration = 100.0f;
@@ -406,6 +431,13 @@ int training_dispatch_snn_step(
     float loss = 0.0F;
     uint32_t updates = 0;
 
+    /* Extract SNN output predictions (needed by R-STDP for eligibility
+     * accumulation and by surrogate for loss gradient). */
+    float* predictions = nimcp_calloc(snn_out, sizeof(float));
+    if (predictions) {
+        snn_network_get_outputs(snn, predictions, snn_out);
+    }
+
     switch (mode) {
         case SNN_TRAIN_STDP:
             if (brain->gpu_enabled && brain->gpu_ctx && brain->gpu_plasticity_state) {
@@ -422,10 +454,40 @@ int training_dispatch_snn_step(
             }
             break;
 
-        case SNN_TRAIN_R_STDP:
+        case SNN_TRAIN_R_STDP: {
+            /* 1. Decay existing eligibility traces */
             snn_rstdp_update_eligibility(ctx, dt);
+
+            /* 2. Accumulate eligibility from input×output co-activation.
+             * Uses continuous-valued input and SNN output predictions as
+             * proxies for spike correlations (avoids opaque tensor access).
+             * trace[i][j] += input[i] * output[j]  (outer product) */
+            if (ctx->eligibility && input_ptr && predictions) {
+                float* elig_data = (float*)nimcp_tensor_data(ctx->eligibility);
+                const nimcp_tensor_shape_t* sh = nimcp_tensor_shape(ctx->eligibility);
+                if (elig_data && sh && sh->rank >= 2) {
+                    uint32_t elig_rows = sh->dims[0];
+                    uint32_t elig_cols = sh->dims[sh->rank - 1];
+                    uint32_t n_pre = (snn_in < elig_rows) ? snn_in : elig_rows;
+                    uint32_t n_post = (snn_out < elig_cols) ? snn_out : elig_cols;
+
+                    for (uint32_t i = 0; i < n_pre; i++) {
+                        float pre_act = input_ptr[i];
+                        if (pre_act < 0.01f) continue;
+                        for (uint32_t j = 0; j < n_post; j++) {
+                            float post_act = predictions[j];
+                            if (post_act > 0.01f) {
+                                elig_data[i * elig_cols + j] += pre_act * post_act;
+                            }
+                        }
+                    }
+                }
+            }
+
+            /* 3. Apply reward-modulated weight update */
             updates = snn_rstdp_apply(ctx, snn);
             break;
+        }
 
         case SNN_TRAIN_EPROP:
             // eProp needs spike arrays
@@ -434,15 +496,12 @@ int training_dispatch_snn_step(
 
         case SNN_TRAIN_SURROGATE: {
             // Surrogate gradients - decode output spikes and compute loss gradient
-            uint32_t snn_out = snn->config.n_outputs;
             uint32_t grad_dim = (num_targets < snn_out) ? num_targets : snn_out;
-            float* predictions = nimcp_calloc(snn_out, sizeof(float));
             float* output_grad = nimcp_calloc(grad_dim, sizeof(float));
             float* membrane_v = nimcp_calloc(grad_dim, sizeof(float));
             float* input_grad = nimcp_calloc(grad_dim, sizeof(float));
             if (predictions && output_grad && membrane_v && input_grad) {
-                // Decode output spikes to firing rates
-                snn_network_get_outputs(snn, predictions, snn_out);
+                /* predictions already extracted above the switch */
 
                 // Get membrane potentials from output population neurons
                 if (snn->output_pop && snn->neural_net && snn->output_pop->neuron_ids) {
@@ -481,7 +540,6 @@ int training_dispatch_snn_step(
                     }
                 }
             }
-            nimcp_free(predictions);
             nimcp_free(output_grad);
             nimcp_free(membrane_v);
             nimcp_free(input_grad);
@@ -494,20 +552,17 @@ int training_dispatch_snn_step(
 
     /* For non-surrogate modes, compute MSE loss from output spike rates
      * so callers get meaningful loss metrics for all SNN training methods. */
-    if (loss == 0.0f && mode != SNN_TRAIN_SURROGATE && targets && num_targets > 0) {
-        uint32_t snn_out = snn->config.n_outputs;
-        float* predictions = nimcp_calloc(snn_out, sizeof(float));
-        if (predictions) {
-            snn_network_get_outputs(snn, predictions, snn_out);
-            uint32_t cmp_dim = (num_targets < snn_out) ? num_targets : snn_out;
-            for (uint32_t i = 0; i < cmp_dim; i++) {
-                float diff = predictions[i] - targets[i];
-                loss += diff * diff;
-            }
-            loss /= (float)cmp_dim;
-            nimcp_free(predictions);
+    if (loss == 0.0f && mode != SNN_TRAIN_SURROGATE && targets && num_targets > 0
+        && predictions) {
+        uint32_t cmp_dim = (num_targets < snn_out) ? num_targets : snn_out;
+        for (uint32_t i = 0; i < cmp_dim; i++) {
+            float diff = predictions[i] - targets[i];
+            loss += diff * diff;
         }
+        loss /= (float)cmp_dim;
     }
+
+    nimcp_free(predictions);
 
     if (result) {
         result->loss = isfinite(loss) ? loss : 1.0f;

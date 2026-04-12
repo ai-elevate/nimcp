@@ -92,7 +92,9 @@
 #include "snn/nimcp_snn_fno.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_network.h"
-#include "snn/nimcp_snn_fno.h"
+/* Forward-declare R-STDP reward setter (full snn_training.h conflicts
+ * with snn_backprop.h due to duplicate snn_surrogate_config_t typedef) */
+extern void snn_rstdp_set_reward(struct snn_training_ctx_s* ctx, float reward);
 #include "lnn/nimcp_lnn_hamiltonian.h"
 #include "training/nimcp_cortex_cnn.h"
 #include "cognitive/vae/nimcp_vae.h"
@@ -793,6 +795,9 @@ typedef struct {
     uint32_t target_size;
     const char* label;
 
+    /* ANN loss (set before dispatching sub-network tasks) */
+    float ann_loss;
+
     /* Per-network results (each written by ONE task only) */
     float cnn_loss;
     bool cnn_done;
@@ -828,6 +833,11 @@ static void learn_snn_task(void* arg)
     learn_task_ctx_t* ctx = (learn_task_ctx_t*)arg;
 
     if (ctx->brain->snn_network && ctx->brain->snn_training_ctx) {
+        /* Set R-STDP reward from ANN loss (parallel path — ANN already completed) */
+        if (ctx->brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP) {
+            float reward = 1.0f - fminf(ctx->ann_loss, 1.0f);
+            snn_rstdp_set_reward(ctx->brain->snn_training_ctx, reward);
+        }
         training_dispatch_snn_step(ctx->brain, ctx->features, ctx->num_features,
                                     ctx->target, ctx->target_size, &ctx->snn_res);
     }
@@ -1580,6 +1590,17 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 }
             }
 
+            /* Debug: log every 100 steps why visual cortex isn't firing */
+            {
+                static uint32_t _vc_dbg = 0;
+                if (++_vc_dbg % 100 == 1)
+                    fprintf(stderr, "[CORTEX-DBG] visual: cnns[0]=%p frame=%p audio=%p speech=%p label='%.20s'\n",
+                            (void*)brain->cortex_cnns[0],
+                            (void*)brain->staged_sensory.visual_frame,
+                            (void*)brain->staged_sensory.audio_data,
+                            (void*)brain->staged_sensory.speech_data,
+                            label ? label : "(null)");
+            }
             if (brain->cortex_cnns[0] && brain->staged_sensory.visual_frame) {
                 const float* emb = cortex_cnn_forward_visual(brain->cortex_cnns[0],
                     brain->staged_sensory.visual_frame,
@@ -1614,6 +1635,14 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
          * Gated on train_snn so disabling SNN training at runtime actually
          * disables it in the UTM path as well. */
         if (brain->snn_network && brain->snn_training_ctx && brain->config.train_snn) {
+            /* Set R-STDP reward from ANN loss: lower loss = higher reward.
+             * This is the critical ANN→SNN teaching signal — the ANN acts
+             * as teacher, its prediction quality modulates SNN plasticity. */
+            if (brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP) {
+                float reward = 1.0f - fminf(loss, 1.0f);
+                snn_rstdp_set_reward(brain->snn_training_ctx, reward);
+            }
+
             training_dispatch_result_t snn_res = {0};
             training_dispatch_snn_step(brain, features, num_features,
                                        target, target_size, &snn_res);
@@ -1651,6 +1680,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 ctx->target = target;
                 ctx->target_size = target_size;
                 ctx->label = label;
+                ctx->ann_loss = loss;  /* For R-STDP reward in SNN task */
 
                 if (has_cnn) nimcp_pool_submit(brain->inference_pool, learn_cnn_task, ctx);
                 if (has_snn) nimcp_pool_submit(brain->inference_pool, learn_snn_task, ctx);
@@ -1707,6 +1737,12 @@ sequential_training:
                 }
             }
             if (has_snn) {
+                /* Set R-STDP reward (sequential fallback path) */
+                if (brain->snn_training_ctx &&
+                    brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP) {
+                    float reward = 1.0f - fminf(loss, 1.0f);
+                    snn_rstdp_set_reward(brain->snn_training_ctx, reward);
+                }
                 training_dispatch_result_t snn_res = {0};
                 training_dispatch_snn_step(brain, features, num_features, target, target_size, &snn_res);
                 PROBE_STAGE(brain, PROBE_TRAIN_SNN, {
@@ -4327,7 +4363,8 @@ int brain_enable_multi_network_training(brain_t brain)
         // dominates (1024^2 = 1M ops/step vs 256^2 = 65K). When brain dims exceed
         // the cap, lnn_train_step() average-pools the input and truncates targets
         // to match the LNN's smaller dimensions.
-        uint32_t lnn_cap = 256;
+        uint32_t lnn_cap = brain->config.lnn_target_neurons;
+        if (lnn_cap == 0) lnn_cap = 256;  /* Default: 256 */
         uint32_t lnn_in = (num_inputs > lnn_cap) ? lnn_cap : num_inputs;
         uint32_t lnn_out = (num_outputs > lnn_cap) ? lnn_cap : num_outputs;
         uint32_t n_inter = (lnn_in + lnn_out) / 2;
@@ -4421,28 +4458,50 @@ int brain_enable_multi_network_training(brain_t brain)
     }
 
     // ========================================================================
-    // STEP 2.5: Create SNN network (feedforward architecture)
+    // STEP 2.5: Create SNN network (hierarchical architecture)
     // ========================================================================
-    // WHAT: Create a Spiking Neural Network matched to brain dimensions
-    // WHY:  SNN captures temporal spike-timing patterns, event sequences
-    // HOW:  Feedforward (input → hidden → output) with LIF neurons
-    //       Capped to 256 neurons per layer (like LNN) to keep spike
-    //       simulation tractable. Training dispatch creates snn_training_ctx.
+    // WHAT: Create a hierarchical Spiking Neural Network (1.8M+ neurons)
+    // WHY:  SNN is now the PRIMARY learning substrate — captures temporal
+    //       spike-timing patterns via R-STDP with dopamine modulation.
+    //       ANN serves as fast teacher providing reward signals.
+    // HOW:  snn_create_hierarchical_network builds 46 populations across
+    //       8 tiers (input→L1→...→L6→output) with LIF neurons.
+    //       Falls back to feedforward if hierarchical creation fails.
     if (!brain->snn_network && num_inputs >= 8 && num_outputs >= 8) {
-        uint32_t snn_cap = 256;
-        uint32_t snn_in  = (num_inputs  > snn_cap) ? snn_cap : num_inputs;
-        uint32_t snn_out = (num_outputs > snn_cap) ? snn_cap : num_outputs;
-        uint32_t snn_hidden = (snn_in + snn_out) / 2;
-        if (snn_hidden < 8) snn_hidden = 8;
-        if (snn_hidden > snn_cap) snn_hidden = snn_cap;
+        uint32_t snn_target = brain->config.snn_target_neurons;
+        snn_network_t* snn = NULL;
 
-        NIMCP_LOGGING_INFO("SNN feedforward: brain dims %u→%u, SNN dims %u→%u→%u",
-                           num_inputs, num_outputs, snn_in, snn_hidden, snn_out);
+        if (snn_target > 0) {
+            /* Explicit SNN neuron count configured — use hierarchical architecture */
+            NIMCP_LOGGING_INFO("SNN hierarchical: brain dims %u→%u, target %u neurons",
+                               num_inputs, num_outputs, snn_target);
+            snn = snn_create_hierarchical_network(
+                num_inputs, num_outputs, snn_target);
+            if (!snn) {
+                NIMCP_LOGGING_WARN("Hierarchical SNN creation failed — falling back "
+                                   "to feedforward SNN");
+            }
+        } else {
+            NIMCP_LOGGING_INFO("SNN target not configured (snn_target_neurons=0) — "
+                               "using small feedforward SNN");
+        }
 
-        snn_config_t snn_cfg;
-        snn_config_feedforward(&snn_cfg, snn_in, snn_hidden, snn_out);
+        if (!snn) {
+            /* Feedforward fallback: small SNN capped at 256 neurons per layer.
+             * Used when hierarchical fails OR snn_target_neurons not set
+             * (e.g. old checkpoint loaded without --fresh). */
+            uint32_t snn_cap = 256;
+            uint32_t snn_in  = (num_inputs  > snn_cap) ? snn_cap : num_inputs;
+            uint32_t snn_out = (num_outputs > snn_cap) ? snn_cap : num_outputs;
+            uint32_t snn_hidden = (snn_in + snn_out) / 2;
+            if (snn_hidden < 8) snn_hidden = 8;
+            if (snn_hidden > snn_cap) snn_hidden = snn_cap;
 
-        snn_network_t* snn = snn_network_create(&snn_cfg);
+            snn_config_t snn_cfg;
+            snn_config_feedforward(&snn_cfg, snn_in, snn_hidden, snn_out);
+            snn = snn_network_create(&snn_cfg);
+        }
+
         if (!snn) {
             NIMCP_LOGGING_WARN("Failed to create SNN network for multi-network training");
             // Non-fatal: continue without SNN
@@ -4450,21 +4509,27 @@ int brain_enable_multi_network_training(brain_t brain)
             brain->snn_network = snn;
             brain->owns_specialized_network = true;
 
-            /* Create per-population FNO models for spectral dynamics prediction */
+            /* Create per-population FNO models for spectral dynamics prediction.
+             * FNO models population-level spectral dynamics — it does NOT need
+             * one dimension per neuron. Cap at 1024 to keep memory tractable:
+             * 46 pops × ~1MB each ≈ 46 MB total (vs 23 GB uncapped). */
             if (snn->n_populations > 0 && !brain->snn_fno_populations) {
                 brain->snn_fno_populations = nimcp_calloc(snn->n_populations, sizeof(void*));
                 if (brain->snn_fno_populations) {
                     snn_fno_config_t fno_cfg;
                     snn_fno_config_default(&fno_cfg);
+                    uint32_t fno_cap = 1024;  /* Max neurons for FNO model */
                     for (uint32_t p = 0; p < snn->n_populations; p++) {
                         uint32_t pop_n = snn->populations[p] ?
-                            snn->populations[p]->n_neurons : snn_hidden;
+                            snn->populations[p]->n_neurons : 256;
+                        uint32_t fno_n = (pop_n > fno_cap) ? fno_cap : pop_n;
                         brain->snn_fno_populations[p] =
-                            snn_fno_population_create(p, pop_n, &fno_cfg);
+                            snn_fno_population_create(p, fno_n, &fno_cfg);
                     }
                     brain->snn_fno_count = snn->n_populations;
-                    NIMCP_LOGGING_INFO("SNN FNO: created %u population dynamics models",
-                                       snn->n_populations);
+                    NIMCP_LOGGING_INFO("SNN FNO: created %u population dynamics models "
+                                       "(capped at %u neurons each)",
+                                       snn->n_populations, fno_cap);
                 }
             }
         }
@@ -4616,6 +4681,16 @@ int brain_enable_multi_network_training(brain_t brain)
     nimcp_training_config_t dispatch_cfg = nimcp_training_config_default();
     dispatch_cfg.network_type = NIMCP_NETWORK_HYBRID;
     dispatch_cfg.learning_rate = brain->config.learning_rate;
+
+    /* Propagate SNN network's preferred training mode into the dispatch config.
+     * snn_create_hierarchical_network sets train_mode = SNN_TRAIN_R_STDP;
+     * without this, the dispatch default (SURROGATE) would be used until the
+     * >100K neuron check overrides it — making the two paths agree explicitly. */
+    if (brain->snn_network) {
+        dispatch_cfg.snn_method = (nimcp_snn_train_method_t)
+            brain->snn_network->config.train_mode;
+    }
+
     training_dispatch_init(brain, &dispatch_cfg);
 
     NIMCP_LOGGING_INFO("Multi-network training enabled: Adaptive + %s + %s + %s + %s",

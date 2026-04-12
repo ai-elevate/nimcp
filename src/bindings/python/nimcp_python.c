@@ -324,16 +324,20 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
     unsigned int num_inputs = 10;
     unsigned int num_outputs = 10;
     unsigned int neuron_count = 0;
+    unsigned int snn_neuron_count = 0;
+    unsigned int lnn_neuron_count = 0;
     const char* checkpoint = NULL;
     const char* init_mode = NULL;  // "full", "fast", or "minimal"
     const char* log_level = NULL;  // "trace", "debug", "info", "warn", "error", "off"
 
     static char* kwlist[] = {"name", "size", "task", "num_inputs", "num_outputs",
-                             "neuron_count", "checkpoint", "init_mode", "log_level", NULL};
+                             "neuron_count", "checkpoint", "init_mode", "log_level",
+                             "snn_neuron_count", "lnn_neuron_count", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIzzz", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iiIIIzzzII", kwlist,
                                      &name, &size, &task, &num_inputs, &num_outputs,
-                                     &neuron_count, &checkpoint, &init_mode, &log_level)) {
+                                     &neuron_count, &checkpoint, &init_mode, &log_level,
+                                     &snn_neuron_count, &lnn_neuron_count)) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Brain_init: Invalid arguments");
         return -1;
     }
@@ -409,6 +413,16 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds) {
                          "Brain_init: Failed to create brain '%s'", name);
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
         return -1;
+    }
+
+    /* Set SNN/LNN target neuron counts on brain config (used when
+     * brain_enable_multi_network_training creates the sub-networks) */
+    nimcp_brain_t brain_ref = self->brain;
+    if (brain_ref && brain_ref->internal_brain) {
+        if (snn_neuron_count > 0)
+            brain_ref->internal_brain->config.snn_target_neurons = snn_neuron_count;
+        if (lnn_neuron_count > 0)
+            brain_ref->internal_brain->config.lnn_target_neurons = lnn_neuron_count;
     }
 
     return 0;
@@ -5138,6 +5152,8 @@ static PyObject* Brain_submit_sensory(BrainObject* self, PyObject* args, PyObjec
         }
         nimcp_free(data);
         ib->staged_sensory.visual_frame = pixels;
+        fprintf(stderr, "[VISUAL-DBG] staged %zd pixels (%ux%ux%u) frame=%p\n",
+                num_elements, width, height, channels, (void*)pixels);
         ib->staged_sensory.visual_width = (width > 0) ? width : 32;
         ib->staged_sensory.visual_height = (height > 0) ? height : 32;
         ib->staged_sensory.visual_channels = (channels > 0) ? channels : 3;
@@ -5619,7 +5635,7 @@ static PyObject* Brain_create_full(PyTypeObject* type, PyObject* args, PyObject*
     int task = NIMCP_TASK_CLASSIFICATION;
     unsigned int num_inputs = 1024;
     unsigned int num_outputs = 2048;
-    unsigned int neuron_count = 1500000;
+    unsigned int neuron_count = 150000;
 
     static char* kwlist[] = {"name", "task", "num_inputs", "num_outputs", "neuron_count", NULL};
 

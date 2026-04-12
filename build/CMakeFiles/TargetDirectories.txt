@@ -6832,6 +6832,7 @@
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_quantization_ternary.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_snn_backprop_stubs.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_training_dispatch.dir
+/home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_snn_primary_architecture.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/unit_training_test_cross_network_bridges.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/training/CMakeFiles/edit_cache.dir

@@ -41057,6 +41057,19 @@ unit_training_test_training_dispatch/fast:
 .PHONY : unit_training_test_training_dispatch/fast
 
 #=============================================================================
+# Target rules for targets named unit_training_test_snn_primary_architecture
+
+# Build rule for target.
+unit_training_test_snn_primary_architecture: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_test_snn_primary_architecture
+.PHONY : unit_training_test_snn_primary_architecture
+
+# fast build rule for target.
+unit_training_test_snn_primary_architecture/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/training/CMakeFiles/unit_training_test_snn_primary_architecture.dir/build.make test/unit/training/CMakeFiles/unit_training_test_snn_primary_architecture.dir/build
+.PHONY : unit_training_test_snn_primary_architecture/fast
+
+#=============================================================================
 # Target rules for targets named unit_training_test_cross_network_bridges
 
 # Build rule for target.
@@ -47384,6 +47397,7 @@ help:
 	@echo "... unit_training_test_meta_hpo"
 	@echo "... unit_training_test_quantization_ternary"
 	@echo "... unit_training_test_snn_backprop_stubs"
+	@echo "... unit_training_test_snn_primary_architecture"
 	@echo "... unit_training_test_training_dispatch"
 	@echo "... unit_unified_checkpoint"
 	@echo "... unit_utils_algorithms_test_centrality"

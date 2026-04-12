@@ -1980,6 +1980,11 @@ typedef struct {
      * The SNN is never affected — it always trains when train_snn=true.
      * Toggle via set_ensemble_warmup_scale(brain, 0.0..1.0). */
     float ensemble_warmup_scale;
+
+    /* SNN-primary architecture: target neuron counts for sub-networks.
+     * 0 means "use default" (1.8M for SNN, 256 for LNN). */
+    uint32_t snn_target_neurons;            /**< Target SNN neuron count (0 = default 1.8M) */
+    uint32_t lnn_target_neurons;            /**< Target LNN neuron count (0 = default 256) */
 } brain_config_t;
 
 /**

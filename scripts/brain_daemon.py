@@ -265,6 +265,8 @@ class BrainService:
     def _cmd_batch(self, req):
         """Execute multiple commands in a single round-trip."""
         commands = req.get("commands", [])
+        import sys
+        print(f"[BATCH-DBG] {len(commands)} cmds: {[c.get('cmd','?')+'/'+str(c.get('modality','')) for c in commands]}", file=sys.stderr, flush=True)
         results = []
         for cmd_req in commands:
             try:
@@ -274,6 +276,7 @@ class BrainService:
                 else:
                     results.append({"error": f"Unknown command: {cmd_req.get('cmd')}"})
             except Exception as e:
+                print(f"[BATCH-DBG] ERROR in {cmd_req.get('cmd','?')}/{cmd_req.get('modality','')}: {e}", file=sys.stderr, flush=True)
                 results.append({"error": str(e)})
         return {"results": results}
 
@@ -839,6 +842,9 @@ class BrainService:
             # Stage sensory data on brain struct so cortex CNNs get created
             # and trained during the next learn_vector call.
             if modality == "visual":
+                logger.info("submit_sensory VISUAL: %d elements, w=%s h=%s ch=%s",
+                            len(data) if isinstance(data, (list, tuple)) else -1,
+                            req.get("width"), req.get("height"), req.get("channels"))
                 self.brain.submit_sensory("visual", data,
                                           width=req.get("width", 32),
                                           height=req.get("height", 32),
@@ -1531,12 +1537,21 @@ class AutoCheckpointer:
             # .meta, .cortex_*, etc.) to tmp_path.snn, tmp_path.lnn, etc.
             self.brain.save(tmp_path)
 
-            # STEP 2: Validate — temp file must be at least 100 MB
+            # STEP 2: Validate — temp file must be reasonably sized.
+            # Threshold scales with neuron count: ~50 bytes/neuron minimum
+            # (covers sparse synapse + metadata overhead). For 150K ANN this
+            # is ~7.5 MB; for 2M ANN it was ~100 MB. Floor at 5 MB.
             tmp_size = os.path.getsize(tmp_path)
-            if tmp_size < 100_000_000:  # 100 MB minimum for 2.5M neuron brain
-                logger.error("Checkpoint too small (%d bytes) — likely fresh brain, "
-                             "REFUSING to overwrite trained checkpoint (%d bytes)",
-                             tmp_size, existing_size)
+            try:
+                n_count = self.brain.get_neuron_count()
+            except Exception:
+                n_count = 150_000
+            min_size = max(5_000_000, n_count * 50)
+            if tmp_size < min_size:
+                logger.error("Checkpoint too small (%d bytes, min %d for %d neurons) "
+                             "— likely fresh brain, REFUSING to overwrite trained "
+                             "checkpoint (%d bytes)",
+                             tmp_size, min_size, n_count, existing_size)
                 os.remove(tmp_path)
                 return
 
@@ -2065,8 +2080,12 @@ def main():
     parser.add_argument("--init-mode", type=str, default="full",
                         choices=["full", "fast", "minimal"],
                         help="Brain init mode (default: full)")
-    parser.add_argument("--neuron-count", type=int, default=2_000_000,
-                        help="Neuron count (default: 2000000)")
+    parser.add_argument("--neuron-count", type=int, default=150_000,
+                        help="ANN neuron count (default: 150000, SNN is primary)")
+    parser.add_argument("--snn-neuron-count", type=int, default=1_800_000,
+                        help="SNN target neuron count (default: 1800000)")
+    parser.add_argument("--lnn-neuron-count", type=int, default=256,
+                        help="LNN neuron count (default: 256)")
     parser.add_argument("--num-inputs", type=int, default=1024,
                         help="Input dimension (default: 1024)")
     parser.add_argument("--num-outputs", type=int, default=2048,
@@ -2281,13 +2300,16 @@ def main():
             print(f"  [2/8] Refusing to create fresh brain — would destroy trained data.", flush=True)
             logger.critical("Checkpoint load failed for %s — exiting to protect data", checkpoint_path)
             sys.exit(1)
-        print(f"  [2/8] Creating new brain: {args.neuron_count:,} neurons, "
+        print(f"  [2/8] Creating new brain: ANN={args.neuron_count:,}, "
+              f"SNN={args.snn_neuron_count:,}, LNN={args.lnn_neuron_count:,}, "
               f"mode={args.init_mode}", flush=True)
         brain = nimcp.Brain("athena",
                             num_inputs=args.num_inputs,
                             num_outputs=args.num_outputs,
                             neuron_count=args.neuron_count,
-                            init_mode=args.init_mode)
+                            init_mode=args.init_mode,
+                            snn_neuron_count=args.snn_neuron_count,
+                            lnn_neuron_count=args.lnn_neuron_count)
     elapsed = time.time() - t0
     n_neurons = brain.get_neuron_count() if brain else 0
     print(f"  [2/8] ✓ Brain loaded: {n_neurons:,} neurons in {elapsed:.1f}s", flush=True)

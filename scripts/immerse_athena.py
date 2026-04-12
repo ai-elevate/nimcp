@@ -7349,7 +7349,7 @@ def _check_disk_space(min_gb=5.0):
         return True
 
 
-def _register_checkpoint_questdb(ckpt_path, stage, step):
+def _register_checkpoint_questdb(ckpt_path, stage, step, neuron_count=150000):
     """Register checkpoint metadata in QuestDB via ILP protocol."""
     try:
         import socket
@@ -7365,7 +7365,7 @@ def _register_checkpoint_questdb(ckpt_path, stage, step):
             f'format_version=1i,'
             f'blob_path="{ckpt_path}",'
             f'blob_size={blob_size}i,'
-            f'neuron_count=2000000i,'
+            f'neuron_count={neuron_count}i,'
             f'stage={stage}i,'
             f'step={step}i '
             f'{ts_ns}'
@@ -7439,9 +7439,14 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         # Write to temp file — if interrupted, no existing checkpoint is touched
         brain.save(snapshot_tmp)
 
-        # Verify the temp file is non-trivial (at least 100MB for a 2M neuron brain)
+        # Verify the temp file is non-trivial — scale threshold with neuron count
         tmp_size = os.path.getsize(snapshot_tmp)
-        if tmp_size < 100_000_000:  # 100 MB minimum
+        try:
+            n_count = brain.get_neuron_count()
+        except Exception:
+            n_count = 150_000
+        min_size = max(5_000_000, n_count * 50)
+        if tmp_size < min_size:
             logger.error("Checkpoint too small (%d bytes) — likely truncated, discarding",
                          tmp_size)
             os.remove(snapshot_tmp)
@@ -7491,7 +7496,11 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
     _prune_checkpoint_snapshots(max_snapshots=5)
 
     # Register checkpoint in QuestDB
-    _register_checkpoint_questdb(snapshot_path, stage, step)
+    try:
+        nc = brain.get_neuron_count()
+    except Exception:
+        nc = 150_000
+    _register_checkpoint_questdb(snapshot_path, stage, step, neuron_count=nc)
 
 
 def _save_checkpoint(brain, decoder, stage, step):
@@ -7877,7 +7886,12 @@ def main():
                         help="Disable Claude parent (silent mode)")
     parser.add_argument("--num-inputs", type=int, default=BRAIN_INPUT_DIM)
     parser.add_argument("--num-outputs", type=int, default=BRAIN_OUTPUT_DIM)
-    parser.add_argument("--neuron-count", type=int, default=2000000)
+    parser.add_argument("--neuron-count", type=int, default=150000,
+                        help="ANN neuron count (default: 150000, SNN is primary)")
+    parser.add_argument("--snn-neuron-count", type=int, default=1800000,
+                        help="SNN target neuron count (default: 1800000)")
+    parser.add_argument("--lnn-neuron-count", type=int, default=256,
+                        help="LNN neuron count (default: 256)")
     parser.add_argument("--stage0-stimuli", type=int, default=20000)
     parser.add_argument("--stage1-stimuli", type=int, default=40000)
     parser.add_argument("--stage2-stimuli", type=int, default=40000)
@@ -7969,7 +7983,9 @@ def main():
                             num_inputs=args.num_inputs,
                             num_outputs=args.num_outputs,
                             neuron_count=args.neuron_count,
-                            init_mode='full')
+                            init_mode='full',
+                            snn_neuron_count=args.snn_neuron_count,
+                            lnn_neuron_count=args.lnn_neuron_count)
 
     # --- Brain configuration ---
     # In daemon mode, the brain was already configured when first created.

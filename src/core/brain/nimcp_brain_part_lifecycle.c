@@ -19,6 +19,7 @@
 #include "snn/bridges/nimcp_snn_visual_bridge.h"
 #include "snn/bridges/nimcp_snn_somatosensory_bridge.h"
 #include "snn/bridges/nimcp_snn_cross_modal_align.h"
+#include "snn/nimcp_snn_fno.h"
 #include "memory/nimcp_memory_store.h"
 #include "memory/nimcp_memory_oodb.h"
 #include "cognitive/nimcp_ood_detector.h"
@@ -257,6 +258,19 @@ void brain_destroy(brain_t brain)
         extern void lnn_network_destroy(struct lnn_network_s* lnn);
         lnn_network_destroy(brain->lnn_network);
         brain->lnn_network = NULL;
+    }
+
+    /* Destroy SNN FNO population dynamics models */
+    if (brain->snn_fno_populations && brain->snn_fno_count > 0) {
+        for (uint32_t p = 0; p < brain->snn_fno_count; p++) {
+            if (brain->snn_fno_populations[p]) {
+                snn_fno_population_destroy(
+                    (snn_fno_population_t*)brain->snn_fno_populations[p]);
+            }
+        }
+        nimcp_free(brain->snn_fno_populations);
+        brain->snn_fno_populations = NULL;
+        brain->snn_fno_count = 0;
     }
 
     LOG_MODULE_DEBUG("BRAIN", "Destroying network...");

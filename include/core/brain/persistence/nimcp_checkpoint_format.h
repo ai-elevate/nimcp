@@ -32,6 +32,13 @@ extern "C" {
 #define NIMCP_SECTION_NAME_LEN   32
 #define NIMCP_CHECKPOINT_HEADER_SIZE 64
 
+/** Layout version — stored in reserved[0..3] of checkpoint header.
+ *  Bump this when brain_config_t or neuron_t layout changes in a way
+ *  that makes old checkpoints incompatible.
+ *  0 = pre-SNN-primary (2M ANN, 768-neuron toy SNN)
+ *  2 = SNN-primary (150K ANN, 1.8M hierarchical SNN, scaled CNN embeddings) */
+#define NIMCP_LAYOUT_VERSION     2
+
 /*=============================================================================
  * Structs
  *=============================================================================*/

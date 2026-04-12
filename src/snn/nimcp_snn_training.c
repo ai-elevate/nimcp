@@ -401,6 +401,7 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
     if (network->neural_net) {
         uint32_t n_neurons = neural_network_get_num_neurons(network->neural_net);
         float* elig_data = (float*)ctx->eligibility->data;
+        uint32_t elig_rows = ctx->eligibility->shape.dims[0];
         uint32_t elig_cols = ctx->eligibility->shape.dims[ctx->eligibility->shape.rank - 1];
 
         for (uint32_t i = 0; i < n_neurons; i++) {
@@ -410,9 +411,11 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
             for (uint32_t s = 0; s < syn_count; s++) {
                 synapse_handle_t* h = sparse_synapse_get(&n->outgoing, s);
                 if (!h) continue;
-                /* Look up eligibility for this synapse (i, target) */
+                /* Look up eligibility for this synapse (i, target).
+                 * Only synapses within the trace dimensions get reward-modulated
+                 * updates; the rest rely on local STDP in the SNN step. */
                 uint32_t j = h->target_neuron_id;
-                if (i < elig_cols && j < elig_cols && elig_data) {
+                if (i < elig_rows && j < elig_cols && elig_data) {
                     float e = elig_data[i * elig_cols + j];
                     if (fabsf(e) > 1e-10f) {
                         h->weight += scale * e;
@@ -603,6 +606,7 @@ uint32_t snn_eprop_apply(snn_training_ctx_t* ctx,
     if (network->neural_net) {
         uint32_t n_neurons = neural_network_get_num_neurons(network->neural_net);
         float* elig_data = (float*)ctx->eligibility->data;
+        uint32_t elig_rows = ctx->eligibility->shape.dims[0];
         uint32_t elig_cols = ctx->eligibility->shape.dims[ctx->eligibility->shape.rank - 1];
 
         for (uint32_t i = 0; i < n_neurons; i++) {
@@ -613,7 +617,7 @@ uint32_t snn_eprop_apply(snn_training_ctx_t* ctx,
                 synapse_handle_t* h = sparse_synapse_get(&n->outgoing, s);
                 if (!h) continue;
                 uint32_t j = h->target_neuron_id;
-                if (i < elig_cols && j < elig_cols && elig_data) {
+                if (i < elig_rows && j < elig_cols && elig_data) {
                     float e = elig_data[i * elig_cols + j];
                     if (fabsf(e) > 1e-10f) {
                         h->weight -= scale * e;

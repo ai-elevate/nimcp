@@ -21,13 +21,13 @@ int nimcp_version_int(void) {
 
 int nimcp_abi_layout_hash(void) {
     /* Hash critical struct sizes to detect stale Python .so builds.
-     * Any change to neuron_t, sparse_synapse_storage_t, or EMBEDDED_CAPACITY
-     * will change this hash and cause Python import to fail early with a
-     * clear error instead of a silent SIGSEGV from wrong field offsets. */
+     * Any change to these structs will change this hash and cause Python
+     * import to fail early with a clear error instead of SIGSEGV. */
     uint32_t h = 0x4E494D43u; /* "NIMC" */
     h ^= (uint32_t)sizeof(neuron_t) * 2654435761u;
     h ^= (uint32_t)sizeof(sparse_synapse_storage_t) * 2246822519u;
     h ^= (uint32_t)SPARSE_SYNAPSE_EMBEDDED_CAPACITY * 3266489917u;
+    h ^= (uint32_t)sizeof(brain_config_t) * 2246822519u;
     return (int)(h & 0x7FFFFFFFu); /* Keep positive for Python int */
 }
 

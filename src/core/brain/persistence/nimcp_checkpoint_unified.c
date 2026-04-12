@@ -256,6 +256,9 @@ bool brain_save_unified(brain_t brain, const char* filepath)
     memset(&header, 0, sizeof(header));
     header.magic = NIMCP_UNIFIED_MAGIC;
     header.format_version = NIMCP_UNIFIED_VERSION;
+    /* Store layout version in reserved[0..3] for struct compatibility detection */
+    uint32_t layout_ver = NIMCP_LAYOUT_VERSION;
+    memcpy(header.reserved, &layout_ver, sizeof(layout_ver));
     fwrite(&header, sizeof(header), 1, uf);
 
     /* Section tracking */
@@ -408,6 +411,19 @@ brain_t brain_load_unified(const char* filepath)
 
     if (header.num_sections == 0 || header.num_sections > NIMCP_MAX_SECTIONS) {
         LOG_ERROR("Invalid section count: %u", header.num_sections);
+        fclose(uf);
+        return NULL;
+    }
+
+    /* Check layout version stored in reserved[0..3].
+     * Old checkpoints (pre-SNN-primary) have 0 here. */
+    uint32_t saved_layout = 0;
+    memcpy(&saved_layout, header.reserved, sizeof(saved_layout));
+    if (saved_layout < NIMCP_LAYOUT_VERSION) {
+        LOG_ERROR("Checkpoint layout version %u is incompatible with current "
+                  "version %u (SNN-primary architecture change). "
+                  "Use --fresh to create a new brain.",
+                  saved_layout, NIMCP_LAYOUT_VERSION);
         fclose(uf);
         return NULL;
     }
@@ -614,15 +630,28 @@ brain_t brain_load_auto(const char* filepath)
     }
     fclose(f);
 
+    brain_t brain = NULL;
     if (magic == NIMCP_UNIFIED_MAGIC) {
         LOG_INFO("Detected unified checkpoint format (NIMV)");
-        return brain_load_unified(filepath);
+        brain = brain_load_unified(filepath);
     } else if (magic == NIMCP_LEGACY_MAGIC) {
         LOG_INFO("Detected legacy checkpoint format (NIMC) — loading with sidecars");
-        return brain_load(filepath);
+        brain = brain_load(filepath);
     } else {
-        /* Could be adaptive network format (different magic) — try legacy */
         LOG_WARN("Unknown checkpoint magic 0x%08X — trying legacy loader", magic);
-        return brain_load(filepath);
+        brain = brain_load(filepath);
     }
+
+    /* Post-load layout version check: old checkpoints (pre-SNN-primary)
+     * have snn_target_neurons == 0 because those fields didn't exist.
+     * New brains always set snn_target_neurons during init. */
+    if (brain && brain->config.snn_target_neurons == 0) {
+        LOG_WARN("Checkpoint appears to be pre-SNN-primary architecture "
+                 "(snn_target_neurons=0). Architecture has changed: "
+                 "ANN 2M→150K, SNN 768→1.8M, CNN embed 64→256. "
+                 "Use --fresh to create a new brain.");
+        /* Don't block — allow loading for inspection/migration, but warn loudly */
+    }
+
+    return brain;
 }

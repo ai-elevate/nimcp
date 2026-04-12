@@ -1057,7 +1057,7 @@ FIND_PACKAGE_MESSAGE_DETAILS_Java:INTERNAL=[/usr/bin/java][/usr/bin/javac][/usr/
 //Details about finding PkgConfig
 FIND_PACKAGE_MESSAGE_DETAILS_PkgConfig:INTERNAL=[/usr/bin/pkg-config][v1.8.1()]
 //Details about finding Python3
-FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[/usr/bin/python3][/usr/include/python3.12][/usr/lib/x86_64-linux-gnu/libpython3.12.so][cfound components: Interpreter Development Development.Module Development.Embed ][v3.12.3()]
+FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[/usr/include/python3.12][/usr/lib/x86_64-linux-gnu/libpython3.12.so][cfound components: Development Development.Module Development.Embed ][v3.12.3()]
 //Details about finding Threads
 FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
 //ADVANCED property for variable: Java_IDLJ_EXECUTABLE
