@@ -110,8 +110,11 @@ snn_network_t* snn_create_hierarchical_network(
     memset(&cfg, 0, sizeof(cfg));
     cfg.n_inputs = n_inputs;
     cfg.n_outputs = n_outputs;
-    cfg.n_hidden = actual_total - TIER_DEFS[0].n_pops * TIER_DEFS[0].neurons_per_pop
-                 - TIER_DEFS[NUM_TIERS-1].n_pops * TIER_DEFS[NUM_TIERS-1].neurons_per_pop;
+    /* n_hidden must accommodate ALL tier neurons that will be added via
+     * snn_network_add_population(). The base network pre-allocates the
+     * underlying neural_network_t with capacity for n_inputs + n_hidden +
+     * n_outputs. Without enough headroom, add_neuron silently fails. */
+    cfg.n_hidden = actual_total;
     cfg.dt = 1.0f;  /* 1ms timestep */
     cfg.v_rest = -65.0f;
     cfg.v_reset = -70.0f;
