@@ -517,46 +517,77 @@ class WorldModelCurriculum:
             self._lib = _load_lib()
             self._phys = PhysicsAPI(self._lib)
 
-    def _feed_transitions(self, transitions, domain_label):
-        """Feed transitions to the brain via batched learn_vector.
+    @staticmethod
+    def _spread_encode(raw, dim=1024):
+        """Spread a short physics vector across the full embedding space.
 
-        Uses learn_vector_batch to send all transitions in one RPC instead
-        of one learn_vector per transition. On a 2.5M-neuron brain with
-        ~3s per RPC, this cuts a 2800-transition epoch from ~2.3 hours
-        to ~1 minute (28 batch calls of ~100 transitions each).
+        Raw sim states are 3-9 floats. Zero-padding to 1024 concentrates
+        gradient on the first few input neurons, causing weight explosion
+        in batch mode. Instead, hash each raw dimension into multiple
+        spread-out positions using a fixed random projection, so the
+        gradient distributes across the full input space — same way text
+        embeddings naturally do.
+
+        Uses a deterministic seed so the projection is consistent across
+        calls (same raw dim always maps to same output positions).
+        """
+        import numpy as np
+        out = np.zeros(dim, dtype=np.float32)
+        if not raw:
+            return out.tolist()
+        n = len(raw)
+        # Each raw dimension gets ~(dim/n) spread positions via a fixed hash
+        rng = np.random.RandomState(42)  # deterministic projection
+        indices = rng.randint(0, dim, size=(n, dim // n + 4))
+        weights = rng.randn(n, dim // n + 4).astype(np.float32) * 0.5
+        for i, val in enumerate(raw):
+            if val == 0.0:
+                continue
+            for j in range(min(len(indices[i]), dim // n + 4)):
+                idx = indices[i][j] % dim
+                out[idx] += val * weights[i][j]
+        # Normalize to roughly unit magnitude to match text embedding scale
+        norm = np.linalg.norm(out)
+        if norm > 1e-6:
+            out *= (1.0 / norm) * np.sqrt(float(n))
+        return out.tolist()
+
+    def _feed_transitions(self, transitions, domain_label):
+        """Feed transitions to the brain via learn_vector_batch.
+
+        Raw physics states are spread-encoded into the full 1024-dim
+        embedding space via a fixed random projection, preventing the
+        gradient concentration that caused batch mode to blow ANN loss.
         """
         if not self.brain:
             return len(transitions)
 
-        # Build padded pairs
         pairs = []
         for state, action, next_state in transitions:
-            features = state + action
-            target = next_state
-            if len(features) < 1024:
-                features = features + [0.0] * (1024 - len(features))
-            if len(target) < 1024:
-                target = target + [0.0] * (1024 - len(target))
+            features = self._spread_encode(state + action)
+            target = self._spread_encode(next_state)
             pairs.append((features, target))
 
         if not pairs:
             return 0
 
-        # Individual learn_vector with reduced LR. Batch mode
-        # (learn_vector_batch) was tried but blew ANN loss from 2→300+
-        # even with batch_size=16 and lr=0.0005 — the padded physics
-        # state vectors (3-9 dims padded to 1024 zeros) create
-        # pathological gradients that the batch accumulator amplifies.
-        # Individual calls are slower (~3s each) but stable.
+        # Batch in chunks of 16
+        BATCH_SIZE = 16
         fed = 0
-        for features, target in pairs:
+        for start in range(0, len(pairs), BATCH_SIZE):
+            chunk = pairs[start:start + BATCH_SIZE]
             try:
-                self.brain.learn_vector(features, target,
-                                        label=domain_label,
-                                        learning_rate=0.0005)
-                fed += 1
+                self.brain.learn_vector_batch(chunk, learning_rate=0.0005)
+                fed += len(chunk)
             except Exception:
-                pass
+                for features, target in chunk:
+                    try:
+                        self.brain.learn_vector(features, target,
+                                                label=domain_label,
+                                                learning_rate=0.0005)
+                        fed += 1
+                    except Exception:
+                        pass
         return fed
 
     def run_physics_epoch(self, level=None, scenarios_per_level=5):
