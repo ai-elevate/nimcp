@@ -834,7 +834,8 @@ static void learn_snn_task(void* arg)
 
     if (ctx->brain->snn_network && ctx->brain->snn_training_ctx) {
         /* Set R-STDP reward from ANN loss (parallel path — ANN already completed) */
-        if (ctx->brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP) {
+        if (ctx->brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP &&
+            isfinite(ctx->ann_loss) && ctx->ann_loss >= 0.0f) {
             float reward = 1.0f - fminf(ctx->ann_loss, 1.0f);
             snn_rstdp_set_reward(ctx->brain->snn_training_ctx, reward);
         }
@@ -1638,7 +1639,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             /* Set R-STDP reward from ANN loss: lower loss = higher reward.
              * This is the critical ANN→SNN teaching signal — the ANN acts
              * as teacher, its prediction quality modulates SNN plasticity. */
-            if (brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP) {
+            if (brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP &&
+                isfinite(loss) && loss >= 0.0f) {
                 float reward = 1.0f - fminf(loss, 1.0f);
                 snn_rstdp_set_reward(brain->snn_training_ctx, reward);
             }
@@ -1739,7 +1741,8 @@ sequential_training:
             if (has_snn) {
                 /* Set R-STDP reward (sequential fallback path) */
                 if (brain->snn_training_ctx &&
-                    brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP) {
+                    brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP &&
+                    isfinite(loss) && loss >= 0.0f) {
                     float reward = 1.0f - fminf(loss, 1.0f);
                     snn_rstdp_set_reward(brain->snn_training_ctx, reward);
                 }
