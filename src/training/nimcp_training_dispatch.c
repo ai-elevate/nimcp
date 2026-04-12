@@ -311,18 +311,20 @@ int training_dispatch_snn_step(
 
     /* Apply SNN input scaling — boost weak inputs above firing threshold.
      * Uses max-abs normalization so the strongest feature reaches the full
-     * scale (~70 mV), well above the ~20 mV firing threshold, while
-     * preserving relative magnitudes. An earlier implementation used L2
-     * unit-vector normalization (mag = sqrt(sum(x²))) which produced a
-     * per-element value of ~1/sqrt(N) * scale — for 2k-dim inputs that
-     * collapsed each element to ~1.5 mV, sub-threshold, and left the
-     * SNN silent (~1.6 Hz mean, 744 silent neurons) even though the
-     * inference path (which uses min-max [0,1] then *scale) fired normally.
-     * Max-abs keeps training and inference scaling compatible. */
+     * scale, well above the ~20 mV firing threshold.
+     *
+     * IMPORTANT: The scaled buffer is kept alive until after
+     * snn_backprop_forward, because BPTT internally calls
+     * snn_network_set_inputs(net, inputs, ...) which OVERWRITES whatever
+     * was set earlier. If we pass the raw input_ptr to BPTT, it replaces
+     * our scaled values with unscaled ones → sub-threshold → silent SNN.
+     * This was the root cause of persistent SNN silence during training. */
     float _snn_input_scale = _snn_global_input_scale;
+    float* _snn_scaled_input = NULL;
+    const float* snn_input_for_bptt = input_ptr;  /* fallback: raw */
     if (input_ptr && input_dim > 0) {
-        float* scaled = nimcp_calloc(input_dim, sizeof(float));
-        if (scaled) {
+        _snn_scaled_input = nimcp_calloc(input_dim, sizeof(float));
+        if (_snn_scaled_input) {
             float max_abs = 0.0f;
             for (uint32_t i = 0; i < input_dim; i++) {
                 float a = fabsf(input_ptr[i]);
@@ -331,11 +333,10 @@ int training_dispatch_snn_step(
             if (max_abs > 1e-8f) {
                 float inv = _snn_input_scale / max_abs;
                 for (uint32_t i = 0; i < input_dim; i++)
-                    scaled[i] = input_ptr[i] * inv;
+                    _snn_scaled_input[i] = input_ptr[i] * inv;
             }
-            /* else: all zeros — leave scaled[] at calloc'd 0.0 */
-            snn_network_set_inputs(snn, scaled, input_dim);
-            nimcp_free(scaled);
+            snn_network_set_inputs(snn, _snn_scaled_input, input_dim);
+            snn_input_for_bptt = _snn_scaled_input;  /* BPTT gets scaled */
         } else {
             snn_network_set_inputs(snn, input_ptr, input_dim);
         }
@@ -344,11 +345,7 @@ int training_dispatch_snn_step(
     }
     nimcp_free(pooled_input);
 
-    // Use BPTT forward if backprop context is available — runs multiple timesteps
-    // internally (recording activations for gradient computation), then backward
-    // computes surrogate gradients through the temporal unrolling.
-    // Single snn_network_step only produces ~1mV/step with tau_mem=20ms, needing
-    // ~20+ steps to reach the 20mV threshold gap. BPTT runs the full simulation.
+    // Use BPTT forward if backprop context is available
     float dt = (snn->sim && snn->sim->dt_ms > 0.0f) ? snn->sim->dt_ms : 1.0F;
     int rc = 0;
 
@@ -364,20 +361,9 @@ int training_dispatch_snn_step(
         uint32_t snn_out = snn->config.n_outputs;
         float* outputs = nimcp_calloc(snn_out, sizeof(float));
         if (outputs) {
-            /* 100ms BPTT window is required for multi-layer spike propagation.
-             * Commit 02526d358 cut this to 10ms "to recover training speed",
-             * but with tau_mem=20ms the input layer is the ONLY population that
-             * can fire in 10ms — hidden and output layers need synaptic input
-             * from the input layer to integrate over multiple time constants
-             * before their own membrane reaches threshold. The result was zero
-             * output spikes → zero BPTT gradient → zero SNN learning (confirmed
-             * Apr 11 2026 chat eval: 357 cumulative spikes, 0 Hz mean rate).
-             *
-             * Session 67-68 empirically validated 100ms as the point where the
-             * network produces ~1777 spikes / 23 Hz / 68% sparsity on 768
-             * neurons. Lower values regress to silent-network failure. */
             float duration = 100.0f;
-            rc = snn_backprop_forward(brain->snn_backprop_ctx, input_ptr,
+            rc = snn_backprop_forward(brain->snn_backprop_ctx,
+                                       snn_input_for_bptt,
                                        1, duration, outputs);
             if (rc == 0 && targets && num_targets > 0) {
                 /* Compute output gradient: predictions - targets */
@@ -410,6 +396,10 @@ int training_dispatch_snn_step(
             return -1;
         }
     }
+
+    /* Free the scaled input buffer now that BPTT is done */
+    nimcp_free(_snn_scaled_input);
+    _snn_scaled_input = NULL;
 
     // Apply training based on method (STDP, R-STDP, eProp, surrogate)
     snn_train_mode_t mode = ctx->mode;
