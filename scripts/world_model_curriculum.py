@@ -542,20 +542,30 @@ class WorldModelCurriculum:
         if not pairs:
             return 0
 
-        # Send as batch — single RPC call for all transitions
-        try:
-            self.brain.learn_vector_batch(pairs)
-            return len(pairs)
-        except Exception:
-            # Fallback: per-sample if batch fails
-            fed = 0
-            for features, target in pairs:
-                try:
-                    self.brain.learn_vector(features, target, label=domain_label)
-                    fed += 1
-                except Exception:
-                    pass
-            return fed
+        # Send in mini-batches of 16 to avoid gradient explosion.
+        # learn_vector_batch accumulates gradients across the batch —
+        # 100 transitions at once produces 100× the gradient of a single
+        # learn_vector, which blew ANN loss from 2→300+. Mini-batches
+        # of 16 with scaled LR keep gradient magnitude reasonable while
+        # still reducing RPC overhead from 2800 calls to ~175.
+        BATCH_SIZE = 16
+        fed = 0
+        for start in range(0, len(pairs), BATCH_SIZE):
+            chunk = pairs[start:start + BATCH_SIZE]
+            try:
+                self.brain.learn_vector_batch(
+                    chunk, learning_rate=0.0005)  # reduced LR for sim data
+                fed += len(chunk)
+            except Exception:
+                # Fallback: per-sample
+                for features, target in chunk:
+                    try:
+                        self.brain.learn_vector(features, target,
+                                                label=domain_label)
+                        fed += 1
+                    except Exception:
+                        pass
+        return fed
 
     def run_physics_epoch(self, level=None, scenarios_per_level=5):
         """Run physics scenarios and feed transitions to brain."""
