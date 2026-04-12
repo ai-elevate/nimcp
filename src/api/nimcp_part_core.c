@@ -208,25 +208,24 @@ float nimcp_brain_learn_vector_batch(
         examples[i].target_size = target_size;
         examples[i].confidence = 1.0f;
 
-        /* Derive a label string from the target vector's argmax so the
-         * downstream cortex CNN training block (which gates on label[0])
-         * actually fires. Without this, batch training bypasses all
-         * cortex CNN forward+backward, leaving them permanently at 0
-         * steps even though sensory data is staged. */
-        examples[i].label[0] = '\0';
-        if (ib->output_labels && ib->num_output_labels > 0) {
+        /* Generate a synthetic label from the target argmax so the cortex
+         * CNN training block (gated on label[0]) fires during batch mode.
+         * Format: "class_N" where N is the argmax index. This creates
+         * distinct labels for different target classes, enabling the
+         * cortex_cnn_backward one-hot target to match the real target.
+         * Works even when output_labels is empty (batch mode never calls
+         * get_or_create_label_index, so the label array stays NULL). */
+        {
             uint32_t best = 0;
             float best_v = targets_array[i][0];
-            for (uint32_t k = 1; k < target_size && k < ib->num_output_labels; k++) {
+            for (uint32_t k = 1; k < target_size; k++) {
                 if (targets_array[i][k] > best_v) {
                     best_v = targets_array[i][k];
                     best = k;
                 }
             }
-            if (best < ib->num_output_labels && ib->output_labels[best]) {
-                strncpy(examples[i].label, ib->output_labels[best], sizeof(examples[i].label) - 1);
-                examples[i].label[sizeof(examples[i].label) - 1] = '\0';
-            }
+            snprintf(examples[i].label, sizeof(examples[i].label),
+                     "class_%u", best);
         }
     }
 
