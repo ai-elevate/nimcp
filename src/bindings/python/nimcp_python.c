@@ -8373,7 +8373,7 @@ static PyMethodDef Brain_methods[] = {
     // Full brain creation (class method)
     {"create_full", (PyCFunction)Brain_create_full, METH_VARARGS | METH_KEYWORDS | METH_CLASS,
      "Create brain with ALL subsystems enabled (RESEARCH profile + world model + creative + LGSS + neuromodulators).\n"
-     "Usage: brain = Brain.create_full('athena', task=nimcp.TASK_CLASSIFICATION, num_inputs=1024, num_outputs=2048, neuron_count=1500000)\n"
+     "Usage: brain = Brain.create_full('athena', task=nimcp.TASK_CLASSIFICATION, num_inputs=1024, num_outputs=2048, neuron_count=150000)\n"
      "This initializes every functional module at creation time (no lazy init).\n"},
 
     // Training configuration (legacy — use create_full for new brains)
