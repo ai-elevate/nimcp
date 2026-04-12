@@ -90,7 +90,7 @@ MAX_MSG_SIZE = 50 * 1024 * 1024  # 50 MB (batch learning can be large)
 # SNN-primary architecture defaults
 DEFAULT_ANN_NEURONS = 150_000      # ANN teacher (SNN is primary learner)
 DEFAULT_SNN_NEURONS = 1_800_000    # Hierarchical SNN target
-DEFAULT_LNN_NEURONS = 256          # LNN cap (O(n²) adjoint)
+DEFAULT_LNN_NEURONS = 512          # LNN cap (O(n²) adjoint, sweet spot)
 CHECKPOINT_MIN_BYTES_PER_NEURON = 50  # Minimum checkpoint bytes per neuron
 CHECKPOINT_MIN_SIZE = 5_000_000    # Absolute minimum checkpoint size (5 MB)
 

@@ -1989,7 +1989,7 @@ typedef struct {
 
 /* SNN-primary architecture defaults */
 #define NIMCP_DEFAULT_SNN_NEURONS       1800000  /**< 1.8M hierarchical SNN */
-#define NIMCP_DEFAULT_LNN_NEURONS       256      /**< LNN cap (O(n²) adjoint) */
+#define NIMCP_DEFAULT_LNN_NEURONS       512      /**< LNN cap (O(n²) adjoint, sweet spot for temporal richness) */
 #define NIMCP_DEFAULT_ANN_NEURONS       150000   /**< ANN teacher (SNN is primary) */
 
 /**
