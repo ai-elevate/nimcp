@@ -1825,6 +1825,15 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                 nimcp_tensor_get_shape(layer_input, &in_shape);
                 uint32_t in_features = in_shape.numel / batch;
 
+                static bool _logged_dense = false;
+                if (!_logged_dense) {
+                    NIMCP_LOGGING_INFO("CNN DENSE backward: batch=%u in_features=%u "
+                                       "cfg_in=%u cfg_out=%u grad_numel=%zu in_numel=%zu",
+                                       batch, in_features,
+                                       cfg->in_features, cfg->out_features,
+                                       nimcp_tensor_numel(grad), in_shape.numel);
+                    _logged_dense = true;
+                }
                 /* Accumulate weight gradients */
                 for (uint32_t o = 0; o < cfg->out_features; o++) {
                     for (uint32_t in = 0; in < cfg->in_features && in < in_features; in++) {
