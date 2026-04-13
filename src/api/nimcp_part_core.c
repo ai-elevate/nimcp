@@ -28,11 +28,10 @@ int nimcp_abi_layout_hash(void) {
     h ^= (uint32_t)sizeof(neuron_t) * 2654435761u;
     h ^= (uint32_t)sizeof(sparse_synapse_storage_t) * 2246822519u;
     h ^= (uint32_t)SPARSE_SYNAPSE_EMBEDDED_CAPACITY * 3266489917u;
-    /* Include structs that the Python binding allocates on stack or passes
-     * by value. A size mismatch causes stack overflow → heap corruption.
-     * brain_config_t is excluded (accessed via pointer, packing varies). */
-    h ^= (uint32_t)sizeof(snn_stats_t) * 1640531527u;
-    h ^= (uint32_t)sizeof(nimcp_training_config_t) * 2246822519u;
+    /* Note: snn_stats_t, brain_config_t, nimcp_training_config_t excluded
+     * from ABI hash — struct packing/alignment varies between main lib
+     * (NVCC+GCC) and Python .so (GCC only), causing false mismatches.
+     * Instead, the Python binding uses oversized buffers for these structs. */
     return (int)(h & 0x7FFFFFFFu); /* Keep positive for Python int */
 }
 

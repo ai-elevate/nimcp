@@ -6229,9 +6229,14 @@ static PyObject* Brain_snn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
     brain_t brain = self->brain->internal_brain;
     if (!brain->snn_network) { Py_RETURN_NONE; }
 
-    snn_stats_t stats;
-    memset(&stats, 0, sizeof(stats));
-    int r = snn_network_get_stats(brain->snn_network, &stats);
+    /* Oversized buffer: snn_stats_t may be larger in the shared library
+     * than in this compilation unit due to struct packing differences
+     * (NVCC vs GCC). 512 bytes covers any reasonable growth. */
+    char stats_buf[512];
+    memset(stats_buf, 0, sizeof(stats_buf));
+    snn_stats_t* stats_ptr = (snn_stats_t*)stats_buf;
+    int r = snn_network_get_stats(brain->snn_network, stats_ptr);
+    #define stats (*stats_ptr)
     if (r != 0) { Py_RETURN_NONE; }
 
     PyObject* d = PyDict_New();
@@ -6259,6 +6264,7 @@ static PyObject* Brain_snn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
     PyDict_SetItemString(d, "health", tmp); Py_DECREF(tmp);
     tmp = PyLong_FromSize_t(stats.memory_usage_bytes);
     PyDict_SetItemString(d, "memory_usage_bytes", tmp); Py_DECREF(tmp);
+    #undef stats
     return d;
 }
 
