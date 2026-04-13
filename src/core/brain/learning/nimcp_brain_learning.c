@@ -660,7 +660,7 @@ float nimcp_brain_learning_quantum_weight_energy(const float* weights, uint32_t 
  * @brief Lazily create the CNN trainer if not already present
  *
  * WHY: DRY — shared by brain_learn_vector() and brain_enable_multi_network_training()
- * HOW: Dense(num_inputs→hidden)→ReLU→Dense(hidden→num_outputs)
+ * HOW: Dense(in→512)→ReLU→Dense(512→512)→ReLU→Dense(512→out)
  *
  * @param brain Brain handle
  * @return 0 on success (or already exists), -1 on failure
