@@ -1,4 +1,5 @@
 #include <stddef.h>  /* for NULL */
+#include <time.h>    /* for clock_gettime */
 //=============================================================================
 // nimcp_snn_network.c - SNN Network Implementation
 //=============================================================================
@@ -594,6 +595,9 @@ int snn_network_step(snn_network_t* network, float dt) {
     uint64_t dt_us = (uint64_t)(dt_ms * 1000.0f);
 
     int total_spikes = 0;
+    bool gpu_executed = false;
+    struct timespec _step_t0, _step_t1;
+    clock_gettime(CLOCK_MONOTONIC, &_step_t0);
 
     /* ===== GPU FAST PATH ===== */
     if (network->gpu_lif_state && network->gpu_ctx) {
@@ -718,25 +722,30 @@ int snn_network_step(snn_network_t* network, float dt) {
                                 }
                             }
 
-                            /* Clear external_current for next step (lightweight pops) */
-                            if (pop->lightweight && pop->external_current) {
-                                memset(pop->external_current, 0,
-                                       pop->n_neurons * sizeof(float));
-                            }
-
                             neuron_offset += pop->n_neurons;
                         }
                         nimcp_free(h_spikes);
+                        gpu_executed = true;
                     }
                 } else if (!gpu_ok) {
-                    NIMCP_LOGGING_WARN("snn_network_step: GPU LIF forward failed, will use CPU next step");
+                    NIMCP_LOGGING_WARN("snn_network_step: GPU LIF forward failed, falling back to CPU");
                 }
 
                 nimcp_gpu_tensor_destroy(input_tensor);
             }
             nimcp_free(h_input);
         }
-    } else {
+
+        /* Clear external_current for lightweight pops regardless of GPU success */
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            snn_population_t* pop = network->populations[p];
+            if (pop && pop->lightweight && pop->external_current) {
+                memset(pop->external_current, 0, pop->n_neurons * sizeof(float));
+            }
+        }
+    }
+
+    if (!gpu_executed) {
     /* ===== CPU FALLBACK PATH ===== */
 
     /* Process each population */
@@ -861,8 +870,21 @@ int snn_network_step(snn_network_t* network, float dt) {
     network->sim->step_count++;
 
     /* Update statistics */
+    clock_gettime(CLOCK_MONOTONIC, &_step_t1);
+    double step_ms = (_step_t1.tv_sec - _step_t0.tv_sec) * 1000.0
+                   + (_step_t1.tv_nsec - _step_t0.tv_nsec) / 1e6;
     network->stats.total_steps = network->sim->step_count;
     network->stats.total_spikes += total_spikes;
+    network->stats.total_compute_time_ms += step_ms;
+    network->stats.avg_step_time_ms = network->stats.total_compute_time_ms
+                                    / (double)network->stats.total_steps;
+    network->stats.last_step_time_ms = step_ms;
+    network->stats.last_step_gpu = gpu_executed;
+    if (gpu_executed) {
+        network->stats.gpu_steps++;
+    } else {
+        network->stats.cpu_fallback_steps++;
+    }
 
     return total_spikes;
 }

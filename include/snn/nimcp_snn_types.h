@@ -465,6 +465,13 @@ typedef struct snn_stats_s {
     uint32_t silent_neurons;        /**< Number of never-firing neurons */
     uint32_t hyperactive_neurons;   /**< Neurons above max rate */
 
+    /* GPU metrics */
+    bool last_step_gpu;             /**< true if last step used GPU */
+    uint32_t gpu_steps;             /**< Steps executed on GPU */
+    uint32_t cpu_fallback_steps;    /**< Steps that fell back to CPU */
+    double last_step_time_ms;       /**< Wall-clock time of last step */
+    double last_isyn_time_ms;       /**< I_syn computation time of last step */
+
     /* Memory */
     size_t memory_usage_bytes;      /**< Current memory usage */
 } snn_stats_t;
