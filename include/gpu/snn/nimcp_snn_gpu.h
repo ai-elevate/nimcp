@@ -263,6 +263,33 @@ NIMCP_EXPORT bool nimcp_gpu_lif_forward(
 );
 
 /**
+ * @brief Compute I_syn from CSR synapse storage on GPU
+ *
+ * Sparse gather: for each destination neuron, sum weights of incoming
+ * synapses whose source neurons spiked. Uses flat column indices that
+ * map (src_pop, src_neuron) to a global spike vector offset.
+ *
+ * @param ctx GPU context
+ * @param d_spike_vector Device pointer: flattened spikes [total_neurons]
+ * @param d_weights Device pointer: CSR weights [nnz]
+ * @param d_col_indices Device pointer: flat column indices [nnz]
+ * @param d_row_ptr Device pointer: CSR row pointers [n_neurons+1]
+ * @param d_external_current Device pointer: external currents [n_neurons]
+ * @param d_output_isyn Device pointer: output I_syn [n_neurons]
+ * @param n_neurons Number of neurons in this population
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_snn_isyn_csr(
+    nimcp_gpu_context_t* ctx,
+    const float* d_spike_vector,
+    const float* d_weights,
+    const unsigned int* d_col_indices,
+    const unsigned int* d_row_ptr,
+    const float* d_external_current,
+    float* d_output_isyn,
+    size_t n_neurons);
+
+/**
  * @brief LIF backward pass with surrogate gradient
  *
  * @param ctx GPU context

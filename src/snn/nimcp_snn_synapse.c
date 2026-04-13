@@ -61,6 +61,8 @@ void snn_csr_destroy(snn_csr_storage_t* csr)
     if (!csr) return;
     nimcp_free(csr->row_ptr);
     nimcp_free(csr->entries);
+    nimcp_free(csr->weights);
+    nimcp_free(csr->flat_col_idx);
     nimcp_free(csr);
 }
 
@@ -158,5 +160,41 @@ int snn_csr_finalize(snn_csr_storage_t* csr)
     LOG_INFO("CSR finalized: %u neurons, %u synapses (%.1f avg/neuron)",
              csr->n_neurons, nnz, (float)nnz / csr->n_neurons);
 
+    return 0;
+}
+
+int snn_csr_prepare_gpu(snn_csr_storage_t* csr,
+                        const uint32_t* pop_offsets,
+                        uint32_t n_populations)
+{
+    if (!csr || !csr->finalized || !pop_offsets) return -1;
+    if (csr->gpu_ready) return 0;  /* Already prepared */
+
+    uint32_t nnz = csr->n_synapses;
+    if (nnz == 0) {
+        csr->gpu_ready = true;
+        return 0;
+    }
+
+    csr->weights = nimcp_malloc(nnz * sizeof(float));
+    csr->flat_col_idx = nimcp_malloc(nnz * sizeof(uint32_t));
+    if (!csr->weights || !csr->flat_col_idx) {
+        nimcp_free(csr->weights);
+        nimcp_free(csr->flat_col_idx);
+        csr->weights = NULL;
+        csr->flat_col_idx = NULL;
+        return -1;
+    }
+
+    for (uint32_t i = 0; i < nnz; i++) {
+        csr->weights[i] = csr->entries[i].weight;
+        uint32_t sp = csr->entries[i].src_pop;
+        uint32_t sn = csr->entries[i].src_neuron;
+        csr->flat_col_idx[i] = (sp < n_populations) ?
+            pop_offsets[sp] + sn : 0;
+    }
+
+    csr->gpu_ready = true;
+    LOG_INFO("CSR GPU prepared: %u synapses, flat column indices built", nnz);
     return 0;
 }

@@ -86,6 +86,82 @@ void nimcp_lif_state_destroy(nimcp_lif_state_t* state)
 // LIF Forward Kernel
 //=============================================================================
 
+/**
+ * @brief GPU kernel: Compute I_syn from CSR synapse storage + flat spike vector
+ *
+ * Each thread handles one destination neuron. It reads the CSR row,
+ * gathers presynaptic spike values from the flat spike vector, and
+ * accumulates weighted contributions.
+ *
+ * @param spike_vector    [total_neurons] flattened spikes (all populations)
+ * @param weights         [nnz] CSR synapse weights
+ * @param col_indices     [nnz] flat global column indices into spike_vector
+ * @param row_ptr         [n_neurons+1] CSR row pointers
+ * @param external_current [n_neurons] per-neuron external input
+ * @param output_isyn     [n_neurons] output synaptic current
+ * @param n_neurons       number of neurons in this population
+ */
+__global__ void kernel_snn_isyn_csr(
+    const float* __restrict__ spike_vector,
+    const float* __restrict__ weights,
+    const unsigned int* __restrict__ col_indices,
+    const unsigned int* __restrict__ row_ptr,
+    const float* __restrict__ external_current,
+    float* __restrict__ output_isyn,
+    size_t n_neurons)
+{
+    size_t n = blockIdx.x * blockDim.x + threadIdx.x;
+    if (n >= n_neurons) return;
+
+    float i_syn = external_current[n];
+
+    unsigned int start = row_ptr[n];
+    unsigned int end   = row_ptr[n + 1];
+
+    for (unsigned int j = start; j < end; j++) {
+        unsigned int src_idx = col_indices[j];
+        if (spike_vector[src_idx] > 0.5f) {
+            i_syn += weights[j];
+        }
+    }
+
+    output_isyn[n] = i_syn;
+}
+
+/**
+ * @brief Host wrapper: compute I_syn for one population using GPU CSR kernel
+ */
+bool nimcp_gpu_snn_isyn_csr(
+    nimcp_gpu_context_t* ctx,
+    const float* d_spike_vector,
+    const float* d_weights,
+    const unsigned int* d_col_indices,
+    const unsigned int* d_row_ptr,
+    const float* d_external_current,
+    float* d_output_isyn,
+    size_t n_neurons)
+{
+    if (!ctx || !d_spike_vector || !d_weights || !d_col_indices ||
+        !d_row_ptr || !d_external_current || !d_output_isyn || n_neurons == 0) {
+        return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    kernel_snn_isyn_csr<<<GRID_SIZE(n_neurons), BLOCK_SIZE>>>(
+        d_spike_vector, d_weights, d_col_indices, d_row_ptr,
+        d_external_current, d_output_isyn, n_neurons);
+
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
+}
+
+//=============================================================================
+// LIF Forward Kernel
+//=============================================================================
+
 __global__ void kernel_lif_forward(
     float* v, float* i_syn, float* spikes, const float* input,
     float tau_mem, float tau_syn, float v_thresh, float v_reset, float v_rest,

@@ -48,6 +48,11 @@ typedef struct snn_csr_storage_s {
     uint32_t           n_synapses; /**< Number of entries used */
     uint32_t           capacity;   /**< Allocated capacity of entries[] */
     bool               finalized;  /**< true after snn_csr_finalize() */
+
+    /* GPU-ready flat arrays (populated by snn_csr_prepare_gpu) */
+    float*             weights;         /**< [n_synapses] synapse weights (flat) */
+    uint32_t*          flat_col_idx;    /**< [n_synapses] flat global neuron index */
+    bool               gpu_ready;       /**< true after snn_csr_prepare_gpu() */
 } snn_csr_storage_t;
 
 /* ========================================================================= */
@@ -123,6 +128,26 @@ static inline snn_csr_synapse_t* snn_csr_get_incoming(
     if (count) *count = end - start;
     return (end > start) ? &csr->entries[start] : NULL;
 }
+
+/* ========================================================================= */
+/* GPU preparation (extract flat weight/index arrays for SpMV)                */
+/* ========================================================================= */
+
+/**
+ * @brief Prepare GPU-friendly flat arrays from CSR entries.
+ *
+ * Extracts separate weights[] and flat_col_idx[] arrays from the
+ * snn_csr_synapse_t entries. flat_col_idx maps (src_pop, src_neuron)
+ * to a global flat index using the provided population offsets.
+ *
+ * @param csr Finalized CSR storage
+ * @param pop_offsets [n_populations] flat offset for each population
+ * @param n_populations Number of populations
+ * @return 0 on success, -1 on error
+ */
+int snn_csr_prepare_gpu(snn_csr_storage_t* csr,
+                        const uint32_t* pop_offsets,
+                        uint32_t n_populations);
 
 #ifdef __cplusplus
 }

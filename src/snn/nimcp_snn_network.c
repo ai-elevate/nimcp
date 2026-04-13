@@ -612,55 +612,186 @@ int snn_network_step(snn_network_t* network, float dt) {
             }
         }
 
-        /* Build input current vector on host from synaptic inputs */
-        float* h_input = (float*)nimcp_malloc(total_neurons * sizeof(float));
+        /* Build input current vector for LIF kernel.
+         * GPU CSR path: use kernel_snn_isyn_csr per population.
+         * CPU fallback: iterate synapses sequentially. */
+        float* h_input = (float*)nimcp_calloc(total_neurons, sizeof(float));
         if (h_input) {
-            size_t neuron_offset = 0;
-            for (uint32_t p = 0; p < network->n_populations; p++) {
+            /* Check if any lightweight pop has GPU-ready CSR */
+            bool has_gpu_csr = false;
+            for (uint32_t p = 0; p < network->n_populations && !has_gpu_csr; p++) {
                 snn_population_t* pop = network->populations[p];
-                if (!pop) continue;
+                if (pop && pop->lightweight && pop->incoming_csr &&
+                    pop->incoming_csr->gpu_ready)
+                    has_gpu_csr = true;
+            }
 
-                for (uint32_t n = 0; n < pop->n_neurons; n++) {
-                    float I_syn = 0.0f;
+            if (has_gpu_csr) {
+                /* === GPU I_SYN PATH === */
+                /* 1. Build flat spike vector on host from population tensors */
+                float* h_spk_flat = (float*)nimcp_calloc(total_neurons, sizeof(float));
+                if (h_spk_flat) {
+                    size_t off = 0;
+                    for (uint32_t p = 0; p < network->n_populations; p++) {
+                        snn_population_t* pop = network->populations[p];
+                        if (!pop) continue;
+                        float* sd = (float*)nimcp_tensor_data(pop->spike_output);
+                        if (sd) memcpy(h_spk_flat + off, sd, pop->n_neurons * sizeof(float));
+                        off += pop->n_neurons;
+                    }
 
-                    if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized) {
-                        /* CSR path: compute I_syn from population-local storage */
-                        I_syn = pop->external_current ? pop->external_current[n] : 0.0f;
-                        uint32_t syn_count;
-                        snn_csr_synapse_t* syns = snn_csr_get_incoming(
-                            pop->incoming_csr, n, &syn_count);
-                        for (uint32_t s = 0; s < syn_count; s++) {
-                            if (syns[s].src_pop >= network->n_populations) continue;
-                            snn_population_t* src_pop = network->populations[syns[s].src_pop];
-                            if (!src_pop || !src_pop->spike_output) continue;
-                            float* src_spk = (float*)nimcp_tensor_data(src_pop->spike_output);
-                            if (src_spk && syns[s].src_neuron < src_pop->n_neurons
-                                && src_spk[syns[s].src_neuron] > 0.5f) {
-                                I_syn += syns[s].weight;
+                    /* 2. Upload flat spike vector to GPU */
+                    size_t spk_dims[1] = { total_neurons };
+                    nimcp_gpu_tensor_t* d_spk = nimcp_gpu_tensor_from_host(
+                        gpu, h_spk_flat, spk_dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+                    if (d_spk) {
+                        /* 3. Per-population: upload CSR + external_current, call kernel */
+                        size_t pop_offset = 0;
+                        for (uint32_t p = 0; p < network->n_populations; p++) {
+                            snn_population_t* pop = network->populations[p];
+                            if (!pop) continue;
+
+                            if (pop->lightweight && pop->incoming_csr &&
+                                pop->incoming_csr->gpu_ready &&
+                                pop->incoming_csr->n_synapses > 0) {
+                                snn_csr_storage_t* csr = pop->incoming_csr;
+
+                                /* Upload CSR arrays to GPU */
+                                size_t w_dims[1] = { csr->n_synapses };
+                                size_t r_dims[1] = { (size_t)csr->n_neurons + 1 };
+                                size_t n_dims[1] = { pop->n_neurons };
+
+                                nimcp_gpu_tensor_t* d_w = nimcp_gpu_tensor_from_host(
+                                    gpu, csr->weights, w_dims, 1, NIMCP_GPU_PRECISION_FP32);
+                                nimcp_gpu_tensor_t* d_ci = nimcp_gpu_tensor_from_host(
+                                    gpu, csr->flat_col_idx, w_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+                                nimcp_gpu_tensor_t* d_rp = nimcp_gpu_tensor_from_host(
+                                    gpu, csr->row_ptr, r_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+
+                                float* ext_cur = pop->external_current;
+                                float* h_ext = ext_cur ? ext_cur : (float*)nimcp_calloc(pop->n_neurons, sizeof(float));
+                                nimcp_gpu_tensor_t* d_ext = nimcp_gpu_tensor_from_host(
+                                    gpu, h_ext, n_dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+                                nimcp_gpu_tensor_t* d_isyn = nimcp_gpu_tensor_create(
+                                    gpu, n_dims, 1, NIMCP_GPU_PRECISION_FP32);
+
+                                if (d_w && d_ci && d_rp && d_ext && d_isyn) {
+                                    extern bool nimcp_gpu_snn_isyn_csr(
+                                        nimcp_gpu_context_t*, const float*,
+                                        const float*, const unsigned int*,
+                                        const unsigned int*, const float*,
+                                        float*, size_t);
+                                    nimcp_gpu_snn_isyn_csr(gpu,
+                                        (const float*)d_spk->data,
+                                        (const float*)d_w->data,
+                                        (const unsigned int*)d_ci->data,
+                                        (const unsigned int*)d_rp->data,
+                                        (const float*)d_ext->data,
+                                        (float*)d_isyn->data,
+                                        pop->n_neurons);
+
+                                    /* Download I_syn result */
+                                    nimcp_gpu_tensor_to_host(d_isyn,
+                                        h_input + pop_offset);
+                                }
+
+                                if (d_w) nimcp_gpu_tensor_destroy(d_w);
+                                if (d_ci) nimcp_gpu_tensor_destroy(d_ci);
+                                if (d_rp) nimcp_gpu_tensor_destroy(d_rp);
+                                if (d_ext) nimcp_gpu_tensor_destroy(d_ext);
+                                if (d_isyn) nimcp_gpu_tensor_destroy(d_isyn);
+                                if (!ext_cur && h_ext) nimcp_free(h_ext);
+                            } else {
+                                /* CPU fallback for non-lightweight or non-GPU-ready pops */
+                                for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                                    float I_syn = 0.0f;
+                                    if (pop->lightweight && pop->incoming_csr &&
+                                        pop->incoming_csr->finalized) {
+                                        I_syn = pop->external_current ?
+                                            pop->external_current[n] : 0.0f;
+                                        uint32_t sc;
+                                        snn_csr_synapse_t* syns = snn_csr_get_incoming(
+                                            pop->incoming_csr, n, &sc);
+                                        for (uint32_t s = 0; s < sc; s++) {
+                                            if (syns[s].src_pop >= network->n_populations) continue;
+                                            snn_population_t* sp = network->populations[syns[s].src_pop];
+                                            if (!sp || !sp->spike_output) continue;
+                                            float* ss = (float*)nimcp_tensor_data(sp->spike_output);
+                                            if (ss && syns[s].src_neuron < sp->n_neurons
+                                                && ss[syns[s].src_neuron] > 0.5f)
+                                                I_syn += syns[s].weight;
+                                        }
+                                    } else if (network->neural_net) {
+                                        neuron_t* neuron = neural_network_get_neuron(
+                                            network->neural_net, pop->neuron_ids[n]);
+                                        if (neuron) {
+                                            I_syn = neuron->external_current;
+                                            uint32_t ic = neuron->incoming.embedded_count
+                                                        + neuron->incoming.overflow_count;
+                                            for (uint32_t s = 0; s < ic; s++) {
+                                                synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+                                                if (!h) continue;
+                                                neuron_t* pre = neural_network_get_neuron(
+                                                    network->neural_net, h->target_neuron_id);
+                                                if (pre && pre->state > 0.5f)
+                                                    I_syn += h->weight;
+                                            }
+                                        }
+                                    }
+                                    h_input[pop_offset + n] = I_syn;
+                                }
                             }
+                            pop_offset += pop->n_neurons;
                         }
-                    } else if (network->neural_net) {
-                        /* Legacy neuron_t path */
-                        neuron_t* neuron = neural_network_get_neuron(
-                            network->neural_net, pop->neuron_ids[n]);
-                        if (neuron) {
-                            I_syn = neuron->external_current;
-                            uint32_t in_count = neuron->incoming.embedded_count
-                                              + neuron->incoming.overflow_count;
-                            for (uint32_t s = 0; s < in_count; s++) {
-                                synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
-                                if (!h) continue;
-                                uint32_t pre_id = h->target_neuron_id;
-                                neuron_t* pre = neural_network_get_neuron(network->neural_net, pre_id);
-                                if (pre && pre->state > 0.5f) {
-                                    I_syn += h->weight;
+                        nimcp_gpu_tensor_destroy(d_spk);
+                    }
+                    nimcp_free(h_spk_flat);
+                }
+            } else {
+                /* === CPU-ONLY I_SYN PATH (no GPU CSR available) === */
+                size_t neuron_offset = 0;
+                for (uint32_t p = 0; p < network->n_populations; p++) {
+                    snn_population_t* pop = network->populations[p];
+                    if (!pop) continue;
+                    for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                        float I_syn = 0.0f;
+                        if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized) {
+                            I_syn = pop->external_current ? pop->external_current[n] : 0.0f;
+                            uint32_t sc;
+                            snn_csr_synapse_t* syns = snn_csr_get_incoming(
+                                pop->incoming_csr, n, &sc);
+                            for (uint32_t s = 0; s < sc; s++) {
+                                if (syns[s].src_pop >= network->n_populations) continue;
+                                snn_population_t* sp = network->populations[syns[s].src_pop];
+                                if (!sp || !sp->spike_output) continue;
+                                float* ss = (float*)nimcp_tensor_data(sp->spike_output);
+                                if (ss && syns[s].src_neuron < sp->n_neurons
+                                    && ss[syns[s].src_neuron] > 0.5f)
+                                    I_syn += syns[s].weight;
+                            }
+                        } else if (network->neural_net) {
+                            neuron_t* neuron = neural_network_get_neuron(
+                                network->neural_net, pop->neuron_ids[n]);
+                            if (neuron) {
+                                I_syn = neuron->external_current;
+                                uint32_t ic = neuron->incoming.embedded_count
+                                            + neuron->incoming.overflow_count;
+                                for (uint32_t s = 0; s < ic; s++) {
+                                    synapse_handle_t* h = sparse_synapse_get(&neuron->incoming, s);
+                                    if (!h) continue;
+                                    neuron_t* pre = neural_network_get_neuron(
+                                        network->neural_net, h->target_neuron_id);
+                                    if (pre && pre->state > 0.5f)
+                                        I_syn += h->weight;
                                 }
                             }
                         }
+                        h_input[neuron_offset + n] = I_syn;
                     }
-                    h_input[neuron_offset + n] = I_syn;
+                    neuron_offset += pop->n_neurons;
                 }
-                neuron_offset += pop->n_neurons;
             }
 
             /* Upload input to GPU tensor */
@@ -679,7 +810,7 @@ int snn_network_step(snn_network_t* network, float dt) {
                         nimcp_gpu_tensor_to_host(lif_state->spikes, h_spikes);
 
                         /* Distribute GPU results back to population tensors and neural_net */
-                        neuron_offset = 0;
+                        size_t neuron_offset = 0;
                         for (uint32_t p = 0; p < network->n_populations; p++) {
                             snn_population_t* pop = network->populations[p];
                             if (!pop) continue;
@@ -1908,6 +2039,31 @@ int snn_network_finalize_connections(snn_network_t* network) {
                 NIMCP_LOGGING_WARN("GPU LIF state creation failed for %zu neurons — "
                                    "falling back to CPU", total_neurons);
             }
+        }
+
+        /* Build population offset table and prepare GPU-friendly CSR arrays.
+         * Flat index = pop_offsets[src_pop] + src_neuron */
+        uint32_t* pop_offsets = nimcp_calloc(network->n_populations + 1, sizeof(uint32_t));
+        if (pop_offsets) {
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                pop_offsets[p + 1] = pop_offsets[p] +
+                    (network->populations[p] ? network->populations[p]->n_neurons : 0);
+            }
+            int gpu_prepared = 0;
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                snn_population_t* pop = network->populations[p];
+                if (pop && pop->lightweight && pop->incoming_csr) {
+                    if (snn_csr_prepare_gpu(pop->incoming_csr, pop_offsets,
+                                            network->n_populations) == 0) {
+                        gpu_prepared++;
+                    }
+                }
+            }
+            NIMCP_LOGGING_INFO("GPU CSR prepared for %d populations "
+                               "(%zu total neurons, flat index range 0-%u)",
+                               gpu_prepared, total_neurons,
+                               pop_offsets[network->n_populations]);
+            nimcp_free(pop_offsets);
         }
     }
 
