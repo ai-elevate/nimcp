@@ -1028,8 +1028,8 @@ int snn_network_step(snn_network_t* network, float dt) {
         network->stats.cpu_fallback_steps++;
     }
 
-    /* Log timing breakdown every 10 steps for profiling */
-    if (network->stats.total_steps % 10 == 0) {
+    /* Log timing breakdown every step for profiling */
+    {
         NIMCP_LOGGING_INFO("SNN step %llu: total=%.1fms (isyn=%.1fms lif+readback=%.1fms) "
                            "spikes=%d gpu=%s avg=%.1fms",
                            (unsigned long long)network->stats.total_steps,
