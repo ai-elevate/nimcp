@@ -1782,7 +1782,12 @@ static PyObject* Brain_get_snn_stats(BrainObject* self, PyObject* args) {
     brain_t ib = self->brain->internal_brain;
     if (!ib->snn_network) Py_RETURN_NONE;
 
-    /* Match snn_stats_t exactly: starts with uint64_t, NOT uint32_t */
+    /* Oversized buffer to absorb snn_stats_t growth across builds.
+     * The real struct has GPU metrics fields that may differ between
+     * NVCC and GCC due to bool alignment — use 512 bytes to be safe. */
+    uint8_t st_buf[512];
+    memset(st_buf, 0, sizeof(st_buf));
+    /* Overlay the fields we need to read */
     struct {
         uint64_t total_steps;
         uint64_t total_spikes;
@@ -1797,11 +1802,11 @@ static PyObject* Brain_get_snn_stats(BrainObject* self, PyObject* args) {
         int health;
         uint32_t silent_neurons;
         uint32_t hyperactive_neurons;
-        size_t memory_usage_bytes;
     } st;
     memset(&st, 0, sizeof(st));
     int (*fn)(void*, void*) = (int(*)(void*,void*))snn_network_get_stats;
-    fn(ib->snn_network, &st);
+    fn(ib->snn_network, st_buf);
+    memcpy(&st, st_buf, sizeof(st));
 
     /* Get n_populations from network struct (offset: magic(4)+id(4)+name(64)+neural_net(8)+populations(8) = 88) */
     typedef struct { uint32_t magic; uint32_t id; char name[64]; void* nn; void* pops; uint32_t n_pops; } snn_hdr_t;
