@@ -85,28 +85,35 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 #define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.1f   /**< Weight standard deviation */
 
 
-#define SNN_HIERARCHICAL_CACHE_PATH "checkpoints/athena/snn_hierarchical.bin"
+/* Well-known SNN sidecar path from the checkpoint system.
+ * brain.save(path) writes the SNN to path.snn — this is the canonical
+ * location for the trained hierarchical SNN with CSR weights.
+ * Also check the legacy separate cache path for backward compat. */
+#define SNN_SIDECAR_PATH "checkpoints/athena/athena_immersive.bin.snn"
+#define SNN_LEGACY_CACHE_PATH "checkpoints/athena/snn_hierarchical.bin"
 
 snn_network_t* snn_create_hierarchical_network(
     uint32_t n_inputs,
     uint32_t n_outputs,
     uint32_t target_total_neurons)
 {
-    /* Try to load cached hierarchical SNN from disk (saves ~8 min of wiring) */
+    /* Try to load cached SNN from the checkpoint sidecar (saves ~8 min of wiring).
+     * The sidecar is updated every checkpoint cycle with trained weights. */
     {
         extern snn_network_t* snn_network_load(const char* path);
-        snn_network_t* cached = snn_network_load(SNN_HIERARCHICAL_CACHE_PATH);
-        if (cached) {
-            /* Verify the cached network matches our parameters */
+        const char* cache_paths[] = { SNN_SIDECAR_PATH, SNN_LEGACY_CACHE_PATH };
+        for (int ci = 0; ci < 2; ci++) {
+            snn_network_t* cached = snn_network_load(cache_paths[ci]);
+            if (!cached) continue;
             if (cached->config.n_inputs == n_inputs &&
                 cached->config.n_outputs == n_outputs) {
                 LOG_INFO("Loaded cached hierarchical SNN from %s "
                          "(%u populations, skipped wiring)",
-                         SNN_HIERARCHICAL_CACHE_PATH, cached->n_populations);
+                         cache_paths[ci], cached->n_populations);
                 return cached;
             }
-            LOG_WARN("Cached SNN mismatch (inputs=%u/%u outputs=%u/%u) — rebuilding",
-                     cached->config.n_inputs, n_inputs,
+            LOG_WARN("Cached SNN at %s mismatch (inputs=%u/%u outputs=%u/%u)",
+                     cache_paths[ci], cached->config.n_inputs, n_inputs,
                      cached->config.n_outputs, n_outputs);
             extern void snn_network_destroy(snn_network_t*);
             snn_network_destroy(cached);
@@ -346,16 +353,13 @@ wire_connections:
              total_connections, recurrent_connections, skip_connections,
              input_fanout_conn, output_converge_conn);
 
-    /* Cache to disk for fast reload on restart */
+    /* Save initial CSR to sidecar path so the first checkpoint has it.
+     * Subsequent saves happen during brain.save() checkpoint cycle. */
     {
         extern int snn_network_save(snn_network_t* network, const char* path);
-        int save_rc = snn_network_save(net, SNN_HIERARCHICAL_CACHE_PATH);
-        if (save_rc == 0) {
-            LOG_INFO("Cached hierarchical SNN to %s (next startup will skip wiring)",
-                     SNN_HIERARCHICAL_CACHE_PATH);
-        } else {
-            LOG_WARN("Failed to cache hierarchical SNN to %s (rc=%d)",
-                     SNN_HIERARCHICAL_CACHE_PATH, save_rc);
+        if (snn_network_save(net, SNN_SIDECAR_PATH) == 0) {
+            LOG_INFO("Saved initial SNN to %s (subsequent saves via checkpoint cycle)",
+                     SNN_SIDECAR_PATH);
         }
     }
 
