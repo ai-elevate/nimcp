@@ -663,6 +663,14 @@ bool brain_save(brain_t brain, const char* filepath)
             snprintf(snn_path, sizeof(snn_path), "%s.snn", filepath);
             extern int snn_network_save(struct snn_network_s* network, const char* path);
             snn_network_save(brain->snn_network, snn_path);
+
+            /* Also update the hierarchical SNN cache (used for fast restart).
+             * This keeps trained CSR weights current so daemon restarts
+             * resume with the latest weights instead of initial random ones. */
+            #ifndef SNN_HIERARCHICAL_CACHE_PATH
+            #define SNN_HIERARCHICAL_CACHE_PATH "checkpoints/athena/snn_hierarchical.bin"
+            #endif
+            snn_network_save(brain->snn_network, SNN_HIERARCHICAL_CACHE_PATH);
         }
         if (brain->lnn_network) {
             char lnn_path[NIMCP_METRICS_PATH_SIZE];
