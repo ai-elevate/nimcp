@@ -85,11 +85,34 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 #define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.1f   /**< Weight standard deviation */
 
 
+#define SNN_HIERARCHICAL_CACHE_PATH "checkpoints/athena/snn_hierarchical.bin"
+
 snn_network_t* snn_create_hierarchical_network(
     uint32_t n_inputs,
     uint32_t n_outputs,
     uint32_t target_total_neurons)
 {
+    /* Try to load cached hierarchical SNN from disk (saves ~8 min of wiring) */
+    {
+        extern snn_network_t* snn_network_load(const char* path);
+        snn_network_t* cached = snn_network_load(SNN_HIERARCHICAL_CACHE_PATH);
+        if (cached) {
+            /* Verify the cached network matches our parameters */
+            if (cached->config.n_inputs == n_inputs &&
+                cached->config.n_outputs == n_outputs) {
+                LOG_INFO("Loaded cached hierarchical SNN from %s "
+                         "(%u populations, skipped wiring)",
+                         SNN_HIERARCHICAL_CACHE_PATH, cached->n_populations);
+                return cached;
+            }
+            LOG_WARN("Cached SNN mismatch (inputs=%u/%u outputs=%u/%u) — rebuilding",
+                     cached->config.n_inputs, n_inputs,
+                     cached->config.n_outputs, n_outputs);
+            extern void snn_network_destroy(snn_network_t*);
+            snn_network_destroy(cached);
+        }
+    }
+
     /* Compute actual total from tier definitions */
     uint32_t actual_total = 0;
     for (uint32_t t = 0; t < NUM_TIERS; t++) {
@@ -322,6 +345,19 @@ wire_connections:
                  + input_fanout_conn + output_converge_conn,
              total_connections, recurrent_connections, skip_connections,
              input_fanout_conn, output_converge_conn);
+
+    /* Cache to disk for fast reload on restart */
+    {
+        extern int snn_network_save(snn_network_t* network, const char* path);
+        int save_rc = snn_network_save(net, SNN_HIERARCHICAL_CACHE_PATH);
+        if (save_rc == 0) {
+            LOG_INFO("Cached hierarchical SNN to %s (next startup will skip wiring)",
+                     SNN_HIERARCHICAL_CACHE_PATH);
+        } else {
+            LOG_WARN("Failed to cache hierarchical SNN to %s (rc=%d)",
+                     SNN_HIERARCHICAL_CACHE_PATH, save_rc);
+        }
+    }
 
     return net;
 }

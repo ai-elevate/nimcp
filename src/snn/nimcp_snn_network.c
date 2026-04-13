@@ -2302,6 +2302,10 @@ int snn_network_validate(const snn_network_t* network) {
 #include <stdio.h>
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 
+/* SNN checkpoint format constants */
+#define SNN_CHECKPOINT_MAGIC    0x534E4E53  /**< "SNNS" */
+#define SNN_CHECKPOINT_VERSION  3           /**< v3: CSR lightweight populations */
+
 /* Checked fwrite helper — returns -1 on failure */
 #define SNN_FWRITE(ptr, size, count, stream) \
     do { if (fwrite((ptr), (size), (count), (stream)) != (count)) { \
@@ -2322,8 +2326,8 @@ int snn_network_save(snn_network_t* network, const char* path) {
         return -1;
     }
 
-    uint32_t magic = 0x534E4E53; /* "SNNS" */
-    uint32_t version = 2;  /* v2: saves target neuron IDs per synapse */
+    uint32_t magic = SNN_CHECKPOINT_MAGIC;
+    uint32_t version = SNN_CHECKPOINT_VERSION;
     SNN_FWRITE(&magic, sizeof(uint32_t), 1, f);
     SNN_FWRITE(&version, sizeof(uint32_t), 1, f);
 
@@ -2363,6 +2367,45 @@ int snn_network_save(snn_network_t* network, const char* path) {
         }
     }
 
+    /* === V3: Save lightweight CSR population data === */
+    uint32_t n_lightweight = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (pop && pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized)
+            n_lightweight++;
+    }
+    SNN_FWRITE(&n_lightweight, sizeof(uint32_t), 1, f);
+    SNN_FWRITE(&network->n_populations, sizeof(uint32_t), 1, f);
+
+    if (n_lightweight > 0) {
+        /* Save population metadata */
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            snn_population_t* pop = network->populations[p];
+            if (!pop || !pop->lightweight || !pop->incoming_csr) continue;
+
+            SNN_FWRITE(&pop->id, sizeof(uint32_t), 1, f);
+            SNN_FWRITE(&pop->n_neurons, sizeof(uint32_t), 1, f);
+            SNN_FWRITE(&pop->neuron_type, sizeof(neuron_type_t), 1, f);
+            SNN_FWRITE(pop->name, sizeof(pop->name), 1, f);
+
+            /* CSR data */
+            snn_csr_storage_t* csr = pop->incoming_csr;
+            SNN_FWRITE(&csr->n_neurons, sizeof(uint32_t), 1, f);
+            SNN_FWRITE(&csr->n_synapses, sizeof(uint32_t), 1, f);
+            SNN_FWRITE(csr->row_ptr, sizeof(uint32_t), csr->n_neurons + 1, f);
+            SNN_FWRITE(csr->entries, sizeof(snn_csr_synapse_t), csr->n_synapses, f);
+
+            /* GPU-ready arrays (if prepared) */
+            uint8_t has_gpu = csr->gpu_ready ? 1 : 0;
+            SNN_FWRITE(&has_gpu, sizeof(uint8_t), 1, f);
+            if (csr->gpu_ready && csr->weights && csr->flat_col_idx) {
+                SNN_FWRITE(csr->weights, sizeof(float), csr->n_synapses, f);
+                SNN_FWRITE(csr->flat_col_idx, sizeof(uint32_t), csr->n_synapses, f);
+            }
+        }
+        NIMCP_LOGGING_INFO("SNN save: %u lightweight CSR populations saved", n_lightweight);
+    }
+
     fclose(f);
 
     /* Atomic rename: temp → final path */
@@ -2372,7 +2415,8 @@ int snn_network_save(snn_network_t* network, const char* path) {
         return -1;
     }
 
-    NIMCP_LOGGING_INFO("SNN network saved to %s (%u neurons)", path, total_neurons);
+    NIMCP_LOGGING_INFO("SNN network saved to %s (%u neurons, %u CSR pops)",
+                       path, total_neurons, n_lightweight);
     return 0;
 }
 
@@ -2388,12 +2432,12 @@ snn_network_t* snn_network_load(const char* path) {
     }
 
     uint32_t magic = 0, version = 0;
-    if (fread(&magic, sizeof(uint32_t), 1, f) != 1 || magic != 0x534E4E53) {
+    if (fread(&magic, sizeof(uint32_t), 1, f) != 1 || magic != SNN_CHECKPOINT_MAGIC) {
         NIMCP_LOGGING_ERROR("snn_network_load: invalid magic");
         fclose(f);
         return NULL;
     }
-    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > 2) {
+    if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > SNN_CHECKPOINT_VERSION) {
         NIMCP_LOGGING_ERROR("snn_network_load: unsupported version %u", version);
         fclose(f); return NULL;
     }
@@ -2522,7 +2566,139 @@ snn_network_t* snn_network_load(const char* path) {
         nimcp_free(target_ids);
     }
 
+    /* === V3: Load lightweight CSR populations === */
+    if (version >= 3) {
+        uint32_t n_lightweight = 0, n_pops_saved = 0;
+        if (fread(&n_lightweight, sizeof(uint32_t), 1, f) == 1 &&
+            fread(&n_pops_saved, sizeof(uint32_t), 1, f) == 1 &&
+            n_lightweight > 0) {
+
+            NIMCP_LOGGING_INFO("Loading %u lightweight CSR populations...", n_lightweight);
+
+            for (uint32_t lp = 0; lp < n_lightweight; lp++) {
+                uint32_t pop_id, pop_n;
+                neuron_type_t ntype;
+                char pop_name[64];
+
+                if (fread(&pop_id, sizeof(uint32_t), 1, f) != 1 ||
+                    fread(&pop_n, sizeof(uint32_t), 1, f) != 1 ||
+                    fread(&ntype, sizeof(neuron_type_t), 1, f) != 1 ||
+                    fread(pop_name, sizeof(pop_name), 1, f) != 1) {
+                    NIMCP_LOGGING_WARN("snn_network_load: truncated CSR pop header at %u", lp);
+                    break;
+                }
+
+                /* Create lightweight population */
+                int rc = snn_network_add_population_lightweight(net, pop_n, ntype, pop_name);
+                if (rc < 0) {
+                    NIMCP_LOGGING_ERROR("snn_network_load: failed to create CSR pop '%s'", pop_name);
+                    /* Skip this pop's CSR data */
+                    uint32_t csr_n, csr_nnz;
+                    if (fread(&csr_n, 4, 1, f) == 1 && fread(&csr_nnz, 4, 1, f) == 1) {
+                        fseek(f, (long)((csr_n + 1) * 4 + csr_nnz * sizeof(snn_csr_synapse_t)), SEEK_CUR);
+                        uint8_t has_gpu;
+                        if (fread(&has_gpu, 1, 1, f) == 1 && has_gpu)
+                            fseek(f, (long)(csr_nnz * (4 + 4)), SEEK_CUR);
+                    }
+                    continue;
+                }
+
+                snn_population_t* pop = net->populations[rc];
+                snn_csr_storage_t* csr = pop->incoming_csr;
+
+                /* Read CSR arrays directly */
+                uint32_t csr_n = 0, csr_nnz = 0;
+                if (fread(&csr_n, sizeof(uint32_t), 1, f) != 1 ||
+                    fread(&csr_nnz, sizeof(uint32_t), 1, f) != 1) {
+                    NIMCP_LOGGING_WARN("snn_network_load: truncated CSR header for '%s'", pop_name);
+                    break;
+                }
+
+                /* Resize CSR storage if needed */
+                if (csr_nnz > csr->capacity) {
+                    snn_csr_synapse_t* new_entries = nimcp_realloc(
+                        csr->entries, csr_nnz * sizeof(snn_csr_synapse_t));
+                    if (!new_entries) {
+                        NIMCP_LOGGING_ERROR("snn_network_load: CSR realloc failed for %u synapses", csr_nnz);
+                        break;
+                    }
+                    csr->entries = new_entries;
+                    csr->capacity = csr_nnz;
+                }
+
+                /* Read row_ptr and entries */
+                if (fread(csr->row_ptr, sizeof(uint32_t), csr_n + 1, f) != csr_n + 1 ||
+                    fread(csr->entries, sizeof(snn_csr_synapse_t), csr_nnz, f) != csr_nnz) {
+                    NIMCP_LOGGING_WARN("snn_network_load: truncated CSR data for '%s'", pop_name);
+                    break;
+                }
+                csr->n_neurons = csr_n;
+                csr->n_synapses = csr_nnz;
+                csr->finalized = true;
+
+                /* Read GPU-ready arrays if present */
+                uint8_t has_gpu = 0;
+                if (fread(&has_gpu, sizeof(uint8_t), 1, f) == 1 && has_gpu) {
+                    csr->weights = nimcp_malloc(csr_nnz * sizeof(float));
+                    csr->flat_col_idx = nimcp_malloc(csr_nnz * sizeof(uint32_t));
+                    if (csr->weights && csr->flat_col_idx) {
+                        if (fread(csr->weights, sizeof(float), csr_nnz, f) == csr_nnz &&
+                            fread(csr->flat_col_idx, sizeof(uint32_t), csr_nnz, f) == csr_nnz) {
+                            csr->gpu_ready = true;
+                        }
+                    }
+                }
+
+                NIMCP_LOGGING_INFO("  CSR pop '%s': %u neurons, %u synapses (gpu=%s)",
+                                   pop_name, csr_n, csr_nnz, csr->gpu_ready ? "yes" : "no");
+            }
+
+            /* Re-create GPU LIF state for full neuron count */
+            size_t total_n = 0;
+            for (uint32_t p = 0; p < net->n_populations; p++) {
+                if (net->populations[p]) total_n += net->populations[p]->n_neurons;
+            }
+            if (net->gpu_lif_state) {
+                nimcp_lif_state_destroy((nimcp_lif_state_t*)net->gpu_lif_state);
+                net->gpu_lif_state = NULL;
+            }
+            if (net->gpu_ctx) {
+                nimcp_lif_params_t lp = {
+                    .tau_mem = net->config.tau_mem,
+                    .tau_syn = net->config.tau_syn > 0.0f ? net->config.tau_syn : 5.0f,
+                    .v_thresh = net->config.v_thresh,
+                    .v_reset = net->config.v_reset,
+                    .v_rest = net->config.v_rest,
+                    .dt = net->config.dt,
+                    .hard_reset = true
+                };
+                nimcp_lif_state_t* ls = nimcp_lif_state_create(
+                    (nimcp_gpu_context_t*)net->gpu_ctx, total_n, &lp);
+                if (ls) {
+                    net->gpu_lif_state = ls;
+                    NIMCP_LOGGING_INFO("GPU LIF state created for %zu neurons (from checkpoint)", total_n);
+                }
+            }
+
+            /* Prepare GPU CSR arrays if not loaded from checkpoint */
+            uint32_t* pop_offsets = nimcp_calloc(net->n_populations + 1, sizeof(uint32_t));
+            if (pop_offsets) {
+                for (uint32_t p = 0; p < net->n_populations; p++) {
+                    pop_offsets[p + 1] = pop_offsets[p] +
+                        (net->populations[p] ? net->populations[p]->n_neurons : 0);
+                }
+                for (uint32_t p = 0; p < net->n_populations; p++) {
+                    snn_population_t* pop = net->populations[p];
+                    if (pop && pop->lightweight && pop->incoming_csr && !pop->incoming_csr->gpu_ready) {
+                        snn_csr_prepare_gpu(pop->incoming_csr, pop_offsets, net->n_populations);
+                    }
+                }
+                nimcp_free(pop_offsets);
+            }
+        }
+    }
+
     fclose(f);
-    NIMCP_LOGGING_INFO("SNN network loaded from %s (%u neurons restored)", path, restore_count);
+    NIMCP_LOGGING_INFO("SNN network loaded from %s (%u neurons restored, v%u)", path, restore_count, version);
     return net;
 }
