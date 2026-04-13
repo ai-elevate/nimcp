@@ -11,6 +11,7 @@
  */
 
 #include "training/nimcp_unified_training.h"
+#include <time.h>
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1148,6 +1149,8 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
     }
 #endif
 
+    struct timespec _utm_fwd_end; clock_gettime(CLOCK_MONOTONIC, &_utm_fwd_end);
+
     /* ------------------------------------------------------------------ */
     /* Step 3: Compute composite loss                                     */
     /* ------------------------------------------------------------------ */
@@ -1531,6 +1534,8 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         nimcp_checkpoint_end_backward(mgr->grad_checkpoint_ctx);
     }
 #endif
+
+    struct timespec _utm_bwd_end; clock_gettime(CLOCK_MONOTONIC, &_utm_bwd_end);
 
     /* ------------------------------------------------------------------ */
     /* Step 5: Gradient normalization / clipping (unified, single pass)   */
@@ -2679,6 +2684,25 @@ cleanup:
     /* Free output buffers */
     for (uint32_t i = 0; i < mgr->num_networks; i++) {
         nimcp_free(net_outputs[i]);
+    }
+
+    /* UTM step timing breakdown */
+    {
+        struct timespec _utm_end; clock_gettime(CLOCK_MONOTONIC, &_utm_end);
+        #define UTM_MS(a, b) (((b).tv_sec - (a).tv_sec) * 1000.0 + ((b).tv_nsec - (a).tv_nsec) / 1e6)
+        static uint64_t _utm_step_count = 0;
+        _utm_step_count++;
+        double _total = UTM_MS(_utm_fwd_end, _utm_end);  /* skip zero_grad phase */
+        double _fwd = 0;  /* already measured above */
+        double _bwd = UTM_MS(_utm_fwd_end, _utm_bwd_end);
+        double _rest = UTM_MS(_utm_bwd_end, _utm_end);
+        if (_total > 1000.0 || _utm_step_count % 5 == 0) {
+            NIMCP_LOGGING_INFO("UTM step %llu: backward=%.0fms optimizer+state=%.0fms "
+                               "(%u networks, %u bridges)",
+                               (unsigned long long)_utm_step_count,
+                               _bwd, _rest, mgr->num_networks, mgr->num_bridges);
+        }
+        #undef UTM_MS
     }
 
     return 0;
