@@ -531,6 +531,16 @@ struct snn_network_s {
     void* gpu_lif_state;            /**< nimcp_lif_state_t* for GPU SNN (NULL if CPU-only) */
     void* gpu_ctx;                  /**< nimcp_gpu_context_t* for GPU SNN (NULL if CPU-only) */
 
+    /* Persistent GPU tensors for I_syn computation (allocated once, reused per step).
+     * Eliminates per-step tensor create/upload/download/destroy overhead. */
+    void* gpu_spike_vector;         /**< nimcp_gpu_tensor_t*: flat spike vector [total_neurons] */
+    void** gpu_csr_weights;         /**< nimcp_gpu_tensor_t*[n_populations]: CSR weights per pop */
+    void** gpu_csr_col_idx;         /**< nimcp_gpu_tensor_t*[n_populations]: CSR col indices per pop */
+    void** gpu_csr_row_ptr;         /**< nimcp_gpu_tensor_t*[n_populations]: CSR row pointers per pop */
+    void** gpu_ext_current;         /**< nimcp_gpu_tensor_t*[n_populations]: external current per pop */
+    void** gpu_isyn_output;         /**< nimcp_gpu_tensor_t*[n_populations]: I_syn output per pop */
+    uint32_t gpu_n_persistent_pops; /**< Number of populations with persistent GPU tensors */
+
     /* Statistics */
     snn_stats_t stats;              /**< Network statistics */
 };

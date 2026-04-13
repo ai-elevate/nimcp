@@ -207,6 +207,22 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_from_host(
     return tensor;
 }
 
+bool nimcp_gpu_tensor_upload(nimcp_gpu_tensor_t* tensor, const void* host_data)
+{
+    if (!tensor || !host_data || !tensor->data) {
+        LOG_ERROR("Invalid parameters for tensor upload");
+        return false;
+    }
+    size_t data_size = tensor->numel * tensor->elem_size;
+    cudaError_t err = cudaMemcpy(tensor->data, host_data, data_size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        LOG_ERROR("Failed to upload tensor data to GPU: %s", cudaGetErrorString(err));
+        NIMCP_CUDA_RECOVER(err, GPU_ERROR_CUDA_RUNTIME);
+        return false;
+    }
+    return true;
+}
+
 bool nimcp_gpu_tensor_to_host(const nimcp_gpu_tensor_t* tensor, void* host_data)
 {
     if (!tensor || !host_data) {

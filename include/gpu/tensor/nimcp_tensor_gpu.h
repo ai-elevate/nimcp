@@ -129,6 +129,18 @@ NIMCP_EXPORT bool nimcp_gpu_tensor_to_host(
 );
 
 /**
+ * @brief Upload host data to existing GPU tensor (no allocation)
+ *
+ * @param tensor Existing GPU tensor (must be pre-allocated)
+ * @param host_data Host memory to copy from
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_tensor_upload(
+    nimcp_gpu_tensor_t* tensor,
+    const void* host_data
+);
+
+/**
  * @brief Destroy GPU tensor and free memory
  *
  * @param tensor GPU tensor to destroy
