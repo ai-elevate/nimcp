@@ -7086,10 +7086,14 @@ class MetricsComputer:
             target_arr = np.asarray(target_vec, dtype=np.float32)
 
             # Cosine similarity between output and target
-            out_norm = np.linalg.norm(output_arr)
-            tgt_norm = np.linalg.norm(target_arr)
+            # Truncate to shorter dimension if sizes mismatch
+            min_dim = min(len(output_arr), len(target_arr))
+            out_trunc = output_arr[:min_dim]
+            tgt_trunc = target_arr[:min_dim]
+            out_norm = np.linalg.norm(out_trunc)
+            tgt_norm = np.linalg.norm(tgt_trunc)
             if out_norm > 1e-8 and tgt_norm > 1e-8:
-                cos_sim = float(np.dot(output_arr, target_arr) / (out_norm * tgt_norm))
+                cos_sim = float(np.dot(out_trunc, tgt_trunc) / (out_norm * tgt_norm))
             else:
                 cos_sim = 0.0
             cosine_sims.append(cos_sim)
