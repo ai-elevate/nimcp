@@ -51,6 +51,7 @@
 #include "core/neuralnet/nimcp_neuron_synapse_access.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include <time.h>
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1006,6 +1007,11 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
+    /* Per-phase wall clock timing */
+    struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
+    clock_gettime(CLOCK_MONOTONIC, &_blv_t0);
+    _blv_ann = _blv_plasticity = _blv_utm = _blv_snn = _blv_cnn = _blv_t0;
+
     PROBE_STAGE(brain, PROBE_TRAIN_INPUT, {
         PROBE_SET_INT(&_ctx, "num_features", (int64_t)num_features);
         PROBE_SET_INT(&_ctx, "target_size", (int64_t)target_size);
@@ -1162,6 +1168,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                       LEARN_MODE_DISTILLATION,
                                       effective_lr);
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &_blv_ann);
 
     PROBE_STAGE(brain, PROBE_TRAIN_ADAPTIVE, {
         PROBE_SET_FLOAT(&_ctx, "loss", loss);
@@ -1374,6 +1382,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             }
         }
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &_blv_plasticity);
 
     /* Step 2: Secondary networks — unified or legacy path */
     if (brain->unified_training && brain->config.use_unified_training) {
@@ -2775,6 +2785,23 @@ sequential_training:
 
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);
+
+    /* Log per-phase timing breakdown */
+    clock_gettime(CLOCK_MONOTONIC, &_blv_end);
+    #define BLV_MS(a, b) (((b).tv_sec - (a).tv_sec) * 1000.0 + ((b).tv_nsec - (a).tv_nsec) / 1e6)
+    double _total = BLV_MS(_blv_t0, _blv_end);
+    double _ann = BLV_MS(_blv_t0, _blv_ann);
+    double _plast = BLV_MS(_blv_ann, _blv_plasticity);
+    double _rest = BLV_MS(_blv_plasticity, _blv_end);
+    static uint64_t _blv_step_count = 0;
+    _blv_step_count++;
+    if (_total > 1000.0 || _blv_step_count % 5 == 0) {
+        NIMCP_LOGGING_INFO("learn_vector step %llu: total=%.0fms (ann=%.0fms plasticity=%.0fms "
+                           "secondary+cognitive=%.0fms) loss=%.4f",
+                           (unsigned long long)_blv_step_count,
+                           _total, _ann, _plast, _rest, loss);
+    }
+    #undef BLV_MS
     return loss;
 }
 
