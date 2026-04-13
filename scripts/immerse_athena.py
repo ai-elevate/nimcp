@@ -2873,11 +2873,6 @@ class ContrastiveRegularizer:
             if corrections >= MAX_CORRECTIONS_PER_CYCLE:
                 break
 
-                    if corrections >= self.batch_size:
-                        break
-            if corrections >= self.batch_size:
-                break
-
         self._corrections_applied += corrections
         mean_sim = float(np.mean(sims_found)) if sims_found else 0.0
         return corrections, mean_sim
