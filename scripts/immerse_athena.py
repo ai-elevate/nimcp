@@ -5362,6 +5362,7 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         _dec_t0 = _t.monotonic()
         result = brain.decide_full(features)
         _dec_ms = (_t.monotonic() - _dec_t0) * 1000
+        _step_ms = (_t.monotonic() - _loop_t0) * 1000
 
         # Held-out check: 20% of items are evaluation-only (no learning)
         _is_held_out = _held_out_buffer.is_held_out(features)
@@ -5481,7 +5482,8 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             recent = losses[-50:]
             rl = np.mean(recent) if recent else 0
             nz = sum(1 for x in recent if x > 0.001)
-            parts = [f"[{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)"]
+            _total_step_ms = (_t.monotonic() - _loop_t0) * 1000
+            parts = [f"[{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero) {_total_step_ms:.0f}ms/step"]
             try:
                 ss = brain.snn_get_stats()
                 if ss:
@@ -5720,6 +5722,9 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 print("  Training halted due to mode collapse.", flush=True)
                 return losses
 
+        import time as _t
+        _loop_t0 = _t.monotonic()
+
         action = clock.tick(brain)
         if action == "sleep":
             clock.do_sleep(brain, parent)
@@ -5898,7 +5903,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             recent = losses[-50:]
             rl = np.mean(recent) if recent else 0
             nz = sum(1 for x in recent if x > 0.001)
-            parts = [f"[{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero)"]
+            _total_step_ms = (_t.monotonic() - _loop_t0) * 1000
+            parts = [f"[{i+1}] loss={rl:.4f} ({nz}/{len(recent)} non-zero) {_total_step_ms:.0f}ms/step"]
             try:
                 ss = brain.snn_get_stats()
                 if ss:
