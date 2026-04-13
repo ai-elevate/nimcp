@@ -618,7 +618,25 @@ int snn_network_step(snn_network_t* network, float dt) {
 
                 for (uint32_t n = 0; n < pop->n_neurons; n++) {
                     float I_syn = 0.0f;
-                    if (network->neural_net) {
+
+                    if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized) {
+                        /* CSR path: compute I_syn from population-local storage */
+                        I_syn = pop->external_current ? pop->external_current[n] : 0.0f;
+                        uint32_t syn_count;
+                        snn_csr_synapse_t* syns = snn_csr_get_incoming(
+                            pop->incoming_csr, n, &syn_count);
+                        for (uint32_t s = 0; s < syn_count; s++) {
+                            if (syns[s].src_pop >= network->n_populations) continue;
+                            snn_population_t* src_pop = network->populations[syns[s].src_pop];
+                            if (!src_pop || !src_pop->spike_output) continue;
+                            float* src_spk = (float*)nimcp_tensor_data(src_pop->spike_output);
+                            if (src_spk && syns[s].src_neuron < src_pop->n_neurons
+                                && src_spk[syns[s].src_neuron] > 0.5f) {
+                                I_syn += syns[s].weight;
+                            }
+                        }
+                    } else if (network->neural_net) {
+                        /* Legacy neuron_t path */
                         neuron_t* neuron = neural_network_get_neuron(
                             network->neural_net, pop->neuron_ids[n]);
                         if (neuron) {
@@ -674,13 +692,13 @@ int snn_network_step(snn_network_t* network, float dt) {
                                     total_spikes++;
                                     pop->total_spikes++;
 
-                                    if (network->neural_net) {
+                                    if (!pop->lightweight && network->neural_net) {
                                         neuron_t* nn = neural_network_get_neuron(
                                             network->neural_net, pop->neuron_ids[n]);
                                         if (nn) nn->state = 1.0f;
                                     }
                                 } else {
-                                    if (network->neural_net) {
+                                    if (!pop->lightweight && network->neural_net) {
                                         neuron_t* nn = neural_network_get_neuron(
                                             network->neural_net, pop->neuron_ids[n]);
                                         if (nn) nn->state = 0.0f;
@@ -698,6 +716,12 @@ int snn_network_step(snn_network_t* network, float dt) {
                                     }
                                     nimcp_free(h_v);
                                 }
+                            }
+
+                            /* Clear external_current for next step (lightweight pops) */
+                            if (pop->lightweight && pop->external_current) {
+                                memset(pop->external_current, 0,
+                                       pop->n_neurons * sizeof(float));
                             }
 
                             neuron_offset += pop->n_neurons;
@@ -1824,6 +1848,47 @@ int snn_network_finalize_connections(snn_network_t* network) {
         }
     }
     NIMCP_LOGGING_INFO("Finalized CSR for %d lightweight populations", finalized);
+
+    /* Re-create GPU LIF state with correct total neuron count.
+     * The initial snn_network_create() only counted n_inputs+n_hidden+n_outputs,
+     * but lightweight populations add millions more neurons that need GPU state. */
+    if (finalized > 0) {
+        size_t total_neurons = 0;
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            if (network->populations[p])
+                total_neurons += network->populations[p]->n_neurons;
+        }
+
+        /* Destroy old undersized GPU state */
+        if (network->gpu_lif_state) {
+            nimcp_lif_state_destroy((nimcp_lif_state_t*)network->gpu_lif_state);
+            network->gpu_lif_state = NULL;
+        }
+
+        /* Create new state for full neuron count */
+        if (network->gpu_ctx) {
+            nimcp_lif_params_t lif_params = {
+                .tau_mem   = network->config.tau_mem,
+                .tau_syn   = network->config.tau_syn > 0.0f ? network->config.tau_syn : 5.0f,
+                .v_thresh  = network->config.v_thresh,
+                .v_reset   = network->config.v_reset,
+                .v_rest    = network->config.v_rest,
+                .dt        = network->config.dt,
+                .hard_reset = true
+            };
+            nimcp_lif_state_t* lif_state = nimcp_lif_state_create(
+                (nimcp_gpu_context_t*)network->gpu_ctx, total_neurons, &lif_params);
+            if (lif_state) {
+                network->gpu_lif_state = lif_state;
+                NIMCP_LOGGING_INFO("GPU LIF state re-created for %zu total neurons "
+                                   "(including lightweight)", total_neurons);
+            } else {
+                NIMCP_LOGGING_WARN("GPU LIF state creation failed for %zu neurons — "
+                                   "falling back to CPU", total_neurons);
+            }
+        }
+    }
+
     return finalized;
 }
 
