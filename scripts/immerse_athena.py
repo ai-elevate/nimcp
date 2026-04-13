@@ -2866,6 +2866,13 @@ class ContrastiveRegularizer:
                     except Exception:
                         pass
 
+                    # Cap corrections per cycle to avoid multi-minute stalls
+                    MAX_CORRECTIONS_PER_CYCLE = 4
+                    if corrections >= MAX_CORRECTIONS_PER_CYCLE:
+                        break
+            if corrections >= MAX_CORRECTIONS_PER_CYCLE:
+                break
+
                     if corrections >= self.batch_size:
                         break
             if corrections >= self.batch_size:
