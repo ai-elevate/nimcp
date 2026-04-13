@@ -1390,20 +1390,24 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             parallel_count++;
         }
 
-        if (parallel_count >= 2) {
-            nimcp_thread_pool_t* pool = nimcp_pool_create(parallel_count);
-            if (pool) {
-                for (uint32_t p = 0; p < parallel_count; p++) {
-                    nimcp_pool_submit(pool, utm_backward_task_fn, &bwd_tasks[p]);
+        {
+            struct timespec _p1_t0; clock_gettime(CLOCK_MONOTONIC, &_p1_t0);
+            NIMCP_LOGGING_INFO("UTM Phase 1 backward: %u non-bridged networks", parallel_count);
+
+            if (parallel_count >= 2) {
+                nimcp_thread_pool_t* pool = nimcp_pool_create(parallel_count);
+                if (pool) {
+                    for (uint32_t p = 0; p < parallel_count; p++) {
+                        nimcp_pool_submit(pool, utm_backward_task_fn, &bwd_tasks[p]);
+                    }
+                    nimcp_pool_wait(pool);
+                    nimcp_pool_destroy(pool);
+                } else {
+                    for (uint32_t p = 0; p < parallel_count; p++) {
+                        utm_backward_task_fn(&bwd_tasks[p]);
+                    }
                 }
-                nimcp_pool_wait(pool);
-                nimcp_pool_destroy(pool);
             } else {
-                for (uint32_t p = 0; p < parallel_count; p++) {
-                    utm_backward_task_fn(&bwd_tasks[p]);
-                }
-            }
-        } else {
             for (uint32_t p = 0; p < parallel_count; p++) {
                 utm_backward_task_fn(&bwd_tasks[p]);
             }
@@ -1414,6 +1418,12 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             uint32_t idx = bwd_indices[p];
             dl_dinputs[idx] = bwd_tasks[p].dl_din;
             local_result.diversity_loss += bwd_tasks[p].div_loss;
+        }
+
+            struct timespec _p1_t1; clock_gettime(CLOCK_MONOTONIC, &_p1_t1);
+            double _p1_ms = (_p1_t1.tv_sec - _p1_t0.tv_sec) * 1000.0
+                          + (_p1_t1.tv_nsec - _p1_t0.tv_nsec) / 1e6;
+            NIMCP_LOGGING_INFO("UTM Phase 1 backward: %.0fms for %u networks", _p1_ms, parallel_count);
         }
     }
 
