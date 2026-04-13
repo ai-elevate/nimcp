@@ -227,3 +227,4 @@ build/
 data/multimodal/*.pkl
 models/*.gguf
 models/
+build/
