@@ -596,47 +596,60 @@ typedef struct {
     float* dl_din;        /**< Output: input gradient (allocated by caller) */
     uint32_t in_dim;
     float div_loss;       /**< Output: diversity loss for this network */
+    float* dl_dout_override; /**< If non-NULL, use this instead of computing loss gradient */
 } utm_backward_task_t;
 
 /** @brief Thread pool task: compute loss gradient + diversity + backward for one network */
 static void utm_backward_task_fn(void* arg) {
     utm_backward_task_t* t = (utm_backward_task_t*)arg;
 
-    /* Compute dL/dOutput */
-    float* dl_dout = (float*)nimcp_calloc(t->out_dim, sizeof(float));
-    if (!dl_dout) { t->div_loss = 0.0f; return; }
+    float* dl_dout;
+    bool owns_dl_dout;
 
-    uint32_t cmp_dim = (t->out_dim < t->target_dim) ? t->out_dim : t->target_dim;
-    float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
-    switch (t->loss_type) {
-        case 1: /* MAE */
-            for (uint32_t j = 0; j < cmp_dim; j++) {
-                float diff = t->net_output[j] - t->target[j];
-                dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
-            }
-            break;
-        case 2: /* Cross-entropy */
-            for (uint32_t j = 0; j < cmp_dim; j++) {
-                float o = t->net_output[j];
-                if (o < 1e-7f) o = 1e-7f;
-                dl_dout[j] = -t->target[j] / o / n_cmp;
-            }
-            break;
-        default: /* MSE */
-            for (uint32_t j = 0; j < cmp_dim; j++) {
-                dl_dout[j] = 2.0f * (t->net_output[j] - t->target[j]) / n_cmp;
-            }
-            break;
+    if (t->dl_dout_override) {
+        /* Pre-computed gradient from Phase 2a (bridged parallel path) */
+        dl_dout = t->dl_dout_override;
+        owns_dl_dout = false;
+    } else {
+        /* Compute dL/dOutput from scratch (Phase 1 non-bridged path) */
+        dl_dout = (float*)nimcp_calloc(t->out_dim, sizeof(float));
+        if (!dl_dout) { t->div_loss = 0.0f; return; }
+        owns_dl_dout = true;
+
+        uint32_t cmp_dim = (t->out_dim < t->target_dim) ? t->out_dim : t->target_dim;
+        float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
+        switch (t->loss_type) {
+            case 1:
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    float diff = t->net_output[j] - t->target[j];
+                    dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
+                }
+                break;
+            case 2:
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    float o = t->net_output[j];
+                    if (o < 1e-7f) o = 1e-7f;
+                    dl_dout[j] = -t->target[j] / o / n_cmp;
+                }
+                break;
+            default:
+                for (uint32_t j = 0; j < cmp_dim; j++) {
+                    dl_dout[j] = 2.0f * (t->net_output[j] - t->target[j]) / n_cmp;
+                }
+                break;
+        }
+
+        /* Diversity loss gradient (only when computing from scratch) */
+        if (t->anti_collapse) {
+            t->div_loss = nimcp_anti_collapse_diversity_loss(
+                t->anti_collapse, t->net_output, dl_dout, t->out_dim);
+        }
     }
 
-    /* Diversity loss gradient */
-    t->div_loss = nimcp_anti_collapse_diversity_loss(
-        t->anti_collapse, t->net_output, dl_dout, t->out_dim);
-
-    /* Backward through network */
+    /* Backward through network (the expensive part — runs in parallel) */
     t->net->ops->backward(t->net->ctx, dl_dout, t->out_dim, t->dl_din, t->in_dim);
 
-    nimcp_free(dl_dout);
+    if (owns_dl_dout) nimcp_free(dl_dout);
 }
 
 //=============================================================================
@@ -1371,6 +1384,7 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             t->dl_din = dl_din;
             t->in_dim = in_dim;
             t->div_loss = 0.0f;
+            t->dl_dout_override = NULL;
 
             bwd_indices[parallel_count] = i;
             parallel_count++;
@@ -1403,74 +1417,129 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
     }
 
-    /* --- Backward Phase 2: Bridged networks sequentially (reverse order) --- */
-    for (int i = (int)mgr->num_networks - 1; i >= 0; i--) {
-        if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
-        if (!in_bridge[i]) continue; /* Already done in Phase 1 */
+    /* --- Backward Phase 2: Bridged networks ---
+     * Split into two sub-phases for parallelism:
+     * 2a: Compute dl_dout (loss + bridge gradients) sequentially (fast, ~ms)
+     * 2b: Run backward() calls in parallel (expensive, ~2s each, independent) */
+    {
+        /* Sub-phase 2a: Prepare dl_dout for each bridged network (sequential) */
+        float* bridged_dl_dout[NIMCP_UTM_MAX_NETWORKS];
+        memset(bridged_dl_dout, 0, sizeof(bridged_dl_dout));
 
-        nimcp_trainable_network_t* net = &mgr->networks[i];
+        for (int i = (int)mgr->num_networks - 1; i >= 0; i--) {
+            if (!mgr->networks[i].enabled || !net_outputs[i]) continue;
+            if (!in_bridge[i]) continue;
 
-        uint32_t out_dim = net_output_dims[i];
-        float* dl_dout = (float*)nimcp_calloc(out_dim, sizeof(float));
-        if (!dl_dout) continue;
+            uint32_t out_dim = net_output_dims[i];
+            float* dl_dout = (float*)nimcp_calloc(out_dim, sizeof(float));
+            if (!dl_dout) continue;
 
-        uint32_t cmp_dim = (out_dim < target_dim) ? out_dim : target_dim;
-        float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
-        switch (loss_type) {
-            case 1: /* MAE gradient */
-                for (uint32_t j = 0; j < cmp_dim; j++) {
-                    float diff = net_outputs[i][j] - target[j];
-                    dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
-                }
-                break;
-            case 2: /* Cross-entropy gradient */
-                for (uint32_t j = 0; j < cmp_dim; j++) {
-                    float o = net_outputs[i][j];
-                    if (o < 1e-7f) o = 1e-7f;
-                    dl_dout[j] = -target[j] / o / n_cmp;
-                }
-                break;
-            default: /* MSE gradient */
-                for (uint32_t j = 0; j < cmp_dim; j++) {
-                    dl_dout[j] = 2.0f * (net_outputs[i][j] - target[j]) / n_cmp;
-                }
-                break;
-        }
+            uint32_t cmp_dim = (out_dim < target_dim) ? out_dim : target_dim;
+            float n_cmp = (float)(cmp_dim > 0 ? cmp_dim : 1);
+            switch (loss_type) {
+                case 1:
+                    for (uint32_t j = 0; j < cmp_dim; j++) {
+                        float diff = net_outputs[i][j] - target[j];
+                        dl_dout[j] = (diff > 0.0f ? 1.0f : (diff < 0.0f ? -1.0f : 0.0f)) / n_cmp;
+                    }
+                    break;
+                case 2:
+                    for (uint32_t j = 0; j < cmp_dim; j++) {
+                        float o = net_outputs[i][j];
+                        if (o < 1e-7f) o = 1e-7f;
+                        dl_dout[j] = -target[j] / o / n_cmp;
+                    }
+                    break;
+                default:
+                    for (uint32_t j = 0; j < cmp_dim; j++) {
+                        dl_dout[j] = 2.0f * (net_outputs[i][j] - target[j]) / n_cmp;
+                    }
+                    break;
+            }
 
-        /* Add gradient from downstream bridges */
-        if (mgr->config.enable_cross_network_gradients) {
-            for (uint32_t b = 0; b < mgr->num_bridges; b++) {
-                if (mgr->bridges[b].source_idx == (uint32_t)i && mgr->bridges[b].enabled) {
-                    uint32_t tgt = mgr->bridges[b].target_idx;
-                    const float* tgt_grad = dl_dinputs[tgt];
-                    if (tgt_grad) {
-                        float* bridge_grad = (float*)nimcp_calloc(out_dim, sizeof(float));
-                        if (bridge_grad) {
-                            bridge_backward(&mgr->bridges[b], tgt_grad, bridge_grad);
-                            for (uint32_t j = 0; j < out_dim; j++) {
-                                dl_dout[j] += bridge_grad[j];
+            if (mgr->config.enable_cross_network_gradients) {
+                for (uint32_t b = 0; b < mgr->num_bridges; b++) {
+                    if (mgr->bridges[b].source_idx == (uint32_t)i && mgr->bridges[b].enabled) {
+                        uint32_t tgt = mgr->bridges[b].target_idx;
+                        const float* tgt_grad = dl_dinputs[tgt];
+                        if (tgt_grad) {
+                            float* bridge_grad = (float*)nimcp_calloc(out_dim, sizeof(float));
+                            if (bridge_grad) {
+                                bridge_backward(&mgr->bridges[b], tgt_grad, bridge_grad);
+                                for (uint32_t j = 0; j < out_dim; j++) {
+                                    dl_dout[j] += bridge_grad[j];
+                                }
+                                nimcp_free(bridge_grad);
                             }
-                            nimcp_free(bridge_grad);
                         }
                     }
                 }
             }
+
+            float div_loss = nimcp_anti_collapse_diversity_loss(
+                &mgr->anti_collapse[i], net_outputs[i], dl_dout, out_dim);
+            local_result.diversity_loss += div_loss;
+
+            bridged_dl_dout[i] = dl_dout;
         }
 
-        /* Diversity loss gradient */
-        float div_loss = nimcp_anti_collapse_diversity_loss(
-            &mgr->anti_collapse[i], net_outputs[i], dl_dout, out_dim);
-        local_result.diversity_loss += div_loss;
+        /* Sub-phase 2b: Run backward() in parallel (each is independent now) */
+        utm_backward_task_t bwd_tasks2[NIMCP_UTM_MAX_NETWORKS];
+        uint32_t bwd_indices2[NIMCP_UTM_MAX_NETWORKS];
+        uint32_t bridged_count = 0;
 
-        /* Backward through the network */
-        uint32_t in_dim = net->ops->get_input_dim(net->ctx);
-        float* dl_din = (float*)nimcp_calloc(in_dim, sizeof(float));
-        if (!dl_din) { nimcp_free(dl_dout); dl_dinputs[i] = NULL; continue; }
+        for (uint32_t i = 0; i < mgr->num_networks; i++) {
+            if (!bridged_dl_dout[i]) continue;
 
-        net->ops->backward(net->ctx, dl_dout, out_dim, dl_din, in_dim);
-        dl_dinputs[i] = dl_din;
+            nimcp_trainable_network_t* net = &mgr->networks[i];
+            uint32_t out_dim = net_output_dims[i];
+            uint32_t in_dim = net->ops->get_input_dim(net->ctx);
+            float* dl_din = (float*)nimcp_calloc(in_dim, sizeof(float));
+            if (!dl_din) { nimcp_free(bridged_dl_dout[i]); continue; }
 
-        nimcp_free(dl_dout);
+            utm_backward_task_t* t = &bwd_tasks2[bridged_count];
+            t->net = net;
+            t->anti_collapse = NULL;  /* Already applied above */
+            t->net_output = net_outputs[i];
+            t->target = target;
+            t->out_dim = out_dim;
+            t->target_dim = target_dim;
+            t->loss_type = loss_type;
+            t->dl_din = dl_din;
+            t->in_dim = in_dim;
+            t->div_loss = 0.0f;
+            /* Override: use pre-computed dl_dout instead of recomputing */
+            t->dl_dout_override = bridged_dl_dout[i];
+
+            bwd_indices2[bridged_count] = i;
+            bridged_count++;
+        }
+
+        if (bridged_count >= 2) {
+            nimcp_thread_pool_t* pool = nimcp_pool_create(bridged_count);
+            if (pool) {
+                for (uint32_t p = 0; p < bridged_count; p++) {
+                    nimcp_pool_submit(pool, utm_backward_task_fn, &bwd_tasks2[p]);
+                }
+                nimcp_pool_wait(pool);
+                nimcp_pool_destroy(pool);
+            } else {
+                for (uint32_t p = 0; p < bridged_count; p++) {
+                    utm_backward_task_fn(&bwd_tasks2[p]);
+                }
+            }
+        } else {
+            for (uint32_t p = 0; p < bridged_count; p++) {
+                utm_backward_task_fn(&bwd_tasks2[p]);
+            }
+        }
+
+        /* Collect results and free dl_dout buffers */
+        for (uint32_t p = 0; p < bridged_count; p++) {
+            uint32_t idx = bwd_indices2[p];
+            dl_dinputs[idx] = bwd_tasks2[p].dl_din;
+            nimcp_free(bridged_dl_dout[idx]);
+        }
     }
 
     /* Phase 5: Re-enable biological plasticity after backprop */
