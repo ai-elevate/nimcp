@@ -73,18 +73,24 @@ def _load_encode_cache():
 
 
 def _save_encode_cache():
-    """Persist embedding cache to disk."""
+    """Persist embedding cache to disk (atomic write to prevent corruption)."""
     import numpy as np
     try:
         os.makedirs(os.path.dirname(_ENCODE_CACHE_PATH), exist_ok=True)
         texts = list(_encode_cache.keys())
         embeddings = [_encode_cache[t] for t in texts]
-        np.savez_compressed(_ENCODE_CACHE_PATH,
+        tmp_path = _ENCODE_CACHE_PATH + ".tmp"
+        np.savez_compressed(tmp_path,
                             texts=np.array(texts, dtype=object),
                             embeddings=np.array(embeddings))
+        os.replace(tmp_path, _ENCODE_CACHE_PATH)
         logger.info("Saved %d embeddings to cache %s", len(texts), _ENCODE_CACHE_PATH)
     except Exception as e:
         logger.warning("Failed to save embedding cache: %s", e)
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
 
 
 # Load cache on module import
