@@ -30,9 +30,10 @@ static int cnn_adapter_forward(void* ctx, const float* input, uint32_t input_dim
     cnn_adapter_ctx_t* a = (cnn_adapter_ctx_t*)ctx;
     if (!a || !a->trainer || !input || !output) return -1;
 
-    /* Wrap raw floats into 1D tensor for CNN forward */
-    uint32_t dims[1] = { input_dim };
-    nimcp_tensor_t* in_t = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    /* Wrap raw floats into 2D tensor [1, input_dim] for CNN forward.
+     * Must be 2D so dense backward correctly reads batch=1 from dims[0]. */
+    uint32_t dims[2] = { 1, input_dim };
+    nimcp_tensor_t* in_t = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
     if (!in_t) return -1;
 
     memcpy(nimcp_tensor_data(in_t), input, input_dim * sizeof(float));
@@ -60,8 +61,9 @@ static int cnn_adapter_backward(void* ctx, const float* dl_doutput, uint32_t out
 
     /* C5: Use backward_with_gradient when managed by UTM — passes the UTM's
      * composite loss gradient directly instead of computing MSE internally. */
-    uint32_t dims[1] = { output_dim };
-    nimcp_tensor_t* grad_t = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+    /* 2D [1, output_dim] — same batch=1 convention as forward input */
+    uint32_t dims[2] = { 1, output_dim };
+    nimcp_tensor_t* grad_t = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
     if (!grad_t) return -1;
 
     memcpy(nimcp_tensor_data(grad_t), dl_doutput, output_dim * sizeof(float));
