@@ -5562,6 +5562,9 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
     """Stage 1: Association — cross-modal binding with enthusiastic naming.
 
     Goal: Seeing/hearing a concept + its name → same internal representation.
+    Language exposure: 15% of steps present language-domain facts (grammar,
+    word types) alongside the object naming — like a parent who says both
+    "That's a DOG!" and "Dog is a NOUN — nouns name things."
     """
     if start_from >= num_stimuli:
         print(f"  [Stage 1] Already complete (step {start_from} >= {num_stimuli}) — skipping")
@@ -5590,6 +5593,8 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
     # Stage 1 curriculum: start with tier 2 unlocked (basics already learned in Stage 0)
     _stage1_curriculum = CurriculumEscalator(unlock_threshold=200.0)
     _stage1_curriculum.current_tier = 2  # Start with reasoning tier unlocked
+    # Language exposure ratio: 15% of steps present language facts instead of objects
+    STAGE1_LANGUAGE_RATIO = 0.15
     # Batch training: collect BATCH_SIZE items, send as one train_batch_text call.
     # ONNX encoding + learn_vector happen inside the daemon — zero socket overhead.
     BATCH_SIZE = 50
@@ -5620,7 +5625,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             batch_items = []
             batch_end = min(step + BATCH_SIZE, num_stimuli)
             for j in range(step, batch_end):
-                name, description = source.get_object()
+                if random.random() < STAGE1_LANGUAGE_RATIO:
+                    description, _ = source.get_fact(preferred_domain="language")
+                    name = "language"
+                else:
+                    name, description = source.get_object()
                 narration = parent._pop_content("_narrations")
                 if narration:
                     print(f"  Parent: {narration}")
@@ -5717,7 +5726,7 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         elif action == "consolidate":
             clock.do_consolidate(brain)
 
-        # Get an object to name — with prefetched features for speed
+        # Get an object to name (or language fact) — with prefetched features
         if not hasattr(run_stage_1, '_prefetch'):
             from concurrent.futures import ThreadPoolExecutor
             run_stage_1._prefetch = ThreadPoolExecutor(max_workers=2)
@@ -5726,13 +5735,22 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
         if run_stage_1._next_item is not None:
             name, description, pre_features, pre_target = run_stage_1._next_item
         else:
-            name, description = source.get_object()
+            # Mix language facts into object naming
+            if random.random() < STAGE1_LANGUAGE_RATIO:
+                description, _ = source.get_fact(preferred_domain="language")
+                name = "language"
+            else:
+                name, description = source.get_object()
             pre_features = None
             pre_target = None
 
         # Start prefetching NEXT item while this one trains
         def _prefetch_item():
-            n, d = source.get_object()
+            if random.random() < STAGE1_LANGUAGE_RATIO:
+                d, _ = source.get_fact(preferred_domain="language")
+                n = "language"
+            else:
+                n, d = source.get_object()
             f = composer.compose(text=d, modality="text")
             t = make_semantic_target(n + " " + d)
             return (n, d, f, t)
