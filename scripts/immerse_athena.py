@@ -7555,6 +7555,20 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         nc = DEFAULT_ANN_NEURONS
     _register_checkpoint_questdb(snapshot_path, stage, step, neuron_count=nc)
 
+    # Sync to Hetzner dev server every 500 steps (all stages)
+    HETZNER_SYNC_INTERVAL = 500
+    if step > 0 and step % HETZNER_SYNC_INTERVAL == 0:
+        try:
+            sync_script = os.path.join(os.path.dirname(__file__), "sync_checkpoint.sh")
+            if os.path.exists(sync_script):
+                import subprocess
+                logger.info("Syncing checkpoint to Hetzner: %s", snapshot_name)
+                subprocess.run(["bash", sync_script, snapshot_path],
+                               timeout=300, capture_output=True)
+                logger.info("Hetzner sync complete for step %d", step)
+        except Exception as e:
+            logger.warning("Hetzner sync failed: %s", e)
+
 
 def _save_checkpoint(brain, decoder, stage, step):
     """Non-blocking checkpoint save — runs in background thread."""
