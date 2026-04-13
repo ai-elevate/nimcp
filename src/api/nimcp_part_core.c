@@ -282,24 +282,18 @@ float nimcp_brain_learn_vector_batch(
         return loss;
     }
 
-    // Train secondary networks on a SUBSET of the batch (every Nth sample).
+    /* Train secondary networks on ONE representative sample per batch.
+     * brain_learn_vector runs the full biological pipeline (SNN, CNN,
+     * plasticity, cognitive modules) — expensive at ~5s per call.
+     * The ANN batch above handles the primary learning; secondary
+     * networks only need periodic exposure to stay synchronized. */
     if (loss >= 0.0f && num_examples > 0) {
-        uint32_t step = (num_examples > 4) ? num_examples / 4 : 1;
-        for (uint32_t i = 0; i < num_examples; i += step) {
-            const char* lbl = (examples[i].label[0]) ? examples[i].label : "batch";
-            brain_learn_vector(ib,
-                               (float*)features_array[i], num_features,
-                               (float*)targets_array[i], target_size,
-                               lbl, 1.0f /* confidence */);
-        }
-        if ((num_examples - 1) % step != 0) {
-            uint32_t last = num_examples - 1;
-            const char* lbl = (examples[last].label[0]) ? examples[last].label : "batch";
-            brain_learn_vector(ib,
-                               (float*)features_array[last], num_features,
-                               (float*)targets_array[last], target_size,
-                               lbl, 1.0f /* confidence */);
-        }
+        uint32_t repr = num_examples / 2;  /* middle sample */
+        const char* lbl = (examples[repr].label[0]) ? examples[repr].label : "batch";
+        brain_learn_vector(ib,
+                           (float*)features_array[repr], num_features,
+                           (float*)targets_array[repr], target_size,
+                           lbl, 1.0f /* confidence */);
     }
 
     nimcp_free(examples);
