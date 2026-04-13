@@ -695,17 +695,30 @@ static int ensure_cnn_trainer(brain_t brain)
     cnn_trainer_add_dense_layer(trainer, &dense1);
     cnn_trainer_add_activation_layer(trainer, CNN_ACTIVATION_RELU);
 
+    /* Second hidden layer — gives two nonlinear transformations for richer
+     * feature mapping between ANN and secondary networks via UTM bridges. */
     cnn_dense_config_t dense2 = {
+        .in_features = hidden_size,
+        .out_features = hidden_size,
+        .activation = CNN_ACTIVATION_NONE,
+        .use_bias = true,
+        .weight_init_std = 0.01f
+    };
+    cnn_trainer_add_dense_layer(trainer, &dense2);
+    cnn_trainer_add_activation_layer(trainer, CNN_ACTIVATION_RELU);
+
+    cnn_dense_config_t dense3 = {
         .in_features = hidden_size,
         .out_features = num_outputs,
         .activation = CNN_ACTIVATION_NONE,
         .use_bias = true,
         .weight_init_std = 0.01f
     };
-    cnn_trainer_add_dense_layer(trainer, &dense2);
+    cnn_trainer_add_dense_layer(trainer, &dense3);
 
     brain->cnn_trainer = trainer;
-    NIMCP_LOGGING_INFO("CNN trainer created: %u→%u→%u", num_inputs, hidden_size, num_outputs);
+    NIMCP_LOGGING_INFO("CNN trainer created: %u→%u→%u→%u (5 layers)",
+                       num_inputs, hidden_size, hidden_size, num_outputs);
     return 0;
 }
 
