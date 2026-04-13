@@ -3,6 +3,7 @@
 // DO NOT compile separately - #included from nimcp.c
 
 #include "training/nimcp_cortex_cnn.h"
+#include "snn/nimcp_snn_types.h"
 
 
 //=============================================================================
@@ -27,10 +28,11 @@ int nimcp_abi_layout_hash(void) {
     h ^= (uint32_t)sizeof(neuron_t) * 2654435761u;
     h ^= (uint32_t)sizeof(sparse_synapse_storage_t) * 2246822519u;
     h ^= (uint32_t)SPARSE_SYNAPSE_EMBEDDED_CAPACITY * 3266489917u;
-    /* Note: brain_config_t excluded from ABI hash — struct packing varies
-     * between compilation units (main lib vs Python .so) on some platforms,
-     * causing false ABI mismatch. The config is accessed via pointer only,
-     * so field offset stability is maintained by appending new fields. */
+    /* Include structs that the Python binding allocates on stack or passes
+     * by value. A size mismatch causes stack overflow → heap corruption.
+     * brain_config_t is excluded (accessed via pointer, packing varies). */
+    h ^= (uint32_t)sizeof(snn_stats_t) * 1640531527u;
+    h ^= (uint32_t)sizeof(nimcp_training_config_t) * 2246822519u;
     return (int)(h & 0x7FFFFFFFu); /* Keep positive for Python int */
 }
 
