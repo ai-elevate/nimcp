@@ -384,7 +384,17 @@ int training_dispatch_snn_step(
     float dt = (snn->sim && snn->sim->dt_ms > 0.0f) ? snn->sim->dt_ms : 1.0F;
     int rc = 0;
 
-    if (brain->snn_backprop_ctx) {
+    /* Check if SNN uses lightweight CSR storage — BPTT doesn't work with CSR
+     * because it iterates the neural_net's sparse synapse system which has no
+     * connections for lightweight populations. Use the single-step + R-STDP
+     * path instead (the fallback else branch below). */
+    bool snn_has_lightweight = false;
+    for (uint32_t p = 0; p < snn->n_populations && !snn_has_lightweight; p++) {
+        if (snn->populations[p] && snn->populations[p]->lightweight)
+            snn_has_lightweight = true;
+    }
+
+    if (brain->snn_backprop_ctx && !snn_has_lightweight) {
         /* BPTT path: forward runs n_steps of simulation, backward computes gradients */
         extern int snn_backprop_forward(void* ctx, const float* inputs,
                                          uint32_t batch_size, float duration_ms,
