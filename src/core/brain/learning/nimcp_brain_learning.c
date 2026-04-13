@@ -4755,7 +4755,19 @@ int brain_enable_multi_network_training(brain_t brain)
              * DIFFERENT struct from snn_backprop_ctx_t (BPTT).  The trainable adapter
              * requires snn_backprop_ctx_t, so we create one from brain->snn_network. */
             if (brain->snn_network) {
-                if (!brain->snn_backprop_ctx) {
+                /* Skip BPTT entirely for lightweight CSR populations.
+                 * BPTT iterates neural_net synapses which don't exist for CSR pops.
+                 * The SNN learns via R-STDP (reward-modulated local plasticity)
+                 * in the single-step path instead. */
+                bool snn_is_lightweight = false;
+                for (uint32_t _p = 0; _p < brain->snn_network->n_populations; _p++) {
+                    if (brain->snn_network->populations[_p] &&
+                        brain->snn_network->populations[_p]->lightweight) {
+                        snn_is_lightweight = true;
+                        break;
+                    }
+                }
+                if (!brain->snn_backprop_ctx && !snn_is_lightweight) {
                     snn_backprop_config_t bp_cfg = snn_backprop_default_config(SNN_TRAIN_BPTT);
                     /* BPTT forward window must cover the LIF first-spike latency.
                      * At dt=0.1ms with tau_mem=20ms, a neuron receiving
