@@ -7309,8 +7309,14 @@ def evaluate_performance(brain, composer, decoder, stage, step):
                   f"  dsim={sim_change:+.3f}  d|v|={norm_change:+.1f}")
 
     # --- Held-out metrics (real accuracy on unseen data) ---
+    # Cap to 20 items to keep eval under 2 minutes (each calls decide_full ~5s)
+    MAX_EVAL_ITEMS = 20
     if len(_held_out_buffer) >= 50:
-        held_out_items = _held_out_buffer.get_eval_items()
+        all_held_out = _held_out_buffer.get_eval_items()
+        if len(all_held_out) > MAX_EVAL_ITEMS:
+            held_out_items = random.sample(all_held_out, MAX_EVAL_ITEMS)
+        else:
+            held_out_items = all_held_out
         metrics = MetricsComputer.compute(brain, composer, decoder, held_out_items)
         if metrics:
             print(f"\n  Held-out metrics ({metrics['count']} items):")
@@ -7355,8 +7361,9 @@ def evaluate_performance(brain, composer, decoder, stage, step):
                     if out_vec is not None:
                         out_arr = np.array(out_vec, dtype=np.float32)
                         tgt_arr = np.array(target, dtype=np.float32)
-                        cos_sim = np.dot(out_arr, tgt_arr) / (
-                            np.linalg.norm(out_arr) * np.linalg.norm(tgt_arr) + 1e-8)
+                        min_dim = min(len(out_arr), len(tgt_arr))
+                        cos_sim = np.dot(out_arr[:min_dim], tgt_arr[:min_dim]) / (
+                            np.linalg.norm(out_arr[:min_dim]) * np.linalg.norm(tgt_arr[:min_dim]) + 1e-8)
                         test_losses.append(float(cos_sim))
                 except Exception:
                     pass
