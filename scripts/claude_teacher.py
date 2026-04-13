@@ -52,7 +52,43 @@ def _try_onnx():
 
 
 _encode_cache = {}
-_ENCODE_CACHE_MAX = 10000
+_ENCODE_CACHE_MAX = 50000
+_ENCODE_CACHE_PATH = os.path.join(os.path.dirname(__file__), '..', 'checkpoints', 'athena', 'embed_cache.npz')
+
+
+def _load_encode_cache():
+    """Load persistent embedding cache from disk."""
+    global _encode_cache
+    import numpy as np
+    try:
+        if os.path.exists(_ENCODE_CACHE_PATH):
+            data = np.load(_ENCODE_CACHE_PATH, allow_pickle=True)
+            texts = data['texts']
+            embeddings = data['embeddings']
+            for t, e in zip(texts, embeddings):
+                _encode_cache[str(t)] = np.asarray(e, dtype=np.float32)
+            logger.info("Loaded %d cached embeddings from %s", len(_encode_cache), _ENCODE_CACHE_PATH)
+    except Exception as e:
+        logger.warning("Failed to load embedding cache: %s", e)
+
+
+def _save_encode_cache():
+    """Persist embedding cache to disk."""
+    import numpy as np
+    try:
+        os.makedirs(os.path.dirname(_ENCODE_CACHE_PATH), exist_ok=True)
+        texts = list(_encode_cache.keys())
+        embeddings = [_encode_cache[t] for t in texts]
+        np.savez_compressed(_ENCODE_CACHE_PATH,
+                            texts=np.array(texts, dtype=object),
+                            embeddings=np.array(embeddings))
+        logger.info("Saved %d embeddings to cache %s", len(texts), _ENCODE_CACHE_PATH)
+    except Exception as e:
+        logger.warning("Failed to save embedding cache: %s", e)
+
+
+# Load cache on module import
+_load_encode_cache()
 
 def encode_text(text: str):
     """Encode text to 1024-dim embedding.
@@ -75,19 +111,50 @@ def encode_text(text: str):
 
     if len(_encode_cache) < _ENCODE_CACHE_MAX:
         _encode_cache[text] = result.copy()
+        # Persist every 500 new entries
+        if len(_encode_cache) % 500 == 0:
+            _save_encode_cache()
     return result
 
 
 def batch_encode_texts(texts):
     """Batch-encode multiple texts to 1024-dim embeddings."""
     import numpy as np
+
+    # Check cache for all texts first
+    results = [None] * len(texts)
+    uncached_indices = []
+    for i, t in enumerate(texts):
+        if t in _encode_cache:
+            results[i] = _encode_cache[t].copy()
+        else:
+            uncached_indices.append(i)
+
+    if not uncached_indices:
+        return results  # All cached — skip model entirely
+
+    # Encode only uncached texts
+    uncached_texts = [texts[i] for i in uncached_indices]
     if _try_onnx():
         from onnx_encoder import encode_batch as onnx_batch
-        embs = onnx_batch(texts)
-        return [np.asarray(e, dtype=np.float32).ravel() for e in embs]
-    model = _get_embed_model()
-    embs = model.encode(texts, convert_to_numpy=True, batch_size=64)
-    return [np.asarray(e, dtype=np.float32).ravel() for e in embs]
+        embs = onnx_batch(uncached_texts)
+        new_embs = [np.asarray(e, dtype=np.float32).ravel() for e in embs]
+    else:
+        model = _get_embed_model()
+        embs = model.encode(uncached_texts, convert_to_numpy=True, batch_size=64)
+        new_embs = [np.asarray(e, dtype=np.float32).ravel() for e in embs]
+
+    # Fill results and update cache
+    for idx, emb in zip(uncached_indices, new_embs):
+        results[idx] = emb
+        if len(_encode_cache) < _ENCODE_CACHE_MAX:
+            _encode_cache[texts[idx]] = emb.copy()
+
+    # Persist cache to disk after batch encoding
+    if uncached_indices:
+        _save_encode_cache()
+
+    return results
 
 
 # ---------------------------------------------------------------------------

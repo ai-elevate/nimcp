@@ -18236,3 +18236,6 @@ Sun Apr 12 10:46:36 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-13 02:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-13 02:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-13 02:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-13 02:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-13 02:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-13 03:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
