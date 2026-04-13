@@ -5353,10 +5353,15 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         narration = parent._pop_content("_narrations")
         if narration:
             print(f"  Parent: {narration}")
+        import time as _t
+        _loop_t0 = _t.monotonic()
         sensory_mods = submit_multimodal(brain, description) or []
+        _smm_ms = (_t.monotonic() - _loop_t0) * 1000
         if sensory_mods and i < 5:
             print(f"  [Sensory] step {i}: {'+'.join(sensory_mods)} for '{description[:60]}'", flush=True)
+        _dec_t0 = _t.monotonic()
         result = brain.decide_full(features)
+        _dec_ms = (_t.monotonic() - _dec_t0) * 1000
 
         # Held-out check: 20% of items are evaluation-only (no learning)
         _is_held_out = _held_out_buffer.is_held_out(features)
@@ -5416,6 +5421,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             mini_batch_buf = []
             lr_scheduler.step()
             adaptive_batch.step()
+            _loop_total_ms = (_t.monotonic() - _loop_t0) * 1000
+            if _loop_total_ms > 5000 or (i + 1) % 5 == 0:
+                print(f"  [Timing] step {i}: total={_loop_total_ms:.0f}ms "
+                      f"(sensory={_smm_ms:.0f} decide={_dec_ms:.0f} "
+                      f"rest={_loop_total_ms - _smm_ms - _dec_ms:.0f})",
+                      flush=True)
 
             # Contrastive + diversity corrections
             if contrastive.should_correct():
