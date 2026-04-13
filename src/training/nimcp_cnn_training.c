@@ -1788,7 +1788,24 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
         layer = layer->next;
     }
 
+    /* Log layer info on first backward */
+    static bool _logged_layers = false;
+    if (!_logged_layers) {
+        NIMCP_LOGGING_INFO("CNN backward: %u layers", trainer->num_layers);
+        for (uint32_t _li = 0; _li < trainer->num_layers; _li++) {
+            cnn_layer_t* _l = layer_stack[_li];
+            if (_l->type == CNN_LAYER_DENSE) {
+                NIMCP_LOGGING_INFO("  layer[%u]: DENSE %u→%u", _li,
+                    _l->config.dense.in_features, _l->config.dense.out_features);
+            } else {
+                NIMCP_LOGGING_INFO("  layer[%u]: type=%d", _li, _l->type);
+            }
+        }
+        _logged_layers = true;
+    }
+
     /* Backprop in reverse */
+    struct timespec _bp_t0; clock_gettime(CLOCK_MONOTONIC, &_bp_t0);
     for (int i = (int)trainer->num_layers - 1; i >= 0; i--) {
         layer = layer_stack[i];
         const nimcp_tensor_t* layer_input = forward_result->activations[i];
@@ -2336,6 +2353,15 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
 
             default:
                 break;
+        }
+    }
+
+    {
+        struct timespec _bp_t1; clock_gettime(CLOCK_MONOTONIC, &_bp_t1);
+        double _bp_ms = (_bp_t1.tv_sec - _bp_t0.tv_sec) * 1000.0
+                      + (_bp_t1.tv_nsec - _bp_t0.tv_nsec) / 1e6;
+        if (_bp_ms > 100.0) {
+            NIMCP_LOGGING_INFO("CNN backward loop: %.0fms for %u layers", _bp_ms, trainer->num_layers);
         }
     }
 
