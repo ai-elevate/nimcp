@@ -747,6 +747,7 @@ int snn_network_step(snn_network_t* network, float dt) {
                 snn_csr_synapse_t* syns = snn_csr_get_incoming(
                     pop->incoming_csr, n, &syn_count);
                 for (uint32_t s = 0; s < syn_count; s++) {
+                    if (syns[s].src_pop >= network->n_populations) continue;
                     snn_population_t* src_pop = network->populations[syns[s].src_pop];
                     if (!src_pop || !src_pop->spike_output) continue;
                     float* src_spikes = (float*)nimcp_tensor_data(src_pop->spike_output);
