@@ -7532,6 +7532,16 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
 
         logger.info("Checkpoint snapshot: %s (stage=%d, step=%d, size=%.1f MB)",
                      snapshot_name, stage, step, tmp_size / 1e6)
+
+        # Update state file AFTER checkpoint is verified on disk
+        state = {"stage": stage, "step": step,
+                 "snapshot": snapshot_name,
+                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
+        try:
+            with open(STATE_FILE, "w") as f:
+                json.dump(state, f, indent=2)
+        except Exception:
+            pass
     except Exception as e:
         logger.warning("Checkpoint save failed: %s", e)
         if os.path.exists(snapshot_tmp):
@@ -7581,16 +7591,9 @@ def _save_checkpoint(brain, decoder, stage, step):
     global _checkpoint_thread
     from threading import Thread
 
-    # Update state file IMMEDIATELY so progress is visible
-    # (don't wait for the slow checkpoint write to finish)
-    state = {"stage": stage, "step": step,
-             "snapshot": f"athena_s{stage}_step{step}.bin",
-             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
-    try:
-        with open(STATE_FILE, "w") as f:
-            json.dump(state, f, indent=2)
-    except Exception:
-        pass
+    # State file is now updated INSIDE _save_checkpoint_sync after the .bin
+    # is written and verified. This prevents the state file from pointing to
+    # a snapshot that doesn't exist yet (or was never written due to crash).
 
     # Wait for previous checkpoint to finish (if still running)
     if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
@@ -8214,9 +8217,32 @@ def main():
     if args.resume:
         state = _load_state()
         if state:
-            start_stage = state.get("stage", args.stage)
-            start_step = state.get("step", 0)
-            print(f"  Resuming from stage {start_stage}, step {start_step}")
+            # Validate that the snapshot file actually exists
+            snapshot = state.get("snapshot", "")
+            snapshot_path = os.path.join(CHECKPOINT_DIR, snapshot) if snapshot else ""
+            if snapshot_path and os.path.exists(snapshot_path):
+                start_stage = state.get("stage", args.stage)
+                start_step = state.get("step", 0)
+                print(f"  Resuming from stage {start_stage}, step {start_step} ({snapshot})")
+            else:
+                # State file points to pruned/missing snapshot — find latest
+                import glob
+                candidates = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")),
+                                    key=os.path.getmtime, reverse=True)
+                if candidates:
+                    # Parse stage/step from filename: athena_s{stage}_step{step}.bin
+                    latest = os.path.basename(candidates[0])
+                    import re
+                    m = re.match(r'athena_s(\d+)_step(\d+)\.bin', latest)
+                    if m:
+                        start_stage = int(m.group(1))
+                        start_step = int(m.group(2))
+                        print(f"  State file stale — falling back to {latest} "
+                              f"(stage {start_stage}, step {start_step})")
+                    else:
+                        print(f"  Resume: found {latest} but can't parse stage/step")
+                else:
+                    print(f"  Resume: no checkpoint files found, starting fresh")
 
     # --- Handle graceful shutdown ---
     shutdown_requested = [False]
