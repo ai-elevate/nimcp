@@ -647,7 +647,16 @@ static void utm_backward_task_fn(void* arg) {
     }
 
     /* Backward through network (the expensive part — runs in parallel) */
+    struct timespec _bwd_t0, _bwd_t1;
+    clock_gettime(CLOCK_MONOTONIC, &_bwd_t0);
     t->net->ops->backward(t->net->ctx, dl_dout, t->out_dim, t->dl_din, t->in_dim);
+    clock_gettime(CLOCK_MONOTONIC, &_bwd_t1);
+    double _bwd_ms = (_bwd_t1.tv_sec - _bwd_t0.tv_sec) * 1000.0
+                   + (_bwd_t1.tv_nsec - _bwd_t0.tv_nsec) / 1e6;
+    if (_bwd_ms > 100.0) {
+        NIMCP_LOGGING_INFO("UTM network backward '%s': %.0fms (in=%u out=%u)",
+                           t->net->ops->name, _bwd_ms, t->in_dim, t->out_dim);
+    }
 
     if (owns_dl_dout) nimcp_free(dl_dout);
 }
