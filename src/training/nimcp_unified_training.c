@@ -55,6 +55,18 @@
 #include <float.h>
 #include <stdlib.h>
 
+/* Debug timing: enabled by NIMCP_DEBUG_TIMING=1 environment variable */
+static int _utm_debug_timing_checked = 0;
+static int _utm_debug_timing = 0;
+static inline int utm_debug_timing_enabled(void) {
+    if (!_utm_debug_timing_checked) {
+        const char* env = getenv("NIMCP_DEBUG_TIMING");
+        _utm_debug_timing = (env && env[0] == '1');
+        _utm_debug_timing_checked = 1;
+    }
+    return _utm_debug_timing;
+}
+
 /* C1: GPU acceleration — forward declarations gated behind NIMCP_ENABLE_CUDA.
  * These are called only when mgr->gpu_ctx is non-NULL at runtime. */
 #ifdef NIMCP_ENABLE_CUDA
@@ -648,14 +660,16 @@ static void utm_backward_task_fn(void* arg) {
 
     /* Backward through network (the expensive part — runs in parallel) */
     struct timespec _bwd_t0, _bwd_t1;
-    clock_gettime(CLOCK_MONOTONIC, &_bwd_t0);
+    if (utm_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_bwd_t0);
     t->net->ops->backward(t->net->ctx, dl_dout, t->out_dim, t->dl_din, t->in_dim);
-    clock_gettime(CLOCK_MONOTONIC, &_bwd_t1);
-    double _bwd_ms = (_bwd_t1.tv_sec - _bwd_t0.tv_sec) * 1000.0
-                   + (_bwd_t1.tv_nsec - _bwd_t0.tv_nsec) / 1e6;
-    if (_bwd_ms > 100.0) {
-        NIMCP_LOGGING_INFO("UTM network backward '%s': %.0fms (in=%u out=%u)",
-                           t->net->ops->name, _bwd_ms, t->in_dim, t->out_dim);
+    if (utm_debug_timing_enabled()) {
+        clock_gettime(CLOCK_MONOTONIC, &_bwd_t1);
+        double _bwd_ms = (_bwd_t1.tv_sec - _bwd_t0.tv_sec) * 1000.0
+                       + (_bwd_t1.tv_nsec - _bwd_t0.tv_nsec) / 1e6;
+        if (_bwd_ms > 100.0) {
+            NIMCP_LOGGING_INFO("UTM network backward '%s': %.0fms (in=%u out=%u)",
+                               t->net->ops->name, _bwd_ms, t->in_dim, t->out_dim);
+        }
     }
 
     if (owns_dl_dout) nimcp_free(dl_dout);
@@ -1400,8 +1414,11 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
 
         {
-            struct timespec _p1_t0; clock_gettime(CLOCK_MONOTONIC, &_p1_t0);
-            NIMCP_LOGGING_INFO("UTM Phase 1 backward: %u non-bridged networks", parallel_count);
+            struct timespec _p1_t0;
+            if (utm_debug_timing_enabled()) {
+                clock_gettime(CLOCK_MONOTONIC, &_p1_t0);
+                NIMCP_LOGGING_INFO("UTM Phase 1 backward: %u non-bridged networks", parallel_count);
+            }
 
             if (parallel_count >= 2) {
                 nimcp_thread_pool_t* pool = nimcp_pool_create(parallel_count);
@@ -1429,10 +1446,12 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
             local_result.diversity_loss += bwd_tasks[p].div_loss;
         }
 
-            struct timespec _p1_t1; clock_gettime(CLOCK_MONOTONIC, &_p1_t1);
-            double _p1_ms = (_p1_t1.tv_sec - _p1_t0.tv_sec) * 1000.0
-                          + (_p1_t1.tv_nsec - _p1_t0.tv_nsec) / 1e6;
-            NIMCP_LOGGING_INFO("UTM Phase 1 backward: %.0fms for %u networks", _p1_ms, parallel_count);
+            if (utm_debug_timing_enabled()) {
+                struct timespec _p1_t1; clock_gettime(CLOCK_MONOTONIC, &_p1_t1);
+                double _p1_ms = (_p1_t1.tv_sec - _p1_t0.tv_sec) * 1000.0
+                              + (_p1_t1.tv_nsec - _p1_t0.tv_nsec) / 1e6;
+                NIMCP_LOGGING_INFO("UTM Phase 1 backward: %.0fms for %u networks", _p1_ms, parallel_count);
+            }
         }
     }
 
@@ -2781,22 +2800,18 @@ cleanup:
         nimcp_free(net_outputs[i]);
     }
 
-    /* UTM step timing breakdown */
-    {
+    /* UTM step timing breakdown (NIMCP_DEBUG_TIMING=1 to enable) */
+    if (utm_debug_timing_enabled()) {
         struct timespec _utm_end; clock_gettime(CLOCK_MONOTONIC, &_utm_end);
         #define UTM_MS(a, b) (((b).tv_sec - (a).tv_sec) * 1000.0 + ((b).tv_nsec - (a).tv_nsec) / 1e6)
         static uint64_t _utm_step_count = 0;
         _utm_step_count++;
-        double _total = UTM_MS(_utm_fwd_end, _utm_end);  /* skip zero_grad phase */
-        double _fwd = 0;  /* already measured above */
         double _bwd = UTM_MS(_utm_fwd_end, _utm_bwd_end);
         double _rest = UTM_MS(_utm_bwd_end, _utm_end);
-        if (_total > 1000.0 || _utm_step_count % 5 == 0) {
-            NIMCP_LOGGING_INFO("UTM step %llu: backward=%.0fms optimizer+state=%.0fms "
-                               "(%u networks, %u bridges)",
-                               (unsigned long long)_utm_step_count,
-                               _bwd, _rest, mgr->num_networks, mgr->num_bridges);
-        }
+        NIMCP_LOGGING_INFO("UTM step %llu: backward=%.0fms optimizer+state=%.0fms "
+                           "(%u networks, %u bridges)",
+                           (unsigned long long)_utm_step_count,
+                           _bwd, _rest, mgr->num_networks, mgr->num_bridges);
         #undef UTM_MS
     }
 

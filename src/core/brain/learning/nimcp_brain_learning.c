@@ -52,6 +52,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include <time.h>
+#include <stdlib.h>
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/logging/nimcp_logging.h"
@@ -191,6 +192,18 @@ extern int creative_training_submit_feedback(creative_training_bridge_t* bridge,
  * submits all 12 modules to the thread pool as independent actors.
  * Falls back to sequential if inference_pool is NULL. */
 #include "core/brain/nimcp_cognitive_dispatch.h"
+
+/* Debug timing: enabled by NIMCP_DEBUG_TIMING=1 environment variable */
+static int _blv_debug_timing_checked = 0;
+static int _blv_debug_timing = 0;
+static inline int blv_debug_timing_enabled(void) {
+    if (!_blv_debug_timing_checked) {
+        const char* env = getenv("NIMCP_DEBUG_TIMING");
+        _blv_debug_timing = (env && env[0] == '1');
+        _blv_debug_timing_checked = 1;
+    }
+    return _blv_debug_timing;
+}
 
 static void brain_train_cognitive_subsystems(
     brain_t brain,
@@ -1007,10 +1020,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
-    /* Per-phase wall clock timing */
+    /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */
     struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
-    clock_gettime(CLOCK_MONOTONIC, &_blv_t0);
-    _blv_ann = _blv_plasticity = _blv_utm = _blv_snn = _blv_cnn = _blv_t0;
+    if (blv_debug_timing_enabled()) {
+        clock_gettime(CLOCK_MONOTONIC, &_blv_t0);
+        _blv_ann = _blv_plasticity = _blv_utm = _blv_snn = _blv_cnn = _blv_t0;
+    }
 
     PROBE_STAGE(brain, PROBE_TRAIN_INPUT, {
         PROBE_SET_INT(&_ctx, "num_features", (int64_t)num_features);
@@ -1169,7 +1184,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                       effective_lr);
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &_blv_ann);
+    if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_ann);
 
     PROBE_STAGE(brain, PROBE_TRAIN_ADAPTIVE, {
         PROBE_SET_FLOAT(&_ctx, "loss", loss);
@@ -1383,7 +1398,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &_blv_plasticity);
+    if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_plasticity);
 
     /* Step 2: Secondary networks — unified or legacy path */
     if (brain->unified_training && brain->config.use_unified_training) {
@@ -1440,7 +1455,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             }
         }
 
-        struct timespec _blv_utm_t0; clock_gettime(CLOCK_MONOTONIC, &_blv_utm_t0);
+        struct timespec _blv_utm_t0;
+        if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_utm_t0);
         nimcp_utm_step_result_t utm_result = {0};
         int utm_rc = nimcp_utm_step(brain->unified_training,
                                     features, num_features,
@@ -2075,7 +2091,8 @@ sequential_training:
         callosum_process_queues(brain->callosum);
     }
 
-    struct timespec _blv_cog_t0; clock_gettime(CLOCK_MONOTONIC, &_blv_cog_t0);
+    struct timespec _blv_cog_t0;
+    if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_cog_t0);
 
     /* === COGNITIVE SUBSYSTEM DISPATCH ===
      * Train ALL cognitive modules (grounded language, knowledge, VAE, FEP-parietal,
@@ -2789,24 +2806,23 @@ sequential_training:
     clear_cache(brain);
     if (owns_blended) nimcp_free(blended_features);
 
-    /* Log per-phase timing breakdown */
-    clock_gettime(CLOCK_MONOTONIC, &_blv_end);
-    #define BLV_MS(a, b) (((b).tv_sec - (a).tv_sec) * 1000.0 + ((b).tv_nsec - (a).tv_nsec) / 1e6)
-    double _total = BLV_MS(_blv_t0, _blv_end);
-    double _ann = BLV_MS(_blv_t0, _blv_ann);
-    double _plast = BLV_MS(_blv_ann, _blv_plasticity);
-    double _rest = BLV_MS(_blv_plasticity, _blv_end);
-    static uint64_t _blv_step_count = 0;
-    _blv_step_count++;
-    double _secondary = BLV_MS(_blv_plasticity, _blv_cog_t0);
-    double _cognitive = BLV_MS(_blv_cog_t0, _blv_end);
-    if (_total > 1000.0 || _blv_step_count % 5 == 0) {
+    /* Log per-phase timing breakdown (NIMCP_DEBUG_TIMING=1 to enable) */
+    if (blv_debug_timing_enabled()) {
+        clock_gettime(CLOCK_MONOTONIC, &_blv_end);
+        #define BLV_MS(a, b) (((b).tv_sec - (a).tv_sec) * 1000.0 + ((b).tv_nsec - (a).tv_nsec) / 1e6)
+        double _total = BLV_MS(_blv_t0, _blv_end);
+        double _ann = BLV_MS(_blv_t0, _blv_ann);
+        double _plast = BLV_MS(_blv_ann, _blv_plasticity);
+        static uint64_t _blv_step_count = 0;
+        _blv_step_count++;
+        double _secondary = BLV_MS(_blv_plasticity, _blv_cog_t0);
+        double _cognitive = BLV_MS(_blv_cog_t0, _blv_end);
         NIMCP_LOGGING_INFO("learn_vector step %llu: total=%.0fms "
                            "(ann=%.0f plast=%.0f secondary=%.0f cognitive=%.0f) loss=%.4f",
                            (unsigned long long)_blv_step_count,
                            _total, _ann, _plast, _secondary, _cognitive, loss);
+        #undef BLV_MS
     }
-    #undef BLV_MS
     return loss;
 }
 

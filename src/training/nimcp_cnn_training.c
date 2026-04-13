@@ -28,6 +28,18 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+
+/* Debug timing: enabled by NIMCP_DEBUG_TIMING=1 environment variable */
+static int _cnn_debug_timing_checked = 0;
+static int _cnn_debug_timing = 0;
+static inline int cnn_debug_timing_enabled(void) {
+    if (!_cnn_debug_timing_checked) {
+        const char* env = getenv("NIMCP_DEBUG_TIMING");
+        _cnn_debug_timing = (env && env[0] == '1');
+        _cnn_debug_timing_checked = 1;
+    }
+    return _cnn_debug_timing;
+}
 #include "utils/math/nimcp_math_helpers.h"
 #include <time.h>
 #include <pthread.h>
@@ -1788,24 +1800,27 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
         layer = layer->next;
     }
 
-    /* Log layer info on first backward */
-    static bool _logged_layers = false;
-    if (!_logged_layers) {
-        NIMCP_LOGGING_INFO("CNN backward: %u layers", trainer->num_layers);
-        for (uint32_t _li = 0; _li < trainer->num_layers; _li++) {
-            cnn_layer_t* _l = layer_stack[_li];
-            if (_l->type == CNN_LAYER_DENSE) {
-                NIMCP_LOGGING_INFO("  layer[%u]: DENSE %u→%u", _li,
-                    _l->config.dense.in_features, _l->config.dense.out_features);
-            } else {
-                NIMCP_LOGGING_INFO("  layer[%u]: type=%d", _li, _l->type);
+    /* Log layer structure on first backward (debug timing only) */
+    if (cnn_debug_timing_enabled()) {
+        static bool _logged_layers = false;
+        if (!_logged_layers) {
+            NIMCP_LOGGING_INFO("CNN backward: %u layers", trainer->num_layers);
+            for (uint32_t _li = 0; _li < trainer->num_layers; _li++) {
+                cnn_layer_t* _l = layer_stack[_li];
+                if (_l->type == CNN_LAYER_DENSE) {
+                    NIMCP_LOGGING_INFO("  layer[%u]: DENSE %u→%u", _li,
+                        _l->config.dense.in_features, _l->config.dense.out_features);
+                } else {
+                    NIMCP_LOGGING_INFO("  layer[%u]: type=%d", _li, _l->type);
+                }
             }
+            _logged_layers = true;
         }
-        _logged_layers = true;
     }
 
     /* Backprop in reverse */
-    struct timespec _bp_t0; clock_gettime(CLOCK_MONOTONIC, &_bp_t0);
+    struct timespec _bp_t0;
+    if (cnn_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_bp_t0);
     for (int i = (int)trainer->num_layers - 1; i >= 0; i--) {
         layer = layer_stack[i];
         const nimcp_tensor_t* layer_input = forward_result->activations[i];
@@ -1825,15 +1840,18 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                 nimcp_tensor_get_shape(layer_input, &in_shape);
                 uint32_t in_features = in_shape.numel / batch;
 
-                static bool _logged_dense = false;
-                if (!_logged_dense) {
-                    NIMCP_LOGGING_INFO("CNN DENSE backward: batch=%u in_features=%u "
-                                       "cfg_in=%u cfg_out=%u grad_numel=%zu in_numel=%zu",
-                                       batch, in_features,
-                                       cfg->in_features, cfg->out_features,
-                                       nimcp_tensor_numel(grad), in_shape.numel);
-                    _logged_dense = true;
+                if (cnn_debug_timing_enabled()) {
+                    static bool _logged_dense = false;
+                    if (!_logged_dense) {
+                        NIMCP_LOGGING_INFO("CNN DENSE backward: batch=%u in_features=%u "
+                                           "cfg_in=%u cfg_out=%u grad_numel=%zu in_numel=%zu",
+                                           batch, in_features,
+                                           cfg->in_features, cfg->out_features,
+                                           nimcp_tensor_numel(grad), in_shape.numel);
+                        _logged_dense = true;
+                    }
                 }
+
                 /* Accumulate weight gradients */
                 for (uint32_t o = 0; o < cfg->out_features; o++) {
                     for (uint32_t in = 0; in < cfg->in_features && in < in_features; in++) {
@@ -2365,12 +2383,13 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
         }
     }
 
-    {
+    if (cnn_debug_timing_enabled()) {
         struct timespec _bp_t1; clock_gettime(CLOCK_MONOTONIC, &_bp_t1);
         double _bp_ms = (_bp_t1.tv_sec - _bp_t0.tv_sec) * 1000.0
                       + (_bp_t1.tv_nsec - _bp_t0.tv_nsec) / 1e6;
         if (_bp_ms > 100.0) {
-            NIMCP_LOGGING_INFO("CNN backward loop: %.0fms for %u layers", _bp_ms, trainer->num_layers);
+            NIMCP_LOGGING_INFO("CNN backward loop: %.0fms for %u layers",
+                               _bp_ms, trainer->num_layers);
         }
     }
 
