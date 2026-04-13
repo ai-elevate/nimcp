@@ -1516,18 +1516,25 @@ int nimcp_utm_step(nimcp_unified_training_manager_t* mgr,
         }
 
         if (bridged_count >= 2) {
+            struct timespec _bwd2_t0; clock_gettime(CLOCK_MONOTONIC, &_bwd2_t0);
             nimcp_thread_pool_t* pool = nimcp_pool_create(bridged_count);
             if (pool) {
+                NIMCP_LOGGING_INFO("UTM Phase 2b: submitting %u backward tasks to pool", bridged_count);
                 for (uint32_t p = 0; p < bridged_count; p++) {
                     nimcp_pool_submit(pool, utm_backward_task_fn, &bwd_tasks2[p]);
                 }
                 nimcp_pool_wait(pool);
                 nimcp_pool_destroy(pool);
             } else {
+                NIMCP_LOGGING_WARN("UTM Phase 2b: pool creation FAILED, running %u tasks sequentially", bridged_count);
                 for (uint32_t p = 0; p < bridged_count; p++) {
                     utm_backward_task_fn(&bwd_tasks2[p]);
                 }
             }
+            struct timespec _bwd2_t1; clock_gettime(CLOCK_MONOTONIC, &_bwd2_t1);
+            double _bwd2_ms = (_bwd2_t1.tv_sec - _bwd2_t0.tv_sec) * 1000.0
+                            + (_bwd2_t1.tv_nsec - _bwd2_t0.tv_nsec) / 1e6;
+            NIMCP_LOGGING_INFO("UTM Phase 2b: %u tasks completed in %.0fms", bridged_count, _bwd2_ms);
         } else {
             for (uint32_t p = 0; p < bridged_count; p++) {
                 utm_backward_task_fn(&bwd_tasks2[p]);
