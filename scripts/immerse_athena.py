@@ -5359,10 +5359,21 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         _smm_ms = (_t.monotonic() - _loop_t0) * 1000
         if sensory_mods and i < 5:
             print(f"  [Sensory] step {i}: {'+'.join(sensory_mods)} for '{description[:60]}'", flush=True)
-        _dec_t0 = _t.monotonic()
-        result = brain.decide_full(features)
-        _dec_ms = (_t.monotonic() - _dec_t0) * 1000
-        _step_ms = (_t.monotonic() - _loop_t0) * 1000
+
+        # Skip decide_full in early stage 0 — the brain hasn't learned enough
+        # for inference to be useful. This saves ~20s per item.
+        # After STAGE0_DECIDE_SKIP_STEPS, run decide_full every Nth item for
+        # decoder training and contrastive regularization.
+        STAGE0_DECIDE_SKIP_STEPS = 2000
+        STAGE0_DECIDE_INTERVAL = 4  # After skip period, decide every 4th item
+        _dec_ms = 0
+        result = None
+        _out_vec = None
+        if i >= STAGE0_DECIDE_SKIP_STEPS and (i % STAGE0_DECIDE_INTERVAL == 0):
+            _dec_t0 = _t.monotonic()
+            result = brain.decide_full(features)
+            _dec_ms = (_t.monotonic() - _dec_t0) * 1000
+            _out_vec = result.get("output_vector") if result else None
 
         # Held-out check: 20% of items are evaluation-only (no learning)
         _is_held_out = _held_out_buffer.is_held_out(features)
@@ -5371,13 +5382,13 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
 
         # Accumulate into mini-batch (adaptive size) — skip held-out items
         if not _is_held_out:
-            mini_batch_buf.append((features, target, description))
+            mini_batch_buf.append((features, target, description, _out_vec))
 
         # Inject hard example replays periodically
         if hard_miner.should_replay() and len(mini_batch_buf) < adaptive_batch.size:
             replays = hard_miner.get_hard_examples(2)
             for rdesc, rfeat, rtgt in replays:
-                mini_batch_buf.append((rfeat, rtgt, rdesc))
+                mini_batch_buf.append((rfeat, rtgt, rdesc, None))
 
         if len(mini_batch_buf) >= adaptive_batch.size or i == num_stimuli - 1:
             # Flush mini-batch: GPU batch for ANN + subset dispatch for LNN/SNN/CNN.
@@ -5390,17 +5401,17 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             if last_desc:
                 submit_multimodal(brain, last_desc)
             try:
-                batch_pairs = [(f, t) for f, t, _ in mini_batch_buf]
+                batch_pairs = [(f, t) for f, t, _, _ in mini_batch_buf]
                 avg_loss = brain.learn_vector_batch(batch_pairs,
                                                      learning_rate=current_lr)
                 if avg_loss is not None and avg_loss >= 0:
-                    for f, t, desc in mini_batch_buf:
+                    for f, t, desc, _ in mini_batch_buf:
                         losses.append(avg_loss)
                         hard_miner.record(avg_loss, desc, f, t)
                     adaptive_batch.record_loss(avg_loss)
             except Exception:
                 # Fallback: per-sample
-                for f, t, desc in mini_batch_buf:
+                for f, t, desc, _ in mini_batch_buf:
                     try:
                         loss = brain.learn_vector(f, t, label=desc[:50],
                                                    confidence=0.5,
@@ -5411,9 +5422,9 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                     except Exception:
                         losses.append(0.0)
 
+            # Use cached output vectors from decide_full — no extra forward passes
             if parent.decoder:
-                for f, t, desc in mini_batch_buf:
-                    out_vec = brain.decide_full(f).get("output_vector")
+                for f, t, desc, out_vec in mini_batch_buf:
                     if out_vec is not None:
                         target_emb = encode_text(desc)
                         parent.decoder.record_pair(out_vec, target_emb, desc)
