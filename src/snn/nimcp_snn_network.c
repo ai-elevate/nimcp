@@ -596,7 +596,8 @@ int snn_network_step(snn_network_t* network, float dt) {
 
     int total_spikes = 0;
     bool gpu_executed = false;
-    struct timespec _step_t0, _step_t1;
+    struct timespec _step_t0, _step_t1, _phase_t0, _phase_t1;
+    double _isyn_ms = 0, _lif_ms = 0, _readback_ms = 0;
     clock_gettime(CLOCK_MONOTONIC, &_step_t0);
 
     /* ===== GPU FAST PATH ===== */
@@ -617,6 +618,7 @@ int snn_network_step(snn_network_t* network, float dt) {
          * CPU fallback: iterate synapses sequentially. */
         float* h_input = (float*)nimcp_calloc(total_neurons, sizeof(float));
         if (h_input) {
+            clock_gettime(CLOCK_MONOTONIC, &_phase_t0);
             /* Check if any lightweight pop has GPU-ready CSR */
             bool has_gpu_csr = false;
             for (uint32_t p = 0; p < network->n_populations && !has_gpu_csr; p++) {
@@ -794,7 +796,12 @@ int snn_network_step(snn_network_t* network, float dt) {
                 }
             }
 
+            clock_gettime(CLOCK_MONOTONIC, &_phase_t1);
+            _isyn_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
+                     + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
+
             /* Upload input to GPU tensor */
+            clock_gettime(CLOCK_MONOTONIC, &_phase_t0);
             size_t dims[1] = { total_neurons };
             nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_from_host(
                 gpu, h_input, dims, 1, NIMCP_GPU_PRECISION_FP32);
@@ -864,6 +871,9 @@ int snn_network_step(snn_network_t* network, float dt) {
 
                 nimcp_gpu_tensor_destroy(input_tensor);
             }
+            clock_gettime(CLOCK_MONOTONIC, &_phase_t1);
+            _lif_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
+                    + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
             nimcp_free(h_input);
         }
 
@@ -1010,11 +1020,22 @@ int snn_network_step(snn_network_t* network, float dt) {
     network->stats.avg_step_time_ms = network->stats.total_compute_time_ms
                                     / (double)network->stats.total_steps;
     network->stats.last_step_time_ms = step_ms;
+    network->stats.last_isyn_time_ms = _isyn_ms;
     network->stats.last_step_gpu = gpu_executed;
     if (gpu_executed) {
         network->stats.gpu_steps++;
     } else {
         network->stats.cpu_fallback_steps++;
+    }
+
+    /* Log timing breakdown every 10 steps for profiling */
+    if (network->stats.total_steps % 10 == 0) {
+        NIMCP_LOGGING_INFO("SNN step %llu: total=%.1fms (isyn=%.1fms lif+readback=%.1fms) "
+                           "spikes=%d gpu=%s avg=%.1fms",
+                           (unsigned long long)network->stats.total_steps,
+                           step_ms, _isyn_ms, _lif_ms,
+                           total_spikes, gpu_executed ? "yes" : "no",
+                           network->stats.avg_step_time_ms);
     }
 
     return total_spikes;
