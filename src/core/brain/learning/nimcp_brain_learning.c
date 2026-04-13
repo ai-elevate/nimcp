@@ -1440,6 +1440,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             }
         }
 
+        struct timespec _blv_utm_t0; clock_gettime(CLOCK_MONOTONIC, &_blv_utm_t0);
         nimcp_utm_step_result_t utm_result = {0};
         int utm_rc = nimcp_utm_step(brain->unified_training,
                                     features, num_features,
@@ -2073,6 +2074,8 @@ sequential_training:
 
         callosum_process_queues(brain->callosum);
     }
+
+    struct timespec _blv_cog_t0; clock_gettime(CLOCK_MONOTONIC, &_blv_cog_t0);
 
     /* === COGNITIVE SUBSYSTEM DISPATCH ===
      * Train ALL cognitive modules (grounded language, knowledge, VAE, FEP-parietal,
@@ -2795,11 +2798,13 @@ sequential_training:
     double _rest = BLV_MS(_blv_plasticity, _blv_end);
     static uint64_t _blv_step_count = 0;
     _blv_step_count++;
+    double _secondary = BLV_MS(_blv_plasticity, _blv_cog_t0);
+    double _cognitive = BLV_MS(_blv_cog_t0, _blv_end);
     if (_total > 1000.0 || _blv_step_count % 5 == 0) {
-        NIMCP_LOGGING_INFO("learn_vector step %llu: total=%.0fms (ann=%.0fms plasticity=%.0fms "
-                           "secondary+cognitive=%.0fms) loss=%.4f",
+        NIMCP_LOGGING_INFO("learn_vector step %llu: total=%.0fms "
+                           "(ann=%.0f plast=%.0f secondary=%.0f cognitive=%.0f) loss=%.4f",
                            (unsigned long long)_blv_step_count,
-                           _total, _ann, _plast, _rest, loss);
+                           _total, _ann, _plast, _secondary, _cognitive, loss);
     }
     #undef BLV_MS
     return loss;
