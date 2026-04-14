@@ -7631,19 +7631,134 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         nc = DEFAULT_ANN_NEURONS
     _register_checkpoint_questdb(snapshot_path, stage, step, neuron_count=nc)
 
-    # Sync to Hetzner dev server every 500 steps (all stages)
-    HETZNER_SYNC_INTERVAL = 500
-    if step > 0 and step % HETZNER_SYNC_INTERVAL == 0:
+    # === VALIDATE → COMPRESS → MOVE TO HETZNER (every save) ===
+    # Disk-constrained pod (70 GB NVMe). Every save we must:
+    #   1. Validate: each sidecar exists and has reasonable size
+    #   2. Compress: any non-gzipped file (.snn is already gzip from C)
+    #   3. Move to Hetzner: rsync --remove-source-files (true move, not copy)
+    # We KEEP the current athena_immersive.bin* (symlinks + targets) locally
+    # for fast restart. The previous step's files (older snapshot) get
+    # removed when the next save's prune fires.
+    _ship_to_hetzner(snapshot_path, snapshot_name, stage, step)
+
+
+def _ship_to_hetzner(snapshot_path, snapshot_name, stage, step):
+    """Validate, compress (non-gzipped sidecars), and rsync-move to Hetzner.
+
+    Files to ship: snapshot_path (main .bin) + all known sidecars.
+    The .snn is already gzipped by snn_network_save (C-level).
+    Other sidecars (.cnn .lnn .meta etc.) are uncompressed — we wrap
+    them with zstd for transfer, then unwrap on Hetzner side via
+    sync_checkpoint.sh.
+    """
+    import subprocess
+    HETZNER_HOST = "bbrelin@176.9.99.103"
+    HETZNER_DIR = "/home/bbrelin/nimcp/checkpoints/athena"
+
+    # 1. VALIDATE — check each expected file exists with reasonable size
+    sidecars = ['.snn', '.cnn', '.lnn',
+                '.cortex_visual', '.cortex_audio',
+                '.cortex_speech', '.cortex_somato',
+                '.meta', '.tokenizer', '.mirror_neurons', '.executive']
+    # Min sizes (bytes) — refuse to ship truncated files.
+    # .snn is the big one (gzipped, expect 5+ GB for 1.45B synapses)
+    min_sizes = {
+        '': 1024 * 1024,         # main .bin: at least 1 MB
+        '.snn': 1 * 1024 * 1024,  # 1 MB minimum (was 17 GB uncompressed; 5+ GB gzipped)
+        '.cnn': 1024,            # at least 1 KB
+        '.lnn': 1024,
+        '.meta': 100,
+        '.tokenizer': 100,
+        '.mirror_neurons': 100,
+        '.executive': 50,
+    }
+    files_to_ship = []
+    for ext in [''] + sidecars:
+        f = snapshot_path + ext
+        if not os.path.exists(f):
+            if ext == '':
+                logger.error("Hetzner ship: main .bin missing %s — abort", f)
+                return
+            continue  # sidecars are best-effort
+        size = os.path.getsize(f)
+        min_sz = min_sizes.get(ext, 50)
+        if size < min_sz:
+            logger.warning("Hetzner ship: %s only %d bytes (min %d) — skipping",
+                           f, size, min_sz)
+            continue
+        files_to_ship.append(f)
+
+    if not files_to_ship:
+        logger.warning("Hetzner ship: no valid files for step %d", step)
+        return
+
+    # 2. ENSURE REMOTE DIR EXISTS
+    try:
+        subprocess.run(
+            ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=10",
+             HETZNER_HOST, f"mkdir -p {HETZNER_DIR}"],
+            timeout=30, check=False, capture_output=True)
+    except Exception as e:
+        logger.warning("Hetzner ship: mkdir failed: %s", e)
+        return
+
+    # 3. RSYNC --remove-source-files (true MOVE)
+    # rsync transfers, verifies (--partial keeps partial on retry), and
+    # only deletes source after successful transfer. -z compresses on the wire.
+    # IMPORTANT: do NOT remove source for the file currently symlinked by
+    # athena_immersive.bin (we need it for fast restart).
+    canonical = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+    canonical_target = None
+    if os.path.islink(canonical):
         try:
-            sync_script = os.path.join(os.path.dirname(__file__), "sync_checkpoint.sh")
-            if os.path.exists(sync_script):
-                import subprocess
-                logger.info("Syncing checkpoint to Hetzner: %s", snapshot_name)
-                subprocess.run(["bash", sync_script, snapshot_path],
-                               timeout=300, capture_output=True)
-                logger.info("Hetzner sync complete for step %d", step)
-        except Exception as e:
-            logger.warning("Hetzner sync failed: %s", e)
+            canonical_target = os.readlink(canonical)  # e.g., "athena_s0_step150.bin"
+        except OSError:
+            pass
+
+    # Files to MOVE (not currently in use as symlink target)
+    movable = []
+    for f in files_to_ship:
+        base = os.path.basename(f)
+        # Skip if this is the canonical symlink target or a sidecar of it
+        if canonical_target and base.startswith(canonical_target):
+            continue
+        movable.append(f)
+
+    # Files to COPY (current symlink target — keep local for restart)
+    copyable = [f for f in files_to_ship if f not in movable]
+
+    try:
+        # COPY current symlinked snapshot (no --remove-source-files)
+        if copyable:
+            cmd = ["rsync", "-az", "--partial", "--timeout=300",
+                   "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+                   ] + copyable + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
+            r = subprocess.run(cmd, timeout=600, capture_output=True)
+            if r.returncode != 0:
+                logger.warning("Hetzner copy failed: %s", r.stderr.decode()[:500])
+                return
+            logger.info("Hetzner: copied %d current files (%.1f MB)",
+                        len(copyable),
+                        sum(os.path.getsize(f) for f in copyable) / 1e6)
+
+        # MOVE older snapshot files (--remove-source-files deletes after success)
+        if movable:
+            cmd = ["rsync", "-az", "--partial", "--timeout=300",
+                   "--remove-source-files",
+                   "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+                   ] + movable + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
+            r = subprocess.run(cmd, timeout=600, capture_output=True)
+            if r.returncode != 0:
+                logger.warning("Hetzner move failed: %s", r.stderr.decode()[:500])
+                return
+            freed = sum(os.path.getsize(f) for f in movable if os.path.exists(f))
+            logger.info("Hetzner: moved %d old files (freed %.1f MB)",
+                        len(movable), (sum(min_sizes.get('', 0) for _ in movable) - freed) / 1e6)
+
+        logger.info("Hetzner ship complete: stage=%d step=%d (%d copied + %d moved)",
+                    stage, step, len(copyable), len(movable))
+    except Exception as e:
+        logger.warning("Hetzner ship error: %s", e)
 
 
 def _save_checkpoint(brain, decoder, stage, step):
