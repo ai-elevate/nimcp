@@ -7687,16 +7687,32 @@ def _ship_and_remove_previous_snapshot():
     After this, the brain has no local snapshot — it would need to pull
     from Hetzner on restart. But we free the disk to write the new save.
     """
+    # Find the "previous snapshot" to ship. Two cases:
+    #   (a) canonical is a symlink → ship its target
+    #   (b) canonical is a regular file (copy-fallback path) → find the
+    #       most recent athena_s*_step*.bin that isn't the current save
     canonical = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
-    if not os.path.islink(canonical):
-        return
-    try:
-        target = os.readlink(canonical)  # athena_s0_step{N}.bin
-    except OSError:
-        return
-    target_path = os.path.join(CHECKPOINT_DIR, target)
-    if not os.path.exists(target_path):
-        return
+    target_path = None
+    if os.path.islink(canonical):
+        try:
+            target = os.readlink(canonical)
+            target_path = os.path.join(CHECKPOINT_DIR, target)
+        except OSError:
+            target_path = None
+
+    if target_path is None or not os.path.exists(target_path):
+        # Fallback: find oldest athena_s*_step*.bin to ship+delete
+        import glob as _g
+        candidates = sorted(_g.glob(os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")),
+                            key=os.path.getmtime)
+        # Filter to bare .bin files, not sidecars
+        candidates = [c for c in candidates if c.endswith(".bin") and ".bin." not in os.path.basename(c)]
+        if not candidates:
+            logger.warning("Pre-save ship: no snapshot files found to free space")
+            return
+        target_path = candidates[0]  # oldest
+        logger.info("Pre-save ship: canonical isn't symlink, using oldest snapshot %s",
+                    os.path.basename(target_path))
 
     sidecars = ['.snn', '.cnn', '.lnn',
                 '.cortex_visual', '.cortex_audio',
