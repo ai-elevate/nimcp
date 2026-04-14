@@ -21,6 +21,46 @@
  * - Brain structure (nimcp_brain.h)
  * - Subsystem save/load APIs (knowledge, executive, mirror neurons, etc.)
  * - File I/O, directory scanning (stdio.h, dirent.h, sys/stat.h)
+ *
+ * ====================================================================
+ * SIDECAR LIFECYCLE — read this if you touch brain_save / brain_load
+ * ====================================================================
+ *
+ * brain_save(brain, "<path>") writes the main file at <path> AND a set
+ * of sidecar files at <path>.<ext>. There are TWO classes of sidecars:
+ *
+ * (a) ATOMIC writers — write to <path>.<ext>.tmp first, then rename.
+ *     - .snn (snn_network_save in src/snn/nimcp_snn_network.c)
+ *     - .lnn (lnn_network_save in src/lnn/nimcp_lnn_network.c)
+ *     - .cnn (cnn_trainer_save in src/training/nimcp_cnn_training.c)
+ *     - .cortex_visual / .cortex_audio / .cortex_speech / .cortex_somato
+ *
+ * (b) DIRECT writers — historically wrote to <path>.<ext> directly.
+ *     Audit fix made these atomic too: write to .tmp, then rename.
+ *     - .meta (this file, nimcp_brain_save_metadata)
+ *     - .executive
+ *     - .mirror_neurons
+ *     - .tokenizer
+ *
+ *     Other direct-write sidecars produced elsewhere in the codebase
+ *     (audit class — verify atomicity if you find them):
+ *     - .knowledge .pink_noise
+ *
+ * The Python checkpoint code (scripts/immerse_athena.py) calls
+ * brain.save("<path>.tmp"), then renames <path>.tmp → <path>.bin AND
+ * also renames every <path>.tmp.<ext> → <path>.<ext>. The list of
+ * extensions to rename is in ALL_SIDECARS in _save_checkpoint_sync.
+ *
+ * If you ADD a new sidecar:
+ *   1. Use atomic .tmp+rename in the C save function
+ *   2. Add the extension to ALL_SIDECARS in _save_checkpoint_sync
+ *   3. Add it to _prune_checkpoint_snapshots sidecar list
+ *   4. Add it to brain_daemon.py's CRITICAL_SIDECARS check if needed
+ *
+ * Lessons learned (2026-04-13):
+ *   - Silent .snn loss for 10+ days because Python only renamed .bin
+ *   - Stale 27 GB .snn from initial brain creation kept loading
+ *   - Brain trained without spike network state — silent partial restore
  */
 
 // Bio-async integration

@@ -1760,6 +1760,15 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
     ctx->step_count = step;
     if (lr > 0.0f) ctx->current_lr = lr;
 
+    /* Audit fix #13: dimension-mismatch policy.
+     * If existing ctx is allocated for a different parameter count than
+     * what's in the file, skipping the restore is safer than reallocating
+     * to the file's size (which would mismatch the actual model). The
+     * optimizer keeps its fresh zero-initialized state at the current dim.
+     * Only allocate from file if ctx has no buffers yet (count==0). */
+    #define DIM_MISMATCH(ctx_count, file_count) \
+        ((ctx_count) > 0 && (size_t)(file_count) != (size_t)(ctx_count))
+
     switch (ctx->config.type) {
         case NIMCP_OPTIMIZER_SGD:
         case NIMCP_OPTIMIZER_SGD_MOMENTUM:
@@ -1767,8 +1776,16 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
             uint64_t count = 0;
             if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
             if (count > 0) {
-                if (ctx->state.momentum.count != (size_t)count || !ctx->state.momentum.velocity) {
-                    if (ctx->state.momentum.velocity) free_buffer(ctx, ctx->state.momentum.velocity);
+                if (DIM_MISMATCH(ctx->state.momentum.count, count)) {
+                    NIMCP_LOGGING_WARN("optimizer_load: SGD dim mismatch "
+                        "(file=%llu ctx=%zu) — skipping state restore, "
+                        "keeping fresh momentum buffer",
+                        (unsigned long long)count, ctx->state.momentum.count);
+                    /* Skip the velocity floats in the file */
+                    if (fseek(file, (long)(count * sizeof(float)), SEEK_CUR) != 0) return -1;
+                    break;
+                }
+                if (!ctx->state.momentum.velocity) {
                     ctx->state.momentum.velocity = alloc_buffer(ctx, (size_t)count);
                     ctx->state.momentum.count = (size_t)count;
                 }
@@ -1785,13 +1802,26 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
             uint64_t count = 0, t = 0;
             if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
             if (fread(&t, sizeof(uint64_t), 1, file) != 1) return -1;
-            ctx->state.adam.t = t;
             if (count > 0) {
+                if (DIM_MISMATCH(ctx->state.adam.count, count)) {
+                    NIMCP_LOGGING_WARN("optimizer_load: Adam dim mismatch "
+                        "(file=%llu ctx=%zu) — skipping state restore, "
+                        "keeping fresh m/v buffers",
+                        (unsigned long long)count, ctx->state.adam.count);
+                    /* Skip m, v, has_vmax flag, and optionally v_max */
+                    if (fseek(file, (long)(count * sizeof(float) * 2), SEEK_CUR) != 0)
+                        return -1;
+                    bool has_vmax = false;
+                    if (fread(&has_vmax, sizeof(bool), 1, file) != 1) return -1;
+                    if (has_vmax) {
+                        if (fseek(file, (long)(count * sizeof(float)), SEEK_CUR) != 0)
+                            return -1;
+                    }
+                    break;  /* DON'T apply ctx->state.adam.t either — keep fresh */
+                }
+                ctx->state.adam.t = t;  /* only apply t when dims match */
                 /* Allocate buffers if needed (fresh context after load) */
-                if (ctx->state.adam.count != (size_t)count || !ctx->state.adam.m) {
-                    if (ctx->state.adam.m) free_buffer(ctx, ctx->state.adam.m);
-                    if (ctx->state.adam.v) free_buffer(ctx, ctx->state.adam.v);
-                    if (ctx->state.adam.v_max) free_buffer(ctx, ctx->state.adam.v_max);
+                if (!ctx->state.adam.m) {
                     ctx->state.adam.m = alloc_buffer(ctx, (size_t)count);
                     ctx->state.adam.v = alloc_buffer(ctx, (size_t)count);
                     ctx->state.adam.v_max = NULL;
@@ -1810,6 +1840,8 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
                     if (ctx->state.adam.v_max &&
                         fread(ctx->state.adam.v_max, sizeof(float), count, file) != count) return -1;
                 }
+            } else {
+                ctx->state.adam.t = t;  /* zero-count case: still apply step */
             }
             break;
         }
@@ -1818,10 +1850,21 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
             uint64_t count = 0;
             if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
             if (count > 0) {
-                if (ctx->state.rmsprop.count != (size_t)count || !ctx->state.rmsprop.square_avg) {
-                    if (ctx->state.rmsprop.square_avg) free_buffer(ctx, ctx->state.rmsprop.square_avg);
-                    if (ctx->state.rmsprop.momentum_buffer) free_buffer(ctx, ctx->state.rmsprop.momentum_buffer);
-                    if (ctx->state.rmsprop.grad_avg) free_buffer(ctx, ctx->state.rmsprop.grad_avg);
+                if (DIM_MISMATCH(ctx->state.rmsprop.count, count)) {
+                    NIMCP_LOGGING_WARN("optimizer_load: RMSprop dim mismatch "
+                        "(file=%llu ctx=%zu) — skipping state restore",
+                        (unsigned long long)count, ctx->state.rmsprop.count);
+                    /* Skip square_avg + has_momentum flag + optional momentum
+                     * + has_grad_avg flag + optional grad_avg */
+                    if (fseek(file, (long)(count * sizeof(float)), SEEK_CUR) != 0) return -1;
+                    bool _hm = false, _hg = false;
+                    if (fread(&_hm, sizeof(bool), 1, file) != 1) return -1;
+                    if (_hm && fseek(file, (long)(count * sizeof(float)), SEEK_CUR) != 0) return -1;
+                    if (fread(&_hg, sizeof(bool), 1, file) != 1) return -1;
+                    if (_hg && fseek(file, (long)(count * sizeof(float)), SEEK_CUR) != 0) return -1;
+                    break;
+                }
+                if (!ctx->state.rmsprop.square_avg) {
                     ctx->state.rmsprop.square_avg = alloc_buffer(ctx, (size_t)count);
                     ctx->state.rmsprop.momentum_buffer = NULL;
                     ctx->state.rmsprop.grad_avg = NULL;
@@ -1855,15 +1898,23 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
             uint64_t count = 0, adagrad_step = 0;
             if (fread(&count, sizeof(uint64_t), 1, file) != 1) return -1;
             if (fread(&adagrad_step, sizeof(uint64_t), 1, file) != 1) return -1;
-            ctx->state.adagrad.step = adagrad_step;
             if (count > 0) {
-                if (ctx->state.adagrad.count != (size_t)count || !ctx->state.adagrad.sum) {
-                    if (ctx->state.adagrad.sum) free_buffer(ctx, ctx->state.adagrad.sum);
+                if (DIM_MISMATCH(ctx->state.adagrad.count, count)) {
+                    NIMCP_LOGGING_WARN("optimizer_load: Adagrad dim mismatch "
+                        "(file=%llu ctx=%zu) — skipping state restore",
+                        (unsigned long long)count, ctx->state.adagrad.count);
+                    if (fseek(file, (long)(count * sizeof(float)), SEEK_CUR) != 0) return -1;
+                    break;
+                }
+                ctx->state.adagrad.step = adagrad_step;
+                if (!ctx->state.adagrad.sum) {
                     ctx->state.adagrad.sum = alloc_buffer(ctx, (size_t)count);
                     ctx->state.adagrad.count = (size_t)count;
                 }
                 if (ctx->state.adagrad.sum &&
                     fread(ctx->state.adagrad.sum, sizeof(float), count, file) != count) return -1;
+            } else {
+                ctx->state.adagrad.step = adagrad_step;
             }
             break;
         }
@@ -1871,6 +1922,7 @@ int nimcp_optimizer_load(nimcp_optimizer_context_t* ctx, FILE* file) {
         default:
             break;
     }
+    #undef DIM_MISMATCH
 
     NIMCP_LOGGING_INFO("Restored optimizer state: type=%s, step=%lu, lr=%.6f",
                        nimcp_optimizer_type_name(ctx->config.type),
