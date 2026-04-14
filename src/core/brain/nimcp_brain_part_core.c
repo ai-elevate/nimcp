@@ -1017,6 +1017,23 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // HOW:  Check elapsed time at key stages; return partial result if exceeded.
     const uint64_t inference_deadline_us = nimcp_time_get_us() + 30000000ULL; /* 30 seconds — 2.5M neurons need time */
 
+    /* === PER-PHASE WALL-CLOCK TIMING (NIMCP_DEBUG_TIMING=1) ===
+     * Records elapsed us at each major phase boundary so we can identify
+     * which subsystem dominates inference time as brain state grows. */
+    static int _bd_dbg_checked = 0, _bd_dbg = 0;
+    if (!_bd_dbg_checked) {
+        const char* env = getenv("NIMCP_DEBUG_TIMING");
+        _bd_dbg = (env && env[0] == '1');
+        _bd_dbg_checked = 1;
+    }
+    uint64_t _bd_t_start = _bd_dbg ? nimcp_time_get_us() : 0;
+    uint64_t _bd_t_preforward = 0, _bd_t_forward = 0, _bd_t_hemispheric = 0;
+    uint64_t _bd_t_snn = 0, _bd_t_post_parallel = 0, _bd_t_reasoning = 0;
+    uint64_t _bd_t_ethics = 0, _bd_t_cognitive = 0, _bd_t_engram = 0;
+    uint64_t _bd_t_end = 0;
+    #define BD_MARK(var) do { if (_bd_dbg) (var) = nimcp_time_get_us(); } while (0)
+    #define BD_MS(a, b) (((b) - (a)) / 1000.0)
+
     // ========================================================================
     // DEFENSIVE COPY: Protect against input pointer invalidation
     // ========================================================================
@@ -1562,6 +1579,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
     }
 
+    BD_MARK(_bd_t_preforward);  /* End of pre-forward (engram/sleep/curiosity) */
     PROBE_STAGE(brain, PROBE_INF_PRE_FORWARD, {
         float _in_norm = 0.0f;
         for (uint32_t _i = 0; _i < num_features && _i < 1024; _i++)
@@ -1725,6 +1743,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         return decision;
     }
 
+    BD_MARK(_bd_t_forward);  /* End of forward pass (pre-hemispheric) */
+
     // ========================================================================
     // STAGE 1.5: Hemispheric Processing — Callosum Transfer + Lateralization
     // ========================================================================
@@ -1793,6 +1813,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             decision->output_vector[i] *= lat_boost;
         }
     }
+
+    BD_MARK(_bd_t_hemispheric);  /* End of hemispheric/callosum */
 
     // ========================================================================
     // STAGE 1.6: Sensory SNN Spike Encoding (modality-gated)
@@ -2091,6 +2113,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // the engram system (Stage 3.8) and systems consolidation (Phase M2) below.
     (void)trigger_consolidation;
 
+    BD_MARK(_bd_t_snn);  /* End of SNN encoding + cross-modal */
+
     // ========================================================================
     // PARALLEL POST-FORWARD: Submit independent stages to thread pool
     // ========================================================================
@@ -2169,6 +2193,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         semantic_memory_extract_from_consolidation(brain->semantic_memory);
     }
     } // end serial fallback for stages 3.8-3.11
+
+    BD_MARK(_bd_t_post_parallel);  /* End of parallel post-forward dispatch */
 
     // ========================================================================
     // STAGE 4.1-4.3: PARALLEL REASONING DISPATCH (Actor Pattern)
@@ -3088,6 +3114,8 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
         }
     }
 
+    BD_MARK(_bd_t_reasoning);  /* End of reasoning + ToM + dialog + imagination */
+
     // ========================================================================
     // STAGE 7.8-9: PARALLEL EVALUATIVE DISPATCH (Actor Pattern)
     // ========================================================================
@@ -3357,6 +3385,8 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
     }
 
 skip_sequential_evaluative: ; /* Label for parallel evaluative dispatch */
+
+    BD_MARK(_bd_t_ethics);  /* End of ethics + epistemic + mirror neurons + ToM */
 
     // ========================================================================
     // STAGE C5/C6: PARALLEL COGNITIVE INFERENCE + ONLINE LEARNING
@@ -4123,6 +4153,29 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
 
     // Free the defensive copy of features
     nimcp_free(local_features);
+
+    /* === EMIT PER-PHASE TIMING SUMMARY (NIMCP_DEBUG_TIMING=1) === */
+    if (_bd_dbg) {
+        BD_MARK(_bd_t_end);
+        double total_ms = BD_MS(_bd_t_start, _bd_t_end);
+        if (total_ms > 1000.0) {  /* only log slow decisions to keep noise down */
+            NIMCP_LOGGING_INFO(
+                "brain_decide phases (ms): preforward=%.0f forward=%.0f "
+                "hemispheric=%.0f snn=%.0f post_par=%.0f reasoning=%.0f "
+                "ethics=%.0f cognitive=%.0f TOTAL=%.0f",
+                BD_MS(_bd_t_start, _bd_t_preforward),
+                BD_MS(_bd_t_preforward, _bd_t_forward),
+                BD_MS(_bd_t_forward, _bd_t_hemispheric),
+                BD_MS(_bd_t_hemispheric, _bd_t_snn),
+                BD_MS(_bd_t_snn, _bd_t_post_parallel),
+                BD_MS(_bd_t_post_parallel, _bd_t_reasoning),
+                BD_MS(_bd_t_reasoning, _bd_t_ethics),
+                BD_MS(_bd_t_ethics, _bd_t_end),
+                total_ms);
+        }
+    }
+    #undef BD_MARK
+    #undef BD_MS
 
     brain_clear_error();
     return decision;
