@@ -1,5 +1,6 @@
 #include <stddef.h>  /* for NULL */
 #include <time.h>    /* for clock_gettime */
+#include <zlib.h>    /* for gzopen/gzwrite/gzread — compress .snn checkpoint */
 //=============================================================================
 // nimcp_snn_network.c - SNN Network Implementation
 //=============================================================================
@@ -2327,12 +2328,18 @@ int snn_network_validate(const snn_network_t* network) {
 #define SNN_CHECKPOINT_MAGIC    0x534E4E53  /**< "SNNS" */
 #define SNN_CHECKPOINT_VERSION  3           /**< v3: CSR lightweight populations */
 
-/* Checked fwrite helper — returns -1 on failure */
+/* Checked gzwrite helper — returns -1 on failure.
+ * Uses gzip compression (level 3 = good speed/ratio) to keep .snn file
+ * size manageable on disk-constrained pods. The 17 GB uncompressed CSR
+ * data compresses to ~10-12 GB. */
 #define SNN_FWRITE(ptr, size, count, stream) \
-    do { if (fwrite((ptr), (size), (count), (stream)) != (count)) { \
-        NIMCP_LOGGING_ERROR("snn_network_save: fwrite failed"); \
-        fclose(stream); if (tmp_path[0]) remove(tmp_path); return -1; \
-    } } while (0)
+    do { size_t _bytes = (size) * (count); \
+         int _w = gzwrite((stream), (ptr), (unsigned)_bytes); \
+         if (_w <= 0 || (size_t)_w != _bytes) { \
+            NIMCP_LOGGING_ERROR("snn_network_save: gzwrite failed (wrote %d of %zu)", \
+                                _w, _bytes); \
+            gzclose(stream); if (tmp_path[0]) remove(tmp_path); return -1; \
+         } } while (0)
 
 int snn_network_save(snn_network_t* network, const char* path) {
     if (!network || !path) return -1;
@@ -2341,7 +2348,11 @@ int snn_network_save(snn_network_t* network, const char* path) {
     char tmp_path[1024];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
 
-    FILE* f = fopen(tmp_path, "wb");
+    /* Open with gzip compression level 3 — balances speed and ratio.
+     * Level 1 = fastest/least compression; 9 = slowest/best.
+     * Level 3 typically gets ~30-40% reduction for SNN data with
+     * minimal CPU overhead vs uncompressed write. */
+    gzFile f = gzopen(tmp_path, "wb3");
     if (!f) {
         NIMCP_LOGGING_ERROR("snn_network_save: failed to open %s", tmp_path);
         return -1;
@@ -2426,7 +2437,7 @@ int snn_network_save(snn_network_t* network, const char* path) {
         NIMCP_LOGGING_INFO("SNN save: %u lightweight CSR populations saved", n_lightweight);
     }
 
-    fclose(f);
+    gzclose(f);
 
     /* Atomic rename: temp → final path */
     if (rename(tmp_path, path) != 0) {
@@ -2435,21 +2446,36 @@ int snn_network_save(snn_network_t* network, const char* path) {
         return -1;
     }
 
-    NIMCP_LOGGING_INFO("SNN network saved to %s (%u neurons, %u CSR pops)",
+    NIMCP_LOGGING_INFO("SNN network saved to %s (gzip, %u neurons, %u CSR pops)",
                        path, total_neurons, n_lightweight);
     return 0;
 }
 
 #undef SNN_FWRITE
 
+/* fread-like wrapper for gzFile. Returns count on success, less on EOF/error.
+ * gzopen for read auto-detects gzip header and falls back to plain reads, so
+ * this works for both compressed AND existing uncompressed .snn files. */
+static inline size_t gz_fread(void* ptr, size_t sz, size_t count, gzFile f) {
+    if (sz == 0 || count == 0) return 0;
+    int got = gzread(f, ptr, (unsigned)(sz * count));
+    if (got <= 0) return 0;
+    return (size_t)got / sz;
+}
+
 snn_network_t* snn_network_load(const char* path) {
     if (!path) return NULL;
 
-    FILE* f = fopen(path, "rb");
+    /* gzopen handles both gzip-compressed and plain files transparently —
+     * existing uncompressed .snn files load fine without conversion. */
+    gzFile f = gzopen(path, "rb");
     if (!f) {
         NIMCP_LOGGING_WARN("snn_network_load: file not found %s", path);
         return NULL;
     }
+    #define fread(p, s, c, fp) gz_fread((p), (s), (c), (fp))
+    #define fclose(fp) gzclose(fp)
+    #define fseek(fp, off, whence) gzseek((fp), (off), (whence))
 
     uint32_t magic = 0, version = 0;
     if (fread(&magic, sizeof(uint32_t), 1, f) != 1 || magic != SNN_CHECKPOINT_MAGIC) {
@@ -2720,5 +2746,8 @@ snn_network_t* snn_network_load(const char* path) {
 
     fclose(f);
     NIMCP_LOGGING_INFO("SNN network loaded from %s (%u neurons restored, v%u)", path, restore_count, version);
+    #undef fread
+    #undef fclose
+    #undef fseek
     return net;
 }

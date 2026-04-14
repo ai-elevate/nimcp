@@ -7446,18 +7446,26 @@ def _register_checkpoint_questdb(ckpt_path, stage, step, neuron_count=DEFAULT_AN
         logger.debug("QuestDB registration skipped: %s", e)
 
 
-def _prune_checkpoint_snapshots(max_snapshots=5):
+def _prune_checkpoint_snapshots(max_snapshots=1):
     """Keep only the most recent `max_snapshots` timestamped snapshots.
 
-    Deletes oldest snapshots (and their sidecars) when count exceeds limit.
+    Deletes oldest snapshots AND ALL their sidecars (including the big .snn
+    which is ~12-17 GB). Disk-constrained pods cannot keep multiple snapshots.
     """
     import glob as glob_mod
-    sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive']
+    # All sidecar extensions written by brain.save() — the C library writes
+    # these via snn_network_save, lnn_network_save, cnn_trainer_save,
+    # cortex_cnn_save, and metadata save in nimcp_brain_persistence.c
+    sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive',
+                '.snn', '.cnn', '.lnn',
+                '.cortex_visual', '.cortex_audio',
+                '.cortex_speech', '.cortex_somato']
     pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
-    snapshots = sorted(glob_mod.glob(pattern))
+    all_files = sorted(glob_mod.glob(pattern + "*"))
 
-    # Filter out sidecar matches — only count bare .bin files
-    snapshots = [s for s in snapshots if not any(s.endswith(ext) for ext in sidecars)]
+    # Filter to bare .bin files only (not .bin.snn, etc.)
+    snapshots = [s for s in all_files
+                 if s.endswith(".bin") and "step" in os.path.basename(s)]
 
     if len(snapshots) <= max_snapshots:
         return
@@ -7474,7 +7482,8 @@ def _prune_checkpoint_snapshots(max_snapshots=5):
                 except OSError:
                     pass
     if freed > 0:
-        logger.info("Pruned %d old snapshots (freed %.1f MB)", len(to_remove), freed / 1e6)
+        logger.info("Pruned %d old snapshots (freed %.1f GB)",
+                    len(to_remove), freed / 1e9)
 
 
 def _save_checkpoint_sync(brain, decoder, stage, step):
@@ -7612,8 +7621,8 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
 
     # State file already written in _save_checkpoint() before thread started
 
-    # Prune old snapshots (keep 5)
-    _prune_checkpoint_snapshots(max_snapshots=5)
+    # Prune old snapshots (keep 1 — disk-constrained pod, .snn is ~12 GB)
+    _prune_checkpoint_snapshots(max_snapshots=1)
 
     # Register checkpoint in QuestDB
     try:
