@@ -396,7 +396,9 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     // Guard: NULL parameters handled by caller
 
     char meta_path[NIMCP_METRICS_PATH_SIZE];
+    char meta_tmp[NIMCP_METRICS_PATH_SIZE];
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
+    snprintf(meta_tmp,  sizeof(meta_tmp),  "%s.meta.tmp", filepath);
 
     // P1-3 fix: Path traversal validation
     if (!persistence_path_is_safe(meta_path)) {
@@ -404,7 +406,10 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         return false;
     }
 
-    FILE* meta_file = fopen(meta_path, "wb");
+    /* Atomic write: open .tmp, write, close, rename → .meta.
+     * Audit fix #2: previously wrote directly to .meta — crash mid-write
+     * corrupted the file silently and load fell back to defaults. */
+    FILE* meta_file = fopen(meta_tmp, "wb");
     if (!meta_file) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_save_metadata: meta_file is NULL");
         return false;
@@ -451,6 +456,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     bool wm_success = nimcp_brain_save_working_memory_state(brain->working_memory, meta_file);
     if (!wm_success) {
         fclose(meta_file);
+        remove(meta_tmp);  /* don't leave partial .tmp around */
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_save_metadata: wm_success is NULL");
         return false;
     }
@@ -489,12 +495,19 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save executive controller state to separate file
         // WHY:  Preserve task queue, statistics, and configuration
         // HOW:  Use executive_save API with dedicated file
+        /* Atomic write: .executive.tmp → rename → .executive (audit fix #3) */
         char executive_path[NIMCP_METRICS_PATH_SIZE];
+        char executive_tmp[NIMCP_METRICS_PATH_SIZE];
         snprintf(executive_path, sizeof(executive_path), "%s.executive", filepath);
-        FILE* exec_file = fopen(executive_path, "wb");
+        snprintf(executive_tmp,  sizeof(executive_tmp),  "%s.executive.tmp", filepath);
+        FILE* exec_file = fopen(executive_tmp, "wb");
         if (exec_file) {
             executive_save(brain->executive, exec_file);
             fclose(exec_file);
+            if (rename(executive_tmp, executive_path) != 0) {
+                NIMCP_LOGGING_WARN("Failed to rename %s -> %s", executive_tmp, executive_path);
+                remove(executive_tmp);
+            }
         }
     }
 
@@ -526,12 +539,19 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         // WHAT: Save mirror neuron system state to separate file
         // WHY:  Preserve learned action associations and statistics
         // HOW:  Use mirror_neurons_save API with dedicated file
+        /* Atomic write: .mirror_neurons.tmp → rename (audit fix #3) */
         char mirror_path[NIMCP_METRICS_PATH_SIZE];
+        char mirror_tmp[NIMCP_METRICS_PATH_SIZE];
         snprintf(mirror_path, sizeof(mirror_path), "%s.mirror_neurons", filepath);
-        FILE* mirror_file = fopen(mirror_path, "wb");
+        snprintf(mirror_tmp,  sizeof(mirror_tmp),  "%s.mirror_neurons.tmp", filepath);
+        FILE* mirror_file = fopen(mirror_tmp, "wb");
         if (mirror_file) {
             mirror_neurons_save(brain->mirror_neurons, mirror_file);
             fclose(mirror_file);
+            if (rename(mirror_tmp, mirror_path) != 0) {
+                NIMCP_LOGGING_WARN("Failed to rename %s -> %s", mirror_tmp, mirror_path);
+                remove(mirror_tmp);
+            }
         }
     }
 
@@ -586,11 +606,28 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
 
     fclose(meta_file);
 
-    // Save persistent tokenizer (separate file, optional)
+    /* Atomic rename .meta.tmp → .meta. If rename fails we have neither a
+     * corrupt .meta nor a partial write — caller will see a stale .meta
+     * (or none) and the next load will warn instead of silent fallback. */
+    if (rename(meta_tmp, meta_path) != 0) {
+        NIMCP_LOGGING_ERROR("nimcp_brain_save_metadata: rename %s -> %s failed",
+                            meta_tmp, meta_path);
+        remove(meta_tmp);
+        return false;
+    }
+
+    // Save persistent tokenizer (separate file, optional).
+    // Atomic write: .tokenizer.tmp → rename (audit fix #3).
     if (brain->tokenizer) {
         char tok_path[512];
+        char tok_tmp[512];
         snprintf(tok_path, sizeof(tok_path), "%s.tokenizer", filepath);
-        tokenizer_save(brain->tokenizer, tok_path);
+        snprintf(tok_tmp,  sizeof(tok_tmp),  "%s.tokenizer.tmp", filepath);
+        tokenizer_save(brain->tokenizer, tok_tmp);
+        if (rename(tok_tmp, tok_path) != 0) {
+            NIMCP_LOGGING_WARN("Failed to rename %s -> %s", tok_tmp, tok_path);
+            remove(tok_tmp);
+        }
     }
 
     return true;
@@ -851,6 +888,13 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
 
     FILE* meta_file = fopen(meta_path, "rb");
     if (!meta_file) {
+        /* Audit fix #8: previously this returned false silently and the
+         * caller continued with default state. Log loudly so missing
+         * metadata is visible — it means stats, learning rate, optimizer
+         * momentum, KG, mirror neurons, executive state are all defaulted. */
+        NIMCP_LOGGING_WARN("nimcp_brain_load_metadata: %s missing — "
+                           "training stats, optimizer state, and KG will reset to defaults",
+                           meta_path);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_load_metadata: meta_file is NULL");
         return false;
     }

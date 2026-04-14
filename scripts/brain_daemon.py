@@ -2236,6 +2236,25 @@ def main():
     t0 = time.time()
     brain = None
     if checkpoint_path and os.path.exists(checkpoint_path):
+        # Audit fix #7: validate critical sidecars exist before loading.
+        # Without .snn the brain loads with no spike network state but
+        # training proceeds — silent partial restore.
+        # Resolve symlinks so we check real files not stale dangling links.
+        _real_ckpt = os.path.realpath(checkpoint_path)
+        _missing_sidecars = []
+        for _ext in ['.snn', '.cnn', '.lnn']:
+            _sc = _real_ckpt + _ext
+            if not os.path.exists(_sc):
+                _missing_sidecars.append(_ext)
+        if _missing_sidecars:
+            logger.warning(
+                "Checkpoint %s is missing critical sidecars: %s — "
+                "brain will load with default %s state. Training may be wrong.",
+                os.path.basename(checkpoint_path),
+                _missing_sidecars,
+                "/".join(s.lstrip(".") for s in _missing_sidecars))
+            print(f"  [WARN] Missing sidecars: {_missing_sidecars}", flush=True)
+
         ckpt_size = os.path.getsize(checkpoint_path) / (1024**3)
         print(f"  [2/8] Loading checkpoint: {os.path.basename(checkpoint_path)} "
               f"({ckpt_size:.1f} GB)", flush=True)

@@ -458,7 +458,9 @@ def submit_multimodal(brain, description):
         except Exception as e:
             if _has_vis:
                 print(f"  [VISUAL-TRACE] batch failed: {e}", flush=True)
-            # Fallback: submit individually
+            # Fallback: submit individually. Log every failure — silent drops
+            # mean training loses sensory data without anyone noticing.
+            _drop_count = 0
             for mod, data in batch_modalities.items():
                 try:
                     if mod == "visual":
@@ -470,8 +472,12 @@ def submit_multimodal(brain, description):
                         brain.submit_sensory("somatosensory", vec, n_segments=n_seg)
                     else:
                         brain.submit_sensory(mod, data)
-                except Exception:
-                    pass
+                except Exception as _se:
+                    _drop_count += 1
+                    print(f"  [SENSORY-DROP] mod={mod} failed: {_se}", flush=True)
+            if _drop_count > 0:
+                print(f"  [SENSORY-DROP] {_drop_count}/{len(batch_modalities)} "
+                      f"modalities lost this step", flush=True)
 
     # Cross-modal integration: process through visual cortex (occipital)
     # and focus thalamic attention on the active modalities. This triggers
@@ -5411,8 +5417,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                         losses.append(avg_loss)
                         hard_miner.record(avg_loss, desc, f, t)
                     adaptive_batch.record_loss(avg_loss)
-            except Exception:
-                # Fallback: per-sample
+            except Exception as _be:
+                # Fallback: per-sample. Audit fix #12 — log batch failure
+                # instead of swallowing it silently.
+                logger.warning("learn_vector_batch failed (%s) — falling back to "
+                               "per-sample for %d items", _be, len(mini_batch_buf))
+                _per_sample_failures = 0
                 for f, t, desc, _ in mini_batch_buf:
                     try:
                         loss = brain.learn_vector(f, t, label=desc[:50],
@@ -5421,8 +5431,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                         losses.append(loss)
                         hard_miner.record(loss, desc, f, t)
                         adaptive_batch.record_loss(loss)
-                    except Exception:
+                    except Exception as _se:
+                        _per_sample_failures += 1
                         losses.append(0.0)
+                if _per_sample_failures > 0:
+                    logger.warning("Per-sample fallback also failed for %d/%d items",
+                                   _per_sample_failures, len(mini_batch_buf))
 
             # Use cached output vectors from decide_full — no extra forward passes
             if parent.decoder:
@@ -7459,7 +7473,8 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
     sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive',
                 '.snn', '.cnn', '.lnn',
                 '.cortex_visual', '.cortex_audio',
-                '.cortex_speech', '.cortex_somato']
+                '.cortex_speech', '.cortex_somato',
+                '.knowledge', '.pink_noise']  # finding #5: were missing
     pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
     all_files = sorted(glob_mod.glob(pattern + "*"))
 
@@ -7546,16 +7561,29 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         os.replace(snapshot_tmp, snapshot_path)
 
         # CRITICAL: Rename all sidecar files written by brain.save().
-        # The C library writes to <path>.tmp.<ext> for each sidecar
-        # (.snn, .cnn, .lnn, .cortex_*, .meta, .tokenizer, etc.)
-        # If we only rename the main .bin, the sidecars stay orphaned and
-        # the brain loads stale state on restart (especially the 27GB .snn).
+        # Two classes of sidecar:
+        #   (a) C-side atomic-rename writers: .snn, .cnn, .lnn, .cortex_*
+        #       — written to <path>.tmp.<ext> via internal atomic rename.
+        #       glob(snapshot_tmp + ".*") finds these.
+        #   (b) C-side direct writers: .meta, .executive, .mirror_neurons,
+        #       .tokenizer, .knowledge, .pink_noise — written DIRECTLY (no
+        #       internal .tmp), so they end up at <path>.tmp.<ext> too
+        #       (because we passed snapshot_tmp as the base path).
+        # Either way, glob finds them. Use the explicit list for symlink
+        # update afterwards so we know exactly what to link.
+        ALL_SIDECARS = ['.snn', '.cnn', '.lnn',
+                        '.cortex_visual', '.cortex_audio',
+                        '.cortex_speech', '.cortex_somato',
+                        '.meta', '.tokenizer', '.mirror_neurons', '.executive',
+                        '.knowledge', '.pink_noise']
         import glob as _g
         sidecar_tmps = _g.glob(snapshot_tmp + ".*")
+        renamed_exts = set()
         for stmp in sidecar_tmps:
             ext = stmp[len(snapshot_tmp):]  # ".snn", ".cnn", etc.
             try:
                 os.replace(stmp, snapshot_path + ext)
+                renamed_exts.add(ext)
             except OSError as _e:
                 logger.warning("Failed to rename sidecar %s: %s", stmp, _e)
 
@@ -7567,20 +7595,19 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                 os.remove(canonical_tmp)
             os.symlink(snapshot_name, canonical_tmp)
             os.replace(canonical_tmp, canonical)
-        except OSError:
+        except OSError as _se:
+            logger.warning("Symlink update for %s failed: %s — falling back to copy",
+                           canonical, _se)
             try:
                 import shutil
                 shutil.copy2(snapshot_path, canonical)
-            except Exception:
-                pass
+            except Exception as _ce:
+                logger.error("Canonical copy fallback also failed: %s", _ce)
 
-        # Update sidecar symlinks (or copy if symlink unsupported).
-        # Without this, athena_immersive.bin.snn would point to the stale
-        # initial-creation .snn instead of the current step's .snn.
-        for ext in ['.snn', '.cnn', '.lnn', '.meta', '.tokenizer',
-                    '.mirror_neurons', '.executive',
-                    '.cortex_visual', '.cortex_audio',
-                    '.cortex_speech', '.cortex_somato']:
+        # Update sidecar symlinks. Without this, athena_immersive.bin.snn
+        # points to a stale .snn from a previous snapshot.
+        symlink_failures = 0
+        for ext in ALL_SIDECARS:
             src = snapshot_path + ext
             dst = canonical + ext
             if not os.path.exists(src):
@@ -7591,8 +7618,12 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                     os.remove(tmp_link)
                 os.symlink(snapshot_name + ext, tmp_link)
                 os.replace(tmp_link, dst)
-            except OSError:
-                pass  # best-effort
+            except OSError as _e:
+                symlink_failures += 1
+                logger.warning("Sidecar symlink %s failed: %s", dst, _e)
+        if symlink_failures > 0:
+            logger.warning("%d sidecar symlinks failed — restart may load stale state",
+                           symlink_failures)
 
         logger.info("Checkpoint snapshot: %s (stage=%d, step=%d, size=%.1f MB)",
                      snapshot_name, stage, step, tmp_size / 1e6)
@@ -7604,8 +7635,9 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         try:
             with open(STATE_FILE, "w") as f:
                 json.dump(state, f, indent=2)
-        except Exception:
-            pass
+        except Exception as _state_e:
+            logger.warning("State file write failed: %s — resume may load stale step",
+                           _state_e)
     except Exception as e:
         logger.warning("Checkpoint save failed: %s", e)
         if os.path.exists(snapshot_tmp):
@@ -7615,13 +7647,14 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                 pass
         return
 
-    # Save sidecar files alongside the snapshot
+    # Save decoder alongside the snapshot. Log failures — silent decoder
+    # save loss means the decoder vocabulary diverges from brain outputs.
     if decoder:
         os.makedirs(DECODER_DIR, exist_ok=True)
         try:
             decoder.save(DECODER_DIR)
-        except Exception:
-            pass
+        except Exception as _de:
+            logger.warning("Decoder save failed: %s — vocab will be out of sync", _de)
 
     # State file already written in _save_checkpoint() before thread started
 
@@ -8447,13 +8480,25 @@ def main():
     if args.resume:
         state = _load_state()
         if state:
-            # Validate that the snapshot file actually exists
+            # Validate that the snapshot AND its critical sidecars exist.
+            # A bare main .bin without its .snn (etc.) means brain loads
+            # without spike network state — silent partial restore.
             snapshot = state.get("snapshot", "")
             snapshot_path = os.path.join(CHECKPOINT_DIR, snapshot) if snapshot else ""
+            CRITICAL_SIDECARS = ['.snn', '.cnn', '.lnn']  # the "real" networks
+            missing_sidecars = []
             if snapshot_path and os.path.exists(snapshot_path):
+                for ext in CRITICAL_SIDECARS:
+                    if not os.path.exists(snapshot_path + ext):
+                        missing_sidecars.append(ext)
+            if snapshot_path and os.path.exists(snapshot_path) and not missing_sidecars:
                 start_stage = state.get("stage", args.stage)
                 start_step = state.get("step", 0)
                 print(f"  Resuming from stage {start_stage}, step {start_step} ({snapshot})")
+            elif missing_sidecars:
+                print(f"  WARNING: {snapshot} exists but missing sidecars: "
+                      f"{missing_sidecars} — checkpoint is partial, falling back")
+                snapshot_path = ""  # force fallback below
             else:
                 # State file points to pruned/missing snapshot — find latest
                 import glob
@@ -8566,6 +8611,11 @@ def main():
         start_step = 0
         # Save checkpoint at stage transition so --resume skips completed stages
         _save_checkpoint(brain, decoder, stage=1, step=0)
+        # Wait for the save to complete before declaring it — the prior
+        # implementation said "saved" while the background thread was still
+        # writing, so a crash in that window left state pointing nowhere.
+        if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
+            _checkpoint_thread.join(timeout=300)
         print("  [Checkpoint] Stage 0 complete → saved as stage 1, step 0")
 
     if start_stage <= 1:
@@ -8575,6 +8625,8 @@ def main():
                     start_from=start_step if start_stage == 1 else 0)
         start_step = 0
         _save_checkpoint(brain, decoder, stage=2, step=0)
+        if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
+            _checkpoint_thread.join(timeout=300)
         print("  [Checkpoint] Stage 1 complete → saved as stage 2, step 0")
 
     if start_stage <= 2:
@@ -8588,6 +8640,8 @@ def main():
                   f"{np.mean(stage2_losses[-500:]):.4f}")
         start_step = 0
         _save_checkpoint(brain, decoder, stage=3, step=0)
+        if _checkpoint_thread is not None and _checkpoint_thread.is_alive():
+            _checkpoint_thread.join(timeout=300)
         print("  [Checkpoint] Stage 2 complete → saved as stage 3, step 0")
 
     if start_stage <= 3:
