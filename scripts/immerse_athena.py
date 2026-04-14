@@ -5362,12 +5362,12 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
         if sensory_mods and i < 5:
             print(f"  [Sensory] step {i}: {'+'.join(sensory_mods)} for '{description[:60]}'", flush=True)
 
-        # Skip decide_full in early stage 0 — the brain hasn't learned enough
-        # for inference to be useful. This saves ~20s per item.
-        # After STAGE0_DECIDE_SKIP_STEPS, run decide_full every Nth item for
-        # decoder training and contrastive regularization.
-        STAGE0_DECIDE_SKIP_STEPS = 2000
-        STAGE0_DECIDE_INTERVAL = 4  # After skip period, decide every 4th item
+        # Skip decide_full for all of stage 0 — sensory exposure phase.
+        # decide_full balloons to 2+ minutes after step 2000 due to accumulated
+        # cognitive state. The decoder/contrastive regularization can wait
+        # until stage 1 where naming/labeling makes inference meaningful.
+        STAGE0_DECIDE_SKIP_STEPS = 999999  # never run in stage 0
+        STAGE0_DECIDE_INTERVAL = 4
         _dec_ms = 0
         result = None
         _out_vec = None
