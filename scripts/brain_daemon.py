@@ -1472,6 +1472,13 @@ class AutoCheckpointer:
             self._save_count = 1  # Allow saves immediately
 
     def start(self):
+        # interval <= 0 disables the auto-checkpointer entirely.
+        # Use this when an external system (training script) already handles
+        # checkpointing — prevents duplicate disk usage from two save systems.
+        if self.interval <= 0:
+            logger.info("Auto-checkpoint DISABLED (interval=%ds)", self.interval)
+            self._running = False
+            return
         self._running = True
         self._thread = threading.Thread(target=self._run, daemon=True,
                                          name="auto-checkpoint")
