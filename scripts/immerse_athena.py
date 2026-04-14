@@ -8516,11 +8516,26 @@ def main():
                       f"{missing_sidecars} — checkpoint is partial, falling back")
                 snapshot_path = ""  # force fallback below
             else:
-                # State file points to pruned/missing snapshot — find latest
+                # State file points to pruned/missing snapshot — find latest.
+                # Also check the canonical athena_immersive.bin which is
+                # always the "latest" (may be symlink or regular file).
                 import glob
                 candidates = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")),
                                     key=os.path.getmtime, reverse=True)
-                if candidates:
+                # Filter to real .bin files, not sidecars (.bin.snn etc.)
+                candidates = [c for c in candidates
+                              if c.endswith(".bin") and ".bin." not in os.path.basename(c)]
+
+                # If no timestamped snapshots but canonical exists, trust the
+                # state file's step/stage — the brain will load from
+                # athena_immersive.bin regardless.
+                canonical_path = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+                if not candidates and os.path.exists(canonical_path):
+                    start_stage = state.get("stage", args.stage)
+                    start_step = state.get("step", 0)
+                    print(f"  Resume: canonical {canonical_path} exists — "
+                          f"using state file stage {start_stage}, step {start_step}")
+                elif candidates:
                     # Parse stage/step from filename: athena_s{stage}_step{step}.bin
                     latest = os.path.basename(candidates[0])
                     import re
