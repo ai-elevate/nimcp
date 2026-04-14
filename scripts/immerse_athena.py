@@ -7505,24 +7505,49 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         # Write to temp file — if interrupted, no existing checkpoint is touched
         brain.save(snapshot_tmp)
 
-        # Verify the temp file is non-trivial — scale threshold with neuron count
+        # Verify the temp file is non-trivial. The main .bin holds only the
+        # ANN portion (~750 MB for 150K neurons); the SNN/CNN/LNN are in
+        # .tmp.snn/.tmp.cnn/.tmp.lnn sidecars. Use a small threshold for
+        # the main file alone and verify the SNN sidecar separately.
         tmp_size = os.path.getsize(snapshot_tmp)
-        try:
-            n_count = brain.get_neuron_count()
-        except Exception:
-            n_count = DEFAULT_ANN_NEURONS
-        min_size = max(CHECKPOINT_MIN_SIZE, n_count * CHECKPOINT_MIN_BYTES_PER_NEURON)
-        if tmp_size < min_size:
-            logger.error("Checkpoint too small (%d bytes) — likely truncated, discarding",
+        if tmp_size < CHECKPOINT_MIN_SIZE:
+            logger.error("Checkpoint main .bin too small (%d bytes) — discarding",
                          tmp_size)
             os.remove(snapshot_tmp)
+            # Also clean up sidecar tmps to avoid orphans
+            import glob as _gc
+            for stmp in _gc.glob(snapshot_tmp + ".*"):
+                try:
+                    os.remove(stmp)
+                except OSError:
+                    pass
             return
+
+        # Verify SNN sidecar exists if SNN is in use (the big one we kept losing)
+        snn_tmp = snapshot_tmp + ".snn"
+        if os.path.exists(snn_tmp):
+            snn_size = os.path.getsize(snn_tmp)
+            logger.info("SNN sidecar size: %.1f GB", snn_size / 1e9)
 
         # Atomic rename temp -> snapshot
         os.replace(snapshot_tmp, snapshot_path)
 
+        # CRITICAL: Rename all sidecar files written by brain.save().
+        # The C library writes to <path>.tmp.<ext> for each sidecar
+        # (.snn, .cnn, .lnn, .cortex_*, .meta, .tokenizer, etc.)
+        # If we only rename the main .bin, the sidecars stay orphaned and
+        # the brain loads stale state on restart (especially the 27GB .snn).
+        import glob as _g
+        sidecar_tmps = _g.glob(snapshot_tmp + ".*")
+        for stmp in sidecar_tmps:
+            ext = stmp[len(snapshot_tmp):]  # ".snn", ".cnn", etc.
+            try:
+                os.replace(stmp, snapshot_path + ext)
+            except OSError as _e:
+                logger.warning("Failed to rename sidecar %s: %s", stmp, _e)
+
         # Update canonical symlink (athena_immersive.bin -> latest snapshot)
-        # Use tmp symlink + atomic rename for safety
+        # AND all sidecar symlinks so the brain loads matching .snn/.cnn/etc.
         canonical_tmp = canonical + ".lnk"
         try:
             if os.path.exists(canonical_tmp):
@@ -7530,12 +7555,31 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
             os.symlink(snapshot_name, canonical_tmp)
             os.replace(canonical_tmp, canonical)
         except OSError:
-            # Fallback: just copy if symlinks fail
             try:
                 import shutil
                 shutil.copy2(snapshot_path, canonical)
             except Exception:
                 pass
+
+        # Update sidecar symlinks (or copy if symlink unsupported).
+        # Without this, athena_immersive.bin.snn would point to the stale
+        # initial-creation .snn instead of the current step's .snn.
+        for ext in ['.snn', '.cnn', '.lnn', '.meta', '.tokenizer',
+                    '.mirror_neurons', '.executive',
+                    '.cortex_visual', '.cortex_audio',
+                    '.cortex_speech', '.cortex_somato']:
+            src = snapshot_path + ext
+            dst = canonical + ext
+            if not os.path.exists(src):
+                continue
+            try:
+                tmp_link = dst + ".lnk"
+                if os.path.exists(tmp_link):
+                    os.remove(tmp_link)
+                os.symlink(snapshot_name + ext, tmp_link)
+                os.replace(tmp_link, dst)
+            except OSError:
+                pass  # best-effort
 
         logger.info("Checkpoint snapshot: %s (stage=%d, step=%d, size=%.1f MB)",
                      snapshot_name, stage, step, tmp_size / 1e6)
