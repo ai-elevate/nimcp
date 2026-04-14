@@ -2416,13 +2416,12 @@ int snn_network_save(snn_network_t* network, const char* path) {
             SNN_FWRITE(csr->row_ptr, sizeof(uint32_t), csr->n_neurons + 1, f);
             SNN_FWRITE(csr->entries, sizeof(snn_csr_synapse_t), csr->n_synapses, f);
 
-            /* GPU-ready arrays (if prepared) */
-            uint8_t has_gpu = csr->gpu_ready ? 1 : 0;
+            /* GPU arrays (weights[], flat_col_idx[]) are derived from entries[]
+             * — skip writing them to save ~8 bytes/synapse (~11.6 GB for 1.45B).
+             * They will be regenerated on first GPU step via snn_csr_prepare_gpu().
+             * Always write has_gpu=0 to signal "regenerate on demand". */
+            uint8_t has_gpu = 0;
             SNN_FWRITE(&has_gpu, sizeof(uint8_t), 1, f);
-            if (csr->gpu_ready && csr->weights && csr->flat_col_idx) {
-                SNN_FWRITE(csr->weights, sizeof(float), csr->n_synapses, f);
-                SNN_FWRITE(csr->flat_col_idx, sizeof(uint32_t), csr->n_synapses, f);
-            }
         }
         NIMCP_LOGGING_INFO("SNN save: %u lightweight CSR populations saved", n_lightweight);
     }
