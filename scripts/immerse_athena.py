@@ -7496,12 +7496,16 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
     """
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-    # Check disk space before saving
-    if not _check_disk_space(min_gb=5.0):
-        logger.warning("Low disk space — pruning old snapshots")
-        _prune_checkpoint_snapshots(max_snapshots=2)
-        if not _check_disk_space(min_gb=2.0):
-            logger.error("Still insufficient disk space — skipping checkpoint save")
+    # Need ~20 GB free for new checkpoint write (.snn alone is ~10-12 GB
+    # gzipped, plus other sidecars). If low, ship-and-delete the previous
+    # snapshot to Hetzner BEFORE writing the new one — never hold 2x locally.
+    DISK_HEADROOM_GB = 20.0
+    if not _check_disk_space(min_gb=DISK_HEADROOM_GB):
+        logger.warning("Low disk space (<%g GB free) — shipping previous snapshot first",
+                       DISK_HEADROOM_GB)
+        _ship_and_remove_previous_snapshot()
+        if not _check_disk_space(min_gb=DISK_HEADROOM_GB / 2):
+            logger.error("Still insufficient disk space after ship — skipping save")
             return
 
     snapshot_name = f"athena_s{stage}_step{step}.bin"
@@ -7640,6 +7644,57 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
     # for fast restart. The previous step's files (older snapshot) get
     # removed when the next save's prune fires.
     _ship_to_hetzner(snapshot_path, snapshot_name, stage, step)
+
+
+def _ship_and_remove_previous_snapshot():
+    """Find the current (symlinked) snapshot, ship it + sidecars to Hetzner
+    via rsync --remove-source-files, then break the symlink.
+
+    Called when disk space is low BEFORE writing a new checkpoint.
+    After this, the brain has no local snapshot — it would need to pull
+    from Hetzner on restart. But we free the disk to write the new save.
+    """
+    canonical = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+    if not os.path.islink(canonical):
+        return
+    try:
+        target = os.readlink(canonical)  # athena_s0_step{N}.bin
+    except OSError:
+        return
+    target_path = os.path.join(CHECKPOINT_DIR, target)
+    if not os.path.exists(target_path):
+        return
+
+    sidecars = ['.snn', '.cnn', '.lnn',
+                '.cortex_visual', '.cortex_audio',
+                '.cortex_speech', '.cortex_somato',
+                '.meta', '.tokenizer', '.mirror_neurons', '.executive']
+    files = [target_path] + [target_path + ext for ext in sidecars
+                              if os.path.exists(target_path + ext)]
+    if not files:
+        return
+
+    import subprocess
+    HETZNER_HOST = "bbrelin@176.9.99.103"
+    HETZNER_DIR = "/home/bbrelin/nimcp/checkpoints/athena"
+    try:
+        cmd = ["rsync", "-az", "--partial", "--timeout=300",
+               "--remove-source-files",
+               "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+               ] + files + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
+        r = subprocess.run(cmd, timeout=900, capture_output=True)
+        if r.returncode != 0:
+            logger.warning("Pre-save ship failed: %s", r.stderr.decode()[:500])
+            return
+        logger.info("Pre-save: shipped+removed previous snapshot %s (%d files)",
+                    target, len(files))
+        # Break the now-dangling symlink so resume falls back to next-newest local
+        try:
+            os.remove(canonical)
+        except OSError:
+            pass
+    except Exception as e:
+        logger.warning("Pre-save ship error: %s", e)
 
 
 def _ship_to_hetzner(snapshot_path, snapshot_name, stage, step):
