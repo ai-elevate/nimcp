@@ -1119,6 +1119,10 @@ int snn_network_step(snn_network_t* network, float dt) {
                                 snn_population_t* src = network->populations[syn->src_pop];
                                 if (!src || !src->spike_output) continue;
                                 if (syn->src_neuron >= src->n_neurons) continue;
+                                /* Verify tensor dtype before casting — non-lightweight
+                                 * pops may use different dtypes (audit bug #2) */
+                                if (nimcp_tensor_dtype(src->spike_output) != NIMCP_DTYPE_F32)
+                                    continue;
                                 const float* src_sp =
                                     (const float*)nimcp_tensor_data_const(src->spike_output);
                                 if (src_sp && src_sp[syn->src_neuron] > 0.5f) {
@@ -1158,7 +1162,9 @@ int snn_network_step(snn_network_t* network, float dt) {
                 int tier = -1;
                 if (strncmp(pop->name, "input", 5) == 0) tier = 0;
                 else if (strncmp(pop->name, "output", 6) == 0) tier = 9;
-                else if (pop->name[0] == 'L' && pop->name[1] >= '0' && pop->name[1] <= '7')
+                /* Strict L<digit>_ pattern — avoid matching "L10..." or "Ldifferent" */
+                else if (pop->name[0] == 'L' && pop->name[1] >= '0' && pop->name[1] <= '7'
+                         && (pop->name[2] == '\0' || pop->name[2] == '_'))
                     tier = (pop->name[1] - '0') + 1;  /* L0→1, L1→2, ... L7→8 */
                 if (tier < 0 || tier >= 10) continue;
                 uint32_t s = 0;
@@ -2874,11 +2880,29 @@ snn_network_t* snn_network_load(const char* path) {
                     pop_offsets[p + 1] = pop_offsets[p] +
                         (net->populations[p] ? net->populations[p]->n_neurons : 0);
                 }
+                /* Audit bug #7: track GPU prep success/failure per pop.
+                 * Without this, silent CPU fallback degrades perf 10-100x. */
+                uint32_t gpu_ok = 0, gpu_fail = 0;
                 for (uint32_t p = 0; p < net->n_populations; p++) {
                     snn_population_t* pop = net->populations[p];
                     if (pop && pop->lightweight && pop->incoming_csr && !pop->incoming_csr->gpu_ready) {
-                        snn_csr_prepare_gpu(pop->incoming_csr, pop_offsets, net->n_populations);
+                        if (snn_csr_prepare_gpu(pop->incoming_csr, pop_offsets,
+                                                net->n_populations) == 0) {
+                            gpu_ok++;
+                        } else {
+                            gpu_fail++;
+                            NIMCP_LOGGING_WARN("GPU prep failed for pop '%s' — "
+                                               "falling back to CPU (perf hit)",
+                                               pop->name);
+                        }
                     }
+                }
+                if (gpu_fail > 0) {
+                    NIMCP_LOGGING_WARN("snn_load: %u/%u CSR populations FAILED GPU prep",
+                                       gpu_fail, gpu_ok + gpu_fail);
+                } else if (gpu_ok > 0) {
+                    NIMCP_LOGGING_INFO("snn_load: %u CSR populations GPU-ready",
+                                       gpu_ok);
                 }
                 nimcp_free(pop_offsets);
             }

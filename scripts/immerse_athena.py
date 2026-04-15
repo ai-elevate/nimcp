@@ -7606,8 +7606,44 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                        DISK_HEADROOM_GB)
         _ship_and_remove_previous_snapshot()
         if not _check_disk_space(min_gb=DISK_HEADROOM_GB / 2):
-            logger.error("Still insufficient disk space after ship — skipping save")
-            return
+            # EMERGENCY: ship the canonical itself (last resort).
+            # Better to lose a few minutes of training (re-do recent steps
+            # on resume) than skip saves indefinitely while disk fills.
+            # Fixes audit bug #1 — checkpoint deadlock when no older snapshot.
+            logger.warning("Disk still low after ship — emergency ship of CURRENT canonical")
+            try:
+                canonical_p = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+                if os.path.islink(canonical_p):
+                    target = os.readlink(canonical_p)
+                    target_path = os.path.join(CHECKPOINT_DIR, target)
+                    if os.path.exists(target_path):
+                        import subprocess as _sp
+                        sidecars = ['', '.snn', '.cnn', '.lnn',
+                                    '.cortex_visual', '.cortex_audio',
+                                    '.cortex_speech', '.cortex_somato',
+                                    '.meta', '.tokenizer', '.mirror_neurons', '.executive']
+                        files = [target_path + ext for ext in sidecars
+                                 if os.path.exists(target_path + ext)]
+                        if files:
+                            _sp.run(["rsync", "-az", "--partial", "--timeout=1800",
+                                     "--remove-source-files",
+                                     "-e", "ssh -o StrictHostKeyChecking=no",
+                                     ] + files + [
+                                     "bbrelin@176.9.99.103:/home/bbrelin/nimcp/checkpoints/athena/"],
+                                    timeout=2400, check=False, capture_output=True)
+                            # Remove now-dangling symlinks
+                            for ext in sidecars:
+                                lnk = canonical_p + ext
+                                if os.path.islink(lnk) and not os.path.exists(lnk):
+                                    try: os.remove(lnk)
+                                    except OSError: pass
+                            logger.warning("Emergency ship complete — brain will need to "
+                                           "pull from Hetzner on next restart")
+            except Exception as _ee:
+                logger.error("Emergency ship failed: %s", _ee)
+            if not _check_disk_space(min_gb=DISK_HEADROOM_GB / 2):
+                logger.error("STILL insufficient disk space — skipping save")
+                return
 
     snapshot_name = f"athena_s{stage}_step{step}.bin"
     snapshot_path = os.path.join(CHECKPOINT_DIR, snapshot_name)
