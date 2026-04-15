@@ -7645,10 +7645,25 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                                     except OSError: pass
                             logger.warning("Emergency ship complete — brain will need to "
                                            "pull from Hetzner on next restart")
+                            # Mark state file so resume knows local snapshot is gone
+                            # (audit follow-up: warn the operator/restart logic).
+                            try:
+                                marker = os.path.join(CHECKPOINT_DIR,
+                                                       ".local_checkpoint_shipped")
+                                with open(marker, "w") as _mf:
+                                    _mf.write(json.dumps({
+                                        "shipped_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                                        "stage": stage, "step": step,
+                                        "shipped_target": target,
+                                    }))
+                            except Exception:
+                                pass
             except Exception as _ee:
                 logger.error("Emergency ship failed: %s", _ee)
             if not _check_disk_space(min_gb=DISK_HEADROOM_GB / 2):
-                logger.error("STILL insufficient disk space — skipping save")
+                logger.error("STILL insufficient disk space — skipping save. "
+                             "Local checkpoint state may be inconsistent. "
+                             "Consider manual intervention.")
                 return
 
     snapshot_name = f"athena_s{stage}_step{step}.bin"
@@ -7781,6 +7796,14 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         # Atomic write — crash mid-write would leave .tmp instead of
         # corrupting the real file (audit bug #4).
         state_tmp = STATE_FILE + ".tmp"
+        # Clean any stale .tmp from previous crashed write (audit follow-up:
+        # without this, KEEP-list entries in startup cleanup accumulate
+        # forever since fresh writes don't reuse old .tmp files).
+        if os.path.exists(state_tmp):
+            try:
+                os.remove(state_tmp)
+            except OSError:
+                pass
         try:
             with open(state_tmp, "w") as f:
                 json.dump(state, f, indent=2)
