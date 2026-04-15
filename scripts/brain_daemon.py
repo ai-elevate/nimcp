@@ -2213,6 +2213,37 @@ def main():
     nimcp.init()
     print("  [1/8] ✓ Library initialized", flush=True)
 
+    # === STARTUP ORPHAN CLEANUP ===
+    # Sweep .tmp / .tmp.* files left from crashed-mid-save runs.
+    # When the brain is SIGKILL'd or crashes, the C-side save's .tmp
+    # files (especially the 10 GB .snn.tmp from gzip) persist.
+    try:
+        import glob as _g
+        ckpt_dir = args.checkpoint_dir
+        if os.path.isdir(ckpt_dir):
+            patterns = [
+                os.path.join(ckpt_dir, "*.tmp"),
+                os.path.join(ckpt_dir, "*.tmp.*"),
+                os.path.join(ckpt_dir, "*.snn.tmp"),
+                os.path.join(ckpt_dir, "*.lnk"),
+            ]
+            removed = 0
+            freed = 0
+            for pat in patterns:
+                for f in _g.glob(pat):
+                    try:
+                        sz = os.path.getsize(f) if os.path.exists(f) else 0
+                        os.remove(f)
+                        removed += 1
+                        freed += sz
+                    except OSError:
+                        pass
+            if removed > 0:
+                logger.info("Startup cleanup: removed %d orphan .tmp files (freed %.1f GB)",
+                            removed, freed / 1e9)
+    except Exception as _ce:
+        logger.warning("Startup cleanup error: %s", _ce)
+
     # Determine checkpoint dir — MUST be same directory as the checkpoint file
     # to avoid saving to a different filesystem path
     if args.checkpoint_dir is None:

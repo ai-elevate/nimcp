@@ -7457,6 +7457,64 @@ def _check_disk_space(min_gb=5.0):
         return True
 
 
+def _startup_cleanup_orphan_tmps():
+    """Remove orphan .tmp / .tmp.* files left from crashed-mid-save runs.
+
+    The in-process error path in _save_checkpoint_sync only fires on
+    graceful exceptions. If the brain is SIGKILL'd or crashes mid-write,
+    the .tmp files persist (each .tmp.snn is ~10 GB). This catches them
+    on next training startup.
+
+    Also sweeps any *.snn.tmp (gzip's internal temp), *.bin.tmp.* sidecars
+    from interrupted brain.save() calls, and dangling immersive symlinks.
+    """
+    if not os.path.isdir(CHECKPOINT_DIR):
+        return
+
+    import glob as _g
+    patterns = [
+        os.path.join(CHECKPOINT_DIR, "*.tmp"),
+        os.path.join(CHECKPOINT_DIR, "*.tmp.*"),
+        os.path.join(CHECKPOINT_DIR, "*.snn.tmp"),  # gzip internal temp
+        os.path.join(CHECKPOINT_DIR, "*.lnk"),       # symlink-update temps
+    ]
+    freed_bytes = 0
+    removed = 0
+    for pat in patterns:
+        for f in _g.glob(pat):
+            try:
+                sz = os.path.getsize(f) if os.path.exists(f) else 0
+                os.remove(f)
+                freed_bytes += sz
+                removed += 1
+            except OSError:
+                pass
+
+    # Also remove dangling symlinks (target deleted but link remains)
+    canonical = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
+    for ext in ['', '.snn', '.cnn', '.lnn', '.meta', '.tokenizer',
+                '.mirror_neurons', '.executive', '.knowledge', '.pink_noise',
+                '.cortex_visual', '.cortex_audio',
+                '.cortex_speech', '.cortex_somato']:
+        link = canonical + ext
+        if os.path.islink(link):
+            try:
+                target = os.readlink(link)
+                target_path = target if os.path.isabs(target) else os.path.join(CHECKPOINT_DIR, target)
+                if not os.path.exists(target_path):
+                    os.remove(link)
+                    removed += 1
+                    print(f"  [cleanup] Removed dangling symlink: {os.path.basename(link)}")
+            except OSError:
+                pass
+
+    if removed > 0 or freed_bytes > 0:
+        print(f"  [startup-cleanup] Removed {removed} orphan files, "
+              f"freed {freed_bytes / 1e9:.1f} GB")
+    else:
+        print(f"  [startup-cleanup] No orphan files found")
+
+
 def _register_checkpoint_questdb(ckpt_path, stage, step, neuron_count=DEFAULT_ANN_NEURONS):
     """Register checkpoint metadata in QuestDB via ILP protocol."""
     try:
@@ -8301,6 +8359,13 @@ def main():
                         format="%(asctime)s [%(name)s] %(message)s")
 
     _kill_stale_processes()
+
+    # === STARTUP ORPHAN CLEANUP ===
+    # If a previous run crashed mid-save, .tmp / .tmp.* sidecar files
+    # accumulate (each .tmp.snn is ~10 GB). The in-process error path
+    # only fires on graceful exception — process kills/SIGKILL leave
+    # them behind. Sweep them at startup to recover disk.
+    _startup_cleanup_orphan_tmps()
 
     # --- Load or create brain ---
     checkpoint_path = args.checkpoint

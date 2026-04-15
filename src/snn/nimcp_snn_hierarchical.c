@@ -23,6 +23,7 @@
  */
 
 #include "snn/nimcp_snn_network.h"
+#include <sys/statvfs.h>  /* for disk-space guard before .snn cache write */
 #include "snn/nimcp_snn_types.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "core/synapse_types/nimcp_synapse_types.h"
@@ -366,12 +367,25 @@ wire_connections:
              input_fanout_conn, output_converge_conn);
 
     /* Save initial CSR to sidecar path so the first checkpoint has it.
-     * Subsequent saves happen during brain.save() checkpoint cycle. */
+     * Subsequent saves happen during brain.save() checkpoint cycle.
+     * Disk guard: refuse if < 15 GB free (gzipped .snn is ~10-12 GB).
+     * Without this check, a low-disk pod fills up trying to write
+     * the cache and crashes the brain init. */
     {
-        extern int snn_network_save(snn_network_t* network, const char* path);
-        if (snn_network_save(net, SNN_SIDECAR_PATH) == 0) {
-            LOG_INFO("Saved initial SNN to %s (subsequent saves via checkpoint cycle)",
-                     SNN_SIDECAR_PATH);
+        struct statvfs _st;
+        if (statvfs("checkpoints/athena", &_st) == 0) {
+            double free_gb = (double)_st.f_bavail * _st.f_frsize / (1024.0 * 1024.0 * 1024.0);
+            if (free_gb < 15.0) {
+                LOG_WARN("Skipping initial SNN sidecar save: only %.1f GB free "
+                         "(need 15+). Brain will work but next restart re-wires SNN.",
+                         free_gb);
+            } else {
+                extern int snn_network_save(snn_network_t* network, const char* path);
+                if (snn_network_save(net, SNN_SIDECAR_PATH) == 0) {
+                    LOG_INFO("Saved initial SNN to %s (subsequent saves via checkpoint cycle)",
+                             SNN_SIDECAR_PATH);
+                }
+            }
         }
     }
 
