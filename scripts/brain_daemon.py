@@ -2219,8 +2219,8 @@ def main():
     # files (especially the 10 GB .snn.tmp from gzip) persist.
     try:
         import glob as _g
-        ckpt_dir = args.checkpoint_dir
-        if os.path.isdir(ckpt_dir):
+        ckpt_dir = args.checkpoint_dir or "checkpoints/athena"
+        if ckpt_dir and os.path.isdir(ckpt_dir):
             patterns = [
                 os.path.join(ckpt_dir, "*.tmp"),
                 os.path.join(ckpt_dir, "*.tmp.*"),
