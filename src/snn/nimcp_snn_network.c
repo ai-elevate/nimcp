@@ -1039,6 +1039,69 @@ int snn_network_step(snn_network_t* network, float dt) {
                            network->stats.avg_step_time_ms);
     }
 
+    /* === PER-POPULATION DIAGNOSTICS (NIMCP_DEBUG_SNN=1) ===
+     * Every 100 steps, dump per-population spike counts, mean V, mean I_syn.
+     * Tells us exactly which populations are firing, which are dead, and
+     * why (flat V = no input current; threshold V = input adequate). */
+    {
+        static int _snn_dbg_checked = 0, _snn_dbg = 0;
+        if (!_snn_dbg_checked) {
+            const char* env = getenv("NIMCP_DEBUG_SNN");
+            _snn_dbg = (env && env[0] == '1');
+            _snn_dbg_checked = 1;
+        }
+        if (_snn_dbg && (network->stats.total_steps % 100) == 0) {
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                snn_population_t* pop = network->populations[p];
+                if (!pop || !pop->spike_output || !pop->membrane_v) continue;
+                const float* spikes = (const float*)nimcp_tensor_data_const(pop->spike_output);
+                const float* v = (const float*)nimcp_tensor_data_const(pop->membrane_v);
+                if (!spikes || !v) continue;
+
+                uint32_t n_spiked = 0;
+                float v_sum = 0, v_min = 1e9, v_max = -1e9;
+                for (uint32_t i = 0; i < pop->n_neurons; i++) {
+                    if (spikes[i] > 0.5f) n_spiked++;
+                    v_sum += v[i];
+                    if (v[i] < v_min) v_min = v[i];
+                    if (v[i] > v_max) v_max = v[i];
+                }
+                float v_mean = v_sum / (float)pop->n_neurons;
+
+                /* External current stats (lightweight pops only) */
+                float ext_mean = 0, ext_max = 0;
+                if (pop->lightweight && pop->external_current) {
+                    for (uint32_t i = 0; i < pop->n_neurons; i++) {
+                        float ec = pop->external_current[i];
+                        ext_mean += ec;
+                        if (ec > ext_max) ext_max = ec;
+                    }
+                    ext_mean /= (float)pop->n_neurons;
+                }
+
+                /* Incoming CSR weight stats */
+                float w_mean = 0, w_max = 0;
+                uint32_t n_syn = 0;
+                if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->entries) {
+                    n_syn = pop->incoming_csr->n_synapses;
+                    for (uint32_t e = 0; e < n_syn; e++) {
+                        float w = pop->incoming_csr->entries[e].weight;
+                        w_mean += w;
+                        if (w > w_max) w_max = w;
+                    }
+                    if (n_syn > 0) w_mean /= (float)n_syn;
+                }
+
+                NIMCP_LOGGING_INFO(
+                    "[SNN-POP] %s n=%u spk=%u/%u V[%.1f..%.1f]μ=%.1f "
+                    "ext[μ=%.2f max=%.2f] w[μ=%.3f max=%.3f] nsyn=%u",
+                    pop->name, pop->n_neurons, n_spiked, pop->n_neurons,
+                    v_min, v_max, v_mean,
+                    ext_mean, ext_max, w_mean, w_max, n_syn);
+            }
+        }
+    }
+
     return total_spikes;
 }
 
