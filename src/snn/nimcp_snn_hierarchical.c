@@ -374,9 +374,10 @@ wire_connections:
         struct statvfs _st;
         if (statvfs("checkpoints/athena", &_st) == 0) {
             double free_gb = (double)_st.f_bavail * _st.f_frsize / (1024.0 * 1024.0 * 1024.0);
-            if (free_gb < 15.0) {
+            /* Aligned with Python disk guard (20 GB). Audit bug #8. */
+            if (free_gb < 20.0) {
                 LOG_WARN("Skipping initial SNN sidecar save: only %.1f GB free "
-                         "(need 15+). Brain will work but next restart re-wires SNN.",
+                         "(need 20+). Brain will work but next restart re-wires SNN.",
                          free_gb);
             } else {
                 extern int snn_network_save(snn_network_t* network, const char* path);

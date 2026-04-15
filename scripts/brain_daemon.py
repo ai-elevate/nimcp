@@ -2227,10 +2227,14 @@ def main():
                 os.path.join(ckpt_dir, "*.snn.tmp"),
                 os.path.join(ckpt_dir, "*.lnk"),
             ]
+            # Don't delete short-lived state files mid-write (audit bug #4)
+            KEEP = {"immersive_state.json.tmp"}
             removed = 0
             freed = 0
             for pat in patterns:
                 for f in _g.glob(pat):
+                    if os.path.basename(f) in KEEP:
+                        continue
                     try:
                         sz = os.path.getsize(f) if os.path.exists(f) else 0
                         os.remove(f)

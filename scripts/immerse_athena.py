@@ -7478,10 +7478,16 @@ def _startup_cleanup_orphan_tmps():
         os.path.join(CHECKPOINT_DIR, "*.snn.tmp"),  # gzip internal temp
         os.path.join(CHECKPOINT_DIR, "*.lnk"),       # symlink-update temps
     ]
+    # Keep small in-flight files that would re-create instantly (state file,
+    # cognitive seed flag) — audit bug #4 preventive measure.
+    KEEP_BASENAMES = {"immersive_state.json.tmp", ".cognitive_seeded.tmp",
+                      ".memory_seeded.tmp", ".spectral_fold.tmp"}
     freed_bytes = 0
     removed = 0
     for pat in patterns:
         for f in _g.glob(pat):
+            if os.path.basename(f) in KEEP_BASENAMES:
+                continue
             try:
                 sz = os.path.getsize(f) if os.path.exists(f) else 0
                 os.remove(f)
@@ -7683,16 +7689,17 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         os.replace(snapshot_tmp, snapshot_path)
 
         # CRITICAL: Rename all sidecar files written by brain.save().
-        # Two classes of sidecar:
-        #   (a) C-side atomic-rename writers: .snn, .cnn, .lnn, .cortex_*
-        #       — written to <path>.tmp.<ext> via internal atomic rename.
-        #       glob(snapshot_tmp + ".*") finds these.
-        #   (b) C-side direct writers: .meta, .executive, .mirror_neurons,
-        #       .tokenizer, .knowledge, .pink_noise — written DIRECTLY (no
-        #       internal .tmp), so they end up at <path>.tmp.<ext> too
-        #       (because we passed snapshot_tmp as the base path).
-        # Either way, glob finds them. Use the explicit list for symlink
-        # update afterwards so we know exactly what to link.
+        # All sidecars are now atomic .tmp+rename inside the C library:
+        #   .snn (snn_network_save: writes <path>.tmp then renames)
+        #   .cnn .lnn .cortex_* (same pattern, internal .tmp+rename)
+        #   .meta .executive .mirror_neurons .tokenizer (audit fix #2/#3
+        #     made these atomic too — were previously direct writes)
+        # Since we passed snapshot_tmp ("athena_s0_step{N}.bin.tmp") as
+        # the base path, the C library wrote files at:
+        #   athena_s0_step{N}.bin.tmp.<ext>  (after C internal rename)
+        # We now rename those to the real names. glob() finds all of
+        # them. The ALL_SIDECARS list below is used for symlink update,
+        # which still needs explicit names (glob doesn't help).
         ALL_SIDECARS = ['.snn', '.cnn', '.lnn',
                         '.cortex_visual', '.cortex_audio',
                         '.cortex_speech', '.cortex_somato',
@@ -7728,24 +7735,41 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
 
         # Update sidecar symlinks. Without this, athena_immersive.bin.snn
         # points to a stale .snn from a previous snapshot.
-        symlink_failures = 0
-        for ext in ALL_SIDECARS:
+        # Audit bug #10: symlink failures used to silently warn, now we
+        # retry then raise — stale-state silently loading is too dangerous.
+        def _update_one_symlink(ext):
             src = snapshot_path + ext
             dst = canonical + ext
             if not os.path.exists(src):
-                continue
+                return None  # nothing to link, not a failure
+            tmp_link = dst + ".lnk"
+            if os.path.exists(tmp_link):
+                os.remove(tmp_link)
+            os.symlink(snapshot_name + ext, tmp_link)
+            os.replace(tmp_link, dst)
+            return True
+
+        retry_failures = []
+        for ext in ALL_SIDECARS:
             try:
-                tmp_link = dst + ".lnk"
-                if os.path.exists(tmp_link):
-                    os.remove(tmp_link)
-                os.symlink(snapshot_name + ext, tmp_link)
-                os.replace(tmp_link, dst)
+                _update_one_symlink(ext)
             except OSError as _e:
-                symlink_failures += 1
-                logger.warning("Sidecar symlink %s failed: %s", dst, _e)
-        if symlink_failures > 0:
-            logger.warning("%d sidecar symlinks failed — restart may load stale state",
-                           symlink_failures)
+                logger.warning("Sidecar symlink %s failed once: %s — retrying",
+                               canonical + ext, _e)
+                # Retry with fresh tmp name (in case .lnk was stale)
+                try:
+                    _update_one_symlink(ext)
+                except OSError as _e2:
+                    retry_failures.append((ext, str(_e2)))
+
+        if retry_failures:
+            msg = ("Sidecar symlink update failed after retry for {} extensions: {}"
+                   " — refusing to mark save complete. Brain will load stale "
+                   "state on next restart unless this is fixed.").format(
+                len(retry_failures), retry_failures)
+            logger.error(msg)
+            # Raise so save is treated as failed (state file NOT updated).
+            raise IOError(msg)
 
         logger.info("Checkpoint snapshot: %s (stage=%d, step=%d, size=%.1f MB)",
                      snapshot_name, stage, step, tmp_size / 1e6)
@@ -7754,12 +7778,21 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
         state = {"stage": stage, "step": step,
                  "snapshot": snapshot_name,
                  "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")}
+        # Atomic write — crash mid-write would leave .tmp instead of
+        # corrupting the real file (audit bug #4).
+        state_tmp = STATE_FILE + ".tmp"
         try:
-            with open(STATE_FILE, "w") as f:
+            with open(state_tmp, "w") as f:
                 json.dump(state, f, indent=2)
+            os.replace(state_tmp, STATE_FILE)
         except Exception as _state_e:
             logger.warning("State file write failed: %s — resume may load stale step",
                            _state_e)
+            try:
+                if os.path.exists(state_tmp):
+                    os.remove(state_tmp)
+            except OSError:
+                pass
     except Exception as e:
         logger.warning("Checkpoint save failed: %s — cleaning up .tmp files", e)
         # Clean up ALL .tmp files for this snapshot, not just the main .bin.

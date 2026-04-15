@@ -482,11 +482,19 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
                 float pre = src_spikes[entry->src_neuron];
                 if (pre < 0.5f) continue;  /* Pre didn't spike */
 
-                /* Reward-modulated Hebbian with weight decay */
-                float decay = 0.0001f;
-                float delta = scale * (1.0f - decay * entry->weight);
-                entry->weight += delta;
-                /* Clamp to keep weights bounded */
+                /* Reward-modulated Hebbian + standard L2 weight decay
+                 * (audit bug #3: previous formula `scale * (1 - decay*w)` had
+                 * decay coupled to learning rate sign — wrong semantics).
+                 *
+                 * Δw = scale × (pre × post) - decay × w
+                 * Both pre and post are 1 here (we filtered above), so:
+                 * Δw = scale - decay × w
+                 *
+                 * scale > 0 (positive reward): weights grow, clamp at +2
+                 * scale < 0 (negative reward): weights shrink, clamp at -2
+                 * decay always pulls weight toward 0 regardless of reward */
+                float decay_rate = 1e-5f;  /* Small — clamp does the heavy lifting */
+                entry->weight += scale - decay_rate * entry->weight;
                 if (entry->weight > 2.0f) entry->weight = 2.0f;
                 if (entry->weight < -2.0f) entry->weight = -2.0f;
                 updates++;
