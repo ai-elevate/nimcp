@@ -7716,39 +7716,44 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
 
 
 def _ship_and_remove_previous_snapshot():
-    """Find the current (symlinked) snapshot, ship it + sidecars to Hetzner
-    via rsync --remove-source-files, then break the symlink.
+    """Ship an OLDER snapshot (not the current canonical target) to Hetzner
+    and remove it locally to free disk space.
 
-    Called when disk space is low BEFORE writing a new checkpoint.
-    After this, the brain has no local snapshot — it would need to pull
-    from Hetzner on restart. But we free the disk to write the new save.
+    NEVER ships the current canonical target — we need that locally for
+    restart. If only the canonical snapshot exists (no older ones), this
+    does nothing and the save will fail; better to fail safely than to
+    remove the only local brain state.
     """
-    # Find the "previous snapshot" to ship. Two cases:
-    #   (a) canonical is a symlink → ship its target
-    #   (b) canonical is a regular file (copy-fallback path) → find the
-    #       most recent athena_s*_step*.bin that isn't the current save
     canonical = os.path.join(CHECKPOINT_DIR, "athena_immersive.bin")
-    target_path = None
+    current_target = None
     if os.path.islink(canonical):
         try:
-            target = os.readlink(canonical)
-            target_path = os.path.join(CHECKPOINT_DIR, target)
+            current_target = os.readlink(canonical)
         except OSError:
-            target_path = None
+            pass
 
-    if target_path is None or not os.path.exists(target_path):
-        # Fallback: find oldest athena_s*_step*.bin to ship+delete
-        import glob as _g
-        candidates = sorted(_g.glob(os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")),
-                            key=os.path.getmtime)
-        # Filter to bare .bin files, not sidecars
-        candidates = [c for c in candidates if c.endswith(".bin") and ".bin." not in os.path.basename(c)]
-        if not candidates:
-            logger.warning("Pre-save ship: no snapshot files found to free space")
-            return
-        target_path = candidates[0]  # oldest
-        logger.info("Pre-save ship: canonical isn't symlink, using oldest snapshot %s",
-                    os.path.basename(target_path))
+    # Collect all athena_s*_step*.bin files
+    import glob as _g
+    candidates = sorted(_g.glob(os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")),
+                        key=os.path.getmtime)
+    candidates = [c for c in candidates
+                  if c.endswith(".bin") and ".bin." not in os.path.basename(c)]
+
+    # CRITICAL: exclude the current canonical target so we never delete
+    # the only local copy of the brain state.
+    if current_target:
+        candidates = [c for c in candidates
+                      if os.path.basename(c) != current_target]
+
+    if not candidates:
+        logger.warning("Pre-save ship: no OLDER snapshots to ship "
+                       "(current target: %s) — refusing to delete canonical",
+                       current_target or "unknown")
+        return
+    target_path = candidates[0]  # oldest
+    logger.info("Pre-save ship: shipping oldest snapshot %s "
+                "(keeping current %s)",
+                os.path.basename(target_path), current_target or "none")
 
     sidecars = ['.snn', '.cnn', '.lnn',
                 '.cortex_visual', '.cortex_audio',
@@ -7767,17 +7772,14 @@ def _ship_and_remove_previous_snapshot():
                "--remove-source-files",
                "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
                ] + files + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
-        r = subprocess.run(cmd, timeout=900, capture_output=True)
+        r = subprocess.run(cmd, timeout=1800, capture_output=True)
         if r.returncode != 0:
             logger.warning("Pre-save ship failed: %s", r.stderr.decode()[:500])
             return
-        logger.info("Pre-save: shipped+removed previous snapshot %s (%d files)",
-                    target, len(files))
-        # Break the now-dangling symlink so resume falls back to next-newest local
-        try:
-            os.remove(canonical)
-        except OSError:
-            pass
+        logger.info("Pre-save: shipped+removed older snapshot %s (%d files) — "
+                    "canonical %s preserved",
+                    os.path.basename(target_path), len(files),
+                    current_target or "unchanged")
     except Exception as e:
         logger.warning("Pre-save ship error: %s", e)
 
