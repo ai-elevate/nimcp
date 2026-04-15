@@ -77,16 +77,16 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 #define NUM_SKIPS (sizeof(SKIP_DEFS) / sizeof(SKIP_DEFS[0]))
 
 /* Input fan-out and output convergence wiring parameters */
-/* Weights were too small for the reduced-connectivity setup: L1 fired
- * only 1-2/22K neurons, L2+ never fired at all (V stuck at -65). With
- * 0.2-0.5% tier connectivity, we need ~4x more weight per synapse to
- * get enough I_syn to propagate past tier 1. */
+/* Weight tuning history:
+ *  0.3  (original): L1 fired 1-2/22K, L2+ all dead (V stuck at -65)
+ *  1.2  (4x):       1.75M spikes/step (97% of 1.8M) — runaway excitation
+ *  0.6  (2x):       target — moderate propagation, not saturating */
 #define SNN_INPUT_FANOUT_CONNECTIVITY   0.01f  /**< input_pop → tier 0 connectivity */
-#define SNN_INPUT_FANOUT_WEIGHT_MEAN    1.2f   /**< AMPA synapse weight mean (was 0.3) */
-#define SNN_INPUT_FANOUT_WEIGHT_STD     0.4f   /**< Weight standard deviation */
+#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.6f   /**< AMPA synapse weight mean (was 0.3) */
+#define SNN_INPUT_FANOUT_WEIGHT_STD     0.2f   /**< Weight standard deviation */
 #define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.005f /**< tier 7 → output_pop connectivity */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.8f   /**< AMPA synapse weight mean (was 0.2) */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.25f  /**< Weight standard deviation */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.4f   /**< AMPA synapse weight mean (was 0.2) */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.15f  /**< Weight standard deviation */
 
 
 /* Well-known SNN sidecar path from the checkpoint system.
@@ -229,12 +229,12 @@ wire_connections:
         for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[t + 1]; dp < tier_start_pop[t + 2]; dp++) {
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* FF weights boosted 4x (was 0.3) to compensate for
-                 * reduced connectivity — signal was dying at L1→L2. */
+                /* FF weights 2x boost (0.3→0.6) — 4x caused runaway
+                 * firing (97% of neurons spiking every step). */
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, ff_conn,
-                    SYNAPSE_AMPA, 1.2f, 0.4f);
+                    SYNAPSE_AMPA, 0.6f, 0.2f);
                 if (nc > 0) total_connections += (uint32_t)nc;
             }
         }
@@ -288,11 +288,11 @@ wire_connections:
         for (uint32_t sp = tier_start_pop[st]; sp < tier_start_pop[st + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[dt]; dp < tier_start_pop[dt + 1]; dp++) {
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* Skip weights 4x boosted (was 0.15) */
+                /* Skip weights 2x (was 0.15 → 0.3) */
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, sc,
-                    SYNAPSE_AMPA, 0.6f, 0.2f);
+                    SYNAPSE_AMPA, 0.3f, 0.1f);
                 if (nc > 0) skip_connections += (uint32_t)nc;
             }
         }
