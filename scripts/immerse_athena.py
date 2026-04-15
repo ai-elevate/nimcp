@@ -5514,7 +5514,21 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             try:
                 ss = brain.snn_get_stats()
                 if ss:
-                    parts.append(f"SNN:{ss.get('total_spikes',0)}spk/{ss.get('mean_firing_rate',0):.1f}Hz")
+                    # Rich SNN diagnostics — tells us if R-STDP is actually
+                    # doing something vs just spiking randomly.
+                    # sparsity: % silent (want 70-95% for efficient sparse coding)
+                    # synchrony: coordination (0.3-0.7 healthy; >0.9 = mode collapse)
+                    # spikes/sample: differs per input if SNN discriminates
+                    # silent/hyp: dead/saturating neurons
+                    parts.append(
+                        f"SNN:{ss.get('total_spikes',0)}spk/"
+                        f"{ss.get('mean_firing_rate_hz',0):.1f}Hz/"
+                        f"spars={ss.get('sparsity',0):.2f}/"
+                        f"sync={ss.get('synchrony',0):.2f}/"
+                        f"sps={ss.get('spikes_per_sample',0):.1f}/"
+                        f"sil={ss.get('silent_neurons',0)}/"
+                        f"hyp={ss.get('hyperactive_neurons',0)}"
+                    )
             except Exception:
                 pass
             try:
@@ -5935,7 +5949,21 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             try:
                 ss = brain.snn_get_stats()
                 if ss:
-                    parts.append(f"SNN:{ss.get('total_spikes',0)}spk/{ss.get('mean_firing_rate',0):.1f}Hz")
+                    # Rich SNN diagnostics — tells us if R-STDP is actually
+                    # doing something vs just spiking randomly.
+                    # sparsity: % silent (want 70-95% for efficient sparse coding)
+                    # synchrony: coordination (0.3-0.7 healthy; >0.9 = mode collapse)
+                    # spikes/sample: differs per input if SNN discriminates
+                    # silent/hyp: dead/saturating neurons
+                    parts.append(
+                        f"SNN:{ss.get('total_spikes',0)}spk/"
+                        f"{ss.get('mean_firing_rate_hz',0):.1f}Hz/"
+                        f"spars={ss.get('sparsity',0):.2f}/"
+                        f"sync={ss.get('synchrony',0):.2f}/"
+                        f"sps={ss.get('spikes_per_sample',0):.1f}/"
+                        f"sil={ss.get('silent_neurons',0)}/"
+                        f"hyp={ss.get('hyperactive_neurons',0)}"
+                    )
             except Exception:
                 pass
             try:

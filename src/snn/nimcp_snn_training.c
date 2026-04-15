@@ -18,6 +18,7 @@
 #include "snn/nimcp_snn_training.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_types.h"
+#include "snn/nimcp_snn_synapse.h"  /* for snn_csr_storage_t, snn_csr_synapse_t */
 #include "constants/nimcp_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -425,6 +426,58 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
                         updates++;
                     }
                 }
+            }
+        }
+    }
+
+    /* === LIGHTWEIGHT CSR R-STDP ===
+     * The hierarchical SNN uses lightweight CSR populations (n_hidden=0 in
+     * neural_net), so the loop above updates zero synapses. For CSR pops,
+     * apply a direct Hebbian rule modulated by reward using current spike
+     * outputs. For each incoming CSR entry on each post-synaptic neuron:
+     *   pre_spike  = source pop's spike_output[src_neuron]
+     *   post_spike = this pop's spike_output[j]
+     *   Δw = scale × (pre × post - decay × weight)
+     * Only updates synapses where both pre and post fired recently —
+     * effectively Hebbian + reward + light weight decay. */
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* dst_pop = network->populations[p];
+        if (!dst_pop || !dst_pop->lightweight || !dst_pop->incoming_csr) continue;
+        if (!dst_pop->spike_output) continue;
+        snn_csr_storage_t* csr = dst_pop->incoming_csr;
+        if (!csr->entries || csr->n_synapses == 0) continue;
+
+        const float* post_spikes = (const float*)nimcp_tensor_data_const(dst_pop->spike_output);
+        if (!post_spikes) continue;
+
+        /* For each neuron j in this population, iterate its incoming synapses */
+        for (uint32_t j = 0; j < csr->n_neurons; j++) {
+            float post = post_spikes[j];
+            if (post < 0.5f) continue;  /* Post didn't spike — no Hebbian update */
+
+            uint32_t row_start = csr->row_ptr[j];
+            uint32_t row_end = csr->row_ptr[j + 1];
+            for (uint32_t e = row_start; e < row_end; e++) {
+                snn_csr_synapse_t* entry = &csr->entries[e];
+                /* Look up pre-synaptic spike from source population */
+                if (entry->src_pop >= network->n_populations) continue;
+                snn_population_t* src_pop = network->populations[entry->src_pop];
+                if (!src_pop || !src_pop->spike_output) continue;
+                if (entry->src_neuron >= src_pop->n_neurons) continue;
+
+                const float* src_spikes = (const float*)nimcp_tensor_data_const(src_pop->spike_output);
+                if (!src_spikes) continue;
+                float pre = src_spikes[entry->src_neuron];
+                if (pre < 0.5f) continue;  /* Pre didn't spike */
+
+                /* Reward-modulated Hebbian with weight decay */
+                float decay = 0.0001f;
+                float delta = scale * (1.0f - decay * entry->weight);
+                entry->weight += delta;
+                /* Clamp to keep weights bounded */
+                if (entry->weight > 2.0f) entry->weight = 2.0f;
+                if (entry->weight < -2.0f) entry->weight = -2.0f;
+                updates++;
             }
         }
     }
