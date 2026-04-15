@@ -7639,12 +7639,20 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
             logger.warning("State file write failed: %s — resume may load stale step",
                            _state_e)
     except Exception as e:
-        logger.warning("Checkpoint save failed: %s", e)
-        if os.path.exists(snapshot_tmp):
-            try:
-                os.remove(snapshot_tmp)
-            except OSError:
-                pass
+        logger.warning("Checkpoint save failed: %s — cleaning up .tmp files", e)
+        # Clean up ALL .tmp files for this snapshot, not just the main .bin.
+        # Without this, 9.8 GB .tmp.snn files accumulate on every failed save
+        # and fill the disk within hours.
+        import glob as _eg
+        for stmp in [snapshot_tmp] + _eg.glob(snapshot_tmp + ".*"):
+            if os.path.exists(stmp):
+                try:
+                    freed = os.path.getsize(stmp)
+                    os.remove(stmp)
+                    logger.info("Cleaned orphan .tmp: %s (%.1f GB)",
+                                os.path.basename(stmp), freed / 1e9)
+                except OSError as _re:
+                    logger.warning("Failed to remove %s: %s", stmp, _re)
         return
 
     # Save decoder alongside the snapshot. Log failures — silent decoder
@@ -7727,7 +7735,7 @@ def _ship_and_remove_previous_snapshot():
     HETZNER_HOST = "bbrelin@176.9.99.103"
     HETZNER_DIR = "/home/bbrelin/nimcp/checkpoints/athena"
     try:
-        cmd = ["rsync", "-az", "--partial", "--timeout=300",
+        cmd = ["rsync", "-az", "--partial", "--timeout=1200",
                "--remove-source-files",
                "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
                ] + files + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
@@ -7834,10 +7842,10 @@ def _ship_to_hetzner(snapshot_path, snapshot_name, stage, step):
     try:
         # COPY current symlinked snapshot (no --remove-source-files)
         if copyable:
-            cmd = ["rsync", "-az", "--partial", "--timeout=300",
+            cmd = ["rsync", "-az", "--partial", "--timeout=1200",
                    "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
                    ] + copyable + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
-            r = subprocess.run(cmd, timeout=600, capture_output=True)
+            r = subprocess.run(cmd, timeout=1800, capture_output=True)
             if r.returncode != 0:
                 logger.warning("Hetzner copy failed: %s", r.stderr.decode()[:500])
                 return
@@ -7847,11 +7855,11 @@ def _ship_to_hetzner(snapshot_path, snapshot_name, stage, step):
 
         # MOVE older snapshot files (--remove-source-files deletes after success)
         if movable:
-            cmd = ["rsync", "-az", "--partial", "--timeout=300",
+            cmd = ["rsync", "-az", "--partial", "--timeout=1200",
                    "--remove-source-files",
                    "-e", "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
                    ] + movable + [f"{HETZNER_HOST}:{HETZNER_DIR}/"]
-            r = subprocess.run(cmd, timeout=600, capture_output=True)
+            r = subprocess.run(cmd, timeout=1800, capture_output=True)
             if r.returncode != 0:
                 logger.warning("Hetzner move failed: %s", r.stderr.decode()[:500])
                 return
