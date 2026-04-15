@@ -79,19 +79,17 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 
 /* Input fan-out and output convergence wiring parameters */
 /* Weight tuning history (for a 1.8M-neuron lightweight CSR SNN):
- *  0.3  (original): L1 fired 1-2/22K, L2+ all dead (V stuck at -65)
- *  1.2  (4x):       1.75M spikes/step (97% saturation) — runaway
- *  0.6  (2x):       input_0 saturates 20K/20K, L2+ 30K/30K (all firing)
- *  Input fanout dominates: input_pop fires 1023/1024 every step, so any
- *  non-tiny weight from input→tier0 causes downstream saturation.
- *  Tier-to-tier needs moderate weight because pre-spike activity is sparse.
- *  Split: small input fanout, moderate tier FF. */
+ *  0.3  uniform:    L1 fired 1-2/22K, L2+ all dead (V=-65)
+ *  1.2  uniform:    97% saturation — runaway
+ *  0.6  uniform:    input_0 20K/20K, L2+ 30K/30K all firing
+ *  fan=0.08, tier=0.4: input=185/81K spikes, ALL hidden tiers ZERO spikes
+ *  fan=0.3, tier=1.0, inhib=-0.6: target — strong propagation + inhibition */
 #define SNN_INPUT_FANOUT_CONNECTIVITY   0.01f  /**< input_pop → tier 0 connectivity */
-#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.08f  /**< Small: input_pop has 100% activity */
-#define SNN_INPUT_FANOUT_WEIGHT_STD     0.03f
+#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.3f   /**< Original — proven 1.5% input_0 activity */
+#define SNN_INPUT_FANOUT_WEIGHT_STD     0.1f
 #define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.005f /**< tier 7 → output_pop connectivity */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.25f  /**< Moderate — tier 7 sparser */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.08f
+#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.4f   /**< Moderate */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.13f
 
 
 /* Well-known SNN sidecar path from the checkpoint system.
@@ -234,13 +232,12 @@ wire_connections:
         for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[t + 1]; dp < tier_start_pop[t + 2]; dp++) {
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* Tier FF weight 0.4 — between dead (0.3) and saturated (0.6).
-                 * Input fanout is separately tuned much lower (0.08) because
-                 * input_pop has 100% activity. */
+                /* Tier FF weight 1.0 — large to compensate for 10x reduced
+                 * connectivity. Inhibitory recurrent (-0.6) prevents runaway. */
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, ff_conn,
-                    SYNAPSE_AMPA, 0.4f, 0.13f);
+                    SYNAPSE_AMPA, 1.0f, 0.3f);
                 if (nc > 0) total_connections += (uint32_t)nc;
             }
         }
@@ -260,7 +257,9 @@ wire_connections:
                 /* Mix excitatory (80%) and inhibitory (20%) for balance */
                 synapse_type_t type = ((sp + dp) % 5 == 0) ?
                     SYNAPSE_GABA_A : SYNAPSE_AMPA;
-                float w_mean = (type == SYNAPSE_GABA_A) ? -0.2f : 0.2f;
+                /* Inhibitory boosted -0.6 (was -0.2) to prevent runaway when
+                 * tier FF is at 1.0. Excitatory recurrent kept at 0.3. */
+                float w_mean = (type == SYNAPSE_GABA_A) ? -0.6f : 0.3f;
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, rec_conn,
