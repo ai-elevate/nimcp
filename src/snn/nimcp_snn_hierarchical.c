@@ -77,16 +77,20 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 #define NUM_SKIPS (sizeof(SKIP_DEFS) / sizeof(SKIP_DEFS[0]))
 
 /* Input fan-out and output convergence wiring parameters */
-/* Weight tuning history:
+/* Weight tuning history (for a 1.8M-neuron lightweight CSR SNN):
  *  0.3  (original): L1 fired 1-2/22K, L2+ all dead (V stuck at -65)
- *  1.2  (4x):       1.75M spikes/step (97% of 1.8M) — runaway excitation
- *  0.6  (2x):       target — moderate propagation, not saturating */
+ *  1.2  (4x):       1.75M spikes/step (97% saturation) — runaway
+ *  0.6  (2x):       input_0 saturates 20K/20K, L2+ 30K/30K (all firing)
+ *  Input fanout dominates: input_pop fires 1023/1024 every step, so any
+ *  non-tiny weight from input→tier0 causes downstream saturation.
+ *  Tier-to-tier needs moderate weight because pre-spike activity is sparse.
+ *  Split: small input fanout, moderate tier FF. */
 #define SNN_INPUT_FANOUT_CONNECTIVITY   0.01f  /**< input_pop → tier 0 connectivity */
-#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.6f   /**< AMPA synapse weight mean (was 0.3) */
-#define SNN_INPUT_FANOUT_WEIGHT_STD     0.2f   /**< Weight standard deviation */
+#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.08f  /**< Small: input_pop has 100% activity */
+#define SNN_INPUT_FANOUT_WEIGHT_STD     0.03f
 #define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.005f /**< tier 7 → output_pop connectivity */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.4f   /**< AMPA synapse weight mean (was 0.2) */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.15f  /**< Weight standard deviation */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.25f  /**< Moderate — tier 7 sparser */
+#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.08f
 
 
 /* Well-known SNN sidecar path from the checkpoint system.
@@ -229,12 +233,13 @@ wire_connections:
         for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[t + 1]; dp < tier_start_pop[t + 2]; dp++) {
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* FF weights 2x boost (0.3→0.6) — 4x caused runaway
-                 * firing (97% of neurons spiking every step). */
+                /* Tier FF weight 0.4 — between dead (0.3) and saturated (0.6).
+                 * Input fanout is separately tuned much lower (0.08) because
+                 * input_pop has 100% activity. */
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, ff_conn,
-                    SYNAPSE_AMPA, 0.6f, 0.2f);
+                    SYNAPSE_AMPA, 0.4f, 0.13f);
                 if (nc > 0) total_connections += (uint32_t)nc;
             }
         }
