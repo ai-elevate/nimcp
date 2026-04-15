@@ -392,6 +392,18 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
      * Reward modulates accumulated STDP eligibility traces.
      * Positive reward strengthens recently co-active synapses. */
     float reward_modulation = ctx->reward - ctx->reward_baseline;
+
+    /* Diagnostic: log every call so we can see if reward signal is reaching us */
+    static uint64_t _rstdp_call_count = 0;
+    _rstdp_call_count++;
+    if ((_rstdp_call_count % 50) == 0) {
+        NIMCP_LOGGING_INFO(
+            "[R-STDP] call=%llu reward=%.4f baseline=%.4f mod=%.4f%s",
+            (unsigned long long)_rstdp_call_count,
+            ctx->reward, ctx->reward_baseline, reward_modulation,
+            (fabsf(reward_modulation) < 1e-8f) ? " — SKIP (no signal)" : "");
+    }
+
     if (fabsf(reward_modulation) < 1e-8f) return 0;
 
     float lr = 0.001f;  /* R-STDP learning rate (ctx has no lr field) */
@@ -484,6 +496,11 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
 
     /* Decay reward baseline toward recent rewards (EMA) */
     ctx->reward_baseline = 0.99f * ctx->reward_baseline + 0.01f * ctx->reward;
+
+    if ((_rstdp_call_count % 50) == 0 && updates > 0) {
+        NIMCP_LOGGING_INFO("[R-STDP] updated %u synapses (delta sign=%s)",
+                           updates, (scale > 0) ? "+" : "-");
+    }
 
     return updates;
 }
