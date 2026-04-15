@@ -1050,7 +1050,17 @@ int snn_network_step(snn_network_t* network, float dt) {
             _snn_dbg = (env && env[0] == '1');
             _snn_dbg_checked = 1;
         }
-        if (_snn_dbg && (network->stats.total_steps % 100) == 0) {
+        /* Allow on-demand triggering: another thread can set a flag (or
+         * we re-check env var) to force an immediate dump. For now, the
+         * env var NIMCP_SNN_DUMP_NOW=1 triggers a one-shot dump that
+         * resets to 0 after firing. */
+        bool dump_now = false;
+        const char* dump_env = getenv("NIMCP_SNN_DUMP_NOW");
+        if (dump_env && dump_env[0] == '1') {
+            dump_now = true;
+            unsetenv("NIMCP_SNN_DUMP_NOW");  /* one-shot */
+        }
+        if (_snn_dbg && ((network->stats.total_steps % 100) == 0 || dump_now)) {
             for (uint32_t p = 0; p < network->n_populations; p++) {
                 snn_population_t* pop = network->populations[p];
                 if (!pop || !pop->spike_output || !pop->membrane_v) continue;
@@ -1079,9 +1089,14 @@ int snn_network_step(snn_network_t* network, float dt) {
                     ext_mean /= (float)pop->n_neurons;
                 }
 
-                /* Incoming CSR weight stats */
+                /* Incoming CSR weight stats + computed I_syn from current spikes.
+                 * I_syn = ext_current[n] + sum(weight × pre_spike) for each n.
+                 * This is the EXPECTED I_syn this neuron will see next step,
+                 * computed independently of GPU/CPU execution. Tells us
+                 * whether signal is reaching this layer. */
                 float w_mean = 0, w_max = 0;
-                uint32_t n_syn = 0;
+                float isyn_mean = 0, isyn_max = 0;
+                uint32_t n_syn = 0, n_neurons_with_isyn = 0;
                 if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->entries) {
                     n_syn = pop->incoming_csr->n_synapses;
                     for (uint32_t e = 0; e < n_syn; e++) {
@@ -1090,15 +1105,78 @@ int snn_network_step(snn_network_t* network, float dt) {
                         if (w > w_max) w_max = w;
                     }
                     if (n_syn > 0) w_mean /= (float)n_syn;
+
+                    /* Compute I_syn per neuron from pre-spikes × weights */
+                    snn_csr_storage_t* csr = pop->incoming_csr;
+                    if (csr->row_ptr) {
+                        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                            float isyn = pop->external_current ? pop->external_current[n] : 0.0f;
+                            uint32_t s_lo = csr->row_ptr[n];
+                            uint32_t s_hi = csr->row_ptr[n + 1];
+                            for (uint32_t e = s_lo; e < s_hi; e++) {
+                                snn_csr_synapse_t* syn = &csr->entries[e];
+                                if (syn->src_pop >= network->n_populations) continue;
+                                snn_population_t* src = network->populations[syn->src_pop];
+                                if (!src || !src->spike_output) continue;
+                                if (syn->src_neuron >= src->n_neurons) continue;
+                                const float* src_sp =
+                                    (const float*)nimcp_tensor_data_const(src->spike_output);
+                                if (src_sp && src_sp[syn->src_neuron] > 0.5f) {
+                                    isyn += syn->weight;
+                                }
+                            }
+                            isyn_mean += isyn;
+                            if (isyn > isyn_max) isyn_max = isyn;
+                            if (isyn != 0.0f) n_neurons_with_isyn++;
+                        }
+                        if (pop->n_neurons > 0) isyn_mean /= (float)pop->n_neurons;
+                    }
                 }
 
                 NIMCP_LOGGING_INFO(
-                    "[SNN-POP] %s n=%u spk=%u/%u V[%.1f..%.1f]μ=%.1f "
-                    "ext[μ=%.2f max=%.2f] w[μ=%.3f max=%.3f] nsyn=%u",
-                    pop->name, pop->n_neurons, n_spiked, pop->n_neurons,
+                    "[SNN-POP] %s n=%u spk=%u V[%.1f..%.1f]μ=%.1f "
+                    "ext[μ=%.2f max=%.2f] w[μ=%.3f max=%.3f] "
+                    "I_syn[μ=%.3f max=%.2f n_recv=%u/%u] nsyn=%u",
+                    pop->name, pop->n_neurons, n_spiked,
                     v_min, v_max, v_mean,
-                    ext_mean, ext_max, w_mean, w_max, n_syn);
+                    ext_mean, ext_max, w_mean, w_max,
+                    isyn_mean, isyn_max, n_neurons_with_isyn, pop->n_neurons,
+                    n_syn);
             }
+
+            /* Per-tier propagation summary: aggregate spike counts by name prefix */
+            uint32_t tier_spikes[10] = {0};
+            uint32_t tier_neurons[10] = {0};
+            const char* tier_names[10] = {
+                "input", "L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "output"
+            };
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                snn_population_t* pop = network->populations[p];
+                if (!pop || !pop->spike_output) continue;
+                const float* sp = (const float*)nimcp_tensor_data_const(pop->spike_output);
+                if (!sp) continue;
+                int tier = -1;
+                if (strncmp(pop->name, "input", 5) == 0) tier = 0;
+                else if (strncmp(pop->name, "output", 6) == 0) tier = 9;
+                else if (pop->name[0] == 'L' && pop->name[1] >= '0' && pop->name[1] <= '7')
+                    tier = (pop->name[1] - '0') + 1;  /* L0→1, L1→2, ... L7→8 */
+                if (tier < 0 || tier >= 10) continue;
+                uint32_t s = 0;
+                for (uint32_t i = 0; i < pop->n_neurons; i++) if (sp[i] > 0.5f) s++;
+                tier_spikes[tier] += s;
+                tier_neurons[tier] += pop->n_neurons;
+            }
+            char tier_summary[512] = {0};
+            int off = 0;
+            for (int t = 0; t < 10; t++) {
+                if (tier_neurons[t] == 0) continue;
+                int n = snprintf(tier_summary + off, sizeof(tier_summary) - off,
+                    "%s%s=%u/%u", off > 0 ? " " : "", tier_names[t],
+                    tier_spikes[t], tier_neurons[t]);
+                if (n > 0) off += n;
+                if (off >= (int)sizeof(tier_summary) - 1) break;
+            }
+            NIMCP_LOGGING_INFO("[SNN-TIER] %s", tier_summary);
         }
     }
 
