@@ -525,6 +525,22 @@ int training_dispatch_snn_step(
 
             /* 3. Apply reward-modulated weight update */
             updates = snn_rstdp_apply(ctx, snn);
+
+            /* 4. Homeostatic plasticity (Turrigiano-style synaptic scaling).
+             * Runs every SNN_HOMEOSTATIC_INTERVAL R-STDP applies to pull
+             * per-population firing rates back toward biological target.
+             * Prevents runaway drift into silent or saturated regimes. */
+            {
+                static uint32_t _homeostatic_counter = 0;
+                const uint32_t SNN_HOMEOSTATIC_INTERVAL = 10;
+                _homeostatic_counter++;
+                if (_homeostatic_counter >= SNN_HOMEOSTATIC_INTERVAL) {
+                    _homeostatic_counter = 0;
+                    extern uint32_t snn_homeostatic_apply(
+                        snn_training_ctx_t*, snn_network_t*);
+                    snn_homeostatic_apply(ctx, snn);
+                }
+            }
             break;
         }
 

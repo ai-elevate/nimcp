@@ -540,12 +540,11 @@ theory_of_mind_t tom_create(brain_t self_brain)
         LOG_DEBUG("FEP bridge created and connected");
     }
 
-    // Create substrate bridge (requires external substrate, initialize NULL)
-    tom_substrate_config_t substrate_config = tom_substrate_get_default_config();
-    tom->substrate_bridge = tom_substrate_bridge_create(&substrate_config, tom, NULL);
-    if (tom->substrate_bridge) {
-        LOG_DEBUG("Substrate bridge created");
-    }
+    /* Substrate bridge is wired later by brain init once the neural substrate
+     * exists. Creating it here with NULL substrate logs a spurious ERROR every
+     * time ToM initializes. Leave it NULL and let the brain init path call
+     * tom_substrate_bridge_create with the real substrate once available. */
+    tom->substrate_bridge = NULL;
 
     // Create thalamic bridge (requires external router, initialize NULL)
     tom_thalamic_config_t thalamic_config = tom_thalamic_default_config();

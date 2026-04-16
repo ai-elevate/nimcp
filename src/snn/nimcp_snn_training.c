@@ -727,12 +727,82 @@ void snn_homeostatic_update_rates(snn_training_ctx_t* ctx,
     (void)dt;
 }
 
+/* Synaptic scaling (Turrigiano 2008, biological homeostatic plasticity).
+ * For each lightweight population, compare its EMA firing rate to the
+ * biological target and multiplicatively scale all incoming CSR weights
+ * to pull the rate back toward target. Prevents R-STDP runaway into
+ * either silence or saturation.
+ *
+ * Called from the training loop every N learn_vector calls (not every
+ * SNN step — too expensive to iterate 1.45B synapses that often). */
 uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
     if (!ctx || !network) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_apply: null context or network pointer");
         return 0;
     }
-    return 0;
+
+    const float target_rate   = 0.03f;   /* biological target: 3% firing */
+    const float min_scale     = 0.98f;   /* at most 2% down per apply */
+    const float max_scale     = 1.02f;   /* at most 2% up per apply */
+    const float rate_floor    = 1e-4f;   /* avoid divide-by-near-zero */
+    const float w_cap         = 10.0f;   /* same cap as init path */
+
+    uint32_t n_scaled = 0;
+    uint32_t n_skipped_warmup = 0;
+
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop || !pop->lightweight || !pop->incoming_csr) continue;
+
+        /* Warm-up gate: don't scale until EMA has enough samples to be
+         * trustworthy. Prevents scaling on transient startup activity. */
+        if (pop->rate_samples < 100) {
+            n_skipped_warmup++;
+            continue;
+        }
+
+        float cur_rate = pop->firing_rate_ema;
+        if (cur_rate < rate_floor) cur_rate = rate_floor;
+
+        /* Target / current gives the pull direction. Clamp per-apply
+         * change to [0.98, 1.02] so a single call can never overshoot. */
+        float scale = target_rate / cur_rate;
+        if (scale < min_scale) scale = min_scale;
+        if (scale > max_scale) scale = max_scale;
+
+        /* Skip near-unity scaling — saves cycles when population is on
+         * target. 0.5% deadband avoids thrashing around the setpoint. */
+        if (scale > 0.995f && scale < 1.005f) continue;
+
+        snn_csr_storage_t* csr = pop->incoming_csr;
+        for (uint32_t e = 0; e < csr->n_synapses; e++) {
+            float w = csr->entries[e].weight * scale;
+            if (w > w_cap) w = w_cap;
+            if (w < -w_cap) w = -w_cap;
+            csr->entries[e].weight = w;
+        }
+
+        /* Keep the flat weights[] array (used by the GPU kernel) in sync
+         * with entries[]. The kernel re-uploads from host pointer each
+         * step, so updating host memory here is sufficient. */
+        if (csr->gpu_ready && csr->weights) {
+            for (uint32_t e = 0; e < csr->n_synapses; e++) {
+                csr->weights[e] = csr->entries[e].weight;
+            }
+        }
+
+        NIMCP_LOGGING_INFO("homeostatic: pop %u '%s' rate=%.4f target=%.4f "
+                           "scale=%.4f syns=%u",
+                           pop->id, pop->name, pop->firing_rate_ema,
+                           target_rate, scale, csr->n_synapses);
+        n_scaled++;
+    }
+
+    if (n_skipped_warmup > 0) {
+        NIMCP_LOGGING_DEBUG("homeostatic: %u pops still in warm-up",
+                            n_skipped_warmup);
+    }
+    return n_scaled;
 }
 
 //=============================================================================

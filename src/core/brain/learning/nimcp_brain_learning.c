@@ -1057,33 +1057,55 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         extern void cortex_cnn_set_fno_visual(struct cortex_cnn_processor*, void*);
         extern void cortex_cnn_set_fno_speech(struct cortex_cnn_processor*, void*);
 
-        if (brain->staged_sensory.visual_frame && !brain->cortex_cnns[0]) {
-            brain->cortex_cnns[0] = cortex_cnn_create(0, 0);
-            if (brain->cortex_cnns[0]) {
-                /* FNO visual: spatial frequency analysis (32x32 grayscale → 1024 samples) */
-                void* fno = fno_audio_create(1024, 64, 16, 32, 2);
-                if (fno) cortex_cnn_set_fno_visual(brain->cortex_cnns[0], fno);
-            }
+        /* Create cortex CNNs on first call with sensory data, OR attach FNO
+         * to existing cortex CNNs loaded from checkpoint (which have fno=NULL
+         * because FNO state isn't persisted in the sidecar).
+         * Use a static flag so we only attempt FNO creation once per session
+         * — avoids leaking FNO instances on repeated calls. */
+        static bool _fno_attached = false;
+        if (brain->staged_sensory.visual_frame) {
+            if (!brain->cortex_cnns[0])
+                brain->cortex_cnns[0] = cortex_cnn_create(0, 0);
         }
-        if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1]) {
-            brain->cortex_cnns[1] = cortex_cnn_create(1, 0);
-            if (brain->cortex_cnns[1]) {
-                /* FNO audio: mel-spectrogram spectral convolution */
-                void* fno = fno_audio_create(128, 64, 16, 32, 2);
-                if (fno) cortex_cnn_set_fno_audio(brain->cortex_cnns[1], fno);
-            }
+        if (brain->staged_sensory.audio_data) {
+            if (!brain->cortex_cnns[1])
+                brain->cortex_cnns[1] = cortex_cnn_create(1, 0);
         }
-        if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2]) {
-            brain->cortex_cnns[2] = cortex_cnn_create(2, 0);
-            if (brain->cortex_cnns[2]) {
-                /* FNO speech: phoneme spectral patterns */
-                void* fno = fno_audio_create(128, 64, 16, 32, 2);
-                if (fno) cortex_cnn_set_fno_speech(brain->cortex_cnns[2], fno);
-            }
+        if (brain->staged_sensory.speech_data) {
+            if (!brain->cortex_cnns[2])
+                brain->cortex_cnns[2] = cortex_cnn_create(2, 0);
         }
         if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
             brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
         /* Somato doesn't use FNO — touch/pressure data is spatial, not spectral */
+
+        if (!_fno_attached) {
+            _fno_attached = true;
+            /* Visual: spatial frequency analysis (32×32 grayscale → 1024) */
+            if (brain->cortex_cnns[0]) {
+                void* fno = fno_audio_create(1024, 64, 16, 32, 2);
+                if (fno) {
+                    cortex_cnn_set_fno_visual(brain->cortex_cnns[0], fno);
+                    NIMCP_LOGGING_INFO("FNO attached to visual cortex (1024 samples, 64 modes)");
+                }
+            }
+            /* Audio: mel-spectrogram spectral convolution */
+            if (brain->cortex_cnns[1]) {
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) {
+                    cortex_cnn_set_fno_audio(brain->cortex_cnns[1], fno);
+                    NIMCP_LOGGING_INFO("FNO attached to audio cortex (128 samples, 64 modes)");
+                }
+            }
+            /* Speech: phoneme spectral patterns */
+            if (brain->cortex_cnns[2]) {
+                void* fno = fno_audio_create(128, 64, 16, 32, 2);
+                if (fno) {
+                    cortex_cnn_set_fno_speech(brain->cortex_cnns[2], fno);
+                    NIMCP_LOGGING_INFO("FNO attached to speech cortex (128 samples, 64 modes)");
+                }
+            }
+        }
     }
 
     if (!ensure_writable_network(brain)) {

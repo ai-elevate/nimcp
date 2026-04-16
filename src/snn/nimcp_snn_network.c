@@ -154,6 +154,11 @@ static snn_population_t* snn_population_create_lightweight(
         return NULL;
     }
 
+    /* Homeostatic state seeded at the biological target firing rate
+     * so early training steps don't over-scale before the EMA warms up. */
+    pop->firing_rate_ema = 0.03f;
+    pop->rate_samples = 0;
+
     /* Initialize membrane potential to resting potential */
     float* v = (float*)nimcp_tensor_data(pop->membrane_v);
     if (v) {
@@ -1010,6 +1015,28 @@ int snn_network_step(snn_network_t* network, float dt) {
     /* Update simulation time */
     network->sim->current_time_us += dt_us;
     network->sim->step_count++;
+
+    /* Per-population firing-rate EMA for homeostatic plasticity.
+     * Counts fresh spike_output from this step and folds into an EMA
+     * with alpha=0.01 (≈100-step time constant). The EMA is consumed
+     * by snn_homeostatic_apply() which runs every N training steps. */
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop || !pop->lightweight || !pop->spike_output) continue;
+        const float* sp = (const float*)nimcp_tensor_data_const(pop->spike_output);
+        if (!sp) continue;
+        uint32_t n_spk = 0;
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            if (sp[n] > 0.5f) n_spk++;
+        }
+        float rate = (pop->n_neurons > 0)
+                   ? (float)n_spk / (float)pop->n_neurons : 0.0f;
+        /* EMA with warm-up: for first 100 samples weight new data more */
+        float alpha = (pop->rate_samples < 100) ? 0.05f : 0.01f;
+        pop->firing_rate_ema = (1.0f - alpha) * pop->firing_rate_ema
+                             + alpha * rate;
+        pop->rate_samples++;
+    }
 
     /* Update statistics */
     clock_gettime(CLOCK_MONOTONIC, &_step_t1);
@@ -2469,11 +2496,25 @@ int snn_network_validate(const snn_network_t* network) {
 //=============================================================================
 
 #include <stdio.h>
+#include <errno.h>
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 
 /* SNN checkpoint format constants */
 #define SNN_CHECKPOINT_MAGIC    0x534E4E53  /**< "SNNS" */
-#define SNN_CHECKPOINT_VERSION  3           /**< v3: CSR lightweight populations */
+#define SNN_CHECKPOINT_VERSION  4           /**< v4: adds wiring_schema_version field */
+
+/* Wiring schema version: bump whenever the hierarchical wiring topology or
+ * weight-initialization formula changes. A mismatch on load causes the cached
+ * .snn file to be rejected so the network is rebuilt with the new scheme.
+ *
+ *   1 = original hardcoded weights (in=0.3, FF=1.0, inhib=-0.6, etc.)
+ *   2 = fluctuation-driven weights per arxiv 2206.10226 (2026-04-15)
+ *   3 = v2 + stronger recurrent quench (60E/40I at 4× I, 2026-04-15)
+ *   4 = v3 reverted to 80E/20I + 4× I, budget reduced 0.8→0.3 × gap
+ *       (rate recalibration; 2026-04-15)
+ *   5 = v4 + Turrigiano-style homeostatic synaptic scaling to prevent
+ *       R-STDP-induced drift into silent/saturated regimes (2026-04-16) */
+#define SNN_WIRING_SCHEMA_VERSION  5
 
 /* Checked gzwrite helper — returns -1 on failure.
  * Uses gzip compression (level 3 = good speed/ratio) to keep .snn file
@@ -2507,8 +2548,10 @@ int snn_network_save(snn_network_t* network, const char* path) {
 
     uint32_t magic = SNN_CHECKPOINT_MAGIC;
     uint32_t version = SNN_CHECKPOINT_VERSION;
+    uint32_t wiring_schema = SNN_WIRING_SCHEMA_VERSION;
     SNN_FWRITE(&magic, sizeof(uint32_t), 1, f);
     SNN_FWRITE(&version, sizeof(uint32_t), 1, f);
+    SNN_FWRITE(&wiring_schema, sizeof(uint32_t), 1, f);
 
     /* Save config (contains all architecture parameters) */
     SNN_FWRITE(&network->config, sizeof(snn_config_t), 1, f);
@@ -2586,9 +2629,14 @@ int snn_network_save(snn_network_t* network, const char* path) {
 
     gzclose(f);
 
-    /* Atomic rename: temp → final path */
+    /* Atomic rename: temp → final path.
+     * If the destination already exists as a directory (misconfig/stale symlink),
+     * rename(2) fails with EISDIR/ENOTDIR. Surface the actual errno so ops can
+     * fix the underlying condition instead of guessing. */
     if (rename(tmp_path, path) != 0) {
-        NIMCP_LOGGING_ERROR("snn_network_save: rename %s → %s failed", tmp_path, path);
+        int saved_errno = errno;
+        NIMCP_LOGGING_ERROR("snn_network_save: rename %s → %s failed: %s (errno=%d)",
+                            tmp_path, path, strerror(saved_errno), saved_errno);
         remove(tmp_path);
         return -1;
     }
@@ -2632,6 +2680,27 @@ snn_network_t* snn_network_load(const char* path) {
     }
     if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version > SNN_CHECKPOINT_VERSION) {
         NIMCP_LOGGING_ERROR("snn_network_load: unsupported version %u", version);
+        fclose(f); return NULL;
+    }
+
+    /* Wiring-schema version gating. v4+ files embed the schema tag; older files
+     * predate the fluctuation-driven init and must be rejected so the caller
+     * rebuilds from scratch with the current formula. */
+    if (version < 4) {
+        NIMCP_LOGGING_WARN("snn_network_load: checkpoint v%u predates wiring schema "
+                           "tracking — rejecting so network is rebuilt with current "
+                           "wiring schema v%u", version, SNN_WIRING_SCHEMA_VERSION);
+        fclose(f); return NULL;
+    }
+    uint32_t wiring_schema = 0;
+    if (fread(&wiring_schema, sizeof(uint32_t), 1, f) != 1) {
+        NIMCP_LOGGING_ERROR("snn_network_load: truncated wiring_schema field");
+        fclose(f); return NULL;
+    }
+    if (wiring_schema != SNN_WIRING_SCHEMA_VERSION) {
+        NIMCP_LOGGING_WARN("snn_network_load: wiring schema mismatch (file=%u, "
+                           "current=%u) — rejecting so network is rebuilt",
+                           wiring_schema, SNN_WIRING_SCHEMA_VERSION);
         fclose(f); return NULL;
     }
 

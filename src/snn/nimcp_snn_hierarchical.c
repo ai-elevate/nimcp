@@ -77,19 +77,54 @@ static const snn_skip_def_t SKIP_DEFS[] = {
 };
 #define NUM_SKIPS (sizeof(SKIP_DEFS) / sizeof(SKIP_DEFS[0]))
 
-/* Input fan-out and output convergence wiring parameters */
-/* Weight tuning history (for a 1.8M-neuron lightweight CSR SNN):
- *  0.3  uniform:    L1 fired 1-2/22K, L2+ all dead (V=-65)
- *  1.2  uniform:    97% saturation — runaway
- *  0.6  uniform:    input_0 20K/20K, L2+ 30K/30K all firing
- *  fan=0.08, tier=0.4: input=185/81K spikes, ALL hidden tiers ZERO spikes
- *  fan=0.3, tier=1.0, inhib=-0.6: target — strong propagation + inhibition */
-#define SNN_INPUT_FANOUT_CONNECTIVITY   0.01f  /**< input_pop → tier 0 connectivity */
-#define SNN_INPUT_FANOUT_WEIGHT_MEAN    0.3f   /**< Original — proven 1.5% input_0 activity */
-#define SNN_INPUT_FANOUT_WEIGHT_STD     0.1f
-#define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.005f /**< tier 7 → output_pop connectivity */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_MEAN  0.4f   /**< Moderate */
-#define SNN_OUTPUT_CONVERGE_WEIGHT_STD   0.13f
+/* Fluctuation-driven weight initialization for LIF SNNs.
+ *
+ * Step equation: dv = (v_rest - V + I_syn) / tau_mem * dt  →  V_ss = v_rest + I_syn.
+ * To spike, I_syn must approach (v_thresh - v_rest) = gap = 15 mV.
+ *
+ * Given K converging source populations, each contributing one connection to
+ * a destination neuron, we split a target I_syn budget of 0.8 × gap evenly:
+ *     per_conn_budget = 0.8 * gap / K
+ *     w_mean = per_conn_budget / (src_n * connectivity * presyn_rate)
+ *
+ * The 0.8 factor keeps E[V] below threshold so spikes come from fluctuations,
+ * not saturation. presyn_rate=0.1 assumes steady-state ~10% firing per step
+ * (input_pop is driven harder, ~0.5, handled separately).
+ *
+ * Reference: Rossbroich et al., arxiv 2206.10226 (fluctuation-driven init). */
+#define SNN_V_GAP                 15.0f  /**< v_thresh - v_rest */
+/* I_syn budget reduced from 0.8 → 0.3 × gap after Option A (80E/20I, 4× I)
+ * still produced 77-83% firing saturation. Root cause: cascading activity
+ * makes actual presyn_rate ~0.4 instead of the formula's 0.1, so weights
+ * were 4× too strong. Reducing budget to 0.3 × gap (4.5 mV) targets
+ * steady-state V ≈ v_rest + 4.5 = −60.5 mV, leaving 10 mV to threshold so
+ * only fluctuations cross — matching the designed biological regime. */
+#define SNN_I_SYN_BUDGET          (0.3f * SNN_V_GAP)   /**< 4.5 mV target */
+#define SNN_PRESYN_RATE_DEFAULT   0.1f                 /**< 10% firing per step assumption */
+/* Input_pop is externally driven. With Poisson rate encoding at ~100 Hz and
+ * dt=1 ms, per-step firing prob ≈ 0.1. We keep this equal to default; if the
+ * encoding drives harder in practice, reduce it. Too-high here → under-strong
+ * input weights → dead cascade (the failure mode we just debugged). */
+#define SNN_PRESYN_RATE_INPUT_POP 0.1f
+/* Upper bound on any wiring weight. Prevents runaway if configured fan_in
+ * becomes pathologically small (e.g. tiny connectivity). 10 mV = 2/3 of gap. */
+#define SNN_W_CAP                 10.0f
+
+static inline float snn_fluct_weight(float budget_share,
+                                     uint32_t src_n,
+                                     float connectivity,
+                                     float presyn_rate)
+{
+    float fan_in = (float)src_n * connectivity * presyn_rate;
+    if (fan_in < 1.0f) fan_in = 1.0f;  /* avoid divide-by-near-zero */
+    float w = budget_share / fan_in;
+    if (w > SNN_W_CAP) w = SNN_W_CAP;
+    if (w < -SNN_W_CAP) w = -SNN_W_CAP;
+    return w;
+}
+
+#define SNN_INPUT_FANOUT_CONNECTIVITY    0.01f
+#define SNN_OUTPUT_CONVERGE_CONNECTIVITY 0.005f
 
 
 /* Well-known SNN sidecar path from the checkpoint system.
@@ -222,44 +257,63 @@ wire_connections:
     tier_start_pop[NUM_TIERS] = flat_idx;  /* Always set, even on partial creation */
     LOG_INFO("Created %u populations (target %u). Wiring connections...", flat_idx, total_pops);
 
-    /* Wire feedforward connections between adjacent tiers */
+    /* Wire feedforward connections between adjacent tiers.
+     * Fluctuation-driven: split I_syn budget across the K source pops in tier t. */
     uint32_t total_connections = 0;
     for (uint32_t t = 0; t + 1 < NUM_TIERS; t++) {
         float ff_conn = TIER_DEFS[t].ff_connectivity;
         if (ff_conn <= 0.0f) continue;
+        uint32_t k_src = TIER_DEFS[t].n_pops;
+        float per_conn_budget = SNN_I_SYN_BUDGET / (float)k_src;
+        float w_mean = snn_fluct_weight(per_conn_budget,
+                                        TIER_DEFS[t].neurons_per_pop,
+                                        ff_conn,
+                                        SNN_PRESYN_RATE_DEFAULT);
+        LOG_INFO("Tier %s→%s FF: w=%.3f (k_src=%u n=%u conn=%.4f)",
+                 TIER_DEFS[t].name, TIER_DEFS[t + 1].name, w_mean,
+                 k_src, TIER_DEFS[t].neurons_per_pop, ff_conn);
 
-        /* Connect each pop in tier t to each pop in tier t+1 */
         for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[t + 1]; dp < tier_start_pop[t + 2]; dp++) {
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* Tier FF weight 1.0 — large to compensate for 10x reduced
-                 * connectivity. Inhibitory recurrent (-0.6) prevents runaway. */
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, ff_conn,
-                    SYNAPSE_AMPA, 1.0f, 0.3f);
+                    SYNAPSE_AMPA, w_mean, w_mean * 0.3f);
                 if (nc > 0) total_connections += (uint32_t)nc;
             }
         }
     }
     LOG_INFO("Feedforward: %u connections", total_connections);
 
-    /* Wire within-tier recurrent connections (L3-L5 for working memory) */
+    /* Wire within-tier recurrent connections (L2-L5).
+     * Mix 80% excitatory / 20% inhibitory (GABA at 4× |E|). Net drive per
+     * recurrent spike = 0.8·w − 0.2·4·w = 0 → neutral, recurrence contributes
+     * variance without mean-dominating. Previously used 2× I which gave net
+     * +0.4·w → runaway saturation (observed 99% firing at 1.8M neurons). */
     uint32_t recurrent_connections = 0;
     for (uint32_t t = 0; t < NUM_TIERS; t++) {
         float rec_conn = TIER_DEFS[t].recurrent_connectivity;
         if (rec_conn <= 0.0f) continue;
 
+        uint32_t k_src_rec = TIER_DEFS[t].n_pops - 1;
+        if (k_src_rec < 1) k_src_rec = 1;
+        float rec_budget_share = SNN_I_SYN_BUDGET / (float)k_src_rec;
+        float w_exc = snn_fluct_weight(rec_budget_share,
+                                       TIER_DEFS[t].neurons_per_pop,
+                                       rec_conn,
+                                       SNN_PRESYN_RATE_DEFAULT);
+        LOG_INFO("Tier %s recurrent: w_exc=%.3f w_inh=%.3f (k_src=%u, 80E/20I)",
+                 TIER_DEFS[t].name, w_exc, -4.0f * w_exc, k_src_rec);
+
         for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[t]; dp < tier_start_pop[t + 1]; dp++) {
                 if (sp == dp) continue;  /* no self-connections */
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* Mix excitatory (80%) and inhibitory (20%) for balance */
+                /* 20% GABA / 80% AMPA via mod-5 threshold; 4× inhibitory magnitude */
                 synapse_type_t type = ((sp + dp) % 5 == 0) ?
                     SYNAPSE_GABA_A : SYNAPSE_AMPA;
-                /* Inhibitory boosted -0.6 (was -0.2) to prevent runaway when
-                 * tier FF is at 1.0. Excitatory recurrent kept at 0.3. */
-                float w_mean = (type == SYNAPSE_GABA_A) ? -0.6f : 0.3f;
+                float w_mean = (type == SYNAPSE_GABA_A) ? -4.0f * w_exc : w_exc;
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, rec_conn,
@@ -289,15 +343,20 @@ wire_connections:
         uint32_t dt = SKIP_DEFS[s].dst_tier;
         float sc = SKIP_DEFS[s].connectivity;
         if (st >= NUM_TIERS || dt >= NUM_TIERS) continue;
+        /* Skip: small supplementary share of budget (~1/8). */
+        float skip_w = snn_fluct_weight(SNN_I_SYN_BUDGET / 8.0f,
+                                        TIER_DEFS[st].neurons_per_pop,
+                                        sc, SNN_PRESYN_RATE_DEFAULT);
+        LOG_INFO("Skip %s→%s: w=%.3f (conn=%.4f)",
+                 TIER_DEFS[st].name, TIER_DEFS[dt].name, skip_w, sc);
 
         for (uint32_t sp = tier_start_pop[st]; sp < tier_start_pop[st + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[dt]; dp < tier_start_pop[dt + 1]; dp++) {
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* Skip weights 2x (was 0.15 → 0.3) */
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, sc,
-                    SYNAPSE_AMPA, 0.3f, 0.1f);
+                    SYNAPSE_AMPA, skip_w, skip_w * 0.3f);
                 if (nc > 0) skip_connections += (uint32_t)nc;
             }
         }
@@ -310,14 +369,23 @@ wire_connections:
      * all tier 0 populations so each input drives multiple tier-0 neurons.
      * Connectivity 10% = each input neuron drives ~2000 tier-0 neurons. */
     uint32_t input_fanout_conn = 0;
-    if (tier_start_pop[0] < flat_idx) {
+    if (tier_start_pop[0] < flat_idx && net->input_pop) {
+        /* input_pop is the sole source; full budget per destination neuron.
+         * Use higher presyn_rate (0.5) because input_pop is externally driven. */
+        float in_w = snn_fluct_weight(SNN_I_SYN_BUDGET,
+                                      net->input_pop->n_neurons,
+                                      SNN_INPUT_FANOUT_CONNECTIVITY,
+                                      SNN_PRESYN_RATE_INPUT_POP);
+        LOG_INFO("Input fanout weight (fluctuation-driven): w=%.3f "
+                 "(input_n=%u conn=%.3f rate=%.2f)",
+                 in_w, net->input_pop->n_neurons,
+                 SNN_INPUT_FANOUT_CONNECTIVITY, SNN_PRESYN_RATE_INPUT_POP);
         for (uint32_t dp = tier_start_pop[0]; dp < tier_start_pop[1] && dp < flat_idx; dp++) {
             int nc = snn_network_connect_populations(net,
                 0,  /* pop 0 = input_pop */
                 pop_map[dp],
                 SNN_TOPO_RANDOM, SNN_INPUT_FANOUT_CONNECTIVITY,
-                SYNAPSE_AMPA, SNN_INPUT_FANOUT_WEIGHT_MEAN,
-                SNN_INPUT_FANOUT_WEIGHT_STD);
+                SYNAPSE_AMPA, in_w, in_w * 0.3f);
             if (nc > 0) input_fanout_conn += (uint32_t)nc;
         }
     }
@@ -330,14 +398,19 @@ wire_connections:
      * Connectivity 5% = each output neuron receives from ~12800 tier-7 neurons. */
     uint32_t output_converge_conn = 0;
     if (NUM_TIERS > 0 && tier_start_pop[NUM_TIERS - 1] < flat_idx) {
-        for (uint32_t sp = tier_start_pop[NUM_TIERS - 1];
+        uint32_t last_tier = NUM_TIERS - 1;
+        uint32_t k_src_out = TIER_DEFS[last_tier].n_pops;
+        float out_w = snn_fluct_weight(SNN_I_SYN_BUDGET / (float)k_src_out,
+                                       TIER_DEFS[last_tier].neurons_per_pop,
+                                       SNN_OUTPUT_CONVERGE_CONNECTIVITY,
+                                       SNN_PRESYN_RATE_DEFAULT);
+        for (uint32_t sp = tier_start_pop[last_tier];
              sp < tier_start_pop[NUM_TIERS] && sp < flat_idx; sp++) {
             int nc = snn_network_connect_populations(net,
                 pop_map[sp],
                 2,  /* pop 2 = output_pop */
                 SNN_TOPO_RANDOM, SNN_OUTPUT_CONVERGE_CONNECTIVITY,
-                SYNAPSE_AMPA, SNN_OUTPUT_CONVERGE_WEIGHT_MEAN,
-                SNN_OUTPUT_CONVERGE_WEIGHT_STD);
+                SYNAPSE_AMPA, out_w, out_w * 0.3f);
             if (nc > 0) {
                 output_converge_conn += (uint32_t)nc;
             } else {

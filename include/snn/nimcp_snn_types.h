@@ -330,6 +330,14 @@ struct snn_population_s {
     bool lightweight;                        /**< true = CSR mode, false = legacy */
     float* external_current;                 /**< [n_neurons] input currents */
     struct snn_csr_storage_s* incoming_csr;  /**< CSR incoming synapses (owned) */
+
+    /* Homeostatic plasticity state (Turrigiano-style synaptic scaling).
+     * Tracked per-population, updated every SNN step, applied every N
+     * training steps by snn_homeostatic_apply() to keep firing rate near
+     * the biological target. Without this, R-STDP drives the network
+     * into either silent or saturated regimes. */
+    float firing_rate_ema;   /**< EMA of per-step firing fraction [0, 1] */
+    uint64_t rate_samples;   /**< Number of EMA updates since creation */
 };
 
 /**
