@@ -771,17 +771,14 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
     }
 
     const float target_rate   = 0.03f;   /* biological target: 3% firing */
-    /* Scale bounds — normally tight [0.98, 1.02] to avoid overshoot.
-     * When far from target (>3× or <1/3 of target), we use an emergency
-     * range [0.90, 1.10] to catch runaway saturation or silent collapse
-     * faster than the normal 2% per-apply crawl. Without this, a network
-     * at 99% firing would need ~30 apply cycles to reach 3% target.
-     * The emergency range is symmetric but still bounded to prevent
-     * catastrophic weight swings. */
+    /* Scale bounds: tight [0.98, 1.02] always. The earlier emergency band
+     * [0.90, 1.10] caused bang-bang oscillation — repeated 1.10× pushes
+     * compounded the weights (1.10^20 ≈ 6.7×) so the SNN swung from silent
+     * collapse (<1K spikes) to hyperactive (>1M spikes) within hundreds
+     * of steps, degrading training. Tight bounds recover slower
+     * (~30 applies from extreme) but don't overshoot. */
     const float rate_floor    = 1e-4f;   /* avoid divide-by-near-zero */
     const float w_cap         = 10.0f;   /* same cap as init path */
-    const float emerg_hi      = 3.0f * target_rate;   /* 9% — above = emergency */
-    const float emerg_lo      = target_rate / 3.0f;   /* 1% — below = emergency */
 
     uint32_t n_scaled = 0;
     uint32_t n_skipped_warmup = 0;
@@ -800,19 +797,9 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
         float cur_rate = pop->firing_rate_ema;
         if (cur_rate < rate_floor) cur_rate = rate_floor;
 
-        /* Select scale bounds: emergency range when far from target, else
-         * normal tight range. Emergency triggers when firing is >3× target
-         * (saturation) or <1/3 target (silent collapse). This lets us
-         * pull a runaway network back into biological range in a few
-         * applies rather than dozens. */
-        float min_scale, max_scale;
-        if (cur_rate > emerg_hi || cur_rate < emerg_lo) {
-            min_scale = 0.90f;   /* 10% down per apply when in crisis */
-            max_scale = 1.10f;   /* 10% up when in crisis */
-        } else {
-            min_scale = 0.98f;   /* normal tight range */
-            max_scale = 1.02f;
-        }
+        /* Tight bounds always — see header comment. */
+        const float min_scale = 0.98f;
+        const float max_scale = 1.02f;
 
         /* Target / current gives the pull direction. */
         float scale = target_rate / cur_rate;
