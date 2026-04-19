@@ -152,6 +152,69 @@ int nimcp_snn_ip_apply_batch(float* threshold_offset,
                               float delta_max);
 
 /* ========================================================================
+ * 6. Inhibitory Plasticity (batch-safe, dense matrix form)
+ * ========================================================================
+ *
+ * Sequential rule per sample:
+ *   Δw[i,j] = -η · (fired_pre[i] · fired_post[j] - 2·target^2)
+ *
+ * Batch form (exact sum of per-sample deltas):
+ *   Δw[i,j] = -η · ( Σ_b fired_pre[i,b]·fired_post[j,b]  - B·2·target^2 )
+ *
+ * @param w [in,out]       Flat weight matrix of size n_pre*n_post,
+ *                          indexed as w[i*n_post + j]
+ * @param fired_pre_batch  Flat [B*n_pre] pre-synaptic fire pattern
+ * @param fired_post_batch Flat [B*n_post] post-synaptic fire pattern
+ * @param batch_size       B
+ * @param n_pre, n_post    Matrix dimensions
+ * @param eta              Learning rate (e.g. 0.01)
+ * @param target_rate      Target firing rate (e.g. 0.03)
+ * @return 0 on success
+ */
+int nimcp_snn_inhibitory_apply_batch(float* w,
+                                       const float* fired_pre_batch,
+                                       const float* fired_post_batch,
+                                       uint32_t batch_size,
+                                       uint32_t n_pre,
+                                       uint32_t n_post,
+                                       float eta,
+                                       float target_rate);
+
+/* ========================================================================
+ * 7. Batch R-STDP (dense matrix form)
+ * ========================================================================
+ *
+ * Preserves temporal ordering within batch (per-sample trace updates);
+ * applies single weight update using Σ r_b · trace_b — mathematically
+ * EXACTLY equivalent to per-sample sequential updates.
+ *
+ * @param w [in,out]        Flat weight matrix [n_pre*n_post]
+ * @param trace [in,out]    Flat eligibility trace [n_pre*n_post]
+ * @param fired_pre_batch   Flat [B*n_pre]
+ * @param fired_post_batch  Flat [B*n_post]
+ * @param rewards           Per-sample rewards, size B
+ * @param batch_size        B
+ * @param n_pre, n_post     Matrix dimensions
+ * @param trace_decay       Eligibility decay per sample (e.g. 0.9)
+ * @param ltp_rate          LTP increment (e.g. 0.01)
+ * @param ltd_rate          LTD decrement (e.g. 0.01)
+ * @param learning_rate     R-STDP learning rate (e.g. 0.0005)
+ * @return 0 on success
+ */
+int nimcp_snn_rstdp_apply_batch(float* w,
+                                  float* trace,
+                                  const float* fired_pre_batch,
+                                  const float* fired_post_batch,
+                                  const float* rewards,
+                                  uint32_t batch_size,
+                                  uint32_t n_pre,
+                                  uint32_t n_post,
+                                  float trace_decay,
+                                  float ltp_rate,
+                                  float ltd_rate,
+                                  float learning_rate);
+
+/* ========================================================================
  * Self-test: run all batch-safe operations against known inputs and
  * verify outputs match the Python reference values.
  * ========================================================================

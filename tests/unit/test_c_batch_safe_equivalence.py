@@ -205,6 +205,77 @@ def test_ip_c_respects_cap():
 
 
 # ============================================================
+# Inhibitory Plasticity
+# ============================================================
+
+def test_inhibitory_c_matches_python():
+    import nimcp
+    from batch_safe_homeostasis import InhibitoryPlasticity
+    P, Q = 5, 5
+    B = 10
+    fires_pre_flat = _fires_flat(B, P, p=0.3, seed=60)
+    fires_post_flat = _fires_flat(B, Q, p=0.3, seed=61)
+    fires_pre_2d = _fires_2d(fires_pre_flat, B, P)
+    fires_post_2d = _fires_2d(fires_post_flat, B, Q)
+
+    py = InhibitoryPlasticity(P, Q, eta_inh=0.01, target_rate=0.03)
+    py.step_batch(fires_pre_2d, fires_post_2d)
+
+    # Flatten Python weights
+    w_init = [0.0] * (P * Q)
+    w_flat_py = []
+    for i in range(P):
+        for j in range(Q):
+            w_flat_py.append(py.w[i][j])
+
+    # Run C
+    w_c = nimcp.bs_inhibitory_apply(w_init, fires_pre_flat, fires_post_flat,
+                                       B, P, Q, 0.01, 0.03)
+    max_diff = max(abs(a - b) for a, b in zip(w_flat_py, w_c))
+    assert max_diff < TOL, f"inhibitory divergence: {max_diff}"
+    print(f"  PASS: inhibitory B={B} — C ≡ Python (max |Δ|={max_diff:.2e})")
+
+
+# ============================================================
+# R-STDP
+# ============================================================
+
+def test_rstdp_c_matches_python():
+    """C R-STDP must match Python reference EXACTLY — weights + traces."""
+    import nimcp
+    from batch_safe_homeostasis import BatchRSTDP
+    P, Q = 4, 4
+    B = 8
+    pre_flat = _fires_flat(B, P, p=0.25, seed=70)
+    post_flat = _fires_flat(B, Q, p=0.25, seed=71)
+    pre_2d = _fires_2d(pre_flat, B, P)
+    post_2d = _fires_2d(post_flat, B, Q)
+    rewards = [0.1, 0.9, 0.5, 0.3, 0.7, 0.2, 0.8, 0.4]
+
+    # Python reference
+    py = BatchRSTDP(P, Q)
+    py.step_batch(pre_2d, post_2d, rewards)
+
+    # Flatten Python w and trace
+    w_py_flat = [py.w[i][j] for i in range(P) for j in range(Q)]
+    trace_py_flat = [py.trace[i][j] for i in range(P) for j in range(Q)]
+
+    # C reference starts from same initial state (all zeros)
+    w_init = [0.0] * (P * Q)
+    trace_init = [0.0] * (P * Q)
+    w_c, trace_c = nimcp.bs_rstdp_apply(w_init, trace_init, pre_flat, post_flat,
+                                            rewards, B, P, Q,
+                                            0.9, 0.01, 0.01, 0.0005)
+
+    max_w = max(abs(a - b) for a, b in zip(w_py_flat, w_c))
+    max_t = max(abs(a - b) for a, b in zip(trace_py_flat, trace_c))
+    assert max_w < TOL, f"R-STDP weight divergence: {max_w}"
+    assert max_t < TOL, f"R-STDP trace divergence: {max_t}"
+    print(f"  PASS: R-STDP EXACT equivalence — "
+          f"weights max |Δ|={max_w:.2e}, traces max |Δ|={max_t:.2e}")
+
+
+# ============================================================
 # Feature flag
 # ============================================================
 
@@ -241,6 +312,8 @@ def main():
         ("metabolic_c_matches_python", test_metabolic_c_matches_python),
         ("ip_c_matches_python_constant_rate", test_ip_c_matches_python_constant_rate),
         ("ip_c_respects_cap", test_ip_c_respects_cap),
+        ("inhibitory_c_matches_python", test_inhibitory_c_matches_python),
+        ("rstdp_c_matches_python", test_rstdp_c_matches_python),
         ("feature_flag_toggles", test_feature_flag_toggles),
     ]
     for name, fn in tests:

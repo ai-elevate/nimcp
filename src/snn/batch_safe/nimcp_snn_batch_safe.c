@@ -247,6 +247,98 @@ int nimcp_snn_ip_apply_batch(float* threshold_offset,
 }
 
 /* ========================================================================
+ * 6. Inhibitory Plasticity — batch (dense matrix form)
+ * ========================================================================
+ *
+ * Δw[i,j] = -η · ( Σ_b fired_pre[i,b]·fired_post[j,b]  - B·2·target^2 )
+ */
+int nimcp_snn_inhibitory_apply_batch(float* w,
+                                       const float* fired_pre_batch,
+                                       const float* fired_post_batch,
+                                       uint32_t batch_size,
+                                       uint32_t n_pre,
+                                       uint32_t n_post,
+                                       float eta,
+                                       float target_rate)
+{
+    if (!w || !fired_pre_batch || !fired_post_batch) return -1;
+    if (batch_size == 0 || n_pre == 0 || n_post == 0) return -1;
+
+    const float target_sq = target_rate * target_rate;
+    const float B_offset = (float)batch_size * 2.0f * target_sq;
+
+    for (uint32_t i = 0; i < n_pre; i++) {
+        for (uint32_t j = 0; j < n_post; j++) {
+            float co = 0.0f;
+            for (uint32_t b = 0; b < batch_size; b++) {
+                co += fired_pre_batch[b * n_pre + i]
+                       * fired_post_batch[b * n_post + j];
+            }
+            w[i * n_post + j] += -eta * (co - B_offset);
+        }
+    }
+    return 0;
+}
+
+/* ========================================================================
+ * 7. Batch R-STDP — EXACT equivalence to sequential
+ * ========================================================================
+ *
+ * Accumulates Σ r_b · trace_b into a delta buffer, applies once.
+ * Traces updated per-sample (temporal ordering preserved).
+ */
+int nimcp_snn_rstdp_apply_batch(float* w,
+                                  float* trace,
+                                  const float* fired_pre_batch,
+                                  const float* fired_post_batch,
+                                  const float* rewards,
+                                  uint32_t batch_size,
+                                  uint32_t n_pre,
+                                  uint32_t n_post,
+                                  float trace_decay,
+                                  float ltp_rate,
+                                  float ltd_rate,
+                                  float learning_rate)
+{
+    if (!w || !trace || !fired_pre_batch || !fired_post_batch || !rewards)
+        return -1;
+    if (batch_size == 0 || n_pre == 0 || n_post == 0) return -1;
+
+    const size_t total = (size_t)n_pre * (size_t)n_post;
+    float* delta = (float*)calloc(total, sizeof(float));
+    if (!delta) return -1;
+
+    for (uint32_t b = 0; b < batch_size; b++) {
+        const float* pre_b = &fired_pre_batch[b * n_pre];
+        const float* post_b = &fired_post_batch[b * n_post];
+        const float r_b = rewards[b];
+
+        for (uint32_t i = 0; i < n_pre; i++) {
+            const bool pre_fired = pre_b[i] > 0.5f;
+            for (uint32_t j = 0; j < n_post; j++) {
+                const size_t idx = (size_t)i * n_post + j;
+                const bool post_fired = post_b[j] > 0.5f;
+
+                trace[idx] *= trace_decay;
+                if (pre_fired && post_fired) {
+                    trace[idx] += ltp_rate;
+                } else if (post_fired && !pre_fired) {
+                    trace[idx] -= ltd_rate;
+                }
+                delta[idx] += r_b * trace[idx];
+            }
+        }
+    }
+
+    for (size_t k = 0; k < total; k++) {
+        w[k] += learning_rate * delta[k];
+    }
+
+    free(delta);
+    return 0;
+}
+
+/* ========================================================================
  * Self-test — simple correctness checks
  * ========================================================================
  */

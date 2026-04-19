@@ -8485,6 +8485,96 @@ static PyObject* BS_ip_apply(PyObject* self, PyObject* args)
     return out;
 }
 
+static PyObject* BS_inhibitory_apply(PyObject* self, PyObject* args)
+{
+    (void)self;
+    PyObject *w_list, *pre_list, *post_list;
+    unsigned int B, n_pre, n_post;
+    double eta, target;
+    if (!PyArg_ParseTuple(args, "OOOIIIdd", &w_list, &pre_list, &post_list,
+                           &B, &n_pre, &n_post, &eta, &target))
+        return NULL;
+
+    const size_t total = (size_t)n_pre * n_post;
+    float* w = (float*)malloc(total * sizeof(float));
+    float* pre = (float*)malloc((size_t)B * n_pre * sizeof(float));
+    float* post = (float*)malloc((size_t)B * n_post * sizeof(float));
+    if (!w || !pre || !post) {
+        free(w); free(pre); free(post); return PyErr_NoMemory();
+    }
+    for (size_t i = 0; i < total; i++)
+        w[i] = (float)PyFloat_AsDouble(PyList_GetItem(w_list, i));
+    for (unsigned i = 0; i < B * n_pre; i++)
+        pre[i] = (float)PyFloat_AsDouble(PyList_GetItem(pre_list, i));
+    for (unsigned i = 0; i < B * n_post; i++)
+        post[i] = (float)PyFloat_AsDouble(PyList_GetItem(post_list, i));
+
+    int rc = nimcp_snn_inhibitory_apply_batch(w, pre, post, B, n_pre, n_post,
+                                                 (float)eta, (float)target);
+    if (rc != 0) { free(w); free(pre); free(post); Py_RETURN_NONE; }
+
+    PyObject* out = PyList_New(total);
+    for (size_t i = 0; i < total; i++)
+        PyList_SET_ITEM(out, i, PyFloat_FromDouble((double)w[i]));
+    free(w); free(pre); free(post);
+    return out;
+}
+
+static PyObject* BS_rstdp_apply(PyObject* self, PyObject* args)
+{
+    (void)self;
+    PyObject *w_list, *trace_list, *pre_list, *post_list, *rewards_list;
+    unsigned int B, n_pre, n_post;
+    double trace_decay, ltp, ltd, lr;
+    if (!PyArg_ParseTuple(args, "OOOOOIIIdddd", &w_list, &trace_list,
+                           &pre_list, &post_list, &rewards_list,
+                           &B, &n_pre, &n_post,
+                           &trace_decay, &ltp, &ltd, &lr))
+        return NULL;
+
+    const size_t total = (size_t)n_pre * n_post;
+    float* w = (float*)malloc(total * sizeof(float));
+    float* trace = (float*)malloc(total * sizeof(float));
+    float* pre = (float*)malloc((size_t)B * n_pre * sizeof(float));
+    float* post = (float*)malloc((size_t)B * n_post * sizeof(float));
+    float* rewards = (float*)malloc(B * sizeof(float));
+    if (!w || !trace || !pre || !post || !rewards) {
+        free(w); free(trace); free(pre); free(post); free(rewards);
+        return PyErr_NoMemory();
+    }
+    for (size_t i = 0; i < total; i++) {
+        w[i] = (float)PyFloat_AsDouble(PyList_GetItem(w_list, i));
+        trace[i] = (float)PyFloat_AsDouble(PyList_GetItem(trace_list, i));
+    }
+    for (unsigned i = 0; i < B * n_pre; i++)
+        pre[i] = (float)PyFloat_AsDouble(PyList_GetItem(pre_list, i));
+    for (unsigned i = 0; i < B * n_post; i++)
+        post[i] = (float)PyFloat_AsDouble(PyList_GetItem(post_list, i));
+    for (unsigned i = 0; i < B; i++)
+        rewards[i] = (float)PyFloat_AsDouble(PyList_GetItem(rewards_list, i));
+
+    int rc = nimcp_snn_rstdp_apply_batch(w, trace, pre, post, rewards,
+                                            B, n_pre, n_post,
+                                            (float)trace_decay, (float)ltp,
+                                            (float)ltd, (float)lr);
+    if (rc != 0) {
+        free(w); free(trace); free(pre); free(post); free(rewards);
+        Py_RETURN_NONE;
+    }
+
+    PyObject* w_out = PyList_New(total);
+    PyObject* trace_out = PyList_New(total);
+    for (size_t i = 0; i < total; i++) {
+        PyList_SET_ITEM(w_out, i, PyFloat_FromDouble((double)w[i]));
+        PyList_SET_ITEM(trace_out, i, PyFloat_FromDouble((double)trace[i]));
+    }
+    free(w); free(trace); free(pre); free(post); free(rewards);
+    PyObject* tup = PyTuple_New(2);
+    PyTuple_SET_ITEM(tup, 0, w_out);
+    PyTuple_SET_ITEM(tup, 1, trace_out);
+    return tup;
+}
+
 static PyObject* BS_self_test(PyObject* self, PyObject* Py_UNUSED(args))
 {
     (void)self;
@@ -9994,6 +10084,10 @@ static PyMethodDef module_methods[] = {
      "Metabolic budget (C, stateless)"},
     {"bs_ip_apply",          BS_ip_apply,          METH_VARARGS,
      "Batch-safe intrinsic plasticity (C)"},
+    {"bs_inhibitory_apply",  BS_inhibitory_apply,  METH_VARARGS,
+     "Batch-safe inhibitory plasticity (C)"},
+    {"bs_rstdp_apply",       BS_rstdp_apply,       METH_VARARGS,
+     "Batch-safe R-STDP (C) — exact equivalence to sequential"},
     {"bs_self_test",         BS_self_test,         METH_NOARGS,
      "Run C self-test; returns # failures"},
     {"bs_set_enabled",       BS_set_enabled,       METH_VARARGS,
