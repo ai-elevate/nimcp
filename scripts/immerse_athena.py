@@ -142,6 +142,11 @@ def generate_sensory_exposure():
 
 from functools import lru_cache
 
+# Module-level training integration — initialized lazily in main(). Used by
+# stage_1/2/3 loops to invoke Phase A-E module hooks without having to
+# thread it through every function signature.
+_training_integration = None
+
 
 @lru_cache(maxsize=4096)
 def generate_visual_frame(description, width=32, height=32, channels=3):
@@ -5837,6 +5842,24 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
 
         losses.append(loss if loss is not None else 0)
 
+        # === Training integration hook (Phase A-E modules) ===
+        # Observes the training event for symbolic writing + memory
+        # consolidation. Non-blocking; safe on errors.
+        try:
+            if _training_integration is not None:
+                _baseline = (sum(losses[-50:-1]) / 49) if len(losses) > 50 else None
+                _training_integration.after_learn_vector(
+                    label=(name[:50] if isinstance(name, str) else str(name)[:50]),
+                    description=(description
+                                   if isinstance(description, str) else ""),
+                    modality="text",
+                    loss=float(loss) if loss is not None else 0.0,
+                    baseline_loss=_baseline)
+        except NameError:
+            pass  # _training_integration not defined (legacy path)
+        except Exception:
+            pass
+
         # === CORRUPTION GUARD ===
         # Check for NaN/Inf in loss, output vector, AND GPU forward path.
         # NaN can develop during training without appearing in learn_vector loss.
@@ -8537,6 +8560,21 @@ def main():
                             snn_neuron_count=args.snn_neuron_count,
                             lnn_neuron_count=args.lnn_neuron_count)
 
+    # --- Training integration (Phase A-E modules) ---
+    # Wraps stimulus selection, activates symbolic writers, applies innate
+    # priors at init, and runs continuous memory consolidation throughout
+    # all stages. Each component is individually disable-able via flags.
+    # Stored as module-level global so stage functions can reference it.
+    global _training_integration
+    try:
+        from training_integration import TrainingIntegration
+        _training_integration = TrainingIntegration(brain)
+        _priors_summary = _training_integration.apply_innate_priors()
+        print(f"  [Integration] Innate priors: {_priors_summary.get('applied', [])}")
+    except Exception as _integ_err:
+        print(f"  [Integration] Setup failed ({_integ_err}) — continuing without")
+        _training_integration = None
+
     # --- Brain configuration ---
     # In daemon mode, the brain was already configured when first created.
     # These calls are idempotent but some (lnn_create, enable_multi_network)
@@ -8829,8 +8867,20 @@ def main():
     # --- Run developmental stages ---
     print(f"\n  Starting from stage {start_stage}")
 
+    # Wrap stimulus source with curiosity + curriculum (no-op if integration
+    # is unavailable). Keeps the source variable name stable for the rest
+    # of the main flow.
+    if _training_integration is not None:
+        try:
+            source = _training_integration.wrap_source(source)
+            print("  [Integration] source wrapped with curiosity + curriculum")
+        except Exception as _wrap_err:
+            print(f"  [Integration] wrap_source failed ({_wrap_err})")
+
     if start_stage <= 0:
         training_progress[0] = 0
+        if _training_integration is not None:
+            _training_integration.begin_stage(0)
         run_stage_0(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage0_stimuli,
                     start_from=start_step if start_stage == 0 else 0)
@@ -8846,6 +8896,8 @@ def main():
 
     if start_stage <= 1:
         training_progress[0], training_progress[1] = 1, 0
+        if _training_integration is not None:
+            _training_integration.begin_stage(1)
         run_stage_1(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
@@ -8857,6 +8909,8 @@ def main():
 
     if start_stage <= 2:
         training_progress[0], training_progress[1] = 2, 0
+        if _training_integration is not None:
+            _training_integration.begin_stage(2)
         stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
             num_stimuli=args.stage2_stimuli,
@@ -8872,6 +8926,8 @@ def main():
 
     if start_stage <= 3:
         training_progress[0], training_progress[1] = 3, 0
+        if _training_integration is not None:
+            _training_integration.begin_stage(3)
         run_stage_3(brain, composer, parent, clock, source, decoder,
                     num_interactions=args.stage3_interactions,
                     start_from=start_step if start_stage == 3 else 0)

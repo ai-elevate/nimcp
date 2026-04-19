@@ -57,6 +57,17 @@ class ProgressiveCurriculum:
             self.step += 1
         return self._current_n()
 
+    def get_object(self) -> tuple[str, str]:
+        """Alias for pick_object() so ProgressiveCurriculum can substitute
+        for a raw source (which uses .get_object()) in chained wrappings."""
+        return self.pick_object()
+
+    def get_fact(self, preferred_domain=None) -> tuple:
+        """Pass-through for fact queries — curriculum does not filter facts."""
+        if hasattr(self.source, "get_fact"):
+            return self.source.get_fact(preferred_domain=preferred_domain)
+        return ("", None)
+
     def pick_object(self, max_reject: int = 50) -> tuple[str, str]:
         """Pick an object, filtering to currently-allowed categories."""
         n_allowed = self._current_n()

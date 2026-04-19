@@ -42,6 +42,15 @@ class CuriositySelector:
 
     # ---- Public API ----
 
+    def get_object(self) -> tuple[str, str]:
+        """Alias for pick_object — allows CuriositySelector to be used
+        anywhere a raw stimulus source (.get_object) is expected."""
+        return self.pick_object()
+
+    def get_fact(self, preferred_domain=None) -> tuple:
+        """Alias for pick_fact — allows drop-in replacement of source."""
+        return self.pick_fact(preferred_domain=preferred_domain)
+
     def pick_object(self) -> tuple[str, str]:
         """Return (name, description) for an object-type stimulus."""
         if random.random() < self.bias:
