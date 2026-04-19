@@ -1029,22 +1029,65 @@ int snn_network_step(snn_network_t* network, float dt) {
                 const float dep_decay = 0.95f;            /* per step decay → tau ≈ 20 steps */
                 const float dep_inc  = 0.2f;
                 const float dep_cap  = 0.5f;
-                for (uint32_t n = 0; n < pop->n_neurons; n++) {
-                    /* Update per-neuron rate EMA */
-                    float fired = spike_data[n] > 0.5f ? 1.0f : 0.0f;
-                    pop->neuron_rate_ema[n] = (1.0f - ip_alpha) * pop->neuron_rate_ema[n]
-                                            + ip_alpha * fired;
-                    /* If rate > target, raise threshold (harder to fire).
-                     * If rate < target, lower threshold (easier to fire). */
-                    float err = pop->neuron_rate_ema[n] - target_neuron_rate;
-                    pop->threshold_offset[n] += ip_gain * err;
-                    if (pop->threshold_offset[n] > ip_cap) pop->threshold_offset[n] = ip_cap;
-                    if (pop->threshold_offset[n] < -ip_cap) pop->threshold_offset[n] = -ip_cap;
-                    /* Short-term depression decay + jump on firing */
-                    pop->depression[n] *= dep_decay;
-                    if (fired > 0.5f) {
-                        pop->depression[n] += dep_inc;
-                        if (pop->depression[n] > dep_cap) pop->depression[n] = dep_cap;
+
+                /* === Phase 4.1 wiring: when the batch-safe flag is set,
+                 * route through the batch-safe C functions (B=1 here).
+                 * Behavior is identity-equivalent to the legacy inline loop,
+                 * which lets us validate that the wiring produces identical
+                 * trainning dynamics before enabling larger batches. */
+                extern bool nimcp_snn_batch_safe_is_enabled(void);
+                extern int nimcp_snn_scaling_apply_batch(float*, const float*, uint32_t, uint32_t, float);
+                extern int nimcp_snn_depression_apply_batch(float*, const float*, uint32_t, uint32_t, float, float, float);
+                extern int nimcp_snn_ip_apply_batch(float*, const float*, const float*, uint32_t, uint32_t, float, float, float);
+
+                if (nimcp_snn_batch_safe_is_enabled()) {
+                    /* Build a fire-vector for this step (B=1, N=n_neurons).
+                     * Allocated on stack via VLA. */
+                    float fired_buf[1024];  /* most pops fit; fallback to malloc if larger */
+                    float* fired_vec = fired_buf;
+                    bool heap_alloc = false;
+                    if (pop->n_neurons > 1024) {
+                        fired_vec = (float*)malloc(pop->n_neurons * sizeof(float));
+                        heap_alloc = true;
+                    }
+                    if (fired_vec) {
+                        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                            fired_vec[n] = spike_data[n] > 0.5f ? 1.0f : 0.0f;
+                        }
+                        /* Scaling: rate EMA update */
+                        nimcp_snn_scaling_apply_batch(
+                            pop->neuron_rate_ema, fired_vec, 1, pop->n_neurons,
+                            1.0f - ip_alpha);
+                        /* IP: threshold adaptation (uses updated rate_ema) */
+                        nimcp_snn_ip_apply_batch(
+                            pop->threshold_offset, fired_vec,
+                            pop->neuron_rate_ema, 1, pop->n_neurons,
+                            ip_gain, target_neuron_rate, ip_cap);
+                        /* Depression */
+                        nimcp_snn_depression_apply_batch(
+                            pop->depression, fired_vec, 1, pop->n_neurons,
+                            dep_decay, dep_inc, dep_cap);
+                        if (heap_alloc) free(fired_vec);
+                    }
+                } else {
+                    /* Legacy sequential path (DEFAULT) */
+                    for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                        /* Update per-neuron rate EMA */
+                        float fired = spike_data[n] > 0.5f ? 1.0f : 0.0f;
+                        pop->neuron_rate_ema[n] = (1.0f - ip_alpha) * pop->neuron_rate_ema[n]
+                                                + ip_alpha * fired;
+                        /* If rate > target, raise threshold (harder to fire).
+                         * If rate < target, lower threshold (easier to fire). */
+                        float err = pop->neuron_rate_ema[n] - target_neuron_rate;
+                        pop->threshold_offset[n] += ip_gain * err;
+                        if (pop->threshold_offset[n] > ip_cap) pop->threshold_offset[n] = ip_cap;
+                        if (pop->threshold_offset[n] < -ip_cap) pop->threshold_offset[n] = -ip_cap;
+                        /* Short-term depression decay + jump on firing */
+                        pop->depression[n] *= dep_decay;
+                        if (fired > 0.5f) {
+                            pop->depression[n] += dep_inc;
+                            if (pop->depression[n] > dep_cap) pop->depression[n] = dep_cap;
+                        }
                     }
                 }
             }
