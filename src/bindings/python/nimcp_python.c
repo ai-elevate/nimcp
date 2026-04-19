@@ -8348,6 +8348,177 @@ static PyObject* Brain_memory_is_healthy(BrainObject* self, PyObject* Py_UNUSED(
 }
 
 /* ============================================================
+ * Batch-safe biological stability — Phase 4.1 C port bindings
+ * ============================================================
+ *
+ * Allows Python tests to call the C implementations and compare against
+ * the Python reference in scripts/batch_safe_homeostasis/.
+ */
+#include "snn/nimcp_snn_batch_safe.h"
+
+static PyObject* BS_scaling_apply(PyObject* self, PyObject* args)
+{
+    (void)self;
+    PyObject* rate_list;
+    PyObject* fired_list;  /* flat B*N list */
+    unsigned int B, N;
+    double alpha;
+    if (!PyArg_ParseTuple(args, "OOIId", &rate_list, &fired_list, &B, &N, &alpha))
+        return NULL;
+
+    float* rate = (float*)malloc(N * sizeof(float));
+    float* fired = (float*)malloc((size_t)B * N * sizeof(float));
+    if (!rate || !fired) { free(rate); free(fired); return PyErr_NoMemory(); }
+
+    for (unsigned i = 0; i < N; i++)
+        rate[i] = (float)PyFloat_AsDouble(PyList_GetItem(rate_list, i));
+    for (unsigned i = 0; i < B * N; i++)
+        fired[i] = (float)PyFloat_AsDouble(PyList_GetItem(fired_list, i));
+
+    int rc = nimcp_snn_scaling_apply_batch(rate, fired, B, N, (float)alpha);
+    if (rc != 0) { free(rate); free(fired); Py_RETURN_NONE; }
+
+    PyObject* out = PyList_New(N);
+    for (unsigned i = 0; i < N; i++)
+        PyList_SET_ITEM(out, i, PyFloat_FromDouble((double)rate[i]));
+    free(rate); free(fired);
+    return out;
+}
+
+static PyObject* BS_depression_apply(PyObject* self, PyObject* args)
+{
+    (void)self;
+    PyObject* dep_list;
+    PyObject* fired_list;
+    unsigned int B, N;
+    double decay, jump, cap;
+    if (!PyArg_ParseTuple(args, "OOIIddd", &dep_list, &fired_list, &B, &N,
+                           &decay, &jump, &cap))
+        return NULL;
+
+    float* dep = (float*)malloc(N * sizeof(float));
+    float* fired = (float*)malloc((size_t)B * N * sizeof(float));
+    if (!dep || !fired) { free(dep); free(fired); return PyErr_NoMemory(); }
+
+    for (unsigned i = 0; i < N; i++)
+        dep[i] = (float)PyFloat_AsDouble(PyList_GetItem(dep_list, i));
+    for (unsigned i = 0; i < B * N; i++)
+        fired[i] = (float)PyFloat_AsDouble(PyList_GetItem(fired_list, i));
+
+    int rc = nimcp_snn_depression_apply_batch(dep, fired, B, N,
+                                                (float)decay, (float)jump, (float)cap);
+    if (rc != 0) { free(dep); free(fired); Py_RETURN_NONE; }
+
+    PyObject* out = PyList_New(N);
+    for (unsigned i = 0; i < N; i++)
+        PyList_SET_ITEM(out, i, PyFloat_FromDouble((double)dep[i]));
+    free(dep); free(fired);
+    return out;
+}
+
+static PyObject* BS_metabolic_apply(PyObject* self, PyObject* args)
+{
+    (void)self;
+    PyObject* w_list;
+    PyObject* rp_list;
+    unsigned int N;
+    double cap;
+    if (!PyArg_ParseTuple(args, "OOId", &w_list, &rp_list, &N, &cap))
+        return NULL;
+
+    Py_ssize_t nnz = PyList_Size(w_list);
+    float* w = (float*)malloc(nnz * sizeof(float));
+    uint32_t* rp = (uint32_t*)malloc((N + 1) * sizeof(uint32_t));
+    if (!w || !rp) { free(w); free(rp); return PyErr_NoMemory(); }
+
+    for (Py_ssize_t i = 0; i < nnz; i++)
+        w[i] = (float)PyFloat_AsDouble(PyList_GetItem(w_list, i));
+    for (unsigned i = 0; i <= N; i++)
+        rp[i] = (uint32_t)PyLong_AsUnsignedLong(PyList_GetItem(rp_list, i));
+
+    int rc = nimcp_snn_metabolic_budget_apply(w, rp, N, (float)cap);
+    if (rc != 0) { free(w); free(rp); Py_RETURN_NONE; }
+
+    PyObject* out = PyList_New(nnz);
+    for (Py_ssize_t i = 0; i < nnz; i++)
+        PyList_SET_ITEM(out, i, PyFloat_FromDouble((double)w[i]));
+    free(w); free(rp);
+    return out;
+}
+
+static PyObject* BS_ip_apply(PyObject* self, PyObject* args)
+{
+    (void)self;
+    PyObject* thr_list;
+    PyObject* fired_list;
+    PyObject* rate_list;
+    unsigned int B, N;
+    double eta, target, delta_max;
+    if (!PyArg_ParseTuple(args, "OOOIIddd", &thr_list, &fired_list, &rate_list,
+                           &B, &N, &eta, &target, &delta_max))
+        return NULL;
+
+    float* thr = (float*)malloc(N * sizeof(float));
+    float* fired = (float*)malloc((size_t)B * N * sizeof(float));
+    float* rate = (float*)malloc(N * sizeof(float));
+    if (!thr || !fired || !rate) {
+        free(thr); free(fired); free(rate); return PyErr_NoMemory();
+    }
+
+    for (unsigned i = 0; i < N; i++)
+        thr[i] = (float)PyFloat_AsDouble(PyList_GetItem(thr_list, i));
+    for (unsigned i = 0; i < B * N; i++)
+        fired[i] = (float)PyFloat_AsDouble(PyList_GetItem(fired_list, i));
+    for (unsigned i = 0; i < N; i++)
+        rate[i] = (float)PyFloat_AsDouble(PyList_GetItem(rate_list, i));
+
+    int rc = nimcp_snn_ip_apply_batch(thr, fired, rate, B, N,
+                                        (float)eta, (float)target, (float)delta_max);
+    if (rc != 0) {
+        free(thr); free(fired); free(rate); Py_RETURN_NONE;
+    }
+
+    PyObject* out = PyList_New(N);
+    for (unsigned i = 0; i < N; i++)
+        PyList_SET_ITEM(out, i, PyFloat_FromDouble((double)thr[i]));
+    free(thr); free(fired); free(rate);
+    return out;
+}
+
+static PyObject* BS_self_test(PyObject* self, PyObject* Py_UNUSED(args))
+{
+    (void)self;
+    int failures = nimcp_snn_batch_safe_self_test();
+    return PyLong_FromLong((long)failures);
+}
+
+static PyObject* BS_set_enabled(PyObject* self, PyObject* args)
+{
+    (void)self;
+    int en;
+    if (!PyArg_ParseTuple(args, "p", &en)) return NULL;
+    nimcp_snn_batch_safe_set_enabled((bool)en);
+    Py_RETURN_NONE;
+}
+
+static PyObject* BS_is_enabled(PyObject* self, PyObject* Py_UNUSED(args))
+{
+    (void)self;
+    return PyBool_FromLong((long)nimcp_snn_batch_safe_is_enabled());
+}
+
+static PyMethodDef BatchSafeMethods[] = {
+    {"bs_scaling_apply",      BS_scaling_apply,      METH_VARARGS, "batch-safe synaptic scaling"},
+    {"bs_depression_apply",   BS_depression_apply,   METH_VARARGS, "batch-safe short-term depression"},
+    {"bs_metabolic_apply",    BS_metabolic_apply,    METH_VARARGS, "metabolic budget"},
+    {"bs_ip_apply",           BS_ip_apply,           METH_VARARGS, "batch-safe intrinsic plasticity"},
+    {"bs_self_test",          BS_self_test,          METH_NOARGS,  "run C self-test"},
+    {"bs_set_enabled",        BS_set_enabled,        METH_VARARGS, "enable/disable batch-safe path"},
+    {"bs_is_enabled",         BS_is_enabled,         METH_NOARGS,  "check if batch-safe enabled"},
+    {NULL, NULL, 0, NULL}
+};
+
+/* ============================================================
  * Cognitive / Safety Test Battery — Introspection & Probing API
  * ============================================================
  *
@@ -9814,6 +9985,21 @@ static PyMethodDef module_methods[] = {
     {"shutdown", nimcp_shutdown_lib, METH_NOARGS, "Shutdown NIMCP library"},
     {"set_log_level", py_nimcp_set_log_level, METH_VARARGS,
      "Set log level: 'trace', 'debug', 'info', 'warn', 'error', 'off'"},
+    /* Batch-safe biological stability (Phase 4.1) */
+    {"bs_scaling_apply",     BS_scaling_apply,     METH_VARARGS,
+     "Batch-safe synaptic scaling (C)"},
+    {"bs_depression_apply",  BS_depression_apply,  METH_VARARGS,
+     "Batch-safe short-term depression (C)"},
+    {"bs_metabolic_apply",   BS_metabolic_apply,   METH_VARARGS,
+     "Metabolic budget (C, stateless)"},
+    {"bs_ip_apply",          BS_ip_apply,          METH_VARARGS,
+     "Batch-safe intrinsic plasticity (C)"},
+    {"bs_self_test",         BS_self_test,         METH_NOARGS,
+     "Run C self-test; returns # failures"},
+    {"bs_set_enabled",       BS_set_enabled,       METH_VARARGS,
+     "Enable/disable batch-safe path"},
+    {"bs_is_enabled",        BS_is_enabled,        METH_NOARGS,
+     "Check if batch-safe path is enabled"},
     {NULL}
 };
 
