@@ -200,23 +200,63 @@ amortizing the costly weight-update step to once-per-batch.
 
 ## Implementation Strategy
 
-### Layer 1 — Python Reference (this session)
+### Layer 1 — Python Reference ✅ DELIVERED (2026-04-19)
 
-- `scripts/batch_safe_homeostasis/` package
+- `scripts/batch_safe_homeostasis/` package — 7 modules
 - Each mechanism in pure Python/NumPy
-- Differential tests: batch=N trajectory == N sequential applications
+- 14 differential tests proving batch=N trajectory ≡ N sequential applications
+- 4 integration tests, 4 E2E tests
 
-### Layer 2 — C Port (future)
+### Layer 2 — C Port ✅ DELIVERED (2026-04-19)
 
-- New C functions: `snn_scaling_apply_batch`, `snn_ip_apply_batch`, etc.
-- Feature flag `SNN_BATCH_SAFE_ENABLED` (default 0)
+- `include/snn/nimcp_snn_batch_safe.h` — public C API
+- `src/snn/batch_safe/nimcp_snn_batch_safe.c` — all 7 mechanisms ported
+- Feature flag `g_batch_safe_enabled` (default FALSE)
 - Existing sequential path preserved — new path opt-in
+- 12 C↔Python differential tests — all max |Δ| below 9e-8 (f32 precision)
+- 13 stress tests (edge cases, large batches, long horizons) — all pass
 
-### Layer 3 — Integration (future)
+**Status per mechanism:**
 
-- `immerse_athena.py` accepts `--batch-size N`
-- When N > 1, uses batched forward + batch-safe homeostasis
-- Regression gate verifies equivalence to N=1 runs
+| # | Mechanism | Status | Equivalence |
+|---|-----------|--------|-------------|
+| 1 | Synaptic Scaling | C ported | max \|Δ\| 8.6e-8 |
+| 2 | Short-Term Depression | C ported | max \|Δ\| 4.0e-8 |
+| 3 | Metabolic Budget | C ported | max \|Δ\| 3.7e-8 |
+| 4 | Global Gradient Budget | C ported | — |
+| 5 | Intrinsic Plasticity | C ported | max \|Δ\| 6.9e-9 |
+| 6 | Inhibitory Plasticity | C ported (dense) | max \|Δ\| 8.9e-10 |
+| 7 | Batch R-STDP | C ported (dense) | **max \|Δ\| 6.2e-12 (bitwise)** |
+
+**Python bindings exposed:**
+
+```python
+import nimcp
+nimcp.bs_is_enabled()              # feature flag check
+nimcp.bs_set_enabled(True)         # flip flag
+nimcp.bs_self_test()               # internal correctness check, returns 0
+nimcp.bs_scaling_apply(rate, fired_batch, B, N, alpha)
+nimcp.bs_depression_apply(dep, fired_batch, B, N, decay, jump, cap)
+nimcp.bs_metabolic_apply(w, row_ptr, n, cap_per_fan_in)
+nimcp.bs_ip_apply(thr, fired_batch, rate, B, N, eta, target, dmax)
+nimcp.bs_inhibitory_apply(w, pre_batch, post_batch, B, P, Q, eta, target)
+nimcp.bs_rstdp_apply(w, trace, pre_batch, post_batch, rewards,
+                      B, P, Q, decay, ltp, ltd, lr)
+```
+
+### Layer 3 — Integration (remaining work)
+
+What's NOT yet done — the risky hot-path wiring:
+
+- Modify `nimcp_snn_training.c` to invoke `nimcp_snn_*_apply_batch`
+  when `g_batch_safe_enabled == true`
+- Add `--batch-size N` to `immerse_athena.py`
+- Move inhibitory + R-STDP from dense to CSR form for 1.45B-synapse scale
+- Canary deployment + measurement on pod
+
+Intentionally deferred — this is the step that could introduce silent
+training corruption. Python refs + C ports are tested; flipping the flag
+in production needs a dedicated session with careful measurement.
 
 ## Risk Mitigation
 
