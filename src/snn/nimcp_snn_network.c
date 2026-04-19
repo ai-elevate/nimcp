@@ -159,6 +159,27 @@ static snn_population_t* snn_population_create_lightweight(
     pop->firing_rate_ema = 0.03f;
     pop->rate_samples = 0;
 
+    /* Temporal history ring buffer initialized to zero. */
+    memset(pop->spike_count_history, 0, sizeof(pop->spike_count_history));
+    pop->history_write_idx = 0;
+    pop->history_total_steps = 0;
+
+    /* Intrinsic plasticity state — per-neuron. */
+    pop->threshold_offset = nimcp_calloc(n_neurons, sizeof(float));
+    pop->neuron_rate_ema  = nimcp_calloc(n_neurons, sizeof(float));
+    pop->depression       = nimcp_calloc(n_neurons, sizeof(float));
+    if (!pop->threshold_offset || !pop->neuron_rate_ema || !pop->depression) {
+        snn_population_destroy_internal(pop);
+        return NULL;
+    }
+    /* Seed per-neuron rate EMA at the target (0.03) so initial threshold
+     * adaptation doesn't spuriously drift toward easier-firing before
+     * any real activity has been observed. */
+    const float ip_target = 0.03f;
+    for (uint32_t i = 0; i < n_neurons; i++) {
+        pop->neuron_rate_ema[i] = ip_target;
+    }
+
     /* Initialize membrane potential to resting potential */
     float* v = (float*)nimcp_tensor_data(pop->membrane_v);
     if (v) {
@@ -187,6 +208,11 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
     if (pop->incoming_csr) {
         snn_csr_destroy(pop->incoming_csr);
     }
+
+    /* Intrinsic plasticity + short-term depression state */
+    if (pop->threshold_offset) nimcp_free(pop->threshold_offset);
+    if (pop->neuron_rate_ema) nimcp_free(pop->neuron_rate_ema);
+    if (pop->depression) nimcp_free(pop->depression);
 
     nimcp_free(pop);
 }
@@ -665,49 +691,75 @@ int snn_network_step(snn_network_t* network, float dt) {
                                 pop->incoming_csr->n_synapses > 0) {
                                 snn_csr_storage_t* csr = pop->incoming_csr;
 
-                                /* Upload CSR arrays to GPU */
-                                size_t w_dims[1] = { csr->n_synapses };
-                                size_t r_dims[1] = { (size_t)csr->n_neurons + 1 };
+                                /* === V2 Fast path: persistent GPU CSR ===
+                                 * Upload once, reuse every timestep. Eliminates
+                                 * ~12 GB PCIe transfer per step for 1.45B-synapse
+                                 * populations. Falls back to per-step upload if
+                                 * upload fails or is disabled. */
+                                bool use_persistent = false;
+                                if (!csr->gpu_resident) {
+                                    /* Lazy upload on first use */
+                                    if (snn_csr_upload_to_gpu(csr, gpu) == 0) {
+                                        use_persistent = true;
+                                    }
+                                } else {
+                                    use_persistent = true;
+                                }
+
                                 size_t n_dims[1] = { pop->n_neurons };
-
-                                nimcp_gpu_tensor_t* d_w = nimcp_gpu_tensor_from_host(
-                                    gpu, csr->weights, w_dims, 1, NIMCP_GPU_PRECISION_FP32);
-                                nimcp_gpu_tensor_t* d_ci = nimcp_gpu_tensor_from_host(
-                                    gpu, csr->flat_col_idx, w_dims, 1, NIMCP_GPU_PRECISION_UINT32);
-                                nimcp_gpu_tensor_t* d_rp = nimcp_gpu_tensor_from_host(
-                                    gpu, csr->row_ptr, r_dims, 1, NIMCP_GPU_PRECISION_UINT32);
-
                                 float* ext_cur = pop->external_current;
-                                float* h_ext = ext_cur ? ext_cur : (float*)nimcp_calloc(pop->n_neurons, sizeof(float));
+                                float* h_ext = ext_cur ? ext_cur :
+                                    (float*)nimcp_calloc(pop->n_neurons, sizeof(float));
                                 nimcp_gpu_tensor_t* d_ext = nimcp_gpu_tensor_from_host(
                                     gpu, h_ext, n_dims, 1, NIMCP_GPU_PRECISION_FP32);
-
                                 nimcp_gpu_tensor_t* d_isyn = nimcp_gpu_tensor_create(
                                     gpu, n_dims, 1, NIMCP_GPU_PRECISION_FP32);
 
-                                if (d_w && d_ci && d_rp && d_ext && d_isyn) {
-                                    extern bool nimcp_gpu_snn_isyn_csr(
-                                        nimcp_gpu_context_t*, const float*,
-                                        const float*, const unsigned int*,
-                                        const unsigned int*, const float*,
-                                        float*, size_t);
+                                extern bool nimcp_gpu_snn_isyn_csr(
+                                    nimcp_gpu_context_t*, const float*,
+                                    const float*, const unsigned int*,
+                                    const unsigned int*, const float*,
+                                    float*, size_t);
+
+                                if (use_persistent && d_ext && d_isyn) {
+                                    /* Fast path: use persistent device pointers */
                                     nimcp_gpu_snn_isyn_csr(gpu,
                                         (const float*)d_spk->data,
-                                        (const float*)d_w->data,
-                                        (const unsigned int*)d_ci->data,
-                                        (const unsigned int*)d_rp->data,
+                                        (const float*)csr->d_weights,
+                                        (const unsigned int*)csr->d_flat_col_idx,
+                                        (const unsigned int*)csr->d_row_ptr,
                                         (const float*)d_ext->data,
                                         (float*)d_isyn->data,
                                         pop->n_neurons);
-
-                                    /* Download I_syn result */
                                     nimcp_gpu_tensor_to_host(d_isyn,
                                         h_input + pop_offset);
+                                } else if (d_ext && d_isyn) {
+                                    /* Slow fallback: per-step CSR upload (legacy) */
+                                    size_t w_dims[1] = { csr->n_synapses };
+                                    size_t r_dims[1] = { (size_t)csr->n_neurons + 1 };
+                                    nimcp_gpu_tensor_t* d_w = nimcp_gpu_tensor_from_host(
+                                        gpu, csr->weights, w_dims, 1, NIMCP_GPU_PRECISION_FP32);
+                                    nimcp_gpu_tensor_t* d_ci = nimcp_gpu_tensor_from_host(
+                                        gpu, csr->flat_col_idx, w_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+                                    nimcp_gpu_tensor_t* d_rp = nimcp_gpu_tensor_from_host(
+                                        gpu, csr->row_ptr, r_dims, 1, NIMCP_GPU_PRECISION_UINT32);
+                                    if (d_w && d_ci && d_rp) {
+                                        nimcp_gpu_snn_isyn_csr(gpu,
+                                            (const float*)d_spk->data,
+                                            (const float*)d_w->data,
+                                            (const unsigned int*)d_ci->data,
+                                            (const unsigned int*)d_rp->data,
+                                            (const float*)d_ext->data,
+                                            (float*)d_isyn->data,
+                                            pop->n_neurons);
+                                        nimcp_gpu_tensor_to_host(d_isyn,
+                                            h_input + pop_offset);
+                                    }
+                                    if (d_w) nimcp_gpu_tensor_destroy(d_w);
+                                    if (d_ci) nimcp_gpu_tensor_destroy(d_ci);
+                                    if (d_rp) nimcp_gpu_tensor_destroy(d_rp);
                                 }
 
-                                if (d_w) nimcp_gpu_tensor_destroy(d_w);
-                                if (d_ci) nimcp_gpu_tensor_destroy(d_ci);
-                                if (d_rp) nimcp_gpu_tensor_destroy(d_rp);
                                 if (d_ext) nimcp_gpu_tensor_destroy(d_ext);
                                 if (d_isyn) nimcp_gpu_tensor_destroy(d_isyn);
                                 if (!ext_cur && h_ext) nimcp_free(h_ext);
@@ -933,7 +985,12 @@ int snn_network_step(snn_network_t* network, float dt) {
                     float* src_spikes = (float*)nimcp_tensor_data(src_pop->spike_output);
                     if (src_spikes && syns[s].src_neuron < src_pop->n_neurons
                         && src_spikes[syns[s].src_neuron] > 0.5f) {
-                        I_syn += syns[s].weight;
+                        /* Short-term synaptic depression: scale contribution by
+                         * (1 - depression[src_neuron]). Recently-firing sources
+                         * deliver less drive, preventing hot-pathway runaway. */
+                        float dep = 0.0f;
+                        if (src_pop->depression) dep = src_pop->depression[syns[s].src_neuron];
+                        I_syn += syns[s].weight * (1.0f - dep);
                     }
                 }
 
@@ -941,7 +998,12 @@ int snn_network_step(snn_network_t* network, float dt) {
                 float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
                 v_data[n] += dv;
 
-                if (v_data[n] >= v_thresh) {
+                /* Intrinsic plasticity: effective threshold = config + per-neuron offset.
+                 * offset is adjusted below based on firing vs target rate. */
+                float v_thresh_n = v_thresh;
+                if (pop->threshold_offset) v_thresh_n += pop->threshold_offset[n];
+
+                if (v_data[n] >= v_thresh_n) {
                     spike_data[n] = 1.0f;
                     v_data[n] = v_reset;
                     ref_data[n] = network->config.t_ref;
@@ -950,6 +1012,43 @@ int snn_network_step(snn_network_t* network, float dt) {
                     pop->total_spikes++;
                 }
             }
+
+            /* Intrinsic plasticity update: per-neuron threshold adaptation.
+             * Each neuron's threshold drifts toward a value that would make
+             * it fire at target_neuron_rate. Fast timescale (alpha=0.01)
+             * catches runaway fast; slow drift (alpha=0.001 used elsewhere
+             * for homeostasis) would take too long.
+             * Short-term depression update: depressing factor exponentially
+             * decays to 0 with tau ~50ms. On firing, depression jumps by
+             * 0.2 (capped at 0.5) — effective weight is (1 - depression). */
+            if (pop->threshold_offset && pop->neuron_rate_ema && pop->depression) {
+                const float target_neuron_rate = 0.03f;   /* per step */
+                const float ip_alpha = 0.01f;             /* rate EMA smoothing */
+                const float ip_gain  = 0.5f;              /* mV per unit rate error */
+                const float ip_cap   = 10.0f;             /* clamp offset ± */
+                const float dep_decay = 0.95f;            /* per step decay → tau ≈ 20 steps */
+                const float dep_inc  = 0.2f;
+                const float dep_cap  = 0.5f;
+                for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                    /* Update per-neuron rate EMA */
+                    float fired = spike_data[n] > 0.5f ? 1.0f : 0.0f;
+                    pop->neuron_rate_ema[n] = (1.0f - ip_alpha) * pop->neuron_rate_ema[n]
+                                            + ip_alpha * fired;
+                    /* If rate > target, raise threshold (harder to fire).
+                     * If rate < target, lower threshold (easier to fire). */
+                    float err = pop->neuron_rate_ema[n] - target_neuron_rate;
+                    pop->threshold_offset[n] += ip_gain * err;
+                    if (pop->threshold_offset[n] > ip_cap) pop->threshold_offset[n] = ip_cap;
+                    if (pop->threshold_offset[n] < -ip_cap) pop->threshold_offset[n] = -ip_cap;
+                    /* Short-term depression decay + jump on firing */
+                    pop->depression[n] *= dep_decay;
+                    if (fired > 0.5f) {
+                        pop->depression[n] += dep_inc;
+                        if (pop->depression[n] > dep_cap) pop->depression[n] = dep_cap;
+                    }
+                }
+            }
+
             /* Clear external_current for next step (input is per-step) */
             if (pop->external_current) {
                 memset(pop->external_current, 0, pop->n_neurons * sizeof(float));
@@ -1036,6 +1135,13 @@ int snn_network_step(snn_network_t* network, float dt) {
         pop->firing_rate_ema = (1.0f - alpha) * pop->firing_rate_ema
                              + alpha * rate;
         pop->rate_samples++;
+
+        /* Temporal history ring buffer — store per-step spike count.
+         * Consumed by Python-side FFT/correlation analysis via the
+         * snn_get_population_history RPC. */
+        pop->spike_count_history[pop->history_write_idx] = n_spk;
+        pop->history_write_idx = (pop->history_write_idx + 1) % SNN_POP_HISTORY_LEN;
+        pop->history_total_steps++;
     }
 
     /* Update statistics */
@@ -2389,6 +2495,58 @@ float snn_network_get_population_rate(snn_network_t* network,
     return total_rate / (float)pop->n_neurons;
 }
 
+uint32_t snn_network_get_population_history(snn_network_t* network,
+                                            uint32_t pop_id,
+                                            uint32_t* out_counts,
+                                            uint64_t* out_total_steps) {
+    if (!network || !out_counts) return 0;
+    if (pop_id >= network->n_populations) return 0;
+    snn_population_t* pop = network->populations[pop_id];
+    if (!pop) return 0;
+
+    /* Copy in time order: start at write_idx (oldest), wrap around.
+     * If history_total_steps < SNN_POP_HISTORY_LEN, only the first
+     * history_total_steps entries are valid — caller gets that count. */
+    uint64_t total = pop->history_total_steps;
+    uint32_t valid = (total < SNN_POP_HISTORY_LEN)
+                   ? (uint32_t)total : SNN_POP_HISTORY_LEN;
+    uint32_t start = (valid == SNN_POP_HISTORY_LEN)
+                   ? pop->history_write_idx  /* ring wrapped, oldest is write head */
+                   : 0;                      /* not wrapped yet, oldest is at 0 */
+    for (uint32_t i = 0; i < valid; i++) {
+        uint32_t idx = (start + i) % SNN_POP_HISTORY_LEN;
+        out_counts[i] = pop->spike_count_history[idx];
+    }
+    if (out_total_steps) *out_total_steps = total;
+    return valid;
+}
+
+/* Emergency saturation rescue: run snn_homeostatic_apply in a tight loop
+ * without waiting for R-STDP cadence. Used when the network has drifted
+ * far from biological range and we don't want to wait for the normal
+ * every-10-steps homeostatic cadence (which can take hours at 1 learn_vector
+ * per minute). Each iteration scales all lightweight population weights by
+ * target_rate/current_rate (clamped to [0.90, 1.10] in emergency range),
+ * so log(0.9) ≈ -0.105 per iteration — 20 iterations drops firing 8×.
+ *
+ * @param network   SNN network (must have snn_training_ctx attached)
+ * @param ctx       Training context (from dispatch or test harness)
+ * @param n_iter    Number of homeostatic applies to run back-to-back
+ * @return Total number of populations scaled across all iterations
+ */
+uint32_t snn_network_force_homeostasis(snn_network_t* network,
+                                       void* ctx,
+                                       uint32_t n_iter) {
+    if (!network || !ctx || n_iter == 0) return 0;
+    /* Forward-declare snn_homeostatic_apply to avoid a new include cycle. */
+    extern uint32_t snn_homeostatic_apply(void* ctx, snn_network_t* network);
+    uint32_t total_scaled = 0;
+    for (uint32_t i = 0; i < n_iter; i++) {
+        total_scaled += snn_homeostatic_apply(ctx, network);
+    }
+    return total_scaled;
+}
+
 float snn_population_get_firing_rate(const snn_population_t* population) {
     if (!population) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_get_firing_rate: null population pointer");
@@ -2513,8 +2671,22 @@ int snn_network_validate(const snn_network_t* network) {
  *   4 = v3 reverted to 80E/20I + 4× I, budget reduced 0.8→0.3 × gap
  *       (rate recalibration; 2026-04-15)
  *   5 = v4 + Turrigiano-style homeostatic synaptic scaling to prevent
- *       R-STDP-induced drift into silent/saturated regimes (2026-04-16) */
-#define SNN_WIRING_SCHEMA_VERSION  5
+ *       R-STDP-induced drift into silent/saturated regimes (2026-04-16)
+ *   6 = v5 + intrinsic plasticity (per-neuron threshold adaptation),
+ *       short-term synaptic depression, separate E/I plasticity rules,
+ *       per-neuron metabolic weight budget, aggressive emergency
+ *       homeostatic range (±10% when rate > 3× or < 1/3 target),
+ *       R-STDP LR halved 0.001→0.0005, and force_quench RPC.
+ *       Full biological stability package. (2026-04-19) */
+/* SCHEMA VERSION HISTORY
+ *   v5: fluctuation-driven weight init (2026-04-18)
+ *   v6: full biological stability package — IP + depression + inhibitory
+ *       plasticity + metabolic budget + emergency homeostatic range (2026-04-19)
+ *   v7: persist per-neuron homeostatic state across restarts —
+ *       threshold_offset, neuron_rate_ema, depression (2026-04-19)
+ *       Without this, every restart wiped hours of homeostatic settling.
+ */
+#define SNN_WIRING_SCHEMA_VERSION  7
 
 /* Checked gzwrite helper — returns -1 on failure.
  * Uses gzip compression (level 3 = good speed/ratio) to keep .snn file
@@ -2623,8 +2795,24 @@ int snn_network_save(snn_network_t* network, const char* path) {
              * Always write has_gpu=0 to signal "regenerate on demand". */
             uint8_t has_gpu = 0;
             SNN_FWRITE(&has_gpu, sizeof(uint8_t), 1, f);
+
+            /* === V7: Persist per-neuron homeostatic state ===
+             * These arrays capture hours of biological adaptation. Without
+             * persisting them, every restart wiped threshold adaptation,
+             * rate EMAs, and depression levels — forcing the network to
+             * re-discover its operating point from scratch every time. */
+            uint8_t has_homeostatic = (pop->threshold_offset &&
+                                       pop->neuron_rate_ema &&
+                                       pop->depression) ? 1 : 0;
+            SNN_FWRITE(&has_homeostatic, sizeof(uint8_t), 1, f);
+            if (has_homeostatic) {
+                SNN_FWRITE(pop->threshold_offset, sizeof(float), pop->n_neurons, f);
+                SNN_FWRITE(pop->neuron_rate_ema, sizeof(float), pop->n_neurons, f);
+                SNN_FWRITE(pop->depression, sizeof(float), pop->n_neurons, f);
+            }
         }
-        NIMCP_LOGGING_INFO("SNN save: %u lightweight CSR populations saved", n_lightweight);
+        NIMCP_LOGGING_INFO("SNN save: %u lightweight CSR populations saved "
+                           "(with per-neuron homeostatic state)", n_lightweight);
     }
 
     gzclose(f);
@@ -2697,11 +2885,39 @@ snn_network_t* snn_network_load(const char* path) {
         NIMCP_LOGGING_ERROR("snn_network_load: truncated wiring_schema field");
         fclose(f); return NULL;
     }
-    if (wiring_schema != SNN_WIRING_SCHEMA_VERSION) {
-        NIMCP_LOGGING_WARN("snn_network_load: wiring schema mismatch (file=%u, "
-                           "current=%u) — rejecting so network is rebuilt",
+    /* Schema compatibility policy:
+     *   - Forward-compatible: newer file schema than binary → reject (we
+     *     don't know what fields were added, can't safely load)
+     *   - Backward-compatible: older file schema than binary → ACCEPT for
+     *     schemas ≥ SNN_MIN_COMPATIBLE_SCHEMA.
+     *     * v5 → v6: added per-neuron in-memory fields (threshold_offset,
+     *       neuron_rate_ema, depression) but didn't change on-disk format.
+     *     * v6 → v7: on-disk format extended with optional homeostatic-state
+     *       block per population. Reads guarded by `if (wiring_schema >= 7)`
+     *       so v5/v6 files skip it and use seed defaults.
+     *     Older saves still load cleanly; missing fields default-init. This
+     *     preserves learned synaptic patterns across schema bumps.
+     *   - For format-incompatible bumps in future, bump SNN_MIN_COMPATIBLE
+     *     and force a rebuild. */
+    #define SNN_MIN_COMPATIBLE_SCHEMA 5
+    if (wiring_schema > SNN_WIRING_SCHEMA_VERSION) {
+        NIMCP_LOGGING_WARN("snn_network_load: file schema v%u is NEWER than "
+                           "binary v%u — rejecting (can't load future format)",
                            wiring_schema, SNN_WIRING_SCHEMA_VERSION);
         fclose(f); return NULL;
+    }
+    if (wiring_schema < SNN_MIN_COMPATIBLE_SCHEMA) {
+        NIMCP_LOGGING_WARN("snn_network_load: file schema v%u is below "
+                           "minimum compatible v%u — rejecting, will rebuild",
+                           wiring_schema, SNN_MIN_COMPATIBLE_SCHEMA);
+        fclose(f); return NULL;
+    }
+    if (wiring_schema < SNN_WIRING_SCHEMA_VERSION) {
+        NIMCP_LOGGING_INFO("snn_network_load: migrating v%u → v%u "
+                           "(format-compatible, new in-memory fields default-init). "
+                           "If loaded weights were saturated, call "
+                           "brain.snn_force_quench(25) after load to rescue.",
+                           wiring_schema, SNN_WIRING_SCHEMA_VERSION);
     }
 
     snn_config_t config;
@@ -2854,13 +3070,26 @@ snn_network_t* snn_network_load(const char* path) {
                 int rc = snn_network_add_population_lightweight(net, pop_n, ntype, pop_name);
                 if (rc < 0) {
                     NIMCP_LOGGING_ERROR("snn_network_load: failed to create CSR pop '%s'", pop_name);
-                    /* Skip this pop's CSR data */
+                    /* Skip this pop's CSR data.
+                     * Layout: [csr_n][csr_nnz][row_ptr][entries][has_gpu]
+                     *         [if v7: has_homeostatic][if set: 3 × n_neurons floats] */
                     uint32_t csr_n, csr_nnz;
                     if (fread(&csr_n, 4, 1, f) == 1 && fread(&csr_nnz, 4, 1, f) == 1) {
                         fseek(f, (long)((csr_n + 1) * 4 + csr_nnz * sizeof(snn_csr_synapse_t)), SEEK_CUR);
                         uint8_t has_gpu;
                         if (fread(&has_gpu, 1, 1, f) == 1 && has_gpu)
                             fseek(f, (long)(csr_nnz * (4 + 4)), SEEK_CUR);
+                        /* V7: also skip homeostatic block if present.
+                         * Without this, the file cursor lands mid-array and
+                         * subsequent population reads corrupt. */
+                        if (wiring_schema >= 7) {
+                            uint8_t has_homeo;
+                            if (fread(&has_homeo, 1, 1, f) == 1 && has_homeo) {
+                                /* 3 arrays × pop_n × sizeof(float) */
+                                fseek(f, (long)(3 * pop_n * sizeof(float)),
+                                       SEEK_CUR);
+                            }
+                        }
                     }
                     continue;
                 }
@@ -2908,6 +3137,46 @@ snn_network_t* snn_network_load(const char* path) {
                             fread(csr->flat_col_idx, sizeof(uint32_t), csr_nnz, f) == csr_nnz) {
                             csr->gpu_ready = true;
                         }
+                    }
+                }
+
+                /* === V7: Restore per-neuron homeostatic state ===
+                 * Older schemas don't have these — keep the seed values
+                 * initialized when the population was created. */
+                if (wiring_schema >= 7) {
+                    uint8_t has_homeostatic = 0;
+                    if (fread(&has_homeostatic, sizeof(uint8_t), 1, f) == 1 && has_homeostatic) {
+                        if (pop->threshold_offset) {
+                            size_t r1 = fread(pop->threshold_offset, sizeof(float),
+                                              pop->n_neurons, f);
+                            if (r1 != pop->n_neurons) {
+                                NIMCP_LOGGING_WARN("  pop '%s': truncated threshold_offset "
+                                                    "(%zu of %u)", pop_name, r1, pop->n_neurons);
+                            }
+                        } else {
+                            fseek(f, (long)(pop->n_neurons * sizeof(float)), SEEK_CUR);
+                        }
+                        if (pop->neuron_rate_ema) {
+                            size_t r2 = fread(pop->neuron_rate_ema, sizeof(float),
+                                              pop->n_neurons, f);
+                            if (r2 != pop->n_neurons) {
+                                NIMCP_LOGGING_WARN("  pop '%s': truncated rate_ema", pop_name);
+                            }
+                        } else {
+                            fseek(f, (long)(pop->n_neurons * sizeof(float)), SEEK_CUR);
+                        }
+                        if (pop->depression) {
+                            size_t r3 = fread(pop->depression, sizeof(float),
+                                              pop->n_neurons, f);
+                            if (r3 != pop->n_neurons) {
+                                NIMCP_LOGGING_WARN("  pop '%s': truncated depression", pop_name);
+                            }
+                        } else {
+                            fseek(f, (long)(pop->n_neurons * sizeof(float)), SEEK_CUR);
+                        }
+                        NIMCP_LOGGING_INFO("  pop '%s': restored homeostatic state "
+                                           "(threshold_offset + rate_ema + depression)",
+                                           pop_name);
                     }
                 }
 

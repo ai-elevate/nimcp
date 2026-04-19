@@ -338,7 +338,39 @@ struct snn_population_s {
      * into either silent or saturated regimes. */
     float firing_rate_ema;   /**< EMA of per-step firing fraction [0, 1] */
     uint64_t rate_samples;   /**< Number of EMA updates since creation */
+
+    /* Temporal history — per-step spike count ring buffer.
+     * Enables Python-side FFT, cross-correlation, ISI analysis of
+     * population dynamics without having to store full per-neuron
+     * spike trains (which would be 100s of MB for 1.8M neurons).
+     * Per-population aggregate is ~256 × 4 bytes = 1 KB per pop. */
+    uint32_t spike_count_history[256];  /**< Last 256 steps of spike counts */
+    uint32_t history_write_idx;         /**< Ring buffer write head */
+    uint64_t history_total_steps;       /**< Monotonic counter for alignment */
+
+    /* Intrinsic plasticity — per-neuron threshold adaptation.
+     * Each neuron adjusts its own firing threshold based on recent activity:
+     *   Fires too often → threshold rises (harder to fire)
+     *   Fires too little → threshold falls (easier to fire)
+     * Operates on ~second timescale, complementing synaptic scaling.
+     * v_thresh_effective[n] = v_thresh_config + threshold_offset[n]
+     * Per-neuron cost: 4 bytes × 1.8M = 7.2 MB total (trivial). */
+    float* threshold_offset;        /**< [n_neurons] learned threshold shift, init 0 */
+    float* neuron_rate_ema;         /**< [n_neurons] per-neuron firing rate EMA */
+
+    /* Short-term synaptic depression — per-presynaptic-neuron.
+     * When a neuron fires, its outgoing synapses become transiently
+     * weaker (like neurotransmitter depletion in biology). This prevents
+     * single hot pathways from runaway on the millisecond timescale,
+     * long before synaptic scaling can notice.
+     * Stored per-neuron (not per-synapse) for memory efficiency:
+     * 1.8M × 4 bytes = 7.2 MB vs ~6 GB for per-synapse.
+     * Effective synaptic drive = weight × (1 - depression_amount[src_neuron])
+     * Depression recovers exponentially with time constant tau_d. */
+    float* depression;              /**< [n_neurons] current depression [0..0.5] */
 };
+
+#define SNN_POP_HISTORY_LEN 256
 
 /**
  * @brief SNN network configuration

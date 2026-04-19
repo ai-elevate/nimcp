@@ -677,6 +677,71 @@ class BrainProxy:
     def focus_attention(self, modality):
         self._send({"cmd": "focus_attention", "modality": modality})
 
+    # -- Cognitive & Safety Test Battery wrappers --
+
+    def get_mental_health_report(self):
+        resp = self._send({"cmd": "get_mental_health_report"})
+        return resp.get("report", {})
+
+    def get_mental_health_check(self, disorder):
+        resp = self._send({"cmd": "get_mental_health_check", "disorder": disorder})
+        return resp.get("score", 0.0)
+
+    def get_emotion_state(self):
+        resp = self._send({"cmd": "get_emotion_state"})
+        return resp.get("emotion", {})
+
+    def get_internal_state(self, strategy=1):
+        resp = self._send({"cmd": "get_internal_state", "strategy": strategy})
+        return resp.get("state", {})
+
+    def predict_with_confidence(self, features):
+        resp = self._send({"cmd": "predict_with_confidence", "features": _to_list(features)})
+        return resp.get("result", {})
+
+    def predict_with_deadline(self, features, deadline_ms=100.0):
+        resp = self._send({"cmd": "predict_with_deadline",
+                           "features": _to_list(features),
+                           "deadline_ms": deadline_ms})
+        return resp.get("result", {})
+
+    def perturb_weights(self, magnitude=0.01, target="global", tag="mark_test"):
+        resp = self._send({"cmd": "perturb_weights",
+                           "magnitude": magnitude, "target": target, "tag": tag})
+        return resp.get("result", {})
+
+    def enter_idle_with_telemetry(self, duration_ms=2000):
+        resp = self._send({"cmd": "enter_idle_with_telemetry",
+                           "duration_ms": duration_ms})
+        return resp.get("result", {})
+
+    def get_inner_speech_trace(self, n=10):
+        resp = self._send({"cmd": "get_inner_speech_trace", "n": n})
+        return resp.get("trace", [])
+
+    def get_hypothesis_log(self, n=10):
+        resp = self._send({"cmd": "get_hypothesis_log", "n": n})
+        return resp.get("log", [])
+
+    def cow_trial_snapshot(self):
+        resp = self._send({"cmd": "cow_trial_snapshot"})
+        return resp.get("handle")
+
+    def cow_trial_restore(self, handle):
+        resp = self._send({"cmd": "cow_trial_restore", "handle": handle})
+        return resp.get("ok", False)
+
+    def _call(self, cmd, **kwargs):
+        """Generic RPC invocation — used by the test harness for optional APIs."""
+        payload = {"cmd": cmd}
+        payload.update(kwargs)
+        resp = self._send(payload)
+        for key in ("result", "report", "state", "emotion", "trace", "log",
+                    "score", "handle", "metrics"):
+            if key in resp:
+                return resp[key]
+        return resp
+
 
 # ---------------------------------------------------------------------------
 # Helpers

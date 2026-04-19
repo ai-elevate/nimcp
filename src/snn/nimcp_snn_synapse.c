@@ -59,6 +59,7 @@ snn_csr_storage_t* snn_csr_create(uint32_t n_neurons, uint32_t estimated_synapse
 void snn_csr_destroy(snn_csr_storage_t* csr)
 {
     if (!csr) return;
+    snn_csr_release_gpu(csr);  /* Free device memory first */
     nimcp_free(csr->row_ptr);
     nimcp_free(csr->entries);
     nimcp_free(csr->weights);
@@ -197,4 +198,106 @@ int snn_csr_prepare_gpu(snn_csr_storage_t* csr,
     csr->gpu_ready = true;
     LOG_INFO("CSR GPU prepared: %u synapses, flat column indices built", nnz);
     return 0;
+}
+
+/* =========================================================================
+ * GPU-resident memory API (V2 — eliminates per-timestep PCIe transfer)
+ *
+ * The ctx used for upload is stored in csr->d_gpu_ctx so that sync and
+ * release paths can use it without the caller re-passing it. The brain
+ * guarantees the ctx outlives the CSR.
+ * ========================================================================= */
+
+#include "gpu/context/nimcp_gpu_context.h"
+
+int snn_csr_upload_to_gpu(snn_csr_storage_t* csr, void* gpu_ctx_void)
+{
+    if (!csr || !csr->finalized) return -1;
+    if (!csr->gpu_ready) {
+        LOG_ERROR("snn_csr_upload_to_gpu: csr not GPU-prepared yet");
+        return -1;
+    }
+    if (csr->gpu_resident) return 0;  /* Already uploaded */
+    if (csr->n_synapses == 0) return 0;
+
+    nimcp_gpu_context_t* gpu_ctx = (nimcp_gpu_context_t*)gpu_ctx_void;
+    if (!gpu_ctx) {
+        LOG_ERROR("snn_csr_upload_to_gpu: NULL gpu context");
+        return -1;
+    }
+
+    size_t w_bytes  = (size_t)csr->n_synapses * sizeof(float);
+    size_t ci_bytes = (size_t)csr->n_synapses * sizeof(uint32_t);
+    size_t rp_bytes = (size_t)(csr->n_neurons + 1) * sizeof(uint32_t);
+
+    /* Allocate first; only store the ctx if all allocations succeed.
+     * Otherwise release_gpu (called on failure) would attempt to free
+     * with a ctx that had no successful allocations. */
+    void* dw = nimcp_gpu_malloc(gpu_ctx, w_bytes);
+    void* dc = nimcp_gpu_malloc(gpu_ctx, ci_bytes);
+    void* dr = nimcp_gpu_malloc(gpu_ctx, rp_bytes);
+
+    if (!dw || !dc || !dr) {
+        LOG_ERROR("snn_csr_upload_to_gpu: GPU allocation failed "
+                  "(weights=%p, col=%p, row=%p)", dw, dc, dr);
+        if (dw) nimcp_gpu_free(gpu_ctx, dw);
+        if (dc) nimcp_gpu_free(gpu_ctx, dc);
+        if (dr) nimcp_gpu_free(gpu_ctx, dr);
+        return -1;
+    }
+
+    csr->d_weights      = dw;
+    csr->d_flat_col_idx = dc;
+    csr->d_row_ptr      = dr;
+    csr->d_gpu_ctx      = gpu_ctx;
+
+    if (nimcp_gpu_memcpy(gpu_ctx, csr->d_weights, csr->weights,
+                          w_bytes, GPU_MEMCPY_HOST_TO_DEVICE) != 0) goto fail;
+    if (nimcp_gpu_memcpy(gpu_ctx, csr->d_flat_col_idx, csr->flat_col_idx,
+                          ci_bytes, GPU_MEMCPY_HOST_TO_DEVICE) != 0) goto fail;
+    if (nimcp_gpu_memcpy(gpu_ctx, csr->d_row_ptr, csr->row_ptr,
+                          rp_bytes, GPU_MEMCPY_HOST_TO_DEVICE) != 0) goto fail;
+
+    csr->gpu_resident = true;
+    LOG_INFO("CSR uploaded to GPU: %u synapses (%.1f MB), resident",
+             csr->n_synapses, (w_bytes + ci_bytes + rp_bytes) / (1024.0 * 1024.0));
+    return 0;
+
+fail:
+    LOG_ERROR("snn_csr_upload_to_gpu: GPU memcpy failed");
+    snn_csr_release_gpu(csr);
+    return -1;
+}
+
+int snn_csr_sync_weights_to_gpu(snn_csr_storage_t* csr)
+{
+    if (!csr || !csr->gpu_resident || !csr->d_weights || !csr->weights)
+        return -1;
+    if (!csr->d_gpu_ctx) return -1;
+    size_t w_bytes = (size_t)csr->n_synapses * sizeof(float);
+    return nimcp_gpu_memcpy((nimcp_gpu_context_t*)csr->d_gpu_ctx,
+                             csr->d_weights, csr->weights,
+                             w_bytes, GPU_MEMCPY_HOST_TO_DEVICE);
+}
+
+void snn_csr_release_gpu(snn_csr_storage_t* csr)
+{
+    if (!csr) return;
+    nimcp_gpu_context_t* ctx = (nimcp_gpu_context_t*)csr->d_gpu_ctx;
+    /* Without a stored ctx, we can't safely free (unknown backend) — leak
+     * would be worse than not freeing on the rare context-loss path. */
+    if (csr->d_weights && ctx) {
+        nimcp_gpu_free(ctx, csr->d_weights);
+    }
+    if (csr->d_flat_col_idx && ctx) {
+        nimcp_gpu_free(ctx, csr->d_flat_col_idx);
+    }
+    if (csr->d_row_ptr && ctx) {
+        nimcp_gpu_free(ctx, csr->d_row_ptr);
+    }
+    csr->d_weights = NULL;
+    csr->d_flat_col_idx = NULL;
+    csr->d_row_ptr = NULL;
+    csr->d_gpu_ctx = NULL;
+    csr->gpu_resident = false;
 }

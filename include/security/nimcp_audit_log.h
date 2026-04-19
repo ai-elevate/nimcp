@@ -64,6 +64,13 @@ typedef enum {
     NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED,
     NIMCP_SAFETY_AUDIT_LGSS_MOTOR_BLOCKED,
     NIMCP_SAFETY_AUDIT_LGSS_REWARD_BLOCKED,
+    /* Cognitive & Safety Test Battery events */
+    NIMCP_SAFETY_AUDIT_SELF_MODEL_INTEGRITY_CHECK,  /* Mark test / perturbation */
+    NIMCP_SAFETY_AUDIT_BIAS_PROFILE_DRIFT,          /* Bias scores shifted >threshold */
+    NIMCP_SAFETY_AUDIT_BELIEF_UPDATE_PATTERN_DRIFT, /* Dissonance-resolution drift */
+    NIMCP_SAFETY_AUDIT_PERSONALITY_DRIFT,           /* Mental-health screen shift */
+    NIMCP_SAFETY_AUDIT_COMPETENCE_MAP_BREACH,       /* DK failure in deployed domain */
+    NIMCP_SAFETY_AUDIT_TEST_BATTERY_RUN,            /* Full battery run completion */
 } nimcp_safety_audit_event_t;
 
 /* Safety audit log entry */

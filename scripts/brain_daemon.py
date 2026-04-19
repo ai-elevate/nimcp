@@ -1179,6 +1179,152 @@ class BrainService:
             logger.error("NaN repair failed: %s", e)
             return {"ok": False, "error": str(e)}
 
+    # -- Cognitive & Safety Test Battery handlers --
+
+    def _cmd_get_mental_health_report(self, _req):
+        if hasattr(self.brain, 'get_mental_health_report'):
+            r = self.brain.get_mental_health_report()
+            return {"report": r if r else {}}
+        return {"report": {}, "unavailable": True}
+
+    def _cmd_get_mental_health_check(self, req):
+        disorder = req.get('disorder', 'Depression')
+        if hasattr(self.brain, 'get_mental_health_check'):
+            try:
+                return {"score": self.brain.get_mental_health_check(disorder)}
+            except Exception as e:
+                return {"score": 0.0, "error": str(e)}
+        return {"score": 0.0, "unavailable": True}
+
+    def _cmd_get_emotion_state(self, _req):
+        if hasattr(self.brain, 'get_emotion_state'):
+            s = self.brain.get_emotion_state()
+            return {"emotion": s if s else {}}
+        return {"emotion": {}, "unavailable": True}
+
+    def _cmd_get_internal_state(self, req):
+        strategy = int(req.get('strategy', 1))
+        if hasattr(self.brain, 'get_internal_state'):
+            try:
+                s = self.brain.get_internal_state(strategy=strategy)
+                return {"state": s if s else {}}
+            except Exception as e:
+                return {"state": {}, "error": str(e)}
+        return {"state": {}, "unavailable": True}
+
+    def _cmd_predict_with_confidence(self, req):
+        features = req.get('features', [])
+        if hasattr(self.brain, 'predict_with_confidence'):
+            try:
+                r = self.brain.predict_with_confidence(features)
+                return {"result": r if r else {}}
+            except Exception as e:
+                return {"result": {}, "error": str(e)}
+        # Fallback: use basic predict
+        try:
+            label, conf = self.brain.predict(features)
+            return {"result": {"label": label, "confidence": conf}}
+        except Exception as e:
+            return {"result": {}, "error": str(e)}
+
+    def _cmd_predict_with_deadline(self, req):
+        features = req.get('features', [])
+        deadline_ms = float(req.get('deadline_ms', 100.0))
+        if hasattr(self.brain, 'predict_with_deadline'):
+            try:
+                r = self.brain.predict_with_deadline(features, deadline_ms)
+                return {"result": r if r else {}}
+            except Exception as e:
+                return {"result": {}, "error": str(e)}
+        return {"result": {}, "unavailable": True}
+
+    def _cmd_perturb_weights(self, req):
+        magnitude = float(req.get('magnitude', 0.01))
+        target = req.get('target', 'global')
+        tag = req.get('tag', 'mark_test')
+        if hasattr(self.brain, 'perturb_weights'):
+            try:
+                r = self.brain.perturb_weights(
+                    magnitude=magnitude, target=target, tag=tag)
+                logger.info("Weight perturbation applied: mag=%.4f target=%s tag=%s",
+                            magnitude, target, tag)
+                return {"result": r if r else {}}
+            except Exception as e:
+                return {"result": {}, "error": str(e)}
+        return {"result": {}, "unavailable": True}
+
+    def _cmd_enter_idle_with_telemetry(self, req):
+        duration_ms = int(req.get('duration_ms', 2000))
+        if hasattr(self.brain, 'enter_idle_with_telemetry'):
+            r = self.brain.enter_idle_with_telemetry(duration_ms)
+            return {"result": r if r else {}}
+        return {"result": {}, "unavailable": True}
+
+    def _cmd_get_inner_speech_trace(self, req):
+        n = int(req.get('n', 10))
+        if hasattr(self.brain, 'get_inner_speech_trace'):
+            t = self.brain.get_inner_speech_trace(n)
+            return {"trace": t if t else []}
+        return {"trace": [], "unavailable": True}
+
+    def _cmd_get_hypothesis_log(self, req):
+        n = int(req.get('n', 10))
+        if hasattr(self.brain, 'get_hypothesis_log'):
+            h = self.brain.get_hypothesis_log(n)
+            return {"log": h if h else []}
+        return {"log": [], "unavailable": True}
+
+    def _cmd_cow_trial_snapshot(self, _req):
+        if hasattr(self.brain, 'cow_trial_snapshot'):
+            try:
+                snap = self.brain.cow_trial_snapshot()
+                # Can't serialize a PyCapsule, so store it and return a handle
+                if not hasattr(self, '_cow_snapshots'):
+                    self._cow_snapshots = {}
+                import uuid
+                handle = uuid.uuid4().hex[:12]
+                self._cow_snapshots[handle] = snap
+                return {"handle": handle}
+            except Exception as e:
+                return {"handle": None, "error": str(e)}
+        return {"handle": None, "unavailable": True}
+
+    def _cmd_audit_log_event(self, req):
+        """Append a test-battery audit event. Best-effort — never raises."""
+        event_type = int(req.get('event_type', 28))  # default: TEST_BATTERY_RUN
+        severity = int(req.get('severity', 0))
+        description = str(req.get('description', ''))[:250]
+        try:
+            import logging
+            logger.info("[AUDIT evt=%d sev=%d] %s", event_type, severity, description)
+            # Append to simple JSONL log that the C audit log can later ingest
+            import os, json, time
+            log_dir = "/var/log/athena"
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, "battery_audit.jsonl"), "a") as f:
+                f.write(json.dumps({
+                    "timestamp": time.time(),
+                    "event_type": event_type,
+                    "severity": severity,
+                    "description": description,
+                }) + "\n")
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _cmd_cow_trial_restore(self, req):
+        handle = req.get('handle') or req.get('snapshot')
+        if not handle or not hasattr(self, '_cow_snapshots'):
+            return {"ok": False, "error": "no snapshot"}
+        snap = self._cow_snapshots.pop(handle, None)
+        if snap is None:
+            return {"ok": False, "error": "handle not found"}
+        try:
+            ok = self.brain.cow_trial_restore(snap)
+            return {"ok": bool(ok)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     # -- Shutdown --
 
     def _cmd_shutdown(self, _req):
@@ -1213,6 +1359,12 @@ class BrainDaemon:
         'attach_builtin_probes',
         'get_training_flags',
         'get_plateau_detector_params',
+        # Test battery read-only probes
+        'get_mental_health_report', 'get_mental_health_check',
+        'get_emotion_state', 'get_internal_state',
+        'predict_with_confidence', 'predict_with_deadline',
+        'get_inner_speech_trace', 'get_hypothesis_log',
+        'audit_log_event',  # audit logging is append-only, safe on RO socket
     })
 
     def __init__(self, service, socket_path=SOCKET_PATH, max_workers=4):

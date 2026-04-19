@@ -53,7 +53,63 @@ typedef struct snn_csr_storage_s {
     float*             weights;         /**< [n_synapses] synapse weights (flat) */
     uint32_t*          flat_col_idx;    /**< [n_synapses] flat global neuron index */
     bool               gpu_ready;       /**< true after snn_csr_prepare_gpu() */
+
+    /* === V2: Persistent GPU-resident copies of CSR data ===
+     * These are populated once by snn_csr_upload_to_gpu() and live on
+     * the device for the population's lifetime. The isyn kernel reads
+     * directly from them without per-timestep PCIe transfers.
+     *
+     * Lifecycle:
+     *   - NULL initially
+     *   - Allocated by snn_csr_upload_to_gpu() after finalize
+     *   - Freed by snn_csr_release_gpu() or snn_csr_destroy()
+     *   - Weight updates during training sync H→D via snn_csr_sync_weights_to_gpu()
+     *
+     * NOTE: d_gpu_ctx stores the context used at upload time, so release
+     * and sync can free/copy without needing the caller to re-pass it.
+     * The brain's gpu_ctx lifetime is guaranteed to outlive the CSR.
+     */
+    void*              d_weights;       /**< Device pointer for weights[] (float*) */
+    void*              d_flat_col_idx;  /**< Device pointer for flat_col_idx[] (uint32_t*) */
+    void*              d_row_ptr;       /**< Device pointer for row_ptr[] (uint32_t*) */
+    void*              d_gpu_ctx;       /**< nimcp_gpu_context_t* used for upload */
+    bool               gpu_resident;    /**< true after snn_csr_upload_to_gpu() */
 } snn_csr_storage_t;
+
+/* ========================================================================= */
+/* GPU residency API (V2)                                                     */
+/* ========================================================================= */
+
+/**
+ * @brief Upload CSR arrays to GPU and keep them resident.
+ *
+ * Eliminates per-timestep ~12 GB PCIe transfer for populations with
+ * ~1.45B synapses. After this call, d_weights/d_flat_col_idx/d_row_ptr
+ * are valid device pointers that persist until release or destroy.
+ *
+ * @param csr Storage (must be finalized)
+ * @param gpu_ctx GPU context (opaque pointer to nimcp_gpu_context_t)
+ * @return 0 on success, -1 on error
+ */
+int snn_csr_upload_to_gpu(snn_csr_storage_t* csr, void* gpu_ctx);
+
+/**
+ * @brief Sync host weights[] to GPU device memory.
+ *
+ * Call after training updates the weights[] array to keep GPU copy fresh.
+ * Partial syncs (by range) may be added later; currently copies the full array.
+ *
+ * @param csr Storage (must be gpu_resident)
+ * @return 0 on success, -1 on error
+ */
+int snn_csr_sync_weights_to_gpu(snn_csr_storage_t* csr);
+
+/**
+ * @brief Release GPU-resident arrays.
+ *
+ * @param csr Storage (safe if gpu_resident=false)
+ */
+void snn_csr_release_gpu(snn_csr_storage_t* csr);
 
 /* ========================================================================= */
 /* Lifecycle                                                                  */

@@ -551,6 +551,44 @@ float snn_network_get_population_rate(snn_network_t* network,
                                       float window_ms);
 
 /**
+ * @brief Copy a population's temporal spike-count history into a caller buffer.
+ *
+ * Returns the last SNN_POP_HISTORY_LEN steps of population-aggregate spike
+ * counts, time-ordered oldest→newest. Used by Python eval tooling for FFT,
+ * cross-correlation, and autocorrelation analysis of population dynamics.
+ *
+ * @param network    SNN network
+ * @param pop_id     Population index
+ * @param out_counts Caller-allocated buffer of SNN_POP_HISTORY_LEN uint32_t
+ * @param out_total_steps Optional — receives the monotonic step counter
+ * @return Number of valid entries in out_counts (may be less than
+ *         SNN_POP_HISTORY_LEN if the population hasn't run that many steps),
+ *         or 0 on error.
+ */
+uint32_t snn_network_get_population_history(snn_network_t* network,
+                                            uint32_t pop_id,
+                                            uint32_t* out_counts,
+                                            uint64_t* out_total_steps);
+
+/**
+ * @brief Emergency saturation rescue — run homeostatic apply N times in a row.
+ *
+ * When the SNN drifts far from biological range (e.g., 90%+ firing after
+ * a bad training episode), normal homeostatic cadence (every 10 R-STDP
+ * applies) is too slow to recover — can take hours. This force-applies the
+ * homeostatic scaling N times in rapid succession, scaling weights by
+ * ~0.9^N. 20 iterations drops firing rate by 8×.
+ *
+ * @param network SNN network
+ * @param ctx     snn_training_ctx_t*
+ * @param n_iter  How many back-to-back applies to run
+ * @return Total populations scaled across all iterations
+ */
+uint32_t snn_network_force_homeostasis(snn_network_t* network,
+                                       void* ctx,
+                                       uint32_t n_iter);
+
+/**
  * @brief Get population firing rate directly from population pointer
  *
  * WHAT: Average firing rate across population (convenience wrapper)

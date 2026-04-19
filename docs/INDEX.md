@@ -1,254 +1,143 @@
-# NIMCP Documentation Index
-
-**Version**: 2.6.3
-**Last Updated**: 2026-03-11
-
-This is the master index for all NIMCP documentation. There are **823 documentation files** across `docs/`, covering architecture, API, modules, integration, and session histories.
-
-- **Developer Reference**: [docs/claude/](claude/) -- primary developer workflow and coding standards
-- **User API Guide**: [EXTERNAL_API_GUIDE.md](EXTERNAL_API_GUIDE.md) -- for users integrating NIMCP into applications
-- **Architecture Overview**: [ARCHITECTURE.md](ARCHITECTURE.md) -- system architecture and design
-
----
-
-## Quick Links
-
-| Purpose | Document |
-|---------|----------|
-| **Getting Started** | [QUICKSTART.md](QUICKSTART.md) |
-| **External API Guide** | [EXTERNAL_API_GUIDE.md](EXTERNAL_API_GUIDE.md) |
-| **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| **Training Pipeline** | [TRAINING_PIPELINE.md](TRAINING_PIPELINE.md) |
-| **Build Instructions** | [build/BUILD_INSTRUCTIONS.md](build/BUILD_INSTRUCTIONS.md) |
-| **API Reference** | [api/API_REFERENCE.md](api/API_REFERENCE.md) |
-| **Coding Standards** | [claude/02-coding-standards.md](claude/02-coding-standards.md) |
-
----
-
-## Documentation Structure
-
-### Core Developer Reference (`docs/claude/`)
-
-The `docs/claude/` directory is the **primary developer reference** for working with NIMCP:
-
-| File | Description |
-|------|-------------|
-| [00-overview.md](claude/00-overview.md) | Project vision, motivation, and philosophy |
-| [01-build-test.md](claude/01-build-test.md) | Build and test commands |
-| [02-coding-standards.md](claude/02-coding-standards.md) | Coding standards and protocols |
-| [03-api-patterns.md](claude/03-api-patterns.md) | Key API patterns |
-| [04-file-organization.md](claude/04-file-organization.md) | File and directory organization |
-| [05-resource-optimization.md](claude/05-resource-optimization.md) | Resource optimization strategies |
-| [06-error-codes.md](claude/06-error-codes.md) | Error codes reference |
-| [07-common-issues.md](claude/07-common-issues.md) | Common issues and solutions |
-
-#### Module Documentation (`docs/claude/modules/`)
-
-| Module | File |
-|--------|------|
-| Hemispheric Brain | [modules/hemispheric-brain.md](claude/modules/hemispheric-brain.md) |
-| Pink Noise Bridges | [modules/pink-noise.md](claude/modules/pink-noise.md) |
-| Brain Immune System | [modules/brain-immune.md](claude/modules/brain-immune.md) |
-| Training-Immune Integration | [modules/training-immune.md](claude/modules/training-immune.md) |
-| Cross-Bridge Integration | [modules/cross-bridge.md](claude/modules/cross-bridge.md) |
-| Liquid Neural Networks | [modules/lnn.md](claude/modules/lnn.md) |
-| Bio-Async Integration | [modules/bio-async.md](claude/modules/bio-async.md) |
-| Introspection | [modules/introspection.md](claude/modules/introspection.md) |
-| Positional Encoding | [modules/positional-encoding.md](claude/modules/positional-encoding.md) |
-| Tensor Integration | [modules/tensor.md](claude/modules/tensor.md) |
-| Metabolic Modulation | [modules/metabolic-modulation.md](claude/modules/metabolic-modulation.md) |
-| Brain Regions Roadmap | [modules/brain-regions-roadmap.md](claude/modules/brain-regions-roadmap.md) |
-| Recursive Cognition | [modules/recursive-cognition.md](claude/modules/recursive-cognition.md) |
-| Imagination Engine | [modules/imagination-engine.md](claude/modules/imagination-engine.md) |
-| Mental Health Guardian | [modules/mental-health-guardian.md](claude/modules/mental-health-guardian.md) |
-| Genius Profiles | [modules/genius-profiles.md](claude/modules/genius-profiles.md) |
-| Lock Ordering | [modules/lock-ordering.md](claude/modules/lock-ordering.md) |
-| Wernicke Area Plan | [modules/wernicke-area-plan.md](claude/modules/wernicke-area-plan.md) |
-
----
-
-### Build System (`docs/build/`)
-
-| Document | Description |
-|----------|-------------|
-| [BUILD_INSTRUCTIONS.md](build/BUILD_INSTRUCTIONS.md) | Complete build instructions |
-| [BUILD_SECURITY.md](build/BUILD_SECURITY.md) | Build security guidelines |
-| [COMPILATION_STATUS.md](build/COMPILATION_STATUS.md) | Compilation status and known issues |
-
----
-
-### API Documentation (`docs/api/`)
-
-| Document | Description |
-|----------|-------------|
-| [API_REFERENCE.md](api/API_REFERENCE.md) | Full API reference |
-| [QUICK_REFERENCE.md](api/QUICK_REFERENCE.md) | Quick API reference card |
-
----
-
-### Architecture (`docs/architecture/`)
-
-| Document | Description |
-|----------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture overview |
-| [ARCHITECTURE_INDEX.md](ARCHITECTURE_INDEX.md) | Architecture documentation index |
-| [GPU_P2P_ARCHITECTURE.md](architecture/GPU_P2P_ARCHITECTURE.md) | GPU peer-to-peer architecture |
-| [REFACTORING_PLAN.md](architecture/REFACTORING_PLAN.md) | Architecture refactoring plans |
-
----
-
-### Plans (`docs/plans/`)
-
-| Document | Description |
-|----------|-------------|
-| [TRAINING_ARCHITECTURE_ENHANCEMENTS.md](plans/TRAINING_ARCHITECTURE_ENHANCEMENTS.md) | World model & ToM training enhancements |
-
----
-
-### Implementation Status (`docs/implementation/`)
-
-| Document | Description |
-|----------|-------------|
-| [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) | Current implementation status |
-| [IMPLEMENTATION_SUMMARY.md](implementation/IMPLEMENTATION_SUMMARY.md) | Implementation summary |
-| [NIMCP_2.5_STATUS.md](implementation/NIMCP_2.5_STATUS.md) | NIMCP 2.5 status |
-| [README_2.5.md](implementation/README_2.5.md) | NIMCP 2.5 release notes |
-
----
-
-### Integration Guides (`docs/integration/`)
-
-| Document | Description |
-|----------|-------------|
-| [ARTEMIS_INTEGRATION.md](integration/ARTEMIS_INTEGRATION.md) | Integration with Artemis AI |
-| [LIBRARY_INTEGRATION.md](integration/LIBRARY_INTEGRATION.md) | Library integration guide |
-
----
-
-### Security (`docs/security/`)
-
-| Document | Description |
-|----------|-------------|
-| [SECURITY.md](security/SECURITY.md) | Security overview |
-| [SECURITY_AUDIT.md](security/SECURITY_AUDIT.md) | Security audit results |
-
----
-
-### Ethics (`docs/ethics/`)
-
-| Document | Description |
-|----------|-------------|
-| [ETHICAL_GUIDELINES.md](ethics/ETHICAL_GUIDELINES.md) | Ethical guidelines |
-| [ETHICS_STATUS.md](ethics/ETHICS_STATUS.md) | Ethics implementation status |
-| [ETHICS_QUICK_REFERENCE.md](ethics/ETHICS_QUICK_REFERENCE.md) | Ethics quick reference |
-
----
-
-### Testing (`docs/testing/`)
-
-| Document | Description |
-|----------|-------------|
-| [README_PARALLEL_TESTS.md](testing/README_PARALLEL_TESTS.md) | Parallel testing guide |
-| [TESTING_QUICK_REFERENCE.md](TESTING_QUICK_REFERENCE.md) | Testing quick reference |
-
----
-
-### Performance (`docs/performance/`)
-
-| Document | Description |
-|----------|-------------|
-| [PERFORMANCE_OPTIMIZATIONS.md](performance/PERFORMANCE_OPTIMIZATIONS.md) | Performance optimization guide |
-
----
-
-### Deployment (`docs/deployment/`)
-
-| Document | Description |
-|----------|-------------|
-| [DEPLOYMENT.md](deployment/DEPLOYMENT.md) | Deployment guide |
-| [SLA.md](deployment/SLA.md) | Service level agreement |
-
----
-
-### Bindings (`docs/bindings/`)
-
-| Document | Description |
-|----------|-------------|
-| [REFERENCE_IMPLEMENTATIONS.md](bindings/REFERENCE_IMPLEMENTATIONS.md) | Reference implementations |
-
----
-
-### Development (`docs/development/`)
-
-| Document | Description |
-|----------|-------------|
-| [LINTING.md](development/LINTING.md) | Linting setup and configuration |
-| [LINT_AND_CI_SETUP.md](development/LINT_AND_CI_SETUP.md) | CI/CD setup |
-
----
-
-### Archive (`docs/archive/`)
-
-Historical documentation including session summaries and completed implementation notes. These are preserved for reference but are not part of active documentation.
-
----
-
-## Key Concepts
-
-### Brain Architecture
-
-NIMCP implements a biologically-inspired neural network with:
-
-- **Multi-layer diamond architecture** - Depth-scaled diamond/pyramid layer topology (3/5/7 layers depending on neuron count)
-- **Hemispheric processing** - Left/right brain specialization with corpus callosum integration
-- **Cortical regions** - Frontal, temporal, parietal, occipital lobes
-- **Subcortical structures** - Limbic system, basal ganglia
-- **Glial cells** - Astrocytes, microglia, oligodendrocytes
-- **Neurotransmitter systems** - Dopamine, serotonin, acetylcholine, etc.
-- **SNN-Language Bridge** - Spike-based word-concept binding (STDP, population coding)
-- **Communication Layer** - Cognitive transcript, response composition, speech
-
-### Learning Systems
-
-- **STDP** - Spike-timing dependent plasticity
-- **Hebbian learning** - "Neurons that fire together, wire together"
-- **Homeostatic plasticity** - Network stability mechanisms
-- **Meta-plasticity** - Learning to learn
-- **Grounded language** - Word grounding, comprehension, text production
-- **GPU batch relevance** - 2048D CPU-staged embeddings with CUDA cosine similarity
-
-### Integration Points
-
-- **Bio-Async** - Asynchronous biological processing
-- **Middleware** - Message routing and protocol handling
-- **Cognitive modules** - Higher-level cognitive functions (28 module types)
-- **FEP-Parietal Bridge** - Free Energy Principle with hierarchical belief states
-- **Edge-Cloud Hybrid** - Confidence-gated routing with System 1/2 analogy
-
----
-
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 2.6.3 | 2026-03-11 | GPU batch relevance, SNN-language bridge, communication layer, 40-watt optimizations |
-| 2.6.2 | 2025-12-31 | Documentation cleanup and reorganization |
-| 2.6.1 | 2025-12-30 | Occipital lobe integration |
-| 2.6.0 | 2025-12-24 | Major refactoring and API updates |
-| 2.5.0 | 2025-11-01 | Brain API and ethics engine |
-| 2.0.0 | 2025-10-01 | RFC 2.0 protocol implementation |
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
----
-
-## Navigation
-
-- **Root**: [CLAUDE.md](../CLAUDE.md) - Project memory and quick reference
-- **Tutorials**: [QUICKSTART.md](QUICKSTART.md), [GETTING_STARTED.md](GETTING_STARTED.md)
-- **Reference**: [api/API_REFERENCE.md](api/API_REFERENCE.md)
-- **Standards**: [claude/02-coding-standards.md](claude/02-coding-standards.md)
+# Athena Documentation — Master Index
+
+**Last Updated:** 2026-04-19
+
+## Start Here
+
+- [README.md](../README.md) — top-level project overview
+- [CLAUDE.md](../CLAUDE.md) — quick reference (project instructions)
+- [architecture/00_overview.md](architecture/00_overview.md) — architecture entry point
+
+## Architecture (new, 2026-04)
+
+| File | Contents |
+|------|----------|
+| [architecture/00_overview.md](architecture/00_overview.md) | Top-level architecture, recent changes |
+| [architecture/10_training_paradigm.md](architecture/10_training_paradigm.md) | Training loop, gates, biological stability |
+| [architecture/20_snn.md](architecture/20_snn.md) | SNN internals, populations, CSR, schema v7 |
+| [architecture/30_gpu_memory.md](architecture/30_gpu_memory.md) | GPU memory lifecycle, CSR V2 |
+| [architecture/40_cognitive_layers.md](architecture/40_cognitive_layers.md) | Memory stores, symbolic vs vector |
+| [architecture/50_safety.md](architecture/50_safety.md) | Ethics, LGSS, audit, mental health |
+| [architecture/60_test_infrastructure.md](architecture/60_test_infrastructure.md) | Smoke/regression/unit tests |
+
+## API (new, 2026-04)
+
+| File | Contents |
+|------|----------|
+| [api/python_api.md](api/python_api.md) | 200+ Brain methods grouped by purpose |
+| [api/cognitive_battery_api.md](api/cognitive_battery_api.md) | Battery harness + 28 batteries |
+
+## Guides (new, 2026-04)
+
+| File | Contents |
+|------|----------|
+| [guides/deployment.md](guides/deployment.md) | Safe deployment procedures |
+
+## Plans & Session Records
+
+| File | Contents |
+|------|----------|
+| [plans/session_roadmap.md](plans/session_roadmap.md) | Full 7-9 week plan, Phase 0-E |
+| [plans/session_progress.md](plans/session_progress.md) | Earlier session progress snapshot |
+| [plans/session_handoff.md](plans/session_handoff.md) | Current session handoff state |
+| [plans/cognitive_safety_battery_plan.md](plans/cognitive_safety_battery_plan.md) | Original battery plan |
+
+## Existing Project Docs (pre-session)
+
+| File | Contents |
+|------|----------|
+| [EXTERNAL_API_GUIDE.md](EXTERNAL_API_GUIDE.md) | External API guide |
+| [claude/00-overview.md](claude/00-overview.md) | Project vision & motivation |
+| [claude/01-build-test.md](claude/01-build-test.md) | Build & test commands |
+| [claude/02-coding-standards.md](claude/02-coding-standards.md) | Coding standards & protocols |
+| [claude/03-api-patterns.md](claude/03-api-patterns.md) | Key API patterns |
+| [claude/04-file-organization.md](claude/04-file-organization.md) | File organization |
+| [claude/05-resource-optimization.md](claude/05-resource-optimization.md) | Resource optimization |
+| [claude/06-error-codes.md](claude/06-error-codes.md) | Error codes |
+| [claude/07-common-issues.md](claude/07-common-issues.md) | Common issues |
+
+## Quick Reference Commands
+
+### Build
+```bash
+cd build && make nimcp nimcp_python -j4
+cp build/lib/python/nimcp.so ~/.local/lib/python3.12/site-packages/nimcp.cpython-312-x86_64-linux-gnu.so
+```
+
+### Test
+```bash
+bash tests/regression/run_regression.sh              # full gate
+bash tests/smoke/run_all.sh                          # smoke only
+python3 tests/unit/test_curiosity_selector.py        # one unit test
+bash tests/regression/run_regression.sh --capture    # update baseline
+```
+
+### Deploy
+```bash
+./scripts/deploy_to_pod.sh --full          # brain restart required
+./scripts/deploy_to_pod.sh --scripts-only  # no brain restart
+./scripts/deploy_to_pod.sh --stimuli-only  # no restart
+```
+
+### Battery
+```bash
+python3 scripts/run_full_battery.py --socket /var/run/athena/brain.sock \
+    --output /var/lib/athena/reports --notes "description"
+```
+
+## Current Network Apportionment (2026-04)
+
+Brain default neuron counts (from `scripts/brain_daemon.py` constants):
+
+| Network | Count | Constant | Role |
+|---------|------:|----------|------|
+| ANN | 150,000 | `DEFAULT_ANN_NEURONS` | Teacher / gradient backbone |
+| SNN | 1,800,000 | `DEFAULT_SNN_NEURONS` | **Primary learner** (R-STDP, homeostasis) |
+| LNN | 512 | `DEFAULT_LNN_NEURONS` | Liquid / temporal ODE |
+| CNN | ~1.8M params | (4 per-cortex) | Visual/audio/speech/somato features |
+| HNN | — | wrapper on LNN layer 0 | Energy-conserving dynamics |
+| FNO | — | wrapper per SNN population | Fourier spectral |
+
+Override via: `python3 brain_daemon.py --snn-neuron-count 2500000 --lnn-neuron-count 1024`.
+
+## Recent Changes (This Session, 2026-04-19)
+
+### Phase 0 — Risk-Reduction Infrastructure ✅
+- `tests/smoke/` — 4 files, 10 test functions
+- `tests/regression/` — gate + baseline + A/B comparison
+- `tests/unit/` — 11 per-module test files
+
+### Phase A — Training Efficiency ✅ (4 of 4)
+- A.1 SNN GPU transfer fix (persistent CSR)
+- A.2 Deferred stubs closed (audit_log_event, text encoding)
+- A.3 `scripts/curiosity_selector.py`
+- A.4 `scripts/curriculum.py`
+
+### Phase B — Substrate Improvements ✅ (3 of 3)
+- B.1 `scripts/symbolic_writer.py`
+- B.2 `scripts/synthesized_sensory.py`
+- B.3 `scripts/gradient_accumulator.py`
+
+### Documentation ✅
+- 7 architecture docs
+- 2 API refs
+- 1 deployment guide
+- This master index
+
+### Not Done (Phase C-E)
+- Phase C — synthetic childhood memory implantation
+- Phase D — compressed replay, symbolic consultation, reconstructive recall
+- Phase E — innate priors expansion
+
+## Key Known Issues
+
+1. **Save/load inference drift** — pre-existing; smoke tests surface, don't fix
+2. **perturb_weights is a logging stub** — needs adaptive_network accessor
+3. **Stage 1 slower than a human baby** — see training_paradigm.md
+4. **Batch training blocked** — gradient explosion + SNN saturation
+
+## See Also
+
+- Session task list: use `TaskList`
+- Live pod status: `ssh ... supervisorctl status`
+- Training logs: `/var/log/athena-brain.log`, `/var/log/athena-training.log`

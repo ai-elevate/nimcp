@@ -406,7 +406,14 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
 
     if (fabsf(reward_modulation) < 1e-8f) return 0;
 
-    float lr = 0.001f;  /* R-STDP learning rate (ctx has no lr field) */
+    /* R-STDP learning rate.
+     * Halved 0.001 → 0.0005 after observing runaway saturation once
+     * richer Claude/Phi-3 parent narrations started driving stronger
+     * BERT embeddings through the network. Slower weight growth lets
+     * homeostasis keep up; combined with the now wider emergency
+     * scaling range in snn_homeostatic_apply (±10%), the network can
+     * be held in biological firing regime. */
+    float lr = 0.0005f;
     float scale = lr * reward_modulation;
 
     /* Apply eligibility-modulated update to network synapses */
@@ -482,21 +489,43 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
                 float pre = src_spikes[entry->src_neuron];
                 if (pre < 0.5f) continue;  /* Pre didn't spike */
 
-                /* Reward-modulated Hebbian + standard L2 weight decay
-                 * (audit bug #3: previous formula `scale * (1 - decay*w)` had
-                 * decay coupled to learning rate sign — wrong semantics).
+                /* Reward-modulated Hebbian + standard L2 weight decay.
                  *
-                 * Δw = scale × (pre × post) - decay × w
-                 * Both pre and post are 1 here (we filtered above), so:
-                 * Δw = scale - decay × w
+                 * EXCITATORY (weight > 0): standard rule
+                 *   Δw = scale - decay × w
+                 *   + reward → weight grows, strengthening excitation
                  *
-                 * scale > 0 (positive reward): weights grow, clamp at +2
-                 * scale < 0 (negative reward): weights shrink, clamp at -2
-                 * decay always pulls weight toward 0 regardless of reward */
-                float decay_rate = 1e-5f;  /* Small — clamp does the heavy lifting */
-                entry->weight += scale - decay_rate * entry->weight;
+                 * INHIBITORY (weight < 0): SIGN-FLIPPED rule (inhibitory plasticity)
+                 *   Δw = -scale - decay × w
+                 *   + reward → weight becomes more negative, strengthening inhibition
+                 *   This implements separate E/I plasticity: inhibitory synapses
+                 *   that "helped" (by suppressing wrong output when reward came)
+                 *   also strengthen, maintaining E/I balance.
+                 *
+                 * RATE-DEPENDENT INHIBITORY STRENGTHENING:
+                 * If postsynaptic neuron is over-firing (rate_ema > 0.10),
+                 * inhibitory synapses onto it strengthen proportionally —
+                 * exactly what's needed to clamp runaway excitation at the
+                 * local circuit level, not just via slow synaptic scaling. */
+                float decay_rate = 1e-5f;
+                float delta;
+                if (entry->weight >= 0.0f) {
+                    delta = scale - decay_rate * entry->weight;
+                } else {
+                    delta = -scale - decay_rate * entry->weight;
+                    /* Extra inhibitory strengthening proportional to post rate */
+                    if (dst_pop->neuron_rate_ema) {
+                        float rate = dst_pop->neuron_rate_ema[j];
+                        if (rate > 0.10f) {
+                            /* Push weight more negative: additional 0.1 × (rate - 0.10)
+                             * per apply. At rate=0.5, adds -0.04 per call. */
+                            delta -= 0.1f * (rate - 0.10f);
+                        }
+                    }
+                }
+                entry->weight += delta;
                 if (entry->weight > 2.0f) entry->weight = 2.0f;
-                if (entry->weight < -2.0f) entry->weight = -2.0f;
+                if (entry->weight < -4.0f) entry->weight = -4.0f;  /* inhib cap −4 */
                 updates++;
             }
         }
@@ -742,10 +771,17 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
     }
 
     const float target_rate   = 0.03f;   /* biological target: 3% firing */
-    const float min_scale     = 0.98f;   /* at most 2% down per apply */
-    const float max_scale     = 1.02f;   /* at most 2% up per apply */
+    /* Scale bounds — normally tight [0.98, 1.02] to avoid overshoot.
+     * When far from target (>3× or <1/3 of target), we use an emergency
+     * range [0.90, 1.10] to catch runaway saturation or silent collapse
+     * faster than the normal 2% per-apply crawl. Without this, a network
+     * at 99% firing would need ~30 apply cycles to reach 3% target.
+     * The emergency range is symmetric but still bounded to prevent
+     * catastrophic weight swings. */
     const float rate_floor    = 1e-4f;   /* avoid divide-by-near-zero */
     const float w_cap         = 10.0f;   /* same cap as init path */
+    const float emerg_hi      = 3.0f * target_rate;   /* 9% — above = emergency */
+    const float emerg_lo      = target_rate / 3.0f;   /* 1% — below = emergency */
 
     uint32_t n_scaled = 0;
     uint32_t n_skipped_warmup = 0;
@@ -764,8 +800,21 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
         float cur_rate = pop->firing_rate_ema;
         if (cur_rate < rate_floor) cur_rate = rate_floor;
 
-        /* Target / current gives the pull direction. Clamp per-apply
-         * change to [0.98, 1.02] so a single call can never overshoot. */
+        /* Select scale bounds: emergency range when far from target, else
+         * normal tight range. Emergency triggers when firing is >3× target
+         * (saturation) or <1/3 target (silent collapse). This lets us
+         * pull a runaway network back into biological range in a few
+         * applies rather than dozens. */
+        float min_scale, max_scale;
+        if (cur_rate > emerg_hi || cur_rate < emerg_lo) {
+            min_scale = 0.90f;   /* 10% down per apply when in crisis */
+            max_scale = 1.10f;   /* 10% up when in crisis */
+        } else {
+            min_scale = 0.98f;   /* normal tight range */
+            max_scale = 1.02f;
+        }
+
+        /* Target / current gives the pull direction. */
         float scale = target_rate / cur_rate;
         if (scale < min_scale) scale = min_scale;
         if (scale > max_scale) scale = max_scale;
@@ -782,12 +831,36 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
             csr->entries[e].weight = w;
         }
 
+        /* Per-neuron metabolic budget: cap sum(|w|) of incoming synapses.
+         * Biology enforces a metabolic ceiling. Budget scales with fan_in —
+         * cap = 0.8 × fan_in, so average |w| per synapse can be up to 0.8.
+         * That's roughly 2-3× typical init |w| (0.15-0.3), giving R-STDP
+         * room to grow synapses that matter without allowing a neuron to
+         * accumulate arbitrarily strong total drive. */
+        for (uint32_t j = 0; j < csr->n_neurons; j++) {
+            uint32_t rs = csr->row_ptr[j];
+            uint32_t re = csr->row_ptr[j + 1];
+            uint32_t fan_in = re - rs;
+            if (fan_in == 0) continue;
+            float cap = 0.8f * (float)fan_in;
+            float sum_abs = 0.0f;
+            for (uint32_t e = rs; e < re; e++) sum_abs += fabsf(csr->entries[e].weight);
+            if (sum_abs > cap) {
+                float rescale = cap / sum_abs;
+                for (uint32_t e = rs; e < re; e++) csr->entries[e].weight *= rescale;
+            }
+        }
+
         /* Keep the flat weights[] array (used by the GPU kernel) in sync
-         * with entries[]. The kernel re-uploads from host pointer each
-         * step, so updating host memory here is sufficient. */
+         * with entries[]. With persistent GPU residency (V2), we must also
+         * push the updated host weights to the device copy, otherwise the
+         * kernel reads stale values. */
         if (csr->gpu_ready && csr->weights) {
             for (uint32_t e = 0; e < csr->n_synapses; e++) {
                 csr->weights[e] = csr->entries[e].weight;
+            }
+            if (csr->gpu_resident) {
+                snn_csr_sync_weights_to_gpu(csr);
             }
         }
 
