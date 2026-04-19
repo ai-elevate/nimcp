@@ -14,10 +14,13 @@ Pipeline:
 from .generator import MemoryGenerator
 from .implanter import MemoryImplanter, ImplantResult
 from .verifier import verify_retrievable
+from .running_implanter import RunningImplanter, TrainingEvent
 
 __all__ = [
     "MemoryGenerator",
     "MemoryImplanter",
     "ImplantResult",
     "verify_retrievable",
+    "RunningImplanter",
+    "TrainingEvent",
 ]
