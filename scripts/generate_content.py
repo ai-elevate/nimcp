@@ -75,16 +75,16 @@ CONTENT_TYPES = {
 
 def call_claude(prompt, max_tokens=2048, timeout=120):
     """Call Claude CLI with all optimization flags."""
+    mcp_cfg = os.path.expanduser("~/.claude/empty-mcp.json")
     cmd = [
         "claude", "-p", prompt,
         "--model", "sonnet",
         "--output-format", "text",
-        "--mcp-config", "/home/bbrelin/.claude/empty-mcp.json",
+        "--mcp-config", mcp_cfg,
         "--strict-mcp-config",
-        "--no-session-persistence",
         "--system-prompt", "",
         "--setting-sources", "",
-        "--tools", "",
+        "--allowed-tools", "",
     ]
     env = {k: v for k, v in os.environ.items()
            if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}

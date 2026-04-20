@@ -308,12 +308,11 @@ class ClaudeTeacher:
             "claude", "-p", full_prompt,
             "--model", self.model,
             "--output-format", "text",
-            "--mcp-config", "/home/bbrelin/.claude/empty-mcp.json",
+            "--mcp-config", os.path.expanduser("~/.claude/empty-mcp.json"),
             "--strict-mcp-config",      # ignore all other MCP configs
-            "--no-session-persistence", # don't save sessions to disk
             "--system-prompt", "",      # override system prompt (skip CLAUDE.md)
             "--setting-sources", "",    # skip loading project/user settings entirely
-            "--tools", "",              # disable all tools (pure text generation)
+            "--allowed-tools", "",      # disable all tools (pure text generation)
         ]
 
         # Clean env for claude subprocess:
