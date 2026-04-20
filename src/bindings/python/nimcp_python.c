@@ -4868,6 +4868,8 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SI("bridge_vision_samples",     st.bridge_vision_samples);
     /* Phase 4c addition: audio cortex→octopus feature sampling. */
     SI("bridge_audio_samples",      st.bridge_audio_samples);
+    /* Phase 4d addition: somatosensory→octopus feature sampling. */
+    SI("bridge_somato_samples",     st.bridge_somato_samples);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */

@@ -35,6 +35,7 @@
 #include "cognitive/omni/nimcp_omni_world_model.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "perception/nimcp_audio_cortex.h"
+#include "core/brain/regions/somatosensory/nimcp_somatosensory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -96,6 +97,8 @@ typedef struct octopus_bridge_state_s {
     uint64_t vision_samples;      /* occipital feature vectors fed to arms   */
     /* Phase 4c: audio cortex sampling. */
     uint64_t audio_samples;       /* audio cortex feature vectors fed to arms */
+    /* Phase 4d: somatosensory cortex sampling. */
+    uint64_t somato_samples;      /* somatosensory feature vectors fed to arms */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -115,7 +118,8 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->wm_updates,
         st->fear_conditionings,
         st->vision_samples,
-        st->audio_samples);
+        st->audio_samples,
+        st->somato_samples);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -776,6 +780,123 @@ int nimcp_octopus_explore_from_audio_cortex(brain_t brain) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         if (st->audio_samples > 0) st->audio_samples--;
+    }
+    return rc;
+}
+
+/*============================================================================
+ * Phase 4d: somatosensory (S1/S2) → octopus sampling.
+ *
+ * Strongest biological fit of all the sampling phases: octopus arms already
+ * have a `chemo_id` fusion channel modeled on cephalopod tactile-chemical
+ * receptors, and somatosensory cortex IS the mammalian analog of that same
+ * substrate. Pain/temperature/proprioception at the segment level maps
+ * directly to what a cephalopod arm perceives through its skin.
+ *
+ * We read the first 16 body segments (head..hands range) per channel block.
+ * Most pain/position activity is concentrated here; the other 48 possible
+ * segments (SOMA_MAX_BODY_SEGMENTS=64) are long-tail and would just add
+ * zero-dominated channels.
+ *==========================================================================*/
+
+#define _OCTOPUS_SOMATO_CHANNELS 64u
+#define _SOMATO_SEGMENTS_SAMPLED 16u
+
+uint32_t nimcp_octopus_sample_somatosensory_vec(brain_t brain,
+                                                 float* out_vec,
+                                                 uint32_t out_dim) {
+    if (!brain || !out_vec || out_dim == 0) return 0;
+    if (!brain->somatosensory || !brain->somatosensory_enabled) return 0;
+
+    if (out_dim > _OCTOPUS_SOMATO_CHANNELS) out_dim = _OCTOPUS_SOMATO_CHANNELS;
+
+    float scratch[_OCTOPUS_SOMATO_CHANNELS] = {0};
+    nimcp_somatosensory_t* soma =
+        (nimcp_somatosensory_t*)brain->somatosensory;
+
+    /* ---- Block A: per-segment pain (channels 0..15) ----------------------- */
+    float max_pain = 0.0f;
+    float total_pain = 0.0f;
+    uint32_t active_segments = 0;
+    for (uint32_t s = 0; s < _SOMATO_SEGMENTS_SAMPLED; s++) {
+        float p = soma_get_pain_level(soma, (body_segment_t)s);
+        if (p < 0.0f) p = 0.0f;
+        if (p > 1.0f) p = 1.0f;
+        scratch[s] = p;
+        total_pain += p;
+        if (p > max_pain) max_pain = p;
+        if (p > 0.01f) active_segments++;
+    }
+    /* Normalize total pain by number of segments sampled so scratch[48]
+     * stays in [0,1] like all the other signals. */
+    total_pain /= (float)_SOMATO_SEGMENTS_SAMPLED;
+
+    /* ---- Block B: per-segment temperature (channels 16..31) ---------------
+     * temp_sensation_t is an enum [0..6] (COLD_EXTREME..HOT_EXTREME).
+     * Center NEUTRAL (3) on 0.5, map to [0,1]. */
+    for (uint32_t s = 0; s < _SOMATO_SEGMENTS_SAMPLED; s++) {
+        temp_sensation_t t = soma_get_temperature_sensation(
+            soma, (body_segment_t)s);
+        int ti = (int)t;
+        if (ti < 0) ti = 0;
+        if (ti > 6) ti = 6;
+        scratch[16 + s] = (float)ti / 6.0f;
+    }
+
+    /* ---- Block C: per-segment position magnitude (channels 32..47) --------
+     * soma_get_body_position fills positions[seg*3 .. seg*3+2] = (x,y,z).
+     * We map each segment to its L2 norm — a single proprioceptive scalar
+     * that correlates with body pose without needing 3-dim channels. */
+    float positions[_SOMATO_SEGMENTS_SAMPLED * 3] = {0};
+    uint32_t n_segs = 0;
+    if (soma_get_body_position(soma, positions,
+                               _SOMATO_SEGMENTS_SAMPLED, &n_segs) == 0) {
+        if (n_segs > _SOMATO_SEGMENTS_SAMPLED) n_segs = _SOMATO_SEGMENTS_SAMPLED;
+        for (uint32_t s = 0; s < n_segs; s++) {
+            float x = positions[s * 3 + 0];
+            float y = positions[s * 3 + 1];
+            float z = positions[s * 3 + 2];
+            float mag = sqrtf(x * x + y * y + z * z);
+            /* tanh-squash so large positions don't dominate arms. */
+            scratch[32 + s] = tanhf(mag);
+        }
+    }
+
+    /* ---- Block D: body-wide pain summary (channels 48..49) ----------------
+     * Computed locally from per-segment pain in Block A (soma_get_pain_state
+     * is declared but not implemented — avoid it). */
+    scratch[48] = total_pain;
+    scratch[49] = max_pain;
+
+    /* ---- Block E: activity density (channel 50) --------------------------- */
+    /* log1p(1..16) / log(17) ≈ [0,1]. */
+    scratch[50] = log1pf((float)active_segments) / 2.833f;
+    if (scratch[50] > 1.0f) scratch[50] = 1.0f;
+
+    memcpy(out_vec, scratch, sizeof(float) * out_dim);
+    return out_dim;
+}
+
+int nimcp_octopus_explore_from_somatosensory(brain_t brain) {
+    if (!brain || !brain->octopus || !brain->octopus_enabled) return -1;
+    if (!brain->somatosensory || !brain->somatosensory_enabled) return -1;
+
+    float soma_vec[_OCTOPUS_SOMATO_CHANNELS] = {0};
+    uint32_t n = nimcp_octopus_sample_somatosensory_vec(
+        brain, soma_vec, _OCTOPUS_SOMATO_CHANNELS);
+    if (n == 0) return -1;
+
+    if (brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        st->somato_samples++;
+    }
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             soma_vec, n);
+    if (rc != 0 && brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        if (st->somato_samples > 0) st->somato_samples--;
     }
     return rc;
 }

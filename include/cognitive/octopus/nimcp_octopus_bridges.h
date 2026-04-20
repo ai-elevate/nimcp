@@ -117,6 +117,39 @@ uint32_t nimcp_octopus_sample_audio_cortex_vec(brain_t brain,
  */
 int nimcp_octopus_explore_from_audio_cortex(brain_t brain);
 
+/**
+ * @brief Phase 4d: sample current somatosensory cortex (S1/S2) state into
+ *        a fixed-length feature vector suitable for octopus_explore().
+ *
+ * This is the strongest biological fit — the octopus arm module is modeled
+ * on cephalopod peripheral cognition, and somatosensory input IS arm skin-
+ * receptor input (touch/pain/proprioception/temperature).
+ *
+ *   [ 0 .. 15]  Per-segment pain level (first 16 segments)
+ *   [16 .. 31]  Per-segment temperature (normalized temp_sensation_t / 6)
+ *   [32 .. 47]  Per-segment position magnitude (L2 of xyz)
+ *   [48]        Total pain (clamp01)
+ *   [49]        Max-segment pain intensity
+ *   [50]        log1p(num_active_segments) normalized
+ *   [51 .. 63]  Reserved
+ *
+ * @param brain   Brain instance (must have non-NULL brain->somatosensory).
+ * @param out_vec Caller-provided buffer of length >= out_dim.
+ * @param out_dim Target number of channels (clamped to [1, 64]).
+ * @return Number of channels written; 0 on unavailable state.
+ */
+uint32_t nimcp_octopus_sample_somatosensory_vec(brain_t brain,
+                                                 float* out_vec,
+                                                 uint32_t out_dim);
+
+/**
+ * @brief Phase 4d: sample somatosensory + call octopus_explore().
+ *
+ * @param brain Brain instance. Must have brain->octopus and brain->somatosensory.
+ * @return 0 on success; -1 if somatosensory or octopus unavailable.
+ */
+int nimcp_octopus_explore_from_somatosensory(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif
