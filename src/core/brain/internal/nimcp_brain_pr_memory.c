@@ -14,11 +14,13 @@
 #include "cognitive/memory/core/nimcp_theta_gamma.h"
 #include "cognitive/memory/core/nimcp_entanglement.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
+#include "cognitive/memory/core/nimcp_prime_signature.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
@@ -234,6 +236,19 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
         /* Run full consolidation (applies decay, promotes/demotes, evicts) */
         z_ladder_consolidate(brain->pr_z_ladder);
         consolidation_triggered = true;
+
+        /* Phase E4/E5: periodic landmark hygiene — every 100 consolidations
+         * reclaim any ghost landmark slots (node evicted elsewhere, slot
+         * still marked in_use). Bounded O(256) work, rare enough that the
+         * cost is amortized. */
+        brain->pr_consolidation_count++;
+        if ((brain->pr_consolidation_count % 100u) == 0u) {
+            size_t reclaimed = z_ladder_landmark_prune_stale(brain->pr_z_ladder);
+            if (reclaimed > 0) {
+                NIMCP_LOGGING_INFO("pr_memory_tick: pruned %zu stale landmark slot(s)",
+                                   reclaimed);
+            }
+        }
     }
 
     /* Update timestamp */
@@ -397,4 +412,186 @@ void nimcp_brain_pr_memory_auto_insert(struct brain_struct* brain,
                                 (unsigned long long)id, (double)confidence);
         }
     }
+}
+
+/*============================================================================
+ * Phase E4 #4 — event-triggered landmark promotion.
+ *==========================================================================*/
+uint64_t nimcp_brain_pr_memory_promote_event(struct brain_struct* brain,
+                                              const float* features,
+                                              uint32_t num_features,
+                                              const char* reason) {
+    if (!brain || !features || num_features == 0) return 0;
+    if (!brain->pr_z_ladder || !brain->pr_node_manager) return 0;
+
+    size_t n = num_features > 4096u ? 4096u : num_features;
+
+    pr_node_config_t cfg = pr_memory_node_default_config();
+    cfg.initial_tier      = PR_MEMORY_TIER_Z0;
+    cfg.initial_strength  = 1.0f;
+    cfg.compute_signature = true;
+
+    pr_memory_node_t* node = pr_memory_node_create(
+        (pr_node_manager_t)brain->pr_node_manager,
+        (const void*)features, n * sizeof(float), &cfg);
+    if (!node) return 0;
+
+    if (z_ladder_insert(brain->pr_z_ladder, node,
+                        PR_MEMORY_TIER_Z0) != Z_LADDER_SUCCESS) {
+        pr_memory_node_destroy(node);
+        return 0;
+    }
+
+    uint64_t id = pr_memory_node_get_id(node);
+    const char* label = (reason && reason[0]) ? reason : "event";
+    if (z_ladder_mark_landmark(brain->pr_z_ladder, id,
+                                label) != Z_LADDER_SUCCESS) {
+        /* Leave the node in the ladder — it just doesn't become a
+         * landmark. Return 0 to signal the caller that landmark
+         * promotion didn't take. */
+        return 0;
+    }
+
+    NIMCP_LOGGING_DEBUG("pr_memory_promote_event: landmarked node %llu (reason='%s')",
+                        (unsigned long long)id, label);
+    return id;
+}
+
+/*============================================================================
+ * Phase E4 #2 — landmark checkpoint save / load.
+ *
+ * Landmarks are identified for oracle retrieval by their prime_signature
+ * (cosine similarity), so the checkpoint only needs:
+ *   - reason label (for introspection)
+ *   - prime_signature (for query matching)
+ *
+ * Raw features are not persisted. The default pr_node_manager in
+ * brain_pr_memory_init runs without a unified_mem_manager, so node
+ * data_handles are NULL and the features live only in the signature.
+ * Saving/restoring the signature is what actually preserves the
+ * "matriarchal memory" — the thing the brain uses to recognize old
+ * landmarks against new queries.
+ *
+ * File format (little-endian, packed):
+ *   header:
+ *     char     magic[8]   = "NIMCPELM"
+ *     uint32_t version    = 2
+ *     uint32_t n_records
+ *   record (per landmark, 208 bytes):
+ *     char              reason[64]
+ *     prime_signature_t signature    (144 bytes)
+ *==========================================================================*/
+#define LANDMARK_CKPT_MAGIC   "NIMCPELM"
+#define LANDMARK_CKPT_VERSION 2u
+
+typedef struct {
+    char     magic[8];
+    uint32_t version;
+    uint32_t n_records;
+} landmark_ckpt_header_t;
+
+bool nimcp_brain_pr_memory_save_landmarks(struct brain_struct* brain,
+                                           const char* path) {
+    if (!brain || !path || !brain->pr_z_ladder) return false;
+
+    uint64_t ids[Z_LADDER_MAX_LANDMARKS];
+    char     reasons[Z_LADDER_MAX_LANDMARKS][64];
+    size_t n = z_ladder_landmark_list(brain->pr_z_ladder, ids, reasons,
+                                       Z_LADDER_MAX_LANDMARKS);
+
+    /* Build a temp path: path + ".tmp" for atomic replace. */
+    char tmp[1024];
+    int tmp_len = snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    if (tmp_len <= 0 || (size_t)tmp_len >= sizeof(tmp)) return false;
+
+    FILE* fp = fopen(tmp, "wb");
+    if (!fp) return false;
+
+    landmark_ckpt_header_t hdr;
+    memcpy(hdr.magic, LANDMARK_CKPT_MAGIC, 8);
+    hdr.version   = LANDMARK_CKPT_VERSION;
+    hdr.n_records = 0;  /* patched after write */
+
+    if (fwrite(&hdr, sizeof(hdr), 1, fp) != 1) { fclose(fp); remove(tmp); return false; }
+
+    uint32_t written_records = 0;
+    for (size_t i = 0; i < n; i++) {
+        pr_memory_node_t* node = z_ladder_find(brain->pr_z_ladder, ids[i]);
+        if (!node) continue;
+        const prime_signature_t* sig = pr_memory_node_get_signature(node);
+        if (!sig) continue;
+
+        if (fwrite(reasons[i], 64, 1, fp) != 1) break;
+        if (fwrite(sig, sizeof(prime_signature_t), 1, fp) != 1) break;
+        written_records++;
+    }
+
+    /* Patch header count. */
+    if (fseek(fp, 0, SEEK_SET) != 0) { fclose(fp); remove(tmp); return false; }
+    hdr.n_records = written_records;
+    if (fwrite(&hdr, sizeof(hdr), 1, fp) != 1) { fclose(fp); remove(tmp); return false; }
+    if (fflush(fp) != 0 || fclose(fp) != 0) { remove(tmp); return false; }
+
+    /* Atomic replace. */
+    if (rename(tmp, path) != 0) { remove(tmp); return false; }
+
+    NIMCP_LOGGING_INFO("pr_memory_save_landmarks: wrote %u landmarks → %s",
+                       written_records, path);
+    return true;
+}
+
+bool nimcp_brain_pr_memory_load_landmarks(struct brain_struct* brain,
+                                           const char* path) {
+    if (!brain || !path || !brain->pr_z_ladder || !brain->pr_node_manager) return false;
+
+    FILE* fp = fopen(path, "rb");
+    if (!fp) return false;
+
+    landmark_ckpt_header_t hdr;
+    if (fread(&hdr, sizeof(hdr), 1, fp) != 1) { fclose(fp); return false; }
+    if (memcmp(hdr.magic, LANDMARK_CKPT_MAGIC, 8) != 0 ||
+        hdr.version != LANDMARK_CKPT_VERSION) {
+        fclose(fp);
+        NIMCP_LOGGING_WARN("pr_memory_load_landmarks: bad magic/version in %s", path);
+        return false;
+    }
+
+    uint32_t restored = 0;
+    for (uint32_t i = 0; i < hdr.n_records; i++) {
+        char reason[64];
+        prime_signature_t sig;
+
+        if (fread(reason, 64, 1, fp) != 1) break;
+        reason[63] = '\0';
+        if (fread(&sig, sizeof(sig), 1, fp) != 1) break;
+
+        /* Restore as a signature-only node (no data payload).  This
+         * matches what the default pr_node_manager holds for live
+         * landmarks — it has no unified_mem_manager, so node data
+         * handles are NULL and queries run on the signature alone. */
+        pr_node_config_t cfg = pr_memory_node_default_config();
+        cfg.initial_tier      = PR_MEMORY_TIER_Z0;
+        cfg.initial_strength  = 1.0f;
+        cfg.compute_signature = false;
+
+        pr_memory_node_t* node = pr_memory_node_create_with_signature(
+            (pr_node_manager_t)brain->pr_node_manager,
+            NULL, 0, &sig, &cfg);
+        if (!node) continue;
+
+        if (z_ladder_insert(brain->pr_z_ladder, node,
+                            PR_MEMORY_TIER_Z0) != Z_LADDER_SUCCESS) {
+            pr_memory_node_destroy(node);
+            continue;
+        }
+        uint64_t id = pr_memory_node_get_id(node);
+        if (z_ladder_mark_landmark(brain->pr_z_ladder, id, reason) == Z_LADDER_SUCCESS) {
+            restored++;
+        }
+    }
+
+    fclose(fp);
+    NIMCP_LOGGING_INFO("pr_memory_load_landmarks: restored %u/%u landmarks from %s",
+                       restored, hdr.n_records, path);
+    return true;
 }

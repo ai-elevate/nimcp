@@ -1743,6 +1743,7 @@ struct brain_struct {
     bool pr_lazy_init;                                                // Defer PR memory initialization
     uint64_t last_pr_consolidation_us;                                // Last consolidation timestamp
     uint64_t pr_consolidation_interval_us;                            // Consolidation interval (default: 100ms)
+    uint64_t pr_consolidation_count;                                  // Phase E4/E5: consolidation tick counter for periodic landmark hygiene
 
     // =========================================================================
     // PHASE 4 NEUROMODULATORY NUCLEI INTEGRATION (LC, VTA, Raphe, Habenula)

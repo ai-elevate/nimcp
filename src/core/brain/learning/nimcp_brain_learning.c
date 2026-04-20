@@ -1087,6 +1087,35 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         nimcp_brain_pr_memory_auto_insert(brain, features, num_features, confidence);
     }
 
+    /* Phase E5: drive pr_memory consolidation tick. Advances theta-gamma
+     * phase, runs Z-Ladder consolidation (promote/demote/evict/decay),
+     * and every 100 ticks reclaims stale landmark slots. No-op when
+     * pr_memory is disabled. Without this, landmarks and memory tiers
+     * never evolve — insertion would be the only state change. Also
+     * notify the brain cycle coordinator so the BRAIN_UPDATE cycle's
+     * health/timing observability reflects actual activity. */
+    if (brain->pr_memory_enabled) {
+        extern bool nimcp_brain_pr_memory_tick(brain_t brain, uint64_t current_time_us);
+        struct timespec _prt_t0, _prt_t1;
+        clock_gettime(CLOCK_MONOTONIC, &_prt_t0);
+        uint64_t now_us = (uint64_t)_prt_t0.tv_sec * 1000000ull +
+                          (uint64_t)_prt_t0.tv_nsec / 1000ull;
+        nimcp_brain_pr_memory_tick(brain, now_us);
+        clock_gettime(CLOCK_MONOTONIC, &_prt_t1);
+
+        if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
+            uint64_t dur_us = ((uint64_t)_prt_t1.tv_sec - (uint64_t)_prt_t0.tv_sec) * 1000000ull +
+                              ((uint64_t)_prt_t1.tv_nsec - (uint64_t)_prt_t0.tv_nsec) / 1000ull;
+            /* BRAIN_CYCLE_BRAIN_UPDATE = 8 (last in brain_cycle_type_t).
+             * Forward-declared to avoid pulling the cycle coordinator
+             * header into this TU. */
+            extern int brain_cycle_coordinator_notify_tick(
+                void* coord, int type, uint64_t duration_us);
+            (void)brain_cycle_coordinator_notify_tick(
+                (void*)brain->cycle_coordinator, 8, dur_us);
+        }
+    }
+
     /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */
     struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
     if (blv_debug_timing_enabled()) {

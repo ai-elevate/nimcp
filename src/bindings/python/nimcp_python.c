@@ -5269,6 +5269,165 @@ static PyObject* Brain_long_term_query(BrainObject* self, PyObject* args) {
     return list;
 }
 
+/* Phase E4 #5: oracle query across all Z0..Z3 tiers (not just landmarks). */
+static PyObject* Brain_long_term_query_all(BrainObject* self, PyObject* args) {
+    PyObject* features_list = NULL;
+    int top_k = 5;
+    if (!PyArg_ParseTuple(args, "O|i", &features_list, &top_k)) return NULL;
+    if (top_k <= 0 || top_k > 64) top_k = 5;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    z_ladder_t ladder = self->brain->internal_brain->pr_z_ladder;
+    if (!ladder) return PyList_New(0);
+
+    if (!PyList_Check(features_list) && !PyTuple_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list or tuple of floats");
+        return NULL;
+    }
+    Py_ssize_t n = PySequence_Size(features_list);
+    if (n <= 0) return PyList_New(0);
+    if (n > 4096) n = 4096;
+
+    float stack_buf[256];
+    float* data = (n <= 256) ? stack_buf
+        : (float*)nimcp_calloc((size_t)n, sizeof(float));
+    if (!data) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject* item = PySequence_GetItem(features_list, i);
+        if (!item) { if (data != stack_buf) nimcp_free(data); return NULL; }
+        data[i] = (float)PyFloat_AsDouble(item);
+        Py_DECREF(item);
+    }
+    prime_signature_t* sig = prime_sig_from_floats(data, (size_t)n);
+    if (data != stack_buf) nimcp_free(data);
+    if (!sig) {
+        PyErr_SetString(PyExc_RuntimeError, "prime_sig_from_floats failed");
+        return NULL;
+    }
+
+    z_ladder_landmark_hit_t hits[64];
+    size_t out_count = 0;
+    z_ladder_error_t rc = z_ladder_query_all_tiers(
+        ladder, sig, hits, (size_t)top_k, &out_count);
+    prime_sig_destroy(sig);
+    if (rc != Z_LADDER_SUCCESS) return PyList_New(0);
+
+    PyObject* list = PyList_New((Py_ssize_t)out_count);
+    if (!list) return NULL;
+    for (size_t i = 0; i < out_count; i++) {
+        PyObject* entry = PyDict_New();
+        if (!entry) { Py_DECREF(list); return NULL; }
+        PyObject* v;
+        v = PyLong_FromUnsignedLongLong((unsigned long long)hits[i].node_id);
+        if (v) { PyDict_SetItemString(entry, "node_id", v); Py_DECREF(v); }
+        v = PyFloat_FromDouble((double)hits[i].similarity);
+        if (v) { PyDict_SetItemString(entry, "similarity", v); Py_DECREF(v); }
+        v = PyLong_FromLong((long)hits[i].tier);
+        if (v) { PyDict_SetItemString(entry, "tier", v); Py_DECREF(v); }
+        PyList_SET_ITEM(list, (Py_ssize_t)i, entry);
+    }
+    return list;
+}
+
+/* Phase E4 #4: event-triggered landmark promotion. Features + reason in;
+ * returns the new node_id (uint64) or 0 on failure. */
+static PyObject* Brain_long_term_promote_event(BrainObject* self, PyObject* args) {
+    PyObject* features_list = NULL;
+    const char* reason = NULL;
+    if (!PyArg_ParseTuple(args, "O|s", &features_list, &reason)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+
+    /* Lazy-init pr_memory if needed — matches Brain_long_term_insert_memory. */
+    if (!self->brain->internal_brain->pr_z_ladder) {
+        extern bool nimcp_brain_pr_memory_init(struct brain_struct* brain,
+                                               const void* config);
+        if (!nimcp_brain_pr_memory_init(self->brain->internal_brain, NULL)) {
+            PyErr_SetString(PyExc_RuntimeError, "pr_memory init failed");
+            return NULL;
+        }
+    }
+
+    if (!PyList_Check(features_list) && !PyTuple_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list or tuple of floats");
+        return NULL;
+    }
+    Py_ssize_t n = PySequence_Size(features_list);
+    if (n <= 0) return PyLong_FromUnsignedLongLong(0);
+    if (n > 4096) n = 4096;
+
+    float stack_buf[256];
+    float* data = (n <= 256) ? stack_buf
+        : (float*)nimcp_calloc((size_t)n, sizeof(float));
+    if (!data) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject* item = PySequence_GetItem(features_list, i);
+        if (!item) { if (data != stack_buf) nimcp_free(data); return NULL; }
+        data[i] = (float)PyFloat_AsDouble(item);
+        Py_DECREF(item);
+    }
+
+    extern uint64_t nimcp_brain_pr_memory_promote_event(
+        struct brain_struct* brain, const float* features,
+        uint32_t num_features, const char* reason);
+    uint64_t id = nimcp_brain_pr_memory_promote_event(
+        self->brain->internal_brain, data, (uint32_t)n, reason);
+
+    if (data != stack_buf) nimcp_free(data);
+    return PyLong_FromUnsignedLongLong((unsigned long long)id);
+}
+
+/* Phase E4 #2: save landmarks to disk. Returns True on success. */
+static PyObject* Brain_long_term_save(BrainObject* self, PyObject* args) {
+    const char* path = NULL;
+    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    extern bool nimcp_brain_pr_memory_save_landmarks(
+        struct brain_struct* brain, const char* path);
+    bool ok = nimcp_brain_pr_memory_save_landmarks(
+        self->brain->internal_brain, path);
+    if (ok) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+/* Phase E4 #2: load landmarks from disk. Returns True on success. */
+static PyObject* Brain_long_term_load(BrainObject* self, PyObject* args) {
+    const char* path = NULL;
+    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+
+    /* Lazy-init pr_memory if needed so load has a ladder to insert into. */
+    if (!self->brain->internal_brain->pr_z_ladder) {
+        extern bool nimcp_brain_pr_memory_init(struct brain_struct* brain,
+                                               const void* config);
+        if (!nimcp_brain_pr_memory_init(self->brain->internal_brain, NULL)) {
+            PyErr_SetString(PyExc_RuntimeError, "pr_memory init failed");
+            return NULL;
+        }
+    }
+
+    extern bool nimcp_brain_pr_memory_load_landmarks(
+        struct brain_struct* brain, const char* path);
+    bool ok = nimcp_brain_pr_memory_load_landmarks(
+        self->brain->internal_brain, path);
+    if (ok) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 /**
  * WHAT: Get epistemic + aleatoric uncertainty for input features
  * WHY:  Metacognitive monitoring — "how confident is the brain?"
@@ -9730,6 +9889,25 @@ static PyMethodDef Brain_methods[] = {
      (PyCFunction)Brain_long_term_query, METH_VARARGS,
      "Oracle retrieval by feature similarity: long_term_query(features, top_k=5) -> list of dicts "
      "[{node_id, similarity, tier}, ...] sorted by similarity descending."},
+    /* Phase E4: full-tier query, event promotion, landmark checkpointing. */
+    {"long_term_query_all",
+     (PyCFunction)Brain_long_term_query_all, METH_VARARGS,
+     "Oracle retrieval across ALL tiers (Z0..Z3): long_term_query_all(features, top_k=5) -> list of dicts. "
+     "Unlike long_term_query, this walks the whole ladder, not just the landmark set."},
+    {"long_term_promote_event",
+     (PyCFunction)Brain_long_term_promote_event, METH_VARARGS,
+     "Event-triggered landmark promotion: long_term_promote_event(features, reason='') -> node_id (uint64). "
+     "Creates a node, inserts at Z0, and immediately marks it as a Z3 landmark. Reward/amygdala/engram paths "
+     "can use this to record salient events as permanent matriarchal memory without relying on training "
+     "confidence thresholds. Returns 0 on failure."},
+    {"long_term_save",
+     (PyCFunction)Brain_long_term_save, METH_VARARGS,
+     "Save landmarks to disk: long_term_save(path) -> bool. Atomic (temp+rename). Writes all live "
+     "landmarks with their features and prime signatures to `path`."},
+    {"long_term_load",
+     (PyCFunction)Brain_long_term_load, METH_VARARGS,
+     "Load landmarks from disk: long_term_load(path) -> bool. Re-creates landmark nodes from saved "
+     "features+signatures, inserts at Z0, then marks each as a landmark. New node_ids are assigned."},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,

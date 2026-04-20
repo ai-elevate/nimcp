@@ -3279,6 +3279,78 @@ size_t z_ladder_landmark_count(z_ladder_t ladder) {
     return n;
 }
 
+/* Phase E4 #5 — full-ladder prime-signature similarity search. Walks
+ * every tier's node array, computes cosine similarity, keeps top-K. */
+z_ladder_error_t z_ladder_query_all_tiers(z_ladder_t ladder,
+                                           const prime_signature_t* query,
+                                           z_ladder_landmark_hit_t* results,
+                                           size_t max_results,
+                                           size_t* out_count) {
+    if (!ladder || !query || !results || !out_count || max_results == 0) {
+        return Z_LADDER_ERROR_NULL_POINTER;
+    }
+    *out_count = 0;
+
+    nimcp_mutex_lock(&ladder->mutex);
+
+    for (int tier = 0; tier < Z_LADDER_NUM_TIERS; tier++) {
+        z_tier_storage_t* storage = &ladder->tiers[tier];
+        for (size_t i = 0; i < storage->count; i++) {
+            pr_memory_node_t* node = storage->nodes[i];
+            if (!node) continue;
+            const prime_signature_t* sig = pr_memory_node_get_signature(node);
+            if (!sig) continue;
+
+            float sim = prime_sig_cosine(sig, query);
+            if (sim < 0.0f || !(sim == sim)) continue;
+
+            if (*out_count < max_results) {
+                size_t j = *out_count;
+                while (j > 0 && results[j - 1].similarity < sim) {
+                    results[j] = results[j - 1];
+                    j--;
+                }
+                results[j].node_id    = node->node_id;
+                results[j].similarity = sim;
+                results[j].tier       = (pr_memory_tier_t)tier;
+                (*out_count)++;
+            } else if (sim > results[max_results - 1].similarity) {
+                size_t j = max_results - 1;
+                while (j > 0 && results[j - 1].similarity < sim) {
+                    results[j] = results[j - 1];
+                    j--;
+                }
+                results[j].node_id    = node->node_id;
+                results[j].similarity = sim;
+                results[j].tier       = (pr_memory_tier_t)tier;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(&ladder->mutex);
+    return Z_LADDER_SUCCESS;
+}
+
+size_t z_ladder_landmark_list(z_ladder_t ladder,
+                              uint64_t* out_ids,
+                              char (*out_reasons)[64],
+                              size_t max) {
+    if (!ladder || max == 0) return 0;
+    nimcp_mutex_lock(&ladder->mutex);
+    size_t written = 0;
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS && written < max; i++) {
+        if (!ladder->landmarks[i].in_use) continue;
+        if (out_ids) out_ids[written] = ladder->landmarks[i].node_id;
+        if (out_reasons) {
+            strncpy(out_reasons[written], ladder->landmarks[i].reason, 63);
+            out_reasons[written][63] = '\0';
+        }
+        written++;
+    }
+    nimcp_mutex_unlock(&ladder->mutex);
+    return written;
+}
+
 size_t z_ladder_landmark_prune_stale(z_ladder_t ladder) {
     if (!ladder) return 0;
     nimcp_mutex_lock(&ladder->mutex);

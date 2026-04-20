@@ -1260,6 +1260,45 @@ NIMCP_EXPORT size_t z_ladder_landmark_count(z_ladder_t ladder);
  */
 NIMCP_EXPORT size_t z_ladder_landmark_prune_stale(z_ladder_t ladder);
 
+/**
+ * @brief Phase E4: iterate live landmark entries (id + reason).
+ *
+ * Fills `out_ids` with live landmark node IDs and `out_reasons` with
+ * their reason strings (each nul-terminated, up to 64 chars). Either
+ * output array may be NULL if the caller only wants the count.
+ *
+ * @param ladder       Z-Ladder handle.
+ * @param out_ids      Output array of node_id (may be NULL).
+ * @param out_reasons  Output array of char[64] (may be NULL).
+ * @param max          Capacity of each output array.
+ * @return Number of landmarks written (≤ max, ≤ count).
+ */
+NIMCP_EXPORT size_t z_ladder_landmark_list(z_ladder_t ladder,
+                                           uint64_t* out_ids,
+                                           char (*out_reasons)[64],
+                                           size_t max);
+
+/**
+ * @brief Phase E4 #5: prime-signature similarity search across ALL tiers.
+ *
+ * Like `z_ladder_landmark_query`, but walks every node in Z0..Z3, not
+ * just the landmark set. Useful when the caller wants general oracle
+ * retrieval including non-landmark memories.
+ *
+ * @param ladder      Z-Ladder handle.
+ * @param query       Prime signature to match against (must not be NULL).
+ * @param results     Output array (caller-allocated).
+ * @param max_results Capacity of results[].
+ * @param out_count   Receives number of matches written.
+ * @return Z_LADDER_SUCCESS or error code.
+ */
+NIMCP_EXPORT z_ladder_error_t z_ladder_query_all_tiers(
+    z_ladder_t ladder,
+    const prime_signature_t* query,
+    z_ladder_landmark_hit_t* results,
+    size_t max_results,
+    size_t* out_count);
+
 #ifdef __cplusplus
 }
 #endif

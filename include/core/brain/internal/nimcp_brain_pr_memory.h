@@ -242,6 +242,46 @@ typedef struct {
  */
 bool nimcp_brain_pr_memory_get_stats(const struct brain_struct* brain, brain_pr_memory_stats_t* stats);
 
+/*============================================================================
+ * Phase E3: auto-insertion hook from training tick chain.
+ *==========================================================================*/
+void nimcp_brain_pr_memory_auto_insert(struct brain_struct* brain,
+                                        const float* features,
+                                        uint32_t num_features,
+                                        float confidence);
+
+/*============================================================================
+ * Phase E4 #2: Landmark checkpoint save / load.
+ *
+ * save: iterates live landmark set, writes a compact binary record per
+ *       landmark containing {reason, prime_signature, data_size, data}
+ *       to `path`. Atomic (temp + rename).
+ * load: re-hydrates landmarks by reconstructing pr_memory_node
+ *       instances from saved data+signature, inserting at Z0, then
+ *       marking as landmark. Silently skips corrupted records.
+ *
+ * Returns true on success (including zero-landmarks-to-save), false on
+ * I/O failure or pr_memory not initialized.
+ *==========================================================================*/
+bool nimcp_brain_pr_memory_save_landmarks(struct brain_struct* brain,
+                                           const char* path);
+bool nimcp_brain_pr_memory_load_landmarks(struct brain_struct* brain,
+                                           const char* path);
+
+/*============================================================================
+ * Phase E4 #4: Event-triggered landmark promotion.
+ *
+ * Combines pr_memory_node_create + z_ladder_insert + z_ladder_mark_landmark
+ * into one call. For use by reward/amygdala/engram paths to mark salient
+ * events as permanent landmarks without going through auto-insert.
+ *
+ * Returns the assigned node_id (non-zero) on success, 0 on failure.
+ *==========================================================================*/
+uint64_t nimcp_brain_pr_memory_promote_event(struct brain_struct* brain,
+                                              const float* features,
+                                              uint32_t num_features,
+                                              const char* reason);
+
 #ifdef __cplusplus
 }
 #endif
