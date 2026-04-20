@@ -4872,6 +4872,8 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SI("bridge_somato_samples",     st.bridge_somato_samples);
     /* Phase 4e addition: SNN→octopus feature sampling. */
     SI("bridge_snn_samples",        st.bridge_snn_samples);
+    /* Phase 4f addition: neuromodulator→octopus feature sampling. */
+    SI("bridge_neuromod_samples",   st.bridge_neuromod_samples);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */

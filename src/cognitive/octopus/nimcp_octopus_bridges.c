@@ -37,6 +37,7 @@
 #include "perception/nimcp_audio_cortex.h"
 #include "core/brain/regions/somatosensory/nimcp_somatosensory.h"
 #include "snn/nimcp_snn_network.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -102,6 +103,8 @@ typedef struct octopus_bridge_state_s {
     uint64_t somato_samples;      /* somatosensory feature vectors fed to arms */
     /* Phase 4e: SNN spike-activity sampling. */
     uint64_t snn_samples;         /* SNN feature vectors fed to arms         */
+    /* Phase 4f: neuromodulator sampling. */
+    uint64_t neuromod_samples;    /* neuromod concentration vectors fed to arms */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -123,7 +126,8 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->vision_samples,
         st->audio_samples,
         st->somato_samples,
-        st->snn_samples);
+        st->snn_samples,
+        st->neuromod_samples);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -1005,6 +1009,78 @@ int nimcp_octopus_explore_from_snn(brain_t brain) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         if (st->snn_samples > 0) st->snn_samples--;
+    }
+    return rc;
+}
+
+/*============================================================================
+ * Phase 4f: neuromodulator → octopus sampling.
+ *
+ * Biologically-motivated: DA/5-HT/ACh/NE/GABA/GLU concentrations bathe the
+ * whole brain and should drive arm-level exploration dynamics too. Octopus
+ * already has pink-noise for 1/f exploration; neuromod sampling lets arms
+ * also condition their decisions on the brain's current modulation regime.
+ *
+ * neuromodulator_system_t is already a pointer typedef — do not double-
+ * indirect (per project convention).
+ *==========================================================================*/
+
+#define _OCTOPUS_NEUROMOD_CHANNELS 64u
+
+uint32_t nimcp_octopus_sample_neuromod_vec(brain_t brain,
+                                            float* out_vec,
+                                            uint32_t out_dim) {
+    if (!brain || !out_vec || out_dim == 0) return 0;
+    if (!brain->neuromodulator_system) return 0;
+
+    if (out_dim > _OCTOPUS_NEUROMOD_CHANNELS) out_dim = _OCTOPUS_NEUROMOD_CHANNELS;
+
+    float scratch[_OCTOPUS_NEUROMOD_CHANNELS] = {0};
+
+    neuromodulator_system_t sys = brain->neuromodulator_system;
+
+    /* Slot each neuromodulator at a fixed channel index so arms can learn
+     * stable semantics across runs. Levels are nominally [0,1]; clamp
+     * defensively against out-of-range getters. */
+    static const neuromodulator_type_t types[6] = {
+        NEUROMOD_DOPAMINE,
+        NEUROMOD_SEROTONIN,
+        NEUROMOD_ACETYLCHOLINE,
+        NEUROMOD_NOREPINEPHRINE,
+        NEUROMOD_GABA,
+        NEUROMOD_GLUTAMATE,
+    };
+    for (uint32_t i = 0; i < 6; i++) {
+        float v = neuromodulator_get_level(sys, types[i]);
+        if (v < 0.0f) v = 0.0f;
+        if (v > 1.0f) v = 1.0f;
+        scratch[i] = v;
+    }
+
+    memcpy(out_vec, scratch, sizeof(float) * out_dim);
+    return out_dim;
+}
+
+int nimcp_octopus_explore_from_neuromod(brain_t brain) {
+    if (!brain || !brain->octopus || !brain->octopus_enabled) return -1;
+    if (!brain->neuromodulator_system) return -1;
+
+    float nmod_vec[_OCTOPUS_NEUROMOD_CHANNELS] = {0};
+    uint32_t n = nimcp_octopus_sample_neuromod_vec(
+        brain, nmod_vec, _OCTOPUS_NEUROMOD_CHANNELS);
+    if (n == 0) return -1;
+
+    if (brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        st->neuromod_samples++;
+    }
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             nmod_vec, n);
+    if (rc != 0 && brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        if (st->neuromod_samples > 0) st->neuromod_samples--;
     }
     return rc;
 }

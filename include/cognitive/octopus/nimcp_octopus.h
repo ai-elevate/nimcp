@@ -130,6 +130,7 @@ typedef struct octopus_stats_s {
     uint64_t bridge_audio_samples;      /**< Audio cortex samples injected as arm input (Phase 4c) */
     uint64_t bridge_somato_samples;     /**< Somatosensory samples injected as arm input (Phase 4d) */
     uint64_t bridge_snn_samples;        /**< SNN spike-activity samples injected as arm input (Phase 4e) */
+    uint64_t bridge_neuromod_samples;   /**< Neuromodulator samples injected as arm input (Phase 4f) */
 } octopus_stats_t;
 
 /*============================================================================
@@ -268,7 +269,8 @@ NIMCP_EXPORT void octopus_set_bridge_stats(
     uint64_t vision_samples,
     uint64_t audio_samples,
     uint64_t somato_samples,
-    uint64_t snn_samples);
+    uint64_t snn_samples,
+    uint64_t neuromod_samples);
 
 #ifdef __cplusplus
 }

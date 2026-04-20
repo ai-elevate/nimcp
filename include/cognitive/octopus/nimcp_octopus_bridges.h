@@ -185,6 +185,35 @@ uint32_t nimcp_octopus_sample_snn_vec(brain_t brain,
  */
 int nimcp_octopus_explore_from_snn(brain_t brain);
 
+/**
+ * @brief Phase 4f: sample global neuromodulator concentrations into a
+ *        fixed-length feature vector for octopus_explore().
+ *
+ * Biologically correct integration — neuromodulators (DA/5-HT/ACh/NE/GABA/
+ * GLU) bathe the whole brain and should gate arm-level exploration too.
+ *
+ *   [0] dopamine
+ *   [1] serotonin
+ *   [2] acetylcholine
+ *   [3] norepinephrine
+ *   [4] gaba
+ *   [5] glutamate
+ *   [6 .. 63] Reserved
+ *
+ * @param brain   Brain instance (must have neuromodulator_system).
+ * @param out_vec Caller-provided buffer of length >= out_dim.
+ * @param out_dim Target number of channels (clamped to [1, 64]).
+ * @return Number of channels written; 0 on unavailable state.
+ */
+uint32_t nimcp_octopus_sample_neuromod_vec(brain_t brain,
+                                            float* out_vec,
+                                            uint32_t out_dim);
+
+/**
+ * @brief Phase 4f: sample neuromodulators + call octopus_explore().
+ */
+int nimcp_octopus_explore_from_neuromod(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif
