@@ -970,6 +970,24 @@ void brain_destroy(brain_t brain)
             brain->dragonfly_lnn = NULL;
             brain->dragonfly_lnn_enabled = false;
         }
+        /* Dragonfly system + medulla bridge: previously leaked on brain
+         * teardown. Medulla bridge destroy is outside-in (bridge first,
+         * then the dragonfly it references) to mirror create order. */
+        {
+            typedef struct dragonfly_medulla_bridge_s* dragonfly_medulla_bridge_t;
+            extern void dragonfly_medulla_bridge_destroy(dragonfly_medulla_bridge_t bridge);
+            extern void dragonfly_system_destroy(dragonfly_system_t* system);
+            if (brain->dragonfly_medulla_bridge) {
+                dragonfly_medulla_bridge_destroy(
+                    (dragonfly_medulla_bridge_t)brain->dragonfly_medulla_bridge);
+                brain->dragonfly_medulla_bridge = NULL;
+            }
+            if (brain->dragonfly) {
+                dragonfly_system_destroy(brain->dragonfly);
+                brain->dragonfly = NULL;
+                brain->dragonfly_enabled = false;
+            }
+        }
         /* Flight controller bridges */
         if (brain->mavlink_bridge) {
             extern void nimcp_mavlink_bridge_destroy(void*);

@@ -671,6 +671,56 @@ float soma_get_pain_level(nimcp_somatosensory_t* soma, body_segment_t segment) {
     return total > 10.0f ? 10.0f : total;
 }
 
+int soma_get_pain_state(nimcp_somatosensory_t* soma,
+                        float* total_pain,
+                        body_segment_t* max_pain_segment,
+                        pain_type_t* dominant_type) {
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "soma_get_pain_state: soma is NULL");
+        return -1;
+    }
+
+    /* Aggregate across all body segments:
+     *   total_pain      = sum of per-segment pain levels
+     *   max_pain_segment = segment with highest pain
+     *   dominant_type    = most-activated pain_type across all active events,
+     *                      weighted by each event's contribution magnitude. */
+    float sum = 0.0f;
+    float max_level = 0.0f;
+    body_segment_t worst = (body_segment_t)0;
+    float type_weights[PAIN_REFERRED + 1] = {0};
+
+    for (body_segment_t s = 0; s < BODY_SEG_COUNT; s++) {
+        float lvl = soma_get_pain_level(soma, s);
+        sum += lvl;
+        if (lvl > max_level) {
+            max_level = lvl;
+            worst = s;
+        }
+    }
+    for (uint32_t i = 0; i < soma->num_active_pain; i++) {
+        const soma_pain_event_t* ev = &soma->active_pain_events[i];
+        if (!ev->is_active) continue;
+        if ((int)ev->type < 0 || (int)ev->type > PAIN_REFERRED) continue;
+        float w = ev->intensity * ev->attention_modulation * ev->emotional_modulation;
+        type_weights[(int)ev->type] += w;
+    }
+    pain_type_t dom = PAIN_NONE;
+    float dom_w = 0.0f;
+    for (int t = PAIN_NONE; t <= PAIN_REFERRED; t++) {
+        if (type_weights[t] > dom_w) {
+            dom_w = type_weights[t];
+            dom = (pain_type_t)t;
+        }
+    }
+
+    if (total_pain)        *total_pain        = sum;
+    if (max_pain_segment)  *max_pain_segment  = worst;
+    if (dominant_type)     *dominant_type     = dom;
+    return 0;
+}
+
 /*=============================================================================
  * PROPRIOCEPTION FUNCTIONS
  *===========================================================================*/

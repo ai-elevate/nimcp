@@ -671,20 +671,16 @@ int nimcp_octopus_explore_from_occipital(brain_t brain) {
         brain, vision_vec, _OCTOPUS_VISION_CHANNELS);
     if (n == 0) return -1;
 
-    /* Increment BEFORE explore so the immune-hook _publish_bridge_stats
-     * (which fires during explore) sees the up-to-date counter this step. */
-    if (brain->octopus_bridge_state) {
+    /* Increment AFTER a successful explore. The immune-hook publish in
+     * *this* explore reports the pre-call count (accurate — this call
+     * hasn't succeeded yet). Next explore's publish includes it. This
+     * avoids any window where observers see a pre-rollback inflated value. */
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             vision_vec, n);
+    if (rc == 0 && brain->octopus_bridge_state) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         st->vision_samples++;
-    }
-    int rc = octopus_explore((octopus_system_t*)brain->octopus,
-                             vision_vec, n);
-    if (rc != 0 && brain->octopus_bridge_state) {
-        /* Roll back on failure so counter reflects actual successful samples. */
-        octopus_bridge_state_t* st =
-            (octopus_bridge_state_t*)brain->octopus_bridge_state;
-        if (st->vision_samples > 0) st->vision_samples--;
     }
     return rc;
 }
@@ -781,18 +777,12 @@ int nimcp_octopus_explore_from_audio_cortex(brain_t brain) {
         brain, audio_vec, _OCTOPUS_AUDIO_CHANNELS);
     if (n == 0) return -1;
 
-    /* Bump counter before explore so the immune-hook publish captures it. */
-    if (brain->octopus_bridge_state) {
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             audio_vec, n);
+    if (rc == 0 && brain->octopus_bridge_state) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         st->audio_samples++;
-    }
-    int rc = octopus_explore((octopus_system_t*)brain->octopus,
-                             audio_vec, n);
-    if (rc != 0 && brain->octopus_bridge_state) {
-        octopus_bridge_state_t* st =
-            (octopus_bridge_state_t*)brain->octopus_bridge_state;
-        if (st->audio_samples > 0) st->audio_samples--;
     }
     return rc;
 }
@@ -899,17 +889,12 @@ int nimcp_octopus_explore_from_somatosensory(brain_t brain) {
         brain, soma_vec, _OCTOPUS_SOMATO_CHANNELS);
     if (n == 0) return -1;
 
-    if (brain->octopus_bridge_state) {
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             soma_vec, n);
+    if (rc == 0 && brain->octopus_bridge_state) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         st->somato_samples++;
-    }
-    int rc = octopus_explore((octopus_system_t*)brain->octopus,
-                             soma_vec, n);
-    if (rc != 0 && brain->octopus_bridge_state) {
-        octopus_bridge_state_t* st =
-            (octopus_bridge_state_t*)brain->octopus_bridge_state;
-        if (st->somato_samples > 0) st->somato_samples--;
     }
     return rc;
 }
@@ -1003,17 +988,12 @@ int nimcp_octopus_explore_from_snn(brain_t brain) {
         brain, snn_vec, _OCTOPUS_SNN_CHANNELS);
     if (n == 0) return -1;
 
-    if (brain->octopus_bridge_state) {
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             snn_vec, n);
+    if (rc == 0 && brain->octopus_bridge_state) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         st->snn_samples++;
-    }
-    int rc = octopus_explore((octopus_system_t*)brain->octopus,
-                             snn_vec, n);
-    if (rc != 0 && brain->octopus_bridge_state) {
-        octopus_bridge_state_t* st =
-            (octopus_bridge_state_t*)brain->octopus_bridge_state;
-        if (st->snn_samples > 0) st->snn_samples--;
     }
     return rc;
 }
@@ -1075,17 +1055,12 @@ int nimcp_octopus_explore_from_neuromod(brain_t brain) {
         brain, nmod_vec, _OCTOPUS_NEUROMOD_CHANNELS);
     if (n == 0) return -1;
 
-    if (brain->octopus_bridge_state) {
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             nmod_vec, n);
+    if (rc == 0 && brain->octopus_bridge_state) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         st->neuromod_samples++;
-    }
-    int rc = octopus_explore((octopus_system_t*)brain->octopus,
-                             nmod_vec, n);
-    if (rc != 0 && brain->octopus_bridge_state) {
-        octopus_bridge_state_t* st =
-            (octopus_bridge_state_t*)brain->octopus_bridge_state;
-        if (st->neuromod_samples > 0) st->neuromod_samples--;
     }
     return rc;
 }
@@ -1203,17 +1178,12 @@ int nimcp_octopus_explore_from_peers(brain_t brain) {
         brain, peer_vec, _OCTOPUS_PEER_CHANNELS);
     if (n == 0) return -1;
 
-    if (brain->octopus_bridge_state) {
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             peer_vec, n);
+    if (rc == 0 && brain->octopus_bridge_state) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         st->peer_samples++;
-    }
-    int rc = octopus_explore((octopus_system_t*)brain->octopus,
-                             peer_vec, n);
-    if (rc != 0 && brain->octopus_bridge_state) {
-        octopus_bridge_state_t* st =
-            (octopus_bridge_state_t*)brain->octopus_bridge_state;
-        if (st->peer_samples > 0) st->peer_samples--;
     }
     return rc;
 }
