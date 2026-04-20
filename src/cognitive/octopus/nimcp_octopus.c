@@ -460,7 +460,8 @@ void octopus_set_bridge_stats(octopus_system_t* ctx,
                                uint64_t audio_samples,
                                uint64_t somato_samples,
                                uint64_t snn_samples,
-                               uint64_t neuromod_samples) {
+                               uint64_t neuromod_samples,
+                               uint64_t peer_samples) {
     if (!ctx) return;
     ctx->stats.bridge_engram_encodings   = engram_encodings;
     ctx->stats.bridge_kg_nodes_added     = kg_nodes_added;
@@ -476,4 +477,5 @@ void octopus_set_bridge_stats(octopus_system_t* ctx,
     ctx->stats.bridge_somato_samples     = somato_samples;
     ctx->stats.bridge_snn_samples        = snn_samples;
     ctx->stats.bridge_neuromod_samples   = neuromod_samples;
+    ctx->stats.bridge_peer_samples       = peer_samples;
 }

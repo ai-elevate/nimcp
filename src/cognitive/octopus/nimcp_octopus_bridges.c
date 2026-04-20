@@ -38,6 +38,8 @@
 #include "core/brain/regions/somatosensory/nimcp_somatosensory.h"
 #include "snn/nimcp_snn_network.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "dragonfly/nimcp_dragonfly.h"
+#include "portia/nimcp_portia.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -105,6 +107,8 @@ typedef struct octopus_bridge_state_s {
     uint64_t snn_samples;         /* SNN feature vectors fed to arms         */
     /* Phase 4f: neuromodulator sampling. */
     uint64_t neuromod_samples;    /* neuromod concentration vectors fed to arms */
+    /* Phase 4g: peer-module (Portia + Dragonfly) sampling. */
+    uint64_t peer_samples;        /* peer cognitive-module vectors fed to arms */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -127,7 +131,8 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->audio_samples,
         st->somato_samples,
         st->snn_samples,
-        st->neuromod_samples);
+        st->neuromod_samples,
+        st->peer_samples);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -1081,6 +1086,134 @@ int nimcp_octopus_explore_from_neuromod(brain_t brain) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         if (st->neuromod_samples > 0) st->neuromod_samples--;
+    }
+    return rc;
+}
+
+/*============================================================================
+ * Phase 4g: peer-module (Portia + Dragonfly) → octopus sampling.
+ *
+ * The octopus module was originally pitched alongside Portia (adaptation)
+ * and Dragonfly (attention) as a delegation/adaptation/attention triad.
+ * Until this phase they didn't share state. Now arms can read Dragonfly's
+ * target-tracking vector (TSDN) and Portia's resource/tier state.
+ *
+ * Portia is a singleton (no instance pointer — global calls). Dragonfly is
+ * instanced via brain->dragonfly. Both blocks are independently populated
+ * so a brain with only one peer still produces a useful vector.
+ *==========================================================================*/
+
+#define _OCTOPUS_PEER_CHANNELS 64u
+
+uint32_t nimcp_octopus_sample_peers_vec(brain_t brain,
+                                         float* out_vec,
+                                         uint32_t out_dim) {
+    if (!brain || !out_vec || out_dim == 0) return 0;
+    if (out_dim > _OCTOPUS_PEER_CHANNELS) out_dim = _OCTOPUS_PEER_CHANNELS;
+
+    float scratch[_OCTOPUS_PEER_CHANNELS] = {0};
+
+    bool any_peer = false;
+
+    /* ---- Dragonfly block (channels 0..15) --------------------------------- */
+    if (brain->dragonfly && brain->dragonfly_enabled) {
+        dragonfly_system_t* df = (dragonfly_system_t*)brain->dragonfly;
+
+        dragonfly_mode_t mode = dragonfly_get_mode(df);
+        int mi = (int)mode;
+        if (mi < 0) mi = 0;
+        if (mi > 4) mi = 4;
+        scratch[0] = (float)mi / 4.0f;  /* INTERCEPTING=4 */
+
+        dragonfly_state_t dstate = {0};
+        if (dragonfly_get_state(df, &dstate) == 0) {
+            scratch[1] = dstate.is_tracking ? 1.0f : 0.0f;
+            scratch[2] = dstate.confidence < 0.0f ? 0.0f :
+                         dstate.confidence > 1.0f ? 1.0f : dstate.confidence;
+            scratch[3] = dstate.evasion_detected ? 1.0f : 0.0f;
+            scratch[9] = tanhf(dstate.time_to_intercept_ms / 1000.0f);
+        }
+
+        tsdn_vector_t tv = {0};
+        if (dragonfly_get_tsdn_vector(df, &tv) == 0 && tv.valid) {
+            /* direction is radians — encode as (sin, cos) to avoid wrap
+             * discontinuity at ±π. */
+            scratch[4] = tv.magnitude < 0.0f ? 0.0f :
+                         tv.magnitude > 1.0f ? 1.0f : tv.magnitude;
+            scratch[5] = sinf(tv.direction);
+            scratch[6] = cosf(tv.direction);
+            scratch[7] = sinf(tv.elevation);
+            scratch[8] = tanhf(tv.angular_velocity);
+        }
+        any_peer = true;
+    }
+
+    /* ---- Portia block (channels 16..23) ----------------------------------- */
+    if (portia_is_initialized()) {
+        portia_status_t pst = {0};
+        if (portia_get_status(&pst) == NIMCP_SUCCESS) {
+            /* Tier 0..6, power 0..5, thermal 0..4, degradation 0..4. */
+            int ti = (int)pst.current_tier;
+            if (ti < 0) ti = 0;
+            if (ti > 6) ti = 6;
+            scratch[16] = (float)ti / 6.0f;
+
+            int pw = (int)pst.power_state;
+            if (pw < 0) pw = 0;
+            if (pw > 5) pw = 5;
+            scratch[17] = (float)pw / 5.0f;
+
+            int th = (int)pst.thermal_state;
+            if (th < 0) th = 0;
+            if (th > 4) th = 4;
+            scratch[18] = (float)th / 4.0f;
+
+            int dg = (int)pst.degradation_level;
+            if (dg < 0) dg = 0;
+            if (dg > 4) dg = 4;
+            scratch[19] = (float)dg / 4.0f;
+
+            scratch[20] = pst.cpu_usage    < 0.0f ? 0.0f :
+                          pst.cpu_usage    > 1.0f ? 1.0f : pst.cpu_usage;
+            scratch[21] = pst.memory_usage < 0.0f ? 0.0f :
+                          pst.memory_usage > 1.0f ? 1.0f : pst.memory_usage;
+            /* battery_level = -1 means N/A — treat as 0 (unknown/none). */
+            scratch[22] = pst.battery_level < 0.0f ? 0.0f :
+                          pst.battery_level > 1.0f ? 1.0f : pst.battery_level;
+            /* Temperature: clamp 0..100 C then /100 → [0,1]. */
+            float tc = pst.temperature_celsius;
+            if (tc < 0.0f) tc = 0.0f;
+            if (tc > 100.0f) tc = 100.0f;
+            scratch[23] = tc / 100.0f;
+        }
+        any_peer = true;
+    }
+
+    if (!any_peer) return 0;
+
+    memcpy(out_vec, scratch, sizeof(float) * out_dim);
+    return out_dim;
+}
+
+int nimcp_octopus_explore_from_peers(brain_t brain) {
+    if (!brain || !brain->octopus || !brain->octopus_enabled) return -1;
+
+    float peer_vec[_OCTOPUS_PEER_CHANNELS] = {0};
+    uint32_t n = nimcp_octopus_sample_peers_vec(
+        brain, peer_vec, _OCTOPUS_PEER_CHANNELS);
+    if (n == 0) return -1;
+
+    if (brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        st->peer_samples++;
+    }
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             peer_vec, n);
+    if (rc != 0 && brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        if (st->peer_samples > 0) st->peer_samples--;
     }
     return rc;
 }

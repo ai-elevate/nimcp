@@ -214,6 +214,29 @@ uint32_t nimcp_octopus_sample_neuromod_vec(brain_t brain,
  */
 int nimcp_octopus_explore_from_neuromod(brain_t brain);
 
+/**
+ * @brief Phase 4g: sample peer cognitive modules (Portia + Dragonfly) into
+ *        a feature vector. Completes the delegation/attention/adaptation
+ *        triad the octopus was designed around.
+ *
+ *   [ 0 ..  9]  Dragonfly mode, tracking flags, TSDN direction/elevation/
+ *               magnitude, angular velocity, time-to-intercept
+ *   [10 .. 15]  Reserved
+ *   [16 .. 23]  Portia tier/power/thermal/degradation + CPU/memory/battery/temp
+ *   [24 .. 63]  Reserved
+ *
+ * Returns 0 if neither peer is available. If only one is available, its
+ * block is populated and the other stays zero.
+ */
+uint32_t nimcp_octopus_sample_peers_vec(brain_t brain,
+                                         float* out_vec,
+                                         uint32_t out_dim);
+
+/**
+ * @brief Phase 4g: sample peers + call octopus_explore().
+ */
+int nimcp_octopus_explore_from_peers(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif
