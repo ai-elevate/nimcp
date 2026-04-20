@@ -1819,11 +1819,14 @@ class AutoCheckpointer:
                     pass
 
     def _sync_to_hetzner(self, checkpoint_path):
-        """Sync checkpoint + sidecars to Hetzner with CRC32 verification.
-
-        Copies the checkpoint file and all sidecars to the Hetzner dev server,
-        then verifies integrity by comparing CRC32 checksums computed on both ends.
+        """Hetzner sync is handled by the external supervisord checkpoint-sync
+        service (rotating snapshots, gzip-at-rest). The old per-save scp
+        here blocked the save thread for up to 600s on each attempt,
+        which starved brain RPCs and caused training 'ping' failures.
+        Kept as a no-op for API compatibility with the old call sites.
         """
+        return
+        # Dead code below — kept for reference; use checkpoint-sync service instead.
         import hashlib
         import subprocess
 
