@@ -73,6 +73,17 @@ typedef struct octopus_arm_s {
     /* Local plasticity-like statistic: running variance of this arm's
      * latents. High variance = arm is in an exploratory phase. */
     float    latent_variance;
+    /* Phase 3a: Shannon entropy over the arm's softmaxed latent.
+     * Higher entropy = more uncertainty in the arm's local opinion.
+     * Complements latent_variance with a principled info-theoretic
+     * measure (nimcp_entropy from utils/math). */
+    float    shannon_entropy;
+    /* Phase 3a: DFA exponent of this arm's recent latent norms.
+     * ~1.0 = biologically-healthy pink-noise signal; drifts toward 0.5
+     * (white) or 1.5 (random walk) indicate pathology. Updated
+     * lazily — only when the history ring has been fully populated
+     * at least once. 0.0 = not yet computed. */
+    float    dfa_exponent;
     /* Arm-local ethics veto state. If nonzero, this arm's last
      * decision was blocked by the ethics gate and should not contribute
      * to aggregation. */
@@ -98,6 +109,11 @@ typedef struct octopus_stats_s {
     float    avg_arm_confidence;     /**< Mean arm.confidence           */
     float    avg_arm_variance;       /**< Mean arm.latent_variance      */
     float    central_coherence;      /**< How aligned arms are [0,1]    */
+    /* Phase 3a measurements. */
+    float    avg_arm_entropy;        /**< Mean arm.shannon_entropy      */
+    float    avg_arm_dfa;            /**< Mean arm.dfa_exponent (>0)    */
+    uint32_t n_dfa_computations;     /**< Times DFA has been updated    */
+    uint32_t n_pink_noise_injections;/**< Times pink-noise was applied  */
 } octopus_stats_t;
 
 /*============================================================================

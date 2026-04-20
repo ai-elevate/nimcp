@@ -4848,6 +4848,10 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SF("avg_arm_confidence",    st.avg_arm_confidence);
     SF("avg_arm_variance",      st.avg_arm_variance);
     SF("central_coherence",     st.central_coherence);
+    SF("avg_arm_entropy",       st.avg_arm_entropy);
+    SF("avg_arm_dfa",           st.avg_arm_dfa);
+    SI("n_dfa_computations",    st.n_dfa_computations);
+    SI("n_pink_noise_injections", st.n_pink_noise_injections);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */

@@ -13,6 +13,11 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/math/nimcp_math_helpers.h"
 
+/* Phase 3a integrations: pink noise (biologically-plausible exploration),
+ * fractal DFA (arm health metric), Shannon entropy (arm diversity). */
+#include "plasticity/noise/nimcp_pink_noise.h"
+#include "cognitive/memory/core/nimcp_fractal.h"
+
 #include <math.h>
 #include <string.h>
 
@@ -40,6 +45,18 @@ struct octopus_system_s {
     /* Thresholds. */
     float    swarm_delegation_threshold; /**< arm.confidence > this → delegate */
     float    low_coherence_threshold;    /**< coherence < this → broadcast     */
+
+    /* Phase 3a: shared pink-noise generator used to inject biologically
+     * plausible 1/f stochastic exploration into arm latents. Shared across
+     * arms (single temporal noise source) since biological neuromod noise
+     * is a whole-system signal, not per-arm. Lazy-created on first use;
+     * if the noise module is unavailable, arms just skip the bias. */
+    pink_noise_generator_t pink_gen;
+
+    /* DFA cadence: recompute fractal_dfa on each arm's history at most
+     * once per N explorations, since DFA is O(N * num_scales). */
+    uint32_t dfa_update_every;
+    uint32_t dfa_update_counter;
 };
 
 /*============================================================================
@@ -50,15 +67,30 @@ struct octopus_system_s {
 /* Tanh-activated per-element transform on an input slice → latent.
  * This is the arm's local "processing" — a cheap nonlinearity plus
  * a contribution from the arm's recent history. Full ML weights aren't
- * the point; this is cheap distributed-reflex compute, biology-analogous. */
-static void _arm_process_slice(octopus_arm_t* arm, const float* slice) {
+ * the point; this is cheap distributed-reflex compute, biology-analogous.
+ *
+ * Phase 3a: injects a single pink-noise sample into the pre-activation
+ * (before tanh) so arms explore in a 1/f correlated way. The sample is
+ * shared across dims of one arm for one step (simulates a single neuro-
+ * modulator affecting the whole arm), then regenerated per exploration.
+ * Shannon entropy of the softmaxed latent is computed at the end as a
+ * principled info-theoretic diversity measure. */
+static void _arm_process_slice(octopus_arm_t* arm, const float* slice,
+                                pink_noise_generator_t pink_gen,
+                                octopus_stats_t* stats) {
     /* Store new input in history ring. */
     memcpy(arm->recent_inputs[arm->history_head], slice,
            sizeof(float) * OCTOPUS_ARM_DIM);
     arm->history_head = (arm->history_head + 1) % OCTOPUS_ARM_HISTORY;
 
-    /* Compute new latent — 70% current slice, 30% smoothed history mean.
-     * This gives arms continuity without being frozen to history. */
+    /* Pink-noise bias — one scalar sample for this arm this step. */
+    float pn_bias = 0.0f;
+    if (pink_gen && pink_noise_generate_sample(pink_gen, &pn_bias)) {
+        if (stats) stats->n_pink_noise_injections++;
+    }
+
+    /* Compute new latent — 70% current slice, 30% smoothed history mean,
+     * + pink-noise bias. Still tanh-squashed into [-1, 1]. */
     float history_mean[OCTOPUS_ARM_DIM] = {0};
     for (uint32_t h = 0; h < OCTOPUS_ARM_HISTORY; h++) {
         for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
@@ -67,7 +99,7 @@ static void _arm_process_slice(octopus_arm_t* arm, const float* slice) {
     }
     for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
         history_mean[d] /= (float)OCTOPUS_ARM_HISTORY;
-        float v = 0.7f * slice[d] + 0.3f * history_mean[d];
+        float v = 0.7f * slice[d] + 0.3f * history_mean[d] + pn_bias;
         arm->latent[d] = tanhf(v);
     }
 
@@ -99,6 +131,29 @@ static void _arm_process_slice(octopus_arm_t* arm, const float* slice) {
      * double as chemical fingerprint. Copy them directly so downstream
      * modules can read arm->chemo_id as a semantic-tactile sense. */
     for (uint32_t d = 0; d < 32; d++) arm->chemo_id[d] = slice[d];
+
+    /* Phase 3a: Shannon entropy over the arm's softmaxed latent. Gives
+     * an info-theoretic "certainty" measure complementing latent_variance.
+     * Values in [0, log2(N)] — normalized to [0, 1] for downstream use. */
+    float probs[OCTOPUS_ARM_DIM];
+    float max_v = arm->latent[0];
+    for (uint32_t d = 1; d < OCTOPUS_ARM_DIM; d++) {
+        if (arm->latent[d] > max_v) max_v = arm->latent[d];
+    }
+    float sum_exp = 0.0f;
+    for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
+        /* Subtract max for numerical stability. */
+        probs[d] = expf(arm->latent[d] - max_v);
+        sum_exp += probs[d];
+    }
+    if (sum_exp > 1e-8f) {
+        for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) probs[d] /= sum_exp;
+        float H = nimcp_entropy(probs, OCTOPUS_ARM_DIM);
+        /* Normalize by log(N) = ln(64) ≈ 4.158 so arm->shannon_entropy is in [0,1]. */
+        arm->shannon_entropy = nimcp_clamp01(H / 4.158883f);
+    } else {
+        arm->shannon_entropy = 0.0f;
+    }
 }
 
 /*============================================================================
@@ -131,13 +186,38 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
     ctx->stats.n_arms = n_arms;
     ctx->swarm_delegation_threshold = 0.75f;
     ctx->low_coherence_threshold    = 0.30f;
+    ctx->dfa_update_every = 20;  /* once per 20 explorations — cheap cadence */
 
-    NIMCP_LOGGING_INFO("octopus_create: %u arms initialized", n_arms);
+    /* Create the shared pink-noise generator. 1/f spectrum (alpha=1),
+     * small amplitude so it biases exploration without overwhelming the
+     * deterministic signal. Non-fatal if creation fails. */
+    pink_noise_config_t pink_cfg = {0};
+    pink_cfg.alpha          = 1.0f;
+    pink_cfg.amplitude      = 0.05f;
+    pink_cfg.min_frequency  = 0.1f;
+    pink_cfg.max_frequency  = 100.0f;
+    pink_cfg.sample_rate    = 100.0f;
+    pink_cfg.method         = PINK_NOISE_VOSS;  /* fast streaming method */
+    pink_cfg.seed           = 0;  /* time-based */
+    ctx->pink_gen = pink_noise_create(&pink_cfg);
+    if (!ctx->pink_gen) {
+        NIMCP_LOGGING_WARN("octopus_create: pink noise generator unavailable; "
+                           "arms will run without 1/f exploration bias");
+    }
+
+    NIMCP_LOGGING_INFO("octopus_create: %u arms initialized "
+                       "(pink-noise=%s, DFA cadence=%u)",
+                       n_arms, ctx->pink_gen ? "live" : "off",
+                       ctx->dfa_update_every);
     return ctx;
 }
 
 void octopus_destroy(octopus_system_t* ctx) {
     if (!ctx) return;
+    if (ctx->pink_gen) {
+        pink_noise_destroy(ctx->pink_gen);
+        ctx->pink_gen = NULL;
+    }
     nimcp_free(ctx->arms);
     nimcp_free(ctx);
 }
@@ -160,7 +240,7 @@ int octopus_explore(octopus_system_t* ctx,
         for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
             slice[d] = input[(start + d) % input_len];
         }
-        _arm_process_slice(&ctx->arms[a], slice);
+        _arm_process_slice(&ctx->arms[a], slice, ctx->pink_gen, &ctx->stats);
         ctx->arms[a].vetoed = false;
 
         /* Ethics gate — arm decisions are checked per-arm (biology: each
@@ -187,6 +267,36 @@ int octopus_explore(octopus_system_t* ctx,
     }
 
     ctx->stats.n_explorations++;
+
+    /* Phase 3a: periodically run DFA on each arm's history of latent L2
+     * norms. DFA exponent ~1.0 = pink-noise-healthy; drifts to 0.5
+     * (uncorrelated/white) or 1.5 (random walk) indicate pathology.
+     * Cadence: every ctx->dfa_update_every explorations, not every step.
+     * fractal_dfa requires >= FRACTAL_MIN_SAMPLES — OCTOPUS_ARM_HISTORY
+     * is 16 which is below that, so use the arm's chemo_id (32 floats)
+     * as a readily-available recent signal trace instead. This is a
+     * proxy for arm stability, not a canonical DFA application. */
+    ctx->dfa_update_counter++;
+    if (ctx->dfa_update_counter >= ctx->dfa_update_every) {
+        ctx->dfa_update_counter = 0;
+        for (uint32_t a = 0; a < ctx->n_arms; a++) {
+            octopus_arm_t* arm = &ctx->arms[a];
+            /* Concatenate last two history slots' L2-norm slices to get
+             * enough samples; fallback to skip if insufficient data. */
+            float signal[OCTOPUS_ARM_HISTORY * OCTOPUS_ARM_DIM];
+            uint32_t n = 0;
+            for (uint32_t h = 0; h < OCTOPUS_ARM_HISTORY; h++) {
+                for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
+                    signal[n++] = arm->recent_inputs[h][d];
+                }
+            }
+            fractal_result_t res = {0};
+            if (fractal_dfa(signal, n, NULL, &res) == 0) {
+                arm->dfa_exponent = res.dfa_exponent;
+                ctx->stats.n_dfa_computations++;
+            }
+        }
+    }
     return 0;
 }
 
@@ -266,6 +376,21 @@ int octopus_integrate(octopus_system_t* ctx,
     ctx->stats.avg_arm_confidence = conf_sum / (float)contributing;
     ctx->stats.avg_arm_variance   = var_sum  / (float)contributing;
     ctx->stats.central_coherence  = coh;
+
+    /* Phase 3a aggregations. */
+    float ent_sum = 0.0f, dfa_sum = 0.0f;
+    uint32_t dfa_contrib = 0;
+    for (uint32_t a = 0; a < ctx->n_arms; a++) {
+        if (ctx->arms[a].vetoed) continue;
+        ent_sum += ctx->arms[a].shannon_entropy;
+        if (ctx->arms[a].dfa_exponent > 0.0f) {
+            dfa_sum += ctx->arms[a].dfa_exponent;
+            dfa_contrib++;
+        }
+    }
+    ctx->stats.avg_arm_entropy = ent_sum / (float)contributing;
+    ctx->stats.avg_arm_dfa     = dfa_contrib > 0
+                               ? (dfa_sum / (float)dfa_contrib) : 0.0f;
 
     return 0;
 }

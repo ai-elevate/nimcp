@@ -29,10 +29,12 @@ def test_octopus_stats_shape():
     assert stats.get("enabled") is True, "octopus should be enabled after brain init"
     assert stats["n_arms"] == 8, f"default n_arms should be 8, got {stats['n_arms']}"
     for key in ("n_explorations", "n_integrations", "n_ethics_vetoes",
-                "n_swarm_delegations", "n_world_model_updates"):
+                "n_swarm_delegations", "n_world_model_updates",
+                "n_dfa_computations", "n_pink_noise_injections"):
         assert key in stats, f"missing counter: {key}"
         assert isinstance(stats[key], int), f"{key} should be int"
-    for key in ("avg_arm_confidence", "avg_arm_variance", "central_coherence"):
+    for key in ("avg_arm_confidence", "avg_arm_variance", "central_coherence",
+                "avg_arm_entropy", "avg_arm_dfa"):
         assert key in stats, f"missing float: {key}"
         assert isinstance(stats[key], float), f"{key} should be float"
     arms = stats.get("arm_broadcast_states")
