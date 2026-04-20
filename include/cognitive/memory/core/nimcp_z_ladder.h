@@ -1247,6 +1247,19 @@ NIMCP_EXPORT z_ladder_error_t z_ladder_landmark_query(
 /** Number of currently-tracked landmarks. */
 NIMCP_EXPORT size_t z_ladder_landmark_count(z_ladder_t ladder);
 
+/**
+ * @brief Phase E4: prune landmark slots whose referenced node no longer
+ *        exists in the ladder (evicted / removed by other paths). Walk
+ *        the landmark array, mark any stale slot as free, decrement
+ *        n_landmarks accordingly.
+ *
+ * Safe to call periodically (e.g. after consolidation) to reclaim ghost
+ * slots before `mark_landmark` has to evict live entries.
+ *
+ * @return number of slots reclaimed.
+ */
+NIMCP_EXPORT size_t z_ladder_landmark_prune_stale(z_ladder_t ladder);
+
 #ifdef __cplusplus
 }
 #endif

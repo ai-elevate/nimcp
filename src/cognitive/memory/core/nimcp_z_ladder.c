@@ -3134,6 +3134,33 @@ static size_t _find_free_landmark_slot(z_ladder_t ladder) {
     return (size_t)-1;
 }
 
+/* Phase E4: find the landmark slot with the weakest consolidation score
+ * (for eviction when capacity is exceeded). Returns SIZE_MAX if no live
+ * slots. Prefers stale landmarks (node missing from ladder) first —
+ * they're free slots masquerading as in-use. Caller must hold mutex. */
+static size_t _find_weakest_landmark_slot_unlocked(z_ladder_t ladder) {
+    size_t best_idx = (size_t)-1;
+    float  best_w   = 2.0f;  /* quaternion w is in [0,1]; any real landmark is lower */
+
+    /* First pass: prefer stale landmarks. */
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (!ladder->landmarks[i].in_use) continue;
+        z_hash_entry_t* e = hash_find(ladder, ladder->landmarks[i].node_id);
+        if (!e || !e->node) {
+            return i;  /* ghost slot — reclaim first */
+        }
+    }
+    /* Second pass: true weakest-by-consolidation. */
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (!ladder->landmarks[i].in_use) continue;
+        z_hash_entry_t* e = hash_find(ladder, ladder->landmarks[i].node_id);
+        if (!e || !e->node) continue;
+        float w = e->node->state.w;
+        if (w < best_w) { best_w = w; best_idx = i; }
+    }
+    return best_idx;
+}
+
 z_ladder_error_t z_ladder_mark_landmark(z_ladder_t ladder,
                                          uint64_t node_id,
                                          const char* reason) {
@@ -3155,11 +3182,28 @@ z_ladder_error_t z_ladder_mark_landmark(z_ladder_t ladder,
         return Z_LADDER_ERROR_NOT_FOUND;
     }
 
-    /* Find a free slot. */
+    /* Find a free slot. Phase E4: on capacity-exceeded, evict the weakest
+     * landmark (stale slot preferred, else lowest consolidation) — matches
+     * elephant memory where new important events displace the least-
+     * reinforced old memories. */
     size_t slot = _find_free_landmark_slot(ladder);
     if (slot == (size_t)-1) {
-        nimcp_mutex_unlock(&ladder->mutex);
-        return Z_LADDER_ERROR_CAPACITY;
+        slot = _find_weakest_landmark_slot_unlocked(ladder);
+        if (slot == (size_t)-1) {
+            nimcp_mutex_unlock(&ladder->mutex);
+            return Z_LADDER_ERROR_CAPACITY;
+        }
+        NIMCP_LOGGING_DEBUG("z_ladder_mark_landmark: evicting landmark "
+                            "slot %zu (node %llu, reason='%s') for new "
+                            "landmark node %llu",
+                            slot,
+                            (unsigned long long)ladder->landmarks[slot].node_id,
+                            ladder->landmarks[slot].reason,
+                            (unsigned long long)node_id);
+        /* Decrement n_landmarks since we're removing the old one; it'll
+         * be re-incremented when the new record writes in_use. */
+        if (ladder->landmarks[slot].in_use) ladder->n_landmarks--;
+        ladder->landmarks[slot].in_use = false;
     }
 
     /* Promote repeatedly until Z3 (at most 3 hops). */
@@ -3233,6 +3277,29 @@ size_t z_ladder_landmark_count(z_ladder_t ladder) {
     size_t n = ladder->n_landmarks;
     nimcp_mutex_unlock(&ladder->mutex);
     return n;
+}
+
+size_t z_ladder_landmark_prune_stale(z_ladder_t ladder) {
+    if (!ladder) return 0;
+    nimcp_mutex_lock(&ladder->mutex);
+    size_t reclaimed = 0;
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (!ladder->landmarks[i].in_use) continue;
+        z_hash_entry_t* e = hash_find(ladder, ladder->landmarks[i].node_id);
+        if (!e || !e->node) {
+            ladder->landmarks[i].in_use = false;
+            ladder->landmarks[i].node_id = 0;
+            ladder->landmarks[i].reason[0] = '\0';
+            if (ladder->n_landmarks > 0) ladder->n_landmarks--;
+            reclaimed++;
+        }
+    }
+    nimcp_mutex_unlock(&ladder->mutex);
+    if (reclaimed > 0) {
+        NIMCP_LOGGING_DEBUG("z_ladder_landmark_prune_stale: reclaimed %zu ghost slot(s)",
+                            reclaimed);
+    }
+    return reclaimed;
 }
 
 z_ladder_error_t z_ladder_audit_landmarks(z_ladder_t ladder,
