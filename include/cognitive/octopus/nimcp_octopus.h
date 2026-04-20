@@ -47,9 +47,10 @@ extern "C" {
 #define OCTOPUS_DEFAULT_N_ARMS 8
 
 /* Per-arm history window — recent inputs + decisions retained for the
- * arm's local continuity. Keep small; this is peripheral memory, not
- * central working memory. */
-#define OCTOPUS_ARM_HISTORY    16
+ * arm's local continuity. Bumped from 16 → 64 in Phase 3b so that
+ * fractal_dfa() can actually compute (FRACTAL_MIN_SAMPLES == 64).
+ * Memory: 64 × 64 × 4 B = 16 KB/arm × 16 max arms = 256 KB worst case. */
+#define OCTOPUS_ARM_HISTORY    64
 
 /* Arm input/output dimension. Matches typical feature-vector slices. */
 #define OCTOPUS_ARM_DIM        64

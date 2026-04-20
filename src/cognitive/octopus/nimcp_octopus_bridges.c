@@ -1,12 +1,15 @@
 /**
  * @file nimcp_octopus_bridges.c
- * @brief Octopus → peer-subsystem bridges (Phase 2a install + Phase 2b wire-through).
+ * @brief Octopus → peer-subsystem bridges (Phase 2a + 2b + 3b).
  *
  * Phase 2a: install the 6 hooks, only ethics is live-gating.
  * Phase 2b: route the remaining 5 hooks through bio_router_broadcast so real
  *          subscribers (swarm / world / FEP / immune / bio-async) receive
  *          structured events. Octopus registers as BIO_MODULE_OCTOPUS and
  *          emits octopus_event_msg_t on each hook firing.
+ * Phase 3b: swarm hook also adds rate-limited nodes to brain->internal_kg;
+ *          bio hook also encodes rate-limited engrams on low-coherence
+ *          events via brain->engram_system.
  *
  * Each wrapper is a thin adapter — pulls the subsystem handle from
  * `brain_t`, transforms arm/aggregate data into an event, broadcasts.
@@ -25,9 +28,12 @@
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "cognitive/memory/nimcp_engram.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -61,6 +67,9 @@ typedef struct octopus_bridge_state_s {
     uint64_t bio_broadcast_counter;
     bio_module_context_t bio_ctx; /* NULL if router not up at install time */
     uint32_t sequence;            /* monotonic per-context sequence */
+    /* Phase 3b integrations. */
+    uint64_t engram_encodings;    /* memory episodes encoded from octopus events */
+    uint64_t kg_nodes_added;      /* KG nodes added for delegation events */
 } octopus_bridge_state_t;
 
 /* Lazy register against bio_router if install-time registration was
@@ -137,14 +146,32 @@ static bool _ethics_hook(const octopus_arm_t* arm, void* user) {
     return eval.allowed;
 }
 
-/* Swarm delegation: broadcast DELEGATE event carrying the arm id + its
- * confidence. A real swarm edge-consumer subscribes to these events and
- * performs the edge-side execution. This keeps octopus decoupled from
- * swarm internals (DIP). */
+/* Swarm delegation: (1) broadcast DELEGATE event through bio_router,
+ * (2) add a node to the internal KG recording this high-confidence
+ * arm-finding so downstream reasoners can query past delegations.
+ * KG additions are rate-limited to every 64th delegation (power-of-two
+ * mask avoids % so the check stays constant-time) to avoid graph bloat
+ * from identical high-confidence steady states. */
 static void _swarm_hook(const octopus_arm_t* arm, void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
     if (!st || !arm) return;
     _emit(st, OCTOPUS_EVT_DELEGATE, (uint16_t)arm->id, arm->confidence);
+
+    /* KG integration: add a node for notable delegations. */
+    if (st->brain && st->brain->internal_kg && st->brain->internal_kg_enabled) {
+        if ((st->kg_nodes_added & 0x3F) == 0) {  /* every 64th */
+            char name[64], desc[128];
+            snprintf(name, sizeof(name), "octopus_delegate_%llu",
+                     (unsigned long long)st->kg_nodes_added);
+            snprintf(desc, sizeof(desc),
+                     "Octopus arm %u delegated with confidence %.3f "
+                     "(sequence=%u)",
+                     arm->id, arm->confidence, st->sequence);
+            brain_kg_add_node(st->brain->internal_kg, name,
+                              BRAIN_KG_NODE_COGNITIVE, desc);
+        }
+        st->kg_nodes_added++;
+    }
 }
 
 /* World model: broadcast WORLD_OBS with coherence as magnitude. Full
@@ -167,7 +194,12 @@ static void _fep_hook(float coherence, void* user) {
 
 /* Bio-async event broadcast: route octopus events (arm vetoes, low
  * coherence) through the real bio_router. Event string is mapped to one
- * of our typed enum values. Unrecognized events get dropped (safe-fail). */
+ * of our typed enum values. Unrecognized events get dropped (safe-fail).
+ *
+ * Phase 3b: low-coherence events also trigger an episodic engram —
+ * the brain remembers surprising-octopus moments so they can be replayed
+ * during consolidation. Rate-limited so identical prolonged low-coherence
+ * doesn't flood the engram store. */
 static void _bio_hook(const char* event, float value, void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
     if (!st || !event) return;
@@ -185,6 +217,37 @@ static void _bio_hook(const char* event, float value, void* user) {
     uint16_t arm_id = (type == OCTOPUS_EVT_ARM_VETO)
                     ? (uint16_t)value : (uint16_t)0xFFFF;
     _emit(st, type, arm_id, value);
+
+    /* Phase 3b: engram encoding for significant episodes. Low coherence
+     * means "arms are split" = surprising experience = worth remembering.
+     * Only encode every 32nd such event to avoid flooding consolidation. */
+    if (type == OCTOPUS_EVT_LOW_COHERENCE &&
+        st->brain && st->brain->engram_system &&
+        (st->engram_encodings & 0x1F) == 0) {
+        /* Build a minimal engram pattern from the arm broadcast states.
+         * n_arms neuron-ids (synthetic but stable), activations = the
+         * arm's broadcast state at the moment of low coherence. */
+        octopus_system_t* oc = (octopus_system_t*)st->brain->octopus;
+        if (oc) {
+            uint32_t n_arms = octopus_get_n_arms(oc);
+            uint32_t ids[16];       /* max arms = 16 */
+            float    acts[16];
+            uint32_t count = 0;
+            for (uint32_t a = 0; a < n_arms && count < 16; a++) {
+                ids[count]  = 0x50000000u | a;  /* synthetic id space */
+                acts[count] = octopus_get_broadcast_state(oc, a);
+                count++;
+            }
+            emotional_tag_t emo = {0};
+            emo.valence   = -0.3f;  /* low coherence → mildly negative */
+            emo.arousal   = 1.0f - value;  /* lower coherence → higher arousal */
+            emo.intensity = 1.0f - value;
+            emo.timestamp_ms = 0;
+            engram_encode(st->brain->engram_system, ids, acts, count,
+                          MEMORY_TYPE_EPISODIC, emo);
+        }
+    }
+    if (type == OCTOPUS_EVT_LOW_COHERENCE) st->engram_encodings++;
 }
 
 /* Immune: fires on every explore(). Emit a heartbeat msg so any
