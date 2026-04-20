@@ -156,15 +156,12 @@ void nimcp_jepa_brain_bridges_destroy(brain_t brain) {
     }
 }
 
-void nimcp_jepa_brain_bridges_tick(brain_t brain) {
+void nimcp_jepa_brain_bridges_tick(brain_t brain,
+                                   const float* features,
+                                   uint32_t num_features) {
     if (!brain) return;
 
-    /* Only neuromod is self-driving (reads current levels against stored
-     * prev). Omni + engram need caller-supplied vectors — they're
-     * driven from specific code points (octopus hook, engram encode),
-     * not from the generic tick. Audio self-drives against its cortex's
-     * cached training state. Training is one-shot per call; cadence
-     * gating lives upstream (in the brain-tick frequency). */
+    /* --- Self-driving bridges (read their own subsystem state) --- */
     if (brain->neuromod_jepa_bridge) {
         float loss = 0.0f;
         (void)neuromod_jepa_bridge_train_step(
@@ -179,5 +176,29 @@ void nimcp_jepa_brain_bridges_tick(brain_t brain) {
         float loss = 0.0f;
         (void)soma_jepa_bridge_train_step(
             (soma_jepa_bridge_t*)brain->soma_jepa_bridge, &loss);
+    }
+
+    /* --- Pair-driven bridges (need caller-provided state vector) --- */
+    if (!features || num_features == 0) return;
+
+    if (brain->omni_jepa_bridge) {
+        (void)omni_jepa_bridge_tick_from_vec(
+            (omni_jepa_bridge_t*)brain->omni_jepa_bridge,
+            features, num_features);
+    }
+    if (brain->engram_jepa_bridge) {
+        (void)engram_jepa_bridge_tick_from_vec(
+            (engram_jepa_bridge_t*)brain->engram_jepa_bridge,
+            features, num_features);
+    }
+    if (brain->consolidation_jepa_bridge) {
+        (void)consolidation_jepa_bridge_tick_from_vec(
+            (consolidation_jepa_bridge_t*)brain->consolidation_jepa_bridge,
+            features, num_features);
+    }
+    if (brain->cerebellum_jepa_bridge) {
+        (void)cerebellum_jepa_bridge_tick_from_vec(
+            (cerebellum_jepa_bridge_t*)brain->cerebellum_jepa_bridge,
+            features, num_features);
     }
 }

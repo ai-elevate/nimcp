@@ -59,6 +59,10 @@ struct consolidation_jepa_bridge_s {
 
     uint32_t          n_steps;       /* Successful train steps so far. */
     float             last_loss;     /* Most recent train-step loss. */
+
+    /* Self-drive prev buffer for tick_from_vec. */
+    float*            prev_embed;
+    bool              has_prev;
 };
 
 /*============================================================================
@@ -82,6 +86,10 @@ static void _consolidation_jepa_bridge_free_internals(consolidation_jepa_bridge_
     if (b->tgt_latent) {
         jepa_latent_destroy(b->tgt_latent);
         b->tgt_latent = NULL;
+    }
+    if (b->prev_embed) {
+        nimcp_free(b->prev_embed);
+        b->prev_embed = NULL;
     }
 }
 
@@ -131,9 +139,10 @@ consolidation_jepa_bridge_t* consolidation_jepa_bridge_create(uint32_t embed_dim
 
     b->ctx_latent = jepa_latent_create_dim(embed_dim);
     b->tgt_latent = jepa_latent_create_dim(embed_dim);
+    b->prev_embed = (float*)nimcp_calloc(embed_dim, sizeof(float));
 
-    if (!b->ctx_latent || !b->tgt_latent) {
-        NIMCP_LOGGING_ERROR("consolidation_jepa_bridge_create: latent alloc "
+    if (!b->ctx_latent || !b->tgt_latent || !b->prev_embed) {
+        NIMCP_LOGGING_ERROR("consolidation_jepa_bridge_create: latent/prev alloc "
                             "failed (embed_dim=%u)", embed_dim);
         _consolidation_jepa_bridge_free_internals(b);
         nimcp_free(b);
@@ -334,4 +343,28 @@ uint32_t consolidation_jepa_bridge_n_steps(const consolidation_jepa_bridge_t* b)
 
 float consolidation_jepa_bridge_last_loss(const consolidation_jepa_bridge_t* b) {
     return b ? b->last_loss : 0.0f;
+}
+
+int consolidation_jepa_bridge_tick_from_vec(consolidation_jepa_bridge_t* b,
+                                             const float* vec,
+                                             uint32_t dim) {
+    if (!b || !vec || dim == 0 || !b->prev_embed) return -1;
+    float scratch_stack[1024];
+    float* work = (b->embed_dim <= 1024) ? scratch_stack
+        : (float*)nimcp_calloc(b->embed_dim, sizeof(float));
+    if (!work) return -1;
+    uint32_t copy = dim < b->embed_dim ? dim : b->embed_dim;
+    if (copy > 0) memcpy(work, vec, sizeof(float) * copy);
+    if (copy < b->embed_dim) {
+        memset(work + copy, 0, sizeof(float) * (b->embed_dim - copy));
+    }
+    int rc = -1;
+    if (b->has_prev) {
+        rc = consolidation_jepa_bridge_record(b, b->prev_embed, work,
+                                               b->embed_dim, NULL);
+    }
+    memcpy(b->prev_embed, work, sizeof(float) * b->embed_dim);
+    b->has_prev = true;
+    if (work != scratch_stack) nimcp_free(work);
+    return rc;
 }

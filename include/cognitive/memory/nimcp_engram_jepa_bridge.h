@@ -141,6 +141,16 @@ uint32_t engram_jepa_bridge_n_steps(const engram_jepa_bridge_t* b);
  */
 float engram_jepa_bridge_last_loss(const engram_jepa_bridge_t* b);
 
+/**
+ * @brief Self-driving tick: same semantics as record() but accepts any
+ *        dim via silent truncation / zero-pad against the bridge's
+ *        embed_dim. Lets the orchestrator drive this bridge with any
+ *        brain-state vector without enforcing a dim match.
+ */
+int engram_jepa_bridge_tick_from_vec(engram_jepa_bridge_t* b,
+                                     const float* vec,
+                                     uint32_t dim);
+
 #ifdef __cplusplus
 }
 #endif

@@ -56,6 +56,12 @@ int cerebellum_jepa_bridge_predict(cerebellum_jepa_bridge_t* b,
 uint32_t cerebellum_jepa_bridge_n_steps(const cerebellum_jepa_bridge_t* b);
 float    cerebellum_jepa_bridge_last_loss(const cerebellum_jepa_bridge_t* b);
 
+/** Self-driving tick: internal prev/cur pair management. Accepts any
+ *  dim via truncation or zero-pad against embed_dim. */
+int cerebellum_jepa_bridge_tick_from_vec(cerebellum_jepa_bridge_t* b,
+                                          const float* vec,
+                                          uint32_t dim);
+
 #ifdef __cplusplus
 }
 #endif

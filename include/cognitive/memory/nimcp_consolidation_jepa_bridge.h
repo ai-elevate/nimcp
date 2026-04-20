@@ -180,6 +180,16 @@ uint32_t consolidation_jepa_bridge_n_steps(const consolidation_jepa_bridge_t* b)
  */
 float consolidation_jepa_bridge_last_loss(const consolidation_jepa_bridge_t* b);
 
+/**
+ * @brief Self-driving tick: internal prev snapshot + (prev → cur) training.
+ *        Accepts any dim (truncation/zero-pad against embed_dim). Used by
+ *        the brain-level JEPA orchestrator to drive this bridge from a
+ *        single call site with whatever state vector is available.
+ */
+int consolidation_jepa_bridge_tick_from_vec(consolidation_jepa_bridge_t* b,
+                                             const float* vec,
+                                             uint32_t dim);
+
 #ifdef __cplusplus
 }
 #endif

@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+#include <stdbool.h>
 #include <string.h>
 
 struct cerebellum_jepa_bridge_s {
@@ -18,6 +19,9 @@ struct cerebellum_jepa_bridge_s {
     uint32_t          embed_dim;
     uint32_t          n_steps;
     float             last_loss;
+    /* Self-drive rolling prev (for tick_from_vec). */
+    float*            prev_embed;
+    bool              has_prev;
 };
 
 /* Free partial state on any create failure so callers never see a
@@ -27,6 +31,7 @@ static void _free_internals(cerebellum_jepa_bridge_t* b) {
     if (b->predictor)  { jepa_predictor_destroy(b->predictor);  b->predictor  = NULL; }
     if (b->ctx_latent) { jepa_latent_destroy(b->ctx_latent);    b->ctx_latent = NULL; }
     if (b->tgt_latent) { jepa_latent_destroy(b->tgt_latent);    b->tgt_latent = NULL; }
+    if (b->prev_embed) { nimcp_free(b->prev_embed);             b->prev_embed = NULL; }
 }
 
 cerebellum_jepa_bridge_t* cerebellum_jepa_bridge_create(uint32_t embed_dim) {
@@ -54,7 +59,8 @@ cerebellum_jepa_bridge_t* cerebellum_jepa_bridge_create(uint32_t embed_dim) {
     b->predictor  = jepa_predictor_create(&cfg);
     b->ctx_latent = jepa_latent_create_dim(embed_dim);
     b->tgt_latent = jepa_latent_create_dim(embed_dim);
-    if (!b->predictor || !b->ctx_latent || !b->tgt_latent) {
+    b->prev_embed = (float*)nimcp_calloc(embed_dim, sizeof(float));
+    if (!b->predictor || !b->ctx_latent || !b->tgt_latent || !b->prev_embed) {
         _free_internals(b);
         nimcp_free(b);
         NIMCP_LOGGING_WARN("cerebellum_jepa_bridge_create: sub-alloc failed");
@@ -113,4 +119,28 @@ uint32_t cerebellum_jepa_bridge_n_steps(const cerebellum_jepa_bridge_t* b) {
 
 float cerebellum_jepa_bridge_last_loss(const cerebellum_jepa_bridge_t* b) {
     return b ? b->last_loss : 0.0f;
+}
+
+int cerebellum_jepa_bridge_tick_from_vec(cerebellum_jepa_bridge_t* b,
+                                          const float* vec,
+                                          uint32_t dim) {
+    if (!b || !vec || dim == 0 || !b->prev_embed) return -1;
+    float scratch_stack[1024];
+    float* work = (b->embed_dim <= 1024) ? scratch_stack
+        : (float*)nimcp_calloc(b->embed_dim, sizeof(float));
+    if (!work) return -1;
+    uint32_t copy = dim < b->embed_dim ? dim : b->embed_dim;
+    if (copy > 0) memcpy(work, vec, sizeof(float) * copy);
+    if (copy < b->embed_dim) {
+        memset(work + copy, 0, sizeof(float) * (b->embed_dim - copy));
+    }
+    int rc = -1;
+    if (b->has_prev) {
+        rc = cerebellum_jepa_bridge_record(b, b->prev_embed, work,
+                                            b->embed_dim, NULL);
+    }
+    memcpy(b->prev_embed, work, sizeof(float) * b->embed_dim);
+    b->has_prev = true;
+    if (work != scratch_stack) nimcp_free(work);
+    return rc;
 }

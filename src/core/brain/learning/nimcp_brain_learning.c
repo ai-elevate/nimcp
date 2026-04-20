@@ -1045,12 +1045,16 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         nimcp_octopus_tick(brain, features, num_features);
     }
 
-    /* Phase 4n-q: drive JEPA bridges. Self-driving ones (neuromod reads
-     * current state; audio reads cached cortex state) fire every tick.
-     * Others (omni, engram) are triggered from their own code points. */
+    /* Phase 4n-t: drive all JEPA bridges. Pair-driven ones (omni,
+     * engram, consolidation, cerebellum) use features as the current
+     * state vector via each bridge's tick_from_vec self-drive wrapper
+     * (internal rolling prev). Self-driving ones (neuromod, audio, soma)
+     * ignore features and read their own subsystem state. */
     {
-        extern void nimcp_jepa_brain_bridges_tick(brain_t brain);
-        nimcp_jepa_brain_bridges_tick(brain);
+        extern void nimcp_jepa_brain_bridges_tick(brain_t brain,
+                                                  const float* features,
+                                                  uint32_t num_features);
+        nimcp_jepa_brain_bridges_tick(brain, features, num_features);
     }
 
     /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */

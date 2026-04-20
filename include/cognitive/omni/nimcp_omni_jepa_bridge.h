@@ -131,6 +131,22 @@ uint32_t omni_jepa_bridge_n_steps(const omni_jepa_bridge_t* b);
  */
 float omni_jepa_bridge_last_loss(const omni_jepa_bridge_t* b);
 
+/**
+ * @brief Self-driving tick: internally maintains a rolling prev embed.
+ *        First call stores prev; later calls train on (prev → cur) then
+ *        roll prev forward. Accepts dim != state_dim via silent
+ *        truncation/zero-pad so generic brain-state vectors work.
+ *
+ * Call once per brain step with the current state vector to drive
+ * continuous training without threading prev through call sites.
+ *
+ * @return 0 on successful training step, -1 otherwise (no prev yet, any
+ *         sub-call failure). Counter only advances on real training.
+ */
+int omni_jepa_bridge_tick_from_vec(omni_jepa_bridge_t* b,
+                                    const float* cur,
+                                    uint32_t dim);
+
 #ifdef __cplusplus
 }
 #endif

@@ -37,8 +37,20 @@ void nimcp_jepa_brain_bridges_destroy(brain_t brain);
 /**
  * @brief Drive one training step across every live bridge. Called per
  *        brain tick from brain_learn_vector right after the octopus tick.
+ *
+ *   - Self-driving bridges (neuromod, audio, soma) ignore features and
+ *     read their own state.
+ *   - Pair-driven bridges (omni, engram, consolidation, cerebellum) use
+ *     their tick_from_vec self-drive wrapper with the provided features
+ *     as the current state. Each maintains its own rolling prev so the
+ *     orchestrator doesn't need to thread state across calls.
+ *
+ * features / num_features may be NULL / 0 — pair-driven bridges simply
+ * no-op for that tick; self-driving bridges still run.
  */
-void nimcp_jepa_brain_bridges_tick(brain_t brain);
+void nimcp_jepa_brain_bridges_tick(brain_t brain,
+                                   const float* features,
+                                   uint32_t num_features);
 
 #ifdef __cplusplus
 }

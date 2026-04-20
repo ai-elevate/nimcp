@@ -258,3 +258,23 @@ uint32_t engram_jepa_bridge_n_steps(const engram_jepa_bridge_t* b) {
 float engram_jepa_bridge_last_loss(const engram_jepa_bridge_t* b) {
     return b ? b->last_loss : 0.0f;
 }
+
+int engram_jepa_bridge_tick_from_vec(engram_jepa_bridge_t* b,
+                                     const float* vec,
+                                     uint32_t dim) {
+    if (!b || !vec || dim == 0) return -1;
+    /* Pack vec into an embed_dim-shaped scratch (truncate or zero-pad),
+     * then delegate to record() which handles prev/cur pair tracking. */
+    float scratch_stack[1024];
+    float* work = (b->embed_dim <= 1024) ? scratch_stack
+        : (float*)nimcp_calloc(b->embed_dim, sizeof(float));
+    if (!work) return -1;
+    uint32_t copy = dim < b->embed_dim ? dim : b->embed_dim;
+    if (copy > 0) memcpy(work, vec, sizeof(float) * copy);
+    if (copy < b->embed_dim) {
+        memset(work + copy, 0, sizeof(float) * (b->embed_dim - copy));
+    }
+    int rc = engram_jepa_bridge_record(b, work, b->embed_dim);
+    if (work != scratch_stack) nimcp_free(work);
+    return rc;
+}
