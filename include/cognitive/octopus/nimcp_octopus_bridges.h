@@ -150,6 +150,41 @@ uint32_t nimcp_octopus_sample_somatosensory_vec(brain_t brain,
  */
 int nimcp_octopus_explore_from_somatosensory(brain_t brain);
 
+/**
+ * @brief Phase 4e: sample SNN spike-activity into a fixed-length feature
+ *        vector suitable for octopus_explore().
+ *
+ * The octopus arms consume subsymbolic spiking dynamics from the 1.8M-neuron
+ * SNN. Per-population firing rates act as fast population-code features;
+ * network-level stats (sparsity, synchrony, health) give arms awareness of
+ * the substrate's state of wellness.
+ *
+ *   [ 0 .. 31]  Per-population firing rate (rate_hz/50, clamp01); first 32 pops
+ *   [32 .. 47]  Reserved per-population (padding / future pops)
+ *   [48]        mean_firing_rate / 50 clamp01
+ *   [49]        max_firing_rate / 200 clamp01
+ *   [50]        sparsity (already [0,1])
+ *   [51]        synchrony (already [0,1])
+ *   [52]        health enum / 6
+ *   [53]        log1p(silent_neurons) / log1p(1e6)
+ *   [54]        log1p(hyperactive_neurons) / log1p(1e6)
+ *   [55]        log1p(total_spikes) / log1p(1e9)
+ *   [56 .. 63]  Reserved
+ *
+ * @param brain   Brain instance (must have non-NULL brain->snn_network).
+ * @param out_vec Caller-provided buffer of length >= out_dim.
+ * @param out_dim Target number of channels (clamped to [1, 64]).
+ * @return Number of channels written; 0 on unavailable state.
+ */
+uint32_t nimcp_octopus_sample_snn_vec(brain_t brain,
+                                       float* out_vec,
+                                       uint32_t out_dim);
+
+/**
+ * @brief Phase 4e: sample SNN + call octopus_explore().
+ */
+int nimcp_octopus_explore_from_snn(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

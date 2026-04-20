@@ -36,6 +36,7 @@
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "core/brain/regions/somatosensory/nimcp_somatosensory.h"
+#include "snn/nimcp_snn_network.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -99,6 +100,8 @@ typedef struct octopus_bridge_state_s {
     uint64_t audio_samples;       /* audio cortex feature vectors fed to arms */
     /* Phase 4d: somatosensory cortex sampling. */
     uint64_t somato_samples;      /* somatosensory feature vectors fed to arms */
+    /* Phase 4e: SNN spike-activity sampling. */
+    uint64_t snn_samples;         /* SNN feature vectors fed to arms         */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -119,7 +122,8 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->fear_conditionings,
         st->vision_samples,
         st->audio_samples,
-        st->somato_samples);
+        st->somato_samples,
+        st->snn_samples);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -897,6 +901,110 @@ int nimcp_octopus_explore_from_somatosensory(brain_t brain) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         if (st->somato_samples > 0) st->somato_samples--;
+    }
+    return rc;
+}
+
+/*============================================================================
+ * Phase 4e: SNN → octopus sampling.
+ *
+ * Octopus arms consume subsymbolic spike-rate dynamics from the 1.8M-neuron
+ * SNN as population-level features. We iterate populations 0..31 via the
+ * public getter and stop at the first NULL — decoupled from snn_network_t's
+ * internal `n_populations` field so a layout change doesn't break us.
+ *
+ * Firing-rate window chosen as 50 ms (typical behavioral timescale, matches
+ * synaptic tau). 50 Hz is the normalization ceiling for the per-pop channel —
+ * anything above is clipped; healthy brain is << 50 Hz so clipping is rare.
+ *==========================================================================*/
+
+#define _OCTOPUS_SNN_CHANNELS 64u
+#define _OCTOPUS_SNN_MAX_POPS 32u
+
+uint32_t nimcp_octopus_sample_snn_vec(brain_t brain,
+                                       float* out_vec,
+                                       uint32_t out_dim) {
+    if (!brain || !out_vec || out_dim == 0) return 0;
+    if (!brain->snn_network) return 0;
+
+    if (out_dim > _OCTOPUS_SNN_CHANNELS) out_dim = _OCTOPUS_SNN_CHANNELS;
+
+    float scratch[_OCTOPUS_SNN_CHANNELS] = {0};
+    snn_network_t* net = (snn_network_t*)brain->snn_network;
+
+    /* ---- Block A: per-population firing rates (channels 0..31) ------------
+     * Stop when we hit a NULL population — lets us work with any number of
+     * populations up to _OCTOPUS_SNN_MAX_POPS without reading private fields. */
+    const float rate_window_ms = 50.0f;
+    const float rate_norm      = 50.0f;  /* clipping ceiling in Hz */
+    for (uint32_t p = 0; p < _OCTOPUS_SNN_MAX_POPS; p++) {
+        if (!snn_network_get_population(net, p)) break;
+        float hz = snn_network_get_population_rate(net, p, rate_window_ms);
+        if (hz < 0.0f) hz = 0.0f;
+        float v = hz / rate_norm;
+        if (v > 1.0f) v = 1.0f;
+        scratch[p] = v;
+    }
+
+    /* ---- Block B: network-level stats (channels 48..55) ------------------- */
+    snn_stats_t stats = {0};
+    if (snn_network_get_stats(net, &stats) == 0) {
+        float mf = stats.mean_firing_rate / 50.0f;
+        if (mf < 0.0f) mf = 0.0f;
+        if (mf > 1.0f) mf = 1.0f;
+        scratch[48] = mf;
+
+        float xf = stats.max_firing_rate / 200.0f;
+        if (xf < 0.0f) xf = 0.0f;
+        if (xf > 1.0f) xf = 1.0f;
+        scratch[49] = xf;
+
+        scratch[50] = stats.sparsity  < 0.0f ? 0.0f :
+                      stats.sparsity  > 1.0f ? 1.0f : stats.sparsity;
+        scratch[51] = stats.synchrony < 0.0f ? 0.0f :
+                      stats.synchrony > 1.0f ? 1.0f : stats.synchrony;
+
+        int hi = (int)stats.health;
+        if (hi < 0) hi = 0;
+        if (hi > 6) hi = 6;
+        scratch[52] = (float)hi / 6.0f;
+
+        /* log1p norms — 1e6 for neurons, 1e9 for spikes. */
+        float sn = log1pf((float)stats.silent_neurons) / 13.8155f;
+        if (sn > 1.0f) sn = 1.0f;
+        scratch[53] = sn;
+        float hn = log1pf((float)stats.hyperactive_neurons) / 13.8155f;
+        if (hn > 1.0f) hn = 1.0f;
+        scratch[54] = hn;
+        float ts = log1pf((float)stats.total_spikes) / 20.7233f;
+        if (ts > 1.0f) ts = 1.0f;
+        scratch[55] = ts;
+    }
+
+    memcpy(out_vec, scratch, sizeof(float) * out_dim);
+    return out_dim;
+}
+
+int nimcp_octopus_explore_from_snn(brain_t brain) {
+    if (!brain || !brain->octopus || !brain->octopus_enabled) return -1;
+    if (!brain->snn_network) return -1;
+
+    float snn_vec[_OCTOPUS_SNN_CHANNELS] = {0};
+    uint32_t n = nimcp_octopus_sample_snn_vec(
+        brain, snn_vec, _OCTOPUS_SNN_CHANNELS);
+    if (n == 0) return -1;
+
+    if (brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        st->snn_samples++;
+    }
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             snn_vec, n);
+    if (rc != 0 && brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        if (st->snn_samples > 0) st->snn_samples--;
     }
     return rc;
 }
