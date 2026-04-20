@@ -2251,6 +2251,13 @@ struct brain_struct {
     bool octopus_enabled;
     void* octopus_bridge_state;                  // octopus_bridge_state_t* (Phase 2a bridges)
 
+    // === AMYGDALA (Phase 3c — 2026-04-20) ===
+    // Fear / emotional-salience subsystem. The octopus bridges read
+    // brain->amygdala for fear responses to modulate arm decisions.
+    // See include/core/brain/subcortical/nimcp_amygdala.h for API.
+    void* amygdala;                              // amygdala_t*
+    bool amygdala_enabled;
+
     // === FLIGHT CONTROLLER BRIDGES ===
     // Standalone companion-computer modules. Created by edge init when
     // config flags are set. Feed telemetry into sensor_hub for brain input.

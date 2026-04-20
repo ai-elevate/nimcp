@@ -158,10 +158,11 @@ extern bool nimcp_brain_factory_init_creative_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain);
 
-// Wave 20: Dragonfly, fault tolerance, octopus
+// Wave 20: Dragonfly, fault tolerance, octopus, amygdala
 extern bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_octopus_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_amygdala_subsystem(brain_t brain);
 
 // Wave 21: Health + state
 extern bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain);
@@ -877,6 +878,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(nimcp_brain_factory_init_dragonfly_subsystem, "dragonfly");
     tasks[n++] = TASK(nimcp_brain_factory_init_fault_tolerance_subsystem, "fault_tolerance");
     tasks[n++] = TASK(nimcp_brain_factory_init_octopus_subsystem, "octopus");
+    tasks[n++] = TASK(nimcp_brain_factory_init_amygdala_subsystem, "amygdala");
     if (!execute_wave(pool, &ctx, tasks, n, 20)) goto cleanup;
 
     // ========================================================================

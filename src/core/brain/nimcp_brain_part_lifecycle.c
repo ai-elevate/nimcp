@@ -8,6 +8,7 @@
 /* Moved from inside brain_destroy() function body to file scope
  * (includes inside function bodies are non-standard and cause warnings) */
 #include "cognitive/analysis/nimcp_network_analysis.h"
+#include "core/brain/subcortical/nimcp_amygdala.h"  /* Phase 3c: amygdala destroy */
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
 #include "generation/nimcp_language_generator.h"
@@ -950,6 +951,13 @@ void brain_destroy(brain_t brain)
             nimcp_octopus_uninstall_bridges(brain);
             nimcp_free(brain->octopus_bridge_state);
             brain->octopus_bridge_state = NULL;
+        }
+        /* Amygdala (Phase 3c). Header included at TU top; amygdala_t is
+         * an anonymous typedef so we use it directly here. */
+        if (brain->amygdala) {
+            amygdala_destroy((amygdala_t*)brain->amygdala);
+            brain->amygdala = NULL;
+            brain->amygdala_enabled = false;
         }
         /* Flight controller bridges */
         if (brain->mavlink_bridge) {

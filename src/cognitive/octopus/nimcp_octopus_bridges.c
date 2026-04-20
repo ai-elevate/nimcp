@@ -30,6 +30,8 @@
 #include "async/nimcp_bio_messages.h"
 #include "cognitive/memory/nimcp_engram.h"
 #include "core/brain/nimcp_brain_kg.h"
+#include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
+#include "core/brain/subcortical/nimcp_amygdala.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -47,6 +49,8 @@ typedef enum {
     OCTOPUS_EVT_DELEGATE       = 0x0003,  /* high-confidence arm → swarm */
     OCTOPUS_EVT_WORLD_OBS      = 0x0004,  /* aggregated latent → world model */
     OCTOPUS_EVT_FEP_SURPRISE   = 0x0005,  /* coherence signal for FEP */
+    OCTOPUS_EVT_STRESS_CONTEXT = 0x0006,  /* hypothalamus cortisol signal (Phase 3c) */
+    OCTOPUS_EVT_FEAR_CONTEXT   = 0x0007,  /* amygdala fear intensity (Phase 3c) */
 } octopus_event_type_t;
 
 typedef struct {
@@ -70,6 +74,11 @@ typedef struct octopus_bridge_state_s {
     /* Phase 3b integrations. */
     uint64_t engram_encodings;    /* memory episodes encoded from octopus events */
     uint64_t kg_nodes_added;      /* KG nodes added for delegation events */
+    /* Phase 3c: hypothalamus + amygdala. */
+    float    last_cortisol;       /* most recently observed stress level */
+    float    last_fear;           /* most recently observed fear intensity */
+    uint64_t stress_broadcasts;   /* number of STRESS_CONTEXT events emitted */
+    uint64_t fear_broadcasts;     /* number of FEAR_CONTEXT events emitted */
 } octopus_bridge_state_t;
 
 /* Lazy register against bio_router if install-time registration was
@@ -252,10 +261,42 @@ static void _bio_hook(const char* event, float value, void* user) {
 
 /* Immune: fires on every explore(). Emit a heartbeat msg so any
  * subscribed watchdog can detect if octopus has stopped heartbeating
- * (e.g., deadlocked inside a hook). Low magnitude, high frequency. */
+ * (e.g., deadlocked inside a hook). Low magnitude, high frequency.
+ *
+ * Phase 3c: also poll hypothalamus cortisol level once per N heartbeats
+ * and emit STRESS_CONTEXT events so downstream modules can modulate
+ * their behavior on the current physiological stress level. Rate-limited
+ * (every 32nd heartbeat) — stress state doesn't change at 8Hz. */
 static void _immune_hook(void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
     _emit(st, OCTOPUS_EVT_HEARTBEAT, 0xFFFF, 0.0f);
+
+    if (!st || !st->brain || !st->brain->hypothalamus ||
+        !st->brain->hypothalamus_enabled) return;
+    if ((st->stress_broadcasts & 0x1F) != 0) {
+        st->stress_broadcasts++;
+        return;  /* rate-limit: only every 32nd heartbeat actually polls */
+    }
+    st->stress_broadcasts++;
+
+    hypothalamus_state_t hs = {0};
+    if (hypothalamus_get_state(
+            (const hypothalamus_adapter_t*)st->brain->hypothalamus, &hs)) {
+        float cortisol = hs.hpa_axis.cortisol_level;
+        st->last_cortisol = cortisol;
+        _emit(st, OCTOPUS_EVT_STRESS_CONTEXT, 0xFFFF, cortisol);
+    }
+
+    /* Phase 3c: amygdala fear signal — on same slow cadence. */
+    if (st->brain->amygdala && st->brain->amygdala_enabled) {
+        amyg_fear_response_t resp = {0};
+        if (amygdala_get_response(
+                (const amygdala_t*)st->brain->amygdala, &resp) == 0) {
+            st->last_fear = resp.fear_intensity;
+            st->fear_broadcasts++;
+            _emit(st, OCTOPUS_EVT_FEAR_CONTEXT, 0xFFFF, resp.fear_intensity);
+        }
+    }
 }
 
 /*============================================================================
