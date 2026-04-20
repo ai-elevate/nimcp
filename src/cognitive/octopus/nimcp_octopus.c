@@ -375,11 +375,12 @@ int octopus_integrate(octopus_system_t* ctx,
         ctx->bio_hook("octopus_low_coherence", coh, ctx->bio_user);
     }
 
-    /* Update running stats. */
+    /* Update running stats. central_coherence is published earlier (before
+     * hooks fire) so that hook implementations can read it during this same
+     * integrate call — don't re-assign here. */
     ctx->stats.n_integrations++;
     ctx->stats.avg_arm_confidence = conf_sum / (float)contributing;
     ctx->stats.avg_arm_variance   = var_sum  / (float)contributing;
-    ctx->stats.central_coherence  = coh;
 
     /* Phase 3a aggregations. */
     float ent_sum = 0.0f, dfa_sum = 0.0f;
