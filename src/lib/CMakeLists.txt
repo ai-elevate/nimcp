@@ -88,6 +88,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_octopus.c             # Octopus distributed peripheral cognition
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/octopus/nimcp_octopus.c                              # Octopus cognitive module core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/octopus/nimcp_octopus_bridges.c                      # Octopus → ethics/swarm/world/fep/bio/immune bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_edge.c               # Edge/robot integration (sensor hub, safety, swarm bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_internal_kg.c        # Internal runtime KG with CRUD

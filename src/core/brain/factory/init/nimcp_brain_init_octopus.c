@@ -13,6 +13,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/octopus/nimcp_octopus.h"
+#include "cognitive/octopus/nimcp_octopus_bridges.h"
 #include "utils/logging/nimcp_logging.h"
 
 #include <stdbool.h>
@@ -40,8 +41,17 @@ bool nimcp_brain_factory_init_octopus_subsystem(brain_t brain) {
     }
     brain->octopus = (void*)ctx;
     brain->octopus_enabled = true;
+
+    /* Phase 2a: install bridge hooks that connect the octopus to peer
+     * subsystems (ethics / swarm / world / fep / bio-async / immune).
+     * Non-fatal if it fails — octopus still works, just without hooks. */
+    if (!nimcp_octopus_install_bridges(brain)) {
+        NIMCP_LOGGING_WARN("brain_init_octopus: bridge install failed "
+                           "(octopus will run without peer hooks)");
+    }
+
     NIMCP_LOGGING_INFO("brain_init_octopus: octopus module initialized "
-                       "(%u arms, hooks pending phase 2+)",
+                       "(%u arms, bridges wired)",
                        octopus_get_n_arms(ctx));
     return true;
 }
