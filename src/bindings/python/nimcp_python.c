@@ -4888,6 +4888,11 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SI("n_ng_steps",                st.n_ng_steps);
     PyDict_SetItemString(d, "ng_enabled",
                          st.ng_enabled ? Py_True : Py_False);
+    /* Phase 4m: JEPA latent-space predictive coding. */
+    SI("n_jepa_steps",              st.n_jepa_steps);
+    SF("last_jepa_loss",            st.last_jepa_loss);
+    PyDict_SetItemString(d, "jepa_enabled",
+                         st.jepa_enabled ? Py_True : Py_False);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */
@@ -4955,6 +4960,20 @@ static PyObject* Brain_octopus_set_ng_enabled(BrainObject* self, PyObject* args)
     octopus_system_t* ctx =
         (octopus_system_t*)self->brain->internal_brain->octopus;
     if (ctx) octopus_set_ng_enabled(ctx, enabled ? true : false);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_octopus_set_jepa_enabled(BrainObject* self, PyObject* args) {
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    octopus_system_t* ctx =
+        (octopus_system_t*)self->brain->internal_brain->octopus;
+    if (ctx) octopus_set_jepa_enabled(ctx, enabled ? true : false);
     Py_RETURN_NONE;
 }
 
@@ -9392,6 +9411,9 @@ static PyMethodDef Brain_methods[] = {
     {"octopus_set_ng_enabled",
      (PyCFunction)Brain_octopus_set_ng_enabled, METH_VARARGS,
      "Toggle natural-gradient latent regularization: octopus_set_ng_enabled(bool)"},
+    {"octopus_set_jepa_enabled",
+     (PyCFunction)Brain_octopus_set_jepa_enabled, METH_VARARGS,
+     "Toggle JEPA latent-space predictive training: octopus_set_jepa_enabled(bool)"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,

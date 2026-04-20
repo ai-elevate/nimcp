@@ -142,6 +142,10 @@ typedef struct octopus_stats_s {
     /* Phase 4l — natural-gradient regularization on arm latents. */
     uint32_t n_ng_steps;                /**< Total natural-gradient steps across all arms */
     bool     ng_enabled;                /**< true if NG preconditioner is live */
+    /* Phase 4m — JEPA latent-space predictive coding. */
+    uint32_t n_jepa_steps;              /**< Total JEPA predictor training steps */
+    float    last_jepa_loss;            /**< Most recent JEPA loss (latent-space MSE) */
+    bool     jepa_enabled;              /**< true if JEPA latent training is live */
 } octopus_stats_t;
 
 /*============================================================================
@@ -315,6 +319,23 @@ NIMCP_EXPORT void octopus_set_ng_enabled(octopus_system_t* ctx, bool enabled);
  * @return     0 on success; -1 if ctx is NULL or NG is disabled.
  */
 NIMCP_EXPORT int octopus_ng_regularize(octopus_system_t* ctx);
+
+/**
+ * @brief Phase 4m: toggle JEPA latent-space predictive coding.
+ *
+ * When enabled, octopus_train_step (in addition to Phase 4j's Adam MSE
+ * training on raw slices) trains a shared JEPA predictor on the
+ * embedding-space dynamics of arm latents:
+ *
+ *   loss_jepa = MSE(jepa_predict(prev_arm_latent), cur_arm_latent)
+ *
+ * The arm LNN acts as the encoder (raw slice → latent), JEPA learns
+ * latent-space transitions. Phase 4j and 4m are additive — arms train
+ * on raw MSE AND the JEPA predictor learns semantic dynamics.
+ *
+ * No-op if JEPA infrastructure isn't live (allocation failed).
+ */
+NIMCP_EXPORT void octopus_set_jepa_enabled(octopus_system_t* ctx, bool enabled);
 
 NIMCP_EXPORT void octopus_set_bridge_stats(
     octopus_system_t* ctx,

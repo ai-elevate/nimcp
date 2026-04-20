@@ -24,6 +24,9 @@
 #include "lnn/nimcp_lnn_training.h"
 /* Phase 4l: natural gradient on arm latents. */
 #include "physics/geometry/nimcp_information_geometry.h"
+/* Phase 4m: JEPA latent-space predictive coding. */
+#include "cognitive/jepa/nimcp_jepa_predictor.h"
+#include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "utils/tensor/nimcp_tensor.h"
 
 #include <math.h>
@@ -98,6 +101,24 @@ struct octopus_system_s {
      * weight-space NG replacing Adam (which would require bypassing
      * lnn_training_step's internal optimizer — deferred). */
     void**  arm_nat_grads;    /* nimcp_natural_gradient_t[n_arms] */
+
+    /* Phase 4m: JEPA latent-space predictive coding. Shared predictor
+     * learns arm-embedding transitions: context = arm latent at tick N-1,
+     * target = arm latent at tick N. Trains in embedding space, so even
+     * though arms still Adam-train on raw-slice MSE (Phase 4j), the JEPA
+     * predictor learns the semantic/latent dynamics on top.
+     *
+     * Two slice-buffer analogs for LATENTS (not raw slices): arm_prev_
+     * latents holds last tick's arm->latent; arm_cur_latents holds this
+     * tick's. Shift runs BEFORE _arm_process_slice each tick — same
+     * pattern as arm_prev_slices / arm_cur_slices in Phase 4j. */
+    void*   jepa_predictor;   /* jepa_predictor_t* */
+    void*   jepa_ctx_latent;  /* jepa_latent_t* reused buffer */
+    void*   jepa_tgt_latent;  /* jepa_latent_t* reused buffer */
+    float (*arm_prev_latents)[OCTOPUS_ARM_DIM]; /* [n_arms][64] */
+    float (*arm_cur_latents)[OCTOPUS_ARM_DIM];  /* [n_arms][64] */
+    bool*   arm_has_prev_latent;  /* [n_arms] */
+    bool*   arm_has_cur_latent;   /* [n_arms] */
 };
 
 /*============================================================================
@@ -400,15 +421,69 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
         }
     }
 
+    /* Phase 4m: JEPA latent-space predictor + per-arm latent shift buffers.
+     * Shared predictor (not per-arm) since the transition dynamics arms
+     * learn are the same semantic family. Light MLP: 64→64 with a 64-dim
+     * hidden layer. Non-fatal on failure — absence keeps jepa_enabled
+     * false forever. */
+    {
+        jepa_predictor_config_t jcfg = {0};
+        (void)jepa_predictor_default_config(&jcfg);
+        jcfg.input_dim        = OCTOPUS_ARM_DIM;
+        jcfg.output_dim       = OCTOPUS_ARM_DIM;
+        jcfg.hidden_dim       = OCTOPUS_ARM_DIM;
+        jcfg.num_layers       = 1;
+        jcfg.learning_rate    = 1e-3f;
+        jcfg.weight_decay     = 1e-5f;
+        jcfg.dropout_rate     = 0.0f;
+        jcfg.enable_layer_norm = true;
+        jcfg.enable_fep       = false;
+
+        jepa_predictor_t* jp = jepa_predictor_create(&jcfg);
+        if (jp) {
+            (void)jepa_predictor_set_training(jp, true);
+            ctx->jepa_predictor   = (void*)jp;
+            ctx->jepa_ctx_latent  = (void*)jepa_latent_create_dim(OCTOPUS_ARM_DIM);
+            ctx->jepa_tgt_latent  = (void*)jepa_latent_create_dim(OCTOPUS_ARM_DIM);
+            ctx->arm_prev_latents = (float (*)[OCTOPUS_ARM_DIM])nimcp_calloc(
+                n_arms, sizeof(float) * OCTOPUS_ARM_DIM);
+            ctx->arm_cur_latents  = (float (*)[OCTOPUS_ARM_DIM])nimcp_calloc(
+                n_arms, sizeof(float) * OCTOPUS_ARM_DIM);
+            ctx->arm_has_prev_latent = (bool*)nimcp_calloc(n_arms, sizeof(bool));
+            ctx->arm_has_cur_latent  = (bool*)nimcp_calloc(n_arms, sizeof(bool));
+            /* Any mid-sequence alloc failure → tear the whole thing down so
+             * octopus_set_jepa_enabled can't promise a broken JEPA. */
+            if (!ctx->jepa_ctx_latent || !ctx->jepa_tgt_latent ||
+                !ctx->arm_prev_latents || !ctx->arm_cur_latents ||
+                !ctx->arm_has_prev_latent || !ctx->arm_has_cur_latent) {
+                if (ctx->jepa_ctx_latent) {
+                    jepa_latent_destroy((jepa_latent_t*)ctx->jepa_ctx_latent);
+                    ctx->jepa_ctx_latent = NULL;
+                }
+                if (ctx->jepa_tgt_latent) {
+                    jepa_latent_destroy((jepa_latent_t*)ctx->jepa_tgt_latent);
+                    ctx->jepa_tgt_latent = NULL;
+                }
+                if (ctx->arm_prev_latents) { nimcp_free(ctx->arm_prev_latents); ctx->arm_prev_latents = NULL; }
+                if (ctx->arm_cur_latents)  { nimcp_free(ctx->arm_cur_latents);  ctx->arm_cur_latents  = NULL; }
+                if (ctx->arm_has_prev_latent) { nimcp_free(ctx->arm_has_prev_latent); ctx->arm_has_prev_latent = NULL; }
+                if (ctx->arm_has_cur_latent)  { nimcp_free(ctx->arm_has_cur_latent);  ctx->arm_has_cur_latent  = NULL; }
+                jepa_predictor_destroy(jp);
+                ctx->jepa_predictor = NULL;
+            }
+        }
+    }
+
     NIMCP_LOGGING_INFO("octopus_create: %u arms initialized "
                        "(pink-noise=%s, DFA cadence=%u, LNN=%s, "
-                       "trainers=%s, NG=%s)",
+                       "trainers=%s, NG=%s, JEPA=%s)",
                        n_arms, ctx->pink_gen ? "live" : "off",
                        ctx->dfa_update_every,
                        ctx->stats.lnn_enabled ? "live" : "off",
                        (ctx->arm_trainers && ctx->lnn_train_input &&
                         ctx->lnn_train_target) ? "live" : "off",
-                       ctx->arm_nat_grads ? "live" : "off");
+                       ctx->arm_nat_grads ? "live" : "off",
+                       ctx->jepa_predictor ? "live" : "off");
     return ctx;
 }
 
@@ -466,6 +541,24 @@ void octopus_destroy(octopus_system_t* ctx) {
         ctx->arm_nat_grads = NULL;
     }
 
+    /* Phase 4m: JEPA predictor + latents + latent buffers. */
+    if (ctx->jepa_predictor) {
+        jepa_predictor_destroy((jepa_predictor_t*)ctx->jepa_predictor);
+        ctx->jepa_predictor = NULL;
+    }
+    if (ctx->jepa_ctx_latent) {
+        jepa_latent_destroy((jepa_latent_t*)ctx->jepa_ctx_latent);
+        ctx->jepa_ctx_latent = NULL;
+    }
+    if (ctx->jepa_tgt_latent) {
+        jepa_latent_destroy((jepa_latent_t*)ctx->jepa_tgt_latent);
+        ctx->jepa_tgt_latent = NULL;
+    }
+    if (ctx->arm_prev_latents) { nimcp_free(ctx->arm_prev_latents); ctx->arm_prev_latents = NULL; }
+    if (ctx->arm_cur_latents)  { nimcp_free(ctx->arm_cur_latents);  ctx->arm_cur_latents  = NULL; }
+    if (ctx->arm_has_prev_latent) { nimcp_free(ctx->arm_has_prev_latent); ctx->arm_has_prev_latent = NULL; }
+    if (ctx->arm_has_cur_latent)  { nimcp_free(ctx->arm_has_cur_latent);  ctx->arm_has_cur_latent  = NULL; }
+
     nimcp_free(ctx->arms);
     nimcp_free(ctx);
 }
@@ -488,6 +581,20 @@ int octopus_explore(octopus_system_t* ctx,
         for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
             slice[d] = input[(start + d) % input_len];
         }
+        /* Phase 4m: shift latent buffers BEFORE the arm overwrites arm->latent.
+         * On each tick: cur_latent[a] (last tick's latent) becomes
+         * prev_latent[a]; after _arm_process_slice runs the new arm->latent
+         * is captured into cur_latent[a]. Train step consumes the (prev→cur)
+         * pair the same way Phase 4j consumes (prev_slice → cur_slice). */
+        if (ctx->arm_cur_latents && ctx->arm_prev_latents &&
+            ctx->arm_has_cur_latent && ctx->arm_has_prev_latent) {
+            if (ctx->arm_has_cur_latent[a]) {
+                memcpy(ctx->arm_prev_latents[a], ctx->arm_cur_latents[a],
+                       sizeof(float) * OCTOPUS_ARM_DIM);
+                ctx->arm_has_prev_latent[a] = true;
+            }
+        }
+
         lnn_network_t* arm_lnn = (ctx->arm_lnns && ctx->stats.lnn_enabled)
             ? (lnn_network_t*)ctx->arm_lnns[a] : NULL;
         _arm_process_slice(&ctx->arms[a], slice, ctx->pink_gen, &ctx->stats,
@@ -496,6 +603,13 @@ int octopus_explore(octopus_system_t* ctx,
                            (nimcp_tensor_t*)ctx->lnn_output,
                            ctx->lnn_dt_ms);
         ctx->arms[a].vetoed = false;
+
+        /* Phase 4m: capture the fresh arm->latent into cur_latent[a]. */
+        if (ctx->arm_cur_latents && ctx->arm_has_cur_latent) {
+            memcpy(ctx->arm_cur_latents[a], ctx->arms[a].latent,
+                   sizeof(float) * OCTOPUS_ARM_DIM);
+            ctx->arm_has_cur_latent[a] = true;
+        }
 
         /* Phase 4j: maintain two slice slots per arm (prev and cur) so
          * octopus_train_step can form (prev → cur) predictive-coding pairs
@@ -719,6 +833,10 @@ float octopus_get_broadcast_state(const octopus_system_t* ctx,
  * Phase 4j: gradient flow on arm LNNs.
  *==========================================================================*/
 
+/* Forward decl: Phase 4m JEPA step fires additively from octopus_train_step. */
+static uint32_t _octopus_jepa_train_all_arms(octopus_system_t* ctx,
+                                              float* out_loss);
+
 void octopus_set_training_enabled(octopus_system_t* ctx, bool enabled) {
     if (!ctx) return;
     ctx->stats.lnn_training_enabled = enabled;
@@ -763,6 +881,12 @@ int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
             trained++;
         }
     }
+    /* Phase 4m: additive JEPA training on the same cadence. The Adam MSE
+     * training above is raw-space; JEPA is embedding-space. Both run, no
+     * conflict (they touch different parameters). JEPA no-ops when
+     * jepa_enabled is false. */
+    (void)_octopus_jepa_train_all_arms(ctx, NULL);
+
     if (trained > 0) {
         ctx->stats.n_lnn_train_steps += trained;
         ctx->stats.last_lnn_loss = total_loss / (float)trained;
@@ -771,6 +895,64 @@ int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
     }
     if (loss_out) *loss_out = 0.0f;
     return -1;
+}
+
+/*============================================================================
+ * Phase 4m: JEPA latent-space predictive coding.
+ *==========================================================================*/
+
+void octopus_set_jepa_enabled(octopus_system_t* ctx, bool enabled) {
+    if (!ctx) return;
+    /* Refuse to promise capability we can't deliver (statue-lesson pattern). */
+    if (enabled &&
+        (!ctx->jepa_predictor || !ctx->jepa_ctx_latent ||
+         !ctx->jepa_tgt_latent || !ctx->arm_prev_latents ||
+         !ctx->arm_cur_latents || !ctx->arm_has_prev_latent ||
+         !ctx->arm_has_cur_latent)) {
+        return;
+    }
+    ctx->stats.jepa_enabled = enabled;
+}
+
+/* Called from octopus_train_step when jepa_enabled. Trains the shared JEPA
+ * predictor on (prev_arm_latent → cur_arm_latent) pairs per arm.
+ * Returns number of arms trained + mean loss via *out_loss. */
+static uint32_t _octopus_jepa_train_all_arms(octopus_system_t* ctx,
+                                              float* out_loss) {
+    if (!ctx || !ctx->stats.jepa_enabled || !ctx->jepa_predictor) {
+        if (out_loss) *out_loss = 0.0f;
+        return 0;
+    }
+
+    jepa_predictor_t* jp = (jepa_predictor_t*)ctx->jepa_predictor;
+    jepa_latent_t*    ctx_lat = (jepa_latent_t*)ctx->jepa_ctx_latent;
+    jepa_latent_t*    tgt_lat = (jepa_latent_t*)ctx->jepa_tgt_latent;
+
+    float total_loss = 0.0f;
+    uint32_t trained = 0;
+    for (uint32_t a = 0; a < ctx->n_arms; a++) {
+        if (ctx->arms[a].vetoed) continue;
+        if (!ctx->arm_has_prev_latent[a] || !ctx->arm_has_cur_latent[a]) continue;
+
+        if (jepa_latent_set_embedding(ctx_lat,
+                ctx->arm_prev_latents[a], OCTOPUS_ARM_DIM) != 0) continue;
+        if (jepa_latent_set_embedding(tgt_lat,
+                ctx->arm_cur_latents[a],  OCTOPUS_ARM_DIM) != 0) continue;
+
+        float step_loss = 0.0f;
+        if (jepa_predictor_train_step(jp, ctx_lat, tgt_lat, &step_loss) == 0) {
+            total_loss += step_loss;
+            trained++;
+        }
+    }
+    if (trained > 0) {
+        ctx->stats.n_jepa_steps += trained;
+        ctx->stats.last_jepa_loss = total_loss / (float)trained;
+        if (out_loss) *out_loss = ctx->stats.last_jepa_loss;
+    } else if (out_loss) {
+        *out_loss = 0.0f;
+    }
+    return trained;
 }
 
 /*============================================================================
