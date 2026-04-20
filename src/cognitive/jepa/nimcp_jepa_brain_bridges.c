@@ -13,6 +13,9 @@
 #include "plasticity/neuromodulators/nimcp_neuromod_jepa_bridge.h"
 #include "perception/nimcp_audio_jepa_bridge.h"
 #include "cognitive/memory/nimcp_engram_jepa_bridge.h"
+#include "cognitive/memory/nimcp_consolidation_jepa_bridge.h"
+#include "core/brain/regions/cerebellum/nimcp_cerebellum_jepa_bridge.h"
+#include "core/brain/regions/somatosensory/nimcp_soma_jepa_bridge.h"
 
 #include "utils/logging/nimcp_logging.h"
 
@@ -30,6 +33,15 @@
 
 /* Engram embedding dim. Common engram_t embedding size. */
 #define _JEPA_ENGRAM_EMBED_DIM 64u
+
+/* Consolidation pre/post embedding dim — same family as engram. */
+#define _JEPA_CONSOLIDATION_EMBED_DIM 64u
+
+/* Cerebellum motor_command / outcome dim. */
+#define _JEPA_CEREBELLUM_EMBED_DIM 16u
+
+/* Somatosensory body-state embedding dim (16 pain + 16 temperature). */
+#define _JEPA_SOMA_EMBED_DIM 32u
 
 void nimcp_jepa_brain_bridges_init(brain_t brain) {
     if (!brain) return;
@@ -74,6 +86,38 @@ void nimcp_jepa_brain_bridges_init(brain_t brain) {
                                _JEPA_ENGRAM_EMBED_DIM);
         }
     }
+
+    /* Consolidation bridge — caller-driven with pre/post pairs. */
+    if (!brain->consolidation_jepa_bridge) {
+        brain->consolidation_jepa_bridge =
+            (void*)consolidation_jepa_bridge_create(_JEPA_CONSOLIDATION_EMBED_DIM);
+        if (brain->consolidation_jepa_bridge) {
+            NIMCP_LOGGING_INFO("jepa_brain_bridges: consolidation bridge live (dim=%u)",
+                               _JEPA_CONSOLIDATION_EMBED_DIM);
+        }
+    }
+
+    /* Cerebellum bridge — caller-driven with (motor_cmd, outcome) pairs. */
+    if (!brain->cerebellum_jepa_bridge) {
+        brain->cerebellum_jepa_bridge =
+            (void*)cerebellum_jepa_bridge_create(_JEPA_CEREBELLUM_EMBED_DIM);
+        if (brain->cerebellum_jepa_bridge) {
+            NIMCP_LOGGING_INFO("jepa_brain_bridges: cerebellum bridge live (dim=%u)",
+                               _JEPA_CEREBELLUM_EMBED_DIM);
+        }
+    }
+
+    /* Somatosensory bridge — self-driving via brain->somatosensory. */
+    if (!brain->soma_jepa_bridge && brain->somatosensory) {
+        brain->soma_jepa_bridge =
+            (void*)soma_jepa_bridge_create(
+                (nimcp_somatosensory_t*)brain->somatosensory,
+                _JEPA_SOMA_EMBED_DIM);
+        if (brain->soma_jepa_bridge) {
+            NIMCP_LOGGING_INFO("jepa_brain_bridges: soma bridge live (dim=%u)",
+                               _JEPA_SOMA_EMBED_DIM);
+        }
+    }
 }
 
 void nimcp_jepa_brain_bridges_destroy(brain_t brain) {
@@ -96,6 +140,20 @@ void nimcp_jepa_brain_bridges_destroy(brain_t brain) {
             (engram_jepa_bridge_t*)brain->engram_jepa_bridge);
         brain->engram_jepa_bridge = NULL;
     }
+    if (brain->consolidation_jepa_bridge) {
+        consolidation_jepa_bridge_destroy(
+            (consolidation_jepa_bridge_t*)brain->consolidation_jepa_bridge);
+        brain->consolidation_jepa_bridge = NULL;
+    }
+    if (brain->cerebellum_jepa_bridge) {
+        cerebellum_jepa_bridge_destroy(
+            (cerebellum_jepa_bridge_t*)brain->cerebellum_jepa_bridge);
+        brain->cerebellum_jepa_bridge = NULL;
+    }
+    if (brain->soma_jepa_bridge) {
+        soma_jepa_bridge_destroy((soma_jepa_bridge_t*)brain->soma_jepa_bridge);
+        brain->soma_jepa_bridge = NULL;
+    }
 }
 
 void nimcp_jepa_brain_bridges_tick(brain_t brain) {
@@ -116,5 +174,10 @@ void nimcp_jepa_brain_bridges_tick(brain_t brain) {
         float loss = 0.0f;
         (void)audio_jepa_bridge_train_step(
             (audio_jepa_bridge_t*)brain->audio_jepa_bridge, &loss);
+    }
+    if (brain->soma_jepa_bridge) {
+        float loss = 0.0f;
+        (void)soma_jepa_bridge_train_step(
+            (soma_jepa_bridge_t*)brain->soma_jepa_bridge, &loss);
     }
 }

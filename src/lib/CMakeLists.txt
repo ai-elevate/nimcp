@@ -283,6 +283,7 @@ set(NIMCP_CORE_SOURCES
 
     # Cerebellum - Motor coordination, timing, error-based learning (Marr-Albus-Ito model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/nimcp_cerebellum_adapter.c       # Cerebellum core adapter
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/nimcp_cerebellum_jepa_bridge.c   # Phase 4s: cerebellum ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cerebellum/nimcp_cerebellum_quantum_bridge.c # Quantum timing optimization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cerebellum.c          # Cerebellum factory init
 
@@ -410,6 +411,7 @@ set(NIMCP_CORE_SOURCES
 
     # Somatosensory Cortex - Touch, proprioception, pain processing (Phase 6: BR-9)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/nimcp_somatosensory.c               # Somatosensory core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/nimcp_soma_jepa_bridge.c            # Phase 4r: soma ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_bio_async_bridge.c    # Somatosensory bio-async bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_quantum_bridge.c      # Somatosensory quantum bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_soma_cerebellum_bridge.c   # Somatosensory-cerebellum bridge
@@ -822,6 +824,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram_jepa_bridge.c  # Phase 4p: engram ↔ JEPA
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_consolidation_jepa_bridge.c  # Phase 4t: consolidation ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)
