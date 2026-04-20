@@ -268,33 +268,36 @@ int octopus_explore(octopus_system_t* ctx,
 
     ctx->stats.n_explorations++;
 
-    /* Phase 3a: periodically run DFA on each arm's history of latent L2
-     * norms. DFA exponent ~1.0 = pink-noise-healthy; drifts to 0.5
-     * (uncorrelated/white) or 1.5 (random walk) indicate pathology.
-     * Cadence: every ctx->dfa_update_every explorations, not every step.
-     * fractal_dfa requires >= FRACTAL_MIN_SAMPLES — OCTOPUS_ARM_HISTORY
-     * is 16 which is below that, so use the arm's chemo_id (32 floats)
-     * as a readily-available recent signal trace instead. This is a
-     * proxy for arm stability, not a canonical DFA application. */
+    /* Phase 3a: periodically run DFA on each arm's history. DFA expects a
+     * 1-D temporal series; we use L2 norm per history slot → 16 samples.
+     * fractal_dfa requires >= FRACTAL_MIN_SAMPLES (64), so with the
+     * current OCTOPUS_ARM_HISTORY=16 the call will fail and we skip —
+     * arm->dfa_exponent stays 0.0 (meaning "not yet computed"). Phase 3b
+     * should bump OCTOPUS_ARM_HISTORY to 64+ so this metric becomes live.
+     * The call is kept here so the infra is ready when history grows. */
     ctx->dfa_update_counter++;
     if (ctx->dfa_update_counter >= ctx->dfa_update_every) {
         ctx->dfa_update_counter = 0;
         for (uint32_t a = 0; a < ctx->n_arms; a++) {
             octopus_arm_t* arm = &ctx->arms[a];
-            /* Concatenate last two history slots' L2-norm slices to get
-             * enough samples; fallback to skip if insufficient data. */
-            float signal[OCTOPUS_ARM_HISTORY * OCTOPUS_ARM_DIM];
-            uint32_t n = 0;
+            /* L2 norm per history time-slot = one sample per time step.
+             * This is the *temporal* signal DFA needs — not a flatten
+             * of multi-dim data, which would measure the wrong thing. */
+            float signal[OCTOPUS_ARM_HISTORY];
             for (uint32_t h = 0; h < OCTOPUS_ARM_HISTORY; h++) {
+                float sq = 0.0f;
                 for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
-                    signal[n++] = arm->recent_inputs[h][d];
+                    sq += arm->recent_inputs[h][d] * arm->recent_inputs[h][d];
                 }
+                signal[h] = sqrtf(sq);
             }
             fractal_result_t res = {0};
-            if (fractal_dfa(signal, n, NULL, &res) == 0) {
+            if (fractal_dfa(signal, OCTOPUS_ARM_HISTORY, NULL, &res) == 0) {
                 arm->dfa_exponent = res.dfa_exponent;
                 ctx->stats.n_dfa_computations++;
             }
+            /* Else: call fails because OCTOPUS_ARM_HISTORY < FRACTAL_MIN_SAMPLES;
+             * dfa_exponent keeps its previous value (0.0 on fresh arm). */
         }
     }
     return 0;
