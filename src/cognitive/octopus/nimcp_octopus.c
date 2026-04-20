@@ -536,12 +536,10 @@ int octopus_explore(octopus_system_t* ctx,
     ctx->stats.n_explorations++;
 
     /* Phase 3a: periodically run DFA on each arm's history. DFA expects a
-     * 1-D temporal series; we use L2 norm per history slot → 16 samples.
-     * fractal_dfa requires >= FRACTAL_MIN_SAMPLES (64), so with the
-     * current OCTOPUS_ARM_HISTORY=16 the call will fail and we skip —
-     * arm->dfa_exponent stays 0.0 (meaning "not yet computed"). Phase 3b
-     * should bump OCTOPUS_ARM_HISTORY to 64+ so this metric becomes live.
-     * The call is kept here so the infra is ready when history grows. */
+     * 1-D temporal series; we use L2 norm per history slot → OCTOPUS_ARM_
+     * HISTORY samples (64 as of Phase 3b, which matches FRACTAL_MIN_SAMPLES
+     * so the call actually produces a real exponent instead of failing
+     * silently as it did in Phase 3a). */
     ctx->dfa_update_counter++;
     if (ctx->dfa_update_counter >= ctx->dfa_update_every) {
         ctx->dfa_update_counter = 0;
@@ -725,7 +723,12 @@ void octopus_set_training_enabled(octopus_system_t* ctx, bool enabled) {
 int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
     if (!ctx) return -1;
     if (!ctx->stats.lnn_training_enabled) return -1;
-    if (!ctx->arm_trainers || !ctx->lnn_train_input || !ctx->lnn_train_target) {
+    /* All six allocations must have succeeded for predictive-coding pairs
+     * to be well-defined; partial-alloc states (one nimcp_calloc failed
+     * while siblings succeeded) would otherwise segfault on access below. */
+    if (!ctx->arm_trainers || !ctx->lnn_train_input || !ctx->lnn_train_target ||
+        !ctx->arm_prev_slices || !ctx->arm_cur_slices ||
+        !ctx->arm_has_prev || !ctx->arm_has_cur) {
         return -1;
     }
 

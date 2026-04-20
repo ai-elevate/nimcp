@@ -96,8 +96,13 @@ void dragonfly_lnn_destroy(dragonfly_lnn_t* dl) {
 /* Pack current dragonfly state into the LNN's 16-dim input tensor. Returns
  * true on success. Unpopulated slots are zeroed — e.g., if no primary
  * target exists, position/velocity channels stay at 0 and the LNN state
- * naturally relaxes back toward baseline. */
-static bool _pack_input(dragonfly_lnn_t* dl, float* in) {
+ * naturally relaxes back toward baseline.
+ *
+ * tv_out (optional): when non-NULL, receives the TSDN vector read inside
+ * this function so the caller can reuse it without a second dragonfly
+ * accessor call this tick. Set to an all-zero vector with valid=false
+ * when no TSDN is available. */
+static bool _pack_input(dragonfly_lnn_t* dl, float* in, tsdn_vector_t* tv_out) {
     memset(in, 0, sizeof(float) * DRAGONFLY_LNN_DIM);
 
     /* Primary target position/velocity/predicted. */
@@ -120,15 +125,17 @@ static bool _pack_input(dragonfly_lnn_t* dl, float* in) {
                  t.threat_level > 1.0f ? 1.0f : t.threat_level;
     }
 
-    /* TSDN vector. */
+    /* TSDN vector — read once, share with caller. */
     tsdn_vector_t tv = {0};
-    if (dragonfly_get_tsdn_vector(dl->df, &tv) == 0 && tv.valid) {
+    bool tv_ok = (dragonfly_get_tsdn_vector(dl->df, &tv) == 0 && tv.valid);
+    if (tv_ok) {
         in[11] = sinf(tv.direction);
         in[12] = cosf(tv.direction);
         in[13] = tv.magnitude < 0.0f ? 0.0f :
                  tv.magnitude > 1.0f ? 1.0f : tv.magnitude;
         in[14] = tanhf(tv.angular_velocity);
     }
+    if (tv_out) *tv_out = tv;
 
     /* Current mode, normalized to [0,1]. DRAGONFLY_MODE_INTERCEPTING = 4. */
     int mi = (int)dragonfly_get_mode(dl->df);
@@ -144,7 +151,8 @@ int dragonfly_lnn_step(dragonfly_lnn_t* dl, float dt_ms) {
 
     float* in_data = (float*)nimcp_tensor_data(dl->input);
     if (!in_data) return -1;
-    if (!_pack_input(dl, in_data)) return -1;
+    tsdn_vector_t tv = {0};
+    if (!_pack_input(dl, in_data, &tv)) return -1;
 
     float use_dt = dt_ms > 0.0f ? dt_ms : dl->default_dt_ms;
     if (lnn_network_forward_step(dl->net, dl->input,
@@ -170,9 +178,11 @@ int dragonfly_lnn_step(dragonfly_lnn_t* dl, float dt_ms) {
      * in the Lie algebra so(3) (axis-angle form), mapped to SO(3) via
      * so3_exp, and composed with the current orientation via so3_multiply.
      * This keeps orientation on the rotation manifold regardless of how
-     * many steps pass — no Euler-angle drift, no gimbal singularities. */
-    tsdn_vector_t tv = {0};
-    if (dragonfly_get_tsdn_vector(dl->df, &tv) == 0 && tv.valid) {
+     * many steps pass — no Euler-angle drift, no gimbal singularities.
+     *
+     * tv was already read in _pack_input and passed back via out-param,
+     * so we don't call dragonfly_get_tsdn_vector again here. */
+    if (tv.valid) {
         /* Yaw delta: change in direction since last observation, wrapped
          * to [-π, π] so big jumps across the azimuth seam don't send the
          * rotation the long way around. */
