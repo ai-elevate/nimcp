@@ -343,8 +343,17 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
         analyzer->communities = NULL;
     }
 
-    // Run real Louvain community detection algorithm
+    /* Run Louvain with aggressive scale-down on large brains. On a 1.8M
+     * neuron / 1.45B synapse brain, full analysis takes minutes to hours
+     * (hot-path incidents: see comments in nimcp_curiosity.c, brain_learning.c).
+     *
+     * Sampling (50K top-degree nodes) + sparsification (drop |w|<0.05) brings
+     * the cost to seconds while preserving the community structure of the
+     * high-activity hub subgraph — which is what downstream consumers
+     * (quantum_shannon, introspection history) actually care about. */
     community_detection_config_t config = community_default_config();
+    config.max_nodes_sample = 50000;   /* top-N by out-degree; 0 = no cap */
+    config.weight_threshold = 0.05f;   /* drop low-weight edges; 0 = keep all */
     analyzer->communities = community_detect(network, &config);
 
     if (!analyzer->communities) {

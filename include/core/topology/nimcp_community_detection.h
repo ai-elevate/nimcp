@@ -107,6 +107,9 @@ typedef struct {
     float resolution;               /**< Resolution parameter (>1 finds more communities), typical: 1.0 */
     bool weighted;                  /**< Consider synapse weights in modularity, typical: true */
     uint32_t random_seed;           /**< Seed for randomization (0 = time-based) */
+    /* Scale-down knobs — appended to preserve ABI. Set to 0 to disable. */
+    uint32_t max_nodes_sample;      /**< Cap graph nodes at this (0 = use all). Top-N by degree. */
+    float weight_threshold;         /**< Skip edges with |weight| below this (0 = keep all). */
 } community_detection_config_t;
 
 /**
