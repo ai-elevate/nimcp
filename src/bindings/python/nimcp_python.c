@@ -4801,6 +4801,66 @@ static PyObject* Brain_invalidate_community_cache(BrainObject* self, PyObject* P
     Py_RETURN_NONE;
 }
 
+/* -------- Octopus cognitive module (Phase 1 — observability only) -------- */
+/* Full forward declarations so we don't pull the whole header into bindings. */
+typedef struct octopus_system_s octopus_system_t;
+typedef struct octopus_stats_s {
+    uint32_t n_arms;
+    uint32_t n_explorations;
+    uint32_t n_integrations;
+    uint32_t n_ethics_vetoes;
+    uint32_t n_swarm_delegations;
+    uint32_t n_world_model_updates;
+    float    avg_arm_confidence;
+    float    avg_arm_variance;
+    float    central_coherence;
+} octopus_stats_t;
+extern uint32_t octopus_get_n_arms(const octopus_system_t* ctx);
+extern void octopus_get_stats(const octopus_system_t* ctx, octopus_stats_t* out);
+extern float octopus_get_broadcast_state(const octopus_system_t* ctx, uint32_t arm_id);
+
+static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    octopus_system_t* ctx = (octopus_system_t*)self->brain->internal_brain->octopus;
+    if (!ctx) {
+        PyObject* d = PyDict_New();
+        if (d) PyDict_SetItemString(d, "enabled", Py_False);
+        return d;
+    }
+    octopus_stats_t st;
+    octopus_get_stats(ctx, &st);
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyObject* arms_list = PyList_New(st.n_arms);
+    if (arms_list) {
+        for (uint32_t a = 0; a < st.n_arms; a++) {
+            PyList_SET_ITEM(arms_list, a,
+                PyFloat_FromDouble(octopus_get_broadcast_state(ctx, a)));
+        }
+    }
+#define SI(k, v) PyDict_SetItemString(d, k, PyLong_FromUnsignedLong((unsigned long)(v)))
+#define SF(k, v) PyDict_SetItemString(d, k, PyFloat_FromDouble((double)(v)))
+    PyDict_SetItemString(d, "enabled", Py_True);
+    SI("n_arms",                st.n_arms);
+    SI("n_explorations",        st.n_explorations);
+    SI("n_integrations",        st.n_integrations);
+    SI("n_ethics_vetoes",       st.n_ethics_vetoes);
+    SI("n_swarm_delegations",   st.n_swarm_delegations);
+    SI("n_world_model_updates", st.n_world_model_updates);
+    SF("avg_arm_confidence",    st.avg_arm_confidence);
+    SF("avg_arm_variance",      st.avg_arm_variance);
+    SF("central_coherence",     st.central_coherence);
+    if (arms_list) PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
+#undef SI
+#undef SF
+    if (arms_list) Py_DECREF(arms_list);
+    return d;
+}
+
 /**
  * WHAT: Get epistemic + aleatoric uncertainty for input features
  * WHY:  Metacognitive monitoring — "how confident is the brain?"
@@ -9202,6 +9262,11 @@ static PyMethodDef Brain_methods[] = {
      "Pre-compute community structure for consolidation: cache_communities() -> dict"},
     {"invalidate_community_cache", (PyCFunction)Brain_invalidate_community_cache, METH_NOARGS,
      "Invalidate cached community structure: invalidate_community_cache() -> None"},
+    {"octopus_stats", (PyCFunction)Brain_octopus_stats, METH_NOARGS,
+     "Octopus distributed-cognition stats: octopus_stats() -> dict {enabled, n_arms, "
+     "n_explorations, n_integrations, n_ethics_vetoes, n_swarm_delegations, "
+     "n_world_model_updates, avg_arm_confidence, avg_arm_variance, central_coherence, "
+     "arm_broadcast_states[]}"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,

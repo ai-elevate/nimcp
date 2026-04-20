@@ -1,0 +1,219 @@
+/**
+ * @file nimcp_octopus.h
+ * @brief Octopus cognitive module — distributed peripheral cognition
+ *
+ * Inspired by cephalopod neuroanatomy: 2/3 of an octopus's neurons live in
+ * its arms, not its central brain. Each arm solves problems locally, then
+ * reports results up. No top-down plan-then-execute — arms act on local
+ * information with loose central coordination.
+ *
+ * For Athena, this module implements:
+ *   - N semi-autonomous "arm agents", each with local state and a small
+ *     history buffer (recent inputs + recent decisions)
+ *   - Local problem-solving per arm: each arm gets a slice of input and
+ *     computes a local response independently
+ *   - A central aggregator that integrates arm reports into a coherent
+ *     "octopus response"
+ *   - Chemosensory-tactile fusion: an arm's somato input is treated as
+ *     both texture AND chemical identity (single-channel semantic sense)
+ *   - State broadcasting: arm activity states are externally observable
+ *     (analogous to octopus skin-color signaling)
+ *
+ * Role in the wider cognitive architecture:
+ *   - Complements Portia (adaptation) and Dragonfly (attention) with
+ *     DELEGATION — peripheral agents act first, center integrates after
+ *   - Bridges to swarm (octopus-arm ↔ swarm-edge federation)
+ *   - Ethics gates each arm decision before aggregation
+ *   - World-model ingests arm-level observations as local hypotheses
+ *   - FEP uses arm divergence as a surprise/free-energy signal
+ *
+ * See include/dragonfly/nimcp_dragonfly.h for the peer design pattern.
+ */
+#ifndef NIMCP_OCTOPUS_H
+#define NIMCP_OCTOPUS_H
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+
+#include "api/nimcp_export.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Default number of arms — biological octopus has 8. More arms = more
+ * parallelism but more aggregation overhead. Range [2, 16]. */
+#define OCTOPUS_DEFAULT_N_ARMS 8
+
+/* Per-arm history window — recent inputs + decisions retained for the
+ * arm's local continuity. Keep small; this is peripheral memory, not
+ * central working memory. */
+#define OCTOPUS_ARM_HISTORY    16
+
+/* Arm input/output dimension. Matches typical feature-vector slices. */
+#define OCTOPUS_ARM_DIM        64
+
+typedef struct octopus_arm_s {
+    uint32_t id;
+    /* Recent input slices — ring buffer. */
+    float    recent_inputs[OCTOPUS_ARM_HISTORY][OCTOPUS_ARM_DIM];
+    uint32_t history_head;
+    /* Local decision latent — an arm's "opinion" after processing its
+     * slice. This is what the central aggregator reads. */
+    float    latent[OCTOPUS_ARM_DIM];
+    float    confidence;      /**< 0..1; how strongly the arm commits  */
+    /* Broadcast state — externally observable arm activity level
+     * (analogous to skin color). Any external module can read this. */
+    float    broadcast_state; /**< 0..1; 0=quiet, 1=highly active      */
+    /* Chemosensory-tactile fusion: for this arm, the most recent somato
+     * input is treated as encoding BOTH texture and chemical identity.
+     * Downstream modules read `chemo_id` to get a 32-dim fingerprint. */
+    float    chemo_id[32];
+    /* Local plasticity-like statistic: running variance of this arm's
+     * latents. High variance = arm is in an exploratory phase. */
+    float    latent_variance;
+    /* Arm-local ethics veto state. If nonzero, this arm's last
+     * decision was blocked by the ethics gate and should not contribute
+     * to aggregation. */
+    bool     vetoed;
+} octopus_arm_t;
+
+/**
+ * @brief Opaque handle — octopus module state.
+ * Full struct is defined in nimcp_octopus.c.
+ */
+typedef struct octopus_system_s octopus_system_t;
+
+/**
+ * @brief Statistics snapshot for introspection / monitoring.
+ */
+typedef struct octopus_stats_s {
+    uint32_t n_arms;
+    uint32_t n_explorations;         /**< Total explore() calls         */
+    uint32_t n_integrations;         /**< Total integrate() calls       */
+    uint32_t n_ethics_vetoes;        /**< Arm decisions blocked         */
+    uint32_t n_swarm_delegations;    /**< Delegations to swarm edges    */
+    uint32_t n_world_model_updates;  /**< World model observations sent */
+    float    avg_arm_confidence;     /**< Mean arm.confidence           */
+    float    avg_arm_variance;       /**< Mean arm.latent_variance      */
+    float    central_coherence;      /**< How aligned arms are [0,1]    */
+} octopus_stats_t;
+
+/*============================================================================
+ * Lifecycle
+ *==========================================================================*/
+
+/**
+ * @brief Create an octopus cognitive system.
+ *
+ * @param n_arms Number of arms (clamped to [2,16]; 0 → default 8)
+ * @return Opaque handle, or NULL on OOM.
+ */
+NIMCP_EXPORT octopus_system_t* octopus_create(uint32_t n_arms);
+
+/**
+ * @brief Tear down the octopus system. Releases all arm state.
+ */
+NIMCP_EXPORT void octopus_destroy(octopus_system_t* ctx);
+
+/*============================================================================
+ * Core operations
+ *==========================================================================*/
+
+/**
+ * @brief Distribute an input vector across arms — each arm processes a slice.
+ *
+ * Slicing strategy: the input is split into overlapping chunks of size
+ * OCTOPUS_ARM_DIM. Each arm gets one chunk (ith arm → ith chunk, wrapping
+ * around if input is shorter than n_arms × ARM_DIM). This mimics how
+ * different octopus arms explore different parts of the environment.
+ *
+ * Called from training hot path — per-arm compute is cheap (O(ARM_DIM)).
+ *
+ * @return 0 on success, -1 on invalid args.
+ */
+NIMCP_EXPORT int octopus_explore(octopus_system_t* ctx,
+                                  const float* input, uint32_t input_len);
+
+/**
+ * @brief Aggregate arm latents into a coherent central response.
+ *
+ * Integration rule: confidence-weighted mean of non-vetoed arm latents,
+ * with divergence scored as `central_coherence = 1 - var(latents)`.
+ * High coherence → all arms agree; low coherence → arms are split.
+ *
+ * @param out       Output buffer for aggregated latent (size OCTOPUS_ARM_DIM).
+ * @param coherence Optional out param for central_coherence (may be NULL).
+ * @return 0 on success, -1 on invalid args or all-vetoed.
+ */
+NIMCP_EXPORT int octopus_integrate(octopus_system_t* ctx,
+                                    float* out, float* coherence);
+
+/**
+ * @brief Get the most recent snapshot of stats.
+ */
+NIMCP_EXPORT void octopus_get_stats(const octopus_system_t* ctx,
+                                     octopus_stats_t* out);
+
+/*============================================================================
+ * Integration hooks — set by bridges (swarm, ethics, world, fep).
+ * Each hook is a function pointer that the octopus calls at the relevant
+ * moment. Pass NULL to disable. Passing NULL hook is always safe.
+ *==========================================================================*/
+
+/** Ethics gate hook: called per arm BEFORE aggregation. Return false to veto
+ *  the arm's contribution. Typical impl: call ethics_engine_evaluate_action. */
+typedef bool (*octopus_ethics_hook_t)(const octopus_arm_t* arm, void* user);
+
+/** Swarm delegation hook: called when an arm's confidence exceeds threshold
+ *  and central decides to delegate the action to a swarm edge. Typical impl:
+ *  enqueue a task on the swarm master's edge queue. */
+typedef void (*octopus_swarm_hook_t)(const octopus_arm_t* arm, void* user);
+
+/** World-model hook: called once per integrate() with the aggregated latent.
+ *  Typical impl: omni_wm_submit_observation(world_model, latent). */
+typedef void (*octopus_world_hook_t)(const float* aggregated,
+                                      uint32_t len, void* user);
+
+/** FEP hook: called once per integrate() with central_coherence. Coherence
+ *  acts as the inverse of free-energy — low coherence = high surprise. */
+typedef void (*octopus_fep_hook_t)(float central_coherence, void* user);
+
+/** Bio-async broadcast hook: called on significant events (arm veto,
+ *  low coherence, delegation). Typical impl: bio_router broadcast. */
+typedef void (*octopus_bio_hook_t)(const char* event, float value, void* user);
+
+/** Immune-system heartbeat hook: called on every explore(). Typical impl:
+ *  nimcp_immune_heartbeat("octopus", 0.0f). */
+typedef void (*octopus_immune_hook_t)(void* user);
+
+NIMCP_EXPORT void octopus_set_ethics_hook(octopus_system_t* ctx,
+                                           octopus_ethics_hook_t fn, void* user);
+NIMCP_EXPORT void octopus_set_swarm_hook(octopus_system_t* ctx,
+                                          octopus_swarm_hook_t fn, void* user);
+NIMCP_EXPORT void octopus_set_world_hook(octopus_system_t* ctx,
+                                          octopus_world_hook_t fn, void* user);
+NIMCP_EXPORT void octopus_set_fep_hook(octopus_system_t* ctx,
+                                        octopus_fep_hook_t fn, void* user);
+NIMCP_EXPORT void octopus_set_bio_hook(octopus_system_t* ctx,
+                                        octopus_bio_hook_t fn, void* user);
+NIMCP_EXPORT void octopus_set_immune_hook(octopus_system_t* ctx,
+                                           octopus_immune_hook_t fn, void* user);
+
+/*============================================================================
+ * Read-only accessors — other cognitive modules read arm state without
+ * needing the private struct.
+ *==========================================================================*/
+
+NIMCP_EXPORT uint32_t octopus_get_n_arms(const octopus_system_t* ctx);
+NIMCP_EXPORT const octopus_arm_t* octopus_get_arm(
+    const octopus_system_t* ctx, uint32_t arm_id);
+NIMCP_EXPORT float octopus_get_broadcast_state(
+    const octopus_system_t* ctx, uint32_t arm_id);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NIMCP_OCTOPUS_H */

@@ -2238,6 +2238,18 @@ struct brain_struct {
     void* swarm_dragonfly_bridge;                // swarm_dragonfly_bridge_t*
     bool swarm_dragonfly_bridge_enabled;
 
+    // === OCTOPUS COGNITIVE MODULE (Phase 1 — 2026-04-20) ===
+    //
+    // Distributed peripheral cognition: N semi-autonomous arm-agents each
+    // processing a slice of input, reporting back to a central aggregator.
+    // See include/cognitive/octopus/nimcp_octopus.h for API + rationale.
+    //
+    // Integration bridges (swarm/immune/ethics/world/fep/bio-async) will
+    // register hooks via octopus_set_*_hook(). Phase 1 only carries the
+    // core field + lifecycle; bridges land in subsequent phases.
+    void* octopus;                               // octopus_system_t*
+    bool octopus_enabled;
+
     // === FLIGHT CONTROLLER BRIDGES ===
     // Standalone companion-computer modules. Created by edge init when
     // config flags are set. Feed telemetry into sensor_hub for brain input.

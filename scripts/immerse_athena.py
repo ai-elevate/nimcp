@@ -1073,6 +1073,92 @@ DRAGONFLY_TRAINING_DATA = [
 ]
 
 
+# ============================================================================
+# OCTOPUS: Distributed peripheral cognition training data
+#
+# Analogy to cephalopod neuroanatomy where 2/3 of neurons live in arms, not
+# the central brain. Scenarios exercise delegation, peripheral autonomy,
+# local-then-central problem solving, and cross-arm integration.
+# ============================================================================
+OCTOPUS_TRAINING_DATA = [
+    {"scenario": "You have 8 exploration agents each observing a different "
+                  "region of a noisy environment. Central must decide.",
+     "reasoning": "Do not demand consensus up front. Let each agent report its "
+                   "local finding with a confidence score. Integrate at the "
+                   "center by confidence-weighted mean. Arms that disagree are "
+                   "not wrong — they may have found something the others missed.",
+     "concept": "octopus_distributed_exploration"},
+
+    {"scenario": "One arm reports a chemosensory signal inconsistent with the "
+                  "visual input the others report.",
+     "reasoning": "Chemosensory-tactile fusion means that arm is tasting what it "
+                   "touches. A mismatch between arm-taste and center-vision is a "
+                   "SIGNAL — the object is not what it appears to be visually. "
+                   "Elevate that arm's confidence, do not suppress it.",
+     "concept": "octopus_chemosensory_anomaly"},
+
+    {"scenario": "An arm has tried 3 different approaches to reach a target and "
+                  "all failed.",
+     "reasoning": "Arm-local problem solving includes local retry with variation. "
+                   "After 3 failures, broadcast the failure upward (skin-color "
+                   "signal analog) and let another arm try a different approach. "
+                   "Do not wait for central replanning — other arms adapt locally.",
+     "concept": "octopus_local_retry_escalation"},
+
+    {"scenario": "Central receives 8 arm reports with high variance — low coherence.",
+     "reasoning": "Low coherence across arms is itself information: the environment "
+                   "is heterogeneous or the task is ill-posed. Do not force a "
+                   "central decision; broadcast 'uncertain' and request more "
+                   "exploration. Coherence is the inverse of free-energy.",
+     "concept": "octopus_low_coherence_escalation"},
+
+    {"scenario": "Arm 3 is in a confined space and must deform its shape to continue.",
+     "reasoning": "Deformable spatial reasoning: 'can I fit' is not a discrete "
+                   "predicate. Continuously adjust the arm's geometry, using "
+                   "tactile feedback as a local loss to minimize. Central does "
+                   "not plan the squeeze — the arm feels its way through.",
+     "concept": "octopus_deformable_navigation"},
+
+    {"scenario": "An edge device in the swarm has gone offline mid-task.",
+     "reasoning": "Treat edges like arms — if an edge drops, the other edges "
+                   "absorb its workload based on proximity to its assigned "
+                   "region. Do not wait for central re-planning. Analogous to "
+                   "octopus arm autonomy when central is slow or inattentive.",
+     "concept": "octopus_edge_failure_absorption"},
+
+    {"scenario": "Two arms propose conflicting actions on the same object.",
+     "reasoning": "Use ethics gate per-arm BEFORE aggregation. If one arm's "
+                   "action violates a constraint (harm, deception, theft), veto "
+                   "that arm's contribution — the remaining arms may still agree. "
+                   "Ethics lives at the periphery, not only at the center.",
+     "concept": "octopus_peripheral_ethics_gate"},
+
+    {"scenario": "A new object appears that no arm has seen before. All confidence "
+                  "drops near zero.",
+     "reasoning": "Low confidence across all arms → generate a hypothesis and "
+                   "submit it to the world model as a tentative observation. "
+                   "Let multiple arms approach from different angles in parallel. "
+                   "Confidence will rise in whichever arm's local pattern matches.",
+     "concept": "octopus_novel_object_probe"},
+
+    {"scenario": "Arm activity state (broadcast_state) is highly visible to sibling "
+                  "arms and to outside observers.",
+     "reasoning": "Involuntary state broadcasting is both a coordination channel "
+                   "and an explainability channel. Other arms see which of them "
+                   "is most engaged and coordinate implicitly. External agents "
+                   "see the same signal and know the octopus's attention.",
+     "concept": "octopus_state_broadcasting"},
+
+    {"scenario": "Central has been silent for a long interval; arms are operating "
+                  "independently.",
+     "reasoning": "This is the default mode, not an emergency. Arms should "
+                   "continue local problem-solving, integrate only when they "
+                   "produce reportable results. The center is a correlation hub, "
+                   "not a micromanager.",
+     "concept": "octopus_default_autonomy_mode"},
+]
+
+
 class CollapseDetector:
     """Detects mode collapse by checking output differentiation.
 
@@ -5080,18 +5166,27 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
         random.shuffle(_dragonfly)
     except NameError:
         _dragonfly = []
+    try:
+        _octopus = list(OCTOPUS_TRAINING_DATA)
+        random.shuffle(_octopus)
+    except NameError:
+        _octopus = []
 
-    # Inject a Portia exposure every 10 steps, Dragonfly every 10 (offset).
-    # Rates chosen so cognitive modules see ~10% of the curriculum — enough
-    # to exercise the pathway without starving primary sensory grounding.
-    PORTIA_EVERY = 10
-    DRAGONFLY_EVERY = 10
-    DRAGONFLY_OFFSET = 5  # interleaved so they don't fire on the same step
+    # Inject Portia, Dragonfly, and Octopus exposures each every ~15 steps,
+    # interleaved at different offsets so they never fire on the same step.
+    # Together they consume ~20% of the curriculum — the rest is sensory
+    # grounding, which should stay primary at this developmental stage.
+    PORTIA_EVERY = 15
+    DRAGONFLY_EVERY = 15
+    OCTOPUS_EVERY = 15
+    DRAGONFLY_OFFSET = 5
+    OCTOPUS_OFFSET = 10
 
     print(f"\n  Integrated multimodal loop ({num_exposures} exposures, "
           f"{len(visual_labels or [])} visual + {len(audio_labels or [])} audio + "
           f"{len(speech_labels or [])} speech concepts; "
-          f"{len(_portia)} Portia + {len(_dragonfly)} Dragonfly scenarios interleaved)")
+          f"{len(_portia)} Portia + {len(_dragonfly)} Dragonfly + "
+          f"{len(_octopus)} Octopus scenarios interleaved)")
 
     def _synthesize_somato_vec(text):
         """Build a 64-dim somatosensory vector from text description.
@@ -5135,6 +5230,13 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
             # Dragonfly is vision-based, so include reasoning text + pair
             # the exposure with a visual sample (any from the pool) to
             # exercise the vision→tracking pathway.
+            cognitive_scenario = f"{item['scenario']} Reasoning: {item['reasoning']}"
+            cognitive_label = item["concept"]
+        elif _octopus and (i % OCTOPUS_EVERY == OCTOPUS_OFFSET):
+            item = _octopus[(i // OCTOPUS_EVERY) % len(_octopus)]
+            # Octopus is about distributed cognition — the label routes
+            # through the cognitive dispatch. No single sensory modality
+            # dominates; somato still fires as peripheral-body-sense.
             cognitive_scenario = f"{item['scenario']} Reasoning: {item['reasoning']}"
             cognitive_label = item["concept"]
 
