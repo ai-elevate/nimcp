@@ -5034,6 +5034,19 @@ static PyObject* Brain_long_term_stats(BrainObject* self, PyObject* Py_UNUSED(a)
         v = PyFloat_FromDouble((double)audit.avg_consolidation);
         if (v) { PyDict_SetItemString(d, "landmark_avg_consolidation", v); Py_DECREF(v); }
     }
+
+    /* Phase E3: auto-insert observability. */
+    struct brain_struct* ib2 = self->brain->internal_brain;
+    PyDict_SetItemString(d, "auto_insert_enabled",
+                         ib2->pr_auto_insert_enabled ? Py_True : Py_False);
+    v = PyLong_FromUnsignedLongLong((unsigned long long)ib2->pr_auto_insert_count);
+    if (v) { PyDict_SetItemString(d, "auto_insert_count", v); Py_DECREF(v); }
+    v = PyLong_FromUnsignedLongLong((unsigned long long)ib2->pr_auto_landmark_count);
+    if (v) { PyDict_SetItemString(d, "auto_landmark_count", v); Py_DECREF(v); }
+    v = PyFloat_FromDouble((double)ib2->pr_auto_insert_confidence);
+    if (v) { PyDict_SetItemString(d, "auto_insert_threshold", v); Py_DECREF(v); }
+    v = PyFloat_FromDouble((double)ib2->pr_auto_landmark_confidence);
+    if (v) { PyDict_SetItemString(d, "auto_landmark_threshold", v); Py_DECREF(v); }
     return d;
 }
 
@@ -5074,6 +5087,7 @@ static PyObject* Brain_long_term_unmark_landmark(BrainObject* self, PyObject* ar
  * the new node_id (caller can then pass it to long_term_mark_landmark).
  * If make_landmark=True, also marks immediately (promoted to Z3). */
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
+#include "cognitive/memory/core/nimcp_prime_signature.h"
 static PyObject* Brain_long_term_insert_memory(BrainObject* self, PyObject* args) {
     PyObject* features_list = NULL;
     int make_landmark = 0;
@@ -5149,6 +5163,110 @@ static PyObject* Brain_long_term_insert_memory(BrainObject* self, PyObject* args
             reason ? reason : "python_insert");
     }
     return PyLong_FromUnsignedLongLong((unsigned long long)node_id);
+}
+
+/* Phase E3: configure auto-insert behavior. Called before training to
+ * enable automatic memory-node insertion on high-confidence learning. */
+static PyObject* Brain_long_term_set_auto_insert(BrainObject* self, PyObject* args) {
+    int enabled = 0;
+    double insert_conf = 0.7;
+    double landmark_conf = 0.95;
+    if (!PyArg_ParseTuple(args, "p|dd", &enabled, &insert_conf, &landmark_conf)) {
+        return NULL;
+    }
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    struct brain_struct* ib = self->brain->internal_brain;
+
+    /* Phase E3: enabling auto-insert when pr_memory is lazy triggers the
+     * init here — otherwise brain_learn_vector's auto-insert hook would
+     * no-op silently on every call until something else lazy-triggered it. */
+    if (enabled && (!ib->pr_z_ladder || !ib->pr_node_manager)) {
+        extern bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const void* config);
+        (void)nimcp_brain_pr_memory_init(ib, NULL);
+    }
+
+    ib->pr_auto_insert_enabled      = enabled ? true : false;
+    /* Clamp thresholds to [0,1]. */
+    if (insert_conf < 0.0)  insert_conf  = 0.0;
+    if (insert_conf > 1.0)  insert_conf  = 1.0;
+    if (landmark_conf < 0.0) landmark_conf = 0.0;
+    if (landmark_conf > 1.0) landmark_conf = 1.0;
+    ib->pr_auto_insert_confidence   = (float)insert_conf;
+    ib->pr_auto_landmark_confidence = (float)landmark_conf;
+    Py_RETURN_NONE;
+}
+
+/* Phase E3: oracle query by feature similarity. Returns list of dicts:
+ * [{node_id, similarity, tier}, ...] sorted by similarity desc. */
+static PyObject* Brain_long_term_query(BrainObject* self, PyObject* args) {
+    PyObject* features_list = NULL;
+    int top_k = 5;
+    if (!PyArg_ParseTuple(args, "O|i", &features_list, &top_k)) return NULL;
+    if (top_k <= 0 || top_k > 64) top_k = 5;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    z_ladder_t ladder = self->brain->internal_brain->pr_z_ladder;
+    if (!ladder) return PyList_New(0);  /* empty list on unavailable */
+
+    if (!PyList_Check(features_list) && !PyTuple_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list or tuple of floats");
+        return NULL;
+    }
+    Py_ssize_t n = PySequence_Size(features_list);
+    if (n <= 0) return PyList_New(0);
+    if (n > 4096) n = 4096;
+
+    /* Pack features into a float buffer, then build a prime signature. */
+    float stack_buf[256];
+    float* data = (n <= 256) ? stack_buf
+        : (float*)nimcp_calloc((size_t)n, sizeof(float));
+    if (!data) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject* item = PySequence_GetItem(features_list, i);
+        if (!item) { if (data != stack_buf) nimcp_free(data); return NULL; }
+        data[i] = (float)PyFloat_AsDouble(item);
+        Py_DECREF(item);
+    }
+    prime_signature_t* sig = prime_sig_from_floats(data, (size_t)n);
+    if (data != stack_buf) nimcp_free(data);
+    if (!sig) {
+        PyErr_SetString(PyExc_RuntimeError, "prime_sig_from_floats failed");
+        return NULL;
+    }
+
+    /* Run query. Results buffer sized to top_k. */
+    z_ladder_landmark_hit_t hits[64];
+    size_t out_count = 0;
+    z_ladder_error_t rc = z_ladder_landmark_query(
+        ladder, sig, hits, (size_t)top_k, &out_count);
+    prime_sig_destroy(sig);
+    if (rc != Z_LADDER_SUCCESS) {
+        return PyList_New(0);
+    }
+
+    /* Build return list. */
+    PyObject* list = PyList_New((Py_ssize_t)out_count);
+    if (!list) return NULL;
+    for (size_t i = 0; i < out_count; i++) {
+        PyObject* entry = PyDict_New();
+        if (!entry) { Py_DECREF(list); return NULL; }
+        PyObject* v;
+        v = PyLong_FromUnsignedLongLong((unsigned long long)hits[i].node_id);
+        if (v) { PyDict_SetItemString(entry, "node_id", v); Py_DECREF(v); }
+        v = PyFloat_FromDouble((double)hits[i].similarity);
+        if (v) { PyDict_SetItemString(entry, "similarity", v); Py_DECREF(v); }
+        v = PyLong_FromLong((long)hits[i].tier);
+        if (v) { PyDict_SetItemString(entry, "tier", v); Py_DECREF(v); }
+        PyList_SET_ITEM(list, (Py_ssize_t)i, entry);
+    }
+    return list;
 }
 
 /**
@@ -9602,6 +9720,16 @@ static PyMethodDef Brain_methods[] = {
      (PyCFunction)Brain_long_term_insert_memory, METH_VARARGS,
      "Insert a memory node from a feature vector into Z0; optionally mark as Z3 landmark: "
      "long_term_insert_memory(features, make_landmark=False, reason='') -> node_id (uint64)"},
+    {"long_term_set_auto_insert",
+     (PyCFunction)Brain_long_term_set_auto_insert, METH_VARARGS,
+     "Configure auto-insertion from brain_learn_vector: "
+     "long_term_set_auto_insert(enabled, insert_confidence=0.7, landmark_confidence=0.95) -> None. "
+     "When enabled, training features above the insert threshold auto-insert into Z0; above the "
+     "landmark threshold also auto-mark as Z3 landmark."},
+    {"long_term_query",
+     (PyCFunction)Brain_long_term_query, METH_VARARGS,
+     "Oracle retrieval by feature similarity: long_term_query(features, top_k=5) -> list of dicts "
+     "[{node_id, similarity, tier}, ...] sorted by similarity descending."},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,

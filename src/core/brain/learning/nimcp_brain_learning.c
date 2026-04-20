@@ -1077,6 +1077,16 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         nimcp_brain_tick_perception_bridges(brain, 16.6f);
     }
 
+    /* Phase E3: auto-insert high-confidence training episodes into the
+     * Z-Ladder as memory nodes. Opt-in — no-op unless Python has set
+     * brain.long_term_set_auto_insert(True, ...). */
+    {
+        extern void nimcp_brain_pr_memory_auto_insert(
+            brain_t brain, const float* features, uint32_t num_features,
+            float confidence);
+        nimcp_brain_pr_memory_auto_insert(brain, features, num_features, confidence);
+    }
+
     /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */
     struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
     if (blv_debug_timing_enabled()) {

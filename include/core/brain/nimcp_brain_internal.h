@@ -1728,6 +1728,17 @@ struct brain_struct {
      * that get inserted into pr_z_ladder. Kept as void* to avoid pulling
      * the pr_memory_node header into this TU. */
     void* pr_node_manager;                                            // pr_node_manager_t
+
+    /* Phase E3: auto-insertion heuristics. When enabled, brain_learn_vector
+     * auto-inserts the training features as a memory node when the caller's
+     * confidence exceeds a threshold; if confidence crosses a higher landmark
+     * threshold, the node is also marked as a landmark (promoted to Z3,
+     * protected from demotion). */
+    bool     pr_auto_insert_enabled;       // default off — opt in via Python
+    float    pr_auto_insert_confidence;    // min confidence to auto-insert (0.7f default)
+    float    pr_auto_landmark_confidence;  // min confidence to also mark landmark (0.95f default)
+    uint64_t pr_auto_insert_count;         // observable counter
+    uint64_t pr_auto_landmark_count;       // observable counter
     bool pr_memory_enabled;                                           // PR memory system enabled
     bool pr_lazy_init;                                                // Defer PR memory initialization
     uint64_t last_pr_consolidation_us;                                // Last consolidation timestamp

@@ -13,8 +13,10 @@
 #include "cognitive/memory/core/nimcp_z_ladder.h"
 #include "cognitive/memory/core/nimcp_theta_gamma.h"
 #include "cognitive/memory/core/nimcp_entanglement.h"
+#include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/logging/nimcp_logging.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -132,6 +134,15 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     brain->pr_lazy_init = false;  /* Explicitly initialized */
     brain->last_pr_consolidation_us = 0;
     brain->pr_consolidation_interval_us = cfg.consolidation_interval_us;
+
+    /* Phase E3: auto-insertion defaults — OFF, caller opts in via
+     * brain.long_term_set_auto_insert(...). Reasonable thresholds match
+     * typical training confidence distributions. */
+    brain->pr_auto_insert_enabled      = false;
+    brain->pr_auto_insert_confidence   = 0.7f;
+    brain->pr_auto_landmark_confidence = 0.95f;
+    brain->pr_auto_insert_count        = 0;
+    brain->pr_auto_landmark_count      = 0;
 
     return true;
 
@@ -338,4 +349,52 @@ bool nimcp_brain_pr_memory_get_stats(const struct brain_struct* brain, brain_pr_
     stats->last_consolidation_us = brain->last_pr_consolidation_us;
 
     return true;
+}
+
+/*============================================================================
+ * Phase E3 — auto-insertion helper. Called from brain_learn_vector's
+ * tick chain. No-op when pr_auto_insert_enabled is false.
+ *==========================================================================*/
+
+void nimcp_brain_pr_memory_auto_insert(struct brain_struct* brain,
+                                        const float* features,
+                                        uint32_t num_features,
+                                        float confidence) {
+    if (!brain || !features || num_features == 0) return;
+    if (!brain->pr_auto_insert_enabled) return;
+    if (!brain->pr_z_ladder || !brain->pr_node_manager) return;
+    if (confidence < brain->pr_auto_insert_confidence) return;
+
+    /* Cap features to 4096 (same bound as the Python insert path). */
+    size_t n = num_features > 4096u ? 4096u : num_features;
+
+    pr_node_config_t cfg = pr_memory_node_default_config();
+    cfg.initial_tier       = PR_MEMORY_TIER_Z0;
+    cfg.initial_strength   = confidence;
+    cfg.compute_signature  = true;
+
+    pr_memory_node_t* node = pr_memory_node_create(
+        (pr_node_manager_t)brain->pr_node_manager,
+        (const void*)features, n * sizeof(float), &cfg);
+    if (!node) return;
+
+    z_ladder_error_t ins = z_ladder_insert(
+        brain->pr_z_ladder, node, PR_MEMORY_TIER_Z0);
+    if (ins != Z_LADDER_SUCCESS) {
+        pr_memory_node_destroy(node);
+        return;
+    }
+    brain->pr_auto_insert_count++;
+
+    /* Promote to landmark on very-high-confidence training events. */
+    if (confidence >= brain->pr_auto_landmark_confidence) {
+        uint64_t id = pr_memory_node_get_id(node);
+        if (z_ladder_mark_landmark(brain->pr_z_ladder, id,
+                                    "auto_high_confidence") == Z_LADDER_SUCCESS) {
+            brain->pr_auto_landmark_count++;
+            NIMCP_LOGGING_DEBUG("pr_memory_auto_insert: landmarked node %llu "
+                                "(confidence=%.3f)",
+                                (unsigned long long)id, (double)confidence);
+        }
+    }
 }
