@@ -1217,8 +1217,13 @@ void nimcp_octopus_tick(brain_t brain,
 
     octopus_system_t* ctx = (octopus_system_t*)brain->octopus;
 
+    NIMCP_LOGGING_TRACE("nimcp_octopus_tick: features_len=%u", num_features);
+
     /* Explore: arm forwards + LNN state advance + ethics/swarm hooks. */
-    if (octopus_explore(ctx, features, num_features) != 0) return;
+    if (octopus_explore(ctx, features, num_features) != 0) {
+        NIMCP_LOGGING_DEBUG("nimcp_octopus_tick: octopus_explore failed");
+        return;
+    }
 
     /* Integrate: aggregate latent, fire world/FEP/bio hooks. Ignore the
      * aggregated output — consumers should pull it via octopus_get_stats
@@ -1239,10 +1244,14 @@ void nimcp_octopus_tick(brain_t brain,
 
     if (s.lnn_training_enabled &&
         (st->tick_counter & _OCTOPUS_TICK_TRAIN_MASK) == 0) {
+        NIMCP_LOGGING_DEBUG("nimcp_octopus_tick: firing train_step "
+                            "(tick=%lu)", (unsigned long)st->tick_counter);
         (void)octopus_train_step(ctx, NULL);
     }
     if (s.ng_enabled &&
         (st->tick_counter & _OCTOPUS_TICK_NG_MASK) == 0) {
+        NIMCP_LOGGING_DEBUG("nimcp_octopus_tick: firing ng_regularize "
+                            "(tick=%lu)", (unsigned long)st->tick_counter);
         (void)octopus_ng_regularize(ctx);
     }
 }

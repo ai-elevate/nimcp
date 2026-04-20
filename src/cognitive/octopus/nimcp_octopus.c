@@ -484,11 +484,27 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
                         ctx->lnn_train_target) ? "live" : "off",
                        ctx->arm_nat_grads ? "live" : "off",
                        ctx->jepa_predictor ? "live" : "off");
+    NIMCP_LOGGING_DEBUG("octopus_create: thresholds swarm=%.2f low_coh=%.2f "
+                        "lnn_dt_ms=%.3f",
+                        ctx->swarm_delegation_threshold,
+                        ctx->low_coherence_threshold,
+                        ctx->lnn_dt_ms);
     return ctx;
 }
 
 void octopus_destroy(octopus_system_t* ctx) {
     if (!ctx) return;
+    NIMCP_LOGGING_INFO("octopus_destroy: %u arms, %u explorations, "
+                       "%u integrations, %u lnn_steps, %u jepa_steps, "
+                       "%u ng_steps, %u ethics_vetoes, %u delegations",
+                       ctx->n_arms,
+                       ctx->stats.n_explorations,
+                       ctx->stats.n_integrations,
+                       ctx->stats.n_lnn_steps,
+                       ctx->stats.n_jepa_steps,
+                       ctx->stats.n_ng_steps,
+                       ctx->stats.n_ethics_vetoes,
+                       ctx->stats.n_swarm_delegations);
     if (ctx->pink_gen) {
         pink_noise_destroy(ctx->pink_gen);
         ctx->pink_gen = NULL;
@@ -570,6 +586,10 @@ void octopus_destroy(octopus_system_t* ctx) {
 int octopus_explore(octopus_system_t* ctx,
                      const float* input, uint32_t input_len) {
     if (!ctx || !input || input_len == 0) return -1;
+    NIMCP_LOGGING_TRACE("octopus_explore: ctx=%p input_len=%u n_arms=%u "
+                        "(pre: n_explorations=%u)",
+                        (void*)ctx, input_len, ctx->n_arms,
+                        ctx->stats.n_explorations);
     if (ctx->immune_hook) ctx->immune_hook(ctx->immune_user);
 
     float slice[OCTOPUS_ARM_DIM];
@@ -634,6 +654,8 @@ int octopus_explore(octopus_system_t* ctx,
             if (!ctx->ethics_hook(&ctx->arms[a], ctx->ethics_user)) {
                 ctx->arms[a].vetoed = true;
                 ctx->stats.n_ethics_vetoes++;
+                NIMCP_LOGGING_DEBUG("octopus_explore: arm %u vetoed by ethics "
+                                    "(confidence=%.3f)", a, ctx->arms[a].confidence);
                 if (ctx->bio_hook) {
                     ctx->bio_hook("octopus_arm_vetoed",
                                   (float)a, ctx->bio_user);
@@ -648,7 +670,18 @@ int octopus_explore(octopus_system_t* ctx,
             ctx->arms[a].confidence > ctx->swarm_delegation_threshold) {
             ctx->swarm_hook(&ctx->arms[a], ctx->swarm_user);
             ctx->stats.n_swarm_delegations++;
+            NIMCP_LOGGING_DEBUG("octopus_explore: arm %u delegated "
+                                "(confidence=%.3f > threshold=%.3f)",
+                                a, ctx->arms[a].confidence,
+                                ctx->swarm_delegation_threshold);
         }
+        NIMCP_LOGGING_TRACE("octopus_explore: arm=%u conf=%.3f var=%.3f "
+                            "ent=%.3f bc=%.3f vetoed=%d",
+                            a, ctx->arms[a].confidence,
+                            ctx->arms[a].latent_variance,
+                            ctx->arms[a].shannon_entropy,
+                            ctx->arms[a].broadcast_state,
+                            (int)ctx->arms[a].vetoed);
     }
 
     ctx->stats.n_explorations++;
@@ -678,6 +711,8 @@ int octopus_explore(octopus_system_t* ctx,
             if (fractal_dfa(signal, OCTOPUS_ARM_HISTORY, NULL, &res) == 0) {
                 arm->dfa_exponent = res.dfa_exponent;
                 ctx->stats.n_dfa_computations++;
+                NIMCP_LOGGING_TRACE("octopus_explore: arm %u DFA=%.3f",
+                                    a, arm->dfa_exponent);
             }
             /* Else: call fails because OCTOPUS_ARM_HISTORY < FRACTAL_MIN_SAMPLES;
              * dfa_exponent keeps its previous value (0.0 on fresh arm). */
@@ -709,6 +744,9 @@ int octopus_integrate(octopus_system_t* ctx,
     }
     if (contributing == 0 || weight_sum < 1e-8f) {
         /* All arms vetoed or silent — zero output, low coherence. */
+        NIMCP_LOGGING_DEBUG("octopus_integrate: no contributing arms "
+                            "(contributing=%u, weight_sum=%.6f)",
+                            contributing, weight_sum);
         memset(out, 0, sizeof(float) * OCTOPUS_ARM_DIM);
         if (coherence) *coherence = 0.0f;
         ctx->last_coherence = 0.0f;
@@ -780,6 +818,12 @@ int octopus_integrate(octopus_system_t* ctx,
     ctx->stats.avg_arm_dfa     = dfa_contrib > 0
                                ? (dfa_sum / (float)dfa_contrib) : 0.0f;
 
+    NIMCP_LOGGING_DEBUG("octopus_integrate: coherence=%.3f contributing=%u "
+                        "avg_conf=%.3f avg_var=%.3f avg_ent=%.3f",
+                        coh, contributing,
+                        ctx->stats.avg_arm_confidence,
+                        ctx->stats.avg_arm_variance,
+                        ctx->stats.avg_arm_entropy);
     return 0;
 }
 
@@ -839,7 +883,12 @@ static uint32_t _octopus_jepa_train_all_arms(octopus_system_t* ctx,
 
 void octopus_set_training_enabled(octopus_system_t* ctx, bool enabled) {
     if (!ctx) return;
+    bool prev = ctx->stats.lnn_training_enabled;
     ctx->stats.lnn_training_enabled = enabled;
+    if (prev != enabled) {
+        NIMCP_LOGGING_INFO("octopus: LNN training %s",
+                           enabled ? "ENABLED" : "DISABLED");
+    }
 }
 
 int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
@@ -890,9 +939,15 @@ int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
     if (trained > 0) {
         ctx->stats.n_lnn_train_steps += trained;
         ctx->stats.last_lnn_loss = total_loss / (float)trained;
+        NIMCP_LOGGING_DEBUG("octopus_train_step: trained %u/%u arms, "
+                            "mean_loss=%.4f total=%u",
+                            trained, ctx->n_arms,
+                            ctx->stats.last_lnn_loss,
+                            ctx->stats.n_lnn_train_steps);
         if (loss_out) *loss_out = ctx->stats.last_lnn_loss;
         return 0;
     }
+    NIMCP_LOGGING_TRACE("octopus_train_step: no arms trained (no prev/cur pairs yet)");
     if (loss_out) *loss_out = 0.0f;
     return -1;
 }
@@ -909,9 +964,16 @@ void octopus_set_jepa_enabled(octopus_system_t* ctx, bool enabled) {
          !ctx->jepa_tgt_latent || !ctx->arm_prev_latents ||
          !ctx->arm_cur_latents || !ctx->arm_has_prev_latent ||
          !ctx->arm_has_cur_latent)) {
+        NIMCP_LOGGING_WARN("octopus_set_jepa_enabled(true) refused: "
+                           "JEPA infrastructure not allocated");
         return;
     }
+    bool prev = ctx->stats.jepa_enabled;
     ctx->stats.jepa_enabled = enabled;
+    if (prev != enabled) {
+        NIMCP_LOGGING_INFO("octopus: JEPA latent-space training %s",
+                           enabled ? "ENABLED" : "DISABLED");
+    }
 }
 
 /* Called from octopus_train_step when jepa_enabled. Trains the shared JEPA
@@ -948,9 +1010,15 @@ static uint32_t _octopus_jepa_train_all_arms(octopus_system_t* ctx,
     if (trained > 0) {
         ctx->stats.n_jepa_steps += trained;
         ctx->stats.last_jepa_loss = total_loss / (float)trained;
+        NIMCP_LOGGING_DEBUG("octopus_jepa_train: trained %u/%u arms, "
+                            "mean_loss=%.4f total=%u",
+                            trained, ctx->n_arms,
+                            ctx->stats.last_jepa_loss,
+                            ctx->stats.n_jepa_steps);
         if (out_loss) *out_loss = ctx->stats.last_jepa_loss;
-    } else if (out_loss) {
-        *out_loss = 0.0f;
+    } else {
+        NIMCP_LOGGING_TRACE("octopus_jepa_train: no arms eligible (no prev/cur latents yet)");
+        if (out_loss) *out_loss = 0.0f;
     }
     return trained;
 }
@@ -963,8 +1031,17 @@ void octopus_set_ng_enabled(octopus_system_t* ctx, bool enabled) {
     if (!ctx) return;
     /* Only flip the public flag if the NG infrastructure is actually live —
      * prevents a true flag from promising capability we can't deliver. */
-    if (enabled && !ctx->arm_nat_grads) return;
+    if (enabled && !ctx->arm_nat_grads) {
+        NIMCP_LOGGING_WARN("octopus_set_ng_enabled(true) refused: "
+                           "NG infrastructure not allocated");
+        return;
+    }
+    bool prev = ctx->stats.ng_enabled;
     ctx->stats.ng_enabled = enabled;
+    if (prev != enabled) {
+        NIMCP_LOGGING_INFO("octopus: NG regularization %s",
+                           enabled ? "ENABLED" : "DISABLED");
+    }
 }
 
 int octopus_ng_regularize(octopus_system_t* ctx) {
@@ -995,6 +1072,8 @@ int octopus_ng_regularize(octopus_system_t* ctx) {
     }
     if (applied > 0) {
         ctx->stats.n_ng_steps += applied;
+        NIMCP_LOGGING_DEBUG("octopus_ng_regularize: applied to %u arms "
+                            "(total=%u)", applied, ctx->stats.n_ng_steps);
         return 0;
     }
     return -1;
