@@ -456,7 +456,8 @@ void octopus_set_bridge_stats(octopus_system_t* ctx,
                                float    last_fear,
                                uint64_t wm_updates,
                                uint64_t fear_conditionings,
-                               uint64_t vision_samples) {
+                               uint64_t vision_samples,
+                               uint64_t audio_samples) {
     if (!ctx) return;
     ctx->stats.bridge_engram_encodings   = engram_encodings;
     ctx->stats.bridge_kg_nodes_added     = kg_nodes_added;
@@ -468,4 +469,5 @@ void octopus_set_bridge_stats(octopus_system_t* ctx,
     ctx->stats.bridge_wm_updates         = wm_updates;
     ctx->stats.bridge_fear_conditionings = fear_conditionings;
     ctx->stats.bridge_vision_samples     = vision_samples;
+    ctx->stats.bridge_audio_samples      = audio_samples;
 }

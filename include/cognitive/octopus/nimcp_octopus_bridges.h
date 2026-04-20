@@ -82,6 +82,41 @@ uint32_t nimcp_octopus_sample_occipital_vec(brain_t brain,
  */
 int nimcp_octopus_explore_from_occipital(brain_t brain);
 
+/**
+ * @brief Phase 4c: sample current audio cortex (A1) activity into a
+ *        fixed-length feature vector suitable for octopus_explore().
+ *
+ * Reads the cortex's cached training-state snapshot (last forward pass):
+ *   [ 0 .. 15]  Mel filterbank features (truncated / zero-padded)
+ *   [16 .. 31]  MFCC coefficients (truncated / zero-padded)
+ *   [32 .. 47]  Reserved / zero (future spectrum buckets)
+ *   [48]        Audio quality [0,1]
+ *   [49]        Speech salience [0,1]
+ *   [50]        Temporal coherence [0,1]
+ *   [51]        log1p(frames_processed) normalized
+ *   [52]        log1p(memories_stored) normalized
+ *   [53]        tanh(avg_processing_time_ms)
+ *   [54 .. 63]  Reserved (zero)
+ *
+ * Returns 0 if audio cortex is unavailable or no valid state exists yet.
+ *
+ * @param brain   Brain instance.
+ * @param out_vec Caller-provided buffer of length >= out_dim.
+ * @param out_dim Target number of channels (clamped to [1, 64]).
+ * @return Number of channels written; 0 on unavailable/invalid state.
+ */
+uint32_t nimcp_octopus_sample_audio_cortex_vec(brain_t brain,
+                                                float* out_vec,
+                                                uint32_t out_dim);
+
+/**
+ * @brief Phase 4c: sample audio cortex + call octopus_explore().
+ *
+ * @param brain Brain instance. Must have brain->octopus and brain->audio_cortex.
+ * @return 0 on success; -1 if audio or octopus unavailable.
+ */
+int nimcp_octopus_explore_from_audio_cortex(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

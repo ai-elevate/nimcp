@@ -127,6 +127,7 @@ typedef struct octopus_stats_s {
     uint64_t bridge_wm_updates;         /**< Direct omni_wm_update calls (Phase 4a) */
     uint64_t bridge_fear_conditionings; /**< Veto→amygdala stimulus count (Phase 4a) */
     uint64_t bridge_vision_samples;     /**< Occipital samples injected as arm input (Phase 4b) */
+    uint64_t bridge_audio_samples;      /**< Audio cortex samples injected as arm input (Phase 4c) */
 } octopus_stats_t;
 
 /*============================================================================
@@ -262,7 +263,8 @@ NIMCP_EXPORT void octopus_set_bridge_stats(
     float    last_fear,
     uint64_t wm_updates,
     uint64_t fear_conditionings,
-    uint64_t vision_samples);
+    uint64_t vision_samples,
+    uint64_t audio_samples);
 
 #ifdef __cplusplus
 }

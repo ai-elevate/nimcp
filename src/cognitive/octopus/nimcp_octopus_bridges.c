@@ -34,6 +34,7 @@
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "cognitive/omni/nimcp_omni_world_model.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
+#include "perception/nimcp_audio_cortex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -93,6 +94,8 @@ typedef struct octopus_bridge_state_s {
     uint64_t fear_conditionings;  /* ethics-veto events fed to amygdala     */
     /* Phase 4b: occipital/visual cortex sampling. */
     uint64_t vision_samples;      /* occipital feature vectors fed to arms   */
+    /* Phase 4c: audio cortex sampling. */
+    uint64_t audio_samples;       /* audio cortex feature vectors fed to arms */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -111,7 +114,8 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->last_fear,
         st->wm_updates,
         st->fear_conditionings,
-        st->vision_samples);
+        st->vision_samples,
+        st->audio_samples);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -664,6 +668,114 @@ int nimcp_octopus_explore_from_occipital(brain_t brain) {
         octopus_bridge_state_t* st =
             (octopus_bridge_state_t*)brain->octopus_bridge_state;
         if (st->vision_samples > 0) st->vision_samples--;
+    }
+    return rc;
+}
+
+/*============================================================================
+ * Phase 4c: audio cortex → octopus sampling.
+ *
+ * Audio cortex doesn't expose a "current features" accessor the way occipital
+ * does — it processes audio on demand. But it DOES cache the last forward
+ * pass's mel/MFCC/quality/salience/coherence in an audio_training_state_t
+ * (for gradient feedback). That cached snapshot is exactly what we need as
+ * "current perceived auditory state" — no audio_data argument required here.
+ *
+ * Layout (64 channels):
+ *   [ 0 .. 15]  Mel filterbank features (padded, divided by max for [-1,1])
+ *   [16 .. 31]  MFCC coefficients (tanh-squashed to [-1,1])
+ *   [32 .. 47]  Reserved
+ *   [48]        Audio quality
+ *   [49]        Speech salience
+ *   [50]        Temporal coherence
+ *   [51]        log1p(frames_processed) / 20  (saturates ~5e8 frames)
+ *   [52]        log1p(memories_stored) / 7    (AUDIO_MAX_MEMORIES=1000)
+ *   [53]        tanh(avg_processing_time_ms / 10)
+ *   [54 .. 63]  Reserved
+ *==========================================================================*/
+
+#define _OCTOPUS_AUDIO_CHANNELS 64u
+
+uint32_t nimcp_octopus_sample_audio_cortex_vec(brain_t brain,
+                                                float* out_vec,
+                                                uint32_t out_dim) {
+    if (!brain || !out_vec || out_dim == 0) return 0;
+    if (!brain->audio_cortex) return 0;
+
+    if (out_dim > _OCTOPUS_AUDIO_CHANNELS) out_dim = _OCTOPUS_AUDIO_CHANNELS;
+
+    float scratch[_OCTOPUS_AUDIO_CHANNELS] = {0};
+
+    audio_cortex_t* ac = (audio_cortex_t*)brain->audio_cortex;
+
+    /* ---- Block A: cached training-state snapshot (mel + MFCC + quality) -- */
+    audio_training_state_t ts = {0};
+    if (audio_cortex_get_training_state(ac, &ts) == 0 && ts.valid) {
+        /* Mel features — normalize by max so scale stays in [-1,1]. */
+        if (ts.mel_features && ts.num_mel_filters > 0) {
+            float mmax = 0.0f;
+            for (uint32_t i = 0; i < ts.num_mel_filters; i++) {
+                float a = fabsf(ts.mel_features[i]);
+                if (a > mmax) mmax = a;
+            }
+            if (mmax < 1e-6f) mmax = 1.0f;
+            uint32_t nmel = ts.num_mel_filters < 16 ? ts.num_mel_filters : 16;
+            for (uint32_t i = 0; i < nmel; i++) {
+                scratch[i] = ts.mel_features[i] / mmax;
+            }
+        }
+        /* MFCCs — tanh-squash since they can be unbounded. */
+        if (ts.mfcc_features && ts.num_mfcc > 0) {
+            uint32_t nmfcc = ts.num_mfcc < 16 ? ts.num_mfcc : 16;
+            for (uint32_t i = 0; i < nmfcc; i++) {
+                scratch[16 + i] = tanhf(ts.mfcc_features[i]);
+            }
+        }
+        scratch[48] = ts.quality;
+        scratch[49] = ts.speech_salience;
+        scratch[50] = ts.temporal_coherence;
+    }
+    /* Else: no valid cached state (cortex idle or training-mode off). Leave
+     * scratch[0..47] zeroed; we still fill stats-derived channels below so
+     * downstream can distinguish "silent but alive" from "no cortex at all". */
+
+    /* ---- Block B: summary stats --------------------------------------------*/
+    audio_cortex_stats_t stats = {0};
+    if (audio_cortex_get_stats(ac, &stats)) {
+        float f = log1pf((float)stats.frames_processed) / 20.0f;
+        if (f > 1.0f) f = 1.0f;
+        scratch[51] = f;
+        float m = log1pf((float)stats.memories_stored) / 7.0f;
+        if (m > 1.0f) m = 1.0f;
+        scratch[52] = m;
+        scratch[53] = tanhf(stats.avg_processing_time / 10.0f);
+    }
+
+    memcpy(out_vec, scratch, sizeof(float) * out_dim);
+    return out_dim;
+}
+
+int nimcp_octopus_explore_from_audio_cortex(brain_t brain) {
+    if (!brain || !brain->octopus || !brain->octopus_enabled) return -1;
+    if (!brain->audio_cortex) return -1;
+
+    float audio_vec[_OCTOPUS_AUDIO_CHANNELS] = {0};
+    uint32_t n = nimcp_octopus_sample_audio_cortex_vec(
+        brain, audio_vec, _OCTOPUS_AUDIO_CHANNELS);
+    if (n == 0) return -1;
+
+    /* Bump counter before explore so the immune-hook publish captures it. */
+    if (brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        st->audio_samples++;
+    }
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             audio_vec, n);
+    if (rc != 0 && brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        if (st->audio_samples > 0) st->audio_samples--;
     }
     return rc;
 }
