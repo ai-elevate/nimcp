@@ -308,8 +308,6 @@ class ClaudeTeacher:
             "claude", "-p", full_prompt,
             "--model", self.model,
             "--output-format", "text",
-            "--mcp-config", os.path.expanduser("~/.claude/empty-mcp.json"),
-            "--strict-mcp-config",      # ignore all other MCP configs
             "--system-prompt", "",      # override system prompt (skip CLAUDE.md)
             "--setting-sources", "",    # skip loading project/user settings entirely
             "--allowed-tools", "",      # disable all tools (pure text generation)

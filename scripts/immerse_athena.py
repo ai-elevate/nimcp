@@ -3903,11 +3903,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             # skip the expensive pre-generation and use fallbacks immediately.
             import subprocess as _sp
             try:
-                _mcp_cfg = os.path.expanduser("~/.claude/empty-mcp.json")
                 _test = _sp.run(
                     ["claude", "-p", "Say OK", "--output-format", "text",
-                     "--mcp-config", _mcp_cfg,
-                     "--strict-mcp-config",
                      "--system-prompt", "",
                      "--setting-sources", "", "--allowed-tools", ""],
                     capture_output=True, text=True, timeout=20,

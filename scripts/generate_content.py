@@ -75,13 +75,10 @@ CONTENT_TYPES = {
 
 def call_claude(prompt, max_tokens=2048, timeout=120):
     """Call Claude CLI with all optimization flags."""
-    mcp_cfg = os.path.expanduser("~/.claude/empty-mcp.json")
     cmd = [
         "claude", "-p", prompt,
         "--model", "sonnet",
         "--output-format", "text",
-        "--mcp-config", mcp_cfg,
-        "--strict-mcp-config",
         "--system-prompt", "",
         "--setting-sources", "",
         "--allowed-tools", "",
