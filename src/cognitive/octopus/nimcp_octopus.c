@@ -270,13 +270,16 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
 
     /* Create the shared pink-noise generator. 1/f spectrum (alpha=1),
      * small amplitude so it biases exploration without overwhelming the
-     * deterministic signal. Non-fatal if creation fails. */
+     * deterministic signal. sample_rate ≥ 2 × max_frequency (Nyquist) —
+     * previously set sample_rate=max_frequency=100 which silently failed
+     * validation. Using 250 Hz keeps a comfortable margin. Non-fatal if
+     * creation still fails. */
     pink_noise_config_t pink_cfg = {0};
     pink_cfg.alpha          = 1.0f;
     pink_cfg.amplitude      = 0.05f;
     pink_cfg.min_frequency  = 0.1f;
     pink_cfg.max_frequency  = 100.0f;
-    pink_cfg.sample_rate    = 100.0f;
+    pink_cfg.sample_rate    = 250.0f;  /* > 2 × max_frequency per Nyquist */
     pink_cfg.method         = PINK_NOISE_VOSS;  /* fast streaming method */
     pink_cfg.seed           = 0;  /* time-based */
     ctx->pink_gen = pink_noise_create(&pink_cfg);

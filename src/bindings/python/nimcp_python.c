@@ -4897,6 +4897,67 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     return d;
 }
 
+/* -------- Phase 5B: octopus modality-specific explore bindings --------
+ *
+ * Expose the six nimcp_octopus_explore_from_* bridges + the two training
+ * toggles so the Python training curriculum can route each modality
+ * exposure through the matching sampler (vision → occipital, audio →
+ * audio cortex, touch → somatosensory, etc.) for enriched arm input.
+ *
+ * Forward-declared here to avoid pulling the bridge header's brain_t
+ * typedef into the binding TU (already has its own brain handle type).
+ * Link-resolved against the octopus_bridges compilation unit. */
+#include "cognitive/octopus/nimcp_octopus_bridges.h"
+
+#define OCTOPUS_EXPLORE_WRAPPER(pyname, cfn) \
+static PyObject* Brain_octopus_##pyname(BrainObject* self, PyObject* Py_UNUSED(a)) { \
+    if (!self->brain) { \
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); \
+        return NULL; \
+    } \
+    CHECK_INTERNAL_BRAIN(self); \
+    int rc = cfn(self->brain->internal_brain); \
+    return PyLong_FromLong((long)rc); \
+}
+
+OCTOPUS_EXPLORE_WRAPPER(explore_from_occipital,      nimcp_octopus_explore_from_occipital)
+OCTOPUS_EXPLORE_WRAPPER(explore_from_audio_cortex,   nimcp_octopus_explore_from_audio_cortex)
+OCTOPUS_EXPLORE_WRAPPER(explore_from_somatosensory,  nimcp_octopus_explore_from_somatosensory)
+OCTOPUS_EXPLORE_WRAPPER(explore_from_snn,            nimcp_octopus_explore_from_snn)
+OCTOPUS_EXPLORE_WRAPPER(explore_from_neuromod,       nimcp_octopus_explore_from_neuromod)
+OCTOPUS_EXPLORE_WRAPPER(explore_from_peers,          nimcp_octopus_explore_from_peers)
+
+#undef OCTOPUS_EXPLORE_WRAPPER
+
+/* Toggles for training + natural-gradient — one-arg (bool) each. */
+static PyObject* Brain_octopus_set_training_enabled(BrainObject* self, PyObject* args) {
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    octopus_system_t* ctx =
+        (octopus_system_t*)self->brain->internal_brain->octopus;
+    if (ctx) octopus_set_training_enabled(ctx, enabled ? true : false);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_octopus_set_ng_enabled(BrainObject* self, PyObject* args) {
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    octopus_system_t* ctx =
+        (octopus_system_t*)self->brain->internal_brain->octopus;
+    if (ctx) octopus_set_ng_enabled(ctx, enabled ? true : false);
+    Py_RETURN_NONE;
+}
+
 /**
  * WHAT: Get epistemic + aleatoric uncertainty for input features
  * WHY:  Metacognitive monitoring — "how confident is the brain?"
@@ -9303,6 +9364,34 @@ static PyMethodDef Brain_methods[] = {
      "n_explorations, n_integrations, n_ethics_vetoes, n_swarm_delegations, "
      "n_world_model_updates, avg_arm_confidence, avg_arm_variance, central_coherence, "
      "arm_broadcast_states[]}"},
+    /* Phase 5B: per-modality bridge samplers. Each reads the matching
+     * subsystem (occipital / audio cortex / etc.) into a 64-dim feature
+     * vector and calls octopus_explore on it. Returns 0 on success,
+     * -1 if the subsystem is unavailable or no features were produced. */
+    {"octopus_explore_from_occipital",
+     (PyCFunction)Brain_octopus_explore_from_occipital, METH_NOARGS,
+     "Sample occipital cortex + drive octopus: returns 0 on success, -1 if unavailable"},
+    {"octopus_explore_from_audio_cortex",
+     (PyCFunction)Brain_octopus_explore_from_audio_cortex, METH_NOARGS,
+     "Sample audio cortex + drive octopus: returns 0 on success, -1 if unavailable"},
+    {"octopus_explore_from_somatosensory",
+     (PyCFunction)Brain_octopus_explore_from_somatosensory, METH_NOARGS,
+     "Sample somatosensory + drive octopus: returns 0 on success, -1 if unavailable"},
+    {"octopus_explore_from_snn",
+     (PyCFunction)Brain_octopus_explore_from_snn, METH_NOARGS,
+     "Sample SNN firing rates + drive octopus: returns 0 on success, -1 if unavailable"},
+    {"octopus_explore_from_neuromod",
+     (PyCFunction)Brain_octopus_explore_from_neuromod, METH_NOARGS,
+     "Sample neuromodulator state + drive octopus: returns 0 on success, -1 if unavailable"},
+    {"octopus_explore_from_peers",
+     (PyCFunction)Brain_octopus_explore_from_peers, METH_NOARGS,
+     "Sample Portia+Dragonfly peers + drive octopus: returns 0 on success, -1 if unavailable"},
+    {"octopus_set_training_enabled",
+     (PyCFunction)Brain_octopus_set_training_enabled, METH_VARARGS,
+     "Toggle arm-LNN gradient flow: octopus_set_training_enabled(bool)"},
+    {"octopus_set_ng_enabled",
+     (PyCFunction)Brain_octopus_set_ng_enabled, METH_VARARGS,
+     "Toggle natural-gradient latent regularization: octopus_set_ng_enabled(bool)"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,
