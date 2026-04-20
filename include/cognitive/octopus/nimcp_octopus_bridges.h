@@ -21,6 +21,7 @@
 #define NIMCP_OCTOPUS_BRIDGES_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "core/brain/nimcp_brain.h"
 
 #ifdef __cplusplus
@@ -46,6 +47,40 @@ bool nimcp_octopus_install_bridges(brain_t brain);
  * this ordering (call uninstall, then nimcp_free the state).
  */
 void nimcp_octopus_uninstall_bridges(brain_t brain);
+
+/**
+ * @brief Phase 4b: sample current occipital/visual cortex activity into a
+ *        fixed-length feature vector suitable for feeding to octopus_explore().
+ *
+ * Packs a compact 64-channel summary of current visual state:
+ *   [0..7]   V1 orientation histogram (normalized)
+ *   [8..15]  Per-area feature-count density (V1..V5, padded)
+ *   [16..23] Top-8 visual feature strengths (any area)
+ *   [24..31] Top-8 motion-vector magnitudes from V5/MT
+ *   [32..47] Top-8 color-percept hues + saturations from V4 (interleaved)
+ *   [48..55] Global motion vector (dx/dy) and processing-time proxies
+ *   [56..63] Padding / reserved
+ *
+ * Non-populated channels are zeroed. Out-of-range out_dim > 64 is clamped.
+ *
+ * @param brain   Brain instance (must have non-NULL brain->occipital).
+ * @param out_vec Caller-provided buffer of length >= out_dim.
+ * @param out_dim Target number of channels (clamped to [1, 64]).
+ * @return Number of channels written (0 if occipital unavailable).
+ */
+uint32_t nimcp_octopus_sample_occipital_vec(brain_t brain,
+                                            float* out_vec,
+                                            uint32_t out_dim);
+
+/**
+ * @brief Phase 4b: convenience — sample occipital features and call
+ *        octopus_explore() on the packed vision vector. Increments the
+ *        bridge's vision_samples counter.
+ *
+ * @param brain Brain instance. Must have brain->octopus and brain->occipital.
+ * @return 0 on success; -1 if occipital or octopus unavailable.
+ */
+int nimcp_octopus_explore_from_occipital(brain_t brain);
 
 #ifdef __cplusplus
 }

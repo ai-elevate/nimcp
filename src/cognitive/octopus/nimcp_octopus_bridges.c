@@ -33,6 +33,7 @@
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "cognitive/omni/nimcp_omni_world_model.h"
+#include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -40,6 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <math.h>
 
 /* Broadcast message schema: a small fixed-size struct the octopus emits
  * on significant events. Consumers read the `type` field to disambiguate.
@@ -89,6 +91,8 @@ typedef struct octopus_bridge_state_s {
     bool     has_prev_aggregated; /* false until first integration fires */
     uint64_t wm_updates;          /* direct omni_wm_update calls attempted  */
     uint64_t fear_conditionings;  /* ethics-veto events fed to amygdala     */
+    /* Phase 4b: occipital/visual cortex sampling. */
+    uint64_t vision_samples;      /* occipital feature vectors fed to arms   */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -106,7 +110,8 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->last_cortisol,
         st->last_fear,
         st->wm_updates,
-        st->fear_conditionings);
+        st->fear_conditionings,
+        st->vision_samples);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -479,4 +484,186 @@ void nimcp_octopus_uninstall_bridges(brain_t brain) {
         bio_router_unregister_module(st->bio_ctx);
         st->bio_ctx = NULL;
     }
+}
+
+/*============================================================================
+ * Phase 4b: occipital → octopus sampling.
+ *
+ * Packs current visual-cortex activity into the 64-channel arm input vector.
+ * Layout is intentionally stable so the arms learn consistent spatial
+ * semantics over training runs (DFA, entropy stay meaningful across rollouts):
+ *
+ *   [ 0 ..  7]  V1 orientation histogram, L1-normalized.
+ *   [ 8 .. 15]  Per-area feature count density (log1p-scaled, clamped).
+ *   [16 .. 23]  Top-8 visual-feature strengths (any area).
+ *   [24 .. 31]  Top-8 motion-vector magnitudes (V5/MT).
+ *   [32 .. 47]  Top-8 V4 color hues+sats (hue/360 then sat, interleaved).
+ *   [48 .. 55]  Global summary: motion dx, dy, total feature count, timing.
+ *   [56 .. 63]  Reserved (zeroed).
+ *
+ * All writes go into a 64-slot scratch; only out_dim slots are copied out.
+ *==========================================================================*/
+
+#define _OCTOPUS_VISION_CHANNELS 64u
+
+/* Helper: find max-of-N with index (tiny inline; no allocs). */
+static uint32_t _topk_unsorted(const float* in, uint32_t n,
+                                float* out_vals, uint32_t k) {
+    if (!in || !out_vals || n == 0 || k == 0) return 0;
+    uint32_t written = 0;
+    /* Cheap pass: copy first min(k, n) directly, then sort-insert the rest.
+     * Full priority-queue would be overkill at k=8. */
+    uint32_t first = (n < k) ? n : k;
+    for (uint32_t i = 0; i < first; i++) out_vals[i] = in[i];
+    written = first;
+    for (uint32_t i = first; i < n; i++) {
+        /* Find current min slot. */
+        uint32_t min_idx = 0;
+        for (uint32_t j = 1; j < k; j++) {
+            if (out_vals[j] < out_vals[min_idx]) min_idx = j;
+        }
+        if (in[i] > out_vals[min_idx]) out_vals[min_idx] = in[i];
+    }
+    /* Pad unused slots (n < k case) with zeros. */
+    for (uint32_t i = written; i < k; i++) out_vals[i] = 0.0f;
+    return (n < k) ? n : k;
+}
+
+uint32_t nimcp_octopus_sample_occipital_vec(brain_t brain,
+                                            float* out_vec,
+                                            uint32_t out_dim) {
+    if (!brain || !out_vec || out_dim == 0) return 0;
+    if (!brain->occipital || !brain->occipital_enabled) return 0;
+
+    if (out_dim > _OCTOPUS_VISION_CHANNELS) out_dim = _OCTOPUS_VISION_CHANNELS;
+
+    float scratch[_OCTOPUS_VISION_CHANNELS] = {0};
+
+    occipital_adapter_t* occ = (occipital_adapter_t*)brain->occipital;
+
+    /* ---- Block A: per-area feature counts (channels 8..15) ---------------- */
+    uint32_t counts[VISUAL_AREA_COUNT] = {0};
+    uint32_t total_count = 0;
+    for (uint32_t area = 0; area < VISUAL_AREA_COUNT; area++) {
+        uint32_t c = occipital_get_feature_count(occ, (visual_area_t)area);
+        counts[area] = c;
+        total_count += c;
+    }
+    /* log1p-scale (counts can be 0..~512) and clamp to [0,1]. */
+    for (uint32_t area = 0; area < VISUAL_AREA_COUNT && area < 8; area++) {
+        float v = log1pf((float)counts[area]) / 6.5f;  /* ~log1p(665) */
+        if (v > 1.0f) v = 1.0f;
+        scratch[8 + area] = v;
+    }
+
+    /* ---- Block B: pull per-area features, build orientation histogram,
+     *              collect feature strengths ------------------------------- */
+    /* Bounded buffer: up to 128 features across all areas. Anything beyond
+     * is summarized by the per-area count already. */
+    enum { _MAX_FEATS = 128 };
+    visual_feature_t feats[_MAX_FEATS];
+    uint32_t feats_used = 0;
+    for (uint32_t area = 0; area < VISUAL_AREA_COUNT; area++) {
+        if (feats_used >= _MAX_FEATS) break;
+        uint32_t cap = _MAX_FEATS - feats_used;
+        if (occipital_get_features(occ, (visual_area_t)area,
+                                    feats + feats_used, &cap)) {
+            feats_used += cap;
+        }
+    }
+
+    /* Orientation histogram (8 bins over [0, π)). */
+    float ori_bins[8] = {0};
+    float strengths[_MAX_FEATS];
+    uint32_t n_strengths = 0;
+    for (uint32_t i = 0; i < feats_used; i++) {
+        /* Unwrap orientation into [0, π) then bin. */
+        float o = feats[i].orientation;
+        if (o < 0.0f) o = -o;
+        float pi = 3.14159265358979323846f;
+        while (o >= pi) o -= pi;
+        uint32_t bin = (uint32_t)((o / pi) * 8.0f);
+        if (bin >= 8) bin = 7;
+        ori_bins[bin] += feats[i].strength;
+        if (n_strengths < _MAX_FEATS) strengths[n_strengths++] = feats[i].strength;
+    }
+    /* L1-normalize ori histogram into [0..1] bins. */
+    float ori_sum = 0.0f;
+    for (uint32_t b = 0; b < 8; b++) ori_sum += ori_bins[b];
+    if (ori_sum > 1e-6f) {
+        for (uint32_t b = 0; b < 8; b++) scratch[b] = ori_bins[b] / ori_sum;
+    }
+    /* Top-8 feature strengths. */
+    (void)_topk_unsorted(strengths, n_strengths, &scratch[16], 8);
+
+    /* ---- Block C: motion vectors (channels 24..31, plus global at 48..49) */
+    motion_vector_t mvecs[_MAX_FEATS];
+    uint32_t n_mvecs = _MAX_FEATS;
+    float motion_mags[_MAX_FEATS];
+    uint32_t n_mags = 0;
+    float gmotion_dx = 0.0f, gmotion_dy = 0.0f;
+    if (occipital_get_motion_vectors(occ, mvecs, &n_mvecs) && n_mvecs > 0) {
+        for (uint32_t i = 0; i < n_mvecs && i < _MAX_FEATS; i++) {
+            float m = sqrtf(mvecs[i].dx * mvecs[i].dx +
+                            mvecs[i].dy * mvecs[i].dy);
+            motion_mags[n_mags++] = m * mvecs[i].confidence;
+            gmotion_dx += mvecs[i].dx;
+            gmotion_dy += mvecs[i].dy;
+        }
+        if (n_mvecs > 0) {
+            gmotion_dx /= (float)n_mvecs;
+            gmotion_dy /= (float)n_mvecs;
+        }
+        (void)_topk_unsorted(motion_mags, n_mags, &scratch[24], 8);
+    }
+
+    /* ---- Block D: color percepts from V4 (channels 32..47 interleaved) ---- */
+    color_percept_t cpercepts[8];
+    uint32_t n_cpercepts = 8;
+    if (occipital_get_color_percepts(occ, cpercepts, &n_cpercepts)) {
+        for (uint32_t i = 0; i < n_cpercepts && i < 8; i++) {
+            /* Normalize hue from [0,360] to [0,1]; sat already in [0,1]. */
+            scratch[32 + 2 * i + 0] = cpercepts[i].hue / 360.0f;
+            scratch[32 + 2 * i + 1] = cpercepts[i].saturation;
+        }
+    }
+
+    /* ---- Block E: global summary (channels 48..55) ------------------------ */
+    /* tanh-squash global motion to [-1,1]. */
+    scratch[48] = tanhf(gmotion_dx);
+    scratch[49] = tanhf(gmotion_dy);
+    /* Total-feature density (log-scaled). */
+    scratch[50] = log1pf((float)total_count) / 8.0f;
+    if (scratch[50] > 1.0f) scratch[50] = 1.0f;
+    /* Channels 51..55 reserved for future timing / attention signals. */
+
+    memcpy(out_vec, scratch, sizeof(float) * out_dim);
+    return out_dim;
+}
+
+int nimcp_octopus_explore_from_occipital(brain_t brain) {
+    if (!brain || !brain->octopus || !brain->octopus_enabled) return -1;
+    if (!brain->occipital || !brain->occipital_enabled) return -1;
+
+    float vision_vec[_OCTOPUS_VISION_CHANNELS] = {0};
+    uint32_t n = nimcp_octopus_sample_occipital_vec(
+        brain, vision_vec, _OCTOPUS_VISION_CHANNELS);
+    if (n == 0) return -1;
+
+    /* Increment BEFORE explore so the immune-hook _publish_bridge_stats
+     * (which fires during explore) sees the up-to-date counter this step. */
+    if (brain->octopus_bridge_state) {
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        st->vision_samples++;
+    }
+    int rc = octopus_explore((octopus_system_t*)brain->octopus,
+                             vision_vec, n);
+    if (rc != 0 && brain->octopus_bridge_state) {
+        /* Roll back on failure so counter reflects actual successful samples. */
+        octopus_bridge_state_t* st =
+            (octopus_bridge_state_t*)brain->octopus_bridge_state;
+        if (st->vision_samples > 0) st->vision_samples--;
+    }
+    return rc;
 }

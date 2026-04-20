@@ -34,7 +34,8 @@ def test_octopus_stats_shape():
                 "bridge_engram_encodings", "bridge_kg_nodes_added",
                 "bridge_stress_broadcasts", "bridge_fear_broadcasts",
                 "bridge_amygdala_steps",
-                "bridge_wm_updates", "bridge_fear_conditionings"):
+                "bridge_wm_updates", "bridge_fear_conditionings",
+                "bridge_vision_samples"):
         assert key in stats, f"missing counter: {key}"
         assert isinstance(stats[key], int), f"{key} should be int"
     for key in ("avg_arm_confidence", "avg_arm_variance", "central_coherence",

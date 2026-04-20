@@ -4864,6 +4864,8 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     /* Phase 4a additions. */
     SI("bridge_wm_updates",         st.bridge_wm_updates);
     SI("bridge_fear_conditionings", st.bridge_fear_conditionings);
+    /* Phase 4b addition: occipital→octopus feature sampling. */
+    SI("bridge_vision_samples",     st.bridge_vision_samples);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */
