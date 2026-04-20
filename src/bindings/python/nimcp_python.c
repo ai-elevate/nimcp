@@ -4827,9 +4827,18 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
                 PyFloat_FromDouble(octopus_get_broadcast_state(ctx, a)));
         }
     }
-#define SI(k, v) PyDict_SetItemString(d, k, PyLong_FromUnsignedLong((unsigned long)(v)))
-#define SF(k, v) PyDict_SetItemString(d, k, PyFloat_FromDouble((double)(v)))
-    PyDict_SetItemString(d, "enabled", Py_True);
+    /* DRY ref-counting helpers: PyLong_FromUnsignedLong / PyFloat_FromDouble
+     * return NEW references. PyDict_SetItemString INCREFs the value, so we
+     * must DECREF the temp to match or we leak one PyObject per field. */
+#define SI(k, val) do { \
+    PyObject* _v = PyLong_FromUnsignedLong((unsigned long)(val)); \
+    if (_v) { PyDict_SetItemString(d, (k), _v); Py_DECREF(_v); } \
+} while (0)
+#define SF(k, val) do { \
+    PyObject* _v = PyFloat_FromDouble((double)(val)); \
+    if (_v) { PyDict_SetItemString(d, (k), _v); Py_DECREF(_v); } \
+} while (0)
+    PyDict_SetItemString(d, "enabled", Py_True);  /* Py_True is a singleton */
     SI("n_arms",                st.n_arms);
     SI("n_explorations",        st.n_explorations);
     SI("n_integrations",        st.n_integrations);
@@ -4839,10 +4848,12 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SF("avg_arm_confidence",    st.avg_arm_confidence);
     SF("avg_arm_variance",      st.avg_arm_variance);
     SF("central_coherence",     st.central_coherence);
-    if (arms_list) PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
+    if (arms_list) {
+        PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
+        Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */
+    }
 #undef SI
 #undef SF
-    if (arms_list) Py_DECREF(arms_list);
     return d;
 }
 

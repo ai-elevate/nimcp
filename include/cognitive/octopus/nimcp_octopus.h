@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "api/nimcp_export.h"
+#include "common/nimcp_export.h"
 
 #ifdef __cplusplus
 extern "C" {
