@@ -15,6 +15,8 @@
 #include "cognitive/memory/core/nimcp_entanglement.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "cognitive/memory/core/nimcp_prime_signature.h"
+#include "utils/memory/nimcp_unified_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
@@ -22,6 +24,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+/* Forward declarations for cycle coordinator — kept loose to avoid
+ * dragging the full header into this TU. Values must match
+ * brain_cycle_type_t values in nimcp_brain_cycle_coordinator.h. */
+#define CYCLE_TYPE_LONG_TERM_MEMORY 9
+extern int brain_cycle_coordinator_register(void* coord, int type,
+                                            void* cycle_handle,
+                                            void* health_fn);
+extern int brain_cycle_coordinator_unregister(void* coord, int type);
+extern int brain_cycle_coordinator_notify_tick(void* coord, int type,
+                                               uint64_t duration_us);
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -81,10 +95,23 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     /* Use defaults if no config provided */
     brain_pr_memory_config_t cfg = config ? *config : brain_pr_memory_config_default();
 
+    /* Phase E6: create a unified_mem_manager for the pr_node_manager
+     * so node data_handles get populated on insert — this is what makes
+     * pr_memory_node_read return real bytes and lets full-fidelity
+     * landmark checkpoints round-trip features, not just signatures. */
+    unified_mem_config_t um_cfg = unified_mem_default_config();
+    unified_mem_manager_t umm = unified_mem_create(&um_cfg);
+    if (!umm) {
+        fprintf(stderr, "[PR_MEMORY] Failed to create unified_mem_manager\n");
+        goto cleanup;
+    }
+    brain->pr_memory_unified_mm = (void*)umm;
+
     /* Phase E2: create a node manager FIRST so z_ladder can reference it.
      * Without this, z_ladder is initialized with node_manager=NULL and
      * has no way to allocate the pr_memory_node_t instances it tracks. */
     pr_node_manager_config_t nm_cfg = pr_node_manager_default_config();
+    nm_cfg.mem_manager = umm;  /* Phase E6: wire the unified memory manager */
     pr_node_manager_t nm = pr_node_manager_create(&nm_cfg);
     if (!nm) {
         fprintf(stderr, "[PR_MEMORY] Failed to create node manager\n");
@@ -146,6 +173,25 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     brain->pr_auto_insert_count        = 0;
     brain->pr_auto_landmark_count      = 0;
 
+    /* Phase E6: spin up the autonomous pr_memory driver thread. Runs at
+     * 100ms cadence, calls pr_memory_tick and notifies the cycle
+     * coordinator's BRAIN_CYCLE_LONG_TERM_MEMORY. This makes memory
+     * consolidation + landmark hygiene independent of brain_learn_vector. */
+    __atomic_store_n(&brain->pr_memory_driver_stop, 0, __ATOMIC_RELEASE);
+    brain->pr_memory_driver_ticks = 0;
+    extern void* nimcp_brain_pr_memory_driver_run(void* arg);  /* defined below */
+    nimcp_thread_t* thr = (nimcp_thread_t*)calloc(1, sizeof(nimcp_thread_t));
+    if (thr) {
+        if (nimcp_thread_create(thr, nimcp_brain_pr_memory_driver_run,
+                                brain, NULL) == NIMCP_OK) {
+            brain->pr_memory_driver_thread = (void*)thr;
+        } else {
+            free(thr);
+            NIMCP_LOGGING_WARN("pr_memory: driver thread failed to start — "
+                               "memory will only evolve via brain_learn_vector");
+        }
+    }
+
     return true;
 
 cleanup:
@@ -158,6 +204,10 @@ cleanup:
     if (brain->pr_node_manager) {
         pr_node_manager_destroy((pr_node_manager_t)brain->pr_node_manager);
         brain->pr_node_manager = NULL;
+    }
+    if (brain->pr_memory_unified_mm) {
+        unified_mem_destroy((unified_mem_manager_t)brain->pr_memory_unified_mm);
+        brain->pr_memory_unified_mm = NULL;
     }
     if (brain->pr_theta_gamma) {
         theta_gamma_destroy(brain->pr_theta_gamma);
@@ -177,6 +227,16 @@ void nimcp_brain_pr_memory_destroy(struct brain_struct* brain) {
         return;
     }
 
+    /* Phase E6: stop the autonomous driver thread first so it can't
+     * observe torn-down state. Signal → join → free. */
+    if (brain->pr_memory_driver_thread) {
+        __atomic_store_n(&brain->pr_memory_driver_stop, 1, __ATOMIC_RELEASE);
+        nimcp_thread_t* thr = (nimcp_thread_t*)brain->pr_memory_driver_thread;
+        nimcp_thread_join(*thr, NULL);
+        free(thr);
+        brain->pr_memory_driver_thread = NULL;
+    }
+
     /* Destroy Z-Ladder first — its tracked nodes are allocated by the
      * node manager, so the manager must outlive the ladder. */
     if (brain->pr_z_ladder) {
@@ -186,6 +246,13 @@ void nimcp_brain_pr_memory_destroy(struct brain_struct* brain) {
     if (brain->pr_node_manager) {
         pr_node_manager_destroy((pr_node_manager_t)brain->pr_node_manager);
         brain->pr_node_manager = NULL;
+    }
+
+    /* Phase E6: destroy unified_mem_manager AFTER all its allocations
+     * are released (nodes freed by node_manager_destroy above). */
+    if (brain->pr_memory_unified_mm) {
+        unified_mem_destroy((unified_mem_manager_t)brain->pr_memory_unified_mm);
+        brain->pr_memory_unified_mm = NULL;
     }
 
     /* Destroy Theta-Gamma manager */
@@ -367,6 +434,65 @@ bool nimcp_brain_pr_memory_get_stats(const struct brain_struct* brain, brain_pr_
 }
 
 /*============================================================================
+ * Phase E6 — autonomous driver thread
+ *
+ * Runs at 100ms cadence. Drives pr_memory_tick (consolidation + landmark
+ * hygiene) and notifies the cycle coordinator so health/timing
+ * observability works even when brain_learn_vector is idle.
+ *
+ * The first call registers BRAIN_CYCLE_LONG_TERM_MEMORY with the
+ * coordinator (if present). Unregisters on exit. Exits when
+ * brain->pr_memory_driver_stop becomes non-zero.
+ *==========================================================================*/
+void* nimcp_brain_pr_memory_driver_run(void* arg) {
+    struct brain_struct* brain = (struct brain_struct*)arg;
+    if (!brain) return NULL;
+
+    /* Lazy register with the cycle coordinator — harmless if absent. */
+    bool registered = false;
+    if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
+        int rc = brain_cycle_coordinator_register(
+            (void*)brain->cycle_coordinator,
+            CYCLE_TYPE_LONG_TERM_MEMORY,
+            (void*)brain, NULL);
+        registered = (rc == 0);
+    }
+
+    const long sleep_ns = 100L * 1000L * 1000L;  /* 100ms */
+    while (__atomic_load_n(&brain->pr_memory_driver_stop,
+                           __ATOMIC_ACQUIRE) == 0) {
+        struct timespec t0, t1;
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        uint64_t now_us = (uint64_t)t0.tv_sec * 1000000ull +
+                          (uint64_t)t0.tv_nsec / 1000ull;
+
+        if (brain->pr_memory_enabled && brain->pr_z_ladder) {
+            (void)nimcp_brain_pr_memory_tick(brain, now_us);
+            brain->pr_memory_driver_ticks++;
+
+            clock_gettime(CLOCK_MONOTONIC, &t1);
+            if (registered) {
+                uint64_t dur_us = ((uint64_t)t1.tv_sec - (uint64_t)t0.tv_sec) * 1000000ull +
+                                  ((uint64_t)t1.tv_nsec - (uint64_t)t0.tv_nsec) / 1000ull;
+                brain_cycle_coordinator_notify_tick(
+                    (void*)brain->cycle_coordinator,
+                    CYCLE_TYPE_LONG_TERM_MEMORY, dur_us);
+            }
+        }
+
+        struct timespec sleep_ts = { 0, sleep_ns };
+        nanosleep(&sleep_ts, NULL);
+    }
+
+    if (registered) {
+        brain_cycle_coordinator_unregister(
+            (void*)brain->cycle_coordinator,
+            CYCLE_TYPE_LONG_TERM_MEMORY);
+    }
+    return NULL;
+}
+
+/*============================================================================
  * Phase E3 — auto-insertion helper. Called from brain_learn_vector's
  * tick chain. No-op when pr_auto_insert_enabled is false.
  *==========================================================================*/
@@ -458,31 +584,35 @@ uint64_t nimcp_brain_pr_memory_promote_event(struct brain_struct* brain,
 }
 
 /*============================================================================
- * Phase E4 #2 — landmark checkpoint save / load.
+ * Phase E4 #2 / E6 — landmark checkpoint save / load.
  *
- * Landmarks are identified for oracle retrieval by their prime_signature
- * (cosine similarity), so the checkpoint only needs:
- *   - reason label (for introspection)
- *   - prime_signature (for query matching)
+ * Phase E6 wired a unified_mem_manager into pr_node_manager, so node
+ * data_handles are now populated. Landmarks therefore have both a
+ * prime_signature (fast oracle retrieval) AND their raw feature bytes
+ * (full-fidelity restore).
  *
- * Raw features are not persisted. The default pr_node_manager in
- * brain_pr_memory_init runs without a unified_mem_manager, so node
- * data_handles are NULL and the features live only in the signature.
- * Saving/restoring the signature is what actually preserves the
- * "matriarchal memory" — the thing the brain uses to recognize old
- * landmarks against new queries.
+ * Save always writes v3 (signature + data). Load accepts v2 and v3 for
+ * backwards compatibility — v2 records restore signature-only nodes.
  *
  * File format (little-endian, packed):
  *   header:
  *     char     magic[8]   = "NIMCPELM"
- *     uint32_t version    = 2
+ *     uint32_t version    = 2 or 3
  *     uint32_t n_records
- *   record (per landmark, 208 bytes):
+ *   record v2 (208 bytes):
  *     char              reason[64]
  *     prime_signature_t signature    (144 bytes)
+ *   record v3 (208 bytes + data):
+ *     char              reason[64]
+ *     prime_signature_t signature    (144 bytes)
+ *     uint32_t          data_size
+ *     uint8_t           data[data_size]
  *==========================================================================*/
-#define LANDMARK_CKPT_MAGIC   "NIMCPELM"
-#define LANDMARK_CKPT_VERSION 2u
+#define LANDMARK_CKPT_MAGIC       "NIMCPELM"
+#define LANDMARK_CKPT_VERSION_V2  2u
+#define LANDMARK_CKPT_VERSION_V3  3u
+#define LANDMARK_CKPT_VERSION     LANDMARK_CKPT_VERSION_V3
+#define LANDMARK_CKPT_MAX_DATA    (16u * 1024u * 1024u)
 
 typedef struct {
     char     magic[8];
@@ -521,8 +651,25 @@ bool nimcp_brain_pr_memory_save_landmarks(struct brain_struct* brain,
         const prime_signature_t* sig = pr_memory_node_get_signature(node);
         if (!sig) continue;
 
+        /* Phase E6: attempt to read the data payload. If data_handle is
+         * NULL (older pr_memory layouts or zero-size nodes), emit a v3
+         * record with data_size=0 — still round-trips correctly. */
+        const void* data = NULL;
+        size_t data_size = pr_memory_node_get_data_size(node);
+        if (data_size > 0 && data_size <= LANDMARK_CKPT_MAX_DATA) {
+            data = pr_memory_node_read(node);
+            if (!data) data_size = 0;  /* null handle — emit empty payload */
+        } else {
+            data_size = 0;
+        }
+
         if (fwrite(reasons[i], 64, 1, fp) != 1) break;
         if (fwrite(sig, sizeof(prime_signature_t), 1, fp) != 1) break;
+        uint32_t ds32 = (uint32_t)data_size;
+        if (fwrite(&ds32, sizeof(ds32), 1, fp) != 1) break;
+        if (data_size > 0) {
+            if (fwrite(data, 1, data_size, fp) != data_size) break;
+        }
         written_records++;
     }
 
@@ -550,11 +697,14 @@ bool nimcp_brain_pr_memory_load_landmarks(struct brain_struct* brain,
     landmark_ckpt_header_t hdr;
     if (fread(&hdr, sizeof(hdr), 1, fp) != 1) { fclose(fp); return false; }
     if (memcmp(hdr.magic, LANDMARK_CKPT_MAGIC, 8) != 0 ||
-        hdr.version != LANDMARK_CKPT_VERSION) {
+        (hdr.version != LANDMARK_CKPT_VERSION_V2 &&
+         hdr.version != LANDMARK_CKPT_VERSION_V3)) {
         fclose(fp);
-        NIMCP_LOGGING_WARN("pr_memory_load_landmarks: bad magic/version in %s", path);
+        NIMCP_LOGGING_WARN("pr_memory_load_landmarks: bad magic/version in %s "
+                           "(version=%u)", path, hdr.version);
         return false;
     }
+    const bool v3 = (hdr.version == LANDMARK_CKPT_VERSION_V3);
 
     uint32_t restored = 0;
     for (uint32_t i = 0; i < hdr.n_records; i++) {
@@ -565,18 +715,31 @@ bool nimcp_brain_pr_memory_load_landmarks(struct brain_struct* brain,
         reason[63] = '\0';
         if (fread(&sig, sizeof(sig), 1, fp) != 1) break;
 
-        /* Restore as a signature-only node (no data payload).  This
-         * matches what the default pr_node_manager holds for live
-         * landmarks — it has no unified_mem_manager, so node data
-         * handles are NULL and queries run on the signature alone. */
+        /* v3 appends a data payload; v2 does not. */
+        uint32_t data_size = 0;
+        uint8_t* data_buf = NULL;
+        if (v3) {
+            if (fread(&data_size, sizeof(data_size), 1, fp) != 1) break;
+            if (data_size > LANDMARK_CKPT_MAX_DATA) break;
+            if (data_size > 0) {
+                data_buf = (uint8_t*)malloc(data_size);
+                if (!data_buf) break;
+                if (fread(data_buf, 1, data_size, fp) != data_size) {
+                    free(data_buf);
+                    break;
+                }
+            }
+        }
+
         pr_node_config_t cfg = pr_memory_node_default_config();
         cfg.initial_tier      = PR_MEMORY_TIER_Z0;
         cfg.initial_strength  = 1.0f;
-        cfg.compute_signature = false;
+        cfg.compute_signature = false;  /* we bring our own signature */
 
         pr_memory_node_t* node = pr_memory_node_create_with_signature(
             (pr_node_manager_t)brain->pr_node_manager,
-            NULL, 0, &sig, &cfg);
+            data_buf, (size_t)data_size, &sig, &cfg);
+        free(data_buf);
         if (!node) continue;
 
         if (z_ladder_insert(brain->pr_z_ladder, node,

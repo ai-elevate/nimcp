@@ -118,6 +118,7 @@ typedef enum {
     BRAIN_CYCLE_GC_AGENT,           /**< Garbage collection agent (60s) */
     BRAIN_CYCLE_IO_DISPATCHER,      /**< KG I/O dispatcher (queue-driven) */
     BRAIN_CYCLE_BRAIN_UPDATE,       /**< Main brain update loop (16ms) */
+    BRAIN_CYCLE_LONG_TERM_MEMORY,   /**< Phase E6: Z-Ladder consolidation + landmark hygiene (100ms) */
     BRAIN_CYCLE_COUNT               /**< Total number of cycle types */
 } brain_cycle_type_t;
 

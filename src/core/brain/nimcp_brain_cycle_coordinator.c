@@ -183,16 +183,17 @@ static uint64_t get_timestamp_us(void) {
 
 static const char* get_cycle_name(brain_cycle_type_t type) {
     switch (type) {
-    case BRAIN_CYCLE_IMMUNE_TICK:    return "immune_tick";
-    case BRAIN_CYCLE_HEALTH_AGENT:   return "health_agent";
-    case BRAIN_CYCLE_SLEEP_WAKE:     return "sleep_wake";
-    case BRAIN_CYCLE_CIRCADIAN:      return "circadian";
-    case BRAIN_CYCLE_AROUSAL:        return "arousal";
-    case BRAIN_CYCLE_OSCILLATIONS:   return "oscillations";
-    case BRAIN_CYCLE_GC_AGENT:       return "gc_agent";
-    case BRAIN_CYCLE_IO_DISPATCHER:  return "io_dispatcher";
-    case BRAIN_CYCLE_BRAIN_UPDATE:   return "brain_update";
-    default:                         return "unknown";
+    case BRAIN_CYCLE_IMMUNE_TICK:      return "immune_tick";
+    case BRAIN_CYCLE_HEALTH_AGENT:     return "health_agent";
+    case BRAIN_CYCLE_SLEEP_WAKE:       return "sleep_wake";
+    case BRAIN_CYCLE_CIRCADIAN:        return "circadian";
+    case BRAIN_CYCLE_AROUSAL:          return "arousal";
+    case BRAIN_CYCLE_OSCILLATIONS:     return "oscillations";
+    case BRAIN_CYCLE_GC_AGENT:         return "gc_agent";
+    case BRAIN_CYCLE_IO_DISPATCHER:    return "io_dispatcher";
+    case BRAIN_CYCLE_BRAIN_UPDATE:     return "brain_update";
+    case BRAIN_CYCLE_LONG_TERM_MEMORY: return "long_term_memory";
+    default:                           return "unknown";
     }
 }
 
@@ -203,6 +204,7 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
     case BRAIN_CYCLE_BRAIN_UPDATE:
         return BRAIN_CYCLE_CATEGORY_FAST;
     case BRAIN_CYCLE_HEALTH_AGENT:
+    case BRAIN_CYCLE_LONG_TERM_MEMORY:
         return BRAIN_CYCLE_CATEGORY_MEDIUM;
     case BRAIN_CYCLE_SLEEP_WAKE:
     case BRAIN_CYCLE_CIRCADIAN:
@@ -218,16 +220,17 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
 
 static uint64_t get_default_interval_us(brain_cycle_type_t type) {
     switch (type) {
-    case BRAIN_CYCLE_IMMUNE_TICK:    return 50000;      /* 50ms */
-    case BRAIN_CYCLE_HEALTH_AGENT:   return 100000;     /* 100ms */
-    case BRAIN_CYCLE_OSCILLATIONS:   return 10000;      /* 10ms */
-    case BRAIN_CYCLE_BRAIN_UPDATE:   return 16000;      /* 16ms (~60fps) */
-    case BRAIN_CYCLE_GC_AGENT:       return 60000000;   /* 60s */
-    case BRAIN_CYCLE_SLEEP_WAKE:     return 0;          /* state machine */
-    case BRAIN_CYCLE_CIRCADIAN:      return 0;          /* continuous */
-    case BRAIN_CYCLE_AROUSAL:        return 0;          /* event-driven */
-    case BRAIN_CYCLE_IO_DISPATCHER:  return 0;          /* queue-driven */
-    default:                         return 0;
+    case BRAIN_CYCLE_IMMUNE_TICK:      return 50000;      /* 50ms */
+    case BRAIN_CYCLE_HEALTH_AGENT:     return 100000;     /* 100ms */
+    case BRAIN_CYCLE_OSCILLATIONS:     return 10000;      /* 10ms */
+    case BRAIN_CYCLE_BRAIN_UPDATE:     return 16000;      /* 16ms (~60fps) */
+    case BRAIN_CYCLE_LONG_TERM_MEMORY: return 100000;     /* 100ms — matches pr_consolidation_interval_us */
+    case BRAIN_CYCLE_GC_AGENT:         return 60000000;   /* 60s */
+    case BRAIN_CYCLE_SLEEP_WAKE:       return 0;          /* state machine */
+    case BRAIN_CYCLE_CIRCADIAN:        return 0;          /* continuous */
+    case BRAIN_CYCLE_AROUSAL:          return 0;          /* event-driven */
+    case BRAIN_CYCLE_IO_DISPATCHER:    return 0;          /* queue-driven */
+    default:                           return 0;
     }
 }
 

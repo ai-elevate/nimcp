@@ -5043,6 +5043,11 @@ static PyObject* Brain_long_term_stats(BrainObject* self, PyObject* Py_UNUSED(a)
     if (v) { PyDict_SetItemString(d, "auto_insert_count", v); Py_DECREF(v); }
     v = PyLong_FromUnsignedLongLong((unsigned long long)ib2->pr_auto_landmark_count);
     if (v) { PyDict_SetItemString(d, "auto_landmark_count", v); Py_DECREF(v); }
+    /* Phase E6: autonomous driver thread observability. */
+    v = PyLong_FromUnsignedLongLong((unsigned long long)ib2->pr_memory_driver_ticks);
+    if (v) { PyDict_SetItemString(d, "driver_ticks", v); Py_DECREF(v); }
+    PyDict_SetItemString(d, "driver_running",
+                         ib2->pr_memory_driver_thread ? Py_True : Py_False);
     v = PyFloat_FromDouble((double)ib2->pr_auto_insert_confidence);
     if (v) { PyDict_SetItemString(d, "auto_insert_threshold", v); Py_DECREF(v); }
     v = PyFloat_FromDouble((double)ib2->pr_auto_landmark_confidence);

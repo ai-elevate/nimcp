@@ -21,8 +21,10 @@ Run as:  python3 -m tests.smoke.test_phase_e_landmarks
 Exit 0 on success, non-zero on failure.
 """
 import os
+import struct
 import sys
 import tempfile
+import time
 
 try:
     import nimcp
@@ -94,7 +96,7 @@ def main():
     if not found_id2:
         raise AssertionError("E4-5 query_all did not find non-landmark node")
 
-    # ---- E4-2: save / load landmarks ------------------------------------
+    # ---- E4-2 / E6-d: save / load landmarks (v3 with feature payload) ---
     with tempfile.NamedTemporaryFile(prefix="phase_e_ckpt_", suffix=".dat",
                                       delete=False) as tf:
         ckpt_path = tf.name
@@ -103,9 +105,26 @@ def main():
         if not ok:
             raise AssertionError("E4-2 long_term_save returned False")
         saved_size = os.path.getsize(ckpt_path)
-        # Header is 16 bytes; each record is 64 + 144 = 208 bytes.
-        if saved_size < 16 + 208:
+        # v3 header is 16 bytes; each record is >= 64 + 144 + 4 = 212 bytes.
+        if saved_size < 16 + 212:
             raise AssertionError(f"E4-2 saved ckpt too small: {saved_size} bytes")
+
+        # E6-d: header must declare version 3 (magic "NIMCPELM" + v3).
+        with open(ckpt_path, "rb") as fh:
+            header = fh.read(16)
+        magic, version, n_records = struct.unpack("<8sII", header)
+        if magic != b"NIMCPELM":
+            raise AssertionError(f"E6-d wrong magic: {magic!r}")
+        if version != 3:
+            raise AssertionError(f"E6-d expected version=3, got {version}")
+        # Each record should include a nonzero data_size (feature bytes).
+        # Feat vectors are 64 floats × 4 bytes = 256 bytes each.
+        # n_records × (208 bytes shell + 4 bytes size + 256 bytes data) ≤ saved_size
+        min_size_with_data = 16 + n_records * (208 + 4 + 256)
+        if saved_size < min_size_with_data:
+            raise AssertionError(
+                f"E6-d v3 ckpt too small for {n_records} records with feature "
+                f"payload: saved={saved_size} min={min_size_with_data}")
 
         # Fresh brain — load and verify landmarks are restored
         b2 = nimcp.Brain("phase_e_restore", 128, 8)
@@ -125,6 +144,18 @@ def main():
         except OSError:
             pass
 
+    # ---- E6-b: autonomous driver thread is ticking ---------------------
+    # Give the 100ms driver thread time to fire at least a few ticks.
+    driver_start = b.long_term_stats().get("driver_ticks", 0)
+    if not b.long_term_stats().get("driver_running", False):
+        raise AssertionError("E6-b driver_running=False — thread did not start")
+    time.sleep(0.5)  # 5× the 100ms cadence → expect ≥ 3 ticks
+    driver_end = b.long_term_stats().get("driver_ticks", 0)
+    if driver_end - driver_start < 3:
+        raise AssertionError(
+            f"E6-b driver thread not ticking (delta={driver_end - driver_start} "
+            f"over 500ms — expected ≥ 3)")
+
     # ---- Final stats dump ----------------------------------------------
     final = b.long_term_stats()
     required = {
@@ -133,6 +164,7 @@ def main():
         "landmarks_present", "landmarks_missing",
         "landmarks_at_z3", "landmarks_drifted",
         "auto_insert_enabled",
+        "driver_ticks", "driver_running",  # E6-b
     }
     missing = required - set(final.keys())
     if missing:

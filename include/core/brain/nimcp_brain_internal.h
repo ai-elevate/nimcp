@@ -1745,6 +1745,14 @@ struct brain_struct {
     uint64_t pr_consolidation_interval_us;                            // Consolidation interval (default: 100ms)
     uint64_t pr_consolidation_count;                                  // Phase E4/E5: consolidation tick counter for periodic landmark hygiene
 
+    // Phase E6: autonomous pr_memory driver thread — runs pr_memory_tick
+    // + notifies BRAIN_CYCLE_LONG_TERM_MEMORY at 100ms cadence even when
+    // brain_learn_vector isn't firing (daemon idle, pure inference).
+    void*    pr_memory_driver_thread;   // nimcp_thread_t* (heap-allocated)
+    int      pr_memory_driver_stop;     // atomic-style stop flag (0=run, 1=stop)
+    uint64_t pr_memory_driver_ticks;    // observable counter
+    void*    pr_memory_unified_mm;      // unified_mem_manager_t for pr_node_manager (Phase E6)
+
     // =========================================================================
     // PHASE 4 NEUROMODULATORY NUCLEI INTEGRATION (LC, VTA, Raphe, Habenula)
     // =========================================================================
