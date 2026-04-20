@@ -1752,6 +1752,7 @@ struct brain_struct {
     int      pr_memory_driver_stop;     // atomic-style stop flag (0=run, 1=stop)
     uint64_t pr_memory_driver_ticks;    // observable counter
     void*    pr_memory_unified_mm;      // unified_mem_manager_t for pr_node_manager (Phase E6)
+    void*    pr_memory_tick_mutex;      // nimcp_mutex_t* — serializes pr_memory_tick callers (learn_vector + driver thread)
 
     // =========================================================================
     // PHASE 4 NEUROMODULATORY NUCLEI INTEGRATION (LC, VTA, Raphe, Habenula)

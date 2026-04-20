@@ -30,6 +30,7 @@
 
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "core/brain/nimcp_brain_lazy_init.h"
+#include "core/brain/nimcp_brain_cycle_coordinator.h"
 #include "core/probes/nimcp_probe_stages.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -1106,13 +1107,9 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
             uint64_t dur_us = ((uint64_t)_prt_t1.tv_sec - (uint64_t)_prt_t0.tv_sec) * 1000000ull +
                               ((uint64_t)_prt_t1.tv_nsec - (uint64_t)_prt_t0.tv_nsec) / 1000ull;
-            /* BRAIN_CYCLE_BRAIN_UPDATE = 8 (last in brain_cycle_type_t).
-             * Forward-declared to avoid pulling the cycle coordinator
-             * header into this TU. */
-            extern int brain_cycle_coordinator_notify_tick(
-                void* coord, int type, uint64_t duration_us);
+            /* Use the real enum from the cycle coordinator header. */
             (void)brain_cycle_coordinator_notify_tick(
-                (void*)brain->cycle_coordinator, 8, dur_us);
+                brain->cycle_coordinator, BRAIN_CYCLE_BRAIN_UPDATE, dur_us);
         }
     }
 

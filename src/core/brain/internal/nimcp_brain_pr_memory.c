@@ -26,16 +26,9 @@
 #include <string.h>
 #include <time.h>
 
-/* Forward declarations for cycle coordinator — kept loose to avoid
- * dragging the full header into this TU. Values must match
- * brain_cycle_type_t values in nimcp_brain_cycle_coordinator.h. */
-#define CYCLE_TYPE_LONG_TERM_MEMORY 9
-extern int brain_cycle_coordinator_register(void* coord, int type,
-                                            void* cycle_handle,
-                                            void* health_fn);
-extern int brain_cycle_coordinator_unregister(void* coord, int type);
-extern int brain_cycle_coordinator_notify_tick(void* coord, int type,
-                                               uint64_t duration_us);
+/* Include the real cycle coordinator header so cycle type values come
+ * from the enum (robust against reordering) and fn signatures match. */
+#include "core/brain/nimcp_brain_cycle_coordinator.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -173,12 +166,22 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     brain->pr_auto_insert_count        = 0;
     brain->pr_auto_landmark_count      = 0;
 
+    /* Phase E6 hardening: tick mutex. Serializes the two pr_memory_tick
+     * callers — brain_learn_vector (E5) and the driver thread — so
+     * last_pr_consolidation_us and pr_consolidation_count don't race
+     * and consolidation doesn't double-apply. */
+    brain->pr_memory_tick_mutex = (void*)nimcp_mutex_create(NULL);
+    if (!brain->pr_memory_tick_mutex) {
+        NIMCP_LOGGING_WARN("pr_memory: tick mutex creation failed — tick will run lock-free");
+    }
+
     /* Phase E6: spin up the autonomous pr_memory driver thread. Runs at
      * 100ms cadence, calls pr_memory_tick and notifies the cycle
      * coordinator's BRAIN_CYCLE_LONG_TERM_MEMORY. This makes memory
      * consolidation + landmark hygiene independent of brain_learn_vector. */
     __atomic_store_n(&brain->pr_memory_driver_stop, 0, __ATOMIC_RELEASE);
     brain->pr_memory_driver_ticks = 0;
+    brain->pr_consolidation_count = 0;
     extern void* nimcp_brain_pr_memory_driver_run(void* arg);  /* defined below */
     nimcp_thread_t* thr = (nimcp_thread_t*)calloc(1, sizeof(nimcp_thread_t));
     if (thr) {
@@ -267,6 +270,14 @@ void nimcp_brain_pr_memory_destroy(struct brain_struct* brain) {
         brain->pr_entanglement = NULL;
     }
 
+    /* Phase E6: tick mutex — safe to destroy after the driver thread is
+     * joined (above) and no more learn_vector calls can arrive at this
+     * brain. */
+    if (brain->pr_memory_tick_mutex) {
+        nimcp_mutex_free((nimcp_mutex_t*)brain->pr_memory_tick_mutex);
+        brain->pr_memory_tick_mutex = NULL;
+    }
+
     brain->pr_memory_enabled = false;
 }
 
@@ -280,6 +291,14 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
         return false;
     }
 
+    /* Phase E6 hardening: serialize concurrent tick callers
+     * (brain_learn_vector + driver thread). z_ladder_consolidate is
+     * already mutex-safe internally, but last_pr_consolidation_us and
+     * pr_consolidation_count are not — without this guard the interval
+     * check can pass twice and consolidation double-applies. */
+    nimcp_mutex_t* tick_lock = (nimcp_mutex_t*)brain->pr_memory_tick_mutex;
+    if (tick_lock) nimcp_mutex_lock(tick_lock);
+
     /* Advance theta-gamma phase */
     if (brain->pr_theta_gamma) {
         /* Calculate time delta in nanoseconds */
@@ -292,7 +311,7 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
 
     /* Check if consolidation interval has elapsed */
     if (current_time_us - brain->last_pr_consolidation_us < brain->pr_consolidation_interval_us) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_pr_memory_tick: validation failed");
+        if (tick_lock) nimcp_mutex_unlock(tick_lock);
         return false;  /* Not time for consolidation yet */
     }
 
@@ -321,6 +340,7 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
     /* Update timestamp */
     brain->last_pr_consolidation_us = current_time_us;
 
+    if (tick_lock) nimcp_mutex_unlock(tick_lock);
     return consolidation_triggered;
 }
 
@@ -453,7 +473,7 @@ void* nimcp_brain_pr_memory_driver_run(void* arg) {
     if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
         int rc = brain_cycle_coordinator_register(
             (void*)brain->cycle_coordinator,
-            CYCLE_TYPE_LONG_TERM_MEMORY,
+            BRAIN_CYCLE_LONG_TERM_MEMORY,
             (void*)brain, NULL);
         registered = (rc == 0);
     }
@@ -476,7 +496,7 @@ void* nimcp_brain_pr_memory_driver_run(void* arg) {
                                   ((uint64_t)t1.tv_nsec - (uint64_t)t0.tv_nsec) / 1000ull;
                 brain_cycle_coordinator_notify_tick(
                     (void*)brain->cycle_coordinator,
-                    CYCLE_TYPE_LONG_TERM_MEMORY, dur_us);
+                    BRAIN_CYCLE_LONG_TERM_MEMORY, dur_us);
             }
         }
 
@@ -487,7 +507,7 @@ void* nimcp_brain_pr_memory_driver_run(void* arg) {
     if (registered) {
         brain_cycle_coordinator_unregister(
             (void*)brain->cycle_coordinator,
-            CYCLE_TYPE_LONG_TERM_MEMORY);
+            BRAIN_CYCLE_LONG_TERM_MEMORY);
     }
     return NULL;
 }
