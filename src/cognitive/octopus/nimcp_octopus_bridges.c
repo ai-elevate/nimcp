@@ -109,6 +109,8 @@ typedef struct octopus_bridge_state_s {
     uint64_t neuromod_samples;    /* neuromod concentration vectors fed to arms */
     /* Phase 4g: peer-module (Portia + Dragonfly) sampling. */
     uint64_t peer_samples;        /* peer cognitive-module vectors fed to arms */
+    /* Phase 5A: per-tick cadence counter for train-step/NG-regularize. */
+    uint64_t tick_counter;        /* number of nimcp_octopus_tick calls */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -1186,4 +1188,61 @@ int nimcp_octopus_explore_from_peers(brain_t brain) {
         st->peer_samples++;
     }
     return rc;
+}
+
+/*============================================================================
+ * Phase 5A: nimcp_octopus_tick — the runtime integration.
+ *
+ * Every brain_decide and brain_learn_vector call drives one tick, so the
+ * octopus arms see every inference input and every training vector. This
+ * is what makes the module live instead of a statue.
+ *
+ * Cadence choices (powers of two so counter masks stay constant-time):
+ *   - Train step every 8 ticks (when training enabled)
+ *   - NG regularization every 32 ticks (when NG enabled)
+ *
+ * At 8 exposures/sec during training that's ~1 train step/sec, ~4 NG/min.
+ * Arm forward runs every tick — real per-tick cost is small (8 NCP LNNs
+ * with sparse wiring at dim=64).
+ *==========================================================================*/
+
+#define _OCTOPUS_TICK_TRAIN_MASK 0x7u   /* every 8th tick */
+#define _OCTOPUS_TICK_NG_MASK    0x1Fu  /* every 32nd tick */
+
+void nimcp_octopus_tick(brain_t brain,
+                        const float* features,
+                        uint32_t num_features) {
+    if (!brain || !features || num_features == 0) return;
+    if (!brain->octopus || !brain->octopus_enabled) return;
+
+    octopus_system_t* ctx = (octopus_system_t*)brain->octopus;
+
+    /* Explore: arm forwards + LNN state advance + ethics/swarm hooks. */
+    if (octopus_explore(ctx, features, num_features) != 0) return;
+
+    /* Integrate: aggregate latent, fire world/FEP/bio hooks. Ignore the
+     * aggregated output — consumers should pull it via octopus_get_stats
+     * or subscribe to the bio_router broadcasts the hooks emit. */
+    float aggregated[OCTOPUS_ARM_DIM];
+    float coherence = 0.0f;
+    (void)octopus_integrate(ctx, aggregated, &coherence);
+
+    /* Cadence-gated training + NG. Guarded on the feature flags so a
+     * brain that never enables training still pays zero cost here. */
+    if (!brain->octopus_bridge_state) return;
+    octopus_bridge_state_t* st =
+        (octopus_bridge_state_t*)brain->octopus_bridge_state;
+    st->tick_counter++;
+
+    octopus_stats_t s;
+    octopus_get_stats(ctx, &s);
+
+    if (s.lnn_training_enabled &&
+        (st->tick_counter & _OCTOPUS_TICK_TRAIN_MASK) == 0) {
+        (void)octopus_train_step(ctx, NULL);
+    }
+    if (s.ng_enabled &&
+        (st->tick_counter & _OCTOPUS_TICK_NG_MASK) == 0) {
+        (void)octopus_ng_regularize(ctx);
+    }
 }

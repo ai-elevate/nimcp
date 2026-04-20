@@ -1105,6 +1105,20 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
 
     // ========================================================================
+    // OCTOPUS TICK: drive the distributed-peripheral-cognition module
+    // ========================================================================
+    // Runs once per non-cached inference so arms see every real input.
+    // Forward-declared to avoid pulling the octopus bridge header into this
+    // SRP-included TU — link-time resolution against the bridges compilation
+    // unit. Safe no-op if brain->octopus is NULL.
+    {
+        extern void nimcp_octopus_tick(brain_t brain,
+                                       const float* features,
+                                       uint32_t num_features);
+        nimcp_octopus_tick(brain, features, num_features);
+    }
+
+    // ========================================================================
     // PARALLEL PRE-FORWARD: Wellbeing + Engram + Sleep + Curiosity
     // ========================================================================
     // WHAT: Run independent pre-forward stages concurrently via thread pool

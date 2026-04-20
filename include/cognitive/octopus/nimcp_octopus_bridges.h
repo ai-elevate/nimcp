@@ -237,6 +237,33 @@ uint32_t nimcp_octopus_sample_peers_vec(brain_t brain,
  */
 int nimcp_octopus_explore_from_peers(brain_t brain);
 
+/**
+ * @brief Phase 5A: drive the octopus per brain tick.
+ *
+ * This is THE integration that turns the octopus module from a passive
+ * statue into an always-on peripheral cognition layer. Called from
+ * brain_decide and brain_learn_vector so every inference and training
+ * step exercises the arms.
+ *
+ * Per call:
+ *   - octopus_explore(brain->octopus, features, num_features)
+ *     (arm forwards run, arm LNN state advances, hooks fire)
+ *   - octopus_integrate(...) to produce the aggregated latent
+ *     (world/FEP/bio hooks fire)
+ *   - On cadence: octopus_train_step() if training is enabled
+ *   - On cadence: octopus_ng_regularize() if NG is enabled
+ *
+ * Safe to call on any brain — becomes a no-op when brain->octopus is NULL
+ * or features is NULL/empty. Never throws.
+ *
+ * @param brain        Brain instance (may be NULL — no-op).
+ * @param features     Input feature vector (may be NULL — no-op).
+ * @param num_features Length of features.
+ */
+void nimcp_octopus_tick(brain_t brain,
+                        const float* features,
+                        uint32_t num_features);
+
 #ifdef __cplusplus
 }
 #endif

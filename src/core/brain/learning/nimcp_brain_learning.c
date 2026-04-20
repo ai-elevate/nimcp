@@ -1033,6 +1033,18 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
+    /* Phase 5A: drive the octopus module with the clean training input.
+     * Runs after ethics + LGSS + NaN/Inf validation so arms never see
+     * adversarial or corrupted data. Forward-declared to avoid pulling
+     * the bridge header into this TU; link-resolved against the bridges
+     * compilation unit. No-op on brains without octopus. */
+    {
+        extern void nimcp_octopus_tick(brain_t brain,
+                                       const float* features,
+                                       uint32_t num_features);
+        nimcp_octopus_tick(brain, features, num_features);
+    }
+
     /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */
     struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
     if (blv_debug_timing_enabled()) {
