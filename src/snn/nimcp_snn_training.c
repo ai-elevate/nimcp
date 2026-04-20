@@ -463,6 +463,12 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
         snn_population_t* dst_pop = network->populations[p];
         if (!dst_pop || !dst_pop->lightweight || !dst_pop->incoming_csr) continue;
         if (!dst_pop->spike_output) continue;
+        /* Warm-up gate: skip R-STDP on populations that haven't collected
+         * enough firing-rate samples for homeostasis to engage. During the
+         * first 100 SNN steps, R-STDP with no homeostatic brake can amplify
+         * transient hyperactivity into runaway — classic Hebbian compounding.
+         * Matches the same rate_samples < 100 gate in snn_homeostatic_apply. */
+        if (dst_pop->rate_samples < 100) continue;
         snn_csr_storage_t* csr = dst_pop->incoming_csr;
         if (!csr->entries || csr->n_synapses == 0) continue;
 

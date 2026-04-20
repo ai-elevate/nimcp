@@ -93,13 +93,17 @@ static const snn_skip_def_t SKIP_DEFS[] = {
  *
  * Reference: Rossbroich et al., arxiv 2206.10226 (fluctuation-driven init). */
 #define SNN_V_GAP                 15.0f  /**< v_thresh - v_rest */
-/* I_syn budget reduced from 0.8 → 0.3 × gap after Option A (80E/20I, 4× I)
- * still produced 77-83% firing saturation. Root cause: cascading activity
- * makes actual presyn_rate ~0.4 instead of the formula's 0.1, so weights
- * were 4× too strong. Reducing budget to 0.3 × gap (4.5 mV) targets
- * steady-state V ≈ v_rest + 4.5 = −60.5 mV, leaving 10 mV to threshold so
- * only fluctuations cross — matching the designed biological regime. */
-#define SNN_I_SYN_BUDGET          (0.3f * SNN_V_GAP)   /**< 4.5 mV target */
+/* I_syn budget reduced from 0.8 → 0.3 → 0.15 × gap (quiet-start protocol).
+ * Prior 0.3 was half-right: it halved init weights but the actual cascade
+ * presyn_rate is 4× the formula's 0.1 assumption, so weights were still
+ * ~1.5× too strong. That put the system on a knife-edge — small rate
+ * deviations produced either silent collapse or hyperactive saturation,
+ * and homeostasis had to scale DOWN against R-STDP's LTP pressure.
+ *
+ * With 0.15 × gap (2.25 mV), initial firing lands BELOW target 3%.
+ * Homeostasis scales UP (easy direction; R-STDP and homeostasis agree
+ * when the network is too quiet, since quiet → low LTP → no compounding). */
+#define SNN_I_SYN_BUDGET          (0.15f * SNN_V_GAP)  /**< 2.25 mV target (quiet start) */
 #define SNN_PRESYN_RATE_DEFAULT   0.1f                 /**< 10% firing per step assumption */
 /* Input_pop is externally driven. With Poisson rate encoding at ~100 Hz and
  * dt=1 ms, per-step firing prob ≈ 0.1. We keep this equal to default; if the
