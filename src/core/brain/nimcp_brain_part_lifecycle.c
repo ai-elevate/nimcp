@@ -944,6 +944,10 @@ void brain_destroy(brain_t brain)
             brain->octopus_enabled = false;
         }
         if (brain->octopus_bridge_state) {
+            /* Unregister bio_router module before freeing state — otherwise
+             * router retains a dangling context pointer. */
+            extern void nimcp_octopus_uninstall_bridges(brain_t brain);
+            nimcp_octopus_uninstall_bridges(brain);
             nimcp_free(brain->octopus_bridge_state);
             brain->octopus_bridge_state = NULL;
         }

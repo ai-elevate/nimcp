@@ -38,6 +38,15 @@ extern "C" {
  */
 bool nimcp_octopus_install_bridges(brain_t brain);
 
+/**
+ * @brief Tear down any bio_router registration + hook state.
+ *
+ * Safe to call on a brain that never had bridges installed.
+ * Must be called BEFORE the bridge state is freed; lifecycle.c handles
+ * this ordering (call uninstall, then nimcp_free the state).
+ */
+void nimcp_octopus_uninstall_bridges(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

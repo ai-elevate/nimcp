@@ -2069,6 +2069,9 @@ typedef enum {
     /* Inner Dialogue modules (0x1E10 - 0x1E1F) */
     BIO_MODULE_INNER_DIALOGUE = 0x1E10,         /**< Inner dialogue engine */
 
+    /* Octopus: distributed peripheral cognition (Phase 2b bio-async bridge) */
+    BIO_MODULE_OCTOPUS = 0x1F00,                /**< Octopus module — broadcasts arm events, coherence, heartbeat */
+
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_MESH_ROUTE = 0xFFFD,  /**< Phase 15: Force routing through mesh network */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */

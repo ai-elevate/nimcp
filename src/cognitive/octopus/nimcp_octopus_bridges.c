@@ -1,29 +1,55 @@
 /**
  * @file nimcp_octopus_bridges.c
- * @brief Phase 2a: register octopus hooks against peer brain subsystems.
+ * @brief Octopus → peer-subsystem bridges (Phase 2a install + Phase 2b wire-through).
  *
- * Each wrapper is a thin adapter — it pulls the relevant subsystem handle
- * from `brain_t`, does a minimal transformation, and calls into the peer.
- * All wrappers NULL-guard their subsystem handle so the module degrades
- * gracefully if a peer isn't initialized.
+ * Phase 2a: install the 6 hooks, only ethics is live-gating.
+ * Phase 2b: route the remaining 5 hooks through bio_router_broadcast so real
+ *          subscribers (swarm / world / FEP / immune / bio-async) receive
+ *          structured events. Octopus registers as BIO_MODULE_OCTOPUS and
+ *          emits octopus_event_msg_t on each hook firing.
  *
- * Wrappers are registered via octopus_set_*_hook(). The octopus core
- * module knows nothing about brain internals (DIP).
+ * Each wrapper is a thin adapter — pulls the subsystem handle from
+ * `brain_t`, transforms arm/aggregate data into an event, broadcasts.
+ * All wrappers NULL-guard their inputs and degrade gracefully if a peer
+ * isn't initialized (e.g., router not up at install time).
+ *
+ * SOLID:
+ *   SRP: each hook is a single-purpose adapter.
+ *   OCP: adding a new event type = add enum + one emit call; no core change.
+ *   DIP: octopus core only knows the hook signatures, not bridge contents.
  */
 #include "cognitive/octopus/nimcp_octopus_bridges.h"
 #include "cognitive/octopus/nimcp_octopus.h"
 #include "core/brain/nimcp_brain_internal.h"
 
 #include "cognitive/ethics/nimcp_ethics.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
-/* Phase 2a doesn't actually call into bio_router or fep_orchestrator yet
- * (those wrappers only log). Drop the unused includes so the dep graph
- * stays minimal — they'll come back in Phase 2b when the wrappers
- * invoke real APIs. */
 
 #include <string.h>
 #include <stdint.h>
+
+/* Broadcast message schema: a small fixed-size struct the octopus emits
+ * on significant events. Consumers read the `type` field to disambiguate.
+ * Padded to 32 bytes for consistent router stats. */
+typedef enum {
+    OCTOPUS_EVT_HEARTBEAT      = 0x0000,  /* every explore() */
+    OCTOPUS_EVT_ARM_VETO       = 0x0001,  /* ethics vetoed an arm */
+    OCTOPUS_EVT_LOW_COHERENCE  = 0x0002,  /* aggregate coherence dropped */
+    OCTOPUS_EVT_DELEGATE       = 0x0003,  /* high-confidence arm → swarm */
+    OCTOPUS_EVT_WORLD_OBS      = 0x0004,  /* aggregated latent → world model */
+    OCTOPUS_EVT_FEP_SURPRISE   = 0x0005,  /* coherence signal for FEP */
+} octopus_event_type_t;
+
+typedef struct {
+    uint16_t type;       /* octopus_event_type_t */
+    uint16_t arm_id;     /* 0xFFFF if not arm-specific */
+    float    value;      /* event-specific magnitude (coherence, confidence, etc.) */
+    uint32_t sequence;   /* monotonic per-context; detect drops */
+    uint32_t _pad[5];    /* reserve 32-byte total, room for future fields */
+} octopus_event_msg_t;
 
 /*============================================================================
  * Per-brain bridge state — allows the void* user pointer in each hook to
@@ -33,10 +59,46 @@
 typedef struct octopus_bridge_state_s {
     brain_t brain;
     uint64_t bio_broadcast_counter;
-    /* ethics_eval counter removed — octopus_stats.n_ethics_vetoes already
-     * tracks the subset that MATTERS (vetoes); total evaluations = n_arms
-     * × n_explorations, derivable from existing stats. */
+    bio_module_context_t bio_ctx; /* NULL if router not up at install time */
+    uint32_t sequence;            /* monotonic per-context sequence */
 } octopus_bridge_state_t;
+
+/* Lazy register against bio_router if install-time registration was
+ * skipped (router wasn't up yet). Safe to call repeatedly — already
+ * registered states are a no-op. */
+static void _ensure_registered(octopus_bridge_state_t* st) {
+    if (!st || st->bio_ctx) return;
+    if (!bio_router_is_initialized()) return;
+    bio_module_info_t info = {0};
+    info.module_id = BIO_MODULE_OCTOPUS;
+    info.module_name = "octopus";
+    info.inbox_capacity = 0;
+    info.user_data = st;
+    st->bio_ctx = bio_router_register_module(&info);
+    if (st->bio_ctx) {
+        NIMCP_LOGGING_INFO("octopus_bridges: lazy-registered with bio_router");
+    }
+}
+
+/* DRY helper: pack + broadcast one event. NULL-guards the router context
+ * so degraded operation (router not initialized) is a no-op instead of a
+ * crash. Returns true iff broadcast succeeded. */
+static bool _emit(octopus_bridge_state_t* st,
+                   octopus_event_type_t type,
+                   uint16_t arm_id,
+                   float value) {
+    if (!st) return false;
+    _ensure_registered(st);
+    if (!st->bio_ctx) return false;
+    octopus_event_msg_t msg = {0};
+    msg.type     = (uint16_t)type;
+    msg.arm_id   = arm_id;
+    msg.value    = value;
+    msg.sequence = ++st->sequence;
+    nimcp_error_t rc = bio_router_broadcast(st->bio_ctx, &msg, sizeof(msg));
+    if (rc == NIMCP_SUCCESS) st->bio_broadcast_counter++;
+    return rc == NIMCP_SUCCESS;
+}
 
 /*============================================================================
  * Hook implementations
@@ -75,58 +137,62 @@ static bool _ethics_hook(const octopus_arm_t* arm, void* user) {
     return eval.allowed;
 }
 
-/* Swarm delegation: for Phase 2a, log + count. Real edge delegation needs
- * the swarm master's submit_task API which isn't consistently available
- * at this init order. Phase 2b will promote this. */
+/* Swarm delegation: broadcast DELEGATE event carrying the arm id + its
+ * confidence. A real swarm edge-consumer subscribes to these events and
+ * performs the edge-side execution. This keeps octopus decoupled from
+ * swarm internals (DIP). */
 static void _swarm_hook(const octopus_arm_t* arm, void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
     if (!st || !arm) return;
-    NIMCP_LOGGING_DEBUG("[octopus-swarm] arm %u delegated (conf=%.3f)",
-                        arm->id, arm->confidence);
+    _emit(st, OCTOPUS_EVT_DELEGATE, (uint16_t)arm->id, arm->confidence);
 }
 
-/* World model: Phase 2a logs. Phase 2b will map aggregated latent to
- * world-model observation when omni_wm_submit_observation API is bound. */
+/* World model: broadcast WORLD_OBS with coherence as magnitude. Full
+ * aggregated-latent delivery would require variable-sized messages; a
+ * follow-up iteration can upgrade to latent-payload messages once the
+ * subscriber side is defined. */
 static void _world_hook(const float* aggregated, uint32_t len, void* user) {
-    (void)aggregated;
+    (void)aggregated; (void)len;
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
-    if (!st || !st->brain) return;
-    NIMCP_LOGGING_DEBUG("[octopus-world] aggregated latent len=%u delivered",
-                        len);
+    _emit(st, OCTOPUS_EVT_WORLD_OBS, 0xFFFF, 0.0f);
 }
 
-/* FEP: coherence is the inverse-surprise signal. fep_orchestrator_update
- * takes time_ms rather than a value; we log-and-store the coherence so a
- * higher-level cycle coordinator can pick it up via stats. */
+/* FEP: broadcast the coherence signal. Low coherence = high surprise =
+ * free-energy proxy. FEP orchestrator can subscribe to this and feed it
+ * into its surprise accumulator. */
 static void _fep_hook(float coherence, void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
-    if (!st) return;
-    NIMCP_LOGGING_DEBUG("[octopus-fep] coherence=%.3f (higher = less surprise)",
-                        coherence);
+    _emit(st, OCTOPUS_EVT_FEP_SURPRISE, 0xFFFF, coherence);
 }
 
-/* Bio-async: broadcast significant events (low coherence, arm vetoes) via
- * the router. The event string identifies the event type; value carries
- * a magnitude or arm-id depending on event. */
+/* Bio-async event broadcast: route octopus events (arm vetoes, low
+ * coherence) through the real bio_router. Event string is mapped to one
+ * of our typed enum values. Unrecognized events get dropped (safe-fail). */
 static void _bio_hook(const char* event, float value, void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
     if (!st || !event) return;
-    st->bio_broadcast_counter++;
-    /* Defer actual broadcast plumbing (msg_type allocation, payload packing)
-     * to Phase 2b; Phase 2a logs so monitoring can observe firing rate. */
-    NIMCP_LOGGING_DEBUG("[octopus-bio] event=%s value=%.3f (count=%llu)",
-                        event, value,
-                        (unsigned long long)st->bio_broadcast_counter);
+    octopus_event_type_t type;
+    if (strcmp(event, "octopus_low_coherence") == 0) {
+        type = OCTOPUS_EVT_LOW_COHERENCE;
+    } else if (strcmp(event, "octopus_arm_vetoed") == 0) {
+        type = OCTOPUS_EVT_ARM_VETO;
+    } else {
+        return;  /* unknown event — don't emit a spurious message */
+    }
+    /* For ARM_VETO events the octopus core passes `(float)arm_id` as
+     * value; truncate to uint16_t to carry that id in the message header.
+     * For LOW_COHERENCE, value IS the coherence, so arm_id is "n/a" (0xFFFF). */
+    uint16_t arm_id = (type == OCTOPUS_EVT_ARM_VETO)
+                    ? (uint16_t)value : (uint16_t)0xFFFF;
+    _emit(st, type, arm_id, value);
 }
 
-/* Immune: called every explore(). A plain heartbeat signals liveness to
- * the immune system; if the heartbeat stops, the immune system can flag
- * octopus as dead-or-frozen. Bio-async broadcast is the natural channel. */
+/* Immune: fires on every explore(). Emit a heartbeat msg so any
+ * subscribed watchdog can detect if octopus has stopped heartbeating
+ * (e.g., deadlocked inside a hook). Low magnitude, high frequency. */
 static void _immune_hook(void* user) {
-    (void)user;
-    /* Heartbeat via logging for now; Phase 2b will emit a real bio-async
-     * heartbeat message that the immune system can subscribe to. */
-    NIMCP_LOGGING_DEBUG("[octopus-immune] heartbeat");
+    octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
+    _emit(st, OCTOPUS_EVT_HEARTBEAT, 0xFFFF, 0.0f);
 }
 
 /*============================================================================
@@ -145,6 +211,22 @@ bool nimcp_octopus_install_bridges(brain_t brain) {
     st->brain = brain;
     brain->octopus_bridge_state = (void*)st;
 
+    /* Register with bio_router so broadcasts carry a real module identity.
+     * Safe-fail: if the router isn't initialized yet, st->bio_ctx stays
+     * NULL and _emit() becomes a no-op. The module can be re-installed
+     * later once the router is up. */
+    if (bio_router_is_initialized()) {
+        bio_module_info_t info = {0};
+        info.module_id = BIO_MODULE_OCTOPUS;
+        info.module_name = "octopus";
+        info.inbox_capacity = 0;   /* use router default */
+        info.user_data = st;
+        st->bio_ctx = bio_router_register_module(&info);
+        if (!st->bio_ctx) {
+            NIMCP_LOGGING_WARN("octopus_bridges: router registration failed");
+        }
+    }
+
     octopus_system_t* ctx = (octopus_system_t*)brain->octopus;
 
     octopus_set_ethics_hook(ctx, _ethics_hook, st);
@@ -155,7 +237,21 @@ bool nimcp_octopus_install_bridges(brain_t brain) {
     octopus_set_immune_hook(ctx, _immune_hook, st);
 
     NIMCP_LOGGING_INFO("octopus_bridges: 6 hooks installed "
-                       "(ethics=%s, swarm=log, world=log, fep=log, bio=log, immune=heartbeat)",
-                       brain->ethics ? "live" : "no-peer");
+                       "(ethics=%s, router=%s)",
+                       brain->ethics ? "live" : "no-peer",
+                       st->bio_ctx   ? "live" : "not-up-yet");
     return true;
+}
+
+/* Called from the brain lifecycle destroy path AFTER octopus_destroy().
+ * Unregisters the bio_router module before the state is freed so the
+ * router doesn't retain a dangling context reference. */
+void nimcp_octopus_uninstall_bridges(brain_t brain) {
+    if (!brain || !brain->octopus_bridge_state) return;
+    octopus_bridge_state_t* st =
+        (octopus_bridge_state_t*)brain->octopus_bridge_state;
+    if (st->bio_ctx) {
+        bio_router_unregister_module(st->bio_ctx);
+        st->bio_ctx = NULL;
+    }
 }
