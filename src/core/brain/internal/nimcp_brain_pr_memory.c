@@ -77,6 +77,17 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     /* Use defaults if no config provided */
     brain_pr_memory_config_t cfg = config ? *config : brain_pr_memory_config_default();
 
+    /* Phase E2: create a node manager FIRST so z_ladder can reference it.
+     * Without this, z_ladder is initialized with node_manager=NULL and
+     * has no way to allocate the pr_memory_node_t instances it tracks. */
+    pr_node_manager_config_t nm_cfg = pr_node_manager_default_config();
+    pr_node_manager_t nm = pr_node_manager_create(&nm_cfg);
+    if (!nm) {
+        fprintf(stderr, "[PR_MEMORY] Failed to create node manager\n");
+        goto cleanup;
+    }
+    brain->pr_node_manager = (void*)nm;
+
     /* Initialize Z-Ladder */
     z_ladder_config_t z_config = z_ladder_default_config();
     /* Set per-tier capacities using tier_configs array */
@@ -84,6 +95,7 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     z_config.tier_configs[PR_MEMORY_TIER_Z1].capacity = cfg.z1_capacity;
     z_config.tier_configs[PR_MEMORY_TIER_Z2].capacity = cfg.z2_capacity;
     z_config.tier_configs[PR_MEMORY_TIER_Z3].capacity = cfg.z3_capacity;
+    z_config.node_manager = nm;  /* Phase E2: give ladder a way to allocate nodes */
 
     brain->pr_z_ladder = z_ladder_create(&z_config);
     if (!brain->pr_z_ladder) {
@@ -124,10 +136,15 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
     return true;
 
 cleanup:
-    /* Cleanup on failure */
+    /* Cleanup on failure — Z-Ladder before its node manager since ladder
+     * holds the tracked nodes allocated by the manager. */
     if (brain->pr_z_ladder) {
         z_ladder_destroy(brain->pr_z_ladder);
         brain->pr_z_ladder = NULL;
+    }
+    if (brain->pr_node_manager) {
+        pr_node_manager_destroy((pr_node_manager_t)brain->pr_node_manager);
+        brain->pr_node_manager = NULL;
     }
     if (brain->pr_theta_gamma) {
         theta_gamma_destroy(brain->pr_theta_gamma);
@@ -147,10 +164,15 @@ void nimcp_brain_pr_memory_destroy(struct brain_struct* brain) {
         return;
     }
 
-    /* Destroy Z-Ladder */
+    /* Destroy Z-Ladder first — its tracked nodes are allocated by the
+     * node manager, so the manager must outlive the ladder. */
     if (brain->pr_z_ladder) {
         z_ladder_destroy(brain->pr_z_ladder);
         brain->pr_z_ladder = NULL;
+    }
+    if (brain->pr_node_manager) {
+        pr_node_manager_destroy((pr_node_manager_t)brain->pr_node_manager);
+        brain->pr_node_manager = NULL;
     }
 
     /* Destroy Theta-Gamma manager */

@@ -1724,6 +1724,10 @@ struct brain_struct {
     struct z_ladder_struct* pr_z_ladder;                              // Z-Ladder memory tier manager
     struct theta_gamma_manager_internal* pr_theta_gamma;              // Theta-gamma phase coupling
     struct entangle_graph_struct* pr_entanglement;                    // Memory entanglement graph
+    /* Phase E2: node manager for allocating pr_memory_node_t instances
+     * that get inserted into pr_z_ladder. Kept as void* to avoid pulling
+     * the pr_memory_node header into this TU. */
+    void* pr_node_manager;                                            // pr_node_manager_t
     bool pr_memory_enabled;                                           // PR memory system enabled
     bool pr_lazy_init;                                                // Defer PR memory initialization
     uint64_t last_pr_consolidation_us;                                // Last consolidation timestamp

@@ -5069,6 +5069,88 @@ static PyObject* Brain_long_term_unmark_landmark(BrainObject* self, PyObject* ar
     return PyLong_FromLong((long)rc);
 }
 
+/* Phase E2: insert a memory node from a Python float list. Creates a
+ * pr_memory_node using brain->pr_node_manager, inserts into Z0, returns
+ * the new node_id (caller can then pass it to long_term_mark_landmark).
+ * If make_landmark=True, also marks immediately (promoted to Z3). */
+#include "cognitive/memory/core/nimcp_pr_memory_node.h"
+static PyObject* Brain_long_term_insert_memory(BrainObject* self, PyObject* args) {
+    PyObject* features_list = NULL;
+    int make_landmark = 0;
+    const char* reason = NULL;
+    if (!PyArg_ParseTuple(args, "O|ps", &features_list, &make_landmark, &reason)) {
+        return NULL;
+    }
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+
+    /* Phase E2: lazy-init pr_memory on first insert. Most brains default to
+     * lazy pr_memory init (FAST mode, etc.) so the subsystem is skipped
+     * during factory startup; we trigger it here on the first use path. */
+    struct brain_struct* ib = self->brain->internal_brain;
+    if (!ib->pr_z_ladder || !ib->pr_node_manager) {
+        extern bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const void* config);
+        (void)nimcp_brain_pr_memory_init(ib, NULL);
+    }
+    pr_node_manager_t mgr = (pr_node_manager_t)ib->pr_node_manager;
+    z_ladder_t ladder = ib->pr_z_ladder;
+    if (!mgr || !ladder) {
+        PyErr_SetString(PyExc_RuntimeError, "PR memory initialization failed");
+        return NULL;
+    }
+    if (!PyList_Check(features_list) && !PyTuple_Check(features_list)) {
+        PyErr_SetString(PyExc_TypeError, "features must be a list or tuple of floats");
+        return NULL;
+    }
+    Py_ssize_t n = PySequence_Size(features_list);
+    if (n <= 0) {
+        PyErr_SetString(PyExc_ValueError, "features must be non-empty");
+        return NULL;
+    }
+    /* Pack Python list into a float buffer. Uses stack for small n,
+     * heap for large. Cap 4096 floats per call to bound work. */
+    if (n > 4096) n = 4096;
+    float stack_buf[256];
+    float* data = (n <= 256) ? stack_buf
+        : (float*)nimcp_calloc((size_t)n, sizeof(float));
+    if (!data) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject* item = PySequence_GetItem(features_list, i);
+        if (!item) { if (data != stack_buf) nimcp_free(data); return NULL; }
+        data[i] = (float)PyFloat_AsDouble(item);
+        Py_DECREF(item);
+    }
+
+    pr_node_config_t node_cfg = pr_memory_node_default_config();
+    node_cfg.initial_tier    = PR_MEMORY_TIER_Z0;
+    node_cfg.initial_strength = 1.0f;
+    node_cfg.compute_signature = true;
+
+    pr_memory_node_t* node = pr_memory_node_create(
+        mgr, (const void*)data, (size_t)n * sizeof(float), &node_cfg);
+    if (data != stack_buf) nimcp_free(data);
+    if (!node) {
+        PyErr_SetString(PyExc_RuntimeError, "pr_memory_node_create failed");
+        return NULL;
+    }
+
+    z_ladder_error_t ins = z_ladder_insert(ladder, node, PR_MEMORY_TIER_Z0);
+    if (ins != Z_LADDER_SUCCESS) {
+        pr_memory_node_destroy(node);
+        return PyLong_FromLongLong(-1);
+    }
+
+    uint64_t node_id = pr_memory_node_get_id(node);
+    if (make_landmark) {
+        (void)z_ladder_mark_landmark(ladder, node_id,
+            reason ? reason : "python_insert");
+    }
+    return PyLong_FromUnsignedLongLong((unsigned long long)node_id);
+}
+
 /**
  * WHAT: Get epistemic + aleatoric uncertainty for input features
  * WHY:  Metacognitive monitoring — "how confident is the brain?"
@@ -9516,6 +9598,10 @@ static PyMethodDef Brain_methods[] = {
     {"long_term_unmark_landmark",
      (PyCFunction)Brain_long_term_unmark_landmark, METH_VARARGS,
      "Remove landmark designation: long_term_unmark_landmark(node_id) -> int error code"},
+    {"long_term_insert_memory",
+     (PyCFunction)Brain_long_term_insert_memory, METH_VARARGS,
+     "Insert a memory node from a feature vector into Z0; optionally mark as Z3 landmark: "
+     "long_term_insert_memory(features, make_landmark=False, reason='') -> node_id (uint64)"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,
