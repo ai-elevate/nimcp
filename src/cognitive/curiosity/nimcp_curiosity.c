@@ -1192,20 +1192,21 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
 
     gap.related_concepts = count_related_concepts(engine, concept_str);
 
-    // INTEGRATION: Network topology analysis on high novelty
-    // When curiosity detects novel pattern, trigger community re-detection
-    // This allows us to see if brain is forming new functional modules
-    if (engine->network_analyzer && gap.gap_size > 0.7F) {
-        // High novelty - analyze network topology
-        if (network_analyzer_run(engine->network_analyzer)) {
-            // Check if new community emerged
-            if (network_analyzer_check_new_community(engine->network_analyzer)) {
-                // Novel pattern triggered functional reorganization!
-                // This is a sign of meaningful learning
-                gap.learning_potential *= 1.2F;  // Boost learning potential
-            }
-        }
-    }
+    /* Previously: on every high-novelty probe (gap_size > 0.7), we ran
+     * network_analyzer_run() which executes full Louvain community detection
+     * across 1.8M neurons / 1.45B synapses. On a fresh brain most topics are
+     * novel, so this fired repeatedly during training and hung the RPC for
+     * minutes each call.
+     *
+     * Observed 2026-04-20: curiosity_detect_gaps stalled 30+ min because the
+     * training's CuriositySelector called it every step, and each call
+     * triggered a full Louvain pass. Training hit BlockingIOError retries
+     * while the brain worker was stuck in community detection.
+     *
+     * Community detection is an offline-quality analysis; call it from a
+     * dedicated admin RPC on a coarse interval (e.g. every 10K steps) rather
+     * than from a hot-path probe. The learning_potential boost here was
+     * nice-to-have, not load-bearing. */
 
     // Broadcast high-curiosity events via bio-async
     if (gap.curiosity_intensity > 0.7F) {
