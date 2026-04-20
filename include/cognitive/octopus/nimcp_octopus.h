@@ -135,6 +135,10 @@ typedef struct octopus_stats_s {
     /* Phase 4h — per-arm LNN temporal integration. */
     uint32_t n_lnn_steps;               /**< Total LNN forward_step calls across all arms */
     bool     lnn_enabled;               /**< true if per-arm LNN cells are live */
+    /* Phase 4j — gradient flow on arm LNN cells. */
+    uint32_t n_lnn_train_steps;         /**< Total LNN training steps across all arms */
+    float    last_lnn_loss;             /**< Most recent training loss (MSE) */
+    bool     lnn_training_enabled;      /**< true if gradient descent is live */
 } octopus_stats_t;
 
 /*============================================================================
@@ -259,6 +263,31 @@ NIMCP_EXPORT float octopus_get_broadcast_state(
  * writer in practice). All fields optional — pass negative floats / any
  * value for unchanged (the function overwrites unconditionally).
  */
+/**
+ * @brief Phase 4j: Run one training step on each arm's LNN.
+ *
+ * Predictive-coding loss: each arm is trained to map its previous input
+ * slice to its current input slice. MSE loss, Adam optimizer, adjoint-
+ * method gradients (O(1) memory). Runs OUTSIDE of octopus_explore to keep
+ * the forward pass clean — call explicitly after an explore batch.
+ *
+ * Safe if training is disabled, no LNN is live, or no arm has a stored
+ * previous slice yet (first call after creation is a no-op).
+ *
+ * @param ctx       Octopus context.
+ * @param loss_out  Optional: receives mean loss across arms (may be NULL).
+ * @return 0 on success; -1 if ctx is NULL or training is disabled.
+ */
+NIMCP_EXPORT int octopus_train_step(octopus_system_t* ctx, float* loss_out);
+
+/**
+ * @brief Phase 4j: Enable / disable gradient flow on arm LNNs.
+ *
+ * When disabled, octopus_train_step() becomes a no-op and the LNN cells
+ * continue to run as frozen reservoirs. Safe to toggle mid-run.
+ */
+NIMCP_EXPORT void octopus_set_training_enabled(octopus_system_t* ctx, bool enabled);
+
 NIMCP_EXPORT void octopus_set_bridge_stats(
     octopus_system_t* ctx,
     uint64_t engram_encodings,

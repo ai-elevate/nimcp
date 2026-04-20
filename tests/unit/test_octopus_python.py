@@ -38,12 +38,13 @@ def test_octopus_stats_shape():
                 "bridge_vision_samples", "bridge_audio_samples",
                 "bridge_somato_samples", "bridge_snn_samples",
                 "bridge_neuromod_samples", "bridge_peer_samples",
-                "n_lnn_steps"):
+                "n_lnn_steps", "n_lnn_train_steps"):
         assert key in stats, f"missing counter: {key}"
         assert isinstance(stats[key], int), f"{key} should be int"
     for key in ("avg_arm_confidence", "avg_arm_variance", "central_coherence",
                 "avg_arm_entropy", "avg_arm_dfa",
-                "bridge_last_cortisol", "bridge_last_fear"):
+                "bridge_last_cortisol", "bridge_last_fear",
+                "last_lnn_loss"):
         assert key in stats, f"missing float: {key}"
         assert isinstance(stats[key], float), f"{key} should be float"
     arms = stats.get("arm_broadcast_states")

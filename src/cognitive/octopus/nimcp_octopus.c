@@ -20,6 +20,8 @@
 
 /* Phase 4h: per-arm LNN cells for continuous-time temporal integration. */
 #include "lnn/nimcp_lnn_network.h"
+/* Phase 4j: gradient flow on arm LNNs. */
+#include "lnn/nimcp_lnn_training.h"
 #include "utils/tensor/nimcp_tensor.h"
 
 #include <math.h>
@@ -73,6 +75,19 @@ struct octopus_system_s {
     void*   lnn_input;      /* nimcp_tensor_t* (1D, 64 floats) */
     void*   lnn_output;     /* nimcp_tensor_t* (1D, 64 floats) */
     float   lnn_dt_ms;      /* integration step in ms */
+
+    /* Phase 4j: gradient flow on arm LNNs. Per-arm trainers + a shared
+     * [1, OCTOPUS_ARM_DIM] input/target tensor pair for single-step
+     * training. Two slice ring-buffer slots per arm (prev and cur) so
+     * octopus_train_step can form (prev → cur) predictive-coding pairs
+     * without requiring the caller to thread current-slice state through. */
+    void**  arm_trainers;     /* lnn_training_ctx_t*[n_arms] */
+    void*   lnn_train_input;  /* nimcp_tensor_t* (2D, [1, OCTOPUS_ARM_DIM]) */
+    void*   lnn_train_target; /* nimcp_tensor_t* (2D, [1, OCTOPUS_ARM_DIM]) */
+    float (*arm_prev_slices)[OCTOPUS_ARM_DIM]; /* [n_arms][64] */
+    float (*arm_cur_slices)[OCTOPUS_ARM_DIM];  /* [n_arms][64] */
+    bool*   arm_has_prev;     /* bool[n_arms] — prev slot populated */
+    bool*   arm_has_cur;      /* bool[n_arms] — cur slot populated */
 };
 
 /*============================================================================
@@ -303,11 +318,56 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
         }
     }
 
+    /* Phase 4j: gradient flow. Allocate per-arm trainers + slice buffers.
+     * Only attempted when LNN is live; all allocations are non-fatal on
+     * failure — absent structures simply mean training APIs are no-ops. */
+    if (ctx->stats.lnn_enabled) {
+        ctx->arm_prev_slices = (float (*)[OCTOPUS_ARM_DIM])nimcp_calloc(
+            n_arms, sizeof(float) * OCTOPUS_ARM_DIM);
+        ctx->arm_cur_slices  = (float (*)[OCTOPUS_ARM_DIM])nimcp_calloc(
+            n_arms, sizeof(float) * OCTOPUS_ARM_DIM);
+        ctx->arm_has_prev    = (bool*)nimcp_calloc(n_arms, sizeof(bool));
+        ctx->arm_has_cur     = (bool*)nimcp_calloc(n_arms, sizeof(bool));
+        ctx->arm_trainers    = (void**)nimcp_calloc(n_arms, sizeof(void*));
+
+        if (ctx->arm_trainers) {
+            lnn_training_config_t tcfg;
+            lnn_training_config_default(&tcfg);
+            tcfg.optimizer_type = NIMCP_OPTIMIZER_ADAM;
+            tcfg.learning_rate  = 1e-3f;
+            tcfg.loss_type      = NIMCP_LOSS_MSE;
+            tcfg.lnn_train_mode = LNN_TRAIN_ADJOINT;
+            tcfg.gradient_clip_norm = 1.0f;
+            tcfg.diversity_loss_weight = 0.0f; /* per-arm specialization */
+
+            uint32_t t_created = 0;
+            for (uint32_t i = 0; i < n_arms; i++) {
+                if (!ctx->arm_lnns[i]) continue;
+                lnn_training_ctx_t* trn = lnn_training_create(
+                    (lnn_network_t*)ctx->arm_lnns[i], &tcfg);
+                if (trn) {
+                    ctx->arm_trainers[i] = trn;
+                    t_created++;
+                }
+            }
+            if (t_created > 0) {
+                /* Training tensors are (seq_len=1, n_features=OCTOPUS_ARM_DIM)
+                 * 2-D so lnn_training_step's [seq_len, n_inputs] contract
+                 * is satisfied with a single time step. */
+                uint32_t t_dims[2] = { 1u, OCTOPUS_ARM_DIM };
+                ctx->lnn_train_input  = nimcp_tensor_create(t_dims, 2, NIMCP_DTYPE_F32);
+                ctx->lnn_train_target = nimcp_tensor_create(t_dims, 2, NIMCP_DTYPE_F32);
+            }
+        }
+    }
+
     NIMCP_LOGGING_INFO("octopus_create: %u arms initialized "
-                       "(pink-noise=%s, DFA cadence=%u, LNN=%s)",
+                       "(pink-noise=%s, DFA cadence=%u, LNN=%s, trainers=%s)",
                        n_arms, ctx->pink_gen ? "live" : "off",
                        ctx->dfa_update_every,
-                       ctx->stats.lnn_enabled ? "live" : "off");
+                       ctx->stats.lnn_enabled ? "live" : "off",
+                       (ctx->arm_trainers && ctx->lnn_train_input &&
+                        ctx->lnn_train_target) ? "live" : "off");
     return ctx;
 }
 
@@ -330,6 +390,27 @@ void octopus_destroy(octopus_system_t* ctx) {
     }
     if (ctx->lnn_input)  { nimcp_tensor_destroy(ctx->lnn_input);  ctx->lnn_input  = NULL; }
     if (ctx->lnn_output) { nimcp_tensor_destroy(ctx->lnn_output); ctx->lnn_output = NULL; }
+
+    /* Phase 4j: destroy trainers before the LNN networks they reference
+     * would be OK either way (trainer holds a non-owning ref), but destroy
+     * order mirrors create order for clarity. */
+    if (ctx->arm_trainers) {
+        for (uint32_t i = 0; i < ctx->n_arms; i++) {
+            if (ctx->arm_trainers[i]) {
+                lnn_training_destroy((lnn_training_ctx_t*)ctx->arm_trainers[i]);
+                ctx->arm_trainers[i] = NULL;
+            }
+        }
+        nimcp_free(ctx->arm_trainers);
+        ctx->arm_trainers = NULL;
+    }
+    if (ctx->lnn_train_input)  { nimcp_tensor_destroy(ctx->lnn_train_input);  ctx->lnn_train_input  = NULL; }
+    if (ctx->lnn_train_target) { nimcp_tensor_destroy(ctx->lnn_train_target); ctx->lnn_train_target = NULL; }
+    if (ctx->arm_prev_slices) { nimcp_free(ctx->arm_prev_slices); ctx->arm_prev_slices = NULL; }
+    if (ctx->arm_cur_slices)  { nimcp_free(ctx->arm_cur_slices);  ctx->arm_cur_slices  = NULL; }
+    if (ctx->arm_has_prev)    { nimcp_free(ctx->arm_has_prev);    ctx->arm_has_prev    = NULL; }
+    if (ctx->arm_has_cur)     { nimcp_free(ctx->arm_has_cur);     ctx->arm_has_cur     = NULL; }
+
     nimcp_free(ctx->arms);
     nimcp_free(ctx);
 }
@@ -360,6 +441,23 @@ int octopus_explore(octopus_system_t* ctx,
                            (nimcp_tensor_t*)ctx->lnn_output,
                            ctx->lnn_dt_ms);
         ctx->arms[a].vetoed = false;
+
+        /* Phase 4j: maintain two slice slots per arm (prev and cur) so
+         * octopus_train_step can form (prev → cur) predictive-coding pairs
+         * without requiring caller state. On each explore, shift the old
+         * `cur` slice into `prev` (if present) and capture the new slice
+         * into `cur`. This is cheap (128 bytes per arm per step). */
+        if (ctx->arm_cur_slices && ctx->arm_prev_slices &&
+            ctx->arm_has_cur && ctx->arm_has_prev) {
+            if (ctx->arm_has_cur[a]) {
+                memcpy(ctx->arm_prev_slices[a], ctx->arm_cur_slices[a],
+                       sizeof(float) * OCTOPUS_ARM_DIM);
+                ctx->arm_has_prev[a] = true;
+            }
+            memcpy(ctx->arm_cur_slices[a], slice,
+                   sizeof(float) * OCTOPUS_ARM_DIM);
+            ctx->arm_has_cur[a] = true;
+        }
 
         /* Ethics gate — arm decisions are checked per-arm (biology: each
          * arm has local reflex-level "don't touch that" reactions). */
@@ -562,6 +660,59 @@ float octopus_get_broadcast_state(const octopus_system_t* ctx,
                                    uint32_t arm_id) {
     if (!ctx || arm_id >= ctx->n_arms) return 0.0f;
     return ctx->arms[arm_id].broadcast_state;
+}
+
+/*============================================================================
+ * Phase 4j: gradient flow on arm LNNs.
+ *==========================================================================*/
+
+void octopus_set_training_enabled(octopus_system_t* ctx, bool enabled) {
+    if (!ctx) return;
+    ctx->stats.lnn_training_enabled = enabled;
+}
+
+int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
+    if (!ctx) return -1;
+    if (!ctx->stats.lnn_training_enabled) return -1;
+    if (!ctx->arm_trainers || !ctx->lnn_train_input || !ctx->lnn_train_target) {
+        return -1;
+    }
+
+    float* in_data  = (float*)nimcp_tensor_data(
+        (nimcp_tensor_t*)ctx->lnn_train_input);
+    float* tgt_data = (float*)nimcp_tensor_data(
+        (nimcp_tensor_t*)ctx->lnn_train_target);
+    if (!in_data || !tgt_data) return -1;
+
+    float total_loss   = 0.0f;
+    uint32_t trained   = 0;
+    for (uint32_t a = 0; a < ctx->n_arms; a++) {
+        lnn_training_ctx_t* trn = (lnn_training_ctx_t*)ctx->arm_trainers[a];
+        if (!trn) continue;
+        if (!ctx->arm_has_prev[a] || !ctx->arm_has_cur[a]) continue;
+
+        /* Pack (prev → cur) into the shared training tensors. */
+        memcpy(in_data,  ctx->arm_prev_slices[a], sizeof(float) * OCTOPUS_ARM_DIM);
+        memcpy(tgt_data, ctx->arm_cur_slices[a],  sizeof(float) * OCTOPUS_ARM_DIM);
+
+        float step_loss = 0.0f;
+        int rc = lnn_training_step(trn,
+                                    (nimcp_tensor_t*)ctx->lnn_train_input,
+                                    (nimcp_tensor_t*)ctx->lnn_train_target,
+                                    &step_loss);
+        if (rc == 0) {
+            total_loss += step_loss;
+            trained++;
+        }
+    }
+    if (trained > 0) {
+        ctx->stats.n_lnn_train_steps += trained;
+        ctx->stats.last_lnn_loss = total_loss / (float)trained;
+        if (loss_out) *loss_out = ctx->stats.last_lnn_loss;
+        return 0;
+    }
+    if (loss_out) *loss_out = 0.0f;
+    return -1;
 }
 
 void octopus_set_bridge_stats(octopus_system_t* ctx,
