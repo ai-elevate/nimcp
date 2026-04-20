@@ -139,6 +139,9 @@ typedef struct octopus_stats_s {
     uint32_t n_lnn_train_steps;         /**< Total LNN training steps across all arms */
     float    last_lnn_loss;             /**< Most recent training loss (MSE) */
     bool     lnn_training_enabled;      /**< true if gradient descent is live */
+    /* Phase 4l — natural-gradient regularization on arm latents. */
+    uint32_t n_ng_steps;                /**< Total natural-gradient steps across all arms */
+    bool     ng_enabled;                /**< true if NG preconditioner is live */
 } octopus_stats_t;
 
 /*============================================================================
@@ -287,6 +290,31 @@ NIMCP_EXPORT int octopus_train_step(octopus_system_t* ctx, float* loss_out);
  * continue to run as frozen reservoirs. Safe to toggle mid-run.
  */
 NIMCP_EXPORT void octopus_set_training_enabled(octopus_system_t* ctx, bool enabled);
+
+/**
+ * @brief Phase 4l: toggle natural-gradient latent regularization.
+ *
+ * When enabled, octopus_ng_regularize() applies a Fisher-preconditioned
+ * step to each non-vetoed arm's latent vector, pulling it slightly toward
+ * origin under the information-geometric metric. Complements Phase 4j's
+ * Adam-based weight training — NG here is on latent-space state, not on
+ * LNN weights (true weight-space NG requires bypassing the internal
+ * optimizer in lnn_training_step and is a deeper refactor).
+ */
+NIMCP_EXPORT void octopus_set_ng_enabled(octopus_system_t* ctx, bool enabled);
+
+/**
+ * @brief Phase 4l: apply one natural-gradient step to each arm's latent.
+ *
+ * Gradient signal: the latent itself (pulls toward zero). This is a
+ * regularization pressure; the Fisher metric makes the pull anisotropic
+ * along the directions arm latents actually vary, rather than uniformly
+ * shrinking all dimensions.
+ *
+ * @param ctx  Octopus context.
+ * @return     0 on success; -1 if ctx is NULL or NG is disabled.
+ */
+NIMCP_EXPORT int octopus_ng_regularize(octopus_system_t* ctx);
 
 NIMCP_EXPORT void octopus_set_bridge_stats(
     octopus_system_t* ctx,

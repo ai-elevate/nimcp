@@ -22,6 +22,8 @@
 #include "lnn/nimcp_lnn_network.h"
 /* Phase 4j: gradient flow on arm LNNs. */
 #include "lnn/nimcp_lnn_training.h"
+/* Phase 4l: natural gradient on arm latents. */
+#include "physics/geometry/nimcp_information_geometry.h"
 #include "utils/tensor/nimcp_tensor.h"
 
 #include <math.h>
@@ -88,6 +90,14 @@ struct octopus_system_s {
     float (*arm_cur_slices)[OCTOPUS_ARM_DIM];  /* [n_arms][64] */
     bool*   arm_has_prev;     /* bool[n_arms] — prev slot populated */
     bool*   arm_has_cur;      /* bool[n_arms] — cur slot populated */
+
+    /* Phase 4l: per-arm natural gradient preconditioner on arm latents.
+     * Fisher is updated lazily inside nimcp_natural_grad_step from the
+     * gradient signal we pass (the latent itself). This is latent-space
+     * regularization under an information-geometric metric; it is NOT
+     * weight-space NG replacing Adam (which would require bypassing
+     * lnn_training_step's internal optimizer — deferred). */
+    void**  arm_nat_grads;    /* nimcp_natural_gradient_t[n_arms] */
 };
 
 /*============================================================================
@@ -361,13 +371,41 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
         }
     }
 
+    /* Phase 4l: per-arm natural gradient preconditioners on latents.
+     * Allocated regardless of LNN status since NG operates on latent
+     * vectors, not weights. Failure is non-fatal — absent preconditioner
+     * just means octopus_ng_regularize() is a no-op. */
+    ctx->arm_nat_grads = (void**)nimcp_calloc(n_arms, sizeof(void*));
+    if (ctx->arm_nat_grads) {
+        nimcp_natural_grad_config_t ng_cfg = nimcp_natural_grad_default_config();
+        ng_cfg.learning_rate     = 1e-3f;
+        ng_cfg.momentum          = 0.9f;
+        ng_cfg.gradient_clip     = 1.0f;
+        ng_cfg.use_preconditioner = true;
+        uint32_t ng_created = 0;
+        for (uint32_t i = 0; i < n_arms; i++) {
+            nimcp_natural_gradient_t ng = nimcp_natural_grad_create(
+                &ng_cfg, OCTOPUS_ARM_DIM);
+            if (ng) {
+                ctx->arm_nat_grads[i] = (void*)ng;
+                ng_created++;
+            }
+        }
+        if (ng_created == 0) {
+            nimcp_free(ctx->arm_nat_grads);
+            ctx->arm_nat_grads = NULL;
+        }
+    }
+
     NIMCP_LOGGING_INFO("octopus_create: %u arms initialized "
-                       "(pink-noise=%s, DFA cadence=%u, LNN=%s, trainers=%s)",
+                       "(pink-noise=%s, DFA cadence=%u, LNN=%s, "
+                       "trainers=%s, NG=%s)",
                        n_arms, ctx->pink_gen ? "live" : "off",
                        ctx->dfa_update_every,
                        ctx->stats.lnn_enabled ? "live" : "off",
                        (ctx->arm_trainers && ctx->lnn_train_input &&
-                        ctx->lnn_train_target) ? "live" : "off");
+                        ctx->lnn_train_target) ? "live" : "off",
+                       ctx->arm_nat_grads ? "live" : "off");
     return ctx;
 }
 
@@ -410,6 +448,19 @@ void octopus_destroy(octopus_system_t* ctx) {
     if (ctx->arm_cur_slices)  { nimcp_free(ctx->arm_cur_slices);  ctx->arm_cur_slices  = NULL; }
     if (ctx->arm_has_prev)    { nimcp_free(ctx->arm_has_prev);    ctx->arm_has_prev    = NULL; }
     if (ctx->arm_has_cur)     { nimcp_free(ctx->arm_has_cur);     ctx->arm_has_cur     = NULL; }
+
+    /* Phase 4l: natural gradient preconditioners. */
+    if (ctx->arm_nat_grads) {
+        for (uint32_t i = 0; i < ctx->n_arms; i++) {
+            if (ctx->arm_nat_grads[i]) {
+                nimcp_natural_grad_destroy(
+                    (nimcp_natural_gradient_t)ctx->arm_nat_grads[i]);
+                ctx->arm_nat_grads[i] = NULL;
+            }
+        }
+        nimcp_free(ctx->arm_nat_grads);
+        ctx->arm_nat_grads = NULL;
+    }
 
     nimcp_free(ctx->arms);
     nimcp_free(ctx);
@@ -712,6 +763,51 @@ int octopus_train_step(octopus_system_t* ctx, float* loss_out) {
         return 0;
     }
     if (loss_out) *loss_out = 0.0f;
+    return -1;
+}
+
+/*============================================================================
+ * Phase 4l: natural-gradient latent regularization.
+ *==========================================================================*/
+
+void octopus_set_ng_enabled(octopus_system_t* ctx, bool enabled) {
+    if (!ctx) return;
+    /* Only flip the public flag if the NG infrastructure is actually live —
+     * prevents a true flag from promising capability we can't deliver. */
+    if (enabled && !ctx->arm_nat_grads) return;
+    ctx->stats.ng_enabled = enabled;
+}
+
+int octopus_ng_regularize(octopus_system_t* ctx) {
+    if (!ctx) return -1;
+    if (!ctx->stats.ng_enabled) return -1;
+    if (!ctx->arm_nat_grads) return -1;
+
+    uint32_t applied = 0;
+    for (uint32_t a = 0; a < ctx->n_arms; a++) {
+        if (ctx->arms[a].vetoed) continue;
+        nimcp_natural_gradient_t ng =
+            (nimcp_natural_gradient_t)ctx->arm_nat_grads[a];
+        if (!ng) continue;
+
+        /* Gradient signal = the latent itself — pulls latent toward origin.
+         * The Fisher metric makes this pull anisotropic along directions
+         * the arm's latent has historically varied, rather than uniform
+         * shrinkage. One ghost "gradient = param" step is cheap but still
+         * exercises the Fisher EMA update inside natural_grad_step. */
+        float grad_copy[OCTOPUS_ARM_DIM];
+        memcpy(grad_copy, ctx->arms[a].latent, sizeof(grad_copy));
+
+        if (nimcp_natural_grad_step(ng, ctx->arms[a].latent,
+                                     grad_copy, OCTOPUS_ARM_DIM)
+            == INFO_GEOM_OK) {
+            applied++;
+        }
+    }
+    if (applied > 0) {
+        ctx->stats.n_ng_steps += applied;
+        return 0;
+    }
     return -1;
 }
 
