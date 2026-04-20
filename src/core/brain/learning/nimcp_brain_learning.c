@@ -1057,6 +1057,18 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         nimcp_jepa_brain_bridges_tick(brain, features, num_features);
     }
 
+    /* Round A: drive 7 brain-region adapters (hippocampus, prefrontal,
+     * occipital, parietal_cortex, temporal, insula, brainstem). Drains
+     * their bio_router inboxes + advances time-dependent brainstem
+     * state. All were statues prior — no external drivers. */
+    {
+        extern void brain_tick_bio_async(brain_t brain, float dt_ms);
+        /* 16.6 ms nominal per-tick — 60 Hz brain cadence. Actual dt is
+         * whatever the training loop runs at; brainstem_update treats
+         * this as a smoothing constant, not a clock. */
+        brain_tick_bio_async(brain, 16.6f);
+    }
+
     /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */
     struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
     if (blv_debug_timing_enabled()) {

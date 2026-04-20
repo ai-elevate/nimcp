@@ -826,6 +826,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram_jepa_bridge.c  # Phase 4p: engram ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_consolidation_jepa_bridge.c  # Phase 4t: consolidation ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_bio_async.c  # Round A: 7 brain-region adapters tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_semantic_memory.c  # Phase M4: Semantic Memory Network (concept network with spreading activation)
