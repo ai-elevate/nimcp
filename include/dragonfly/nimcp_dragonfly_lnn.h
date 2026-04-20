@@ -100,6 +100,37 @@ NIMCP_EXPORT uint32_t dragonfly_lnn_get_output(const dragonfly_lnn_t* dl,
  */
 NIMCP_EXPORT uint64_t dragonfly_lnn_get_step_count(const dragonfly_lnn_t* dl);
 
+/**
+ * @brief Phase 4k: retrieve the SO(3)-accumulated target orientation.
+ *
+ * The reservoir integrates an SO(3) rotation each step from TSDN angular
+ * velocity (direction × angular_velocity × dt) via the Lie-algebra
+ * exponential map + group composition. This keeps orientation on the
+ * rotation manifold across arbitrarily long trajectories — no gimbal
+ * lock, no drift from Euler-angle accumulation.
+ *
+ * Output is axis-angle: a unit rotation axis plus an angle magnitude
+ * (radians). On a fresh reservoir, axis = (0,0,1) and angle = 0.
+ *
+ * @param dl            Handle.
+ * @param axis_out      3-float output buffer (rotation axis, unit).
+ * @param angle_out     Output: rotation magnitude in radians.
+ * @return 0 on success, -1 on NULL args.
+ */
+NIMCP_EXPORT int dragonfly_lnn_get_so3_axis_angle(const dragonfly_lnn_t* dl,
+                                                    float axis_out[3],
+                                                    float* angle_out);
+
+/**
+ * @brief Phase 4k: geodesic distance (radians) between current and a
+ *        reference orientation. Useful as a "how much has target
+ *        direction rotated since t0" scalar.
+ *
+ * @return Distance in radians [0, π]; 0 on error.
+ */
+NIMCP_EXPORT float dragonfly_lnn_get_so3_distance_from_identity(
+    const dragonfly_lnn_t* dl);
+
 #ifdef __cplusplus
 }
 #endif

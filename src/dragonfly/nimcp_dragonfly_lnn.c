@@ -12,6 +12,8 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/error/nimcp_error_codes.h"
+/* Phase 4k: SO(3) Lie group for target orientation tracking. */
+#include "utils/geometry/nimcp_lie_group.h"
 
 #include <math.h>
 #include <string.h>
@@ -24,6 +26,14 @@ struct dragonfly_lnn_s {
     float               last_output[DRAGONFLY_LNN_DIM];
     uint64_t            step_count;
     float               default_dt_ms;
+    /* Phase 4k: SO(3) accumulator for smooth target-orientation tracking.
+     * Updated each step by multiplying in the delta rotation derived from
+     * TSDN direction + angular velocity. Starts at identity. */
+    so3_rotation_t      orientation;
+    /* Last direction (radians) observed, used to compute the delta
+     * rotation around the vertical axis across steps. */
+    float               last_direction_rad;
+    bool                has_last_direction;
 };
 
 dragonfly_lnn_t* dragonfly_lnn_create(dragonfly_system_t* df) {
@@ -36,8 +46,10 @@ dragonfly_lnn_t* dragonfly_lnn_create(dragonfly_system_t* df) {
                               "dragonfly_lnn_create: handle alloc failed");
         return NULL;
     }
-    dl->df            = df;
-    dl->default_dt_ms = 1.0f;
+    dl->df                 = df;
+    dl->default_dt_ms      = 1.0f;
+    dl->orientation        = so3_identity();
+    dl->has_last_direction = false;
 
     /* Small NCP reservoir: 16 → 8 → 8 → 16. Enough to exhibit LTC dynamics
      * without over-parameterizing for what is a 16-dim smoothing task. */
@@ -151,6 +163,45 @@ int dragonfly_lnn_step(dragonfly_lnn_t* dl, float dt_ms) {
         dl->last_output[i] = tanhf(out_data[i]);
     }
     dl->step_count++;
+
+    /* Phase 4k: update the SO(3) orientation accumulator. Treat the TSDN
+     * vector's direction as azimuth (yaw) and elevation as pitch, and use
+     * angular_velocity as a rate signal. The delta rotation is constructed
+     * in the Lie algebra so(3) (axis-angle form), mapped to SO(3) via
+     * so3_exp, and composed with the current orientation via so3_multiply.
+     * This keeps orientation on the rotation manifold regardless of how
+     * many steps pass — no Euler-angle drift, no gimbal singularities. */
+    tsdn_vector_t tv = {0};
+    if (dragonfly_get_tsdn_vector(dl->df, &tv) == 0 && tv.valid) {
+        /* Yaw delta: change in direction since last observation, wrapped
+         * to [-π, π] so big jumps across the azimuth seam don't send the
+         * rotation the long way around. */
+        float yaw_delta = 0.0f;
+        if (dl->has_last_direction) {
+            yaw_delta = tv.direction - dl->last_direction_rad;
+            const float PI = 3.14159265358979323846f;
+            while (yaw_delta >  PI) yaw_delta -= 2.0f * PI;
+            while (yaw_delta < -PI) yaw_delta += 2.0f * PI;
+        }
+        dl->last_direction_rad = tv.direction;
+        dl->has_last_direction = true;
+
+        /* Also accumulate angular velocity × dt as an independent source
+         * — use a small weighted blend so noisy direction samples don't
+         * dominate the slower velocity estimate. */
+        float dt_s        = use_dt / 1000.0f;
+        float vel_delta   = tv.angular_velocity * dt_s;
+        float yaw         = 0.7f * yaw_delta + 0.3f * vel_delta;
+        float pitch_delta = tv.elevation * dt_s * 0.1f;
+
+        so3_algebra_t omega = {0};
+        omega.v[0] = pitch_delta; /* x-axis rotation = pitch */
+        omega.v[1] = 0.0f;
+        omega.v[2] = yaw;         /* z-axis rotation = yaw */
+        so3_rotation_t delta = so3_exp(&omega);
+        dl->orientation = so3_multiply(&dl->orientation, &delta);
+    }
+
     return 0;
 }
 
@@ -165,4 +216,34 @@ uint32_t dragonfly_lnn_get_output(const dragonfly_lnn_t* dl,
 
 uint64_t dragonfly_lnn_get_step_count(const dragonfly_lnn_t* dl) {
     return dl ? dl->step_count : 0;
+}
+
+int dragonfly_lnn_get_so3_axis_angle(const dragonfly_lnn_t* dl,
+                                       float axis_out[3],
+                                       float* angle_out) {
+    if (!dl || !axis_out || !angle_out) return -1;
+    so3_algebra_t logR = so3_log(&dl->orientation);
+    /* so3_log returns axis × angle. Decompose: angle = |v|, axis = v / angle.
+     * Identity rotation → |v| ≈ 0; report axis = (0,0,1), angle = 0. */
+    float mag = sqrtf(logR.v[0] * logR.v[0] +
+                      logR.v[1] * logR.v[1] +
+                      logR.v[2] * logR.v[2]);
+    if (mag < 1e-8f) {
+        axis_out[0] = 0.0f;
+        axis_out[1] = 0.0f;
+        axis_out[2] = 1.0f;
+        *angle_out  = 0.0f;
+    } else {
+        axis_out[0] = logR.v[0] / mag;
+        axis_out[1] = logR.v[1] / mag;
+        axis_out[2] = logR.v[2] / mag;
+        *angle_out  = mag;
+    }
+    return 0;
+}
+
+float dragonfly_lnn_get_so3_distance_from_identity(const dragonfly_lnn_t* dl) {
+    if (!dl) return 0.0f;
+    so3_rotation_t I = so3_identity();
+    return so3_distance(&I, &dl->orientation);
 }
