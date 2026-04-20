@@ -2137,8 +2137,8 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             goto cpu_learn_path;
         }
 
-        // 3. Compute loss — MSE for distillation (continuous targets [-1,1]),
-        //    BCE for classification (binary targets [0,1]).
+        // 3. Compute loss — MSE + cosine alignment for distillation,
+        //    BCE for classification.
         float loss = 0.0f;
         if (mode == LEARN_MODE_DISTILLATION) {
             // MSE loss: targets are continuous embeddings in [-1, 1]
@@ -2149,6 +2149,35 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             }
             loss /= (float)example->target_size;
             if (!isfinite(loss)) loss = 0.0f;
+
+            /* Cosine alignment term: penalize directional mismatch between
+             * output and target in the first 1024 dims (BERT embedding space).
+             * Without this, MSE alone can reduce element-wise error without
+             * learning meaningful directional alignment — especially when
+             * targets are zero-padded beyond dim 1024.
+             * Lambda bumped 0.5 → 2.0 after held-out eval at step 500 showed
+             * mean cos=0.02 (9/10 positive but weak). Stronger cosine gradient
+             * signal should accelerate alignment relative to MSE-only. */
+            {
+                const uint32_t EMBED_DIM = 1024;
+                uint32_t cos_dim = (example->target_size < EMBED_DIM)
+                                 ? example->target_size : EMBED_DIM;
+                float dot = 0.0f, norm_o = 0.0f, norm_t = 0.0f;
+                for (uint32_t ci = 0; ci < cos_dim; ci++) {
+                    float o = isfinite(output[ci]) ? output[ci] : 0.0f;
+                    float t = example->target[ci];
+                    dot += o * t;
+                    norm_o += o * o;
+                    norm_t += t * t;
+                }
+                norm_o = sqrtf(norm_o);
+                norm_t = sqrtf(norm_t);
+                if (norm_o > 1e-8f && norm_t > 1e-8f) {
+                    float cos_sim = dot / (norm_o * norm_t);
+                    float cosine_loss = 1.0f - cos_sim;  /* range [0, 2] */
+                    loss += 2.0f * cosine_loss;           /* lambda = 2.0 */
+                }
+            }
         } else {
             // BCE loss: targets are probabilities in [0, 1]
             float eps = 1e-7f;
@@ -2179,6 +2208,37 @@ float adaptive_network_learn(adaptive_network_t network, const training_example_
             float div_loss = nimcp_anti_collapse_diversity_loss(
                 &s_adap_anti_collapse, output, div_grad, example->target_size);
             loss += div_loss;
+        }
+
+        // 3b½. Cosine alignment gradient — inject into div_grad so it flows
+        //       through backprop via the target adjustment.
+        if (mode == LEARN_MODE_DISTILLATION && div_grad) {
+            const uint32_t EMBED_DIM = 1024;
+            uint32_t cos_dim = (example->target_size < EMBED_DIM)
+                             ? example->target_size : EMBED_DIM;
+            float dot = 0.0f, norm_o = 0.0f, norm_t = 0.0f;
+            for (uint32_t ci = 0; ci < cos_dim; ci++) {
+                float o = isfinite(output[ci]) ? output[ci] : 0.0f;
+                float t = example->target[ci];
+                dot += o * t;
+                norm_o += o * o;
+                norm_t += t * t;
+            }
+            norm_o = sqrtf(norm_o);
+            norm_t = sqrtf(norm_t);
+            if (norm_o > 1e-8f && norm_t > 1e-8f) {
+                float cos_sim = dot / (norm_o * norm_t);
+                float inv_o2 = 1.0f / (norm_o * norm_o);
+                float inv_ot = 1.0f / (norm_o * norm_t);
+                /* d(1-cos)/d(o[i]) = cos*o[i]/||o||^2 - t[i]/(||o||*||t||)
+                 * Added to div_grad with lambda=2.0 (same as loss term). */
+                for (uint32_t ci = 0; ci < cos_dim; ci++) {
+                    float o = isfinite(output[ci]) ? output[ci] : 0.0f;
+                    float g = 2.0f * (cos_sim * o * inv_o2
+                                    - example->target[ci] * inv_ot);
+                    div_grad[ci] += g;
+                }
+            }
         }
 
         // 3c. Gradient-normalized learning rate: scale LR so effective gradient

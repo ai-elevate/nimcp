@@ -156,4 +156,10 @@ void lnn_gradient_reset(lnn_gradient_ctx_t* ctx) {
     ctx->has_nan = false;
     ctx->has_inf = false;
     ctx->gradient_norm = 0.0f;
+
+    // Reset the per-batch adjoint step counter. It's a cumulative log counter
+    // and doesn't affect the actual compute (capped by max_adjoint_steps),
+    // but unbounded growth in logs was misleading ops into thinking the
+    // adjoint pass itself was scaling — it wasn't.
+    ctx->adjoint_steps = 0;
 }
