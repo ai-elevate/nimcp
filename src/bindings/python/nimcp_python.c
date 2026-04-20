@@ -4876,6 +4876,9 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SI("bridge_neuromod_samples",   st.bridge_neuromod_samples);
     /* Phase 4g addition: peer-module (Portia+Dragonfly)→octopus sampling. */
     SI("bridge_peer_samples",       st.bridge_peer_samples);
+    /* Phase 4h: per-arm LNN temporal integration. */
+    SI("n_lnn_steps",               st.n_lnn_steps);
+    PyDict_SetItemString(d, "lnn_enabled", st.lnn_enabled ? Py_True : Py_False);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */

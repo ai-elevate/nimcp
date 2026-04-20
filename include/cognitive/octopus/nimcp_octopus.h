@@ -132,6 +132,9 @@ typedef struct octopus_stats_s {
     uint64_t bridge_snn_samples;        /**< SNN spike-activity samples injected as arm input (Phase 4e) */
     uint64_t bridge_neuromod_samples;   /**< Neuromodulator samples injected as arm input (Phase 4f) */
     uint64_t bridge_peer_samples;       /**< Portia+Dragonfly peer samples injected as arm input (Phase 4g) */
+    /* Phase 4h — per-arm LNN temporal integration. */
+    uint32_t n_lnn_steps;               /**< Total LNN forward_step calls across all arms */
+    bool     lnn_enabled;               /**< true if per-arm LNN cells are live */
 } octopus_stats_t;
 
 /*============================================================================

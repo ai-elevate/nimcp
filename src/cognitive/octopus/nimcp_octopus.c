@@ -18,6 +18,10 @@
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "cognitive/memory/core/nimcp_fractal.h"
 
+/* Phase 4h: per-arm LNN cells for continuous-time temporal integration. */
+#include "lnn/nimcp_lnn_network.h"
+#include "utils/tensor/nimcp_tensor.h"
+
 #include <math.h>
 #include <string.h>
 
@@ -57,6 +61,18 @@ struct octopus_system_s {
      * once per N explorations, since DFA is O(N * num_scales). */
     uint32_t dfa_update_every;
     uint32_t dfa_update_counter;
+
+    /* Phase 4h: per-arm LNN cells. Each arm has its own small NCP network
+     * that replaces the 0.7*slice + 0.3*history_mean transform with proper
+     * continuous-time dynamics + learnable τ. Kept as void* to avoid
+     * leaking lnn_network_t through the public header. NULL-terminated
+     * or sized by n_arms — absence (NULL entries) means that arm falls
+     * back to the legacy transform. Shared 64-dim input/output tensors
+     * are reused across arms within a single explore() call. */
+    void**  arm_lnns;       /* lnn_network_t*[n_arms] */
+    void*   lnn_input;      /* nimcp_tensor_t* (1D, 64 floats) */
+    void*   lnn_output;     /* nimcp_tensor_t* (1D, 64 floats) */
+    float   lnn_dt_ms;      /* integration step in ms */
 };
 
 /*============================================================================
@@ -77,7 +93,14 @@ struct octopus_system_s {
  * principled info-theoretic diversity measure. */
 static void _arm_process_slice(octopus_arm_t* arm, const float* slice,
                                 pink_noise_generator_t pink_gen,
-                                octopus_stats_t* stats) {
+                                octopus_stats_t* stats,
+                                /* Phase 4h: optional per-arm LNN network
+                                 * + shared input/output tensors + dt.
+                                 * NULL lnn → fall back to legacy transform. */
+                                lnn_network_t* lnn,
+                                nimcp_tensor_t* lnn_input,
+                                nimcp_tensor_t* lnn_output,
+                                float lnn_dt_ms) {
     /* Store new input in history ring. */
     memcpy(arm->recent_inputs[arm->history_head], slice,
            sizeof(float) * OCTOPUS_ARM_DIM);
@@ -89,18 +112,50 @@ static void _arm_process_slice(octopus_arm_t* arm, const float* slice,
         if (stats) stats->n_pink_noise_injections++;
     }
 
-    /* Compute new latent — 70% current slice, 30% smoothed history mean,
-     * + pink-noise bias. Still tanh-squashed into [-1, 1]. */
-    float history_mean[OCTOPUS_ARM_DIM] = {0};
-    for (uint32_t h = 0; h < OCTOPUS_ARM_HISTORY; h++) {
-        for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
-            history_mean[d] += arm->recent_inputs[h][d];
+    /* Phase 4h path: run the arm's LNN cell over the slice+bias. LNN owns
+     * its own hidden state across calls (continuous-time dynamics with
+     * learnable τ), so the arm "remembers" without us computing a history
+     * mean. Pink-noise bias is added to the input pre-forward to keep the
+     * biological exploration signal. On any step-failure or unavailable
+     * LNN, fall through to the legacy 0.7/0.3 transform. */
+    bool lnn_path_ok = false;
+    if (lnn && lnn_input && lnn_output) {
+        float* in_data = (float*)nimcp_tensor_data(lnn_input);
+        if (in_data) {
+            for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
+                in_data[d] = slice[d] + pn_bias;
+            }
+            if (lnn_network_forward_step(lnn, lnn_input,
+                                         lnn_output, lnn_dt_ms) == 0) {
+                const float* out_data =
+                    (const float*)nimcp_tensor_data_const(lnn_output);
+                if (out_data) {
+                    for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
+                        /* LNN outputs can be unbounded; tanh-squash so the
+                         * downstream confidence/variance math stays well-
+                         * scaled like the legacy path. */
+                        arm->latent[d] = tanhf(out_data[d]);
+                    }
+                    if (stats) stats->n_lnn_steps++;
+                    lnn_path_ok = true;
+                }
+            }
         }
     }
-    for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
-        history_mean[d] /= (float)OCTOPUS_ARM_HISTORY;
-        float v = 0.7f * slice[d] + 0.3f * history_mean[d] + pn_bias;
-        arm->latent[d] = tanhf(v);
+    if (!lnn_path_ok) {
+        /* Legacy transform: 70% current slice, 30% smoothed history mean,
+         * + pink-noise bias. Still tanh-squashed into [-1, 1]. */
+        float history_mean[OCTOPUS_ARM_DIM] = {0};
+        for (uint32_t h = 0; h < OCTOPUS_ARM_HISTORY; h++) {
+            for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
+                history_mean[d] += arm->recent_inputs[h][d];
+            }
+        }
+        for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
+            history_mean[d] /= (float)OCTOPUS_ARM_HISTORY;
+            float v = 0.7f * slice[d] + 0.3f * history_mean[d] + pn_bias;
+            arm->latent[d] = tanhf(v);
+        }
     }
 
     /* Confidence = L1 norm of latent, normalized. Arms whose latent is
@@ -205,10 +260,54 @@ octopus_system_t* octopus_create(uint32_t n_arms) {
                            "arms will run without 1/f exploration bias");
     }
 
+    /* Phase 4h: per-arm LNN cells. One small NCP network per arm gives
+     * each arm independent continuous-time dynamics with learnable τ.
+     * NCP shape 64→16→16→64: small enough that 16 arms × NCP ~= 64KB,
+     * big enough to exhibit real LTC dynamics. Seed per arm differs so
+     * arms don't start identical — combined with pink noise, this
+     * guarantees arm diversity at init. Graceful failure: if LNN setup
+     * fails for any reason, arm_lnns stays NULL and _arm_process_slice
+     * falls back to the legacy 0.7/0.3 transform. */
+    ctx->lnn_dt_ms = 1.0f;
+    ctx->arm_lnns = (void**)nimcp_calloc(n_arms, sizeof(void*));
+    if (ctx->arm_lnns) {
+        uint32_t created = 0;
+        for (uint32_t i = 0; i < n_arms; i++) {
+            lnn_network_t* net = lnn_network_create_ncp(
+                OCTOPUS_ARM_DIM, 16, 16, OCTOPUS_ARM_DIM);
+            if (!net) continue;
+            if (lnn_network_init_weights(net, (uint64_t)(0xA17u + i)) != 0) {
+                lnn_network_destroy(net);
+                continue;
+            }
+            ctx->arm_lnns[i] = net;
+            created++;
+        }
+        if (created > 0) {
+            uint32_t dims[1] = { OCTOPUS_ARM_DIM };
+            ctx->lnn_input  = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+            ctx->lnn_output = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+            if (!ctx->lnn_input || !ctx->lnn_output) {
+                /* Tensor alloc failed — tear down LNNs, fall back. */
+                if (ctx->lnn_input)  { nimcp_tensor_destroy(ctx->lnn_input);  ctx->lnn_input  = NULL; }
+                if (ctx->lnn_output) { nimcp_tensor_destroy(ctx->lnn_output); ctx->lnn_output = NULL; }
+                for (uint32_t i = 0; i < n_arms; i++) {
+                    if (ctx->arm_lnns[i]) {
+                        lnn_network_destroy((lnn_network_t*)ctx->arm_lnns[i]);
+                        ctx->arm_lnns[i] = NULL;
+                    }
+                }
+            } else {
+                ctx->stats.lnn_enabled = true;
+            }
+        }
+    }
+
     NIMCP_LOGGING_INFO("octopus_create: %u arms initialized "
-                       "(pink-noise=%s, DFA cadence=%u)",
+                       "(pink-noise=%s, DFA cadence=%u, LNN=%s)",
                        n_arms, ctx->pink_gen ? "live" : "off",
-                       ctx->dfa_update_every);
+                       ctx->dfa_update_every,
+                       ctx->stats.lnn_enabled ? "live" : "off");
     return ctx;
 }
 
@@ -218,6 +317,19 @@ void octopus_destroy(octopus_system_t* ctx) {
         pink_noise_destroy(ctx->pink_gen);
         ctx->pink_gen = NULL;
     }
+    /* Phase 4h: LNN cells + shared tensors. */
+    if (ctx->arm_lnns) {
+        for (uint32_t i = 0; i < ctx->n_arms; i++) {
+            if (ctx->arm_lnns[i]) {
+                lnn_network_destroy((lnn_network_t*)ctx->arm_lnns[i]);
+                ctx->arm_lnns[i] = NULL;
+            }
+        }
+        nimcp_free(ctx->arm_lnns);
+        ctx->arm_lnns = NULL;
+    }
+    if (ctx->lnn_input)  { nimcp_tensor_destroy(ctx->lnn_input);  ctx->lnn_input  = NULL; }
+    if (ctx->lnn_output) { nimcp_tensor_destroy(ctx->lnn_output); ctx->lnn_output = NULL; }
     nimcp_free(ctx->arms);
     nimcp_free(ctx);
 }
@@ -240,7 +352,13 @@ int octopus_explore(octopus_system_t* ctx,
         for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) {
             slice[d] = input[(start + d) % input_len];
         }
-        _arm_process_slice(&ctx->arms[a], slice, ctx->pink_gen, &ctx->stats);
+        lnn_network_t* arm_lnn = (ctx->arm_lnns && ctx->stats.lnn_enabled)
+            ? (lnn_network_t*)ctx->arm_lnns[a] : NULL;
+        _arm_process_slice(&ctx->arms[a], slice, ctx->pink_gen, &ctx->stats,
+                           arm_lnn,
+                           (nimcp_tensor_t*)ctx->lnn_input,
+                           (nimcp_tensor_t*)ctx->lnn_output,
+                           ctx->lnn_dt_ms);
         ctx->arms[a].vetoed = false;
 
         /* Ethics gate — arm decisions are checked per-arm (biology: each
