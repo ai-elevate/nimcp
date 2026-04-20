@@ -931,16 +931,21 @@ void brain_destroy(brain_t brain)
             brain->portia_swarm_bridge = NULL;
             brain->portia_swarm_bridge_enabled = false;
         }
-        /* Octopus cognitive module (Phase 1 — core lifecycle only).
-         * Forward-declared void-pointer signature avoids pulling the full
-         * octopus header into this lifecycle TU; the callee's real
-         * signature accepts a pointer, so void* is ABI-compatible. */
+        /* Octopus cognitive module: destroy core first, then free the
+         * Phase 2a bridge state (which the core's hooks referenced). Order
+         * matters — if we freed bridge state first, any pending hook call
+         * from the core would UAF. The forward-declared void-pointer
+         * signatures avoid pulling the octopus headers into this TU. */
         if (brain->octopus) {
             typedef struct octopus_system_s octopus_system_t;
             extern void octopus_destroy(octopus_system_t* ctx);
             octopus_destroy((octopus_system_t*)brain->octopus);
             brain->octopus = NULL;
             brain->octopus_enabled = false;
+        }
+        if (brain->octopus_bridge_state) {
+            nimcp_free(brain->octopus_bridge_state);
+            brain->octopus_bridge_state = NULL;
         }
         /* Flight controller bridges */
         if (brain->mavlink_bridge) {

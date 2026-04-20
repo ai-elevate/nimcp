@@ -15,10 +15,12 @@
 #include "core/brain/nimcp_brain_internal.h"
 
 #include "cognitive/ethics/nimcp_ethics.h"
-#include "async/nimcp_bio_router.h"
-#include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+/* Phase 2a doesn't actually call into bio_router or fep_orchestrator yet
+ * (those wrappers only log). Drop the unused includes so the dep graph
+ * stays minimal — they'll come back in Phase 2b when the wrappers
+ * invoke real APIs. */
 
 #include <string.h>
 #include <stdint.h>
@@ -31,37 +33,45 @@
 typedef struct octopus_bridge_state_s {
     brain_t brain;
     uint64_t bio_broadcast_counter;
-    uint64_t ethics_eval_counter;
+    /* ethics_eval counter removed — octopus_stats.n_ethics_vetoes already
+     * tracks the subset that MATTERS (vetoes); total evaluations = n_arms
+     * × n_explorations, derivable from existing stats. */
 } octopus_bridge_state_t;
 
 /*============================================================================
  * Hook implementations
  *==========================================================================*/
 
-/* Ethics: convert arm latent → action_context_t, evaluate, return allowed. */
+/* Ethics: convert arm latent → action_context_t, evaluate, return allowed.
+ * Copies the latent into a local writable buffer to avoid a cast-away-const
+ * (action_context_t.features is `float*` by convention even though the
+ * evaluator reads it as const; copying is the safe portable path). */
 static bool _ethics_hook(const octopus_arm_t* arm, void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
-    if (!st || !st->brain || !st->brain->ethics || !arm) return true;
+    if (!st || !arm || !st->brain || !st->brain->ethics) return true;
 
-    /* Build an action_context_t from the arm's latent. First 5 floats of
-     * the arm latent map to the 5 specific violation metrics; the rest
-     * are the general feature vector. This is a heuristic projection —
-     * higher-fidelity mapping is Phase 2b work. */
+    float features_copy[OCTOPUS_ARM_DIM];
+    memcpy(features_copy, arm->latent, sizeof(features_copy));
+
+    /* First 5 floats map to the 5 specific violation metrics (clamped to
+     * [0,1] since they represent probability-like magnitudes); the rest
+     * are the general feature vector. Heuristic projection; higher-fidelity
+     * mapping is Phase 2b work. */
     action_context_t ctx = {0};
-    ctx.features = (float*)arm->latent;   /* ethics reads as const */
-    ctx.num_features = 64;
+    ctx.features = features_copy;
+    ctx.num_features = OCTOPUS_ARM_DIM;
     ctx.affected_agents = NULL;
     ctx.num_affected_agents = 0;
-    ctx.predicted_harm      = arm->latent[0] > 0 ? arm->latent[0] : 0.0f;
-    ctx.fairness_violation  = arm->latent[1] > 0 ? arm->latent[1] : 0.0f;
-    ctx.deception_level     = arm->latent[2] > 0 ? arm->latent[2] : 0.0f;
-    ctx.autonomy_violation  = arm->latent[3] > 0 ? arm->latent[3] : 0.0f;
-    ctx.privacy_violation   = arm->latent[4] > 0 ? arm->latent[4] : 0.0f;
+    ctx.predicted_harm      = features_copy[0] > 0 ? features_copy[0] : 0.0f;
+    ctx.fairness_violation  = features_copy[1] > 0 ? features_copy[1] : 0.0f;
+    ctx.deception_level     = features_copy[2] > 0 ? features_copy[2] : 0.0f;
+    ctx.autonomy_violation  = features_copy[3] > 0 ? features_copy[3] : 0.0f;
+    ctx.privacy_violation   = features_copy[4] > 0 ? features_copy[4] : 0.0f;
     ctx.consent_violation   = 0.0f;
 
-    st->ethics_eval_counter++;
+    /* brain->ethics is declared ethics_engine_t in brain_internal.h — no cast needed. */
     ethics_evaluation_t eval = ethics_engine_evaluate_action(
-        (ethics_engine_t)st->brain->ethics, &ctx);
+        st->brain->ethics, &ctx);
     return eval.allowed;
 }
 
@@ -125,13 +135,15 @@ static void _immune_hook(void* user) {
 
 bool nimcp_octopus_install_bridges(brain_t brain) {
     if (!brain || !brain->octopus) return false;
+    if (brain->octopus_bridge_state) return true;  /* idempotent */
 
-    /* Allocate bridge state once; leak-free because brain lifetime matches
-     * octopus lifetime. The state is stored as a per-hook user pointer. */
+    /* Allocate bridge state and track it on the brain so destroy path
+     * can free it (see nimcp_brain_part_lifecycle.c octopus teardown). */
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)nimcp_calloc(
         1, sizeof(octopus_bridge_state_t));
     if (!st) return false;
     st->brain = brain;
+    brain->octopus_bridge_state = (void*)st;
 
     octopus_system_t* ctx = (octopus_system_t*)brain->octopus;
 

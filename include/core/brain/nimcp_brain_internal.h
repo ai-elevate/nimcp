@@ -2249,6 +2249,7 @@ struct brain_struct {
     // core field + lifecycle; bridges land in subsequent phases.
     void* octopus;                               // octopus_system_t*
     bool octopus_enabled;
+    void* octopus_bridge_state;                  // octopus_bridge_state_t* (Phase 2a bridges)
 
     // === FLIGHT CONTROLLER BRIDGES ===
     // Standalone companion-computer modules. Created by edge init when
