@@ -443,3 +443,21 @@ float octopus_get_broadcast_state(const octopus_system_t* ctx,
     if (!ctx || arm_id >= ctx->n_arms) return 0.0f;
     return ctx->arms[arm_id].broadcast_state;
 }
+
+void octopus_set_bridge_stats(octopus_system_t* ctx,
+                               uint64_t engram_encodings,
+                               uint64_t kg_nodes_added,
+                               uint64_t stress_broadcasts,
+                               uint64_t fear_broadcasts,
+                               uint64_t amygdala_steps,
+                               float    last_cortisol,
+                               float    last_fear) {
+    if (!ctx) return;
+    ctx->stats.bridge_engram_encodings  = engram_encodings;
+    ctx->stats.bridge_kg_nodes_added    = kg_nodes_added;
+    ctx->stats.bridge_stress_broadcasts = stress_broadcasts;
+    ctx->stats.bridge_fear_broadcasts   = fear_broadcasts;
+    ctx->stats.bridge_amygdala_steps    = amygdala_steps;
+    ctx->stats.bridge_last_cortisol     = last_cortisol;
+    ctx->stats.bridge_last_fear         = last_fear;
+}

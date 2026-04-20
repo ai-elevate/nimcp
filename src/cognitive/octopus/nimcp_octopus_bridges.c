@@ -34,6 +34,7 @@
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -79,7 +80,25 @@ typedef struct octopus_bridge_state_s {
     float    last_fear;           /* most recently observed fear intensity */
     uint64_t stress_broadcasts;   /* number of STRESS_CONTEXT events emitted */
     uint64_t fear_broadcasts;     /* number of FEAR_CONTEXT events emitted */
+    uint64_t amygdala_steps;      /* number of amygdala_step() calls driven */
+    uint64_t last_step_us;        /* monotonic timestamp of last amygdala_step */
 } octopus_bridge_state_t;
+
+/* Publish all bridge-owned counters onto the octopus core's stats struct so
+ * a single octopus_get_stats() call sees both core and bridge activity.
+ * Called at the end of the immune hook since that fires every explore. */
+static void _publish_bridge_stats(octopus_bridge_state_t* st) {
+    if (!st || !st->brain || !st->brain->octopus) return;
+    octopus_set_bridge_stats(
+        (octopus_system_t*)st->brain->octopus,
+        st->engram_encodings,
+        st->kg_nodes_added,
+        st->stress_broadcasts,
+        st->fear_broadcasts,
+        st->amygdala_steps,
+        st->last_cortisol,
+        st->last_fear);
+}
 
 /* Lazy register against bio_router if install-time registration was
  * skipped (router wasn't up yet). Safe to call repeatedly — already
@@ -259,35 +278,55 @@ static void _bio_hook(const char* event, float value, void* user) {
     if (type == OCTOPUS_EVT_LOW_COHERENCE) st->engram_encodings++;
 }
 
-/* Immune: fires on every explore(). Emit a heartbeat msg so any
- * subscribed watchdog can detect if octopus has stopped heartbeating
- * (e.g., deadlocked inside a hook). Low magnitude, high frequency.
+/* Immune: fires on every explore(). Emit a heartbeat, step the amygdala
+ * forward (using real wall-clock dt), then on a 32x rate limit poll
+ * hypothalamus/amygdala state and broadcast STRESS/FEAR context events.
  *
- * Phase 3c: also poll hypothalamus cortisol level once per N heartbeats
- * and emit STRESS_CONTEXT events so downstream modules can modulate
- * their behavior on the current physiological stress level. Rate-limited
- * (every 32nd heartbeat) — stress state doesn't change at 8Hz. */
+ * Driving amygdala_step() here is cheap (μs-scale for a small module)
+ * and guarantees it advances every explore. Without this the amygdala's
+ * internal temporal dynamics would stay frozen and fear responses would
+ * be stale or all-zero. */
 static void _immune_hook(void* user) {
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
     _emit(st, OCTOPUS_EVT_HEARTBEAT, 0xFFFF, 0.0f);
+    if (!st || !st->brain) return;
 
-    if (!st || !st->brain || !st->brain->hypothalamus ||
-        !st->brain->hypothalamus_enabled) return;
+    /* === Drive amygdala_step per explore with real dt === */
+    if (st->brain->amygdala && st->brain->amygdala_enabled) {
+        uint64_t now_us = nimcp_time_get_us();
+        float dt_ms = 0.0f;
+        if (st->last_step_us != 0 && now_us > st->last_step_us) {
+            dt_ms = (float)(now_us - st->last_step_us) / 1000.0f;
+            /* Sanity cap: if the brain was paused, don't feed a huge dt. */
+            if (dt_ms > 5000.0f) dt_ms = 5000.0f;
+        }
+        st->last_step_us = now_us;
+        if (dt_ms > 0.0f) {
+            (void)amygdala_step((amygdala_t*)st->brain->amygdala, dt_ms);
+            st->amygdala_steps++;
+        }
+    }
+
+    /* Publish bridge counters every explore so octopus_get_stats is fresh. */
+    _publish_bridge_stats(st);
+
+    /* Rate-limit the slower physiological-signal polls. */
     if ((st->stress_broadcasts & 0x1F) != 0) {
         st->stress_broadcasts++;
-        return;  /* rate-limit: only every 32nd heartbeat actually polls */
+        return;
     }
     st->stress_broadcasts++;
 
-    hypothalamus_state_t hs = {0};
-    if (hypothalamus_get_state(
-            (const hypothalamus_adapter_t*)st->brain->hypothalamus, &hs)) {
-        float cortisol = hs.hpa_axis.cortisol_level;
-        st->last_cortisol = cortisol;
-        _emit(st, OCTOPUS_EVT_STRESS_CONTEXT, 0xFFFF, cortisol);
+    if (st->brain->hypothalamus && st->brain->hypothalamus_enabled) {
+        hypothalamus_state_t hs = {0};
+        if (hypothalamus_get_state(
+                (const hypothalamus_adapter_t*)st->brain->hypothalamus, &hs)) {
+            float cortisol = hs.hpa_axis.cortisol_level;
+            st->last_cortisol = cortisol;
+            _emit(st, OCTOPUS_EVT_STRESS_CONTEXT, 0xFFFF, cortisol);
+        }
     }
 
-    /* Phase 3c: amygdala fear signal — on same slow cadence. */
     if (st->brain->amygdala && st->brain->amygdala_enabled) {
         amyg_fear_response_t resp = {0};
         if (amygdala_get_response(

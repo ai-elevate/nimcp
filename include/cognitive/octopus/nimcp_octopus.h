@@ -115,6 +115,15 @@ typedef struct octopus_stats_s {
     float    avg_arm_dfa;            /**< Mean arm.dfa_exponent (>0)    */
     uint32_t n_dfa_computations;     /**< Times DFA has been updated    */
     uint32_t n_pink_noise_injections;/**< Times pink-noise was applied  */
+    /* Phase 3b/3c bridge counters — populated by the bridges TU (not
+     * octopus core), exposed here so a single stats query covers both. */
+    uint64_t bridge_engram_encodings;   /**< Engrams encoded on low-coherence    */
+    uint64_t bridge_kg_nodes_added;     /**< KG nodes added on delegations       */
+    uint64_t bridge_stress_broadcasts;  /**< Hypothalamus cortisol broadcasts    */
+    uint64_t bridge_fear_broadcasts;    /**< Amygdala fear-intensity broadcasts  */
+    uint64_t bridge_amygdala_steps;     /**< Times amygdala_step was driven      */
+    float    bridge_last_cortisol;      /**< Latest cortisol reading [0,1]       */
+    float    bridge_last_fear;          /**< Latest fear intensity [0,1]         */
 } octopus_stats_t;
 
 /*============================================================================
@@ -228,6 +237,26 @@ NIMCP_EXPORT const octopus_arm_t* octopus_get_arm(
     const octopus_system_t* ctx, uint32_t arm_id);
 NIMCP_EXPORT float octopus_get_broadcast_state(
     const octopus_system_t* ctx, uint32_t arm_id);
+
+/**
+ * @brief Bridge-stats writer (Phase 3b/3c).
+ *
+ * Bridges update their Phase 3b/3c counter fields on the octopus's stats
+ * struct via this function so a single octopus_get_stats() call surfaces
+ * both core and bridge activity. Safe to call from any thread that has
+ * exclusive access to ctx (bridges own the per-brain state, so single-
+ * writer in practice). All fields optional — pass negative floats / any
+ * value for unchanged (the function overwrites unconditionally).
+ */
+NIMCP_EXPORT void octopus_set_bridge_stats(
+    octopus_system_t* ctx,
+    uint64_t engram_encodings,
+    uint64_t kg_nodes_added,
+    uint64_t stress_broadcasts,
+    uint64_t fear_broadcasts,
+    uint64_t amygdala_steps,
+    float    last_cortisol,
+    float    last_fear);
 
 #ifdef __cplusplus
 }

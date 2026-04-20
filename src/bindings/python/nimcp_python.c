@@ -4852,6 +4852,15 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SF("avg_arm_dfa",           st.avg_arm_dfa);
     SI("n_dfa_computations",    st.n_dfa_computations);
     SI("n_pink_noise_injections", st.n_pink_noise_injections);
+    /* Phase 3b/3c bridge counters. SI uses unsigned long — uint64_t fits
+     * on 64-bit platforms; overflow only at ~10^18 events. */
+    SI("bridge_engram_encodings",   st.bridge_engram_encodings);
+    SI("bridge_kg_nodes_added",     st.bridge_kg_nodes_added);
+    SI("bridge_stress_broadcasts",  st.bridge_stress_broadcasts);
+    SI("bridge_fear_broadcasts",    st.bridge_fear_broadcasts);
+    SI("bridge_amygdala_steps",     st.bridge_amygdala_steps);
+    SF("bridge_last_cortisol",      st.bridge_last_cortisol);
+    SF("bridge_last_fear",          st.bridge_last_fear);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */
