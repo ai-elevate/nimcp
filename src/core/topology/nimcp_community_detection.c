@@ -325,7 +325,7 @@ float community_compute_modularity(
         return -1.0F;
     }
 
-    adjacency_list_t* graph = build_adjacency_list(network);
+    adjacency_list_t* graph = build_adjacency_list(network, NULL);
     if (!graph) return -1.0F;
 
     float m = (float)graph->total_edges;
@@ -810,7 +810,7 @@ hub_structure_t* community_detect_hubs(
     }
 
     // Build adjacency list for efficient graph traversal
-    adjacency_list_t* graph = build_adjacency_list(network);
+    adjacency_list_t* graph = build_adjacency_list(network, NULL);
     if (!graph) {
         nimcp_free(betweenness);
         hub_structure_free(hubs);
