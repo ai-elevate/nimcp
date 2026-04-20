@@ -5306,6 +5306,33 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
             brain.submit_sensory("somatosensory", somato_vec.tolist(), n_segments=len(somato_vec))
         except Exception: pass
 
+        # Phase 5B: drive the octopus with modality-specific enrichment.
+        # Each sampler reads the fresh cortex state that submit_sensory just
+        # pushed and feeds a stably-laid-out 64-dim vector to octopus_explore
+        # (orientation histogram / mel+MFCC / pain+temperature / etc.).
+        # These run IN ADDITION TO the generic Phase 5A tick that fires
+        # inside brain.learn_vector below — extra exposures give the arm
+        # LNNs more temporal signal per step. hasattr gates for older .so
+        # builds that don't have the bindings yet.
+        if present_v and hasattr(brain, "octopus_explore_from_occipital"):
+            try: brain.octopus_explore_from_occipital()
+            except Exception: pass
+        if present_a and hasattr(brain, "octopus_explore_from_audio_cortex"):
+            try: brain.octopus_explore_from_audio_cortex()
+            except Exception: pass
+        if hasattr(brain, "octopus_explore_from_somatosensory"):
+            try: brain.octopus_explore_from_somatosensory()
+            except Exception: pass
+        # SNN + neuromod + peers are always-on substrate; sample every N
+        # exposures to avoid inflating explore cost linearly with modalities.
+        if i % 5 == 0:
+            for m in ("octopus_explore_from_snn",
+                      "octopus_explore_from_neuromod",
+                      "octopus_explore_from_peers"):
+                if hasattr(brain, m):
+                    try: getattr(brain, m)()
+                    except Exception: pass
+
         if not (present_v or present_a or present_s):
             continue
 
