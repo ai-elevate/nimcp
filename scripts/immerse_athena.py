@@ -4989,25 +4989,29 @@ ENRICHMENT_FLAG = os.path.join(CHECKPOINT_DIR, ".sensory_enrichment_done")
 
 def run_sensory_enrichment(brain, composer, parent, decoder,
                            num_exposures=2500):
-    """One-time multimodal warm-up for brains trained on text-only data.
+    """Unified multimodal sensory enrichment — integrated, not phased.
 
-    Connects existing text-semantic representations to real sensory data
-    by presenting paired stimuli: a real image/sound alongside the text
-    concept that Athena already knows.
+    Previous version ran 4 sequential phases (visual → audio → cross-modal →
+    speech). That didn't match biology: infants don't see a picture, then
+    hear a sound, then hear a word in 250-exposure batches. They experience
+    all modalities together, bound by co-occurrence.
 
-    Structure (2500 exposures):
-      Phase 1 — Visual grounding (1000): CIFAR-100 images + concept names
-      Phase 2 — Audio grounding (750):   ESC-50 clips + sound descriptions
-      Phase 3 — Cross-modal binding (500): paired image+audio for same concept
-      Phase 4 — Speech grounding (250):  spoken word clips + word text
+    This version runs a single integrated loop. Each exposure picks a
+    concept and presents ALL available modalities (visual + audio + speech)
+    simultaneously via submit_sensory before calling learn_vector with a
+    unified teaching text. Concepts that only have one modality still
+    contribute — the brain just gets an unimodal exposure for those.
 
-    Each exposure:
-      1. Submit real sensory data via submit_sensory()
-      2. Present text description as features (she already knows these)
-      3. decide_full() → SNN bridges encode real data, cognitive pipeline
-         processes text → STDP binds the temporal co-occurrence
-      4. learn_vector() with moderate confidence (0.55) — not overwriting,
-         just nudging existing representations toward multimodal binding
+    Design notes:
+      - `brain.submit_sensory` calls are non-blocking queues on the brain
+        side; multiple calls before learn_vector stage data for the next
+        forward pass concurrently. The brain's multi-stream ingress
+        processes them in parallel (audio/visual/speech cortex threads).
+      - Integration happens when learn_vector runs: all queued sensory
+        modalities are present in the same forward pass, producing
+        cross-modal co-occurrence that STDP binds.
+      - Temporal alignment is exact per exposure — not separated by
+        thousands of iterations as before.
     """
     if not parent.multimodal:
         print("  [Enrichment] No multimodal data — skipping")
@@ -5039,157 +5043,210 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
     losses = []
     total = 0
 
-    # --- Phase 1: Visual grounding ---
-    n_visual = min(1000, num_exposures * 2 // 5)
-    if visual_labels:
-        print(f"\n  Phase 1: Visual grounding ({n_visual} images)")
-        random.shuffle(visual_labels)
-        for i in range(n_visual):
-            label = visual_labels[i % len(visual_labels)]
-            sample = mm.get_visual(label)
-            if not sample:
+    # Pool all available concepts across modalities — each exposure pulls
+    # one concept and binds whatever sensory samples are available for it.
+    if visual_labels: random.shuffle(visual_labels)
+    if audio_labels:  random.shuffle(audio_labels)
+    if speech_labels: random.shuffle(speech_labels)
+
+    # Concept source per exposure: weighted blend of the three pools,
+    # biased toward visual (largest class set) but mixing in audio and
+    # speech so the brain sees them interleaved, not batched.
+    all_concepts = []
+    for l in visual_labels or []: all_concepts.append(("visual", l))
+    for l in audio_labels or []:  all_concepts.append(("audio",  l))
+    for l in speech_labels or []: all_concepts.append(("speech", l))
+    random.shuffle(all_concepts)
+    if not all_concepts:
+        print("  [Enrichment] No concepts available — skipping")
+        return
+
+    # Portia/Dragonfly cognitive exposures are interleaved in the main loop.
+    # Portia: platform-adaptation module (resource/thermal/power scenarios).
+    #   No perceptual sensor — we label the exposure `portia_*` which routes
+    #   activation through the cognitive dispatch's Portia pathway. The
+    #   synthetic somato vector still fires, encoding the "platform state"
+    #   as internal-body-sense noise. That's the cheapest honest substrate.
+    # Dragonfly: visual target-tracking module. Reads the visual cortex
+    #   output, so its exposures are paired with a visual sample (picked
+    #   from the visual pool as a stand-in for "scene with target").
+    try:
+        _portia = list(PORTIA_TRAINING_DATA)
+        random.shuffle(_portia)
+    except NameError:
+        _portia = []
+    try:
+        _dragonfly = list(DRAGONFLY_TRAINING_DATA)
+        random.shuffle(_dragonfly)
+    except NameError:
+        _dragonfly = []
+
+    # Inject a Portia exposure every 10 steps, Dragonfly every 10 (offset).
+    # Rates chosen so cognitive modules see ~10% of the curriculum — enough
+    # to exercise the pathway without starving primary sensory grounding.
+    PORTIA_EVERY = 10
+    DRAGONFLY_EVERY = 10
+    DRAGONFLY_OFFSET = 5  # interleaved so they don't fire on the same step
+
+    print(f"\n  Integrated multimodal loop ({num_exposures} exposures, "
+          f"{len(visual_labels or [])} visual + {len(audio_labels or [])} audio + "
+          f"{len(speech_labels or [])} speech concepts; "
+          f"{len(_portia)} Portia + {len(_dragonfly)} Dragonfly scenarios interleaved)")
+
+    def _synthesize_somato_vec(text):
+        """Build a 64-dim somatosensory vector from text description.
+        Keyword-matched channels for texture/temperature/pressure + noise for
+        baseline tactile activity. Always produces something so every exposure
+        has a somato channel, not just those with explicit tactile words. """
+        desc_lower = text.lower()
+        words = set(desc_lower.split())
+        seed = hash(text) & 0xFFFFFFFF
+        rng = np.random.RandomState(seed)
+        vec = np.zeros(64, dtype=np.float32)
+        # Texture channels [0..15]
+        vec[0] = 0.8 if words & {"rough", "bumpy", "prickly", "scratchy", "wicker"} else 0.2
+        vec[1] = 0.8 if words & {"smooth", "silky", "soft", "velvet", "silk"} else 0.2
+        vec[2] = 0.8 if words & {"hard", "stone", "metal", "wood"} else 0.2
+        vec[3] = 0.8 if words & {"fuzzy", "fur", "wool", "cotton"} else 0.2
+        # Temperature channels [16..23]
+        vec[16] = 0.9 if words & {"hot", "warm", "fire"} else 0.3
+        vec[17] = 0.9 if words & {"cold", "ice", "cool"} else 0.3
+        vec[18] = 0.5 if words & {"wet", "water", "mud"} else 0.1
+        # Pressure channels [24..31]
+        vec[24] = 0.7 if words & {"heavy", "pressure", "squeeze"} else 0.2
+        vec[25] = 0.7 if words & {"light", "tickle", "gentle"} else 0.2
+        # Baseline proprioceptive noise on remaining channels — always present
+        vec += rng.randn(64).astype(np.float32) * 0.05
+        return np.clip(vec, 0.0, 1.0)
+
+    for i in range(num_exposures):
+        # Cognitive-module interleave check. When a Portia/Dragonfly step
+        # fires, we substitute that content for the perceptual exposure;
+        # the somato vector + visual sample (if Dragonfly) still fire so
+        # the cognitive pathway sees paired sensory context.
+        cognitive_scenario = None
+        cognitive_label = None
+        if _portia and (i % PORTIA_EVERY == 0):
+            item = _portia[(i // PORTIA_EVERY) % len(_portia)]
+            cognitive_scenario = f"{item['scenario']} Decision: {item['decision']}"
+            cognitive_label = item["concept"]
+        elif _dragonfly and (i % DRAGONFLY_EVERY == DRAGONFLY_OFFSET):
+            item = _dragonfly[(i // DRAGONFLY_EVERY) % len(_dragonfly)]
+            # Dragonfly is vision-based, so include reasoning text + pair
+            # the exposure with a visual sample (any from the pool) to
+            # exercise the vision→tracking pathway.
+            cognitive_scenario = f"{item['scenario']} Reasoning: {item['reasoning']}"
+            cognitive_label = item["concept"]
+
+        if cognitive_scenario:
+            # Cognitive path: no perceptual dataset sample for the concept;
+            # synthesized somato + (for Dragonfly) an arbitrary visual.
+            vis_sample = None
+            if cognitive_label and cognitive_label.startswith("dragonfly_") and visual_labels:
+                stand_in = visual_labels[i % len(visual_labels)]
+                vis_sample = mm.get_visual(stand_in)
+            aud_sample = None
+            spk_sample = None
+            concept = cognitive_label
+            teaching_override = cognitive_scenario
+        else:
+            teaching_override = None
+            primary_modality, concept = all_concepts[i % len(all_concepts)]
+
+            # Gather samples across modalities for this concept. get_*(label)
+            # returns the matching sample if present, None otherwise, so a visual
+            # concept may or may not have an audio/speech counterpart.
+            vis_sample   = mm.get_visual(concept)  if visual_labels else None
+            aud_sample   = mm.get_audio(concept)   if audio_labels  else None
+            spk_sample   = mm.get_speech(concept)  if speech_labels else None
+
+        # If the concept has no sample in its own primary modality
+        # (shouldn't happen but be defensive), try a multimodal pair.
+        if vis_sample is None and aud_sample is None and spk_sample is None:
+            pair = mm.get_multimodal_pair()
+            if pair:
+                if pair.get("visual"): vis_sample = pair["visual"]
+                if pair.get("audio"):  aud_sample = pair["audio"]
+                concept = pair.get("concept", concept)
+            else:
                 continue
 
-            raw_bytes, w, h, ch, _, desc = sample
-
-            # Submit real image
+        # Present all available modalities simultaneously. These calls stage
+        # data on per-cortex queues and return fast; the brain's cortex
+        # threads process them concurrently before the next forward pass.
+        # Somatosensory is synthesized for EVERY exposure — there's no
+        # natural dataset for it, but a biologically-plausible tactile
+        # channel should always be paired with visual/audio/speech so the
+        # somato cortex is co-active during binding.
+        present_v = present_a = present_s = False
+        if vis_sample:
+            raw_bytes, w, h, ch, _, _desc_v = vis_sample
             try:
-                brain.submit_sensory("visual", raw_bytes, width=w,
-                                     height=h, channels=ch)
-            except Exception:
-                continue
-
-            # Present the concept she already knows as text
-            teaching = f"This is a {label}. {desc}"
-            features = composer.compose(text=teaching, modality="visual")
-            target = make_semantic_target(teaching)
-
-            result = brain.decide_full(features)
-            loss = brain.learn_vector(features, target, label=label[:50],
-                                      confidence=0.55)
-            if loss is not None and loss >= 0:
-                losses.append(loss)
-
-            if decoder:
-                output_vec = result.get("output_vector")
-                if output_vec is not None:
-                    target_emb = encode_text(teaching)
-                    decoder.record_pair(output_vec, target_emb, teaching)
-
-            total += 1
-            if (i + 1) % 200 == 0:
-                avg = np.mean(losses[-200:]) if losses else 0
-                print(f"    [{i+1}/{n_visual}] avg_loss={avg:.4f}")
-
-    # --- Phase 2: Audio grounding ---
-    n_audio = min(750, num_exposures * 3 // 10)
-    if audio_labels:
-        print(f"\n  Phase 2: Audio grounding ({n_audio} clips)")
-        random.shuffle(audio_labels)
-        for i in range(n_audio):
-            label = audio_labels[i % len(audio_labels)]
-            sample = mm.get_audio(label)
-            if not sample:
-                continue
-
-            audio_samples, _, desc = sample
-
-            # Submit real audio
+                brain.submit_sensory("visual", raw_bytes, width=w, height=h, channels=ch)
+                present_v = True
+            except Exception: pass
+        if aud_sample:
+            aud_samples, _, _desc_a = aud_sample
             try:
-                brain.submit_sensory("audio", audio_samples)
-            except Exception:
-                continue
+                brain.submit_sensory("audio", aud_samples)
+                present_a = True
+            except Exception: pass
+        if spk_sample:
+            spk_samples, _, _desc_s = spk_sample
+            try:
+                brain.submit_sensory("speech", spk_samples)
+                present_s = True
+            except Exception: pass
 
-            teaching = f"Listen to this — {desc}"
-            features = composer.compose(text=teaching, modality="audio")
-            target = make_semantic_target(teaching)
+        # Synthesize + submit somatosensory for every exposure.
+        somato_vec = _synthesize_somato_vec(str(concept))
+        try:
+            brain.submit_sensory("somatosensory", somato_vec.tolist(), n_segments=len(somato_vec))
+        except Exception: pass
 
-            result = brain.decide_full(features)
-            loss = brain.learn_vector(features, target, label=label[:50],
-                                      confidence=0.55)
-            if loss is not None and loss >= 0:
-                losses.append(loss)
-
-            total += 1
-            if (i + 1) % 200 == 0:
-                avg = np.mean(losses[-200:]) if losses else 0
-                print(f"    [{i+1}/{n_audio}] avg_loss={avg:.4f}")
-
-    # --- Phase 3: Cross-modal binding ---
-    n_cross = min(500, num_exposures // 5)
-    print(f"\n  Phase 3: Cross-modal binding ({n_cross} paired stimuli)")
-    for i in range(n_cross):
-        pair = mm.get_multimodal_pair()
-        if not pair:
+        if not (present_v or present_a or present_s):
             continue
 
-        visual = pair["visual"]
-        audio_data = pair["audio"]
-        concept = pair["concept"]
-        teaching = pair["teaching_text"]
+        # Teaching text:
+        #  - Cognitive (portia/dragonfly) exposures use the scenario text
+        #    verbatim so the cognitive dispatch has rich content to train on.
+        #  - Perceptual exposures use an integrated description naming the
+        #    modalities that co-fired ("you see and hear a <concept>").
+        if teaching_override:
+            teaching = teaching_override
+        else:
+            parts = []
+            if present_v: parts.append("see")
+            if present_a: parts.append("hear")
+            if present_s: parts.append("hear the word")
+            teaching = f"You {' and '.join(parts)} '{concept}'."
 
-        # Submit both modalities simultaneously — temporal co-occurrence
-        if visual:
-            raw_bytes, w, h, ch, _, _ = visual
-            try:
-                brain.submit_sensory("visual", raw_bytes, width=w,
-                                     height=h, channels=ch)
-            except Exception:
-                pass
-
-        if audio_data:
-            audio_samples, _, _ = audio_data
-            try:
-                brain.submit_sensory("audio", audio_samples)
-            except Exception:
-                pass
-
-        features = composer.compose(text=teaching, modality="text")
+        features = composer.compose(text=teaching, modality="integrated")
         target = make_semantic_target(teaching)
 
+        # Confidence scales with corroborating evidence (0.55 unimodal →
+        # 0.65 trimodal). Cognitive exposures use 0.6 — moderate commit,
+        # matching the prior cross-modal phase's default.
+        n_mod = int(present_v) + int(present_a) + int(present_s)
+        confidence = 0.6 if teaching_override else (0.5 + 0.05 * n_mod)
+
         result = brain.decide_full(features)
-        loss = brain.learn_vector(features, target, label=concept[:50],
-                                  confidence=0.6)
+        loss = brain.learn_vector(features, target, label=str(concept)[:50],
+                                  confidence=confidence)
         if loss is not None and loss >= 0:
             losses.append(loss)
 
+        if decoder and present_v:
+            output_vec = result.get("output_vector")
+            if output_vec is not None:
+                target_emb = encode_text(teaching)
+                decoder.record_pair(output_vec, target_emb, teaching)
+
         total += 1
-        if (i + 1) % 100 == 0:
-            avg = np.mean(losses[-100:]) if losses else 0
-            print(f"    [{i+1}/{n_cross}] avg_loss={avg:.4f}")
-
-    # --- Phase 4: Speech grounding ---
-    n_speech = min(250, num_exposures // 10)
-    if speech_labels:
-        print(f"\n  Phase 4: Speech grounding ({n_speech} spoken words)")
-        for i in range(n_speech):
-            word = speech_labels[i % len(speech_labels)]
-            sample = mm.get_speech(word)
-            if not sample:
-                continue
-
-            audio_samples, _, desc = sample
-
-            # Submit real spoken word
-            try:
-                brain.submit_sensory("speech", audio_samples)
-            except Exception:
-                continue
-
-            teaching = f"The word '{word}'. {desc}"
-            features = composer.compose(text=teaching, modality="speech")
-            target = make_semantic_target(word)
-
-            result = brain.decide_full(features)
-            loss = brain.learn_vector(features, target, label=word[:50],
-                                      confidence=0.55)
-            if loss is not None and loss >= 0:
-                losses.append(loss)
-
-            total += 1
-            if (i + 1) % 50 == 0:
-                avg = np.mean(losses[-50:]) if losses else 0
-                print(f"    [{i+1}/{n_speech}] avg_loss={avg:.4f}")
+        if (i + 1) % 200 == 0:
+            avg = np.mean(losses[-200:]) if losses else 0
+            print(f"    [{i+1}/{num_exposures}] avg_loss={avg:.4f} "
+                  f"(last: {n_mod} modalities)")
 
     # --- Summary ---
     avg_loss = np.mean(losses) if losses else 0
