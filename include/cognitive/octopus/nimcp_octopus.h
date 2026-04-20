@@ -124,6 +124,8 @@ typedef struct octopus_stats_s {
     uint64_t bridge_amygdala_steps;     /**< Times amygdala_step was driven      */
     float    bridge_last_cortisol;      /**< Latest cortisol reading [0,1]       */
     float    bridge_last_fear;          /**< Latest fear intensity [0,1]         */
+    uint64_t bridge_wm_updates;         /**< Direct omni_wm_update calls (Phase 4a) */
+    uint64_t bridge_fear_conditionings; /**< Veto→amygdala stimulus count (Phase 4a) */
 } octopus_stats_t;
 
 /*============================================================================
@@ -256,7 +258,9 @@ NIMCP_EXPORT void octopus_set_bridge_stats(
     uint64_t fear_broadcasts,
     uint64_t amygdala_steps,
     float    last_cortisol,
-    float    last_fear);
+    float    last_fear,
+    uint64_t wm_updates,
+    uint64_t fear_conditionings);
 
 #ifdef __cplusplus
 }

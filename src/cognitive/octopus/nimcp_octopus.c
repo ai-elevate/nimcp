@@ -360,6 +360,7 @@ int octopus_integrate(octopus_system_t* ctx,
     per_elem_var /= (float)OCTOPUS_ARM_DIM;
     float coh = nimcp_clampf(1.0f - per_elem_var, 0.0f, 1.0f);
     ctx->last_coherence = coh;
+    ctx->stats.central_coherence = coh;  /* publish before hooks so hooks can read it */
     if (coherence) *coherence = coh;
 
     /* Fire downstream hooks. */
@@ -451,13 +452,17 @@ void octopus_set_bridge_stats(octopus_system_t* ctx,
                                uint64_t fear_broadcasts,
                                uint64_t amygdala_steps,
                                float    last_cortisol,
-                               float    last_fear) {
+                               float    last_fear,
+                               uint64_t wm_updates,
+                               uint64_t fear_conditionings) {
     if (!ctx) return;
-    ctx->stats.bridge_engram_encodings  = engram_encodings;
-    ctx->stats.bridge_kg_nodes_added    = kg_nodes_added;
-    ctx->stats.bridge_stress_broadcasts = stress_broadcasts;
-    ctx->stats.bridge_fear_broadcasts   = fear_broadcasts;
-    ctx->stats.bridge_amygdala_steps    = amygdala_steps;
-    ctx->stats.bridge_last_cortisol     = last_cortisol;
-    ctx->stats.bridge_last_fear         = last_fear;
+    ctx->stats.bridge_engram_encodings   = engram_encodings;
+    ctx->stats.bridge_kg_nodes_added     = kg_nodes_added;
+    ctx->stats.bridge_stress_broadcasts  = stress_broadcasts;
+    ctx->stats.bridge_fear_broadcasts    = fear_broadcasts;
+    ctx->stats.bridge_amygdala_steps     = amygdala_steps;
+    ctx->stats.bridge_last_cortisol      = last_cortisol;
+    ctx->stats.bridge_last_fear          = last_fear;
+    ctx->stats.bridge_wm_updates         = wm_updates;
+    ctx->stats.bridge_fear_conditionings = fear_conditionings;
 }

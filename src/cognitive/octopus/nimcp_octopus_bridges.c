@@ -32,6 +32,7 @@
 #include "core/brain/nimcp_brain_kg.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"
+#include "cognitive/omni/nimcp_omni_world_model.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -82,6 +83,12 @@ typedef struct octopus_bridge_state_s {
     uint64_t fear_broadcasts;     /* number of FEAR_CONTEXT events emitted */
     uint64_t amygdala_steps;      /* number of amygdala_step() calls driven */
     uint64_t last_step_us;        /* monotonic timestamp of last amygdala_step */
+    /* Phase 4a: world-model direct update (remember previous aggregated
+     * latent so current call can form a state→next_state transition). */
+    float    prev_aggregated[OCTOPUS_ARM_DIM];
+    bool     has_prev_aggregated; /* false until first integration fires */
+    uint64_t wm_updates;          /* direct omni_wm_update calls attempted  */
+    uint64_t fear_conditionings;  /* ethics-veto events fed to amygdala     */
 } octopus_bridge_state_t;
 
 /* Publish all bridge-owned counters onto the octopus core's stats struct so
@@ -97,7 +104,9 @@ static void _publish_bridge_stats(octopus_bridge_state_t* st) {
         st->fear_broadcasts,
         st->amygdala_steps,
         st->last_cortisol,
-        st->last_fear);
+        st->last_fear,
+        st->wm_updates,
+        st->fear_conditionings);
 }
 
 /* Lazy register against bio_router if install-time registration was
@@ -171,6 +180,26 @@ static bool _ethics_hook(const octopus_arm_t* arm, void* user) {
     /* brain->ethics is declared ethics_engine_t in brain_internal.h — no cast needed. */
     ethics_evaluation_t eval = ethics_engine_evaluate_action(
         st->brain->ethics, &ctx);
+
+    /* Phase 4a: feed vetoed patterns to the amygdala as conditioned
+     * stimuli. This closes the loop between ethics (explicit reasoning)
+     * and the amygdala (fast pattern-based threat response). Over time
+     * the amygdala learns to fire on patterns that lead to ethics
+     * violations — so future similar patterns produce fear-based
+     * inhibition before the ethics engine even evaluates. */
+    if (!eval.allowed &&
+        st->brain->amygdala && st->brain->amygdala_enabled) {
+        amyg_conditioned_stimulus_t cs = {0};
+        uint32_t nf = OCTOPUS_ARM_DIM < AMYG_MAX_CS_FEATURES
+                    ? OCTOPUS_ARM_DIM : AMYG_MAX_CS_FEATURES;
+        memcpy(cs.features, features_copy, sizeof(float) * nf);
+        cs.n_features = nf;
+        cs.modality   = 0;  /* generic internal-cognitive modality */
+        cs.salience   = eval.confidence;
+        (void)amygdala_process_stimulus(
+            (amygdala_t*)st->brain->amygdala, &cs, NULL);
+        st->fear_conditionings++;
+    }
     return eval.allowed;
 }
 
@@ -202,14 +231,67 @@ static void _swarm_hook(const octopus_arm_t* arm, void* user) {
     }
 }
 
-/* World model: broadcast WORLD_OBS with coherence as magnitude. Full
- * aggregated-latent delivery would require variable-sized messages; a
- * follow-up iteration can upgrade to latent-payload messages once the
- * subscriber side is defined. */
+/* World model: (1) broadcast WORLD_OBS via bio_router, (2) directly call
+ * omni_wm_update so the world model learns octopus's state→next_state
+ * transitions. state = previous aggregated latent, action = current
+ * aggregated, next_state = current aggregated (the arms collectively
+ * *are* the action that moved the system). Reward proxy is central
+ * coherence — when arms agree the transition was internally consistent.
+ *
+ * The first invocation has no prev_aggregated, so we skip the
+ * omni_wm_update and just stash the current aggregate. Subsequent calls
+ * form real transitions. Stack-allocated state wrappers avoid heap churn. */
 static void _world_hook(const float* aggregated, uint32_t len, void* user) {
-    (void)aggregated; (void)len;
     octopus_bridge_state_t* st = (octopus_bridge_state_t*)user;
+    if (!st || !aggregated || len == 0) return;
     _emit(st, OCTOPUS_EVT_WORLD_OBS, 0xFFFF, 0.0f);
+
+    if (!st->brain || !st->brain->omni_world_model) {
+        /* No world model on this brain — remember aggregate for later. */
+        if (len <= OCTOPUS_ARM_DIM) {
+            memcpy(st->prev_aggregated, aggregated, sizeof(float) * len);
+            st->has_prev_aggregated = true;
+        }
+        return;
+    }
+
+    uint32_t n = (len <= OCTOPUS_ARM_DIM) ? len : OCTOPUS_ARM_DIM;
+    if (st->has_prev_aggregated) {
+        /* Read coherence from octopus core stats — that's our reward proxy.
+         * Valid because octopus core publishes central_coherence BEFORE
+         * firing hooks (see octopus_integrate). */
+        octopus_stats_t cur_stats;
+        octopus_get_stats((octopus_system_t*)st->brain->octopus, &cur_stats);
+        float reward = cur_stats.central_coherence;
+
+        /* next_state is a stack copy of `aggregated` so we don't alias
+         * prev_aggregated when we update it at the end of this function. */
+        float next_buf[OCTOPUS_ARM_DIM];
+        memcpy(next_buf, aggregated, sizeof(float) * n);
+
+        /* Stack-allocated state wrappers; omni_wm_state_t references our
+         * buffers via `values` pointer. omni_wm_update() is synchronous
+         * (copies what it needs for replay), so these pointers are safe
+         * for the duration of the call. */
+        omni_wm_state_t s_prev = {0};
+        s_prev.values      = st->prev_aggregated;
+        s_prev.dim         = n;
+        s_prev.uncertainty = 1.0f - reward;
+
+        omni_wm_state_t s_next = {0};
+        s_next.values      = next_buf;
+        s_next.dim         = n;
+        s_next.uncertainty = 1.0f - reward;
+
+        /* action = the next_state itself (arms' collective decision IS
+         * what moved the system forward). action_dim matches state dim. */
+        omni_wm_update((omni_world_model_t*)st->brain->omni_world_model,
+                       &s_prev, next_buf, n, &s_next, reward);
+        st->wm_updates++;
+    }
+    /* Store current aggregate for next transition. */
+    memcpy(st->prev_aggregated, aggregated, sizeof(float) * n);
+    st->has_prev_aggregated = true;
 }
 
 /* FEP: broadcast the coherence signal. Low coherence = high surprise =

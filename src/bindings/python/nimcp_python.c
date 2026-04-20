@@ -4861,6 +4861,9 @@ static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args
     SI("bridge_amygdala_steps",     st.bridge_amygdala_steps);
     SF("bridge_last_cortisol",      st.bridge_last_cortisol);
     SF("bridge_last_fear",          st.bridge_last_fear);
+    /* Phase 4a additions. */
+    SI("bridge_wm_updates",         st.bridge_wm_updates);
+    SI("bridge_fear_conditionings", st.bridge_fear_conditionings);
     if (arms_list) {
         PyDict_SetItemString(d, "arm_broadcast_states", arms_list);
         Py_DECREF(arms_list);  /* SetItemString INCREFs; release our ref */
