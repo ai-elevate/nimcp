@@ -1039,6 +1039,12 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         clock_gettime(CLOCK_MONOTONIC, &_blv_t0);
         _blv_ann = _blv_plasticity = _blv_utm = _blv_snn = _blv_cnn = _blv_t0;
     }
+    /* Phase tracker for hang diagnosis: log entry to each major phase so a
+     * subsequent deadlock reveals which stage the worker was last in. */
+    static uint64_t _blv_step_tracker = 0;
+    _blv_step_tracker++;
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: entering ANN",
+                       (unsigned long long)_blv_step_tracker);
 
     PROBE_STAGE(brain, PROBE_TRAIN_INPUT, {
         PROBE_SET_INT(&_ctx, "num_features", (int64_t)num_features);
@@ -1220,6 +1226,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     }
 
     if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_ann);
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: entering plasticity",
+                       (unsigned long long)_blv_step_tracker);
 
     PROBE_STAGE(brain, PROBE_TRAIN_ADAPTIVE, {
         PROBE_SET_FLOAT(&_ctx, "loss", loss);
@@ -1434,6 +1442,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     }
 
     if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_plasticity);
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: entering secondary",
+                       (unsigned long long)_blv_step_tracker);
 
     /* Step 2: Secondary networks — unified or legacy path */
     if (brain->unified_training && brain->config.use_unified_training) {
@@ -2128,6 +2138,8 @@ sequential_training:
 
     struct timespec _blv_cog_t0;
     if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_cog_t0);
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: entering cognitive",
+                       (unsigned long long)_blv_step_tracker);
 
     /* === COGNITIVE SUBSYSTEM DISPATCH ===
      * Train ALL cognitive modules (grounded language, knowledge, VAE, FEP-parietal,
