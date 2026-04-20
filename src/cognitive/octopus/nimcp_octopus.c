@@ -415,23 +415,10 @@ void octopus_destroy(octopus_system_t* ctx) {
         pink_noise_destroy(ctx->pink_gen);
         ctx->pink_gen = NULL;
     }
-    /* Phase 4h: LNN cells + shared tensors. */
-    if (ctx->arm_lnns) {
-        for (uint32_t i = 0; i < ctx->n_arms; i++) {
-            if (ctx->arm_lnns[i]) {
-                lnn_network_destroy((lnn_network_t*)ctx->arm_lnns[i]);
-                ctx->arm_lnns[i] = NULL;
-            }
-        }
-        nimcp_free(ctx->arm_lnns);
-        ctx->arm_lnns = NULL;
-    }
-    if (ctx->lnn_input)  { nimcp_tensor_destroy(ctx->lnn_input);  ctx->lnn_input  = NULL; }
-    if (ctx->lnn_output) { nimcp_tensor_destroy(ctx->lnn_output); ctx->lnn_output = NULL; }
-
-    /* Phase 4j: destroy trainers before the LNN networks they reference
-     * would be OK either way (trainer holds a non-owning ref), but destroy
-     * order mirrors create order for clarity. */
+    /* Phase 4j trainers FIRST (reverse-create order). Current
+     * lnn_training_destroy / lnn_gradient_ctx_destroy don't dereference
+     * their held network pointer, so UAF is not possible today — but
+     * reverse-order destroy is the robust pattern if that ever changes. */
     if (ctx->arm_trainers) {
         for (uint32_t i = 0; i < ctx->n_arms; i++) {
             if (ctx->arm_trainers[i]) {
@@ -444,6 +431,20 @@ void octopus_destroy(octopus_system_t* ctx) {
     }
     if (ctx->lnn_train_input)  { nimcp_tensor_destroy(ctx->lnn_train_input);  ctx->lnn_train_input  = NULL; }
     if (ctx->lnn_train_target) { nimcp_tensor_destroy(ctx->lnn_train_target); ctx->lnn_train_target = NULL; }
+
+    /* Phase 4h: LNN cells + shared tensors (after trainers that referenced them). */
+    if (ctx->arm_lnns) {
+        for (uint32_t i = 0; i < ctx->n_arms; i++) {
+            if (ctx->arm_lnns[i]) {
+                lnn_network_destroy((lnn_network_t*)ctx->arm_lnns[i]);
+                ctx->arm_lnns[i] = NULL;
+            }
+        }
+        nimcp_free(ctx->arm_lnns);
+        ctx->arm_lnns = NULL;
+    }
+    if (ctx->lnn_input)  { nimcp_tensor_destroy(ctx->lnn_input);  ctx->lnn_input  = NULL; }
+    if (ctx->lnn_output) { nimcp_tensor_destroy(ctx->lnn_output); ctx->lnn_output = NULL; }
     if (ctx->arm_prev_slices) { nimcp_free(ctx->arm_prev_slices); ctx->arm_prev_slices = NULL; }
     if (ctx->arm_cur_slices)  { nimcp_free(ctx->arm_cur_slices);  ctx->arm_cur_slices  = NULL; }
     if (ctx->arm_has_prev)    { nimcp_free(ctx->arm_has_prev);    ctx->arm_has_prev    = NULL; }
