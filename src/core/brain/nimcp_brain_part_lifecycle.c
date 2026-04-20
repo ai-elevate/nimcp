@@ -959,6 +959,17 @@ void brain_destroy(brain_t brain)
             brain->amygdala = NULL;
             brain->amygdala_enabled = false;
         }
+        /* Dragonfly sidecar LNN reservoir (Phase 4i). Destroy the reservoir
+         * before the dragonfly system itself so the reservoir's non-owning
+         * back-reference stays valid. Forward-declared signatures keep the
+         * LNN/dragonfly headers out of this TU. */
+        if (brain->dragonfly_lnn) {
+            typedef struct dragonfly_lnn_s dragonfly_lnn_t;
+            extern void dragonfly_lnn_destroy(dragonfly_lnn_t* dl);
+            dragonfly_lnn_destroy((dragonfly_lnn_t*)brain->dragonfly_lnn);
+            brain->dragonfly_lnn = NULL;
+            brain->dragonfly_lnn_enabled = false;
+        }
         /* Flight controller bridges */
         if (brain->mavlink_bridge) {
             extern void nimcp_mavlink_bridge_destroy(void*);

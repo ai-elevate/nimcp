@@ -1065,6 +1065,9 @@ struct brain_struct {
     dragonfly_system_t* dragonfly;                        // Dragonfly target tracking system
     bool dragonfly_enabled;                               // Dragonfly enabled for this brain
     uint64_t last_dragonfly_update_us;                    // Last dragonfly update timestamp
+    /* Phase 4i: dragonfly sidecar LNN reservoir (continuous-time smoothing). */
+    void* dragonfly_lnn;                                  // dragonfly_lnn_t*
+    bool  dragonfly_lnn_enabled;                          // reservoir live flag
 
     // Dragonfly-Medulla Integration Bridge
     // BIOLOGICAL: Hunting behavior is modulated by arousal state, circadian rhythm,

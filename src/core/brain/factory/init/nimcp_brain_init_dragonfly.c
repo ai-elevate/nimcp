@@ -35,6 +35,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "dragonfly/nimcp_dragonfly.h"
+#include "dragonfly/nimcp_dragonfly_lnn.h"
 #include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -83,6 +84,8 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
     brain->dragonfly_enabled = false;
     brain->last_dragonfly_update_us = 0;
     brain->dragonfly_medulla_bridge = NULL;
+    brain->dragonfly_lnn = NULL;
+    brain->dragonfly_lnn_enabled = false;
 
     /* Check if dragonfly is disabled in config */
     if (!brain->config.enable_dragonfly) {
@@ -137,6 +140,16 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
     fprintf(stderr, "[DRAGONFLY] Dragonfly system created successfully\n");
     fprintf(stderr, "[DRAGONFLY]   Prediction horizon: %.1f ms\n", config.prediction_config.max_prediction_ms);
     fprintf(stderr, "[DRAGONFLY]   Navigation gain: %.1f\n", config.intercept_config.pn_gain);
+
+    /* Phase 4i: sidecar LNN reservoir for continuous-time temporal smoothing
+     * of dragonfly state. Non-fatal on failure — dragonfly runs without it. */
+    brain->dragonfly_lnn = (void*)dragonfly_lnn_create(dragonfly);
+    if (brain->dragonfly_lnn) {
+        brain->dragonfly_lnn_enabled = true;
+        fprintf(stderr, "[DRAGONFLY]   LNN reservoir: live (16-dim NCP)\n");
+    } else {
+        fprintf(stderr, "[DRAGONFLY]   LNN reservoir: unavailable (continuing without)\n");
+    }
 
     /* =========================================================================
      * DRAGONFLY-MEDULLA INTEGRATION BRIDGE
@@ -314,6 +327,13 @@ int brain_step_dragonfly(brain_t brain, uint64_t delta_t) {
     int result = dragonfly_update(brain->dragonfly, dt_seconds);
     if (result == 0) {
         brain->last_dragonfly_update_us = brain->current_time_us;
+        /* Phase 4i: drive the sidecar LNN forward with the same dt so its
+         * continuous-time state stays aligned with the dragonfly tick. */
+        if (brain->dragonfly_lnn && brain->dragonfly_lnn_enabled) {
+            (void)dragonfly_lnn_step(
+                (dragonfly_lnn_t*)brain->dragonfly_lnn,
+                dt_seconds * 1000.0f);
+        }
     }
     return result;
 }

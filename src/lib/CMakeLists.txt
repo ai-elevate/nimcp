@@ -2711,6 +2711,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_prediction.c # Trajectory prediction with IMM filter
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_intercept.c  # Interception planning (PN guidance)
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly.c            # Main coordinator (unified pipeline)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_lnn.c        # Phase 4i: sidecar LNN reservoir
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_visual_bridge.c  # Visual cortex bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_audio_bridge.c   # Audio cortex bridge (multi-modal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../dragonfly/nimcp_dragonfly_parietal_bridge.c  # Parietal lobe bridge (spatial, visuomotor)
