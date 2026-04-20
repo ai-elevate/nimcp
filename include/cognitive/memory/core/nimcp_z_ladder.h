@@ -1133,6 +1133,120 @@ NIMCP_EXPORT uint64_t z_ladder_current_time_ms(void);
  */
 NIMCP_EXPORT bool z_ladder_validate(z_ladder_t ladder);
 
+//=============================================================================
+// Long-Term Memory / Landmark API (Elephant-inspired enhancements)
+//=============================================================================
+//
+// The four-tier Z-Ladder covers automatic memory dynamics well: nodes get
+// promoted by use, demoted by neglect, decay by time, evict by capacity.
+// But some memories should behave differently — a matriarch elephant
+// remembers the water hole decades after the last drought, regardless of
+// rehearsal cadence. That's the landmark role: explicit user designation
+// that this memory gets elevated to Z3 permanent and is protected from
+// demotion indefinitely.
+//
+// Three functions cover the role:
+//   z_ladder_mark_landmark  — promote to Z3 + protect from demotion
+//   z_ladder_audit_landmarks — periodic integrity check of landmark set
+//   z_ladder_landmark_query  — prime-signature-keyed retrieval (oracle)
+
+/** Maximum number of landmarks a ladder can hold. */
+#define Z_LADDER_MAX_LANDMARKS 256u
+
+/** Summary returned by z_ladder_audit_landmarks. */
+typedef struct {
+    size_t   total_landmarks;          /**< Landmarks currently tracked */
+    size_t   present_in_ladder;        /**< Landmarks whose node is still in the ladder */
+    size_t   missing_from_ladder;      /**< Landmarks referenced by ID but node gone */
+    size_t   at_z3;                    /**< Landmarks currently in Z3 tier */
+    size_t   drifted_below_z3;         /**< Landmarks that somehow fell below Z3 */
+    float    min_consolidation;        /**< Lowest quat.w across landmarks */
+    float    avg_consolidation;        /**< Mean quat.w across landmarks */
+    uint64_t oldest_last_access_ms;    /**< Staleness signal (largest last-access age) */
+} z_ladder_landmark_audit_t;
+
+/** Result entry from z_ladder_landmark_query. */
+typedef struct {
+    uint64_t node_id;                  /**< Matched landmark node */
+    float    similarity;               /**< Prime-signature similarity [0, 1] */
+    pr_memory_tier_t tier;             /**< Current tier (should be Z3 for healthy landmarks) */
+} z_ladder_landmark_hit_t;
+
+/**
+ * @brief Mark a node as a landmark — elevate to Z3 and protect from demotion.
+ *
+ * Promotes the node to Z3 regardless of automatic promotion criteria.
+ * Subsequent demotion checks return false for this node, so natural
+ * decay cannot pull it back to Z2. The reason string is stored for
+ * introspection (e.g., "first_reward", "identity_event").
+ *
+ * No-op if node is already a landmark. Returns Z_LADDER_ERROR_NOT_FOUND
+ * if the node isn't in the ladder; Z_LADDER_ERROR_CAPACITY if the
+ * landmark set is full (Z_LADDER_MAX_LANDMARKS).
+ *
+ * @param ladder  Z-Ladder handle.
+ * @param node_id Node to mark.
+ * @param reason  Nul-terminated label (copied internally, up to 63 chars).
+ * @return Z_LADDER_SUCCESS or error code.
+ */
+NIMCP_EXPORT z_ladder_error_t z_ladder_mark_landmark(z_ladder_t ladder,
+                                                     uint64_t node_id,
+                                                     const char* reason);
+
+/**
+ * @brief Remove landmark designation (node becomes subject to normal decay).
+ *
+ * @return Z_LADDER_SUCCESS, Z_LADDER_ERROR_NOT_FOUND if not a landmark.
+ */
+NIMCP_EXPORT z_ladder_error_t z_ladder_unmark_landmark(z_ladder_t ladder,
+                                                       uint64_t node_id);
+
+/** Test whether a node is currently flagged as a landmark. */
+NIMCP_EXPORT bool z_ladder_is_landmark(z_ladder_t ladder, uint64_t node_id);
+
+/**
+ * @brief Walk the landmark set and compute an integrity summary.
+ *
+ * Fills out->* with current counts: total landmarks, how many still
+ * resolve to real nodes in the ladder, how many are in Z3 vs have
+ * drifted, and aggregate quaternion consolidation. Use to detect
+ * memory system health problems (landmarks leaking out of Z3, node
+ * IDs referring to removed nodes, etc.).
+ *
+ * @return Z_LADDER_SUCCESS, or Z_LADDER_ERROR_NULL_POINTER.
+ */
+NIMCP_EXPORT z_ladder_error_t z_ladder_audit_landmarks(
+    z_ladder_t ladder,
+    z_ladder_landmark_audit_t* out);
+
+/**
+ * @brief Query landmarks by prime-signature similarity — oracle retrieval.
+ *
+ * Walks the landmark set, computes prime-signature similarity between
+ * each landmark's node and the query signature, sorts descending,
+ * returns top-max_results entries in results[].
+ *
+ * This is the elephant-matriarch role: when the brain asks "what do I
+ * know long-term about X", this returns high-confidence landmark hits
+ * first, before degraded general-store retrieval is consulted.
+ *
+ * @param ladder      Z-Ladder handle.
+ * @param query       Prime signature to match against (must not be NULL).
+ * @param results     Output array (caller-allocated).
+ * @param max_results Capacity of results[].
+ * @param out_count   Receives number of matches written.
+ * @return Z_LADDER_SUCCESS or error code.
+ */
+NIMCP_EXPORT z_ladder_error_t z_ladder_landmark_query(
+    z_ladder_t ladder,
+    const prime_signature_t* query,
+    z_ladder_landmark_hit_t* results,
+    size_t max_results,
+    size_t* out_count);
+
+/** Number of currently-tracked landmarks. */
+NIMCP_EXPORT size_t z_ladder_landmark_count(z_ladder_t ladder);
+
 #ifdef __cplusplus
 }
 #endif

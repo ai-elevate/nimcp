@@ -24,6 +24,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -138,6 +139,20 @@ struct z_ladder_struct {
     //-------------------------------------------------------------------------
     nimcp_mutex_t mutex;
     bool mutex_initialized;
+
+    //-------------------------------------------------------------------------
+    // Phase E1 — Elephant-inspired landmark memory
+    //-------------------------------------------------------------------------
+    // Flat array of landmark records. Bounded by Z_LADDER_MAX_LANDMARKS so
+    // lookups stay constant-time even when the ladder has thousands of nodes.
+    // On mark: node is promoted to Z3, ID + reason stored here.
+    // On demotion check: landmark IDs are protected (return false).
+    struct {
+        uint64_t node_id;
+        char     reason[64];
+        bool     in_use;
+    } landmarks[Z_LADDER_MAX_LANDMARKS];
+    size_t n_landmarks;  // number of in_use slots (not max index used)
 };
 
 //=============================================================================
@@ -884,6 +899,18 @@ static bool check_promotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* 
 /**
  * @brief Check demotion criteria for a node (unlocked)
  */
+/* Phase E1: O(n_landmarks) lookup, bounded by Z_LADDER_MAX_LANDMARKS=256. */
+static bool is_landmark_unlocked(const z_ladder_t ladder, uint64_t node_id) {
+    if (!ladder || ladder->n_landmarks == 0) return false;
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (ladder->landmarks[i].in_use &&
+            ladder->landmarks[i].node_id == node_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool check_demotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* node) {
     if (!node) {
         return false;
@@ -894,6 +921,13 @@ static bool check_demotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* n
     if (tier <= PR_MEMORY_TIER_Z0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "check_demotion_unlocked: validation failed");
         return false;  // Z0 nodes get evicted, not demoted
+    }
+
+    /* Phase E1: landmark nodes are protected from demotion. Matriarchal
+     * memory pattern — once a memory is explicitly designated as permanent,
+     * it stays at Z3 regardless of strength decay. */
+    if (is_landmark_unlocked(ladder, node->node_id)) {
+        return false;
     }
 
     const z_tier_config_t* config = &ladder->tiers[tier].config;
@@ -3086,4 +3120,225 @@ int z_ladder_training_step(void* instance, float progress) {
     z_ladder_heartbeat_instance(NULL, "z_ladder_training_step", progress);
     (void)(struct z_hash_entry_struct*)instance; /* Module state available for step adaptation */
     return 0;
+}
+
+/*============================================================================
+ * Phase E1 — Elephant-inspired Landmark API
+ *==========================================================================*/
+
+/* Scan landmarks[] for an empty slot. Returns index or SIZE_MAX if full. */
+static size_t _find_free_landmark_slot(z_ladder_t ladder) {
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (!ladder->landmarks[i].in_use) return i;
+    }
+    return (size_t)-1;
+}
+
+z_ladder_error_t z_ladder_mark_landmark(z_ladder_t ladder,
+                                         uint64_t node_id,
+                                         const char* reason) {
+    if (!ladder) return Z_LADDER_ERROR_NULL_POINTER;
+
+    nimcp_mutex_lock(&ladder->mutex);
+
+    /* Already a landmark? No-op success. */
+    if (is_landmark_unlocked(ladder, node_id)) {
+        nimcp_mutex_unlock(&ladder->mutex);
+        return Z_LADDER_SUCCESS;
+    }
+
+    /* Node must already be in the ladder. */
+    z_hash_entry_t* _entry = hash_find(ladder, node_id);
+    pr_memory_node_t* node = _entry ? _entry->node : NULL;
+    if (!node) {
+        nimcp_mutex_unlock(&ladder->mutex);
+        return Z_LADDER_ERROR_NOT_FOUND;
+    }
+
+    /* Find a free slot. */
+    size_t slot = _find_free_landmark_slot(ladder);
+    if (slot == (size_t)-1) {
+        nimcp_mutex_unlock(&ladder->mutex);
+        return Z_LADDER_ERROR_CAPACITY;
+    }
+
+    /* Promote repeatedly until Z3 (at most 3 hops). */
+    while (node->tier < PR_MEMORY_TIER_Z3) {
+        z_ladder_error_t rc = promote_unlocked(ladder, node_id);
+        if (rc != Z_LADDER_SUCCESS && rc != Z_LADDER_ERROR_ALREADY_TOP) {
+            break;
+        }
+        /* Refresh node ptr — promotion may relocate. */
+        _entry = hash_find(ladder, node_id);
+        node = _entry ? _entry->node : NULL;
+        if (!node) {
+            nimcp_mutex_unlock(&ladder->mutex);
+            return Z_LADDER_ERROR_NOT_FOUND;
+        }
+    }
+
+    /* Register landmark record. */
+    ladder->landmarks[slot].node_id = node_id;
+    ladder->landmarks[slot].in_use  = true;
+    if (reason) {
+        size_t n = strlen(reason);
+        if (n >= sizeof(ladder->landmarks[slot].reason)) {
+            n = sizeof(ladder->landmarks[slot].reason) - 1;
+        }
+        memcpy(ladder->landmarks[slot].reason, reason, n);
+        ladder->landmarks[slot].reason[n] = '\0';
+    } else {
+        ladder->landmarks[slot].reason[0] = '\0';
+    }
+    ladder->n_landmarks++;
+
+    nimcp_mutex_unlock(&ladder->mutex);
+
+    NIMCP_LOGGING_INFO("z_ladder_mark_landmark: node=%llu reason='%s' (total=%zu)",
+                       (unsigned long long)node_id,
+                       reason ? reason : "(unspecified)",
+                       ladder->n_landmarks);
+    return Z_LADDER_SUCCESS;
+}
+
+z_ladder_error_t z_ladder_unmark_landmark(z_ladder_t ladder, uint64_t node_id) {
+    if (!ladder) return Z_LADDER_ERROR_NULL_POINTER;
+    nimcp_mutex_lock(&ladder->mutex);
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (ladder->landmarks[i].in_use &&
+            ladder->landmarks[i].node_id == node_id) {
+            ladder->landmarks[i].in_use = false;
+            ladder->landmarks[i].node_id = 0;
+            ladder->landmarks[i].reason[0] = '\0';
+            ladder->n_landmarks--;
+            nimcp_mutex_unlock(&ladder->mutex);
+            return Z_LADDER_SUCCESS;
+        }
+    }
+    nimcp_mutex_unlock(&ladder->mutex);
+    return Z_LADDER_ERROR_NOT_FOUND;
+}
+
+bool z_ladder_is_landmark(z_ladder_t ladder, uint64_t node_id) {
+    if (!ladder) return false;
+    nimcp_mutex_lock(&ladder->mutex);
+    bool result = is_landmark_unlocked(ladder, node_id);
+    nimcp_mutex_unlock(&ladder->mutex);
+    return result;
+}
+
+size_t z_ladder_landmark_count(z_ladder_t ladder) {
+    if (!ladder) return 0;
+    nimcp_mutex_lock(&ladder->mutex);
+    size_t n = ladder->n_landmarks;
+    nimcp_mutex_unlock(&ladder->mutex);
+    return n;
+}
+
+z_ladder_error_t z_ladder_audit_landmarks(z_ladder_t ladder,
+                                           z_ladder_landmark_audit_t* out) {
+    if (!ladder || !out) return Z_LADDER_ERROR_NULL_POINTER;
+    memset(out, 0, sizeof(*out));
+
+    nimcp_mutex_lock(&ladder->mutex);
+
+    uint64_t now_ms = get_current_time_ms();
+    double cons_sum = 0.0;
+    float  cons_min = 1.0f;
+    uint64_t oldest_access_age = 0;
+
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (!ladder->landmarks[i].in_use) continue;
+        out->total_landmarks++;
+        z_hash_entry_t* entry = hash_find(ladder, ladder->landmarks[i].node_id);
+        pr_memory_node_t* node = entry ? entry->node : NULL;
+        if (!node) {
+            out->missing_from_ladder++;
+            continue;
+        }
+        out->present_in_ladder++;
+        if (node->tier == PR_MEMORY_TIER_Z3) {
+            out->at_z3++;
+        } else {
+            out->drifted_below_z3++;
+        }
+        /* Consolidation lives in the quaternion state: w channel. */
+        float w = node->state.w;
+        if (w < cons_min) cons_min = w;
+        cons_sum += (double)w;
+
+        /* Staleness: compare last_accessed_ms (if tracked) to now_ms.
+         * We use pr_memory_node_get_idle_ms via direct field access if
+         * possible; fall back to 0 if not present. */
+        if (node->last_accessed_ms > 0 && now_ms > node->last_accessed_ms) {
+            uint64_t age = now_ms - node->last_accessed_ms;
+            if (age > oldest_access_age) oldest_access_age = age;
+        }
+    }
+
+    if (out->total_landmarks > 0) {
+        out->min_consolidation = cons_min;
+        out->avg_consolidation = (float)(cons_sum / (double)out->total_landmarks);
+    } else {
+        out->min_consolidation = 0.0f;
+        out->avg_consolidation = 0.0f;
+    }
+    out->oldest_last_access_ms = oldest_access_age;
+
+    nimcp_mutex_unlock(&ladder->mutex);
+    return Z_LADDER_SUCCESS;
+}
+
+z_ladder_error_t z_ladder_landmark_query(z_ladder_t ladder,
+                                          const prime_signature_t* query,
+                                          z_ladder_landmark_hit_t* results,
+                                          size_t max_results,
+                                          size_t* out_count) {
+    if (!ladder || !query || !results || !out_count || max_results == 0) {
+        return Z_LADDER_ERROR_NULL_POINTER;
+    }
+    *out_count = 0;
+
+    nimcp_mutex_lock(&ladder->mutex);
+
+    /* Greedy top-k: for each landmark, compute similarity; keep top-k in
+     * a small heap. Bounded n_landmarks × max_results inner loop. */
+    for (size_t i = 0; i < Z_LADDER_MAX_LANDMARKS; i++) {
+        if (!ladder->landmarks[i].in_use) continue;
+        z_hash_entry_t* entry = hash_find(ladder, ladder->landmarks[i].node_id);
+        pr_memory_node_t* node = entry ? entry->node : NULL;
+        if (!node) continue;
+        const prime_signature_t* sig = pr_memory_node_get_signature(node);
+        if (!sig) continue;
+
+        float sim = prime_sig_cosine(sig, query);
+        if (sim < 0.0f || !(sim == sim)) continue;  /* NaN-safe */
+
+        /* Insert into results in sorted order (max_results ≤ 32 typically,
+         * so linear-insert is fine). */
+        if (*out_count < max_results) {
+            size_t j = *out_count;
+            while (j > 0 && results[j - 1].similarity < sim) {
+                results[j] = results[j - 1];
+                j--;
+            }
+            results[j].node_id    = node->node_id;
+            results[j].similarity = sim;
+            results[j].tier       = node->tier;
+            (*out_count)++;
+        } else if (sim > results[max_results - 1].similarity) {
+            /* Heap full but new hit beats the weakest — shift in. */
+            size_t j = max_results - 1;
+            while (j > 0 && results[j - 1].similarity < sim) {
+                results[j] = results[j - 1];
+                j--;
+            }
+            results[j].node_id    = node->node_id;
+            results[j].similarity = sim;
+            results[j].tier       = node->tier;
+        }
+    }
+
+    nimcp_mutex_unlock(&ladder->mutex);
+    return Z_LADDER_SUCCESS;
 }

@@ -4977,6 +4977,98 @@ static PyObject* Brain_octopus_set_jepa_enabled(BrainObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
+/* -------- Phase E1: elephant-inspired long-term memory (landmark API) --------
+ * Surfaces Z-Ladder's landmark machinery. Landmarks are explicitly-designated
+ * permanent memories — promoted to Z3 and protected from automatic demotion.
+ * These methods give Python observability (stats / audit) + the mark/unmark
+ * entrypoints. Node creation from Python is a deeper plumbing problem
+ * (requires pr_node_manager ownership) and is out of scope for Phase E1. */
+#include "cognitive/memory/core/nimcp_z_ladder.h"
+
+static PyObject* Brain_long_term_stats(BrainObject* self, PyObject* Py_UNUSED(a)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+
+    z_ladder_t ladder = self->brain->internal_brain->pr_z_ladder;
+    if (!ladder) {
+        PyDict_SetItemString(d, "enabled", Py_False);
+        return d;
+    }
+    PyDict_SetItemString(d, "enabled", Py_True);
+
+    size_t n_landmarks = z_ladder_landmark_count(ladder);
+    PyObject* v = PyLong_FromSize_t(n_landmarks);
+    if (v) { PyDict_SetItemString(d, "landmark_count", v); Py_DECREF(v); }
+
+    size_t total = z_ladder_get_total_count(ladder);
+    v = PyLong_FromSize_t(total);
+    if (v) { PyDict_SetItemString(d, "total_nodes", v); Py_DECREF(v); }
+
+    /* Per-tier counts. */
+    for (int tier = 0; tier < 4; tier++) {
+        size_t n = z_ladder_get_count(ladder, (pr_memory_tier_t)tier);
+        char key[16];
+        snprintf(key, sizeof(key), "z%d_count", tier);
+        v = PyLong_FromSize_t(n);
+        if (v) { PyDict_SetItemString(d, key, v); Py_DECREF(v); }
+    }
+
+    /* Audit summary. */
+    z_ladder_landmark_audit_t audit;
+    if (z_ladder_audit_landmarks(ladder, &audit) == Z_LADDER_SUCCESS) {
+        v = PyLong_FromSize_t(audit.present_in_ladder);
+        if (v) { PyDict_SetItemString(d, "landmarks_present", v); Py_DECREF(v); }
+        v = PyLong_FromSize_t(audit.missing_from_ladder);
+        if (v) { PyDict_SetItemString(d, "landmarks_missing", v); Py_DECREF(v); }
+        v = PyLong_FromSize_t(audit.at_z3);
+        if (v) { PyDict_SetItemString(d, "landmarks_at_z3", v); Py_DECREF(v); }
+        v = PyLong_FromSize_t(audit.drifted_below_z3);
+        if (v) { PyDict_SetItemString(d, "landmarks_drifted", v); Py_DECREF(v); }
+        v = PyFloat_FromDouble((double)audit.min_consolidation);
+        if (v) { PyDict_SetItemString(d, "landmark_min_consolidation", v); Py_DECREF(v); }
+        v = PyFloat_FromDouble((double)audit.avg_consolidation);
+        if (v) { PyDict_SetItemString(d, "landmark_avg_consolidation", v); Py_DECREF(v); }
+    }
+    return d;
+}
+
+static PyObject* Brain_long_term_mark_landmark(BrainObject* self, PyObject* args) {
+    unsigned long long node_id = 0;
+    const char* reason = NULL;
+    if (!PyArg_ParseTuple(args, "K|s", &node_id, &reason)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    z_ladder_t ladder = self->brain->internal_brain->pr_z_ladder;
+    if (!ladder) {
+        PyErr_SetString(PyExc_RuntimeError, "Z-Ladder not initialized on this brain");
+        return NULL;
+    }
+    z_ladder_error_t rc = z_ladder_mark_landmark(ladder, (uint64_t)node_id, reason);
+    return PyLong_FromLong((long)rc);
+}
+
+static PyObject* Brain_long_term_unmark_landmark(BrainObject* self, PyObject* args) {
+    unsigned long long node_id = 0;
+    if (!PyArg_ParseTuple(args, "K", &node_id)) return NULL;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    z_ladder_t ladder = self->brain->internal_brain->pr_z_ladder;
+    if (!ladder) Py_RETURN_NONE;
+    z_ladder_error_t rc = z_ladder_unmark_landmark(ladder, (uint64_t)node_id);
+    return PyLong_FromLong((long)rc);
+}
+
 /**
  * WHAT: Get epistemic + aleatoric uncertainty for input features
  * WHY:  Metacognitive monitoring — "how confident is the brain?"
@@ -9414,6 +9506,16 @@ static PyMethodDef Brain_methods[] = {
     {"octopus_set_jepa_enabled",
      (PyCFunction)Brain_octopus_set_jepa_enabled, METH_VARARGS,
      "Toggle JEPA latent-space predictive training: octopus_set_jepa_enabled(bool)"},
+    /* Phase E1: elephant-inspired long-term memory landmark API. */
+    {"long_term_stats",
+     (PyCFunction)Brain_long_term_stats, METH_NOARGS,
+     "Z-Ladder + landmark stats: long_term_stats() -> dict {enabled, landmark_count, total_nodes, z0..z3_count, landmarks_present, ...}"},
+    {"long_term_mark_landmark",
+     (PyCFunction)Brain_long_term_mark_landmark, METH_VARARGS,
+     "Mark a node as permanent landmark (elephant-matriarch pattern): long_term_mark_landmark(node_id, reason='') -> int error code"},
+    {"long_term_unmark_landmark",
+     (PyCFunction)Brain_long_term_unmark_landmark, METH_VARARGS,
+     "Remove landmark designation: long_term_unmark_landmark(node_id) -> int error code"},
     {"get_uncertainty", (PyCFunction)Brain_get_uncertainty, METH_VARARGS,
      "Get uncertainty: get_uncertainty([features]) -> dict"},
     {"self_assess", (PyCFunction)Brain_self_assess, METH_VARARGS,
