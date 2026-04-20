@@ -1079,6 +1079,20 @@ struct brain_struct {
     void* cerebellum_jepa_bridge;    // cerebellum_jepa_bridge_t*    (4s)
     void* soma_jepa_bridge;          // soma_jepa_bridge_t*          (4r)
 
+    /* Round A/2: activate 10 formerly-orphaned perception bridges.
+     * All void* to keep perception headers out of this TU. Owned by
+     * brain — created in brain factory, destroyed in teardown. */
+    void* visual_cortex_fep_bridge;    // visual_cortex_fep_bridge_t*
+    void* audio_cortex_fep_bridge;     // audio_cortex_fep_bridge_t*
+    void* speech_cortex_fep_bridge;    // speech_cortex_fep_bridge_t*
+    void* pr_predictive_bridge;        // pr_predictive_bridge_t*
+    void* visual_immune_bridge;        // visual_immune_bridge_t*
+    void* audio_immune_bridge;         // audio_immune_bridge_t*
+    void* speech_immune_bridge;        // speech_immune_bridge_t*
+    void* visual_cortical_bridge;      // visual_cortical_bridge_t*
+    void* audio_cortical_bridge;       // audio_cortical_bridge_t*
+    void* speech_cortical_bridge;      // speech_cortical_bridge_t*
+
     // Dragonfly-Medulla Integration Bridge
     // BIOLOGICAL: Hunting behavior is modulated by arousal state, circadian rhythm,
     // and protection level. Alert dragonflies hunt better than drowsy ones.

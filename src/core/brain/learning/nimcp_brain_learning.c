@@ -1069,6 +1069,14 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         brain_tick_bio_async(brain, 16.6f);
     }
 
+    /* Round A/2: drive the 6 tick-drivable perception bridges (3 FEP +
+     * 3 immune). Cortical bridges are sensor-input-driven and not
+     * advanced here. */
+    {
+        extern void nimcp_brain_tick_perception_bridges(brain_t brain, float dt_ms);
+        nimcp_brain_tick_perception_bridges(brain, 16.6f);
+    }
+
     /* Per-phase wall clock timing (NIMCP_DEBUG_TIMING=1 to enable) */
     struct timespec _blv_t0, _blv_ann, _blv_plasticity, _blv_utm, _blv_snn, _blv_cnn, _blv_end;
     if (blv_debug_timing_enabled()) {

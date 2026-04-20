@@ -976,6 +976,12 @@ void brain_destroy(brain_t brain)
             extern void nimcp_jepa_brain_bridges_destroy(brain_t brain);
             nimcp_jepa_brain_bridges_destroy(brain);
         }
+        /* Round A/2: perception bridges — destroy before cortex + immune
+         * teardown since the 10 bridges hold non-owning refs into them. */
+        {
+            extern void nimcp_brain_destroy_perception_bridges(brain_t brain);
+            nimcp_brain_destroy_perception_bridges(brain);
+        }
         /* Dragonfly system + medulla bridge: previously leaked on brain
          * teardown. Medulla bridge destroy is outside-in (bridge first,
          * then the dragonfly it references) to mirror create order. */
