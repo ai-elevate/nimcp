@@ -2869,7 +2869,7 @@ int snn_network_save(snn_network_t* network, const char* path) {
         return -1;
     }
 
-    NIMCP_LOGGING_INFO("SNN network saved to %s (gzip, %u neurons, %u CSR pops)",
+    NIMCP_LOGGING_INFO("SNN network saved to %s (raw, %u neurons, %u CSR pops)",
                        path, total_neurons, n_lightweight);
     return 0;
 }
