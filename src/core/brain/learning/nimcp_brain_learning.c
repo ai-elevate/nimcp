@@ -2138,7 +2138,7 @@ sequential_training:
 
     struct timespec _blv_cog_t0;
     if (blv_debug_timing_enabled()) clock_gettime(CLOCK_MONOTONIC, &_blv_cog_t0);
-    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: entering cognitive",
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: entering cognitive/subsystem_dispatch",
                        (unsigned long long)_blv_step_tracker);
 
     /* === COGNITIVE SUBSYSTEM DISPATCH ===
@@ -2147,6 +2147,8 @@ sequential_training:
      * Gated to run every N steps (default: 5) to amortize cost. */
     brain_train_cognitive_subsystems(brain, features, num_features,
                                       target, target_size, label, loss);
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/engram_encoding",
+                       (unsigned long long)_blv_step_tracker);
 
     PROBE_STAGE(brain, PROBE_TRAIN_COGNITIVE, {
         PROBE_SET_FLOAT(&_ctx, "vae_loss", brain->cognitive_stats.vae_last_loss);
@@ -2471,6 +2473,8 @@ sequential_training:
         }
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/theory_of_mind",
+                       (unsigned long long)_blv_step_tracker);
     /* === THEORY OF MIND: Update self-model during training ===
      * Train the ToM module by recording our own learning decisions.
      * This builds the self-model that's necessary for inferring
@@ -2511,6 +2515,8 @@ sequential_training:
          * A dedicated self-rehearsal API would be needed if this is wanted. */
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/recursive_cog",
+                       (unsigned long long)_blv_step_tracker);
     /* === RECURSIVE COGNITION: Exercise decomposition during training ===
      * When training on complex reasoning tasks, exercise the RCOG engine's
      * goal decomposition pathway. */
@@ -2595,6 +2601,8 @@ sequential_training:
         ethics_engine_evaluate_action(brain->ethics, &action);
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/imagination",
+                       (unsigned long long)_blv_step_tracker);
     /* === IMAGINATION: Counterfactual simulation during training ===
      * Use extern declarations to avoid header type conflicts. */
     if (label && brain->imagination &&
@@ -2616,6 +2624,8 @@ sequential_training:
         }
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/introspection",
+                       (unsigned long long)_blv_step_tracker);
     /* === INTROSPECTION: Self-monitoring during metacognition training ===
      * Community detection internally builds an O(E) adjacency list (via
      * build_adjacency_list in community_detection.c) and runs Louvain.
@@ -2636,6 +2646,8 @@ sequential_training:
         introspection_assess_connectivity_health(brain->introspection, &intro_cfg);
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/sensor_fusion",
+                       (unsigned long long)_blv_step_tracker);
     /* === SENSOR FUSION: Exercise sensor processing during training ===
      * When training on sensor-related data, submit training features as a
      * synthetic sensor reading to exercise the sensor hub's
@@ -2676,6 +2688,8 @@ sequential_training:
         nimcp_watchdog_heartbeat((nimcp_safety_watchdog_t*)brain->safety_watchdog);
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/embodiment+native_lang",
+                       (unsigned long long)_blv_step_tracker);
     /* === EMBODIMENT: Proprioception training ===
      * Exercise body awareness for coordinate transform concepts.
      * The sensor hub (if enabled) handles the actual proprioceptive
