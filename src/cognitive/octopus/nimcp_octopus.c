@@ -43,12 +43,9 @@ struct octopus_system_s {
 };
 
 /*============================================================================
- * Small helpers
+ * Small helpers — all scalar math routes through utils/math/nimcp_math_helpers
+ * (nimcp_clampf, nimcp_clamp01, nimcp_safe_expf, etc.). Do not re-define.
  *==========================================================================*/
-
-static inline float _clampf(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
 
 /* Tanh-activated per-element transform on an input slice → latent.
  * This is the arm's local "processing" — a cheap nonlinearity plus
@@ -78,7 +75,7 @@ static void _arm_process_slice(octopus_arm_t* arm, const float* slice) {
      * all zeros or tiny have low confidence — literally "no opinion". */
     float l1 = 0.0f;
     for (uint32_t d = 0; d < OCTOPUS_ARM_DIM; d++) l1 += fabsf(arm->latent[d]);
-    arm->confidence = _clampf(l1 / (float)OCTOPUS_ARM_DIM, 0.0f, 1.0f);
+    arm->confidence = nimcp_clampf(l1 / (float)OCTOPUS_ARM_DIM, 0.0f, 1.0f);
 
     /* Latent variance — how much this arm's latent deviates from the
      * mean of the full latent. High variance = arm is in a distinctive
@@ -95,7 +92,7 @@ static void _arm_process_slice(octopus_arm_t* arm, const float* slice) {
 
     /* Broadcast state — confidence × (1 + variance), squashed to [0,1].
      * An arm that's both confident AND distinctive broadcasts loudly. */
-    arm->broadcast_state = _clampf(arm->confidence *
+    arm->broadcast_state = nimcp_clampf(arm->confidence *
                                     (1.0f + arm->latent_variance), 0.0f, 1.0f);
 
     /* Chemosensory-tactile fusion: the first 32 elements of the slice
@@ -248,7 +245,7 @@ int octopus_integrate(octopus_system_t* ctx,
         per_elem_var += v;
     }
     per_elem_var /= (float)OCTOPUS_ARM_DIM;
-    float coh = _clampf(1.0f - per_elem_var, 0.0f, 1.0f);
+    float coh = nimcp_clampf(1.0f - per_elem_var, 0.0f, 1.0f);
     ctx->last_coherence = coh;
     if (coherence) *coherence = coh;
 

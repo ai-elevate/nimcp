@@ -4802,22 +4802,7 @@ static PyObject* Brain_invalidate_community_cache(BrainObject* self, PyObject* P
 }
 
 /* -------- Octopus cognitive module (Phase 1 — observability only) -------- */
-/* Full forward declarations so we don't pull the whole header into bindings. */
-typedef struct octopus_system_s octopus_system_t;
-typedef struct octopus_stats_s {
-    uint32_t n_arms;
-    uint32_t n_explorations;
-    uint32_t n_integrations;
-    uint32_t n_ethics_vetoes;
-    uint32_t n_swarm_delegations;
-    uint32_t n_world_model_updates;
-    float    avg_arm_confidence;
-    float    avg_arm_variance;
-    float    central_coherence;
-} octopus_stats_t;
-extern uint32_t octopus_get_n_arms(const octopus_system_t* ctx);
-extern void octopus_get_stats(const octopus_system_t* ctx, octopus_stats_t* out);
-extern float octopus_get_broadcast_state(const octopus_system_t* ctx, uint32_t arm_id);
+#include "cognitive/octopus/nimcp_octopus.h"
 
 static PyObject* Brain_octopus_stats(BrainObject* self, PyObject* Py_UNUSED(args)) {
     if (!self->brain) {
