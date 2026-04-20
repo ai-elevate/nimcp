@@ -1069,6 +1069,14 @@ struct brain_struct {
     void* dragonfly_lnn;                                  // dragonfly_lnn_t*
     bool  dragonfly_lnn_enabled;                          // reservoir live flag
 
+    /* Phase 4n-q: JEPA bridges for omni world model / neuromodulators /
+     * audio cortex / engram memory. Each held as void* to keep the bridge
+     * headers out of this big include; see nimcp_jepa_brain_bridges.h. */
+    void* omni_jepa_bridge;        // omni_jepa_bridge_t*
+    void* neuromod_jepa_bridge;    // neuromod_jepa_bridge_t*
+    void* audio_jepa_bridge;       // audio_jepa_bridge_t*
+    void* engram_jepa_bridge;      // engram_jepa_bridge_t*
+
     // Dragonfly-Medulla Integration Bridge
     // BIOLOGICAL: Hunting behavior is modulated by arousal state, circadian rhythm,
     // and protection level. Alert dragonflies hunt better than drowsy ones.

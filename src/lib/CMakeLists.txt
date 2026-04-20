@@ -821,6 +821,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_plasticity_bridge.c  # GW-Plasticity bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram_jepa_bridge.c  # Phase 4p: engram ↔ JEPA
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_semantic_memory.c  # Phase M4: Semantic Memory Network (concept network with spreading activation)
@@ -1105,6 +1107,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_active_inference.c
     # Omnidirectional Inference (Phase 9) - Generative World Model
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_world_model.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/nimcp_omni_jepa_bridge.c  # Phase 4n: omni world model ↔ JEPA
     # World Model Bridges (11 integration bridges for multi-system coupling)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_memory_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/omni/bridges/nimcp_omni_wm_substrate_bridge.c
@@ -1293,6 +1296,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metaplasticity/nimcp_metaplasticity_sleep_bridge.c  # Metaplasticity-sleep integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/metaplasticity/nimcp_metaplasticity_immune_bridge.c  # Metaplasticity-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromodulators.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_jepa_bridge.c  # Phase 4o: neuromod ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_neuromod_pink_noise.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_spatial_neuromod.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../plasticity/neuromodulators/nimcp_receptor_subtypes.c  # Phase C2.2 Enhancement #1: Receptor subtypes
@@ -2169,6 +2173,7 @@ set(NIMCP_CORE_SOURCES
     # Perception
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_visual_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_cortex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_audio_jepa_bridge.c  # Phase 4q: audio cortex ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/perception/nimcp_speech_cortex.c
 
     # Cochlear Audio Processing (Phase 3: Biologically-accurate cochlear model)

@@ -970,6 +970,12 @@ void brain_destroy(brain_t brain)
             brain->dragonfly_lnn = NULL;
             brain->dragonfly_lnn_enabled = false;
         }
+        /* Phase 4n-q: JEPA bridges — destroy before the subsystems they
+         * hold non-owning refs into (omni, audio cortex, neuromod). */
+        {
+            extern void nimcp_jepa_brain_bridges_destroy(brain_t brain);
+            nimcp_jepa_brain_bridges_destroy(brain);
+        }
         /* Dragonfly system + medulla bridge: previously leaked on brain
          * teardown. Medulla bridge destroy is outside-in (bridge first,
          * then the dragonfly it references) to mirror create order. */

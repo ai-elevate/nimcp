@@ -163,6 +163,13 @@ extern bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_octopus_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_amygdala_subsystem(brain_t brain);
+/* Phase 4n-q: JEPA brain-bridges wrapper. The init function is void-
+ * returning; trampoline to the bool-returning TASK contract here. */
+extern void nimcp_jepa_brain_bridges_init(brain_t brain);
+static bool _jepa_bridges_init_task(brain_t brain) {
+    nimcp_jepa_brain_bridges_init(brain);
+    return true;
+}
 
 // Wave 21: Health + state
 extern bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain);
@@ -879,6 +886,8 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(nimcp_brain_factory_init_fault_tolerance_subsystem, "fault_tolerance");
     tasks[n++] = TASK(nimcp_brain_factory_init_octopus_subsystem, "octopus");
     tasks[n++] = TASK(nimcp_brain_factory_init_amygdala_subsystem, "amygdala");
+    /* Phase 4n-q: JEPA bridges. Trampoline declared at file scope. */
+    tasks[n++] = TASK(_jepa_bridges_init_task, "jepa_bridges");
     if (!execute_wave(pool, &ctx, tasks, n, 20)) goto cleanup;
 
     // ========================================================================
