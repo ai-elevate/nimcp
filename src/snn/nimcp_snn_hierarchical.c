@@ -117,6 +117,15 @@ static const snn_skip_def_t SKIP_DEFS[] = {
  * the fixed reward formula, this should produce healthy firing within
  * the first 100-200 training steps instead of staying collapsed. */
 #define SNN_I_SYN_BUDGET          (0.25f * SNN_V_GAP)  /**< 3.75 mV target (propagates cascade on deep nets) */
+/* Separate budget for input_pop → tier 0 fanout. Input pops receive
+ * external current from cortex CNN output ON TOP OF this synaptic drive,
+ * so they fire at cortex-rate. If we use the full 0.25 budget here,
+ * input pops fire at ~37% (observed in prod) — way above the 3% target.
+ * Homeostatic then has to compress 37%→3%, which hits the LIF threshold
+ * cliff and collapses firing to ~0% in one apply interval. Using a
+ * smaller budget for this edge keeps input pops near target at init,
+ * while the larger downstream budget still propagates cascade. */
+#define SNN_I_SYN_BUDGET_INPUT    (0.10f * SNN_V_GAP)  /**< 1.5 mV — input pops get external drive too */
 #define SNN_PRESYN_RATE_DEFAULT   0.1f                 /**< 10% firing per step assumption */
 /* Input_pop is externally driven. With Poisson rate encoding at ~100 Hz and
  * dt=1 ms, per-step firing prob ≈ 0.1. We keep this equal to default; if the
@@ -387,9 +396,12 @@ wire_connections:
      * Connectivity 10% = each input neuron drives ~2000 tier-0 neurons. */
     uint32_t input_fanout_conn = 0;
     if (tier_start_pop[0] < flat_idx && net->input_pop) {
-        /* input_pop is the sole source; full budget per destination neuron.
-         * Use higher presyn_rate (0.5) because input_pop is externally driven. */
-        float in_w = snn_fluct_weight(SNN_I_SYN_BUDGET,
+        /* input_pop is the sole source. Use the smaller INPUT-specific
+         * budget (not the full downstream budget) because input pops
+         * also get external cortex drive — combining both at full budget
+         * produced 37% firing rates that crashed through the LIF
+         * threshold cliff under homeostatic scale-down. */
+        float in_w = snn_fluct_weight(SNN_I_SYN_BUDGET_INPUT,
                                       net->input_pop->n_neurons,
                                       SNN_INPUT_FANOUT_CONNECTIVITY,
                                       SNN_PRESYN_RATE_INPUT_POP);
