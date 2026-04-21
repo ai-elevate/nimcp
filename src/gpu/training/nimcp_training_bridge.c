@@ -462,19 +462,47 @@ bool nimcp_gpu_weight_cache_upload(nimcp_gpu_weight_cache_t* cache, neural_netwo
                     if (neuron && NEURON_IN_COUNT(neuron) > 0) count++;
                 }
 
-                cache->num_connected_dst[l] = count;
                 if (count > 0 && count < dst_layer_size) {
-                    // Sparse — build index list
-                    cache->connected_dst[l] = nimcp_malloc(count * sizeof(uint32_t));
+                    /* Sparse — build index list.
+                     *
+                     * RACE HARDENING: NEURON_IN_COUNT can change between the
+                     * count pass above and the populate pass below, because
+                     * structural plasticity and synaptogenesis can run from
+                     * other threads. If a new synapse is added after the
+                     * count pass, pass 2 would see MORE qualifying neurons
+                     * than pass 1 and overflow the count-sized allocation
+                     * (write out-of-bounds → heap corruption → deferred
+                     * SEGV).
+                     *
+                     * Two safeguards:
+                     *   1. Pad the allocation by 16 slots so a small number
+                     *      of concurrent additions still fit.
+                     *   2. Hard-cap writes at `slots` so even a large
+                     *      concurrent burst cannot overrun. Any neurons
+                     *      missed on this pass are picked up on the next
+                     *      invalidation + rebuild.
+                     * Also update num_connected_dst[l] to reflect what we
+                     * actually wrote, not the stale pass-1 count. */
+                    uint32_t slots = count + 16u;  /* +16 safety margin */
+                    if (slots > dst_layer_size) slots = dst_layer_size;
+                    cache->connected_dst[l] = nimcp_malloc(slots * sizeof(uint32_t));
                     if (cache->connected_dst[l]) {
                         uint32_t idx = 0;
-                        for (uint32_t i = 0; i < dst_layer_size; i++) {
+                        for (uint32_t i = 0; i < dst_layer_size && idx < slots; i++) {
                             neuron_t* neuron = neural_network_get_neuron(net, dst_offset + i);
                             if (neuron && NEURON_IN_COUNT(neuron) > 0) {
                                 cache->connected_dst[l][idx++] = i;
                             }
                         }
+                        cache->num_connected_dst[l] = idx;
+                    } else {
+                        cache->num_connected_dst[l] = 0;
                     }
+                } else {
+                    /* count == 0 or == dst_layer_size: no sparse list needed.
+                     * For count==dst_layer_size the iterator uses full scan;
+                     * for count==0 there's nothing to iterate. */
+                    cache->num_connected_dst[l] = count;
                 }
                 // If count == dst_layer_size (all connected), leave connected_dst[l] = NULL
                 // to signal "use full iteration" (no benefit from index list)
