@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "NIMCP V2 — Z-Ladder memory system (4-tier consolidation)"
+description = "NIMCP V2 — Z-Ladder memory system (4-tier consolidation + landmarks)"
 
 [lints]
 workspace = true
@@ -15,3 +15,7 @@ workspace = true
 nimcp-core = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
