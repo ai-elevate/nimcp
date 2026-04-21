@@ -1,0 +1,46 @@
+[package]
+name = "bench-mlp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — Phase 2d bench: per-step latency CPU (nimcp-adaptive) vs GPU (nimcp-gpu) MLPs"
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "bench_mlp"
+path = "src/main.rs"
+
+[features]
+# Default includes cuda so `cargo run -p bench-mlp --release` does the
+# right thing on a dev host with a GPU. CI hosts without CUDA should use
+# `--no-default-features`, which exits 0 with a clear CPU-only log.
+#
+# `cuda` pulls in nimcp-gpu's `cuda` feature (which itself enables cudarc
+# inside that crate) and our own direct cudarc dependency for the free-VRAM
+# probe.
+default = ["cuda"]
+cuda = ["nimcp-gpu/cuda", "dep:cudarc"]
+cpu-only = ["nimcp-gpu/cpu-only"]
+
+[dependencies]
+nimcp-adaptive = { workspace = true }
+# Path dependency (not workspace-inherited) so we can override
+# default-features locally for cpu-only CI builds. `workspace = true`
+# forbids the override; a plain path dep permits it.
+nimcp-gpu = { path = "../../crates/gpu", default-features = false }
+ndarray = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Only used inside `cfg(feature = "cuda")` blocks to query free VRAM via
+# the driver API. nimcp-gpu doesn't expose that today, so we pull cudarc
+# directly behind the same feature flag.
+cudarc = { workspace = true, optional = true }
