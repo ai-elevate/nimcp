@@ -16,7 +16,18 @@ use std::sync::atomic::{AtomicU64, Ordering};
 /// A measurement of X us increments the first bucket whose bound >= X; the
 /// final `u64::MAX` bucket catches pathological outliers.
 pub const HISTOGRAM_BUCKETS_US: &[u64] = &[
-    10, 50, 100, 500, 1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000, u64::MAX,
+    10,
+    50,
+    100,
+    500,
+    1_000,
+    5_000,
+    10_000,
+    50_000,
+    100_000,
+    500_000,
+    1_000_000,
+    u64::MAX,
 ];
 
 /// Snapshot of one actor's metrics at an instant in time.
@@ -54,7 +65,10 @@ pub(crate) struct MetricsCell {
 
 impl MetricsCell {
     pub(crate) fn new(name: &'static str) -> Self {
-        let histogram: Vec<AtomicU64> = HISTOGRAM_BUCKETS_US.iter().map(|_| AtomicU64::new(0)).collect();
+        let histogram: Vec<AtomicU64> = HISTOGRAM_BUCKETS_US
+            .iter()
+            .map(|_| AtomicU64::new(0))
+            .collect();
         Self {
             name,
             mailbox_depth: Arc::new(AtomicU64::new(0)),

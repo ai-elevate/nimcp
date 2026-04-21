@@ -380,9 +380,8 @@ impl Scheduler {
         // subsequent call (i.e. an attempted restart) is an error.
         let mut slot = Some(actor);
         self.spawn_supervised(move || {
-            slot.take().expect(
-                "spawn() actor consumed — use spawn_supervised() to enable restart",
-            )
+            slot.take()
+                .expect("spawn() actor consumed — use spawn_supervised() to enable restart")
         })
     }
 

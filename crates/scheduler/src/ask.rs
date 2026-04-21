@@ -49,13 +49,7 @@ impl<Req, Reply> AskEnvelope<Req, Reply> {
     /// want to construct it manually (tests, custom routing) can.
     pub fn new(req: Req) -> (Self, oneshot::Receiver<Reply>) {
         let (tx, rx) = oneshot::channel();
-        (
-            Self {
-                req,
-                reply_tx: tx,
-            },
-            rx,
-        )
+        (Self { req, reply_tx: tx }, rx)
     }
 
     /// Send the reply back to the caller.

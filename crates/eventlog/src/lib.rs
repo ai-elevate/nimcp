@@ -241,10 +241,9 @@ impl EventLog {
     /// returns, making the event durable against power loss.
     pub fn append(&mut self, payload: &[u8]) -> Result<EventId, LogError> {
         let seq_id = self.next_id;
-        let payload_len: u32 = payload
-            .len()
-            .try_into()
-            .map_err(|_| LogError::Corrupt(format!("payload too large: {} bytes", payload.len())))?;
+        let payload_len: u32 = payload.len().try_into().map_err(|_| {
+            LogError::Corrupt(format!("payload too large: {} bytes", payload.len()))
+        })?;
 
         // CRC covers seq_id || payload_len || payload.
         let mut hasher = crc32fast::Hasher::new();
@@ -708,11 +707,7 @@ mod tests {
         // Reopening should chop the bad tail and recover 4 entries.
         let log = EventLog::open(cfg(dir.path())).unwrap();
         assert_eq!(log.len(), 4, "expected 4 surviving events after crash");
-        let payloads: Vec<_> = log
-            .iter()
-            .map(|r| r.unwrap())
-            .map(|(_, p)| p)
-            .collect();
+        let payloads: Vec<_> = log.iter().map(|r| r.unwrap()).map(|(_, p)| p).collect();
         assert_eq!(payloads[0], b"event-0");
         assert_eq!(payloads[3], b"event-3");
 
