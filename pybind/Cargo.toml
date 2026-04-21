@@ -18,6 +18,8 @@ workspace = true
 [dependencies]
 nimcp-core = { workspace = true }
 nimcp-brain = { workspace = true }
+nimcp-adaptive = { workspace = true }
 pyo3 = { workspace = true }
 numpy = { workspace = true }
+ndarray = { workspace = true }
 tracing = { workspace = true }

@@ -25,3 +25,7 @@ nimcp-checkpoint = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
+ndarray = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
