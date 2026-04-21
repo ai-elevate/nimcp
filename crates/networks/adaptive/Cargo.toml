@@ -1,0 +1,20 @@
+[package]
+name = "nimcp-adaptive"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — adaptive (MLP) network, Phase 1"
+
+[lints]
+workspace = true
+
+[dependencies]
+nimcp-core = { workspace = true }
+ndarray = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }

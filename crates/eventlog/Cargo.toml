@@ -1,0 +1,23 @@
+[package]
+name = "nimcp-eventlog"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — append-only persistent event log"
+
+[lints]
+workspace = true
+
+[dependencies]
+nimcp-core = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["rt", "macros"] }

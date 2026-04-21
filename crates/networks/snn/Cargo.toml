@@ -1,0 +1,18 @@
+[package]
+name = "nimcp-snn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — spiking neural network (LIF + CSR synapses), Phase 3"
+
+[lints]
+workspace = true
+
+[dependencies]
+nimcp-core = { workspace = true }
+ndarray = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }

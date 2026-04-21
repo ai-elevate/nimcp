@@ -1,0 +1,112 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/core",
+    "crates/eventlog",
+    "crates/scheduler",
+    "crates/gpu",
+    "crates/networks/adaptive",
+    "crates/networks/snn",
+    "crates/networks/lnn",
+    "crates/plasticity",
+    "crates/memory",
+    "crates/checkpoint",
+    "crates/brain",
+    "pybind",
+]
+
+# Unified versioning for the whole workspace.
+[workspace.package]
+version = "0.1.0-alpha"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/redmage123/nimcp"
+authors = ["NIMCP Contributors"]
+
+# Versions pinned centrally so every crate picks the same line.
+# Keep this list short. Add a dep here only when 2+ crates need it.
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.47", features = ["rt-multi-thread", "macros", "sync", "time", "fs"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# Serialization (rkyv for zero-copy state; serde for configs/JSON)
+rkyv = { version = "0.8", features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling + logging
+eyre = "0.6"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Deterministic RNG
+rand = "0.9"
+rand_chacha = "0.9"
+
+# Linear algebra
+ndarray = "0.16"
+
+# Testing
+proptest = "1"
+criterion = { version = "0.7", features = ["html_reports"] }
+
+# Python bindings (only used by the python crate)
+pyo3 = { version = "0.26", features = ["extension-module"] }
+numpy = "0.26"
+
+# GPU backend — cudarc (dynamic loading, version-flexible)
+# Important: `cust` would statically link to one CUDA runtime and break
+# on the other host. cudarc loads libcudart.so at startup, so the same
+# binary runs against CUDA 12.0 on dev (sm_89) and 12.8 on pod (sm_120).
+cudarc = { version = "0.17", features = ["cuda-12080", "driver", "runtime", "nvrtc", "dynamic-loading"], default-features = false }
+
+# Internal crates
+nimcp-core = { path = "crates/core" }
+nimcp-eventlog = { path = "crates/eventlog" }
+nimcp-scheduler = { path = "crates/scheduler" }
+nimcp-gpu = { path = "crates/gpu" }
+nimcp-adaptive = { path = "crates/networks/adaptive" }
+nimcp-snn = { path = "crates/networks/snn" }
+nimcp-lnn = { path = "crates/networks/lnn" }
+nimcp-plasticity = { path = "crates/plasticity" }
+nimcp-memory = { path = "crates/memory" }
+nimcp-checkpoint = { path = "crates/checkpoint" }
+nimcp-brain = { path = "crates/brain" }
+
+# Global build settings.
+[profile.dev]
+opt-level = 0
+debug = 2
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+debug = 1        # keep symbols for minidumps
+overflow-checks = false
+panic = "unwind" # unwind so supervisors can restart actors
+
+# Faster test runs than default.
+[profile.test]
+opt-level = 1
+
+# Lints applied to the whole workspace. Overrides allowed per-crate if needed.
+[workspace.lints.rust]
+unsafe_code = "warn"     # FFI crates explicitly `allow` it
+missing_docs = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+# Bugs + correctness
+disallowed_methods = "deny"
+mem_forget = "deny"
+float_cmp = "warn"
+# Style
+needless_pass_by_value = "warn"
+# Tune down some pedantic defaults
+module_name_repetitions = "allow"

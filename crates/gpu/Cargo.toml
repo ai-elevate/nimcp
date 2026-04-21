@@ -1,0 +1,30 @@
+[package]
+name = "nimcp-gpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — GPU compute backend (CUDA via cudarc dynamic loading)"
+build = "build.rs"
+
+[lints]
+workspace = true
+
+[features]
+# Default includes CUDA. Disable with `--no-default-features --features cpu-only`
+# for CI hosts without NVIDIA GPUs.
+default = ["cuda"]
+cuda = ["dep:cudarc"]
+cpu-only = []
+
+[dependencies]
+nimcp-core = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+cudarc = { workspace = true, optional = true }
+
+[build-dependencies]
+# Reserved for custom build.rs logic (multi-arch NVCC invocation in future
+# phases when we ship .cu kernels).

@@ -1,0 +1,23 @@
+[package]
+name = "nimcp-scheduler"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — tokio-based actor runtime with deterministic replay"
+
+[lints]
+workspace = true
+
+[dependencies]
+nimcp-core = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "test-util"] }

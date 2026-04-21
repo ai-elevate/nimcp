@@ -1,0 +1,27 @@
+[package]
+name = "nimcp-brain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — top-level brain integration"
+
+[lints]
+workspace = true
+
+[dependencies]
+nimcp-core = { workspace = true }
+nimcp-eventlog = { workspace = true }
+nimcp-scheduler = { workspace = true }
+nimcp-gpu = { workspace = true }
+nimcp-adaptive = { workspace = true }
+nimcp-snn = { workspace = true }
+nimcp-lnn = { workspace = true }
+nimcp-plasticity = { workspace = true }
+nimcp-memory = { workspace = true }
+nimcp-checkpoint = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }

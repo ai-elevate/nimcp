@@ -1,0 +1,23 @@
+[package]
+name = "nimcp-pybind"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — Python bindings via PyO3"
+
+[lib]
+name = "nimcp_v2"
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+nimcp-core = { workspace = true }
+nimcp-brain = { workspace = true }
+pyo3 = { workspace = true }
+numpy = { workspace = true }
+tracing = { workspace = true }
