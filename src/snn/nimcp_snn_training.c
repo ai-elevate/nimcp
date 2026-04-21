@@ -57,8 +57,12 @@ static float g_homeo_dead_threshold   = 0.1f;     /* "dead" multiplier: rate < X
 static float g_metabolic_cap_factor   = 0.8f;     /* sum(|w|) cap = factor × fan_in */
 /* Poisson background noise + intrinsic reward — the real structural
  * fixes for SNN mode collapse. See commit message for rationale. */
-static float g_snn_noise_rate_hz      = 1.0f;     /* Poisson baseline firing floor; 0 = disabled */
-static float g_snn_noise_pulse_mv     = 15.0f;    /* mV kick injected into I_syn per noise spike (depol. above threshold) */
+/* Noise defaults tuned empirically on pod 2026-04-21: 1.0 × 15.0 was
+ * 50-100× too weak to rescue collapsed pops (steady-state contribution
+ * ~0.3mV vs 15mV threshold gap). 20 × 30 gives ~3mV per pulse at
+ * ~2 pulses/tau, drives ~1-2% baseline firing across all pops. */
+static float g_snn_noise_rate_hz      = 20.0f;    /* Poisson baseline firing floor; 0 = disabled */
+static float g_snn_noise_pulse_mv     = 30.0f;    /* mV kick injected into I_syn per noise spike */
 static float g_snn_intrinsic_alpha    = 0.8f;     /* reward mix: 1.0 = pure intrinsic (rate-match), 0 = pure ANN-loss */
 /* Structural issue #4: per-layer firing targets. Input pops are driven
  * by external cortex current at high rate, so 3% is unnaturally low for
@@ -80,8 +84,8 @@ void snn_tune_set_homeo_bounds(float min_, float max_) {
 void snn_tune_set_max_scale_dead(float v)        { if (v > 1.0f && v < 2.0f)     g_homeo_max_scale_dead = v; }
 void snn_tune_set_dead_threshold(float v)        { if (v > 0.0f && v < 1.0f)     g_homeo_dead_threshold = v; }
 void snn_tune_set_metabolic_cap(float v)         { if (v > 0.0f && v < 10.0f)    g_metabolic_cap_factor = v; }
-void snn_tune_set_noise_rate_hz(float v)         { if (v >= 0.0f && v < 100.0f)  g_snn_noise_rate_hz = v; }
-void snn_tune_set_noise_pulse_mv(float v)        { if (v > 0.0f && v < 50.0f)    g_snn_noise_pulse_mv = v; }
+void snn_tune_set_noise_rate_hz(float v)         { if (v >= 0.0f && v < 500.0f)  g_snn_noise_rate_hz = v; }
+void snn_tune_set_noise_pulse_mv(float v)        { if (v > 0.0f && v < 200.0f)   g_snn_noise_pulse_mv = v; }
 void snn_tune_set_intrinsic_alpha(float v)       { if (v >= 0.0f && v <= 1.0f)   g_snn_intrinsic_alpha = v; }
 void snn_tune_set_target_rate_input(float v)     { if (v > 0.0f && v < 0.5f)     g_target_rate_input = v; }
 
