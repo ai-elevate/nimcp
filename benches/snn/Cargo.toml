@@ -1,0 +1,29 @@
+[package]
+name = "bench-snn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — Phase 3f bench: 1.8M-neuron SNN per-step latency (V1 throughput parity)"
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "bench_snn"
+path = "src/main.rs"
+
+[features]
+# CPU-only by default — the V2_PLAN Phase 3 exit criterion is measured
+# against the CPU code path. A GPU variant lives behind `cuda` for the
+# day we want apples-to-oranges comparison against V1's GPU-accelerated
+# tick.
+default = []
+cuda = ["nimcp-snn/cuda"]
+
+[dependencies]
+nimcp-snn = { workspace = true }
+nimcp-plasticity = { workspace = true }

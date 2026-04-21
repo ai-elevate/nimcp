@@ -15,6 +15,7 @@ members = [
     "pybind",
     "rust-tests",
     "benches/mlp",
+    "benches/snn",
 ]
 
 # Unified versioning for the whole workspace.

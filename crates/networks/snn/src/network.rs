@@ -134,6 +134,10 @@ struct Edge {
     spec: EdgeSpec,
     csr: CsrSynapses,
     rstdp: RstdpState,
+    /// Scratch I_syn buffer for this edge's CSR forward. Preallocated
+    /// at construction; the CSR writes into it, the `step` pipeline
+    /// then adds it into the destination population's I_syn scratch.
+    i_syn_scratch: Vec<f32>,
 }
 
 /// Spiking neural network — the Phase 3 composition.
@@ -205,11 +209,13 @@ impl SnnNetwork {
                 src_pop.spec.n_neurons,
                 dst_pop.spec.n_neurons,
             );
+            let i_syn_scratch = vec![0.0_f32; dst_pop.spec.n_neurons as usize];
 
             edges.push(Edge {
                 spec: spec.clone(),
                 csr,
                 rstdp,
+                i_syn_scratch,
             });
         }
 
@@ -291,26 +297,27 @@ impl SnnNetwork {
         }
 
         // 2. Forward every CSR edge (prior-step spike → current-step I_syn).
-        //    Self-loops (src == dst) are unsupported in Phase 3.
+        //    Self-loops (src == dst) are unsupported in Phase 3. Each edge
+        //    has its own preallocated `i_syn_scratch`; the CSR writes
+        //    into it, then we add into the destination pop's scratch.
         for edge in &mut self.edges {
             let src = edge.spec.src;
             let dst = edge.spec.dst;
             debug_assert_ne!(src, dst, "self-loops unsupported in Phase 3");
 
-            let (src_pop, dst_pop) = if src < dst {
-                let (a, b) = self.populations.split_at_mut(dst);
-                (&a[src], &mut b[0])
-            } else {
-                let (a, b) = self.populations.split_at_mut(src);
-                (&b[0], &mut a[dst])
-            };
-
-            // i_syn_cpu overwrites `out`; accumulate via a scratch vec.
-            let n_post = dst_pop.i_syn_scratch.len();
-            let mut tmp = vec![0.0_f32; n_post];
-            edge.csr.i_syn_cpu(&src_pop.state.spike, &mut tmp);
-            for (d, s) in dst_pop.i_syn_scratch.iter_mut().zip(tmp.iter()) {
-                *d += *s;
+            let src_spikes = &self.populations[src].state.spike;
+            edge.csr.i_syn_cpu(src_spikes, &mut edge.i_syn_scratch);
+        }
+        // Separate pass so the destination borrow doesn't fight with the
+        // source-spike immutable borrow above.
+        for edge in &self.edges {
+            let dst_pop = &mut self.populations[edge.spec.dst];
+            for (d, &s) in dst_pop
+                .i_syn_scratch
+                .iter_mut()
+                .zip(edge.i_syn_scratch.iter())
+            {
+                *d += s;
             }
         }
 
@@ -319,19 +326,26 @@ impl SnnNetwork {
             lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &pop.spec.lif, dt_ms);
         }
 
-        // 4. R-STDP weight updates. We need disjoint &[u8] for pre and
-        //    post spike buffers; Rust's borrow checker can't prove
-        //    indices into the same Vec are disjoint, so we clone the
-        //    two slices. Spike buffers are u8 and small (per-pop size),
-        //    so this is cheap.
+        // 4. R-STDP weight updates. We need two disjoint `&[u8]` spike
+        //    buffers from `populations`; Rust's borrow checker can't
+        //    prove src != dst are disjoint indices, so we use
+        //    `split_at_mut` to get provably-disjoint slices without
+        //    cloning.
         for edge in &mut self.edges {
-            let pre = self.populations[edge.spec.src].state.spike.clone();
-            let post = self.populations[edge.spec.dst].state.spike.clone();
+            let src = edge.spec.src;
+            let dst = edge.spec.dst;
+            let (pre_spikes, post_spikes): (&[u8], &[u8]) = if src < dst {
+                let (a, b) = self.populations.split_at(dst);
+                (&a[src].state.spike, &b[0].state.spike)
+            } else {
+                let (a, b) = self.populations.split_at(src);
+                (&b[0].state.spike, &a[dst].state.spike)
+            };
             step_rstdp(
                 &mut edge.csr,
                 &mut edge.rstdp,
-                &pre,
-                &post,
+                pre_spikes,
+                post_spikes,
                 reward,
                 self.t_ms,
                 dt_ms,
