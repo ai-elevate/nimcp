@@ -53,6 +53,7 @@ impl Brain {
             deterministic: config.deterministic,
             mailbox_capacity: 1024,
             rng_seed: config.rng_seed,
+            ..SchedulerConfig::default()
         };
         let scheduler = Scheduler::new(sched_cfg);
 

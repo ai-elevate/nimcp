@@ -13,7 +13,12 @@ workspace = true
 
 [dependencies]
 nimcp-core = { workspace = true }
-tokio = { workspace = true }
+# `test-util` is enabled in the library build, not just tests, because
+# deterministic-replay mode (Scheduler::build_deterministic_runtime) uses
+# tokio's paused-clock APIs (tokio::time::pause / advance / start_paused)
+# that live behind that feature. Users who don't need deterministic mode
+# still get a correct runtime — test-util only *adds* capabilities.
+tokio = { workspace = true, features = ["test-util"] }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tracing = { workspace = true }
