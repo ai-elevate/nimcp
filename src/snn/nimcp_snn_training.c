@@ -407,13 +407,18 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
     if (fabsf(reward_modulation) < 1e-8f) return 0;
 
     /* R-STDP learning rate.
-     * Halved 0.001 → 0.0005 after observing runaway saturation once
-     * richer Claude/Phi-3 parent narrations started driving stronger
-     * BERT embeddings through the network. Slower weight growth lets
-     * homeostasis keep up; combined with the now wider emergency
-     * scaling range in snn_homeostatic_apply (±10%), the network can
-     * be held in biological firing regime. */
-    float lr = 0.0005f;
+     * History: 0.001 → 0.0005 (prior saturation fix) → 0.0001 (this fix).
+     *
+     * Once the 1/(1+loss) reward formula started producing real non-zero
+     * rewards, R-STDP had so much LTP/LTD magnitude that a single
+     * curriculum-induced reward swing (reward 0.12 → 0.02) produced
+     * mod=-0.10 and collapsed the SNN from 94K spikes/step to ~10 within
+     * minutes. The 0.0005 rate scaled those modulations × 4.4M synapses
+     * into weight hammerblows. Dropping 5× to 0.0001 makes each apply
+     * gentler — plasticity still happens but can't crush the network in
+     * a single step. Convergence is slower but stable.
+     */
+    float lr = 0.0001f;
     float scale = lr * reward_modulation;
 
     /* Apply eligibility-modulated update to network synapses */
@@ -537,8 +542,16 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
         }
     }
 
-    /* Decay reward baseline toward recent rewards (EMA) */
-    ctx->reward_baseline = 0.99f * ctx->reward_baseline + 0.01f * ctx->reward;
+    /* Decay reward baseline toward recent rewards (EMA).
+     * Alpha 0.01 → 0.001 (10x slower) so the baseline tracks the
+     * SUSTAINED reward level instead of whiplashing on transient
+     * curriculum-induced swings. With alpha=0.01, a single low-loss
+     * training step spiked baseline high enough that the NEXT
+     * high-loss step looked like a big negative modulation, which
+     * collapsed the SNN in 50 calls. At 0.001, the baseline is a
+     * smooth floor; modulations stay in a narrow band around the
+     * actual long-run mean. */
+    ctx->reward_baseline = 0.999f * ctx->reward_baseline + 0.001f * ctx->reward;
 
     if ((_rstdp_call_count % 50) == 0 && updates > 0) {
         NIMCP_LOGGING_INFO("[R-STDP] updated %u synapses (delta sign=%s)",
