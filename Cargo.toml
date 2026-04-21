@@ -13,6 +13,7 @@ members = [
     "crates/checkpoint",
     "crates/brain",
     "pybind",
+    "rust-tests",
 ]
 
 # Unified versioning for the whole workspace.

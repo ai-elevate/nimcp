@@ -205,6 +205,39 @@ Estimated for one experienced Rust developer full-time. Numbers are realistic, n
 
 ---
 
+## 5½. Development targets — dev-first, pod for scale validation
+
+V2 is developed **primarily on the Hetzner dev server** (RTX 4000 SFF Ada,
+sm_89, 20 GB VRAM, CUDA 12.0). RunPod (RTX 5090 Blackwell, sm_120, 32 GB,
+CUDA 12.8) is used for full-scale validation at phase exits.
+
+This shifts the inner-loop cost from "SSH + deploy + build on remote + test"
+to "cargo test" — measured gain in developer throughput.
+
+| Phase | GPU work | Dev? | Pod? |
+|---|---|---|---|
+| 0 foundation | none | ✓ | — |
+| 1 MLP CPU | none | ✓ | — |
+| 2 MLP GPU | offload to CUDA | ✓ (small, sm_89) | validate sm_120 |
+| 3 SNN (1.8M) | big VRAM | **down-sized here**, full scale on pod | ✓ |
+| 4 ensemble | big VRAM | down-sized here | ✓ |
+| 5 memory | CPU | ✓ | — |
+| 6 introspection | CPU | ✓ | — |
+| 7 training | mixed | down-sized here | validate |
+| 8 hardening | full scale | — | ✓ |
+
+Ollama currently holds ~19.5 GB of dev server VRAM. Phases 3+ at full scale
+will need Ollama paused during the run. For iteration, scale down to
+~300 K neurons — fits in 500 MB.
+
+`NIMCP_GPU_ARCH` env var controls build-time arch targeting:
+
+| Value | Use case |
+|---|---|
+| `dev` (default) | sm_89 only — fastest compile, local dev |
+| `pod` | sm_120 only — release build for pod deploy |
+| `all` | sm_89 + sm_120 + PTX — CI / universal tarball |
+
 ## 6. Risks + mitigations
 
 | Risk | Mitigation |
