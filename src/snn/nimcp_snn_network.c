@@ -858,6 +858,40 @@ int snn_network_step(snn_network_t* network, float dt) {
             _isyn_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
                      + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
 
+            /* Poisson background noise — inject stochastic depolarizing
+             * pulses into h_input before GPU LIF forward. Structural fix
+             * for the zero-firing absorbing state: even dead populations
+             * get occasional spikes, keeping eligibility traces alive.
+             * Runs on the GPU path (hot path in production). Per-step
+             * probability p = rate_hz × dt_s. rand_r with a thread-local
+             * seed avoids contention and global rand()'s lack of thread
+             * safety. noise_rate_hz=0 disables without cost (p=0 branch). */
+            {
+                extern float snn_tune_get_noise_rate_hz(void);
+                extern float snn_tune_get_noise_pulse_mv(void);
+                const float nrate = snn_tune_get_noise_rate_hz();
+                if (nrate > 0.0f) {
+                    const float npulse = snn_tune_get_noise_pulse_mv();
+                    const float p = nrate * dt_ms * 0.001f;
+                    /* Convert p to an integer threshold in [0, RAND_MAX]
+                     * for a cheap integer compare instead of float div. */
+                    const unsigned int thresh = (unsigned int)(p * (float)RAND_MAX);
+                    static __thread unsigned int _gpu_noise_seed = 0;
+                    if (_gpu_noise_seed == 0) {
+                        struct timespec _nt;
+                        clock_gettime(CLOCK_MONOTONIC, &_nt);
+                        _gpu_noise_seed = (unsigned int)(_nt.tv_nsec
+                            ^ ((uintptr_t)&_gpu_noise_seed >> 4));
+                        if (_gpu_noise_seed == 0) _gpu_noise_seed = 0xDEADBEEFu;
+                    }
+                    for (uint32_t i = 0; i < total_neurons; i++) {
+                        if ((unsigned int)rand_r(&_gpu_noise_seed) < thresh) {
+                            h_input[i] += npulse;
+                        }
+                    }
+                }
+            }
+
             /* Upload input to GPU tensor */
             clock_gettime(CLOCK_MONOTONIC, &_phase_t0);
             size_t dims[1] = { total_neurons };
@@ -961,6 +995,25 @@ int snn_network_step(snn_network_t* network, float dt) {
         float v_rest = network->config.v_rest;
         float tau_mem = network->config.tau_mem;
 
+        /* Fetch Poisson noise parameters ONCE per population to avoid
+         * the extern-call overhead inside the inner per-neuron loop. */
+        extern float snn_tune_get_noise_rate_hz(void);
+        extern float snn_tune_get_noise_pulse_mv(void);
+        const float noise_rate_hz = snn_tune_get_noise_rate_hz();
+        const float noise_pulse_mv = snn_tune_get_noise_pulse_mv();
+        /* Per-step spike probability: p = rate_hz × dt_s = rate × dt_ms/1000. */
+        const float noise_p = noise_rate_hz * dt_ms * 0.001f;
+        /* Thread-local PRNG seed. Seeded once on first call from
+         * clock-based entropy + a per-thread spread so different worker
+         * threads don't produce correlated noise. */
+        static __thread unsigned int _noise_seed = 0;
+        if (_noise_seed == 0) {
+            struct timespec _t;
+            clock_gettime(CLOCK_MONOTONIC, &_t);
+            _noise_seed = (unsigned int)(_t.tv_nsec ^ ((uintptr_t)&_noise_seed >> 4));
+            if (_noise_seed == 0) _noise_seed = 0xDEADBEEFu;
+        }
+
         /* Update each neuron */
         if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized) {
             /* ===== LIGHTWEIGHT CSR PATH ===== */
@@ -991,6 +1044,21 @@ int snn_network_step(snn_network_t* network, float dt) {
                         float dep = 0.0f;
                         if (src_pop->depression) dep = src_pop->depression[syns[s].src_neuron];
                         I_syn += syns[s].weight * (1.0f - dep);
+                    }
+                }
+
+                /* Poisson background noise — structural fix for the
+                 * absorbing-zero state. Without this, dead pops have no
+                 * spikes, no eligibility traces, so R-STDP cannot help and
+                 * homeostatic scales weights × 1.02 of tiny values = still
+                 * silent. With Poisson injection, every neuron has a
+                 * baseline non-zero firing probability regardless of
+                 * synaptic drive. noise_rate_hz is a runtime-tunable; 0
+                 * disables. */
+                if (noise_p > 0.0f) {
+                    float r = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
+                    if (r < noise_p) {
+                        I_syn += noise_pulse_mv;
                     }
                 }
 

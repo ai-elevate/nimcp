@@ -362,6 +362,10 @@ void  snn_tune_set_homeo_bounds(float min_scale, float max_scale);
 void  snn_tune_set_max_scale_dead(float v);
 void  snn_tune_set_dead_threshold(float v);
 void  snn_tune_set_metabolic_cap(float v);
+void  snn_tune_set_noise_rate_hz(float v);
+void  snn_tune_set_noise_pulse_mv(float v);
+void  snn_tune_set_intrinsic_alpha(float v);
+void  snn_tune_set_target_rate_input(float v);
 
 float snn_tune_get_rstdp_lr(void);
 float snn_tune_get_rstdp_baseline_alpha(void);
@@ -371,6 +375,16 @@ float snn_tune_get_homeo_max_scale(void);
 float snn_tune_get_max_scale_dead(void);
 float snn_tune_get_dead_threshold(void);
 float snn_tune_get_metabolic_cap(void);
+float snn_tune_get_noise_rate_hz(void);
+float snn_tune_get_noise_pulse_mv(void);
+float snn_tune_get_intrinsic_alpha(void);
+float snn_tune_get_target_rate_input(void);
+
+/*============================================================================
+ * Intrinsic SNN reward — firing-rate-target-based. Use as the primary
+ * R-STDP teaching signal to decouple SNN learning from ANN-loss signal.
+ *==========================================================================*/
+float snn_compute_intrinsic_reward(snn_network_t* network);
 
 /**
  * @brief Apply R-STDP weight updates
