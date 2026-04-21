@@ -1846,16 +1846,24 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     extern void snn_tune_set_max_scale_dead(float);
     extern void snn_tune_set_dead_threshold(float);
     extern void snn_tune_set_metabolic_cap(float);
+    extern void snn_tune_set_noise_rate_hz(float);
+    extern void snn_tune_set_noise_pulse_mv(float);
+    extern void snn_tune_set_intrinsic_alpha(float);
+    extern void snn_tune_set_target_rate_input(float);
 
     float v = (float)value;
     if      (strcmp(name, "rstdp_lr") == 0)             snn_tune_set_rstdp_lr(v);
     else if (strcmp(name, "rstdp_baseline_alpha") == 0) snn_tune_set_rstdp_baseline_alpha(v);
     else if (strcmp(name, "target_rate") == 0)          snn_tune_set_target_rate(v);
+    else if (strcmp(name, "target_rate_input") == 0)    snn_tune_set_target_rate_input(v);
     else if (strcmp(name, "homeo_min_scale") == 0)      snn_tune_set_homeo_bounds(v, v + 0.04f);
     else if (strcmp(name, "homeo_max_scale") == 0)      snn_tune_set_homeo_bounds(0.98f, v);
     else if (strcmp(name, "max_scale_dead") == 0)       snn_tune_set_max_scale_dead(v);
     else if (strcmp(name, "dead_threshold") == 0)       snn_tune_set_dead_threshold(v);
     else if (strcmp(name, "metabolic_cap") == 0)        snn_tune_set_metabolic_cap(v);
+    else if (strcmp(name, "noise_rate_hz") == 0)        snn_tune_set_noise_rate_hz(v);
+    else if (strcmp(name, "noise_pulse_mv") == 0)       snn_tune_set_noise_pulse_mv(v);
+    else if (strcmp(name, "intrinsic_alpha") == 0)      snn_tune_set_intrinsic_alpha(v);
     else {
         PyErr_Format(PyExc_ValueError, "unknown tunable: %s", name);
         return NULL;
@@ -1873,6 +1881,10 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     extern float snn_tune_get_max_scale_dead(void);
     extern float snn_tune_get_dead_threshold(void);
     extern float snn_tune_get_metabolic_cap(void);
+    extern float snn_tune_get_noise_rate_hz(void);
+    extern float snn_tune_get_noise_pulse_mv(void);
+    extern float snn_tune_get_intrinsic_alpha(void);
+    extern float snn_tune_get_target_rate_input(void);
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
@@ -1882,11 +1894,15 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     F("rstdp_lr",               snn_tune_get_rstdp_lr());
     F("rstdp_baseline_alpha",   snn_tune_get_rstdp_baseline_alpha());
     F("target_rate",            snn_tune_get_target_rate());
+    F("target_rate_input",      snn_tune_get_target_rate_input());
     F("homeo_min_scale",        snn_tune_get_homeo_min_scale());
     F("homeo_max_scale",        snn_tune_get_homeo_max_scale());
     F("max_scale_dead",         snn_tune_get_max_scale_dead());
     F("dead_threshold",         snn_tune_get_dead_threshold());
     F("metabolic_cap",          snn_tune_get_metabolic_cap());
+    F("noise_rate_hz",          snn_tune_get_noise_rate_hz());
+    F("noise_pulse_mv",         snn_tune_get_noise_pulse_mv());
+    F("intrinsic_alpha",        snn_tune_get_intrinsic_alpha());
 #undef F
     return d;
 }

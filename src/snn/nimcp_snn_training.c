@@ -29,6 +29,13 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "core/neuralnet/nimcp_sparse_synapse.h"
 
+/* Explicit includes for symbols used by the tunable-param section + the
+ * intrinsic-reward computation below. Without these we rely on
+ * transitive includes from earlier headers — fine today, but fragile. */
+#include <string.h>  /* strncmp */
+#include <math.h>    /* expf */
+#include <stdlib.h>  /* rand_r (on glibc) */
+
 /*============================================================================
  * Runtime-tunable SNN training parameters.
  *
@@ -48,6 +55,19 @@ static float g_homeo_max_scale        = 1.02f;    /* per-apply scale-up ceiling 
 static float g_homeo_max_scale_dead   = 1.05f;    /* scale-up ceiling for pops < 10% of target */
 static float g_homeo_dead_threshold   = 0.1f;     /* "dead" multiplier: rate < X × target → use max_scale_dead */
 static float g_metabolic_cap_factor   = 0.8f;     /* sum(|w|) cap = factor × fan_in */
+/* Poisson background noise + intrinsic reward — the real structural
+ * fixes for SNN mode collapse. See commit message for rationale. */
+static float g_snn_noise_rate_hz      = 1.0f;     /* Poisson baseline firing floor; 0 = disabled */
+static float g_snn_noise_pulse_mv     = 15.0f;    /* mV kick injected into I_syn per noise spike (depol. above threshold) */
+static float g_snn_intrinsic_alpha    = 0.8f;     /* reward mix: 1.0 = pure intrinsic (rate-match), 0 = pure ANN-loss */
+/* Structural issue #4: per-layer firing targets. Input pops are driven
+ * by external cortex current at high rate, so 3% is unnaturally low for
+ * them — they sit at 10-40% naturally, and forcing them to 3% collapses
+ * the cascade. Hidden + output pops should track 3% biological target.
+ * Pop name prefix selects the target. */
+static float g_target_rate_input      = 0.05f;    /* input_* pops — looser since they're cortex-driven */
+/* g_homeo_target_rate (defined above) stays at 0.03 as the default for
+ * everything else (L1_feature_*, L2_pattern_*, ..., output_*). */
 
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
@@ -60,6 +80,10 @@ void snn_tune_set_homeo_bounds(float min_, float max_) {
 void snn_tune_set_max_scale_dead(float v)        { if (v > 1.0f && v < 2.0f)     g_homeo_max_scale_dead = v; }
 void snn_tune_set_dead_threshold(float v)        { if (v > 0.0f && v < 1.0f)     g_homeo_dead_threshold = v; }
 void snn_tune_set_metabolic_cap(float v)         { if (v > 0.0f && v < 10.0f)    g_metabolic_cap_factor = v; }
+void snn_tune_set_noise_rate_hz(float v)         { if (v >= 0.0f && v < 100.0f)  g_snn_noise_rate_hz = v; }
+void snn_tune_set_noise_pulse_mv(float v)        { if (v > 0.0f && v < 50.0f)    g_snn_noise_pulse_mv = v; }
+void snn_tune_set_intrinsic_alpha(float v)       { if (v >= 0.0f && v <= 1.0f)   g_snn_intrinsic_alpha = v; }
+void snn_tune_set_target_rate_input(float v)     { if (v > 0.0f && v < 0.5f)     g_target_rate_input = v; }
 
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
@@ -70,6 +94,52 @@ float snn_tune_get_homeo_max_scale(void)       { return g_homeo_max_scale; }
 float snn_tune_get_max_scale_dead(void)        { return g_homeo_max_scale_dead; }
 float snn_tune_get_dead_threshold(void)        { return g_homeo_dead_threshold; }
 float snn_tune_get_metabolic_cap(void)         { return g_metabolic_cap_factor; }
+float snn_tune_get_noise_rate_hz(void)         { return g_snn_noise_rate_hz; }
+float snn_tune_get_noise_pulse_mv(void)        { return g_snn_noise_pulse_mv; }
+float snn_tune_get_intrinsic_alpha(void)       { return g_snn_intrinsic_alpha; }
+float snn_tune_get_target_rate_input(void)     { return g_target_rate_input; }
+
+/*============================================================================
+ * Pop-class target rate selector. Pops with names starting with "input"
+ * get the looser input target; everything else gets the default biological
+ * 3% target.
+ *==========================================================================*/
+static inline float _target_rate_for_pop(const snn_population_t* pop) {
+    /* Use strncmp for a proper bounded name-prefix match. pop->name is
+     * char[64] so read is always defined, but strncmp is clearer and
+     * robust against future struct changes. */
+    if (pop && strncmp(pop->name, "input", 5) == 0) {
+        return g_target_rate_input;
+    }
+    return g_homeo_target_rate;
+}
+
+/*============================================================================
+ * C: Intrinsic SNN reward. Firing-rate-target gaussian per population,
+ * averaged. Returns reward in [0, 1]; 1.0 = every active pop at target.
+ * Pops in warmup (rate_samples < 10) are excluded from the computation.
+ * Called from brain_learn_vector to replace the ANN-loss-derived reward.
+ *==========================================================================*/
+float snn_compute_intrinsic_reward(snn_network_t* network) {
+    if (!network) return 0.0f;
+    float sum = 0.0f;
+    int n = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+        if (pop->rate_samples < 10) continue;  /* warmup — rate EMA not trustworthy */
+        /* Each pop gauged against its own per-class target (see #4
+         * structural fix: input pops at 5%, others at 3%). */
+        const float target = _target_rate_for_pop(pop);
+        const float sigma  = target * 0.5f;
+        const float two_sigma_sq = 2.0f * sigma * sigma;
+        float rate = pop->firing_rate_ema;
+        float err  = rate - target;
+        sum += expf(-(err * err) / two_sigma_sq);
+        n++;
+    }
+    return n > 0 ? sum / (float)n : 0.0f;
+}
 
 /*============================================================================
  * Population-level accessors for live diagnostics. Thin wrappers so the
@@ -835,7 +905,8 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
         return 0;
     }
 
-    const float target_rate   = g_homeo_target_rate;  /* tunable */
+    /* Target rate is now per-pop (see _target_rate_for_pop). Declared
+     * inside the per-pop loop below. */
     /* Scale bounds: tight [0.98, 1.02] always. The earlier emergency band
      * [0.90, 1.10] caused bang-bang oscillation — repeated 1.10× pushes
      * compounded the weights (1.10^20 ≈ 6.7×) so the SNN swung from silent
@@ -858,6 +929,12 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
             n_skipped_warmup++;
             continue;
         }
+
+        /* Per-pop target rate — input pops get a looser target since
+         * they're externally driven; hidden + output pops use the
+         * standard biological 3%. Prevents the case where forcing input
+         * pops from natural 30%+ firing down to 3% crashes cascade. */
+        const float target_rate = _target_rate_for_pop(pop);
 
         float cur_rate = pop->firing_rate_ema;
         if (cur_rate < rate_floor) cur_rate = rate_floor;
