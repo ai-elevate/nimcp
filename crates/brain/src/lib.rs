@@ -33,6 +33,7 @@ use ndarray::Array1;
 use nimcp_adaptive::{AdaptiveConfig, AdaptiveError, AdaptiveNet};
 use nimcp_core::{Error, Result};
 use nimcp_lnn::{LnnConfig, LnnNetwork, LtcState, TrainParams};
+use nimcp_memory::{MemoryNode, QueryHit, ZLadder, ZLadderConfig};
 use nimcp_scheduler::{Scheduler, SchedulerConfig};
 use nimcp_snn::{SnnConfig, SnnNetwork};
 use serde::{Deserialize, Serialize};
@@ -55,6 +56,10 @@ pub struct BrainConfig {
     /// Optional LNN config. Same semantics as `snn`.
     #[serde(default)]
     pub lnn: Option<LnnConfig>,
+    /// Z-Ladder config. `None` → no memory subsystem (Phase 1-4
+    /// brains remain valid).
+    #[serde(default)]
+    pub memory: Option<ZLadderConfig>,
 }
 
 impl Default for BrainConfig {
@@ -66,6 +71,7 @@ impl Default for BrainConfig {
             adaptive: AdaptiveConfig::default(),
             snn: None,
             lnn: None,
+            memory: None,
         }
     }
 }
@@ -81,6 +87,7 @@ pub struct Brain {
     /// Transient LNN runtime state — mirrors `lnn.new_state()`, reset on
     /// `lnn_reset` or fresh brain.
     lnn_state: Option<Vec<LtcState>>,
+    memory: Option<ZLadder>,
 }
 
 impl Brain {
@@ -117,11 +124,18 @@ impl Brain {
             (None, None)
         };
 
+        let memory = if let Some(cfg) = config.memory.clone() {
+            Some(ZLadder::new(cfg).map_err(|e| Error::Config(format!("memory: {e}")))?)
+        } else {
+            None
+        };
+
         tracing::info!(
             layers = ?config.adaptive.layers,
             seed = config.rng_seed,
             has_snn = snn.is_some(),
             has_lnn = lnn.is_some(),
+            has_memory = memory.is_some(),
             "brain created"
         );
         Ok(Self {
@@ -131,6 +145,7 @@ impl Brain {
             snn,
             lnn,
             lnn_state,
+            memory,
         })
     }
 
@@ -249,6 +264,60 @@ impl Brain {
     }
 
     // -------------------------------------------------------------------------
+    // Memory (Z-Ladder) access.
+    // -------------------------------------------------------------------------
+
+    /// Immutable handle to the Z-Ladder, if present.
+    pub fn memory(&self) -> Option<&ZLadder> {
+        self.memory.as_ref()
+    }
+
+    /// Mutable handle to the Z-Ladder, if present.
+    pub fn memory_mut(&mut self) -> Option<&mut ZLadder> {
+        self.memory.as_mut()
+    }
+
+    /// Insert a new memory node. Fails with `Error::Config` if no
+    /// memory subsystem was configured or if the underlying ladder
+    /// rejects (e.g. duplicate ID).
+    pub fn memory_insert(&mut self, node: MemoryNode) -> Result<()> {
+        let mem = self
+            .memory
+            .as_mut()
+            .ok_or_else(|| Error::Config("memory not configured on this brain".into()))?;
+        mem.insert(node)
+            .map_err(|e| Error::Config(format!("memory insert: {e}")))
+    }
+
+    /// Mark a node as a landmark — elevate to Z3 + protect from demotion.
+    pub fn memory_mark_landmark(&mut self, id: u64, reason: &str) -> Result<()> {
+        let mem = self
+            .memory
+            .as_mut()
+            .ok_or_else(|| Error::Config("memory not configured on this brain".into()))?;
+        mem.mark_landmark(id, reason)
+            .map_err(|e| Error::Config(format!("mark_landmark: {e}")))
+    }
+
+    /// Query all tiers for the top-`k` cosine matches to `query`.
+    pub fn memory_query_all(&self, query: &[f32], k: usize) -> Result<Vec<QueryHit>> {
+        let mem = self
+            .memory
+            .as_ref()
+            .ok_or_else(|| Error::Config("memory not configured on this brain".into()))?;
+        Ok(mem.query_all_tiers(query, k))
+    }
+
+    /// Query the landmark subset for the top-`k` cosine matches to `query`.
+    pub fn memory_query_landmarks(&self, query: &[f32], k: usize) -> Result<Vec<QueryHit>> {
+        let mem = self
+            .memory
+            .as_ref()
+            .ok_or_else(|| Error::Config("memory not configured on this brain".into()))?;
+        Ok(mem.query_landmarks_by_similarity(query, k))
+    }
+
+    // -------------------------------------------------------------------------
     // Joint atomic ensemble checkpoint.
     // -------------------------------------------------------------------------
 
@@ -303,6 +372,16 @@ impl Brain {
                 .map_err(|e| Error::Serialization(format!("lnn serialize: {e}")))?;
             std::fs::write(tmp_dir.join("lnn.json"), bytes).map_err(Error::from)?;
             manifest.files.push("lnn.json".into());
+        }
+
+        // Memory — full ZLadder snapshot (tiers + features + landmarks +
+        // clock + stats). V1 E6's "restore preserves features" rule is
+        // enforced by `MemoryNode` carrying `Vec<f32>` through serde.
+        if let Some(mem) = &self.memory {
+            let bytes = serde_json::to_vec(mem)
+                .map_err(|e| Error::Serialization(format!("memory serialize: {e}")))?;
+            std::fs::write(tmp_dir.join("memory.json"), bytes).map_err(Error::from)?;
+            manifest.files.push("memory.json".into());
         }
 
         // Manifest — last so its presence signals "this dir is complete".
@@ -386,6 +465,31 @@ impl Brain {
             if let Some(state) = self.lnn_state.as_mut() {
                 *state = lnn_slot.new_state();
             }
+        }
+
+        // Memory — full ZLadder replace (including tiers, landmarks,
+        // clock, stats). The Z-Ladder doesn't own neural weights, so a
+        // shape-mismatch check means "do the currently-configured
+        // tier counts + max_landmarks line up with what's on disk".
+        if manifest.files.iter().any(|f| f == "memory.json") {
+            let mem_slot = self.memory.as_mut().ok_or_else(|| {
+                Error::Config("snapshot has memory.json but brain was built without memory".into())
+            })?;
+            let bytes = std::fs::read(dir.join("memory.json")).map_err(Error::from)?;
+            let restored: ZLadder = serde_json::from_slice(&bytes)
+                .map_err(|e| Error::Serialization(format!("memory decode: {e}")))?;
+            // Config keys we consider structural: per-tier capacity + max_landmarks.
+            let same_caps = (0..4).all(|i| {
+                restored.config().tiers[i].capacity == mem_slot.config().tiers[i].capacity
+            });
+            let same_max_landmarks =
+                restored.config().max_landmarks == mem_slot.config().max_landmarks;
+            if !same_caps || !same_max_landmarks {
+                return Err(Error::Config(
+                    "memory snapshot capacities do not match current brain config".into(),
+                ));
+            }
+            *mem_slot = restored;
         }
 
         tracing::info!(dir = ?dir, files = ?manifest.files, "ensemble loaded");
