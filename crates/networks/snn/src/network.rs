@@ -39,7 +39,7 @@ use crate::rstdp::{RstdpParams, RstdpState, step_rstdp};
 // -------------------------------------------------------------------------
 
 /// Static description of one neuron population.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopulationSpec {
     /// Human-readable label.
     pub name: String,
@@ -54,7 +54,7 @@ pub struct PopulationSpec {
 }
 
 /// Static description of one directed synapse edge (src → dst).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdgeSpec {
     /// Source population index.
     pub src: usize,
@@ -71,7 +71,7 @@ pub struct EdgeSpec {
 }
 
 /// Top-level configuration for [`SnnNetwork`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SnnConfig {
     /// Population specs.
     pub populations: Vec<PopulationSpec>,

@@ -48,7 +48,7 @@ use nimcp_gpu::GpuError;
 ///
 /// `dt_ms` is *not* stored here: the scheduler owns the timestep so it
 /// can shrink/grow without rebuilding the param struct.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct LifParams {
     /// Membrane time constant (ms). Typical cortical value ~20 ms.
     pub tau_ms: f32,
