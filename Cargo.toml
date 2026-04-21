@@ -12,7 +12,7 @@ members = [
     "crates/memory",
     "crates/checkpoint",
     "crates/brain",
-    "crates/v1-bridge",
+    "crates/daemon",
     "pybind",
     "rust-tests",
 ]
@@ -78,7 +78,7 @@ nimcp-plasticity = { path = "crates/plasticity" }
 nimcp-memory = { path = "crates/memory" }
 nimcp-checkpoint = { path = "crates/checkpoint" }
 nimcp-brain = { path = "crates/brain" }
-nimcp-v1-bridge = { path = "crates/v1-bridge" }
+nimcp-daemon = { path = "crates/daemon" }
 
 # Global build settings.
 [profile.dev]
