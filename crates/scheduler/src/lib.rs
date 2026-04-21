@@ -108,10 +108,7 @@ impl Scheduler {
             mailbox_capacity = config.mailbox_capacity,
             "scheduler created"
         );
-        Self {
-            config,
-            next_id: 0,
-        }
+        Self { config, next_id: 0 }
     }
 
     /// Spawn an actor onto the runtime. Returns a handle for sending messages.
@@ -144,8 +141,8 @@ impl Scheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     struct CountingActor {
         count: Arc<AtomicU32>,

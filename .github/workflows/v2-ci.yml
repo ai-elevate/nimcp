@@ -1,0 +1,138 @@
+name: V2 CI
+
+# Runs on the v2 branch (Rust workspace). V1 (master) has its own pipeline.
+#
+# Path filters ensure this only runs when Rust workspace files change —
+# V1 C source edits don't trigger it, and vice versa.
+on:
+  push:
+    branches: [v2]
+    paths:
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'pybind/**'
+      - 'rust-examples/**'
+      - 'rust-tests/**'
+      - 'benches/**'
+      - 'CONTRIBUTING_V2.md'
+      - 'docs/V2_PLAN.md'
+      - '.github/workflows/v2-ci.yml'
+  pull_request:
+    branches: [v2]
+    paths:
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'pybind/**'
+      - 'rust-examples/**'
+      - 'rust-tests/**'
+      - 'benches/**'
+      - 'CONTRIBUTING_V2.md'
+      - 'docs/V2_PLAN.md'
+      - '.github/workflows/v2-ci.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+  # The CUDA feature compiles against cudarc, which needs CUDA headers only
+  # for the NVRTC+nvml features we don't use. Dynamic loading of libcudart
+  # happens at runtime, so we explicitly build with --no-default-features
+  # in CI (no GPU present on GitHub runners).
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # Formatting — fast, runs first
+  # ──────────────────────────────────────────────────────────────────────
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Lint — clippy with -D warnings
+  # ──────────────────────────────────────────────────────────────────────
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: v2-ci
+      - run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Tests — all crates, no GPU
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: v2-ci
+      - name: Build (no default features — CI has no GPU)
+        run: cargo build --workspace --no-default-features --verbose
+      - name: Test (all crates, no GPU)
+        run: cargo test --workspace --no-default-features --verbose
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Doc build — fails on broken doc links, missing docs
+  # ──────────────────────────────────────────────────────────────────────
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: v2-ci
+      - name: Build docs
+        run: cargo doc --workspace --no-default-features --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Python bindings — build the extension module
+  # ──────────────────────────────────────────────────────────────────────
+  python:
+    name: python bindings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: v2-ci-py
+      - name: Install maturin
+        run: pip install maturin
+      - name: Build wheel
+        run: |
+          cd pybind
+          maturin build --release --no-default-features
+      - name: Import smoke test
+        run: |
+          pip install pybind/target/wheels/nimcp_v2*.whl
+          python -c "import nimcp_v2; b = nimcp_v2.Brain(); print(b)"

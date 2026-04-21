@@ -36,9 +36,8 @@ impl PyBrain {
             deterministic,
             ..Default::default()
         };
-        let inner = Brain::new(cfg).map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("brain init: {e}"))
-        })?;
+        let inner = Brain::new(cfg)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("brain init: {e}")))?;
         Ok(Self { inner })
     }
 

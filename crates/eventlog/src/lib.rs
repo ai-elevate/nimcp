@@ -77,10 +77,7 @@ impl EventLog {
     pub fn open(config: LogConfig) -> Result<Self, LogError> {
         std::fs::create_dir_all(&config.dir)?;
         tracing::info!(dir = ?config.dir, "opened event log (stub)");
-        Ok(Self {
-            config,
-            next_id: 0,
-        })
+        Ok(Self { config, next_id: 0 })
     }
 
     /// Append a raw (already-serialized) event payload. Returns the assigned ID.
