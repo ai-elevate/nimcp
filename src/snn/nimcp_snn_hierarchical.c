@@ -102,8 +102,21 @@ static const snn_skip_def_t SKIP_DEFS[] = {
  *
  * With 0.15 × gap (2.25 mV), initial firing lands BELOW target 3%.
  * Homeostasis scales UP (easy direction; R-STDP and homeostasis agree
- * when the network is too quiet, since quiet → low LTP → no compounding). */
-#define SNN_I_SYN_BUDGET          (0.15f * SNN_V_GAP)  /**< 2.25 mV target (quiet start) */
+ * when the network is too quiet, since quiet → low LTP → no compounding).
+ *
+ * UPDATE: 0.15 was tuned for a shallower/better-driven network. On the
+ * 9-layer diamond with current cortex→SNN input drive, 0.15 produced a
+ * DEAD CASCADE: input fired at ~5% but L1 through output stayed pinned
+ * at rest (-65 mV, 0 spikes across 1.6M neurons) — input→L1 weighted sum
+ * was below L1's threshold. Homeostatic scale-up at 1.02/apply needed
+ * ~170 applies to escape, and R-STDP couldn't help because (a) nothing
+ * downstream was firing, (b) the reward formula was simultaneously
+ * broken (see brain_learning.c commit note). Raised 0.15 → 0.25 to
+ * restore initial cascade propagation. Combined with the asymmetric
+ * homeostatic escape band (1.05 cap when rate < 10% of target) and
+ * the fixed reward formula, this should produce healthy firing within
+ * the first 100-200 training steps instead of staying collapsed. */
+#define SNN_I_SYN_BUDGET          (0.25f * SNN_V_GAP)  /**< 3.75 mV target (propagates cascade on deep nets) */
 #define SNN_PRESYN_RATE_DEFAULT   0.1f                 /**< 10% firing per step assumption */
 /* Input_pop is externally driven. With Poisson rate encoding at ~100 Hz and
  * dt=1 ms, per-step firing prob ≈ 0.1. We keep this equal to default; if the
