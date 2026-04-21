@@ -11,9 +11,27 @@ description = "NIMCP V2 — spiking neural network (LIF + CSR synapses), Phase 3
 [lints]
 workspace = true
 
+[features]
+# Default is CPU-only; `cuda` compiles the GPU kernels via nimcp-gpu
+# + cudarc (NVRTC compile + stream memcpys used in lif.rs / csr.rs).
+default = []
+cuda = ["dep:nimcp-gpu", "dep:cudarc"]
+
 [dependencies]
 nimcp-core = { workspace = true }
 nimcp-plasticity = { workspace = true }
 ndarray = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
+thiserror = { workspace = true }
+
+# Optional GPU backend, gated on `cuda`. cudarc is pulled in directly
+# so `lif.rs` / `csr.rs` can NVRTC-compile their kernels and stream-order
+# memcpys; `nimcp-gpu` supplies the shared `GpuError` type.
+nimcp-gpu = { workspace = true, optional = true }
+cudarc = { workspace = true, optional = true }
+
+[dev-dependencies]
+approx = "0.5"

@@ -1,30 +1,52 @@
 //! NIMCP V2 — spiking neural network.
 //!
-//! Phase 3 crate. V2 design takeaways from V1's pain:
+//! # Phase 3 principles (ported from V1's hard lessons)
 //!
-//! 1. **Quiet-start is a load-time weight transform**, not an init-time branch.
-//!    V1's quiet-start protocol only applied to fresh init; resuming from a
-//!    saturated checkpoint inherited saturation. V2's transform keys on
-//!    observed firing statistics at load time and scales weights regardless
-//!    of whether the network is fresh or resumed.
+//! 1. **Quiet-start is a load-time weight transform.** V1's quiet-start
+//!    only applied to fresh init; resuming from a saturated checkpoint
+//!    re-entered the saturated state. V2 keys the transform on observed
+//!    firing statistics at load time — works the same on fresh or
+//!    resumed weights. See [`nimcp_plasticity::quiet_start`].
 //!
-//! 2. **CSR synapses owned per population**. V1 got this right in the
-//!    lightweight-SNN refactor; we keep it.
+//! 2. **CSR synapse storage owned per population.** V1's lightweight SNN
+//!    refactor (2026-03 onwards) got this right. V2 mirrors the layout:
+//!    `row_ptr` + `col_idx` + `weights`, all flat arrays.
 //!
-//! 3. **Homeostatic scaling operates on the flat weights array, not strided
-//!    entries**. Ports the Phase E perf fix from V1 (commit `3a7aa5f7d`).
+//! 3. **Homeostatic scaling on the flat weights array.** Row-major, one
+//!    multiply per synapse, no strided entries. Ports the perf fix from
+//!    V1 commit `3a7aa5f7d`.
 //!
-//! 4. **Tight bounds [0.98, 1.02] from day one**. The "emergency band"
-//!    oscillation bug is in V2's regression tests from the start.
+//! 4. **Tight homeostatic bounds `[0.98, 1.02]` always.** The V1
+//!    "emergency band" oscillation bug is a regression test from day
+//!    one — see `nimcp-plasticity::homeostatic::anti_oscillation_*`.
+//!
+//! 5. **R-STDP warmup gate (`rate_samples >= 100`).** Without it, Hebbian
+//!    LTP runs away on fresh init before homeostasis engages. V1 learned
+//!    this the hard way; V2 ships the gate + its test from the start.
+//!
+//! # Module layout
+//!
+//! - [`lif`]: LIF neuron dynamics (membrane voltage, spike emission, refractory)
+//! - [`csr`]: CSR synapse storage + `I_syn` forward kernel
+//! - [`rstdp`]: reward-modulated STDP weight updates + eligibility traces
+//! - [`homeostatic`]: population-level synaptic scaling + quiet-start
+//! - [`network`]: top-level [`SnnNetwork`] composition (wires above)
 
-#![forbid(unsafe_code)]
-#![allow(dead_code)] // Phase 3 stub
+// The CPU path forbids unsafe. With `--features cuda`, the LIF GPU kernel
+// launch path requires one `unsafe` block per call (cudarc's `.launch(cfg)`
+// is `unsafe fn`). Scoped to `lif.rs`'s `#[cfg(feature = "cuda")]` section.
+#![cfg_attr(not(feature = "cuda"), forbid(unsafe_code))]
+#![cfg_attr(feature = "cuda", deny(unsafe_code))]
+#![cfg_attr(feature = "cuda", allow(unsafe_code))]
 
 pub mod csr;
 pub mod homeostatic;
+pub mod lif;
+pub mod network;
+pub mod rstdp;
 
 pub use csr::{CsrSynapses, Population, PopulationId};
 pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};
-
-/// Phase 3 placeholder.
-pub struct SnnNetwork;
+pub use lif::{LifParams, LifState, lif_step_cpu};
+pub use network::{SnnConfig, SnnNetwork};
+pub use rstdp::{RstdpParams, RstdpState, step_rstdp};
