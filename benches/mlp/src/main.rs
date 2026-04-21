@@ -106,6 +106,13 @@ fn shapes() -> Vec<Shape> {
             name: "xlarge",
             layers: vec![1024, 16384, 2048],
         },
+        // V1-parity target: 150K hidden neurons per V2_PLAN.md Phase 2
+        // exit criterion. ~155M params × 4 B ≈ 620 MB in weights alone,
+        // plus grads + activations; fits in ~2 GB VRAM total.
+        Shape {
+            name: "v1_target",
+            layers: vec![1024, 150_000, 2048],
+        },
     ]
 }
 
