@@ -69,13 +69,10 @@ impl Default for HomeostaticParams {
 /// - A non-positive `target_rate` is a no-op (returns `1.0`); plasticity on a
 ///   dead target is undefined.
 #[must_use]
-pub fn homeostatic_scale(
-    current_rate: f32,
-    target_rate: f32,
-    params: &HomeostaticParams,
-) -> f32 {
+pub fn homeostatic_scale(current_rate: f32, target_rate: f32, params: &HomeostaticParams) -> f32 {
     // Invalid target → no scaling. Do not panic in the hot path.
-    if !(target_rate > 0.0) {
+    // Handles both non-positive targets and NaN.
+    if !target_rate.is_finite() || target_rate <= 0.0 {
         return 1.0;
     }
 
@@ -92,7 +89,7 @@ pub fn homeostatic_scale(
 
 #[cfg(test)]
 #[allow(clippy::float_cmp)] // exact-equality asserts are the point — we
-                            // test that tight bounds clamp to exact values.
+// test that tight bounds clamp to exact values.
 mod tests {
     use super::*;
 
@@ -110,10 +107,7 @@ mod tests {
     fn saturated_rate_clamps_to_lower_bound_exactly_098() {
         let p = HomeostaticParams::default();
         let s = homeostatic_scale(1.0, 0.03, &p);
-        assert_eq!(
-            s, 0.98,
-            "expected exact lower-bound clamp at 0.98, got {s}"
-        );
+        assert_eq!(s, 0.98, "expected exact lower-bound clamp at 0.98, got {s}");
     }
 
     /// Dead rate (r=0) clamps to upper bound exactly.

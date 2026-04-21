@@ -84,10 +84,7 @@ mod tests {
     fn pre_leads_post_potentiates() {
         let params = StdpParams::default();
         let dw = stdp_weight_delta(0.0, 5.0, &params);
-        assert!(
-            dw > 0.0,
-            "pre→post (5ms) should potentiate, got Δw = {dw}"
-        );
+        assert!(dw > 0.0, "pre→post (5ms) should potentiate, got Δw = {dw}");
     }
 
     /// Regression: post leading pre by 5ms must weaken (negative Δw).
@@ -95,10 +92,7 @@ mod tests {
     fn post_leads_pre_depresses() {
         let params = StdpParams::default();
         let dw = stdp_weight_delta(5.0, 0.0, &params);
-        assert!(
-            dw < 0.0,
-            "post→pre (5ms) should depress, got Δw = {dw}"
-        );
+        assert!(dw < 0.0, "post→pre (5ms) should depress, got Δw = {dw}");
     }
 
     /// Simultaneous spikes produce no change.

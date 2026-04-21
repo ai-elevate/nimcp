@@ -40,7 +40,10 @@ mod tests {
 
     #[test]
     fn gate_opens_at_threshold() {
-        assert!(rate_samples_ready(DEFAULT_WARMUP_THRESHOLD, DEFAULT_WARMUP_THRESHOLD));
+        assert!(rate_samples_ready(
+            DEFAULT_WARMUP_THRESHOLD,
+            DEFAULT_WARMUP_THRESHOLD
+        ));
     }
 
     #[test]

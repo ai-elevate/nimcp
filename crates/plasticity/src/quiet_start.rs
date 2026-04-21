@@ -89,7 +89,8 @@ pub fn quiet_start_scale_with_band(
     target_rate: f32,
     band: &QuietStartBand,
 ) -> Vec<f32> {
-    if !(target_rate > 0.0) {
+    // Invalid target → no scaling. Handles non-positive targets and NaN.
+    if !target_rate.is_finite() || target_rate <= 0.0 {
         return vec![1.0; observed_rates.len()];
     }
 
@@ -133,7 +134,10 @@ mod tests {
                 "pop {i}: r={} → scale={s}, expected < 0.1",
                 observed[i]
             );
-            assert!(*s >= MIN_QUIET_SCALE, "scale {s} below min {MIN_QUIET_SCALE}");
+            assert!(
+                *s >= MIN_QUIET_SCALE,
+                "scale {s} below min {MIN_QUIET_SCALE}"
+            );
         }
     }
 
