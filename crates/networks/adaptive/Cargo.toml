@@ -16,5 +16,7 @@ nimcp-core = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
+rkyv = { workspace = true }
 serde = { workspace = true }
+thiserror = { workspace = true }
 tracing = { workspace = true }
