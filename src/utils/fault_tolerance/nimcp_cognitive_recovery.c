@@ -28,8 +28,57 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(cognitive_recovery)
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
+#include <execinfo.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "constants/nimcp_buffer_constants.h"
+
+/* Crash log FD opened at handler install time; -1 if unavailable.
+ * Writing to a pre-opened FD via write(2) + backtrace_symbols_fd() is
+ * async-signal-safe. This gives us a full backtrace on any SIGSEGV,
+ * SIGBUS, SIGFPE, etc., regardless of whether cognitive recovery
+ * succeeds or fails. */
+static volatile int g_crash_log_fd = -1;
+#define CRASH_LOG_PATH "/var/log/nimcp_crash.log"
+#define CRASH_LOG_PATH_FALLBACK "/tmp/nimcp_crash.log"
+
+/* Async-signal-safe write of a constant string. */
+static void crash_write_str(int fd, const char* s) {
+    if (fd < 0 || !s) return;
+    size_t n = 0;
+    while (s[n]) n++;
+    ssize_t _unused = write(fd, s, n);
+    (void)_unused;
+}
+
+/* Async-signal-safe write of a uintptr_t in hex. */
+static void crash_write_hex(int fd, uintptr_t v) {
+    if (fd < 0) return;
+    char buf[2 + 16 + 1];  /* "0x" + 16 hex digits + NUL */
+    buf[0] = '0'; buf[1] = 'x';
+    for (int i = 0; i < 16; i++) {
+        unsigned nib = (unsigned)((v >> ((15 - i) * 4)) & 0xF);
+        buf[2 + i] = (char)(nib < 10 ? '0' + nib : 'a' + (nib - 10));
+    }
+    ssize_t _unused = write(fd, buf, sizeof(buf) - 1);
+    (void)_unused;
+}
+
+/* Async-signal-safe write of a signed int in decimal. */
+static void crash_write_int(int fd, int v) {
+    if (fd < 0) return;
+    char buf[16];
+    int neg = (v < 0);
+    unsigned uv = neg ? (unsigned)(-v) : (unsigned)v;
+    int i = (int)sizeof(buf);
+    if (uv == 0) buf[--i] = '0';
+    while (uv > 0) { buf[--i] = (char)('0' + (uv % 10u)); uv /= 10u; }
+    if (neg) buf[--i] = '-';
+    ssize_t _unused = write(fd, buf + i, (size_t)((int)sizeof(buf) - i));
+    (void)_unused;
+}
 
 //=============================================================================
 // Internal Structures
@@ -90,6 +139,29 @@ static uint64_t get_timestamp_us(void) {
  * @brief Signal handler for cognitive recovery
  */
 static void cognitive_signal_handler(int signal, siginfo_t* info, void* context) {
+    /* ALWAYS dump a backtrace first, even if no coordinator is present.
+     * This runs entirely with async-signal-safe primitives (write(2),
+     * backtrace(), backtrace_symbols_fd()). It fires before the
+     * cognitive recovery attempt so we capture diagnostics regardless
+     * of whether recovery succeeds. */
+    if (g_crash_log_fd >= 0) {
+        crash_write_str(g_crash_log_fd, "\n=== NIMCP CRASH HANDLER FIRED ===\nsignal=");
+        crash_write_int(g_crash_log_fd, signal);
+        crash_write_str(g_crash_log_fd, " si_code=");
+        crash_write_int(g_crash_log_fd, info ? info->si_code : 0);
+        crash_write_str(g_crash_log_fd, " fault_addr=");
+        crash_write_hex(g_crash_log_fd, info ? (uintptr_t)info->si_addr : 0);
+        crash_write_str(g_crash_log_fd, " ts=");
+        crash_write_int(g_crash_log_fd, (int)time(NULL));
+        crash_write_str(g_crash_log_fd, "\nbacktrace:\n");
+
+        void* trace_buffer[128];
+        int trace_depth = backtrace(trace_buffer, 128);
+        backtrace_symbols_fd(trace_buffer, trace_depth, g_crash_log_fd);
+        crash_write_str(g_crash_log_fd, "=== END CRASH HANDLER ===\n\n");
+        fsync(g_crash_log_fd);
+    }
+
     if (!g_coordinator) {
         // No coordinator, can't do anything
         _exit(128 + signal);
@@ -1237,6 +1309,36 @@ bool cognitive_recovery_install_signal_handlers(
 
     // Set global coordinator for signal handler
     g_coordinator = coordinator;
+
+    /* Open the crash log FD once here so the signal handler can write
+     * to it via async-signal-safe write(2) without opening during a
+     * crash. Try /var/log first (supervisord default), fall back to
+     * /tmp on permission error. If both fail, handler still runs but
+     * without file output (backtrace_symbols_fd(-1, ...) is a no-op). */
+    if (g_crash_log_fd < 0) {
+        int fd = open(CRASH_LOG_PATH,
+                      O_WRONLY | O_CREAT | O_APPEND,
+                      0644);
+        if (fd < 0) {
+            fd = open(CRASH_LOG_PATH_FALLBACK,
+                      O_WRONLY | O_CREAT | O_APPEND,
+                      0644);
+        }
+        if (fd >= 0) {
+            g_crash_log_fd = fd;
+            /* Mark boot so log readers can see where this daemon session began. */
+            crash_write_str(fd, "\n=== NIMCP crash handler installed at pid=");
+            crash_write_int(fd, (int)getpid());
+            crash_write_str(fd, " ts=");
+            crash_write_int(fd, (int)time(NULL));
+            crash_write_str(fd, " ===\n");
+            LOG_INFO("Crash handler: backtrace log fd=%d path=%s",
+                     fd, (fd >= 0 ? CRASH_LOG_PATH : CRASH_LOG_PATH_FALLBACK));
+        } else {
+            LOG_WARNING("Crash handler: could not open crash log (errno=%d); "
+                        "backtraces will not be dumped to disk", errno);
+        }
+    }
 
     struct sigaction sa = {0};
     sa.sa_sigaction = cognitive_signal_handler;
