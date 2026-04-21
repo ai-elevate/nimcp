@@ -158,10 +158,25 @@ if __name__ == '__main__':
         try:
             m = collect()
 
-            # Detect stalled training: if learn_calls hasn't increased in 5 min
+            # Detect stalled training: if learn_calls hasn't increased in 5 min.
+            # Also detect brain restart — when the daemon restarts, learn_calls
+            # resets to 0 (or a low number). Without handling this, the cached
+            # _last_learn_calls stays at the old high value and the `>` check
+            # never fires; _last_learn_time ages past 300s; training_active
+            # gets stuck at False forever even though learns ARE happening.
             current_learns = m.get('learn_calls', 0)
             now = time.time()
-            if current_learns > _last_learn_calls:
+            if current_learns < _last_learn_calls:
+                # Brain restart: counter went backwards. Re-anchor and treat
+                # as active — the daemon is back up and processing.
+                print(f'[metrics] Brain restart detected — learn_calls went '
+                      f'{_last_learn_calls} -> {current_learns}; re-anchoring',
+                      flush=True)
+                _last_learn_calls = current_learns
+                _last_learn_time = now
+                _stall_warned = False
+                m['training_active'] = True
+            elif current_learns > _last_learn_calls:
                 _last_learn_calls = current_learns
                 _last_learn_time = now
                 _stall_warned = False
