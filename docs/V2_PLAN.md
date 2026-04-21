@@ -160,11 +160,118 @@ Estimated for one experienced Rust developer full-time. Numbers are realistic, n
 - Exposed via Python API
 - **Exit criteria:** `brain.stats()` returns a comprehensive, documented dict.
 
-### Phase 7 — Training harness + curriculum (5 weeks)
-- Stages as actors
-- Multimodal data loaders (image, audio, text)
-- Optional: Claude teacher integration via HTTP actor
-- **Exit criteria:** multi-stage training script runs end-to-end on a toy dataset.
+### Phase 7 — Training harness (V1 harness via adapter, 2–3 weeks)
+
+**Revised from the original greenfield plan.** Master already has a
+battle-tested operational shell — systemd service, daemon, Unix socket,
+BrainProxy, cron monitor, `metrics.json` exporter, timestamped checkpoint
+rotation, 24 domains of data on disk. Building all of that again for V2
+duplicates infrastructure that works. Instead, V2 rides under the
+existing harness via an adapter shim that maps V1's brain API onto V2's
+narrower surface.
+
+#### Audit result (see `scripts/immerse_athena.py`)
+
+The harness calls 77 distinct `brain.*` methods:
+
+| Class | Count | Treatment |
+|---|---|---|
+| Directly mappable to V2 | ~10 | Thin pass-through: `learn_vector` → `Brain::learn`, `save` → `Brain::save_ensemble`, `*_get_stats` → slices of `Brain::stats`, etc. |
+| Cognitive instrumentation V2 dropped in §5 | ~60 | Safe no-op stubs returning reasonable defaults (`bg_*`, `medulla_*`, `sleep_*`, `octopus_*`, `visual_cortex_*`, `utm_*`, `enable_*`, etc.) |
+| Semantic-gap (harness depends on behavior V2 has no equivalent for) | ~7 | Explicit adapter choice: `train_cognitive` reduces to adaptive+LNN `learn()`, `decide_full` returns `{output: predict(...), ethics: null}`, `train_language`/`learn_language`/`speak`/`generate_text` stub (no tokenizer/TTS on V2) |
+
+#### Sub-phases
+
+- **7a — docs:** this V2_PLAN update (no code).
+- **7b — Python bindings expansion:** currently only the adaptive path
+  reaches Python. Add `brain.snn_configure/step`, `brain.lnn_configure/
+  train_step_mse/forward_step`, `brain.memory_insert/mark_landmark/
+  query_*`, `brain.save_ensemble/load_ensemble`, plus dedicated
+  `brain.snn_stats()`, `brain.lnn_stats()`, `brain.memory_stats()`
+  helpers so the adapter shim has real V2 functionality to forward to.
+- **7c — adapter shim:** `scripts/v2_brain_adapter.py` — a Python class
+  providing all 77 methods. Mappable ones thin-wrap `nimcp_v2.Brain`;
+  no-ops return safe defaults (logged at DEBUG); semantic-gap ones
+  reduce to the closest V2 primitive or stub. Unit-tested per method
+  category.
+- **7d — harness integration:** `scripts/immerse_athena.py --backend=v2`
+  flag; when set, `import v2_brain_adapter as nimcp`. The rest of the
+  harness is untouched. Small curriculum (1 domain, few thousand steps)
+  runs end-to-end.
+- **7e — V2 daemon:** `crates/daemon` — a Rust binary wrapping `Brain`
+  behind a Unix socket. Protocol is a lean subset of V1's daemon
+  protocol — enough that a thin Python client can drive learn / predict
+  / save / stats. Managed via an `athena-brain-v2.service` unit cloned
+  from V1's.
+- **7f — file-based monitoring compatibility:** master's monitoring
+  stack has two layers. This sub-phase covers the file-based layer
+  (scripts that read logs + state files on disk, no socket calls):
+  `monitor_training_cron.sh`, `monitor_athena.py`, `monitor_collapse.sh`,
+  `monitor_stage_completion.sh`, `monitor_training.sh`,
+  `watchdog_training.sh`. Adapts "for free" if V2 writes:
+    - `website/metrics.json` — existing schema (`learn_calls`,
+      `ann_loss`, `snn_loss`, `lnn_loss`, `training_active`,
+      `timestamp`, `uptime`, etc.) produced from `Brain::stats()` +
+      `LossStats`.
+    - `training.log` — line-oriented human-readable log (tracing
+      subscriber → file appender).
+    - `checkpoints/athena/immersive_state.json` — stage-state JSON
+      the stage-completion monitor reads; harness already writes
+      this, adapter preserves it.
+    - `checkpoints/athena/snapshot_v2_*.snapshot` — timestamped
+      ensemble-save directories, rotation kept at 5 (V1 policy).
+  Net effort: tiny — mostly write-these-paths wiring.
+- **7g — SNN watchdog socket-RPC parity:** master's `snn_watchdog.py`
+  is the one monitor that talks to the brain daemon directly (not
+  via files). It uses 4 RPCs to detect and correct SNN runaway /
+  quench events:
+    - `snn_pop_stats` → already collected by `Brain::stats()` under
+      `snn.populations`; daemon surfaces as RPC.
+    - `snn_tune_get` → expose current `LifParams` / `RstdpParams` /
+      `HomeostaticParams` (V2 already has live tuning per commit
+      `83ab43f01 feat(snn): real-time parameter tuning`).
+    - `snn_tune {name, value}` → forward to V2's live-tuning API.
+    - `snn_force_quench {n}` → zero `n` random neurons' membrane
+      potentials. V2 autonomous watchdog (`6b5853058`) already has a
+      quench primitive; reuse.
+  Exit: `python3 scripts/snn_watchdog.py --socket /var/run/athena/
+  brain-v2.sock` monitors a running V2 daemon without modification.
+  V2 keeps its own autonomous in-process watchdog from phase 3f as
+  a second line of defense (belt + suspenders).
+- **7h — end-to-end validation:** run `immerse_athena.py --backend=v2`
+  for N hours on one domain under systemd; verify checkpoints rotate,
+  metrics update, file-based monitors see `training_active=true`,
+  socket-based SNN watchdog connects and stays quiet, alerts stay
+  empty, and final adaptive loss has decreased.
+
+#### Exit criteria
+
+- `python3 scripts/immerse_athena.py --backend=v2 --domain <name>` runs
+  without crashing for ≥1 hour; adaptive loss monotone-decreases on
+  EMA; checkpoints round-trip via `Brain::save_ensemble` /
+  `load_ensemble`.
+- V2 daemon under `athena-brain-v2.service` survives operator disconnect
+  (same semantics as V1 daemon per commit `6b5853058`).
+- Existing file-based monitor cron (`monitor_training_cron.sh`) correctly
+  reports V2's `training_active` state; `TRAINING_ALERT.txt` stays
+  empty for the full run.
+- `scripts/snn_watchdog.py --socket /var/run/athena/brain-v2.sock`
+  connects, reads population stats, and either issues no corrective
+  action (healthy run) or successfully tunes / quenches on induced
+  runaway (injected-fault test).
+
+#### What's explicitly not in this phase (deferred)
+
+- Multi-stage curriculum from scratch — the existing curriculum already
+  has stages; we ride it.
+- Claude teacher HTTP actor — harness already has integration; shim
+  passes through or stubs.
+- Multimodal data loaders — harness already has them; when a loader
+  produces features V2 can't consume (raw images, audio frames), the
+  adapter stubs the cortex call and trains downstream networks on what
+  the harness already flattens to vectors.
+- Cognitive module parity — reintroduction of dropped modules happens
+  per the §5 "30-day isolation" rule, not as part of Phase 7.
 
 ### Phase 8 — Production hardening (3 weeks)
 - Load testing (OOM under pressure, long-running stability)
@@ -172,7 +279,9 @@ Estimated for one experienced Rust developer full-time. Numbers are realistic, n
 - Documentation: public API, concepts, migration guide from V1
 - **Exit criteria:** 24-hour training run on RunPod with no crashes, deterministic output.
 
-**Total:** ~11 months single-developer to V1 core-feature parity.
+**Total:** ~10 months single-developer to V1 core-feature parity
+(Phase 7 dropped from 5 weeks to 2–3 weeks by reusing master's harness
+via an adapter shim instead of rebuilding it).
 
 ---
 
