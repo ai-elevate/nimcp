@@ -861,10 +861,20 @@ static void learn_snn_task(void* arg)
     learn_task_ctx_t* ctx = (learn_task_ctx_t*)arg;
 
     if (ctx->brain->snn_network && ctx->brain->snn_training_ctx) {
-        /* Set R-STDP reward from ANN loss (parallel path — ANN already completed) */
+        /* Set R-STDP reward from ANN loss (parallel path — ANN already completed).
+         *
+         * PREV BUG: `1.0f - fminf(loss, 1.0f)` assumed loss in [0, 1], but
+         * adaptive_network_learn returns raw MSE summed over target dims,
+         * typically 8-165 in early training. The clamp dead-zoned every
+         * reward to 0.0, leaving R-STDP silently disabled for the entire
+         * SNN → mode collapse over ~1h. Use the smooth 1/(1+loss) form:
+         * loss=0 → reward=1.0, loss=1 → 0.5, loss=10 → 0.09, always
+         * positive, always in (0, 1], smooth derivative. Baseline EMA
+         * tracks a non-zero mean, modulation becomes a meaningful
+         * relative signal. */
         if (ctx->brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP &&
             isfinite(ctx->ann_loss) && ctx->ann_loss >= 0.0f) {
-            float reward = 1.0f - fminf(ctx->ann_loss, 1.0f);
+            float reward = 1.0f / (1.0f + ctx->ann_loss);
             snn_rstdp_set_reward(ctx->brain->snn_training_ctx, reward);
         }
         training_dispatch_snn_step(ctx->brain, ctx->features, ctx->num_features,
@@ -1790,10 +1800,14 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         if (brain->snn_network && brain->snn_training_ctx && brain->config.train_snn) {
             /* Set R-STDP reward from ANN loss: lower loss = higher reward.
              * This is the critical ANN→SNN teaching signal — the ANN acts
-             * as teacher, its prediction quality modulates SNN plasticity. */
+             * as teacher, its prediction quality modulates SNN plasticity.
+             *
+             * Fixed smooth reward formula: 1/(1+loss) — always in (0,1],
+             * no dead-zone for loss > 1. See parallel-task path for why
+             * the previous `1.0 - fminf(loss, 1.0)` was wrong. */
             if (brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP &&
                 isfinite(loss) && loss >= 0.0f) {
-                float reward = 1.0f - fminf(loss, 1.0f);
+                float reward = 1.0f / (1.0f + loss);
                 snn_rstdp_set_reward(brain->snn_training_ctx, reward);
             }
 
@@ -1891,11 +1905,14 @@ sequential_training:
                 }
             }
             if (has_snn) {
-                /* Set R-STDP reward (sequential fallback path) */
+                /* Set R-STDP reward (sequential fallback path).
+                 * See parallel-task + unified-SNN paths for the formula
+                 * rationale — smooth 1/(1+loss) avoids the dead-zone the
+                 * previous fminf(loss, 1.0) clamp produced for loss > 1. */
                 if (brain->snn_training_ctx &&
                     brain->snn_training_ctx->mode == SNN_TRAIN_R_STDP &&
                     isfinite(loss) && loss >= 0.0f) {
-                    float reward = 1.0f - fminf(loss, 1.0f);
+                    float reward = 1.0f / (1.0f + loss);
                     snn_rstdp_set_reward(brain->snn_training_ctx, reward);
                 }
                 training_dispatch_result_t snn_res = {0};

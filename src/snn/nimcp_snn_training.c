@@ -803,9 +803,30 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
         float cur_rate = pop->firing_rate_ema;
         if (cur_rate < rate_floor) cur_rate = rate_floor;
 
-        /* Tight bounds always — see header comment. */
+        /* Scale bounds: tight [0.98, 1.02] in the normal regime to prevent
+         * hot-collapse oscillation (compound 1.10^N caused bang-bang in
+         * prior runs — see commit 776511957 for history). BUT when a pop
+         * is DEAD (firing < 10% of target, i.e. <0.3%), the slow 1.02 cap
+         * can take 150+ applies to escape — meanwhile R-STDP has nothing
+         * to reinforce because nothing is firing. Result: trapped at zero.
+         *
+         * Asymmetric fix: when a pop is far below target, widen only the
+         * UPPER bound to 1.05. This halves recovery time (1.05^85 ≈ 66
+         * vs 1.02^85 ≈ 5.4) without re-introducing the overshoot risk,
+         * because:
+         *   - only scale-UP is widened; scale-DOWN stays at 0.98
+         *   - the widened bound only engages for quiet pops, which by
+         *     definition cannot overshoot into hot-collapse territory
+         *     (they're scaling from nothing; going 66× nothing is still
+         *     small relative to the threshold-triggering drive)
+         *   - once rate > 0.3% of target, we drop back to the tight cap
+         *     so the approach to target is smooth
+         */
         const float min_scale = 0.98f;
-        const float max_scale = 1.02f;
+        float max_scale = 1.02f;
+        if (cur_rate < 0.1f * target_rate) {
+            max_scale = 1.05f;  /* escape velocity for dead pops */
+        }
 
         /* Target / current gives the pull direction. */
         float scale = target_rate / cur_rate;
