@@ -1831,6 +1831,118 @@ static PyObject* Brain_get_snn_stats(BrainObject* self, PyObject* args) {
     return d;
 }
 
+/* Runtime SNN parameter tuning — no brain restart required.
+ * snn_tune(name, value) → bool (true if applied, false if name unknown) */
+static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
+    (void)self;
+    const char* name = NULL;
+    double value = 0.0;
+    if (!PyArg_ParseTuple(args, "sd", &name, &value)) return NULL;
+
+    extern void snn_tune_set_rstdp_lr(float);
+    extern void snn_tune_set_rstdp_baseline_alpha(float);
+    extern void snn_tune_set_target_rate(float);
+    extern void snn_tune_set_homeo_bounds(float, float);
+    extern void snn_tune_set_max_scale_dead(float);
+    extern void snn_tune_set_dead_threshold(float);
+    extern void snn_tune_set_metabolic_cap(float);
+
+    float v = (float)value;
+    if      (strcmp(name, "rstdp_lr") == 0)             snn_tune_set_rstdp_lr(v);
+    else if (strcmp(name, "rstdp_baseline_alpha") == 0) snn_tune_set_rstdp_baseline_alpha(v);
+    else if (strcmp(name, "target_rate") == 0)          snn_tune_set_target_rate(v);
+    else if (strcmp(name, "homeo_min_scale") == 0)      snn_tune_set_homeo_bounds(v, v + 0.04f);
+    else if (strcmp(name, "homeo_max_scale") == 0)      snn_tune_set_homeo_bounds(0.98f, v);
+    else if (strcmp(name, "max_scale_dead") == 0)       snn_tune_set_max_scale_dead(v);
+    else if (strcmp(name, "dead_threshold") == 0)       snn_tune_set_dead_threshold(v);
+    else if (strcmp(name, "metabolic_cap") == 0)        snn_tune_set_metabolic_cap(v);
+    else {
+        PyErr_Format(PyExc_ValueError, "unknown tunable: %s", name);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
+    (void)self;
+    extern float snn_tune_get_rstdp_lr(void);
+    extern float snn_tune_get_rstdp_baseline_alpha(void);
+    extern float snn_tune_get_target_rate(void);
+    extern float snn_tune_get_homeo_min_scale(void);
+    extern float snn_tune_get_homeo_max_scale(void);
+    extern float snn_tune_get_max_scale_dead(void);
+    extern float snn_tune_get_dead_threshold(void);
+    extern float snn_tune_get_metabolic_cap(void);
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyObject* v;
+#define F(k, val) v = PyFloat_FromDouble((double)(val)); \
+                  if (v) { PyDict_SetItemString(d, k, v); Py_DECREF(v); }
+    F("rstdp_lr",               snn_tune_get_rstdp_lr());
+    F("rstdp_baseline_alpha",   snn_tune_get_rstdp_baseline_alpha());
+    F("target_rate",            snn_tune_get_target_rate());
+    F("homeo_min_scale",        snn_tune_get_homeo_min_scale());
+    F("homeo_max_scale",        snn_tune_get_homeo_max_scale());
+    F("max_scale_dead",         snn_tune_get_max_scale_dead());
+    F("dead_threshold",         snn_tune_get_dead_threshold());
+    F("metabolic_cap",          snn_tune_get_metabolic_cap());
+#undef F
+    return d;
+}
+
+/* Per-population live diagnostics — firing rate + recent activity for each pop. */
+static PyObject* Brain_snn_pop_stats(BrainObject* self, PyObject* Py_UNUSED(a)) {
+    if (!self->brain || !self->brain->internal_brain) Py_RETURN_NONE;
+    brain_t ib = self->brain->internal_brain;
+    if (!ib->snn_network) Py_RETURN_NONE;
+
+    typedef struct { uint32_t magic; uint32_t id; char name[64]; void* nn;
+                     void** pops; uint32_t n_pops; } snn_hdr_t;
+    snn_hdr_t* snn = (snn_hdr_t*)ib->snn_network;
+    uint32_t n_pops = snn->n_pops;
+
+    /* Each snn_population_t is complex — access known offsets for the fields
+     * we want. We care about: name, n_neurons, firing_rate_ema, rate_samples,
+     * and (optionally) last spike count from output_n. Use the typed struct
+     * header from nimcp_snn_types.h via a local shim. */
+    typedef struct {
+        uint32_t id;
+        char     name[64];
+        uint32_t n_neurons;
+    } pop_name_hdr_t;
+
+    PyObject* list = PyList_New((Py_ssize_t)n_pops);
+    if (!list) return NULL;
+    for (uint32_t i = 0; i < n_pops; i++) {
+        void* pop = snn->pops[i];
+        PyObject* d = PyDict_New();
+        if (!d) { Py_DECREF(list); return NULL; }
+        if (!pop) {
+            PyList_SET_ITEM(list, (Py_ssize_t)i, d);
+            continue;
+        }
+        /* Use snn_population accessors — call via snn_network_get_populations
+         * path or just access the struct fields directly via known layout. */
+        extern const char* snn_population_get_name(const void* pop);
+        extern uint32_t    snn_population_get_n_neurons(const void* pop);
+        extern float       snn_population_get_firing_rate_ema(const void* pop);
+        extern uint32_t    snn_population_get_rate_samples(const void* pop);
+        const char* name = snn_population_get_name(pop);
+        PyObject* v;
+        v = PyUnicode_FromString(name ? name : "?");
+        if (v) { PyDict_SetItemString(d, "name", v); Py_DECREF(v); }
+        v = PyLong_FromUnsignedLong(snn_population_get_n_neurons(pop));
+        if (v) { PyDict_SetItemString(d, "n_neurons", v); Py_DECREF(v); }
+        v = PyFloat_FromDouble((double)snn_population_get_firing_rate_ema(pop));
+        if (v) { PyDict_SetItemString(d, "firing_rate_ema", v); Py_DECREF(v); }
+        v = PyLong_FromUnsignedLong(snn_population_get_rate_samples(pop));
+        if (v) { PyDict_SetItemString(d, "rate_samples", v); Py_DECREF(v); }
+        PyList_SET_ITEM(list, (Py_ssize_t)i, d);
+    }
+    return list;
+}
+
 static PyObject* Brain_snn_force_quench(BrainObject* self, PyObject* args) {
     /* Emergency SNN rescue: force N homeostatic applies in a row.
      * Returns the total number of populations scaled across iterations. */
@@ -9620,6 +9732,15 @@ static PyMethodDef Brain_methods[] = {
      "Get last 256 steps of spike counts for a population: get_population_history(pop_id)"},
     {"snn_force_quench", (PyCFunction)Brain_snn_force_quench, METH_VARARGS,
      "Force N homeostatic applies in a row to rescue from saturation: snn_force_quench(n=20)"},
+    /* Runtime SNN parameter tuning + live per-pop diagnostics (no rebuild needed). */
+    {"snn_tune", (PyCFunction)Brain_snn_tune, METH_VARARGS,
+     "Set a runtime-tunable SNN parameter: snn_tune(name, value) -> True. "
+     "Names: rstdp_lr, rstdp_baseline_alpha, target_rate, homeo_min_scale, "
+     "homeo_max_scale, max_scale_dead, dead_threshold, metabolic_cap."},
+    {"snn_tune_get", (PyCFunction)Brain_snn_tune_get, METH_NOARGS,
+     "Return dict of all current SNN tunable parameter values."},
+    {"snn_pop_stats", (PyCFunction)Brain_snn_pop_stats, METH_NOARGS,
+     "List of per-population dicts: [{name, n_neurons, firing_rate_ema, rate_samples}]."},
     {"retrofit_synapse_metadata", (PyCFunction)Brain_retrofit_synapse_metadata, METH_NOARGS,
      "Retrofit metadata onto synapses that lack plasticity data: retrofit_synapse_metadata() -> count"},
     {"get_utilization_metrics", (PyCFunction)Brain_get_utilization_metrics, METH_NOARGS,

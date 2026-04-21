@@ -350,6 +350,28 @@ void snn_rstdp_update_eligibility(snn_training_ctx_t* ctx, float dt);
  */
 void snn_rstdp_set_reward(snn_training_ctx_t* ctx, float reward);
 
+/*============================================================================
+ * Runtime-tunable SNN parameters (Phase 4 real-time ops). Setters are
+ * guarded with sane bounds; values outside the valid range are ignored.
+ * Readers return the current value. No brain restart needed to apply.
+ *==========================================================================*/
+void  snn_tune_set_rstdp_lr(float v);
+void  snn_tune_set_rstdp_baseline_alpha(float v);
+void  snn_tune_set_target_rate(float v);
+void  snn_tune_set_homeo_bounds(float min_scale, float max_scale);
+void  snn_tune_set_max_scale_dead(float v);
+void  snn_tune_set_dead_threshold(float v);
+void  snn_tune_set_metabolic_cap(float v);
+
+float snn_tune_get_rstdp_lr(void);
+float snn_tune_get_rstdp_baseline_alpha(void);
+float snn_tune_get_target_rate(void);
+float snn_tune_get_homeo_min_scale(void);
+float snn_tune_get_homeo_max_scale(void);
+float snn_tune_get_max_scale_dead(void);
+float snn_tune_get_dead_threshold(void);
+float snn_tune_get_metabolic_cap(void);
+
 /**
  * @brief Apply R-STDP weight updates
  *
