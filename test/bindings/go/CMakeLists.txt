@@ -2,7 +2,7 @@
 # NIMCP Go Bindings Test Suite
 # ============================================================================
 
-find_program(GO_EXECUTABLE go REQUIRED)
+find_program(GO_EXECUTABLE go)
 
 set(GO_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(GO_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})

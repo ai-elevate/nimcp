@@ -7,7 +7,7 @@
 # ============================================================================
 
 # Find JNI headers manually (headless JDK lacks AWT, so find_package(JNI) fails)
-find_package(Java REQUIRED COMPONENTS Development)
+find_package(Java COMPONENTS Development)
 
 # Locate jni.h
 find_path(JNI_INCLUDE_DIR jni.h

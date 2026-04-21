@@ -2,7 +2,7 @@
 # NIMCP C# Bindings Test Suite
 # ============================================================================
 
-find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
+find_program(DOTNET_EXECUTABLE dotnet)
 
 set(CSHARP_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CSHARP_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR})

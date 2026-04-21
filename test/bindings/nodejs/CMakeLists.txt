@@ -2,7 +2,7 @@
 # NIMCP Node.js Bindings Test Suite
 # ============================================================================
 
-find_program(NODE_EXECUTABLE node REQUIRED)
+find_program(NODE_EXECUTABLE node)
 
 # CTest entry: run the Node.js test script
 add_test(
