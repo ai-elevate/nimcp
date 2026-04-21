@@ -2,7 +2,7 @@
 # NIMCP Perl Bindings Test Suite
 # ============================================================================
 
-find_program(PERL_EXECUTABLE perl REQUIRED)
+find_program(PERL_EXECUTABLE perl)
 
 # CTest entry: run the Perl test script
 add_test(

@@ -26,6 +26,7 @@
 #![forbid(unsafe_code)]
 
 pub mod actors;
+pub mod stats;
 
 use std::path::Path;
 
@@ -315,6 +316,37 @@ impl Brain {
             .as_ref()
             .ok_or_else(|| Error::Config("memory not configured on this brain".into()))?;
         Ok(mem.query_landmarks_by_similarity(query, k))
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 6 — introspection.
+    // -------------------------------------------------------------------------
+
+    /// Collect a read-only stats snapshot across every configured
+    /// subsystem. See [`stats::BrainStats`] for the full schema.
+    ///
+    /// Cheap to call — linear in the total parameter / node count —
+    /// but not free; callers polling on a tight loop should throttle.
+    #[must_use]
+    pub fn stats(&self) -> stats::BrainStats {
+        stats::BrainStats {
+            rng_seed: self.config.rng_seed,
+            adaptive: Some(stats::collect_adaptive(&self.adaptive)),
+            snn: self.snn.as_ref().map(stats::collect_snn),
+            lnn: self
+                .lnn
+                .as_ref()
+                .map(|net| stats::collect_lnn(net, self.lnn_state.as_deref())),
+            memory: self.memory.as_ref().map(stats::collect_memory),
+        }
+    }
+
+    /// Convenience: [`Brain::stats`] encoded as a JSON string. Backs
+    /// the Python `brain.stats()` binding (which decodes into a dict
+    /// on the Python side).
+    pub fn stats_json(&self) -> Result<String> {
+        serde_json::to_string(&self.stats())
+            .map_err(|e| Error::Serialization(format!("stats_json: {e}")))
     }
 
     // -------------------------------------------------------------------------

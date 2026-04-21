@@ -2,7 +2,7 @@
 # NIMCP Java Bindings Test Suite
 # ============================================================================
 
-find_package(Java REQUIRED COMPONENTS Development Runtime)
+find_package(Java COMPONENTS Development Runtime)
 include(UseJava)
 
 set(JAVA_SRC_DIR ${CMAKE_SOURCE_DIR}/src/bindings/java)
