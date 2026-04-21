@@ -4,7 +4,6 @@
 
 find_program(CARGO_EXECUTABLE cargo
     HINTS "$ENV{HOME}/.cargo/bin"
-    REQUIRED
 )
 
 set(RUST_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
