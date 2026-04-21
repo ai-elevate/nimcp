@@ -25,6 +25,8 @@
 
 #![forbid(unsafe_code)]
 
+pub mod actors;
+
 use std::path::Path;
 
 use ndarray::Array1;
