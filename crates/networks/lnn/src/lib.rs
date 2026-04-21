@@ -1,11 +1,12 @@
 //! NIMCP V2 — Liquid Time-Constant (LTC) neural network.
 //!
-//! # Phase 4a scope
+//! # Phase 4a + 4b scope
 //!
-//! This crate ships the forward-pass core of an LTC-style recurrent
-//! network — per-neuron trainable time constants, Euler integration,
-//! deterministic seeded init, serde checkpoint. Backward pass through
-//! time + SGD land in Phase 4b (see [`V2_PLAN.md`]).
+//! Phase 4a shipped the forward-pass core: per-neuron trainable time
+//! constants, Euler integration, deterministic seeded init, serde
+//! checkpoint. Phase 4b (this revision) adds backpropagation through
+//! time via the adjoint method, MSE sequence loss, global gradient
+//! clipping, and an SGD step that respects the `τ_min` floor.
 //!
 //! # Math
 //!
@@ -30,7 +31,10 @@
 //! - [`ltc`] — LTC neuron math (`LtcParams`, `LtcState`, `LtcLayer`,
 //!   `ltc_forward_step`).
 //! - [`network`] — top-level [`LnnNetwork`]: stacks layers, handles
-//!   input projection + readout, exposes `forward` / `reset`.
+//!   input projection + readout, exposes `forward_step` /
+//!   `forward_sequence` / `new_state`.
+//! - [`train`] — BPTT adjoint, MSE loss, gradient clipping, SGD step,
+//!   and the `train_step_mse` convenience that bundles all three.
 //!
 //! # V1 rules carried forward
 //!
@@ -46,6 +50,11 @@
 
 pub mod ltc;
 pub mod network;
+pub mod train;
 
 pub use ltc::{LTC_STATE_CLAMP, LTC_TAU_MIN, LtcLayer, LtcParams, LtcState, ltc_forward_step};
 pub use network::{LnnConfig, LnnNetwork};
+pub use train::{
+    LnnGradients, LnnTrace, TrainParams, clip_gradients, mse_sequence_loss, sgd_step,
+    train_step_mse,
+};
