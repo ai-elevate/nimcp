@@ -15,6 +15,10 @@
 //!   transient state L2 norm per layer.
 //! - [`MemoryStats`] — Z-Ladder tier counts, landmark count, cumulative
 //!   promotion / demotion / eviction tallies.
+//! - [`LossStats`] — per-network last training loss + EMA + call count.
+//!   Populated by [`crate::Brain::learn`] (adaptive) and
+//!   [`crate::Brain::lnn_train_step_mse`] (LNN). SNN is reward-driven
+//!   with no scalar loss, so it is absent from this section by design.
 //!
 //! Every field is serde-serializable so [`Brain::stats_json`] can
 //! return a JSON string the Python binding hands back as a dict.
@@ -45,6 +49,90 @@ pub struct BrainStats {
     pub lnn: Option<LnnStats>,
     /// Memory (Z-Ladder) subsystem stats.
     pub memory: Option<MemoryStats>,
+    /// Training loss summary across networks that report scalar loss.
+    pub loss: LossStats,
+}
+
+// -------------------------------------------------------------------------
+// Loss
+// -------------------------------------------------------------------------
+
+/// Default EMA smoothing factor for [`LossTracker`]. Picked to match the
+/// SNN's `rate_ema_alpha` default — fast enough to track step-level
+/// variation, slow enough that a single outlier doesn't dominate.
+pub const DEFAULT_LOSS_EMA_ALPHA: f32 = 0.05;
+
+/// Rolling loss tracker for one network. Updated on every training step
+/// that produces a scalar loss; read from [`crate::Brain::stats`].
+///
+/// `last` and `ema` are `None` until the first update — a brain that
+/// has never been trained reports `count == 0` with both summary
+/// fields absent.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct LossTracker {
+    /// Most recent observed loss. `None` before the first update.
+    pub last: Option<f32>,
+    /// EMA of observed losses: `ema ← α · loss + (1 − α) · ema`.
+    /// `None` before the first update. Initialized to the first loss
+    /// observation (no cold-start bias).
+    pub ema: Option<f32>,
+    /// Number of `observe` calls since construction (monotonic).
+    pub count: u64,
+    /// EMA smoothing factor in `(0, 1]`. Higher α tracks recent losses
+    /// more aggressively; lower α is smoother but slower to respond.
+    pub ema_alpha: f32,
+}
+
+impl Default for LossTracker {
+    fn default() -> Self {
+        Self {
+            last: None,
+            ema: None,
+            count: 0,
+            ema_alpha: DEFAULT_LOSS_EMA_ALPHA,
+        }
+    }
+}
+
+impl LossTracker {
+    /// Construct an empty tracker with a custom smoothing factor.
+    /// Panics if `ema_alpha` is not in `(0, 1]` — caller programming error.
+    #[must_use]
+    pub fn with_alpha(ema_alpha: f32) -> Self {
+        assert!(
+            ema_alpha > 0.0 && ema_alpha <= 1.0,
+            "ema_alpha must be in (0, 1], got {ema_alpha}"
+        );
+        Self {
+            ema_alpha,
+            ..Self::default()
+        }
+    }
+
+    /// Fold one loss observation into the tracker.
+    pub fn observe(&mut self, loss: f32) {
+        self.last = Some(loss);
+        self.ema = Some(match self.ema {
+            None => loss,
+            Some(prev) => self.ema_alpha * loss + (1.0 - self.ema_alpha) * prev,
+        });
+        self.count = self.count.saturating_add(1);
+    }
+}
+
+/// Bundle of per-network loss trackers.
+///
+/// A section is `Some` iff the matching network is configured on the
+/// brain — so a Phase 1 adaptive-only brain reports `adaptive = Some(...)`
+/// and `lnn = None` regardless of whether training has happened yet.
+/// Whether training *has* happened is conveyed by `count > 0` inside
+/// the tracker.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct LossStats {
+    /// Adaptive (MLP) training loss tracker.
+    pub adaptive: Option<LossTracker>,
+    /// LNN training loss tracker. `None` on brains built without an LNN.
+    pub lnn: Option<LossTracker>,
 }
 
 // -------------------------------------------------------------------------
@@ -441,5 +529,57 @@ mod tests {
         assert_eq!(max, 5.0);
         assert_eq!(mean, 3.0);
         assert!((std - 2.0_f32.sqrt()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn loss_tracker_starts_empty() {
+        let t = LossTracker::default();
+        assert!(t.last.is_none());
+        assert!(t.ema.is_none());
+        assert_eq!(t.count, 0);
+        assert_eq!(t.ema_alpha, DEFAULT_LOSS_EMA_ALPHA);
+    }
+
+    #[test]
+    fn loss_tracker_first_observation_seeds_ema() {
+        let mut t = LossTracker::default();
+        t.observe(0.5);
+        assert_eq!(t.last, Some(0.5));
+        // No cold-start bias — first EMA == first observation.
+        assert_eq!(t.ema, Some(0.5));
+        assert_eq!(t.count, 1);
+    }
+
+    #[test]
+    fn loss_tracker_ema_lags_last() {
+        let mut t = LossTracker::with_alpha(0.1);
+        t.observe(1.0);
+        t.observe(0.0);
+        // ema = 0.1 * 0.0 + 0.9 * 1.0 = 0.9; last = 0.0.
+        assert_eq!(t.last, Some(0.0));
+        assert!((t.ema.unwrap() - 0.9).abs() < 1e-6);
+        assert_eq!(t.count, 2);
+    }
+
+    #[test]
+    fn loss_tracker_alpha_one_is_no_smoothing() {
+        let mut t = LossTracker::with_alpha(1.0);
+        t.observe(2.0);
+        t.observe(7.0);
+        // α = 1 → ema tracks last exactly.
+        assert_eq!(t.last, t.ema);
+        assert_eq!(t.last, Some(7.0));
+    }
+
+    #[test]
+    #[should_panic(expected = "ema_alpha must be in (0, 1]")]
+    fn loss_tracker_alpha_zero_rejected() {
+        let _ = LossTracker::with_alpha(0.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "ema_alpha must be in (0, 1]")]
+    fn loss_tracker_alpha_above_one_rejected() {
+        let _ = LossTracker::with_alpha(1.5);
     }
 }

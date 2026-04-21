@@ -89,6 +89,12 @@ pub struct Brain {
     /// `lnn_reset` or fresh brain.
     lnn_state: Option<Vec<LtcState>>,
     memory: Option<ZLadder>,
+    /// Phase 6c — training-loss tracker for the adaptive network. Always
+    /// present; `count == 0` before the first `learn()`.
+    adaptive_loss: stats::LossTracker,
+    /// Phase 6c — training-loss tracker for the LNN, matched to
+    /// `self.lnn.is_some()`.
+    lnn_loss: Option<stats::LossTracker>,
 }
 
 impl Brain {
@@ -139,6 +145,7 @@ impl Brain {
             has_memory = memory.is_some(),
             "brain created"
         );
+        let lnn_loss = lnn.as_ref().map(|_| stats::LossTracker::default());
         Ok(Self {
             config,
             scheduler,
@@ -147,6 +154,8 @@ impl Brain {
             lnn,
             lnn_state,
             memory,
+            adaptive_loss: stats::LossTracker::default(),
+            lnn_loss,
         })
     }
 
@@ -162,7 +171,9 @@ impl Brain {
     /// or last configured layer width. Callers that can't guarantee shape
     /// should validate before calling — the bindings layer does this.
     pub fn learn(&mut self, features: &Array1<f32>, target: &Array1<f32>, lr: f32) -> f32 {
-        self.adaptive.learn(features, target, lr)
+        let loss = self.adaptive.learn(features, target, lr);
+        self.adaptive_loss.observe(loss);
+        loss
     }
 
     /// Forward pass. Returns the brain's output vector.
@@ -261,7 +272,11 @@ impl Brain {
             .lnn
             .as_mut()
             .ok_or_else(|| Error::Config("lnn not configured on this brain".into()))?;
-        Ok(nimcp_lnn::train_step_mse(lnn, inputs, targets, params))
+        let (loss, grad_norm) = nimcp_lnn::train_step_mse(lnn, inputs, targets, params);
+        if let Some(tracker) = self.lnn_loss.as_mut() {
+            tracker.observe(loss);
+        }
+        Ok((loss, grad_norm))
     }
 
     // -------------------------------------------------------------------------
@@ -338,6 +353,10 @@ impl Brain {
                 .as_ref()
                 .map(|net| stats::collect_lnn(net, self.lnn_state.as_deref())),
             memory: self.memory.as_ref().map(stats::collect_memory),
+            loss: stats::LossStats {
+                adaptive: Some(self.adaptive_loss),
+                lnn: self.lnn_loss,
+            },
         }
     }
 
