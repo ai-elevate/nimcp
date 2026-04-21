@@ -16,10 +16,11 @@
 //!
 //! - Device probe via cudarc driver API: compute capability, name, memory
 //! - Hello-world kernel: vector add via runtime-compiled PTX (NVRTC)
+//! - Phase 2b: MLP forward + persistent [`mlp_forward::GpuWeightCache`]
+//!   (matmul + bias + ReLU/Tanh activation; weights stay device-resident
+//!   across forward calls)
+//! - Phase 2c: MLP backward + in-place SGD (see [`mlp_backward`])
 //! - Unit tests that skip gracefully when no GPU is present
-//!
-//! Later phases (2b+) add the MLP forward/backward kernels + persistent
-//! device weight caches.
 
 // The CUDA kernel-launch path requires one `unsafe` block (cudarc's
 // `.launch(cfg)` is unsafe because the caller asserts that the kernel
@@ -33,7 +34,16 @@ use thiserror::Error;
 mod cuda_impl;
 
 #[cfg(feature = "cuda")]
+pub mod mlp_forward;
+
+#[cfg(feature = "cuda")]
+pub mod mlp_backward;
+
+#[cfg(feature = "cuda")]
 pub use cuda_impl::{probe_device, vector_add};
+
+#[cfg(feature = "cuda")]
+pub use mlp_forward::{Activation, GpuLayer, GpuWeightCache, mlp_forward as gpu_mlp_forward};
 
 /// GPU backend errors.
 #[derive(Debug, Error)]

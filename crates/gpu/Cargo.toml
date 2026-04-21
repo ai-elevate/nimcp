@@ -25,6 +25,11 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 cudarc = { workspace = true, optional = true }
 
+[dev-dependencies]
+# Used by Phase 2c mlp_backward tests for deterministic weight init.
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+
 [build-dependencies]
 # Reserved for custom build.rs logic (multi-arch NVCC invocation in future
 # phases when we ship .cu kernels).
