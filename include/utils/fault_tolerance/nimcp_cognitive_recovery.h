@@ -607,6 +607,21 @@ void cognitive_recovery_uninstall_signal_handlers(
     cognitive_recovery_coordinator_t coordinator
 );
 
+/**
+ * @brief Install the crash-log backtrace handler WITHOUT a cognitive
+ *        recovery coordinator. Writes a signal-safe backtrace to
+ *        /var/log/nimcp_crash.log (fallback /tmp/nimcp_crash.log) on
+ *        any SIGSEGV/SIGABRT/SIGBUS/SIGFPE/SIGILL, then exits.
+ *
+ * Safe to call at library init. Idempotent — subsequent calls are
+ * no-ops if handlers are already installed. If a cognitive_recovery
+ * coordinator is later installed, its handler replaces this one and
+ * still provides the same backtrace dump plus recovery attempt.
+ *
+ * @return true on success (handlers installed), false on failure.
+ */
+bool nimcp_install_crash_handler(void);
+
 #ifdef __cplusplus
 }
 #endif
