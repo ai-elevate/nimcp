@@ -12,7 +12,6 @@ description = "NIMCP V2 — plasticity rules (STDP, R-STDP, homeostatic)"
 workspace = true
 
 [dependencies]
-nimcp-core = { workspace = true }
-ndarray = { workspace = true }
+# Pure plasticity math: no event log, no actors, no tensors. Params structs
+# derive `Serialize`/`Deserialize` so they round-trip with checkpoints.
 serde = { workspace = true }
-tracing = { workspace = true }
