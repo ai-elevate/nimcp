@@ -28,6 +28,69 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "core/neuralnet/nimcp_sparse_synapse.h"
+
+/*============================================================================
+ * Runtime-tunable SNN training parameters.
+ *
+ * Previously these were `const` locals inside functions — unchangeable
+ * without a rebuild + brain restart. Promoted to file-scope globals
+ * with setters so operators can adjust in real time over the daemon
+ * socket (see brain_daemon.py's `tune_snn` command).
+ *
+ * Defaults match the last-committed values. Changes take effect
+ * immediately on the next R-STDP / homeostatic invocation.
+ *==========================================================================*/
+static float g_rstdp_lr               = 0.0001f;  /* R-STDP learning rate */
+static float g_rstdp_baseline_alpha   = 0.001f;   /* reward EMA alpha (slower = less whiplash) */
+static float g_homeo_target_rate      = 0.03f;    /* biological 3% firing target */
+static float g_homeo_min_scale        = 0.98f;    /* per-apply scale-down floor */
+static float g_homeo_max_scale        = 1.02f;    /* per-apply scale-up ceiling (normal) */
+static float g_homeo_max_scale_dead   = 1.05f;    /* scale-up ceiling for pops < 10% of target */
+static float g_homeo_dead_threshold   = 0.1f;     /* "dead" multiplier: rate < X × target → use max_scale_dead */
+static float g_metabolic_cap_factor   = 0.8f;     /* sum(|w|) cap = factor × fan_in */
+
+/* Public setters — called from Python binding via tune_snn RPC. */
+void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
+void snn_tune_set_rstdp_baseline_alpha(float v)  { if (v > 0.0f && v <= 1.0f)    g_rstdp_baseline_alpha = v; }
+void snn_tune_set_target_rate(float v)           { if (v > 0.0f && v < 0.5f)     g_homeo_target_rate = v; }
+void snn_tune_set_homeo_bounds(float min_, float max_) {
+    if (min_ > 0.5f && min_ < 1.0f) g_homeo_min_scale = min_;
+    if (max_ > 1.0f && max_ < 2.0f) g_homeo_max_scale = max_;
+}
+void snn_tune_set_max_scale_dead(float v)        { if (v > 1.0f && v < 2.0f)     g_homeo_max_scale_dead = v; }
+void snn_tune_set_dead_threshold(float v)        { if (v > 0.0f && v < 1.0f)     g_homeo_dead_threshold = v; }
+void snn_tune_set_metabolic_cap(float v)         { if (v > 0.0f && v < 10.0f)    g_metabolic_cap_factor = v; }
+
+/* Public getters — expose current values for diagnostic queries. */
+float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
+float snn_tune_get_rstdp_baseline_alpha(void)  { return g_rstdp_baseline_alpha; }
+float snn_tune_get_target_rate(void)           { return g_homeo_target_rate; }
+float snn_tune_get_homeo_min_scale(void)       { return g_homeo_min_scale; }
+float snn_tune_get_homeo_max_scale(void)       { return g_homeo_max_scale; }
+float snn_tune_get_max_scale_dead(void)        { return g_homeo_max_scale_dead; }
+float snn_tune_get_dead_threshold(void)        { return g_homeo_dead_threshold; }
+float snn_tune_get_metabolic_cap(void)         { return g_metabolic_cap_factor; }
+
+/*============================================================================
+ * Population-level accessors for live diagnostics. Thin wrappers so the
+ * Python binding doesn't need to chase struct layouts across builds.
+ *==========================================================================*/
+const char* snn_population_get_name(const void* p) {
+    if (!p) return NULL;
+    return ((const snn_population_t*)p)->name;
+}
+uint32_t snn_population_get_n_neurons(const void* p) {
+    if (!p) return 0;
+    return ((const snn_population_t*)p)->n_neurons;
+}
+float snn_population_get_firing_rate_ema(const void* p) {
+    if (!p) return 0.0f;
+    return ((const snn_population_t*)p)->firing_rate_ema;
+}
+uint32_t snn_population_get_rate_samples(const void* p) {
+    if (!p) return 0;
+    return (uint32_t)((const snn_population_t*)p)->rate_samples;
+}
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include <string.h>
 #include <math.h>
@@ -406,19 +469,9 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
 
     if (fabsf(reward_modulation) < 1e-8f) return 0;
 
-    /* R-STDP learning rate.
-     * History: 0.001 → 0.0005 (prior saturation fix) → 0.0001 (this fix).
-     *
-     * Once the 1/(1+loss) reward formula started producing real non-zero
-     * rewards, R-STDP had so much LTP/LTD magnitude that a single
-     * curriculum-induced reward swing (reward 0.12 → 0.02) produced
-     * mod=-0.10 and collapsed the SNN from 94K spikes/step to ~10 within
-     * minutes. The 0.0005 rate scaled those modulations × 4.4M synapses
-     * into weight hammerblows. Dropping 5× to 0.0001 makes each apply
-     * gentler — plasticity still happens but can't crush the network in
-     * a single step. Convergence is slower but stable.
-     */
-    float lr = 0.0001f;
+    /* R-STDP learning rate — now runtime-tunable via snn_tune_set_rstdp_lr().
+     * Default 0.0001 after iteration history: 0.001 → 0.0005 → 0.0001. */
+    float lr = g_rstdp_lr;
     float scale = lr * reward_modulation;
 
     /* Apply eligibility-modulated update to network synapses */
@@ -542,16 +595,9 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
         }
     }
 
-    /* Decay reward baseline toward recent rewards (EMA).
-     * Alpha 0.01 → 0.001 (10x slower) so the baseline tracks the
-     * SUSTAINED reward level instead of whiplashing on transient
-     * curriculum-induced swings. With alpha=0.01, a single low-loss
-     * training step spiked baseline high enough that the NEXT
-     * high-loss step looked like a big negative modulation, which
-     * collapsed the SNN in 50 calls. At 0.001, the baseline is a
-     * smooth floor; modulations stay in a narrow band around the
-     * actual long-run mean. */
-    ctx->reward_baseline = 0.999f * ctx->reward_baseline + 0.001f * ctx->reward;
+    /* Decay reward baseline toward recent rewards (EMA) — tunable. */
+    float a = g_rstdp_baseline_alpha;
+    ctx->reward_baseline = (1.0f - a) * ctx->reward_baseline + a * ctx->reward;
 
     if ((_rstdp_call_count % 50) == 0 && updates > 0) {
         NIMCP_LOGGING_INFO("[R-STDP] updated %u synapses (delta sign=%s)",
@@ -789,7 +835,7 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
         return 0;
     }
 
-    const float target_rate   = 0.03f;   /* biological target: 3% firing */
+    const float target_rate   = g_homeo_target_rate;  /* tunable */
     /* Scale bounds: tight [0.98, 1.02] always. The earlier emergency band
      * [0.90, 1.10] caused bang-bang oscillation — repeated 1.10× pushes
      * compounded the weights (1.10^20 ≈ 6.7×) so the SNN swung from silent
@@ -835,10 +881,10 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
          *   - once rate > 0.3% of target, we drop back to the tight cap
          *     so the approach to target is smooth
          */
-        const float min_scale = 0.98f;
-        float max_scale = 1.02f;
-        if (cur_rate < 0.1f * target_rate) {
-            max_scale = 1.05f;  /* escape velocity for dead pops */
+        const float min_scale = g_homeo_min_scale;
+        float max_scale = g_homeo_max_scale;
+        if (cur_rate < g_homeo_dead_threshold * target_rate) {
+            max_scale = g_homeo_max_scale_dead;  /* escape velocity for dead pops */
         }
 
         /* Target / current gives the pull direction. */
@@ -884,7 +930,7 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
                     uint32_t re = csr->row_ptr[j + 1];
                     uint32_t fan_in = re - rs;
                     if (fan_in == 0) continue;
-                    float cap = 0.8f * (float)fan_in;
+                    float cap = g_metabolic_cap_factor * (float)fan_in;
                     float sum_abs = 0.0f;
                     for (uint32_t e = rs; e < re; e++) sum_abs += fabsf(w[e]);
                     if (sum_abs > cap) {
@@ -921,7 +967,7 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
                     uint32_t re = csr->row_ptr[j + 1];
                     uint32_t fan_in = re - rs;
                     if (fan_in == 0) continue;
-                    float cap = 0.8f * (float)fan_in;
+                    float cap = g_metabolic_cap_factor * (float)fan_in;
                     float sum_abs = 0.0f;
                     for (uint32_t e = rs; e < re; e++) sum_abs += fabsf(csr->entries[e].weight);
                     if (sum_abs > cap) {

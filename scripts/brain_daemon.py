@@ -617,6 +617,33 @@ class BrainService:
             stats = self.brain.get_snn_stats()
             return {"snn": stats if stats else {}}
 
+    # -- Runtime SNN parameter tuning (no rebuild / no restart) --
+
+    def _cmd_snn_tune(self, req):
+        """Set a runtime-tunable SNN parameter.
+        Request: {"name": "rstdp_lr", "value": 0.0002}
+        Valid names: rstdp_lr, rstdp_baseline_alpha, target_rate,
+        homeo_min_scale, homeo_max_scale, max_scale_dead,
+        dead_threshold, metabolic_cap.
+        """
+        name = req.get("name")
+        value = req.get("value")
+        if name is None or value is None:
+            return {"error": "snn_tune requires 'name' and 'value'"}
+        try:
+            self.brain.snn_tune(str(name), float(value))
+        except ValueError as e:
+            return {"error": str(e)}
+        return {"ok": True, "name": name, "value": float(value)}
+
+    def _cmd_snn_tune_get(self, _req):
+        """Return dict of all current SNN tunable parameter values."""
+        return {"params": self.brain.snn_tune_get()}
+
+    def _cmd_snn_pop_stats(self, _req):
+        """Return per-population live firing-rate snapshot."""
+        return {"pops": self.brain.snn_pop_stats() or []}
+
     def _cmd_get_transcript(self, _req):
         if True:  # RWLock in handle()
             return {"transcript": self.brain.get_transcript()}
