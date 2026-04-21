@@ -20,5 +20,11 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)] // Phase 3 stub
 
+pub mod csr;
+pub mod homeostatic;
+
+pub use csr::{CsrSynapses, Population, PopulationId};
+pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};
+
 /// Phase 3 placeholder.
 pub struct SnnNetwork;
