@@ -2,35 +2,38 @@
 //!
 //! # Dual-target design
 //!
-//! NIMCP V2 must run on two different NVIDIA GPUs with different CUDA toolkit
-//! versions:
+//! V2 must run on two NVIDIA GPUs with different CUDA toolkit versions:
 //!
 //! | Host              | GPU                  | Compute cap | CUDA toolkit |
 //! |-------------------|----------------------|-------------|--------------|
 //! | Dev (Hetzner)     | RTX 4000 SFF Ada     | sm_89       | 12.0         |
 //! | Pod (RunPod)      | RTX 5090 Blackwell   | sm_120      | 12.8+        |
 //!
-//! We solve the version skew by using [`cudarc`] with `dynamic-loading`:
-//! libcudart.so is loaded at runtime, not link time. The same binary works
-//! against any CUDA 12.x on either host.
+//! [`cudarc`] with the `dynamic-loading` feature resolves `libcudart.so`
+//! at process start, so the same Rust binary runs against any CUDA 12.x.
 //!
-//! We solve the arch skew by compiling every `.cu` kernel with
-//! `-gencode arch=compute_89,code=sm_89` and `-gencode arch=compute_120,code=sm_120`
-//! (+ PTX fallback for forward compat). The CUDA runtime picks the right
-//! variant per device automatically.
+//! # Phase 2 scope
 //!
-//! # Capability probe
+//! - Device probe via cudarc driver API: compute capability, name, memory
+//! - Hello-world kernel: vector add via runtime-compiled PTX (NVRTC)
+//! - Unit tests that skip gracefully when no GPU is present
 //!
-//! [`probe_device`] queries the GPU's compute capability at startup so
-//! higher layers can pick kernel variants. No hardcoded assumptions.
-//!
-//! # Phase 0 scope
-//!
-//! Types + capability probe. Actual kernels land in Phase 2.
+//! Later phases (2b+) add the MLP forward/backward kernels + persistent
+//! device weight caches.
 
-#![forbid(unsafe_code)]
+// The CUDA kernel-launch path requires one `unsafe` block (cudarc's
+// `.launch(cfg)` is unsafe because the caller asserts that the kernel
+// args match the kernel signature). Scoped to cuda_impl.rs only.
+#![deny(unsafe_code)]
+#![cfg_attr(feature = "cuda", allow(unsafe_code))]
 
 use thiserror::Error;
+
+#[cfg(feature = "cuda")]
+mod cuda_impl;
+
+#[cfg(feature = "cuda")]
+pub use cuda_impl::{probe_device, vector_add};
 
 /// GPU backend errors.
 #[derive(Debug, Error)]
@@ -64,41 +67,26 @@ pub struct DeviceInfo {
     pub ordinal: u32,
     /// Human-readable name (e.g. "NVIDIA RTX 4000 SFF Ada Generation").
     pub name: String,
-    /// Compute capability as (major, minor). sm_89 => (8, 9); sm_120 => (12, 0).
+    /// Compute capability as (major, minor). sm_89 → (8, 9); sm_120 → (12, 0).
     pub compute_cap: (u32, u32),
     /// Total global memory in bytes.
     pub total_memory: u64,
 }
 
-/// Probe the default CUDA device.
-///
-/// # Errors
-///
-/// - [`GpuError::NotAvailable`] if the crate was built without `--features cuda`.
-/// - [`GpuError::NoDevice`] if no CUDA-capable device is present.
-/// - [`GpuError::Cuda`] for any runtime failure.
+/// Stub for CPU-only builds. Returns `GpuError::NotAvailable`.
+#[cfg(not(feature = "cuda"))]
 pub fn probe_device() -> Result<DeviceInfo, GpuError> {
-    #[cfg(not(feature = "cuda"))]
-    {
-        Err(GpuError::NotAvailable)
-    }
-    #[cfg(feature = "cuda")]
-    {
-        // Phase 0 stub — Phase 2 will implement via cudarc::driver::CudaDevice
-        // + cudarc::driver::result::device_get_attribute for capability.
-        tracing::warn!("probe_device: stub implementation (Phase 0)");
-        Err(GpuError::NotAvailable)
-    }
+    Err(GpuError::NotAvailable)
 }
 
 #[cfg(test)]
-mod tests {
+#[cfg(not(feature = "cuda"))]
+mod stub_tests {
     use super::*;
 
     #[test]
-    fn probe_returns_error_in_phase_0() {
-        let r = probe_device();
-        assert!(r.is_err(), "Phase 0 stub always errors");
+    fn probe_returns_not_available_without_cuda() {
+        assert!(matches!(probe_device(), Err(GpuError::NotAvailable)));
     }
 
     #[test]
@@ -109,7 +97,7 @@ mod tests {
             compute_cap: (8, 9),
             total_memory: 20 * 1024 * 1024 * 1024,
         };
-        let s = format!("{:?}", d);
+        let s = format!("{d:?}");
         assert!(s.contains("4000"));
     }
 }
