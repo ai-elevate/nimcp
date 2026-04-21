@@ -11,6 +11,14 @@ description = "NIMCP V2 — adaptive (MLP) network, Phase 1"
 [lints]
 workspace = true
 
+[features]
+# CPU-only by default. Enable `cuda` to compile the GPU fast-path via
+# `nimcp-gpu`. The existing CPU API is unchanged either way — `cuda`
+# only adds new methods (`init_gpu`, `forward_gpu`, `learn_gpu`,
+# `sync_gpu_to_cpu`) and a new error variant.
+default = []
+cuda = ["dep:nimcp-gpu"]
+
 [dependencies]
 nimcp-core = { workspace = true }
 ndarray = { workspace = true }
@@ -20,3 +28,5 @@ rkyv = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+# Optional GPU backend; pulled in only under `--features cuda`.
+nimcp-gpu = { workspace = true, optional = true }

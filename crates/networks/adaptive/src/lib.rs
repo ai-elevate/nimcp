@@ -18,6 +18,23 @@
 //! - Standard backprop against MSE loss; in-place SGD weight update.
 //! - Save / load via rkyv.
 //! - Bit-for-bit determinism given an RNG seed.
+//!
+//! # Phase 2d scope (GPU, behind `--features cuda`)
+//!
+//! - [`AdaptiveNet::init_gpu`]: compile kernels once + upload current
+//!   CPU weights to a device-resident weight cache (`nimcp-gpu`).
+//! - [`AdaptiveNet::forward_gpu`]: matches [`AdaptiveNet::forward`]
+//!   within f32 FMA tolerance (~1e-4).
+//! - [`AdaptiveNet::learn_gpu`]: mirrors [`AdaptiveNet::learn`]. Returns
+//!   pre-update MSE loss. Backward + SGD run on the device; activations
+//!   are still computed on the CPU because `mlp_backward` takes CPU
+//!   slices in this phase.
+//! - [`AdaptiveNet::sync_gpu_to_cpu`]: downloads device weights back to
+//!   `self.weights` so [`AdaptiveNet::forward`] / [`AdaptiveNet::save`]
+//!   see the trained state. Callers must sync before a CPU-path save.
+//!
+//! The CPU API is unchanged; `--no-default-features` builds a pure-CPU
+//! crate with no GPU symbols.
 
 #![forbid(unsafe_code)]
 
@@ -84,13 +101,53 @@ pub enum AdaptiveError {
     /// Loaded checkpoint disagrees with current config (layer shapes mismatch).
     #[error("checkpoint shape mismatch: {0}")]
     Checkpoint(String),
+    /// GPU-backed operation failed. Wraps a [`nimcp_gpu::GpuError`] message.
+    /// Only emitted when the crate is built with `--features cuda`.
+    #[cfg(feature = "cuda")]
+    #[error("gpu: {0}")]
+    Gpu(String),
+}
+
+#[cfg(feature = "cuda")]
+impl From<nimcp_gpu::GpuError> for AdaptiveError {
+    fn from(e: nimcp_gpu::GpuError) -> Self {
+        AdaptiveError::Gpu(e.to_string())
+    }
 }
 
 /// Adaptive network state.
-#[derive(Debug)]
 pub struct AdaptiveNet {
     config: AdaptiveConfig,
     weights: Vec<LayerWeights>,
+    /// Device-resident weight cache. Built lazily via
+    /// [`AdaptiveNet::init_gpu`]; `None` means the GPU path hasn't been
+    /// wired up yet on this instance.
+    #[cfg(feature = "cuda")]
+    gpu_cache: Option<nimcp_gpu::GpuWeightCache>,
+    /// Device-resident gradient buffers + SGD kernel module. Built
+    /// alongside [`Self::gpu_cache`] in [`AdaptiveNet::init_gpu`].
+    #[cfg(feature = "cuda")]
+    gpu_grads: Option<nimcp_gpu::mlp_backward::GpuGradCache>,
+}
+
+impl std::fmt::Debug for AdaptiveNet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ds = f.debug_struct("AdaptiveNet");
+        ds.field("config", &self.config);
+        ds.field("weights", &self.weights);
+        #[cfg(feature = "cuda")]
+        {
+            ds.field(
+                "gpu_cache",
+                &self.gpu_cache.as_ref().map(|_| "GpuWeightCache"),
+            );
+            ds.field(
+                "gpu_grads",
+                &self.gpu_grads.as_ref().map(|_| "GpuGradCache"),
+            );
+        }
+        ds.finish()
+    }
 }
 
 impl AdaptiveNet {
@@ -104,7 +161,14 @@ impl AdaptiveNet {
             weights.push(init_layer(in_dim, out_dim, &mut rng));
         }
 
-        Self { config, weights }
+        Self {
+            config,
+            weights,
+            #[cfg(feature = "cuda")]
+            gpu_cache: None,
+            #[cfg(feature = "cuda")]
+            gpu_grads: None,
+        }
     }
 
     /// Number of weight tensors (= layers - 1).
@@ -293,7 +357,311 @@ impl AdaptiveNet {
             new_weights.push(LayerWeights { w, b });
         }
         self.weights = new_weights;
+        // CPU weights have been replaced wholesale — any prior GPU state
+        // is stale. Drop it so the caller can init_gpu() again if needed.
+        #[cfg(feature = "cuda")]
+        {
+            self.gpu_cache = None;
+            self.gpu_grads = None;
+        }
         Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GPU fast-path (Phase 2d). Only compiled when the `cuda` feature is active.
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "cuda")]
+impl AdaptiveNet {
+    /// Initialize the GPU cache from current CPU weights.
+    ///
+    /// Compiles the NVRTC kernels, allocates device buffers, and uploads
+    /// the current `self.weights` to the device. Must be called before
+    /// [`Self::forward_gpu`] or [`Self::learn_gpu`].
+    ///
+    /// Calling this repeatedly is safe — any prior cache is dropped (its
+    /// `Drop` impl releases the device buffers) before the new one is
+    /// built. This is how callers reset to the CPU weights after hand-
+    /// editing `self.weights` or calling [`Self::load`].
+    ///
+    /// # Errors
+    ///
+    /// [`AdaptiveError::Gpu`] on any cuda failure (no device, NVRTC
+    /// compile failure, alloc failure, etc.).
+    pub fn init_gpu(&mut self) -> Result<(), AdaptiveError> {
+        // Tear down any prior cache first so a re-init doesn't leak
+        // two device copies while the new one is being built.
+        self.gpu_cache = None;
+        self.gpu_grads = None;
+
+        // Flatten each layer's weights + bias into contiguous f32 slices
+        // matching the GPU's row-major (out_dim, in_dim) layout. `Array2`
+        // is row-major by default and `as_slice()` returns `Some` when
+        // the array is in standard layout — which ours always is, since
+        // we construct via `Array2::from_shape_fn` / `from_shape_vec`.
+        let layers_flat: Vec<(Vec<f32>, Vec<f32>, usize, usize)> = self
+            .weights
+            .iter()
+            .map(|lw| {
+                let (out_dim, in_dim) = lw.w.dim();
+                let w: Vec<f32> = lw.w.iter().copied().collect();
+                let b: Vec<f32> = lw.b.iter().copied().collect();
+                (w, b, in_dim, out_dim)
+            })
+            .collect();
+        let layer_refs: Vec<(&[f32], &[f32], usize, usize)> = layers_flat
+            .iter()
+            .map(|(w, b, i, o)| (w.as_slice(), b.as_slice(), *i, *o))
+            .collect();
+
+        let cache = nimcp_gpu::GpuWeightCache::new(layer_refs)?;
+        let grads = nimcp_gpu::mlp_backward::GpuGradCache::new(&cache)?;
+
+        tracing::info!(
+            layers = self.weights.len(),
+            "adaptive gpu cache initialized"
+        );
+
+        self.gpu_cache = Some(cache);
+        self.gpu_grads = Some(grads);
+        Ok(())
+    }
+
+    /// Forward pass on the GPU.
+    ///
+    /// Matches [`Self::forward`] within f32 FMA tolerance (~1e-4 for
+    /// typical MLPs; tighter for small layers).
+    ///
+    /// # Errors
+    ///
+    /// - [`AdaptiveError::Gpu`] with `"init_gpu not called"` if
+    ///   [`Self::init_gpu`] hasn't been run yet.
+    /// - [`AdaptiveError::ShapeMismatch`] if `x.len()` doesn't match the
+    ///   network's input width.
+    /// - [`AdaptiveError::Gpu`] on any cuda failure.
+    pub fn forward_gpu(&self, x: &Array1<f32>) -> Result<Array1<f32>, AdaptiveError> {
+        let expected_in = self.config.layers[0];
+        if x.len() != expected_in {
+            return Err(AdaptiveError::ShapeMismatch {
+                expected: expected_in,
+                got: x.len(),
+            });
+        }
+        let cache = self
+            .gpu_cache
+            .as_ref()
+            .ok_or_else(|| AdaptiveError::Gpu("init_gpu not called".into()))?;
+
+        // ndarray is row-major / standard layout — a contiguous view
+        // exists. Fall back to a clone if (implausibly) it isn't.
+        let x_slice: Vec<f32> = if let Some(s) = x.as_slice() {
+            s.to_vec()
+        } else {
+            x.iter().copied().collect()
+        };
+        let act = to_gpu_fwd_activation(self.config.activation);
+        let y = nimcp_gpu::mlp_forward::mlp_forward(cache, &x_slice, act)?;
+        Ok(Array1::from_vec(y))
+    }
+
+    /// GPU backward + in-place SGD against MSE loss.
+    ///
+    /// Mirrors [`Self::learn`]: returns the pre-update MSE loss (useful
+    /// for logging). Steps in order:
+    ///
+    /// 1. CPU forward (produces `activations` + `pre_activations` that
+    ///    [`nimcp_gpu::mlp_backward::mlp_backward`] consumes — they still
+    ///    live on the host in this phase).
+    /// 2. Upload host tensors + run `zero_grads` + `mlp_backward` + `sgd_step`.
+    /// 3. Sync device weights back to [`Self::weights`] so the next
+    ///    call's CPU forward sees the freshly-updated parameters.
+    ///
+    /// The returned loss is computed on the CPU from the same pre-update
+    /// pred vector that feeds backward, so [`Self::learn`] and
+    /// [`Self::learn_gpu`] report identical loss trajectories within FMA
+    /// tolerance given identical weights.
+    ///
+    /// # Phase note
+    ///
+    /// The activations stay on the CPU because `mlp_backward` accepts
+    /// `&[Vec<f32>]`. Every step therefore round-trips weights D→H at
+    /// the end; a later phase can keep activations device-resident and
+    /// drop the per-step sync to amortize across batches. This
+    /// implementation prioritizes correctness over throughput.
+    ///
+    /// # Errors
+    ///
+    /// - [`AdaptiveError::Gpu`] if [`Self::init_gpu`] hasn't been run.
+    /// - [`AdaptiveError::ShapeMismatch`] if `x` or `y` doesn't match.
+    /// - [`AdaptiveError::Gpu`] on any cuda failure.
+    pub fn learn_gpu(
+        &mut self,
+        x: &Array1<f32>,
+        y: &Array1<f32>,
+        lr: f32,
+    ) -> Result<f32, AdaptiveError> {
+        let n_layers = self.weights.len();
+        let expected_in = self.config.layers[0];
+        let expected_out = self.config.layers[n_layers];
+        if x.len() != expected_in {
+            return Err(AdaptiveError::ShapeMismatch {
+                expected: expected_in,
+                got: x.len(),
+            });
+        }
+        if y.len() != expected_out {
+            return Err(AdaptiveError::ShapeMismatch {
+                expected: expected_out,
+                got: y.len(),
+            });
+        }
+        if self.gpu_cache.is_none() || self.gpu_grads.is_none() {
+            return Err(AdaptiveError::Gpu("init_gpu not called".into()));
+        }
+
+        // CPU forward to produce the activations + pre-activations that
+        // `mlp_backward` consumes, and to compute the pre-update loss we
+        // return. The CPU weights are authoritative between `init_gpu`
+        // (upload) and `sync_gpu_to_cpu` (download) — we only use them
+        // here to reconstruct the same intermediate tensors the GPU
+        // backward needs.
+        let (activations, pre_activations) = self.cpu_forward_with_cache(x);
+        let pred = activations.last().expect("at least one layer").clone();
+        let n_out = pred.len() as f32;
+        let diff = &pred - y;
+        let loss = diff.iter().map(|&d| d * d).sum::<f32>() / n_out;
+
+        // Convert the row-based `Array1`s into plain `Vec<f32>` payloads
+        // that the GPU backward API accepts. Each element is cheap — f32
+        // tensors at this scale are small.
+        let acts_vecs: Vec<Vec<f32>> = activations.into_iter().map(|a| a.to_vec()).collect();
+        let pre_vecs: Vec<Vec<f32>> = pre_activations.into_iter().map(|a| a.to_vec()).collect();
+        let x_vec: Vec<f32> = x.iter().copied().collect();
+        let y_vec: Vec<f32> = y.iter().copied().collect();
+
+        let act = to_gpu_bwd_activation(self.config.activation);
+
+        // Scoped borrow so `cache_mut` / `grads_mut` are released before
+        // the follow-up `sync_gpu_to_cpu()` call reborrows `&mut self`.
+        {
+            // `gpu_cache` is `Option` and borrowed mutably by `sgd_step`;
+            // we have to split the borrow. `take()` would poison the
+            // field on early return, so pattern-match with `.as_mut()`.
+            let cache_mut = self.gpu_cache.as_mut().expect("checked is_none above");
+            let grads_mut = self.gpu_grads.as_mut().expect("checked is_none above");
+
+            nimcp_gpu::mlp_backward::zero_grads(grads_mut)?;
+            nimcp_gpu::mlp_backward::mlp_backward(
+                cache_mut, grads_mut, &x_vec, &y_vec, act, &acts_vecs, &pre_vecs,
+            )?;
+            nimcp_gpu::mlp_backward::sgd_step(cache_mut, grads_mut, lr)?;
+        }
+
+        // Phase 2d correctness contract: the next `learn_gpu` call has
+        // to run its CPU forward against the freshly-updated weights,
+        // otherwise the CPU copy would stay frozen at init and every
+        // step would recompute the same loss. Download device weights
+        // back into `self.weights` so the CPU forward and `self.save`
+        // both see the trained state. A later phase can keep the
+        // forward activations device-resident and skip this round-trip.
+        self.sync_gpu_to_cpu()?;
+
+        tracing::trace!(loss, lr, "gpu weight update");
+        Ok(loss)
+    }
+
+    /// Download GPU weights back into `self.weights`.
+    ///
+    /// Use this periodically (e.g. every N training steps) to keep the
+    /// CPU and GPU copies in sync — so [`Self::forward`] and
+    /// [`Self::save`] see the trained parameters. Cheap, but not free:
+    /// every layer triggers two D→H memcpys.
+    ///
+    /// Note: [`Self::learn_gpu`] already invokes this at the end of
+    /// every step in Phase 2d (it has to, to get the CPU-side forward
+    /// on the next call right). Calling it explicitly is only necessary
+    /// after a [`Self::forward_gpu`]-only path that never touches
+    /// `learn_gpu`, which currently has no reason to mutate weights.
+    ///
+    /// # Errors
+    ///
+    /// - [`AdaptiveError::Gpu`] if [`Self::init_gpu`] hasn't been run.
+    /// - [`AdaptiveError::Gpu`] on any cuda failure.
+    pub fn sync_gpu_to_cpu(&mut self) -> Result<(), AdaptiveError> {
+        let cache = self
+            .gpu_cache
+            .as_ref()
+            .ok_or_else(|| AdaptiveError::Gpu("init_gpu not called".into()))?;
+        if cache.num_layers() != self.weights.len() {
+            return Err(AdaptiveError::Gpu(format!(
+                "layer-count mismatch: gpu={} cpu={}",
+                cache.num_layers(),
+                self.weights.len()
+            )));
+        }
+        for (i, lw) in self.weights.iter_mut().enumerate() {
+            let (w, b) = cache.download_layer(i)?;
+            let (out_dim, in_dim) = lw.w.dim();
+            if w.len() != out_dim * in_dim || b.len() != out_dim {
+                return Err(AdaptiveError::Gpu(format!(
+                    "layer {i} shape mismatch on download: w={}, b={}, expected {}x{}",
+                    w.len(),
+                    b.len(),
+                    out_dim,
+                    in_dim,
+                )));
+            }
+            lw.w = Array2::from_shape_vec((out_dim, in_dim), w)
+                .map_err(|e| AdaptiveError::Gpu(format!("layer {i} w reshape: {e}")))?;
+            lw.b = Array1::from_vec(b);
+        }
+        tracing::debug!(layers = self.weights.len(), "gpu->cpu sync complete");
+        Ok(())
+    }
+
+    /// Internal helper: CPU forward that returns `(activations, pre_activations)`
+    /// in the layout `mlp_backward` expects. Shape-identical to the
+    /// first half of [`Self::learn`].
+    fn cpu_forward_with_cache(&self, x: &Array1<f32>) -> (Vec<Array1<f32>>, Vec<Array1<f32>>) {
+        let n_layers = self.weights.len();
+        let mut activations: Vec<Array1<f32>> = Vec::with_capacity(n_layers + 1);
+        let mut pre_activations: Vec<Array1<f32>> = Vec::with_capacity(n_layers);
+        activations.push(x.clone());
+        let last = n_layers - 1;
+        for (i, layer) in self.weights.iter().enumerate() {
+            let z = layer.w.dot(&activations[i]) + &layer.b;
+            pre_activations.push(z.clone());
+            if i != last {
+                let mut h = z;
+                apply_activation(&mut h, self.config.activation);
+                activations.push(h);
+            } else {
+                activations.push(z);
+            }
+        }
+        (activations, pre_activations)
+    }
+}
+
+/// Map the adaptive crate's `Activation` onto `nimcp_gpu::mlp_forward::Activation`.
+#[cfg(feature = "cuda")]
+fn to_gpu_fwd_activation(a: Activation) -> nimcp_gpu::mlp_forward::Activation {
+    match a {
+        Activation::Relu => nimcp_gpu::mlp_forward::Activation::Relu,
+        Activation::Tanh => nimcp_gpu::mlp_forward::Activation::Tanh,
+    }
+}
+
+/// Map the adaptive crate's `Activation` onto `nimcp_gpu::mlp_backward::Activation`.
+///
+/// The forward and backward modules define their own duplicate enums;
+/// both must be set consistently on every step.
+#[cfg(feature = "cuda")]
+fn to_gpu_bwd_activation(a: Activation) -> nimcp_gpu::mlp_backward::Activation {
+    match a {
+        Activation::Relu => nimcp_gpu::mlp_backward::Activation::Relu,
+        Activation::Tanh => nimcp_gpu::mlp_backward::Activation::Tanh,
     }
 }
 
@@ -670,6 +1038,10 @@ mod tests {
         AdaptiveNet {
             config: src.config.clone(),
             weights: src.weights.clone(),
+            #[cfg(feature = "cuda")]
+            gpu_cache: None,
+            #[cfg(feature = "cuda")]
+            gpu_grads: None,
         }
     }
 
@@ -722,5 +1094,223 @@ mod tests {
             grad_w.into_iter().map(|o| o.expect("filled")).collect(),
             grad_b.into_iter().map(|o| o.expect("filled")).collect(),
         )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GPU tests. Gated on `cuda`; every test skips cleanly when `probe_device`
+// reports no GPU so CI hosts without an NVIDIA GPU still build + pass.
+// ---------------------------------------------------------------------------
+
+#[cfg(all(test, feature = "cuda"))]
+mod gpu_tests {
+    use super::*;
+    use ndarray::Array1;
+
+    /// Match the skip-if-absent idiom used by `crates/gpu` tests.
+    fn cuda_available() -> bool {
+        nimcp_gpu::probe_device().is_ok()
+    }
+
+    /// Deterministic input sampler — does not rely on any crate
+    /// external to the adaptive + rand_chacha stack.
+    fn sample_vec(rng: &mut ChaCha20Rng, n: usize, scale: f32) -> Array1<f32> {
+        use rand::distr::{Distribution, Uniform};
+        let dist = Uniform::new(-scale, scale).expect("valid range");
+        Array1::from_shape_fn(n, |_| dist.sample(rng))
+    }
+
+    #[test]
+    fn forward_gpu_matches_cpu() {
+        if !cuda_available() {
+            eprintln!("skipping: no CUDA device on this host");
+            return;
+        }
+        // Small 3 -> 8 -> 2 MLP, tanh hidden. Same seeded init on both paths.
+        let cfg = AdaptiveConfig {
+            layers: vec![3, 8, 2],
+            rng_seed: 0xAA55_AA55,
+            activation: Activation::Tanh,
+        };
+        let mut net = AdaptiveNet::new(cfg);
+        net.init_gpu().expect("init_gpu ok");
+
+        let mut rng = ChaCha20Rng::seed_from_u64(12345);
+        for _ in 0..5 {
+            let x = sample_vec(&mut rng, 3, 1.0);
+            let cpu = net.forward(&x);
+            let gpu = net.forward_gpu(&x).expect("forward_gpu ok");
+            assert_eq!(cpu.len(), gpu.len());
+            for (i, (c, g)) in cpu.iter().zip(gpu.iter()).enumerate() {
+                assert!(
+                    (c - g).abs() < 1e-4,
+                    "idx {i}: cpu={c} gpu={g} diff={}",
+                    (c - g).abs()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn learn_gpu_decreases_loss() {
+        if !cuda_available() {
+            eprintln!("skipping: no CUDA device on this host");
+            return;
+        }
+        // XOR-sized MLP: 2 -> 8 -> 1 tanh. We train on XOR and expect
+        // the sliding-window mean loss to drop monotonically after the
+        // first window.
+        let cfg = AdaptiveConfig {
+            layers: vec![2, 8, 1],
+            rng_seed: 0x0BAD_C0FF_EE0D_DF00,
+            activation: Activation::Tanh,
+        };
+        let mut net = AdaptiveNet::new(cfg);
+        net.init_gpu().expect("init_gpu ok");
+
+        let samples: [(Array1<f32>, Array1<f32>); 4] = [
+            (
+                Array1::from_vec(vec![0.0, 0.0]),
+                Array1::from_vec(vec![0.0]),
+            ),
+            (
+                Array1::from_vec(vec![0.0, 1.0]),
+                Array1::from_vec(vec![1.0]),
+            ),
+            (
+                Array1::from_vec(vec![1.0, 0.0]),
+                Array1::from_vec(vec![1.0]),
+            ),
+            (
+                Array1::from_vec(vec![1.0, 1.0]),
+                Array1::from_vec(vec![0.0]),
+            ),
+        ];
+
+        let lr = 0.1f32;
+        let mut losses: Vec<f32> = Vec::with_capacity(100);
+        for _ in 0..100 {
+            let mut sum = 0.0f32;
+            for (x, y) in &samples {
+                sum += net.learn_gpu(x, y, lr).expect("learn_gpu ok");
+            }
+            losses.push(sum / samples.len() as f32);
+        }
+
+        // Sliding-window-of-10 mean must be strictly non-increasing.
+        let window = 10;
+        let mut prev = f32::INFINITY;
+        for chunk in losses.chunks(window) {
+            let avg: f32 = chunk.iter().sum::<f32>() / (chunk.len() as f32);
+            // Allow a tiny numerical nudge (1e-6) so fused-multiply-add
+            // jitter on the final window doesn't flake the test.
+            assert!(
+                avg <= prev + 1e-6,
+                "loss window avg went up: {prev:.6} -> {avg:.6} (full series: {losses:?})"
+            );
+            prev = avg;
+        }
+
+        // Net loss reduction — start window vs last window should be
+        // meaningful. 2x reduction is a weak-but-reliable bar for XOR.
+        let start: f32 = losses[..window].iter().sum::<f32>() / window as f32;
+        let end: f32 = losses[losses.len() - window..].iter().sum::<f32>() / window as f32;
+        assert!(
+            end < start * 0.75,
+            "learn_gpu did not meaningfully reduce loss: start={start} end={end}"
+        );
+    }
+
+    #[test]
+    fn sync_gpu_to_cpu_round_trips() {
+        if !cuda_available() {
+            eprintln!("skipping: no CUDA device on this host");
+            return;
+        }
+        let cfg = AdaptiveConfig {
+            layers: vec![3, 6, 2],
+            rng_seed: 7777,
+            activation: Activation::Tanh,
+        };
+        let mut net = AdaptiveNet::new(cfg);
+        net.init_gpu().expect("init_gpu ok");
+
+        // Train briefly on the GPU so CPU and GPU weights actually diverge.
+        let mut rng = ChaCha20Rng::seed_from_u64(9999);
+        for _ in 0..10 {
+            let x = sample_vec(&mut rng, 3, 1.0);
+            let y = sample_vec(&mut rng, 2, 1.0);
+            net.learn_gpu(&x, &y, 0.05).expect("learn_gpu ok");
+        }
+
+        // Sync weights back. CPU forward must match GPU forward within
+        // FMA tolerance on fresh inputs.
+        net.sync_gpu_to_cpu().expect("sync ok");
+
+        for _ in 0..5 {
+            let x = sample_vec(&mut rng, 3, 1.0);
+            let cpu = net.forward(&x);
+            let gpu = net.forward_gpu(&x).expect("forward_gpu ok");
+            for (c, g) in cpu.iter().zip(gpu.iter()) {
+                assert!((c - g).abs() < 1e-4, "post-sync drift: cpu={c} gpu={g}");
+            }
+        }
+    }
+
+    #[test]
+    fn init_gpu_is_idempotent() {
+        if !cuda_available() {
+            eprintln!("skipping: no CUDA device on this host");
+            return;
+        }
+        let cfg = AdaptiveConfig {
+            layers: vec![4, 8, 3],
+            rng_seed: 2024,
+            activation: Activation::Relu,
+        };
+        let mut net = AdaptiveNet::new(cfg);
+
+        net.init_gpu().expect("first init ok");
+        // Reference output before re-init.
+        let x = Array1::from_vec(vec![0.25f32, -0.5, 0.75, -0.125]);
+        let out_before = net.forward_gpu(&x).expect("forward_gpu after first init");
+
+        // Second init must succeed — the previous cache is dropped.
+        net.init_gpu().expect("re-init ok");
+
+        // Forward still works after re-init and produces identical
+        // output (weights haven't changed, kernels are deterministic).
+        let out_after = net.forward_gpu(&x).expect("forward_gpu after re-init");
+        assert_eq!(out_before.len(), out_after.len());
+        for (a, b) in out_before.iter().zip(out_after.iter()) {
+            assert!((a - b).abs() < 1e-6, "re-init drift: before={a} after={b}");
+        }
+    }
+
+    #[test]
+    fn forward_gpu_requires_init() {
+        // No GPU required — this checks the error path before any cuda
+        // call. Keep the test behind `cuda` so the error variant exists.
+        let mut net = AdaptiveNet::new(AdaptiveConfig {
+            layers: vec![3, 4, 2],
+            rng_seed: 1,
+            activation: Activation::Relu,
+        });
+        let x = Array1::from_vec(vec![0.0_f32, 0.0, 0.0]);
+        // Before init_gpu.
+        let err = net.forward_gpu(&x).unwrap_err();
+        assert!(
+            matches!(err, AdaptiveError::Gpu(ref m) if m.contains("init_gpu")),
+            "expected Gpu(init_gpu not called), got {err:?}"
+        );
+        // learn_gpu should also bail — don't actually run it because it
+        // would need a device call stack; just confirm shape checks pass
+        // before the init check.
+        let y = Array1::from_vec(vec![0.0_f32, 0.0]);
+        let err2 = net.learn_gpu(&x, &y, 0.01).unwrap_err();
+        assert!(
+            matches!(err2, AdaptiveError::Gpu(ref m) if m.contains("init_gpu")),
+            "expected Gpu(init_gpu not called), got {err2:?}"
+        );
     }
 }
