@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "NIMCP V2 — liquid time-constant network, Phase 4"
+description = "NIMCP V2 — liquid time-constant neural network, Phase 4"
 
 [lints]
 workspace = true
@@ -14,5 +14,12 @@ workspace = true
 [dependencies]
 nimcp-core = { workspace = true }
 ndarray = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+approx = "0.5"
+serde_json = { workspace = true }

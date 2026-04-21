@@ -51,7 +51,7 @@ rand = "0.9"
 rand_chacha = "0.9"
 
 # Linear algebra
-ndarray = "0.16"
+ndarray = { version = "0.16", features = ["serde"] }
 
 # Testing
 proptest = "1"
