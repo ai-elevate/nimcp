@@ -7,6 +7,14 @@
 //! - `brain.predict(x) -> list[float]` — forward pass.
 //! - `brain.save(path)` / `brain.load(path)` — rkyv checkpoint round-trip.
 //!
+//! Phase 6b surface (introspection):
+//!
+//! - `brain.stats() -> dict` — nested dict with one section per configured
+//!   subsystem (`adaptive`, `snn`, `lnn`, `memory`). Sections for
+//!   subsystems the brain wasn't built with are `None`.
+//! - `brain.stats_json() -> str` — same payload as `stats()` but as the
+//!   raw JSON string, for callers that want to log / pipe / save.
+//!
 //! Later phases add SNN config, memory/landmark API, streaming sensory I/O.
 //!
 //! Built with `maturin develop` for editable installs.
@@ -157,6 +165,29 @@ impl PyBrain {
     fn shape(&self) -> (usize, usize) {
         let layers = &self.inner.config().adaptive.layers;
         (layers[0], layers[layers.len() - 1])
+    }
+
+    /// Comprehensive read-only stats snapshot across every configured
+    /// subsystem. Returns a nested Python dict with sections
+    /// `rng_seed`, `adaptive`, `snn`, `lnn`, `memory`. Sections for
+    /// subsystems not configured on this brain are `None`.
+    ///
+    /// Cheap — linear in parameter / node count — but not free. Callers
+    /// polling on a tight loop should throttle.
+    ///
+    /// Returns:
+    ///     dict: see `nimcp_brain::stats::BrainStats` for the schema.
+    fn stats<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let json = self.inner.stats_json().map_err(rt_err)?;
+        let json_mod = py.import("json")?;
+        json_mod.call_method1("loads", (json,))
+    }
+
+    /// Same payload as `stats()` but returned as a raw JSON string.
+    /// Faster than `stats()` when the caller is going to write it to
+    /// disk / a socket / a log without ever touching the structure.
+    fn stats_json(&self) -> PyResult<String> {
+        self.inner.stats_json().map_err(rt_err)
     }
 
     /// String representation for Python repr.
