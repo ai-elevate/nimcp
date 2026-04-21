@@ -858,24 +858,24 @@ int snn_network_step(snn_network_t* network, float dt) {
             _isyn_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
                      + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
 
-            /* Poisson background noise — inject stochastic depolarizing
-             * pulses into h_input before GPU LIF forward. Structural fix
-             * for the zero-firing absorbing state: even dead populations
-             * get occasional spikes, keeping eligibility traces alive.
-             * Runs on the GPU path (hot path in production). Per-step
-             * probability p = rate_hz × dt_s. rand_r with a thread-local
-             * seed avoids contention and global rand()'s lack of thread
-             * safety. noise_rate_hz=0 disables without cost (p=0 branch). */
+            /* Adaptive Poisson background noise — inject per-population
+             * scaled depolarizing pulses into h_input before GPU LIF
+             * forward. Dead pops get full noise to escape the absorbing
+             * zero state; pops at or above target get zero noise so noise
+             * doesn't saturate healthy populations. The per-pop factor
+             * comes from snn_noise_factor_for_pop() which reads each
+             * pop's firing_rate_ema. noise_rate_hz=0 disables entirely.
+             *
+             * See project_snn_structural_fixes_2026-04-21 for why fixed-
+             * amplitude noise caused SATURATION ↔ FULL_COLLAPSE cycling. */
             {
                 extern float snn_tune_get_noise_rate_hz(void);
                 extern float snn_tune_get_noise_pulse_mv(void);
+                extern float snn_noise_factor_for_pop(const snn_population_t*);
                 const float nrate = snn_tune_get_noise_rate_hz();
                 if (nrate > 0.0f) {
                     const float npulse = snn_tune_get_noise_pulse_mv();
-                    const float p = nrate * dt_ms * 0.001f;
-                    /* Convert p to an integer threshold in [0, RAND_MAX]
-                     * for a cheap integer compare instead of float div. */
-                    const unsigned int thresh = (unsigned int)(p * (float)RAND_MAX);
+                    const float p_base = nrate * dt_ms * 0.001f;
                     static __thread unsigned int _gpu_noise_seed = 0;
                     if (_gpu_noise_seed == 0) {
                         struct timespec _nt;
@@ -884,9 +884,19 @@ int snn_network_step(snn_network_t* network, float dt) {
                             ^ ((uintptr_t)&_gpu_noise_seed >> 4));
                         if (_gpu_noise_seed == 0) _gpu_noise_seed = 0xDEADBEEFu;
                     }
-                    for (uint32_t i = 0; i < total_neurons; i++) {
-                        if ((unsigned int)rand_r(&_gpu_noise_seed) < thresh) {
-                            h_input[i] += npulse;
+                    uint32_t neuron_idx = 0;
+                    for (uint32_t p = 0; p < network->n_populations; p++) {
+                        snn_population_t* pop = network->populations[p];
+                        if (!pop) continue;
+                        const float factor = snn_noise_factor_for_pop(pop);
+                        const unsigned int pop_thresh =
+                            (unsigned int)(p_base * factor * (float)RAND_MAX);
+                        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                            if (pop_thresh > 0 &&
+                                (unsigned int)rand_r(&_gpu_noise_seed) < pop_thresh) {
+                                h_input[neuron_idx] += npulse;
+                            }
+                            neuron_idx++;
                         }
                     }
                 }
@@ -996,13 +1006,16 @@ int snn_network_step(snn_network_t* network, float dt) {
         float tau_mem = network->config.tau_mem;
 
         /* Fetch Poisson noise parameters ONCE per population to avoid
-         * the extern-call overhead inside the inner per-neuron loop. */
+         * the extern-call overhead inside the inner per-neuron loop.
+         * Apply per-pop adaptive factor (dead=1.0, at-target=0.0). */
         extern float snn_tune_get_noise_rate_hz(void);
         extern float snn_tune_get_noise_pulse_mv(void);
+        extern float snn_noise_factor_for_pop(const snn_population_t*);
         const float noise_rate_hz = snn_tune_get_noise_rate_hz();
         const float noise_pulse_mv = snn_tune_get_noise_pulse_mv();
-        /* Per-step spike probability: p = rate_hz × dt_s = rate × dt_ms/1000. */
-        const float noise_p = noise_rate_hz * dt_ms * 0.001f;
+        const float noise_factor = snn_noise_factor_for_pop(pop);
+        /* Per-step spike probability: p = rate_hz × dt_s × adaptive_factor. */
+        const float noise_p = noise_rate_hz * dt_ms * 0.001f * noise_factor;
         /* Thread-local PRNG seed. Seeded once on first call from
          * clock-based entropy + a per-thread spread so different worker
          * threads don't produce correlated noise. */

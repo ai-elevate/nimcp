@@ -202,6 +202,48 @@ def act(regime: str, params: dict):
 
 
 # -----------------------------------------------------------------------------
+# Symmetric recovery — undo crushed knobs after regime stabilizes.
+#
+# The old watchdog was one-way: SATURATION halved rstdp_lr each cooldown,
+# but nothing restored it when things recovered. Over a long session the
+# knobs ratchet monotonically down — eventually R-STDP stops learning
+# entirely and any transient dead pop becomes permanent.
+#
+# Recovery: when regime is HEALTHY or TRANSIENT for N consecutive polls
+# (drift-safe), step each watchdog-managed knob fractionally back toward
+# its baseline. Uses a small step (20% of gap) so recovery is gentle.
+# -----------------------------------------------------------------------------
+_MANAGED_KEYS = ("rstdp_lr", "homeo_max_scale", "target_rate", "max_scale_dead",
+                 "rstdp_baseline_alpha")
+_RECOVERY_STEP = 0.2    # 20% of gap per restoration tick
+_HEALTHY_POLLS_TO_RECOVER = 3  # N consecutive non-problem polls before easing knobs
+
+
+def recover_toward_baseline(baseline: dict, current: dict):
+    """Nudge watchdog-managed knobs back toward their startup baseline.
+
+    Only knobs whose current value is meaningfully off the baseline are
+    restored — identical values skip the RPC. This runs AT MOST once per
+    poll (no cooldown needed since steps are small)."""
+    if not baseline:
+        return
+    for k in _MANAGED_KEYS:
+        base = baseline.get(k)
+        cur = current.get(k)
+        if base is None or cur is None:
+            continue
+        if abs(cur - base) < 1e-6:
+            continue  # already at baseline, no RPC needed
+        new_val = cur + _RECOVERY_STEP * (base - cur)
+        # Round to 6 sig figs to avoid spurious precision-noise logs.
+        new_val = float(f"{new_val:.6g}")
+        if abs(new_val - cur) < 1e-6:
+            continue
+        logger.info(f"recovery: {k} {cur:.6g} → {new_val:.6g} (baseline {base:.6g})")
+        _tune(k, new_val)
+
+
+# -----------------------------------------------------------------------------
 # Main loop
 # -----------------------------------------------------------------------------
 def main():
@@ -213,6 +255,8 @@ def main():
     last_status_time = 0.0
     consecutive_errors = 0
     last_regime = None
+    baseline_params: dict | None = None   # captured on first successful RPC
+    calm_polls = 0                        # consecutive HEALTHY/TRANSIENT polls
 
     while True:
         now = time.time()
@@ -232,11 +276,23 @@ def main():
             time.sleep(POLL_INTERVAL)
             continue
 
+        # First healthy read freezes the baseline for recovery.
+        if baseline_params is None and params:
+            baseline_params = {k: params.get(k) for k in _MANAGED_KEYS
+                               if params.get(k) is not None}
+            logger.info(f"baseline captured: {baseline_params}")
+
         regime, rationale = detect(pops, params)
 
         if regime != last_regime:
             logger.info(f"regime → {regime}: {rationale}")
             last_regime = regime
+
+        # Count consecutive non-problem polls for the symmetric recovery.
+        if regime in ("HEALTHY", "TRANSIENT"):
+            calm_polls += 1
+        else:
+            calm_polls = 0
 
         if regime in ("DEAD_CASCADE", "FULL_COLLAPSE", "SATURATION", "WHIPLASH"):
             since = now - last_action_time
@@ -251,6 +307,11 @@ def main():
                     f"{regime} detected but in cooldown "
                     f"({since:.0f}s/{COOLDOWN:.0f}s)"
                 )
+        elif calm_polls >= _HEALTHY_POLLS_TO_RECOVER:
+            # Symmetric: once the regime stabilizes, ease the crushed knobs
+            # back toward their baseline. Prevents the monotonic ratchet-down
+            # that causes permanent collapse after transient saturation.
+            recover_toward_baseline(baseline_params, params)
 
         if now - last_status_time >= STATUS_PERIOD:
             target = params.get("target_rate", 0.03)

@@ -386,6 +386,13 @@ float snn_tune_get_target_rate_input(void);
  *==========================================================================*/
 float snn_compute_intrinsic_reward(snn_network_t* network);
 
+/*============================================================================
+ * Adaptive noise factor — scales Poisson noise probability per population
+ * based on firing_rate_ema vs target. 1.0 when dead, linearly down to 0.0
+ * when at target. Called from the SNN noise-injection loop.
+ *==========================================================================*/
+float snn_noise_factor_for_pop(const snn_population_t* pop);
+
 /**
  * @brief Apply R-STDP weight updates
  *

@@ -119,6 +119,32 @@ static inline float _target_rate_for_pop(const snn_population_t* pop) {
 }
 
 /*============================================================================
+ * Adaptive noise factor per population. Returns a multiplier in [0, 1]
+ * for the base Poisson noise probability: 1.0 when pop is dead (full
+ * noise to rescue the absorbing state), 0.0 when pop is at or above
+ * target (noise only helps the dead). Linear falloff between.
+ *
+ * Without this, fixed noise both rescues dead pops AND saturates healthy
+ * ones, which the oscillation we hit on pod 2026-04-21 (HEALTHY →
+ * SATURATION → FULL_COLLAPSE loop) proved catastrophic.
+ *==========================================================================*/
+float snn_noise_factor_for_pop(const snn_population_t* pop) {
+    if (!pop) return 0.0f;
+    /* Warmup: firing_rate_ema is not reliable until we have samples.
+     * Default to full noise during warmup — pops need it most then. */
+    if (pop->rate_samples < 10) return 1.0f;
+    const float target = _target_rate_for_pop(pop);
+    if (target <= 0.0f) return 0.0f;
+    /* Linear ramp: rate=0 → factor=1.0, rate=target → factor=0.0.
+     * Above target we clamp to 0 — noise is only a rescue mechanism,
+     * not a drive. Synaptic input is what carries signal. */
+    const float factor = 1.0f - (pop->firing_rate_ema / target);
+    if (factor < 0.0f) return 0.0f;
+    if (factor > 1.0f) return 1.0f;
+    return factor;
+}
+
+/*============================================================================
  * C: Intrinsic SNN reward. Firing-rate-target gaussian per population,
  * averaged. Returns reward in [0, 1]; 1.0 = every active pop at target.
  * Pops in warmup (rate_samples < 10) are excluded from the computation.
@@ -962,10 +988,21 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
          *   - once rate > 0.3% of target, we drop back to the tight cap
          *     so the approach to target is smooth
          */
-        const float min_scale = g_homeo_min_scale;
+        float min_scale = g_homeo_min_scale;
         float max_scale = g_homeo_max_scale;
         if (cur_rate < g_homeo_dead_threshold * target_rate) {
             max_scale = g_homeo_max_scale_dead;  /* escape velocity for dead pops */
+        }
+        /* Reward-coupled aggressiveness: when R-STDP reward is near zero
+         * (saturation collapses the gaussian intrinsic reward to 0), R-STDP
+         * weights don't update and only homeostatic can pull firing back
+         * down. The default 0.98 floor takes ~70 applies to halve weights,
+         * which is far too slow vs. the timescale at which saturation
+         * cascades. Widen the scale-DOWN bound to 0.90 for over-target pops
+         * specifically when R-STDP is stuck. Upper bound is untouched so
+         * dead pops still get their normal escape velocity. */
+        if (ctx->reward < 0.1f && cur_rate > target_rate * 1.5f) {
+            min_scale = 0.90f;
         }
 
         /* Target / current gives the pull direction. */
