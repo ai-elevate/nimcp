@@ -63,12 +63,27 @@ typedef enum {
     OCTOPUS_EVT_FEAR_CONTEXT   = 0x0007,  /* amygdala fear intensity (Phase 3c) */
 } octopus_event_type_t;
 
+/* CRASH FIX: previously a bare 32-byte struct, sent to
+ * bio_router_broadcast without a bio_message_header_t prefix. The
+ * router validates msg_size >= sizeof(bio_message_header_t) (40
+ * bytes) and rejected every one of these, flooding stderr with
+ * "message too small (32 < 40 header)" warnings. The rejected
+ * messages are the trigger for the recurring brain SIGSEGV
+ * observed on Apr 15/19/21 — corrupt/rejected delivery paths
+ * eventually dereference a dangling pointer in bio_router's
+ * internal routing state.
+ *
+ * Now properly wrapped with a bio_message_header_t (40 bytes).
+ * The octopus event sub-type lives in ev_type (kept as uint16_t
+ * to preserve binary layout of the payload section for any
+ * downstream consumer that snapshots the post-header bytes). */
 typedef struct {
-    uint16_t type;       /* octopus_event_type_t */
-    uint16_t arm_id;     /* 0xFFFF if not arm-specific */
-    float    value;      /* event-specific magnitude (coherence, confidence, etc.) */
-    uint32_t sequence;   /* monotonic per-context; detect drops */
-    uint32_t _pad[5];    /* reserve 32-byte total, room for future fields */
+    bio_message_header_t header;      /* 40 bytes — required by router */
+    uint16_t             ev_type;     /* octopus_event_type_t (was `type`) */
+    uint16_t             arm_id;      /* 0xFFFF if not arm-specific */
+    float                value;       /* event-specific magnitude */
+    uint32_t             sequence;    /* monotonic per-context; detect drops */
+    uint32_t             _pad[3];     /* pad to 16-byte alignment, room for growth */
 } octopus_event_msg_t;
 
 /*============================================================================
@@ -156,7 +171,13 @@ static void _ensure_registered(octopus_bridge_state_t* st) {
 
 /* DRY helper: pack + broadcast one event. NULL-guards the router context
  * so degraded operation (router not initialized) is a no-op instead of a
- * crash. Returns true iff broadcast succeeded. */
+ * crash. Returns true iff broadcast succeeded.
+ *
+ * CRASH FIX: now initializes bio_message_header_t with the octopus
+ * module id and the full message size (including the header prefix).
+ * Without this, bio_router rejected every send with "message too
+ * small (32 < 40 header)" — and those rejections were the trigger for
+ * the repeated brain SIGSEGV. */
 static bool _emit(octopus_bridge_state_t* st,
                    octopus_event_type_t type,
                    uint16_t arm_id,
@@ -165,7 +186,12 @@ static bool _emit(octopus_bridge_state_t* st,
     _ensure_registered(st);
     if (!st->bio_ctx) return false;
     octopus_event_msg_t msg = {0};
-    msg.type     = (uint16_t)type;
+    bio_msg_init_header(&msg.header,
+                        (bio_message_type_t)BIO_MODULE_OCTOPUS,  /* use module id as event type */
+                        BIO_MODULE_OCTOPUS,
+                        0,  /* broadcast: target=0 */
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.ev_type  = (uint16_t)type;
     msg.arm_id   = arm_id;
     msg.value    = value;
     msg.sequence = ++st->sequence;
