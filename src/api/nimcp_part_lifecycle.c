@@ -23,6 +23,17 @@ static nimcp_status_t nimcp_init_internal(void) {
 
     LOG_INFO("Initializing NIMCP library version %s", NIMCP_VERSION_STRING);
 
+    // Install crash handler BEFORE any other subsystem so if anything
+    // below SEGVs during init, we get a backtrace. The handler writes
+    // to /var/log/nimcp_crash.log (or /tmp fallback). Calls a signal-
+    // safe backtrace_symbols_fd() on any SIGSEGV/SIGABRT/SIGBUS/SIGFPE/
+    // SIGILL, then exits. Overrides Python's faulthandler with richer
+    // C-frame dump.
+    {
+        extern bool nimcp_install_crash_handler(void);
+        (void)nimcp_install_crash_handler();
+    }
+
     // Initialize memory tracking (unified memory management)
     LOG_DEBUG("Initializing memory tracking system");
     nimcp_memory_init();

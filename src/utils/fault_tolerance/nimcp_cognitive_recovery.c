@@ -1294,6 +1294,65 @@ int32_t cognitive_recovery_export_json(
 // Signal Handler Integration
 //=============================================================================
 
+/* Standalone flag — set by nimcp_install_crash_handler() to avoid
+ * double-installation if cognitive_recovery_install_signal_handlers()
+ * runs later. Both install the SAME cognitive_signal_handler; the only
+ * difference is whether g_coordinator is non-NULL (enabling recovery
+ * attempt) or NULL (backtrace + _exit). */
+static volatile bool g_crash_handler_installed = false;
+
+bool nimcp_install_crash_handler(void) {
+    if (g_crash_handler_installed) return true;
+
+    /* Open the crash log FD once so the signal handler can write to it
+     * via async-signal-safe write(2) without opening during a crash. */
+    if (g_crash_log_fd < 0) {
+        int fd = open(CRASH_LOG_PATH,
+                      O_WRONLY | O_CREAT | O_APPEND,
+                      0644);
+        if (fd < 0) {
+            fd = open(CRASH_LOG_PATH_FALLBACK,
+                      O_WRONLY | O_CREAT | O_APPEND,
+                      0644);
+        }
+        if (fd >= 0) {
+            g_crash_log_fd = fd;
+            crash_write_str(fd, "\n=== NIMCP standalone crash handler installed at pid=");
+            crash_write_int(fd, (int)getpid());
+            crash_write_str(fd, " ts=");
+            crash_write_int(fd, (int)time(NULL));
+            crash_write_str(fd, " ===\n");
+            LOG_INFO("Standalone crash handler: backtrace log fd=%d path=%s",
+                     fd, (fd >= 0 ? CRASH_LOG_PATH : CRASH_LOG_PATH_FALLBACK));
+        } else {
+            LOG_WARNING("Standalone crash handler: could not open crash log "
+                        "(errno=%d); backtraces will not be dumped to disk",
+                        errno);
+            /* Continue — the sigaction handler will still fire, just
+             * won't dump. Eventually falls through to the default
+             * SIGSEGV handler. */
+        }
+    }
+
+    struct sigaction sa = {0};
+    sa.sa_sigaction = cognitive_signal_handler;
+    sa.sa_flags = SA_SIGINFO | SA_NODEFER;
+    sigemptyset(&sa.sa_mask);
+
+    /* Install for the five fatal signals. If any fail, continue —
+     * partial coverage still helps. */
+    int ok = 0;
+    if (sigaction(SIGSEGV, &sa, NULL) == 0) ok++;
+    if (sigaction(SIGFPE,  &sa, NULL) == 0) ok++;
+    if (sigaction(SIGABRT, &sa, NULL) == 0) ok++;
+    if (sigaction(SIGBUS,  &sa, NULL) == 0) ok++;
+    if (sigaction(SIGILL,  &sa, NULL) == 0) ok++;
+
+    g_crash_handler_installed = true;
+    LOG_INFO("Standalone crash handler: %d/5 fatal-signal handlers installed", ok);
+    return ok > 0;
+}
+
 bool cognitive_recovery_install_signal_handlers(
     cognitive_recovery_coordinator_t coordinator
 ) {
