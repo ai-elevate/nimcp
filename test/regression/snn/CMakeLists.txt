@@ -13,6 +13,10 @@ if(NOT GTest_FOUND)
 endif()
 
 # Common link libraries for SNN regression tests
+# NOTE: z is needed because libnimcp_snn.a references gzseek from nimcp_snn_network.c.
+# libnimcp.so exports zlib symbols transitively, but the static archive ordering in
+# the link line requires an explicit -lz here.
+find_package(ZLIB)
 set(SNN_REGRESSION_TEST_LIBS
     nimcp_snn
     nimcp
@@ -21,6 +25,11 @@ set(SNN_REGRESSION_TEST_LIBS
     Threads::Threads
     m
 )
+if(ZLIB_FOUND)
+    list(APPEND SNN_REGRESSION_TEST_LIBS ZLIB::ZLIB)
+else()
+    list(APPEND SNN_REGRESSION_TEST_LIBS z)
+endif()
 
 # Common include directories
 set(SNN_REGRESSION_TEST_INCLUDES
@@ -140,6 +149,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_language_bridge_regression.cpp)
     )
 
     message(STATUS "  Added SNN language bridge regression test: test_snn_language_bridge_regression")
+endif()
+
+# ============================================================================
+# SNN Biophysical Disable-Path Regression Test
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_biophysical_regression.cpp)
+    add_executable(regression_snn_test_snn_biophysical_regression
+        test_snn_biophysical_regression.cpp
+    )
+
+    target_link_libraries(regression_snn_test_snn_biophysical_regression
+        PRIVATE ${SNN_REGRESSION_TEST_LIBS}
+    )
+
+    target_include_directories(regression_snn_test_snn_biophysical_regression
+        PRIVATE ${SNN_REGRESSION_TEST_INCLUDES}
+    )
+
+    target_compile_features(regression_snn_test_snn_biophysical_regression PRIVATE cxx_std_17)
+
+    gtest_discover_tests(regression_snn_test_snn_biophysical_regression
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;snn;biophysical"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added SNN biophysical regression test: test_snn_biophysical_regression")
 endif()
 
 # ============================================================================
