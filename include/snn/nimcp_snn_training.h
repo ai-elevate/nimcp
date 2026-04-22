@@ -372,6 +372,16 @@ void  snn_tune_set_target_rate_input(float v);
 void  snn_tune_set_depression_inc(float v);
 void  snn_tune_set_depression_tau_ms(float v);
 void  snn_tune_set_depression_cap(float v);
+/* Biophysical stability mechanisms (wired into SNN step hot path). */
+void  snn_tune_set_ahp_enabled(float v);
+void  snn_tune_set_ahp_tau_ms(float v);
+void  snn_tune_set_ahp_gain_mv(float v);
+void  snn_tune_set_pump_enabled(float v);
+void  snn_tune_set_pump_tau_ms(float v);
+void  snn_tune_set_pump_gain_mv(float v);
+void  snn_tune_set_basket_enabled(float v);
+void  snn_tune_set_basket_fraction(float v);
+void  snn_tune_set_noise_ei_ratio(float v);
 
 float snn_tune_get_rstdp_lr(void);
 float snn_tune_get_rstdp_baseline_alpha(void);
@@ -391,6 +401,15 @@ float snn_tune_get_target_rate_input(void);
 float snn_tune_get_depression_inc(void);
 float snn_tune_get_depression_tau_ms(void);
 float snn_tune_get_depression_cap(void);
+float snn_tune_get_ahp_enabled(void);
+float snn_tune_get_ahp_tau_ms(void);
+float snn_tune_get_ahp_gain_mv(void);
+float snn_tune_get_pump_enabled(void);
+float snn_tune_get_pump_tau_ms(void);
+float snn_tune_get_pump_gain_mv(void);
+float snn_tune_get_basket_enabled(void);
+float snn_tune_get_basket_fraction(void);
+float snn_tune_get_noise_ei_ratio(void);
 
 /*============================================================================
  * Intrinsic SNN reward — firing-rate-target-based. Use as the primary

@@ -90,6 +90,25 @@ static float g_snn_dep_inc    = 0.3f;    /* per-spike depression increment (was 
 static float g_snn_dep_tau_ms = 50.0f;   /* exponential recovery time constant */
 static float g_snn_dep_cap    = 0.5f;    /* max depression; effective drive = 1 - depression */
 
+/* Biophysical stability mechanisms — each gated by its own runtime
+ * enable knob. All default-enabled so out-of-the-box the SNN has
+ * biological stability. Disable by setting the enable knob to 0.
+ *
+ * AHP (M-current)  : fast spike-rate adaptation (~150 ms, ~0.6 mV).
+ * Na/K pump        : slow hyperpolarization (~5 s, ~0.05 mV).
+ * Basket pool      : fast-spiking inhibitory interneurons (~20%).
+ * E/I noise ratio  : fraction of Poisson noise pulses that are
+ *                    inhibitory (0.5 = balanced; 0 = legacy exc-only). */
+static float g_snn_ahp_enabled      = 1.0f;
+static float g_snn_ahp_tau_ms       = 150.0f;
+static float g_snn_ahp_gain_mv      = 0.6f;
+static float g_snn_pump_enabled     = 1.0f;
+static float g_snn_pump_tau_ms      = 5000.0f;
+static float g_snn_pump_gain_mv     = 0.05f;
+static float g_snn_basket_enabled   = 1.0f;
+static float g_snn_basket_fraction  = 0.2f;
+static float g_snn_noise_ei_ratio   = 0.5f;
+
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
 void snn_tune_set_rstdp_baseline_alpha(float v)  { if (v > 0.0f && v <= 1.0f)    g_rstdp_baseline_alpha = v; }
@@ -113,6 +132,17 @@ void snn_tune_set_anti_reward_gain(float v)            { if (v >= 0.0f && v < 10
 void snn_tune_set_depression_inc(float v)        { if (v >= 0.0f && v <= 1.0f)   g_snn_dep_inc = v; }
 void snn_tune_set_depression_tau_ms(float v)     { if (v >= 1.0f && v <= 10000.0f) g_snn_dep_tau_ms = v; }
 void snn_tune_set_depression_cap(float v)        { if (v >= 0.0f && v <= 1.0f)   g_snn_dep_cap = v; }
+/* Biophysical stability enables/params — bounds chosen to cover the
+ * full biologically-plausible range. enable knobs: any nonzero = on. */
+void snn_tune_set_ahp_enabled(float v)           { g_snn_ahp_enabled  = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_ahp_tau_ms(float v)            { if (v >= 1.0f && v <= 100000.0f) g_snn_ahp_tau_ms = v; }
+void snn_tune_set_ahp_gain_mv(float v)           { if (v >= 0.0f && v <= 50.0f)     g_snn_ahp_gain_mv = v; }
+void snn_tune_set_pump_enabled(float v)          { g_snn_pump_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_pump_tau_ms(float v)           { if (v >= 1.0f && v <= 100000.0f) g_snn_pump_tau_ms = v; }
+void snn_tune_set_pump_gain_mv(float v)          { if (v >= 0.0f && v <= 50.0f)     g_snn_pump_gain_mv = v; }
+void snn_tune_set_basket_enabled(float v)        { g_snn_basket_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_basket_fraction(float v)       { if (v >= 0.01f && v <= 0.5f)     g_snn_basket_fraction = v; }
+void snn_tune_set_noise_ei_ratio(float v)        { if (v >= 0.0f && v <= 1.0f)      g_snn_noise_ei_ratio = v; }
 
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
@@ -133,6 +163,15 @@ float snn_tune_get_anti_reward_gain(void)            { return g_snn_anti_reward_
 float snn_tune_get_depression_inc(void)        { return g_snn_dep_inc; }
 float snn_tune_get_depression_tau_ms(void)     { return g_snn_dep_tau_ms; }
 float snn_tune_get_depression_cap(void)        { return g_snn_dep_cap; }
+float snn_tune_get_ahp_enabled(void)           { return g_snn_ahp_enabled; }
+float snn_tune_get_ahp_tau_ms(void)            { return g_snn_ahp_tau_ms; }
+float snn_tune_get_ahp_gain_mv(void)           { return g_snn_ahp_gain_mv; }
+float snn_tune_get_pump_enabled(void)          { return g_snn_pump_enabled; }
+float snn_tune_get_pump_tau_ms(void)           { return g_snn_pump_tau_ms; }
+float snn_tune_get_pump_gain_mv(void)          { return g_snn_pump_gain_mv; }
+float snn_tune_get_basket_enabled(void)        { return g_snn_basket_enabled; }
+float snn_tune_get_basket_fraction(void)       { return g_snn_basket_fraction; }
+float snn_tune_get_noise_ei_ratio(void)        { return g_snn_noise_ei_ratio; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"

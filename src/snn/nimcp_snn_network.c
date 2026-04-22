@@ -20,6 +20,8 @@
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_synapse.h"
 #include "snn/nimcp_snn_config.h"
+#include "snn/nimcp_snn_adaptation.h"
+#include "snn/nimcp_snn_basket.h"
 #include "gpu/snn/nimcp_snn_gpu.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
@@ -188,6 +190,38 @@ static snn_population_t* snn_population_create_lightweight(
         }
     }
 
+    /* Biophysical stability mechanisms — each gated by its own runtime
+     * enable knob. All default-enabled (knob = 1.0f) so out-of-the-box
+     * the SNN has biological stability. Allocation failure for any
+     * individual mechanism is non-fatal: the step code branches on
+     * NULL so a disabled / unallocated mechanism is a silent no-op. */
+    extern float snn_tune_get_ahp_enabled(void);
+    extern float snn_tune_get_pump_enabled(void);
+    extern float snn_tune_get_basket_enabled(void);
+    extern float snn_tune_get_ahp_tau_ms(void);
+    extern float snn_tune_get_ahp_gain_mv(void);
+    extern float snn_tune_get_pump_tau_ms(void);
+    extern float snn_tune_get_pump_gain_mv(void);
+    extern float snn_tune_get_basket_fraction(void);
+
+    if (snn_tune_get_ahp_enabled() != 0.0f) {
+        pop->ahp = snn_adaptation_create(n_neurons,
+                                         snn_tune_get_ahp_tau_ms(),
+                                         snn_tune_get_ahp_gain_mv(),
+                                         1.0f);
+    }
+    if (snn_tune_get_pump_enabled() != 0.0f) {
+        pop->pump = snn_adaptation_create(n_neurons,
+                                          snn_tune_get_pump_tau_ms(),
+                                          snn_tune_get_pump_gain_mv(),
+                                          1.0f);
+    }
+    if (snn_tune_get_basket_enabled() != 0.0f) {
+        pop->basket = snn_basket_pool_create(pop->id,
+                                             n_neurons,
+                                             snn_tune_get_basket_fraction());
+    }
+
     return pop;
 }
 
@@ -213,6 +247,11 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
     if (pop->threshold_offset) nimcp_free(pop->threshold_offset);
     if (pop->neuron_rate_ema) nimcp_free(pop->neuron_rate_ema);
     if (pop->depression) nimcp_free(pop->depression);
+
+    /* Biophysical stability mechanisms. Destroyers tolerate NULL. */
+    if (pop->ahp)    { snn_adaptation_destroy(pop->ahp);     pop->ahp = NULL; }
+    if (pop->pump)   { snn_adaptation_destroy(pop->pump);    pop->pump = NULL; }
+    if (pop->basket) { snn_basket_pool_destroy(pop->basket); pop->basket = NULL; }
 
     nimcp_free(pop);
 }
@@ -871,11 +910,13 @@ int snn_network_step(snn_network_t* network, float dt) {
             {
                 extern float snn_tune_get_noise_rate_hz(void);
                 extern float snn_tune_get_noise_pulse_mv(void);
+                extern float snn_tune_get_noise_ei_ratio(void);
                 extern float snn_noise_factor_for_pop(const snn_population_t*);
                 const float nrate = snn_tune_get_noise_rate_hz();
                 if (nrate > 0.0f) {
                     const float npulse = snn_tune_get_noise_pulse_mv();
                     const float p_base = nrate * dt_ms * 0.001f;
+                    const float ei_ratio = snn_tune_get_noise_ei_ratio();
                     static __thread unsigned int _gpu_noise_seed = 0;
                     if (_gpu_noise_seed == 0) {
                         struct timespec _nt;
@@ -891,10 +932,26 @@ int snn_network_step(snn_network_t* network, float dt) {
                         const float factor = snn_noise_factor_for_pop(pop);
                         const unsigned int pop_thresh =
                             (unsigned int)(p_base * factor * (float)RAND_MAX);
+                        /* Dead-pop exception: if pop is (nearly) fully in
+                         * rescue mode, force excitatory-only noise so it
+                         * can escape the absorbing-zero state. Otherwise
+                         * apply ei_ratio as the fraction of pulses that
+                         * are inhibitory. */
+                        const int exc_only = (factor >= 0.9f);
                         for (uint32_t n = 0; n < pop->n_neurons; n++) {
                             if (pop_thresh > 0 &&
                                 (unsigned int)rand_r(&_gpu_noise_seed) < pop_thresh) {
-                                h_input[neuron_idx] += npulse;
+                                if (exc_only) {
+                                    h_input[neuron_idx] += npulse;
+                                } else {
+                                    float sign_r = (float)rand_r(&_gpu_noise_seed)
+                                                 * (1.0f / (float)RAND_MAX);
+                                    if (sign_r < ei_ratio) {
+                                        h_input[neuron_idx] -= npulse;
+                                    } else {
+                                        h_input[neuron_idx] += npulse;
+                                    }
+                                }
                             }
                             neuron_idx++;
                         }
@@ -1030,6 +1087,52 @@ int snn_network_step(snn_network_t* network, float dt) {
         /* Update each neuron */
         if (pop->lightweight && pop->incoming_csr && pop->incoming_csr->finalized) {
             /* ===== LIGHTWEIGHT CSR PATH ===== */
+
+            /* Biophysical stability mechanisms — fetch knobs once per pop.
+             *
+             * AHP + pump: spike-triggered hyperpolarizing currents. Bulk-
+             *   compute the per-neuron contribution into pre-allocated
+             *   buffers before the inner loop; subtract from I_syn inside
+             *   the loop; update state (decay + spike bump) after the loop.
+             *
+             * Basket pool: fast-spiking inhibitory interneurons. Uniform
+             *   contribution (same mV to every parent neuron) so we compute
+             *   one scalar before the loop. emit_inhibition uses the PREVIOUS
+             *   basket step's mean spike output — the call to
+             *   snn_basket_pool_step at the end of this pop's work advances
+             *   it for next step.
+             *
+             * E/I noise: a fraction g_snn_noise_ei_ratio of Poisson pulses
+             *   are negative. Exception: if pop is effectively dead
+             *   (noise_factor >= 0.9) we force excitatory-only so silent
+             *   pops can still escape the absorbing-zero state. */
+            extern float snn_tune_get_ahp_enabled(void);
+            extern float snn_tune_get_pump_enabled(void);
+            extern float snn_tune_get_basket_enabled(void);
+            extern float snn_tune_get_noise_ei_ratio(void);
+            const int   ahp_on    = (pop->ahp  && snn_tune_get_ahp_enabled()  != 0.0f);
+            const int   pump_on   = (pop->pump && snn_tune_get_pump_enabled() != 0.0f);
+            const int   basket_on = (pop->basket && snn_tune_get_basket_enabled() != 0.0f);
+            const float ei_ratio  = snn_tune_get_noise_ei_ratio();
+            const int   noise_exc_only = (noise_factor >= 0.9f);  /* dead-pop exception */
+
+            float* ahp_hyp  = ahp_on
+                ? (float*)nimcp_calloc(pop->n_neurons, sizeof(float)) : NULL;
+            float* pump_hyp = pump_on
+                ? (float*)nimcp_calloc(pop->n_neurons, sizeof(float)) : NULL;
+            if (ahp_hyp)  snn_adaptation_compute_hyperpol(pop->ahp,  ahp_hyp,  dt_ms);
+            if (pump_hyp) snn_adaptation_compute_hyperpol(pop->pump, pump_hyp, dt_ms);
+
+            /* Basket contribution is uniform across parent. Using
+             * gain_inhib_to_parent × basket_mean_rate reproduces exactly
+             * what snn_basket_pool_emit_inhibition would write per-neuron,
+             * without allocating a temporary buffer. */
+            float basket_contrib = 0.0f;
+            if (basket_on) {
+                basket_contrib = pop->basket->gain_inhib_to_parent
+                               * snn_basket_pool_mean_rate(pop->basket);
+            }
+
             for (uint32_t n = 0; n < pop->n_neurons; n++) {
                 spike_data[n] = 0.0f;
 
@@ -1060,20 +1163,39 @@ int snn_network_step(snn_network_t* network, float dt) {
                     }
                 }
 
-                /* Poisson background noise — structural fix for the
-                 * absorbing-zero state. Without this, dead pops have no
-                 * spikes, no eligibility traces, so R-STDP cannot help and
-                 * homeostatic scales weights × 1.02 of tiny values = still
-                 * silent. With Poisson injection, every neuron has a
-                 * baseline non-zero firing probability regardless of
-                 * synaptic drive. noise_rate_hz is a runtime-tunable; 0
-                 * disables. */
+                /* Basket feedforward inhibition — uniform across pop. */
+                I_syn += basket_contrib;
+
+                /* E/I-balanced Poisson background noise — structural fix
+                 * for the absorbing-zero state. Dead pops (factor >= 0.9)
+                 * receive only excitatory pulses to escape; balanced pops
+                 * receive ei_ratio fraction as inhibitory so mean drive
+                 * stays near zero and neurons sit fluctuation-driven
+                 * instead of ramping up. */
                 if (noise_p > 0.0f) {
                     float r = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
                     if (r < noise_p) {
-                        I_syn += noise_pulse_mv;
+                        if (!noise_exc_only) {
+                            float sign_r = (float)rand_r(&_noise_seed)
+                                         * (1.0f / (float)RAND_MAX);
+                            if (sign_r < ei_ratio) {
+                                I_syn -= noise_pulse_mv;
+                            } else {
+                                I_syn += noise_pulse_mv;
+                            }
+                        } else {
+                            I_syn += noise_pulse_mv;
+                        }
                     }
                 }
+
+                /* AHP + pump hyperpolarization — subtract from drive.
+                 * Numerically equivalent to subtracting from dV since
+                 * dV = (v_rest - v + I_syn)/tau × dt. */
+                float hyp = 0.0f;
+                if (ahp_hyp)  hyp += ahp_hyp[n];
+                if (pump_hyp) hyp += pump_hyp[n];
+                I_syn -= hyp;
 
                 /* LIF dynamics */
                 float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
@@ -1092,6 +1214,27 @@ int snn_network_step(snn_network_t* network, float dt) {
                     total_spikes++;
                     pop->total_spikes++;
                 }
+            }
+
+            /* Advance AHP + pump state: decay adapt_var by exp(-dt/tau),
+             * then bump on fresh spikes. Must run AFTER the fire decisions
+             * above, since spike_data was just populated. */
+            if (ahp_on)  snn_adaptation_update(pop->ahp,  spike_data, dt_ms);
+            if (pump_on) snn_adaptation_update(pop->pump, spike_data, dt_ms);
+            if (ahp_hyp)  nimcp_free(ahp_hyp);
+            if (pump_hyp) nimcp_free(pump_hyp);
+
+            /* Advance basket pool with this step's parent mean fire rate.
+             * The next step's emit_inhibition will see the spikes this
+             * basket step just produced. */
+            if (basket_on) {
+                uint32_t spike_count = 0;
+                for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                    if (spike_data[n] > 0.5f) spike_count++;
+                }
+                float mean_rate = (pop->n_neurons > 0)
+                    ? (float)spike_count / (float)pop->n_neurons : 0.0f;
+                snn_basket_pool_step(pop->basket, mean_rate, dt_ms);
             }
 
             /* Intrinsic plasticity update: per-neuron threshold adaptation.
