@@ -243,9 +243,9 @@ mod tests {
 
     #[test]
     fn full_sets_value() {
-        let a = f32_full(&[2, 2], 3.14);
+        let a = f32_full(&[2, 2], 2.5);
         for &v in a.iter() {
-            assert_eq!(v, 3.14);
+            assert_eq!(v, 2.5);
         }
     }
 

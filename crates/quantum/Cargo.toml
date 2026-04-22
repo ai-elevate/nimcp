@@ -1,0 +1,17 @@
+[package]
+name = "nimcp-quantum"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — quantum-inspired algorithms (discrete quantum walk, Metropolis QMC)"
+
+[lints]
+workspace = true
+
+[dependencies]
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+thiserror = { workspace = true }

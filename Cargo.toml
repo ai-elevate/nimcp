@@ -18,6 +18,7 @@ members = [
     "crates/pinknoise",
     "crates/fractal",
     "crates/geometry",
+    "crates/quantum",
     "crates/checkpoint",
     "crates/brain",
     "pybind",
@@ -93,6 +94,7 @@ nimcp-ternary = { path = "crates/ternary" }
 nimcp-pinknoise = { path = "crates/pinknoise" }
 nimcp-fractal = { path = "crates/fractal" }
 nimcp-geometry = { path = "crates/geometry" }
+nimcp-quantum = { path = "crates/quantum" }
 nimcp-checkpoint = { path = "crates/checkpoint" }
 nimcp-brain = { path = "crates/brain" }
 
