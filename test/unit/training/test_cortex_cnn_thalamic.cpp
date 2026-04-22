@@ -22,6 +22,7 @@
 
 extern "C" {
 #include "training/nimcp_cortex_cnn.h"
+#include "training/nimcp_unified_training.h"
 #include "core/thalamic/nimcp_thalamic_channel.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -270,6 +271,97 @@ TEST_F(CortexCnnThalamicTest, ForwardWithEnabledZeroIsSafe) {
     }
 
     cortex_cnn_destroy(proc);
+}
+
+/* ------------------------------------------------------------------------- */
+/* W4 audit, Bug #3 regression guard — UTM adapter path                       */
+/* ------------------------------------------------------------------------- */
+
+/* The UTM adapter routes audio / speech modalities through cortex_forward_1d
+ * (flat 1D input). Pre-fix, cortex_forward_1d applied the thalamic gate
+ * itself but the adapter bypassed substrate entirely. The fix moves ALL
+ * post-forward work (substrate + thalamic + debit) into a single helper
+ * (cortex_cnn_apply_post_forward) that the adapter now invokes explicitly,
+ * so the UTM path sees the same attention gating as the public audio /
+ * speech forwards.
+ *
+ * This test verifies: an audio cortex routed through the UTM adapter with
+ * an attached router + a cached gate of 0.5 produces an embedding whose
+ * norm is noticeably smaller than the ungated baseline. That proves the
+ * adapter actually consulted the thalamic channel. */
+TEST_F(CortexCnnThalamicTest, UtmAdapterObservesThalamic) {
+    /* --- Baseline: UTM adapter forward with NO router attached. --- */
+    cortex_cnn_processor_t* proc_base = cortex_cnn_create(CORTEX_CNN_AUDIO, 32);
+    ASSERT_NE(nullptr, proc_base);
+    const nimcp_trainable_network_ops_t* ops_base = nullptr;
+    void* ctx_base = nullptr;
+    ASSERT_EQ(0, cortex_cnn_utm_adapter_create(proc_base, &ops_base, &ctx_base));
+    ASSERT_NE(nullptr, ops_base);
+    ASSERT_NE(nullptr, ctx_base);
+
+    uint32_t in_dim  = ops_base->get_input_dim(ctx_base);
+    uint32_t out_dim = ops_base->get_output_dim(ctx_base);
+    ASSERT_GT(in_dim, 0u);
+    ASSERT_GT(out_dim, 0u);
+
+    std::vector<float> input(in_dim);
+    for (uint32_t i = 0; i < in_dim; i++) {
+        input[i] = 0.2f * std::sin(0.07f * static_cast<float>(i));
+    }
+
+    std::vector<float> out_base(out_dim, 0.0f);
+    ASSERT_EQ(0, ops_base->forward(ctx_base, input.data(), in_dim,
+                                    out_base.data(), out_dim));
+    float n_base = 0.0f;
+    for (uint32_t i = 0; i < out_dim; i++) n_base += out_base[i] * out_base[i];
+    n_base = std::sqrt(n_base);
+
+    ops_base->destroy(ctx_base);
+    cortex_cnn_destroy(proc_base);
+
+    /* --- Gated: UTM adapter forward WITH router attached + gate 0.5. --- */
+    cortex_cnn_processor_t* proc_gated = cortex_cnn_create(CORTEX_CNN_AUDIO, 32);
+    ASSERT_NE(nullptr, proc_gated);
+    ASSERT_EQ(NIMCP_SUCCESS,
+              cortex_cnn_attach_thalamic_router(
+                  proc_gated, reinterpret_cast<struct thalamic_router*>(router)));
+    thalamic_channel_t* ch = cortex_cnn_test_get_thalamic_channel(proc_gated);
+    ASSERT_NE(nullptr, ch);
+    /* Stamp the cached gate BEFORE the first forward. The submit call at
+     * the tail of apply_post_forward may rewrite it via Hebbian learning,
+     * but the gate is read BEFORE submit so the first forward uses 0.5. */
+    ch->attention_weights[0] = 0.5f;
+
+    const nimcp_trainable_network_ops_t* ops_gated = nullptr;
+    void* ctx_gated = nullptr;
+    ASSERT_EQ(0, cortex_cnn_utm_adapter_create(proc_gated, &ops_gated, &ctx_gated));
+    ASSERT_NE(nullptr, ops_gated);
+
+    std::vector<float> out_gated(out_dim, 0.0f);
+    ASSERT_EQ(0, ops_gated->forward(ctx_gated, input.data(), in_dim,
+                                     out_gated.data(), out_dim));
+    float n_gated = 0.0f;
+    for (uint32_t i = 0; i < out_dim; i++) n_gated += out_gated[i] * out_gated[i];
+    n_gated = std::sqrt(n_gated);
+
+    /* UTM adapter must observe the thalamic gate: gated norm strictly less
+     * than ungated. Allow a loose upper bound because the router may
+     * rewrite the cached weight during submit; the qualitative guarantee
+     * we care about is "gate was consulted at all". */
+    for (uint32_t i = 0; i < out_dim; i++) {
+        EXPECT_TRUE(std::isfinite(out_gated[i]));
+    }
+    EXPECT_GT(n_base, 0.0f);
+    if (n_base > 1e-6f) {
+        float ratio = n_gated / n_base;
+        EXPECT_LT(ratio, 0.95f)
+            << "UTM adapter failed to observe thalamic gate — "
+            << "gated norm " << n_gated << " / ungated " << n_base
+            << " = " << ratio << " (expected < 0.95)";
+    }
+
+    ops_gated->destroy(ctx_gated);
+    cortex_cnn_destroy(proc_gated);
 }
 
 /* ------------------------------------------------------------------------- */

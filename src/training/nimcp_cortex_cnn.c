@@ -162,13 +162,22 @@ static const char* cortex_type_names[CORTEX_CNN_COUNT] = {
  * HOW:  If the master knob is off or no substrate attached, returns NULLs.
  *       Otherwise returns pointers into proc->cached_*_effects on success.
  *
- * @param proc      Processor (must be non-NULL; checked by callers)
- * @param out_axon  [out] axon effects pointer or NULL
- * @param out_dend  [out] dendrite effects pointer or NULL
+ *       W4 audit (Bug #4): the counter is only advanced here when the caller
+ *       opts in via advance_counter=true. Callers that invoke this helper
+ *       BEFORE a forward may fail (e.g. out-of-memory on input tensor create)
+ *       should pass false so the refresh cadence does not drift on failed
+ *       forwards. The canonical pattern is: refresh AFTER the forward has
+ *       succeeded so the counter only ticks on completed steps.
+ *
+ * @param proc             Processor (must be non-NULL; checked by callers)
+ * @param out_axon         [out] axon effects pointer or NULL
+ * @param out_dend         [out] dendrite effects pointer or NULL
+ * @param advance_counter  Whether to bump the period counter on this call.
  */
 static void cortex_cnn_refresh_substrate(cortex_cnn_processor_t* proc,
                                           const axon_substrate_effects_t** out_axon,
-                                          const dendrite_substrate_effects_t** out_dend) {
+                                          const dendrite_substrate_effects_t** out_dend,
+                                          bool advance_counter) {
     if (out_axon) *out_axon = NULL;
     if (out_dend) *out_dend = NULL;
     if (!proc || !proc->substrate || g_cnn_substrate_enabled == 0.0f) return;
@@ -179,9 +188,11 @@ static void cortex_cnn_refresh_substrate(cortex_cnn_processor_t* proc,
                                         &proc->cached_axon_effects,
                                         &proc->cached_dend_effects);
     }
-    proc->substrate_steps_since_update++;
-    if (period > 0 && proc->substrate_steps_since_update >= period) {
-        proc->substrate_steps_since_update = 0;
+    if (advance_counter) {
+        proc->substrate_steps_since_update++;
+        if (period > 0 && proc->substrate_steps_since_update >= period) {
+            proc->substrate_steps_since_update = 0;
+        }
     }
 
     if (out_axon) *out_axon = &proc->cached_axon_effects;
@@ -360,7 +371,16 @@ static void cortex_apply_thalamic_gate(cortex_cnn_processor_t* proc) {
 }
 
 /**
- * @brief Run CNN forward on a 1D float tensor
+ * @brief Run CNN forward on a 1D float tensor — raw CNN only, no substrate / thalamic hooks.
+ *
+ * W3/W4 audit: previously this helper also applied the thalamic gate, which
+ * broke the "substrate → thalamic → debit" ordering invariant: callers that
+ * layered substrate activation_mod on top of cortex_forward_1d applied
+ * activation_mod AFTER the gate (wrong order). It also bypassed substrate
+ * entirely on the UTM adapter path. The fix moves ALL post-forward hooks
+ * out of this helper; callers must invoke cortex_cnn_apply_post_forward()
+ * explicitly after any modality-specific mix-in step to restore the
+ * canonical order.
  */
 static const float* cortex_forward_1d(cortex_cnn_processor_t* proc,
                                        const float* data, uint32_t size) {
@@ -386,8 +406,34 @@ static const float* cortex_forward_1d(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
-    cortex_apply_thalamic_gate(proc);
+    /* Intentionally no substrate / thalamic / debit hooks here — caller owns
+     * the post-forward sequence via cortex_cnn_apply_post_forward(). */
     return proc->embedding;
+}
+
+/**
+ * @brief Apply the canonical post-forward sequence to proc->embedding.
+ *
+ * The design invariant is: substrate activation_mod → thalamic gate →
+ * substrate activity debit. Every modality forward and the UTM adapter must
+ * run this sequence AFTER the embedding (including any FNO mix-in) has been
+ * finalized so substrate damage and attention gating compound correctly.
+ *
+ * Also refreshes the substrate cache here (post-forward) so the period
+ * counter only advances when the forward actually completed, fixing the
+ * Bug #4 cadence drift on early-return.
+ */
+static void cortex_cnn_apply_post_forward(cortex_cnn_processor_t* proc) {
+    if (!proc || !proc->embedding || proc->embedding_dim == 0) return;
+
+    const axon_substrate_effects_t*     axon_eff = NULL;
+    const dendrite_substrate_effects_t* dend_eff = NULL;
+    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff, /*advance_counter=*/true);
+    (void)axon_eff;  /* axon effects are consumed by backward (plasticity_mod), not here */
+
+    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
+    cortex_apply_thalamic_gate(proc);
+    cortex_cnn_debit_activity(proc);
 }
 
 /* ========================================================================= */
@@ -845,12 +891,6 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
     if (!proc || proc->type != CORTEX_CNN_VISUAL || !pixels) return NULL;
     if (w == 0 || h == 0 || ch == 0) return NULL;
 
-    /* Substrate refresh (Phase 3): recompute cached effects if this is
-     * the first call since attach or the period tick has rolled over. */
-    const axon_substrate_effects_t*     axon_eff = NULL;
-    const dendrite_substrate_effects_t* dend_eff = NULL;
-    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
-
     /* Convert uint8 pixels to float [0,1] and pack as 1D tensor (H*W*C) */
     uint32_t total = w * h * ch;
     float* float_data = (float*)nimcp_malloc(total * sizeof(float));
@@ -895,13 +935,13 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
     proc->forward_steps++;
     extract_embedding(proc);
 
-    /* Apply substrate activation modulation to the CNN embedding before FNO
-     * mixing — dendritic integration damage shrinks the amplitude of the
-     * primary CNN signal. */
-    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
-
     /* FNO visual: spectral convolution on grayscale scanline.
-     * Captures spatial frequency patterns (edges, textures) that complement CNN. */
+     * Captures spatial frequency patterns (edges, textures) that complement CNN.
+     *
+     * W3 audit (Bug #2): FNO mix-in MUST happen before the substrate
+     * activation_mod so substrate damage scales BOTH the CNN and FNO
+     * contributions. Previously activation_mod ran before the mix-in, which
+     * left the FNO component unscaled and decoupled from substrate state. */
     if (proc->fno_visual && proc->embedding) {
         fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_visual;
         uint32_t fno_in = fno->input_size;
@@ -923,19 +963,16 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
         }
     }
 
-    cortex_apply_thalamic_gate(proc);
-    cortex_cnn_debit_activity(proc);
+    /* Canonical post-forward sequence: substrate refresh (counter advances
+     * only now, so failed forwards don't drift the cadence) → activation_mod
+     * → thalamic gate → activity debit. */
+    cortex_cnn_apply_post_forward(proc);
     return proc->embedding;
 }
 
 const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
                                        const float* mel, uint32_t mel_size) {
     if (!proc || proc->type != CORTEX_CNN_AUDIO || !mel) return NULL;
-
-    /* Substrate refresh (Phase 3). */
-    const axon_substrate_effects_t*     axon_eff = NULL;
-    const dendrite_substrate_effects_t* dend_eff = NULL;
-    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
 
     /* FNO path — spectral convolution for native frequency-domain processing */
     if (proc->fno_audio) {
@@ -951,15 +988,16 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
         }
         proc->has_fwd_result = true;
         proc->forward_steps++;
-        /* Apply substrate activation modulation after FNO spectral embedding. */
-        cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
+        /* Canonical post-forward sequence: substrate refresh (counter
+         * advances here, NOT earlier, so early-return failures above do not
+         * drift the refresh cadence) → activation_mod → thalamic gate →
+         * activity debit. */
+        cortex_cnn_apply_post_forward(proc);
         /* Compute confidence from (post-mod) embedding norm */
         float norm = 0.0f;
         for (uint32_t i = 0; i < proc->embedding_dim; i++)
             norm += proc->embedding[i] * proc->embedding[i];
         proc->confidence = (norm > 0.0f) ? 1.0f / (1.0f + expf(-sqrtf(norm))) : 0.0f;
-        cortex_apply_thalamic_gate(proc);
-        cortex_cnn_debit_activity(proc);
         return proc->embedding;
     }
 
@@ -982,20 +1020,13 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
-    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
-    cortex_apply_thalamic_gate(proc);
-    cortex_cnn_debit_activity(proc);
+    cortex_cnn_apply_post_forward(proc);
     return proc->embedding;
 }
 
 const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
                                         const float* phonemes, uint32_t size) {
     if (!proc || proc->type != CORTEX_CNN_SPEECH || !phonemes) return NULL;
-
-    /* Substrate refresh (Phase 3). */
-    const axon_substrate_effects_t*     axon_eff = NULL;
-    const dendrite_substrate_effects_t* dend_eff = NULL;
-    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
 
     /* Pack as [1, 1, 1, size] */
     uint32_t dims[4] = {1, 1, 1, size};
@@ -1017,10 +1048,12 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
     proc->forward_steps++;
     extract_embedding(proc);
 
-    /* Substrate activation modulation before FNO mixing. */
-    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
-
-    /* FNO speech: spectral convolution on phoneme features */
+    /* FNO speech: spectral convolution on phoneme features.
+     *
+     * W3 audit (Bug #2): FNO mix-in MUST happen before the substrate
+     * activation_mod so substrate damage scales BOTH the CNN and FNO
+     * contributions. Previously activation_mod ran before the mix-in, which
+     * left the FNO component unscaled and decoupled from substrate state. */
     if (proc->fno_speech && proc->embedding) {
         fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_speech;
         uint32_t fno_in = fno->input_size;
@@ -1049,8 +1082,9 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
         }
     }
 
-    cortex_apply_thalamic_gate(proc);
-    cortex_cnn_debit_activity(proc);
+    /* Canonical post-forward sequence: substrate refresh → activation_mod
+     * (now covers both CNN + FNO contributions) → thalamic gate → debit. */
+    cortex_cnn_apply_post_forward(proc);
     return proc->embedding;
 }
 
@@ -1079,11 +1113,6 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
     if (!proc || proc->type != CORTEX_CNN_SOMATO || !segments) return NULL;
     if (n_segments == 0) return NULL;
 
-    /* Substrate refresh (Phase 3). */
-    const axon_substrate_effects_t*     axon_eff = NULL;
-    const dendrite_substrate_effects_t* dend_eff = NULL;
-    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
-
     /* ================================================================
      * Somatosensory preprocessing pipeline (biologically inspired):
      *
@@ -1105,7 +1134,13 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
 
     /* Step 1: Weber-Fechner log scaling */
     float* scaled = (float*)nimcp_malloc(n_segments * sizeof(float));
-    if (!scaled) return cortex_forward_1d(proc, segments, n_segments); /* Fallback */
+    if (!scaled) {
+        /* Fallback path: raw 1D forward still needs the post-forward sequence
+         * so substrate / thalamic / debit stay wired on OOM. */
+        const float* fb = cortex_forward_1d(proc, segments, n_segments);
+        if (fb) cortex_cnn_apply_post_forward(proc);
+        return fb;
+    }
 
     float k = 10.0f;  /* Sensitivity constant — controls log compression steepness */
     for (uint32_t i = 0; i < n_segments; i++) {
@@ -1123,7 +1158,9 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
     float* wavelet_buf = (float*)nimcp_calloc(total_wavelet, sizeof(float));
     if (!wavelet_buf) {
         nimcp_free(scaled);
-        return cortex_forward_1d(proc, segments, n_segments);
+        const float* fb = cortex_forward_1d(proc, segments, n_segments);
+        if (fb) cortex_cnn_apply_post_forward(proc);
+        return fb;
     }
 
     /* Level 0: original (log-scaled) signal */
@@ -1146,17 +1183,21 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
     }
     nimcp_free(scaled);
 
-    /* Step 3: Forward through CNN with multi-scale wavelet features */
+    /* Step 3: Forward through CNN with multi-scale wavelet features.
+     * cortex_forward_1d is now a raw CNN forward — no substrate/thalamic
+     * hooks — so we run the canonical post-forward sequence here, which
+     * keeps ordering (substrate → thalamic → debit) identical across all
+     * four modalities.
+     *
+     * W3 audit (Bug #1): previously cortex_forward_1d applied the thalamic
+     * gate internally BEFORE this caller applied activation_mod, inverting
+     * the design invariant. Moving both hooks out of cortex_forward_1d and
+     * into this explicit sequence makes the ordering uniform. */
     const float* result = cortex_forward_1d(proc, wavelet_buf, total_wavelet);
     nimcp_free(wavelet_buf);
 
-    /* Apply substrate activation modulation + debit once the CNN has written
-     * its embedding. cortex_forward_1d is shared with the UTM adapter path,
-     * which already bypasses substrate modulation for somato/visual, so the
-     * wrap lives at the public forward layer. */
     if (result) {
-        cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
-        cortex_cnn_debit_activity(proc);
+        cortex_cnn_apply_post_forward(proc);
     }
 
     return result;
@@ -1498,13 +1539,21 @@ static int cortex_adapter_forward(void* ctx, const float* input, uint32_t input_
     }
 
     /* Use the generic 1D forward — works for audio/speech when data is
-     * already pre-processed to flat float representation */
+     * already pre-processed to flat float representation.
+     *
+     * W4 audit (Bug #3): cortex_forward_1d is now a raw CNN forward and no
+     * longer runs substrate / thalamic / debit hooks. The UTM adapter path
+     * must apply the canonical post-forward sequence explicitly so audio /
+     * speech routed through UTM see the same substrate + thalamic coupling
+     * as the public forward_audio / forward_speech APIs. */
     const float* emb = cortex_forward_1d(a->proc, input, input_dim);
     if (!emb) return -1;
 
+    cortex_cnn_apply_post_forward(a->proc);
+
     uint32_t copy_dim = (output_dim < a->proc->embedding_dim) ?
                          output_dim : a->proc->embedding_dim;
-    memcpy(output, emb, copy_dim * sizeof(float));
+    memcpy(output, a->proc->embedding, copy_dim * sizeof(float));
     if (output_dim > copy_dim) {
         memset(output + copy_dim, 0, (output_dim - copy_dim) * sizeof(float));
     }
