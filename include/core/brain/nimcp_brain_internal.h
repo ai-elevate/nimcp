@@ -1697,6 +1697,28 @@ struct brain_struct {
     struct substrate_gpu_context* substrate_gpu_ctx;                  // Unified substrate GPU context
 
     //=========================================================================
+    // NEURAL SUBSTRATE + THALAMIC ROUTER (CPU-side biological adapters)
+    //=========================================================================
+    //
+    // Phase 1-4 adapter substrate: attached to SNN/LNN/CNN networks via
+    // *_attach_substrate and *_attach_thalamic_router calls. Substrate
+    // tracks ATP/O2/temperature/ion/membrane state and modulates firing,
+    // tau, plasticity. Thalamic router gates signal routing between the
+    // network outputs and downstream targets using attention weights.
+    //
+    // These are borrowed-pointer owners: lifecycle begins in the brain
+    // init wave (substrate_thalamic_adapters) and ends in brain_destroy.
+    // Networks keep borrowed pointers — they do NOT destroy these.
+    //
+    // NULL-tolerant: if creation fails, attach calls are no-ops and
+    // networks fall back to biological defaults.
+    //
+    struct neural_substrate* substrate;                               // CPU neural substrate (metabolic state)
+    struct thalamic_router* thalamic_router;                          // Attention-gated signal router
+    bool substrate_enabled;                                           // True if substrate successfully created
+    bool thalamic_router_enabled;                                     // True if router successfully created
+
+    //=========================================================================
     // GPU Inference Optimization (Phase GPU-INF)
     //=========================================================================
     nimcp_thread_pool_t* inference_pool;                              // Thread pool for parallel cognitive stages

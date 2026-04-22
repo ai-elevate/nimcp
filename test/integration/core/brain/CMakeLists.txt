@@ -42,6 +42,25 @@ add_executable(integration_brain_coordinator_test
     test_brain_coordinator_integration.cpp
 )
 
+# Test 3b: Substrate + Thalamic Router Wire-up (Phase 1-4 activation)
+# Verifies the brain init wave wires neural_substrate_t and thalamic_router_t
+# into SNN/LNN/cortex CNN networks via the *_attach_substrate /
+# *_attach_thalamic_router functions. Guards against regressing to the
+# dormant state where 95 attach callers existed only in test code.
+add_executable(integration_brain_substrate_thalamic_wireup_test
+    test_brain_substrate_thalamic_wireup.cpp
+)
+
+target_link_libraries(integration_brain_substrate_thalamic_wireup_test
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(integration_brain_substrate_thalamic_wireup_test
+    PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+)
+
+gtest_discover_tests(integration_brain_substrate_thalamic_wireup_test)
+
 target_link_libraries(integration_brain_coordinator_test
     PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
 )

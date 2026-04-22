@@ -107,6 +107,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu.c              # GPU context auto-initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_gpu_inference.c   # GPU inference weight cache init
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_thalamic.c  # CPU substrate + thalamic router wire-up for SNN/LNN/CNN
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive_training.c  # Cognitive training subsystems (JEPA, pred hierarchy, self-heal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_cognitive_transcript.c  # Cognitive transcript for response composition
 

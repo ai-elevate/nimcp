@@ -74,8 +74,9 @@ extern bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain);
 extern bool nimcp_brain_factory_init_spatial_neuromod_system(brain_t brain);
 extern bool nimcp_brain_factory_init_neuromod_nuclei(brain_t brain);
 
-// Wave 3: GPU substrate, symbolic, working memory
+// Wave 3: GPU substrate, CPU substrate+thalamic, symbolic, working memory
 extern bool nimcp_brain_factory_init_substrate_gpu_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_substrate_thalamic_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_symbolic_reasoning_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain);
@@ -720,10 +721,11 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     if (!ok) goto cleanup;
 
     // ========================================================================
-    // WAVE 3: substrate_gpu, symbolic_logic, symbolic_reasoning, working_memory
+    // WAVE 3: substrate_gpu, substrate_thalamic, symbolic_logic, symbolic_reasoning, working_memory
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(nimcp_brain_factory_init_substrate_gpu_subsystem, "substrate_gpu");
+    tasks[n++] = TASK(nimcp_brain_factory_init_substrate_thalamic_subsystem, "substrate_thalamic");
     tasks[n++] = TASK(init_symbolic_logic_if_needed, "symbolic_logic");
     tasks[n++] = TASK(nimcp_brain_factory_init_symbolic_reasoning_subsystem, "symbolic_reasoning");
     tasks[n++] = TASK(init_working_memory_if_needed, "working_memory");

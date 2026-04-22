@@ -390,6 +390,16 @@ void lnn_network_attach_substrate(lnn_network_t* net,
                         (void*)sub);
 }
 
+/* Accessors for wire-up regression tests. NULL-tolerant.
+ * Returns the currently-attached substrate / thalamic_channel pointers. */
+struct neural_substrate* lnn_network_get_substrate(lnn_network_t* net) {
+    return net ? net->substrate : NULL;
+}
+
+void* lnn_network_get_thalamic_channel(lnn_network_t* net) {
+    return net ? (void*)net->thalamic_channel : NULL;
+}
+
 /**
  * @brief Initialize network weights
  *

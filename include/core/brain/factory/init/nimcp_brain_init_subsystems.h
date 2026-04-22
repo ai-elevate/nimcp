@@ -97,6 +97,29 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_substrate_gpu_subsystem(brain_t brain);
 void nimcp_brain_factory_destroy_substrate_gpu_subsystem(brain_t brain);
 
+// CPU Neural Substrate + Thalamic Router (Phase 1-4 biological adapters for SNN/LNN/CNN)
+// See src/core/brain/factory/init/nimcp_brain_init_substrate_thalamic.c
+bool nimcp_brain_factory_init_substrate_thalamic_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_substrate_thalamic_subsystem(brain_t brain);
+void nimcp_brain_attach_substrate_thalamic(brain_t brain);
+
+// Accessor helpers (opaque pointers — callers cast as needed without needing
+// the full brain_internal.h, which has GPU-header conflicts under C++).
+struct neural_substrate;
+struct thalamic_router;
+struct snn_network_s;
+struct lnn_network_s;
+struct neural_substrate* nimcp_brain_get_substrate(brain_t brain);
+struct thalamic_router*  nimcp_brain_get_thalamic_router(brain_t brain);
+bool nimcp_brain_substrate_is_enabled(brain_t brain);
+bool nimcp_brain_thalamic_router_is_enabled(brain_t brain);
+// Returns non-NULL if network is attached AND its substrate pointer matches
+// brain->substrate. Used by wire-up regression tests.
+struct neural_substrate* nimcp_brain_snn_get_substrate_ref(brain_t brain);
+struct neural_substrate* nimcp_brain_lnn_get_substrate_ref(brain_t brain);
+// Returns pointer to LNN's thalamic_channel_s (opaque here) or NULL.
+void* nimcp_brain_lnn_get_thalamic_channel_ref(brain_t brain);
+
 // FEP Orchestrator (central coordination of all FEP bridges)
 bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain);
 

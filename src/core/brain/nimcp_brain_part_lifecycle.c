@@ -232,6 +232,16 @@ void brain_destroy(brain_t brain)
         brain->unified_training = NULL;
     }
 
+    /* Detach + destroy CPU substrate + thalamic router. Must run BEFORE
+     * SNN/LNN/cortex CNN destruction so the per-network detach step can
+     * clear borrowed pointers while the networks are still alive.
+     * Forward declaration avoids pulling the full subsystems header into
+     * the lifecycle TU. */
+    {
+        extern void nimcp_brain_factory_destroy_substrate_thalamic_subsystem(brain_t brain);
+        nimcp_brain_factory_destroy_substrate_thalamic_subsystem(brain);
+    }
+
     /* Destroy SNN/LNN training contexts and networks created by
      * brain_enable_multi_network_training() — must happen after UTM
      * (which holds adapter references) and before general network teardown. */

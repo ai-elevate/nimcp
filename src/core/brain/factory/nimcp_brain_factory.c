@@ -183,6 +183,7 @@ extern void set_error(const char* format, ...);
 #define init_dendrite_subsystem                     nimcp_brain_factory_init_dendrite_subsystem
 #define init_cortical_columns_subsystem             nimcp_brain_factory_init_cortical_columns_subsystem
 #define init_substrate_gpu_subsystem                nimcp_brain_factory_init_substrate_gpu_subsystem
+#define init_substrate_thalamic_subsystem           nimcp_brain_factory_init_substrate_thalamic_subsystem
 #define init_ethics_engine_subsystem                nimcp_brain_factory_init_ethics_engine_subsystem
 #define init_empathy_network_subsystem              nimcp_brain_factory_init_empathy_network_subsystem
 #define init_empathetic_response_subsystem          nimcp_brain_factory_init_empathetic_response_subsystem
@@ -739,6 +740,17 @@ brain_t brain_create_custom(const brain_config_t* config)
     // Phase GPU-1: Unified GPU Neural Substrate (depends on GPU context, brain regions, neuromod)
     // Initializes GPU tensors for axons, dendrites, myelin, neuromodulators, glial, metabolic
     if (!init_substrate_gpu_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // Phase 1-4 CPU substrate + thalamic router (biological adapters for SNN/LNN/CNN)
+    // Creates neural_substrate_t + thalamic_router_t so *_attach_substrate /
+    // *_attach_thalamic_router can wire them into specialized networks at
+    // creation time (multi-network training) and lazy cortex CNN creation.
+    // Non-fatal: adapters fall back to biological defaults if creation fails.
+    if (!init_substrate_thalamic_subsystem(brain)) {
+        LOG_WARN(LOG_MODULE, "Substrate+thalamic init failed — Phase 1-4 adapters "
+                              "will run in biological-default fallback mode");
+        /* Non-fatal: continue with NULL substrate/router */
+    }
 
     // Phase 8.9: Neural logic gates
     if (!init_symbolic_logic_subsystem(brain)) { brain_destroy(brain); return NULL; }

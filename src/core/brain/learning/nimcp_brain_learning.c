@@ -87,6 +87,9 @@
 
 // Multi-network training includes (LNN + CNN + dispatch)
 #include "training/nimcp_training_dispatch.h"
+
+// Phase 1-4 substrate + thalamic router attach helpers
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
@@ -1161,21 +1164,35 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
          * Use a static flag so we only attempt FNO creation once per session
          * — avoids leaking FNO instances on repeated calls. */
         static bool _fno_attached = false;
+        bool _lazy_cortex_created = false;
         if (brain->staged_sensory.visual_frame) {
-            if (!brain->cortex_cnns[0])
+            if (!brain->cortex_cnns[0]) {
                 brain->cortex_cnns[0] = cortex_cnn_create(0, 0);
+                _lazy_cortex_created |= (brain->cortex_cnns[0] != NULL);
+            }
         }
         if (brain->staged_sensory.audio_data) {
-            if (!brain->cortex_cnns[1])
+            if (!brain->cortex_cnns[1]) {
                 brain->cortex_cnns[1] = cortex_cnn_create(1, 0);
+                _lazy_cortex_created |= (brain->cortex_cnns[1] != NULL);
+            }
         }
         if (brain->staged_sensory.speech_data) {
-            if (!brain->cortex_cnns[2])
+            if (!brain->cortex_cnns[2]) {
                 brain->cortex_cnns[2] = cortex_cnn_create(2, 0);
+                _lazy_cortex_created |= (brain->cortex_cnns[2] != NULL);
+            }
         }
-        if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
+        if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3]) {
             brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
+            _lazy_cortex_created |= (brain->cortex_cnns[3] != NULL);
+        }
         /* Somato doesn't use FNO — touch/pressure data is spatial, not spectral */
+        /* Wire substrate + thalamic router into any cortex CNN that was just
+         * created. Idempotent and NULL-tolerant. */
+        if (_lazy_cortex_created) {
+            nimcp_brain_attach_substrate_thalamic(brain);
+        }
 
         if (!_fno_attached) {
             _fno_attached = true;
@@ -1733,14 +1750,28 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             uint32_t num_out = brain->config.num_outputs;
 
             /* Lazy creation: create cortex CNN when sensory data first arrives */
-            if (brain->staged_sensory.visual_frame && !brain->cortex_cnns[0])
+            bool cortex_lazy_created_this_step = false;
+            if (brain->staged_sensory.visual_frame && !brain->cortex_cnns[0]) {
                 brain->cortex_cnns[0] = cortex_cnn_create(0, 0);
-            if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1])
+                cortex_lazy_created_this_step |= (brain->cortex_cnns[0] != NULL);
+            }
+            if (brain->staged_sensory.audio_data && !brain->cortex_cnns[1]) {
                 brain->cortex_cnns[1] = cortex_cnn_create(1, 0);
-            if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2])
+                cortex_lazy_created_this_step |= (brain->cortex_cnns[1] != NULL);
+            }
+            if (brain->staged_sensory.speech_data && !brain->cortex_cnns[2]) {
                 brain->cortex_cnns[2] = cortex_cnn_create(2, 0);
-            if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3])
+                cortex_lazy_created_this_step |= (brain->cortex_cnns[2] != NULL);
+            }
+            if (brain->staged_sensory.somato_data && !brain->cortex_cnns[3]) {
                 brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
+                cortex_lazy_created_this_step |= (brain->cortex_cnns[3] != NULL);
+            }
+            /* Wire substrate + thalamic router into any freshly-created cortex
+             * CNNs. Idempotent; safe to call even if nothing new was created. */
+            if (cortex_lazy_created_this_step) {
+                nimcp_brain_attach_substrate_thalamic(brain);
+            }
 
             /* Cortex CNN training gate: frozen if train_cnn is false OR if
              * in SNN-only recovery mode. Forward pass still runs (for any
@@ -2027,6 +2058,9 @@ sequential_training:
         bool any_new = cortex_newly_created[0] || cortex_newly_created[1] ||
                        cortex_newly_created[2] || cortex_newly_created[3];
         if (any_new) {
+            /* Wire Phase 1-4 biological adapters (substrate + thalamic router)
+             * into newly-created cortex CNNs. Idempotent and NULL-tolerant. */
+            nimcp_brain_attach_substrate_thalamic(brain);
             /* Enable unified training if not already active */
             if (!brain->config.use_unified_training) {
                 brain->config.use_unified_training = true;
@@ -5157,6 +5191,19 @@ int brain_enable_multi_network_training(brain_t brain)
             }
         }
     }
+
+    /* ========================================================================
+     * STEP 6: Wire Phase 1-4 biological adapters (substrate + thalamic router)
+     * ========================================================================
+     * WHAT: Attach the brain's neural_substrate_t and thalamic_router_t to
+     *       every network that was just created (SNN, LNN, cortex CNNs).
+     * WHY:  The attach calls are what actually route substrate modulation
+     *       (ATP / temperature / ion state) and thalamic attention gating
+     *       into each network's forward/backward step. Without them the
+     *       Phase 1-4 code runs in biological-default fallback mode.
+     * HOW:  Idempotent helper — NULL-tolerant per-network attach, safe to
+     *       call multiple times. */
+    nimcp_brain_attach_substrate_thalamic(brain);
 
     return 0;
 }

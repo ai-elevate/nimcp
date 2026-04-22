@@ -81,6 +81,7 @@
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* substrate + thalamic attach */
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdio.h>
@@ -1764,6 +1765,17 @@ brain_t brain_load(const char* filepath)
         fprintf(stderr, "[INFO] Checkpoint validation passed: %u neurons, bias spot-check OK\n",
                 num_neurons);
     }
+
+    /* Wire Phase 1-4 biological adapters (substrate + thalamic router) into
+     * any networks restored from sidecars. brain_load() skips many runtime
+     * subsystems including substrate init; if the brain was originally
+     * constructed via brain_create() the factory already created substrate
+     * + router and stored them on brain->substrate / brain->thalamic_router,
+     * BUT brain_load() allocates a fresh brain_t whose substrate/router
+     * fields are NULL. Create them now, then attach to the restored
+     * SNN/LNN/cortex CNNs. NULL-tolerant: if creation fails we keep going. */
+    nimcp_brain_factory_init_substrate_thalamic_subsystem(brain);
+    nimcp_brain_attach_substrate_thalamic(brain);
 
     brain_clear_error();
     return brain;

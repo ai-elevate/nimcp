@@ -659,6 +659,12 @@ void snn_network_attach_substrate(snn_network_t* net,
                         (void*)sub);
 }
 
+/* Accessor for wire-up regression tests — returns the substrate pointer
+ * the network currently holds (borrowed). NULL-tolerant. */
+struct neural_substrate* snn_network_get_substrate(snn_network_t* net) {
+    return net ? net->substrate : NULL;
+}
+
 int snn_network_reset(snn_network_t* network) {
     if (!network) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_network_reset: null network pointer");
