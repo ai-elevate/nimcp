@@ -247,6 +247,16 @@ pub struct SnnConfig {
     /// Phase 3.5 safety net against saturation↔collapse oscillation.
     #[serde(default)]
     pub reward_coupled_homeostatic: bool,
+    /// Optional thalamic-channel config — Path A Phase 1. When `Some`,
+    /// the SNN owns a [`nimcp_thalamic::ThalamicChannel`] that
+    /// represents the network's output-side attention-gated routing
+    /// to external destinations (other networks, brain regions). Each
+    /// step, if the network-wide firing rate exceeds
+    /// `submit_threshold`, the channel's submit counter is bumped —
+    /// external callers tick the shared [`nimcp_thalamic::ThalamicRouter`]
+    /// to update Hebbian route weights.
+    #[serde(default)]
+    pub thalamic: Option<SnnThalamicCfg>,
 }
 
 impl Default for SnnConfig {
@@ -258,6 +268,42 @@ impl Default for SnnConfig {
             rate_ema_alpha: DEFAULT_RATE_EMA_ALPHA,
             intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig::default(),
             reward_coupled_homeostatic: false,
+            thalamic: None,
+        }
+    }
+}
+
+/// Optional network-level thalamic-channel config. When set, the SNN
+/// constructs a [`nimcp_thalamic::ThalamicChannel`] at `source_id` with
+/// the given destinations and auto-records a submit whenever the
+/// network's fraction-spiking exceeds `submit_threshold`.
+///
+/// The [`nimcp_thalamic::ThalamicRouter`] itself is held externally
+/// (brain-level); the SNN only owns its channel. Callers read
+/// [`SnnNetwork::thalamic_channel`] to access the submit counter and
+/// tick the router themselves.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SnnThalamicCfg {
+    /// Stable source identifier. One per SNN instance.
+    pub source_id: u32,
+    /// External destination IDs — up to
+    /// [`nimcp_thalamic::THALAMIC_MAX_DESTINATIONS`] (16).
+    pub destinations: Vec<u32>,
+    /// Fraction-spiking threshold above which `step()` auto-records
+    /// a submit on this channel. Range `[0, 1]`. Default `0.01` (any
+    /// activity above 1% average rate triggers submit).
+    pub submit_threshold: f32,
+    /// Initial relay mode. Default [`nimcp_thalamic::RelayMode::Tonic`].
+    pub mode: nimcp_thalamic::RelayMode,
+}
+
+impl Default for SnnThalamicCfg {
+    fn default() -> Self {
+        Self {
+            source_id: 0,
+            destinations: Vec::new(),
+            submit_threshold: 0.01,
+            mode: nimcp_thalamic::RelayMode::default(),
         }
     }
 }
@@ -352,6 +398,13 @@ pub struct SnnNetwork {
     edges: Vec<Edge>,
     t_ms: f32,
     reward_coupled_homeostatic: bool,
+    /// Optional thalamic channel (network-level output routing). `None`
+    /// when `config.thalamic` is `None` — no per-step work happens on
+    /// the disable path.
+    thalamic_channel: Option<nimcp_thalamic::ThalamicChannel>,
+    /// Cached `submit_threshold` so hot path doesn't keep dereferencing
+    /// the optional cfg.
+    thalamic_submit_threshold: f32,
 }
 
 impl SnnNetwork {
@@ -512,12 +565,73 @@ impl SnnNetwork {
             });
         }
 
+        // Thalamic channel — constructed from optional network-level cfg.
+        let (thalamic_channel, thalamic_submit_threshold) = match config.thalamic.as_ref() {
+            Some(cfg) => {
+                let mut ch =
+                    nimcp_thalamic::ThalamicChannel::new(cfg.source_id, &cfg.destinations)
+                        .ok_or_else(|| SnnError::StabilityInit {
+                            pop_idx: 0,
+                            msg: format!(
+                                "thalamic: too many destinations ({} > {})",
+                                cfg.destinations.len(),
+                                nimcp_thalamic::THALAMIC_MAX_DESTINATIONS
+                            ),
+                        })?;
+                ch.mode = cfg.mode;
+                (Some(ch), cfg.submit_threshold.clamp(0.0, 1.0))
+            }
+            None => (None, 0.0),
+        };
+
         Ok(Self {
             populations,
             edges,
             t_ms: 0.0,
             reward_coupled_homeostatic: config.reward_coupled_homeostatic,
+            thalamic_channel,
+            thalamic_submit_threshold,
         })
+    }
+
+    /// Read-only access to the network's thalamic channel, if configured.
+    /// Returns `None` on brains built without `config.thalamic`.
+    #[must_use]
+    pub fn thalamic_channel(&self) -> Option<&nimcp_thalamic::ThalamicChannel> {
+        self.thalamic_channel.as_ref()
+    }
+
+    /// Mutable access to the thalamic channel — for the brain layer to
+    /// push attention updates from a router broadcast.
+    pub fn thalamic_channel_mut(&mut self) -> Option<&mut nimcp_thalamic::ThalamicChannel> {
+        self.thalamic_channel.as_mut()
+    }
+
+    /// Compute the effective output gain from this SNN to a given
+    /// destination, using the supplied router's Hebbian weights.
+    /// Returns `1.0` (no modulation) when the SNN has no thalamic
+    /// channel OR the destination isn't registered — preserves the
+    /// disable-path contract.
+    #[must_use]
+    pub fn thalamic_output_gain(
+        &self,
+        router: &nimcp_thalamic::ThalamicRouter,
+        dest_id: u32,
+    ) -> f32 {
+        let Some(ch) = self.thalamic_channel.as_ref() else {
+            return 1.0;
+        };
+        // Router exposes effective_gain (attention × Hebbian). If the
+        // source isn't registered with this router, fall back to the
+        // channel's own attention weight.
+        let router_gain = router.effective_gain(ch.source_id, dest_id);
+        if router_gain == 0.0 {
+            // Likely: router doesn't have a channel open for this source.
+            // Use the SNN-owned channel's attention weight alone.
+            ch.get_gate(dest_id)
+        } else {
+            router_gain
+        }
     }
 
     /// Number of populations.
@@ -864,10 +978,32 @@ impl SnnNetwork {
 
         // 8. Advance clock and tally activity.
         self.t_ms += dt_ms;
-        self.populations
+        let total_spikes: u32 = self
+            .populations
             .iter()
             .map(|p| p.state.n_spikes_this_step())
-            .sum()
+            .sum();
+
+        // 9. Thalamic auto-submit: if the network's fraction-spiking
+        //    exceeds submit_threshold, bump the channel's submit
+        //    counter. External router.tick() folds this into the
+        //    Hebbian update on the caller's cadence.
+        if let Some(ch) = self.thalamic_channel.as_mut() {
+            #[allow(clippy::cast_precision_loss)]
+            let total_neurons: u64 = self
+                .populations
+                .iter()
+                .map(|p| u64::from(p.state.n_neurons))
+                .sum();
+            if total_neurons > 0 {
+                let fraction = total_spikes as f32 / total_neurons as f32;
+                if fraction > self.thalamic_submit_threshold {
+                    ch.record_submit();
+                }
+            }
+        }
+
+        total_spikes
     }
 
     /// Compute the network-level intrinsic reward from per-population
@@ -1048,6 +1184,7 @@ mod tests {
             rate_ema_alpha: 0.05,
             reward_coupled_homeostatic: false,
             intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig::default(),
+            thalamic: None,
         }
     }
 
@@ -1197,8 +1334,10 @@ mod tests {
     fn two_pop_config_with_substrate(atp: f32) -> SnnConfig {
         let mut cfg = two_pop_config(11, 0, 0.05, 0.4);
         for p in cfg.populations.iter_mut() {
-            let mut initial = nimcp_substrate::NeuralSubstrate::default();
-            initial.atp_level = atp;
+            let mut initial = nimcp_substrate::NeuralSubstrate {
+                atp_level: atp,
+                ..nimcp_substrate::NeuralSubstrate::default()
+            };
             initial.clamp();
             p.substrate = SnnSubstrateCfg {
                 enabled: true,
@@ -1324,5 +1463,116 @@ mod tests {
             net.populations[0].substrate_effects.is_some(),
             "effects should be cached after first step"
         );
+    }
+
+    // ---------------------------------------------------------------
+    // Phase 1 Path A — SNN thalamic hook.
+    // ---------------------------------------------------------------
+
+    fn two_pop_config_with_thalamic(submit_threshold: f32) -> SnnConfig {
+        let mut cfg = two_pop_config(13, 0, 0.05, 1.8);
+        cfg.thalamic = Some(SnnThalamicCfg {
+            source_id: 42,
+            destinations: vec![100, 200, 300],
+            submit_threshold,
+            mode: nimcp_thalamic::RelayMode::Tonic,
+        });
+        cfg
+    }
+
+    /// Disable path: no thalamic cfg → `thalamic_channel()` is `None`
+    /// and `thalamic_output_gain` returns identity 1.0.
+    #[test]
+    fn thalamic_disabled_returns_identity_gain() {
+        let router = nimcp_thalamic::ThalamicRouter::new(
+            nimcp_thalamic::ThalamicRouterConfig::default(),
+        );
+        let net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.5)).unwrap();
+        assert!(net.thalamic_channel().is_none());
+        assert_eq!(net.thalamic_output_gain(&router, 100), 1.0);
+    }
+
+    /// Channel is constructed when cfg is Some; destinations are
+    /// registered with the right initial attention weights (1.0).
+    #[test]
+    fn thalamic_channel_constructs_from_cfg() {
+        let net = SnnNetwork::new(two_pop_config_with_thalamic(0.01)).unwrap();
+        let ch = net.thalamic_channel().expect("channel should be Some");
+        assert_eq!(ch.source_id, 42);
+        assert_eq!(ch.n_destinations, 3);
+        assert_eq!(ch.get_gate(100), 1.0);
+        assert_eq!(ch.get_gate(200), 1.0);
+        assert_eq!(ch.get_gate(999), 1.0); // unknown dest → 1.0
+    }
+
+    /// Destinations beyond the 16-cap surface as a construction error.
+    #[test]
+    fn thalamic_too_many_destinations_errors() {
+        let mut cfg = two_pop_config(0, 0, 0.1, 0.5);
+        cfg.thalamic = Some(SnnThalamicCfg {
+            source_id: 1,
+            destinations: (0..20).collect(),
+            submit_threshold: 0.01,
+            mode: nimcp_thalamic::RelayMode::default(),
+        });
+        assert!(matches!(
+            SnnNetwork::new(cfg),
+            Err(SnnError::StabilityInit { .. })
+        ));
+    }
+
+    /// Auto-submit: a step with firing above threshold bumps the
+    /// channel's submit counter; a step below threshold doesn't.
+    #[test]
+    fn thalamic_auto_submit_above_threshold() {
+        // Very low threshold so any activity triggers.
+        let mut net = SnnNetwork::new(two_pop_config_with_thalamic(0.0)).unwrap();
+        // Drive pop 0 hard — definitely above threshold.
+        let ext = vec![5000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..5 {
+            net.step(&slices, 0.0, 1.0);
+        }
+        let submits = net.thalamic_channel().unwrap().submits_this_step;
+        assert!(
+            submits > 0,
+            "auto-submit should have fired on active steps, got {submits}"
+        );
+    }
+
+    /// High threshold suppresses auto-submit even under external drive.
+    #[test]
+    fn thalamic_threshold_gates_auto_submit() {
+        let mut net = SnnNetwork::new(two_pop_config_with_thalamic(0.99)).unwrap();
+        let ext = vec![5000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..5 {
+            net.step(&slices, 0.0, 1.0);
+        }
+        let submits = net.thalamic_channel().unwrap().submits_this_step;
+        assert_eq!(submits, 0, "high threshold should suppress auto-submit");
+    }
+
+    /// effective_output_gain reflects the router's Hebbian update when
+    /// the caller has opened a matching channel on the router.
+    #[test]
+    fn thalamic_output_gain_reads_router() {
+        let mut router = nimcp_thalamic::ThalamicRouter::new(
+            nimcp_thalamic::ThalamicRouterConfig {
+                hebbian_lr: 0.5,
+                hebbian_decay: 0.0,
+                ..Default::default()
+            },
+        );
+        let _ = router.open_channel(42, &[100]).unwrap();
+        // Reinforce the (42, 100) route.
+        router.record_submit(42);
+        router.tick();
+        assert!(router.hebbian_weight(42, 100) > 1.0);
+
+        // SNN's thalamic_output_gain should reflect the reinforced route.
+        let net = SnnNetwork::new(two_pop_config_with_thalamic(0.0)).unwrap();
+        let gain = net.thalamic_output_gain(&router, 100);
+        assert!(gain > 1.0, "reinforced route should boost gain, got {gain}");
     }
 }

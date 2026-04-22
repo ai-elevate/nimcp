@@ -153,6 +153,7 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
         rate_ema_alpha: 0.01,
         reward_coupled_homeostatic: stability,
         intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
+        thalamic: None,
     }
 }
 

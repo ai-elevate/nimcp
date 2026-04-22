@@ -711,6 +711,7 @@ mod tests {
             rate_ema_alpha: 0.05,
             reward_coupled_homeostatic: false,
             intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
+            thalamic: None,
         })
         .expect("snn build")
     }
