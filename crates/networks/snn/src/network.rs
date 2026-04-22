@@ -258,6 +258,20 @@ pub struct SnnConfig {
     /// to update Hebbian route weights.
     #[serde(default)]
     pub thalamic: Option<SnnThalamicCfg>,
+    /// Phase 9a — opt in to GPU-accelerated forward pass.
+    ///
+    /// When `true` **and** the crate is built with `--features cuda`,
+    /// the hot loops for CSR synapse forward and LIF integration run
+    /// on-device via [`crate::csr::CsrGpu`] + [`crate::lif::LifGpu`].
+    /// Plasticity (R-STDP + homeostatic), noise, adaptation, basket,
+    /// depression, and substrate effects stay on CPU this phase —
+    /// kernels for those land in 9b/9c.
+    ///
+    /// Default `false`: CPU path unchanged. When `true` on a build
+    /// without the `cuda` feature, `SnnNetwork::new` returns
+    /// `SnnError::GpuUnavailable`.
+    #[serde(default)]
+    pub use_gpu_forward: bool,
 }
 
 impl Default for SnnConfig {
@@ -270,6 +284,7 @@ impl Default for SnnConfig {
             intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig::default(),
             reward_coupled_homeostatic: false,
             thalamic: None,
+            use_gpu_forward: false,
         }
     }
 }
@@ -343,6 +358,10 @@ pub enum SnnError {
         /// Detail — which mechanism and the underlying error.
         msg: String,
     },
+    /// `use_gpu_forward = true` but the crate was built without
+    /// `--features cuda`, or CUDA device / NVRTC init failed.
+    #[error("GPU forward requested but unavailable: {0}")]
+    GpuUnavailable(String),
 }
 
 /// Per-population runtime state.
@@ -384,6 +403,11 @@ struct Pop {
     /// Counter of plasticity updates this step — fed to
     /// `debit_activity` at end of step.
     substrate_plasticity_count: u32,
+    /// Phase 9a — GPU LIF integrator. `Some` iff the network was
+    /// built with `use_gpu_forward = true` AND the crate has the
+    /// `cuda` feature enabled.
+    #[cfg(feature = "cuda")]
+    lif_gpu: Option<crate::lif::LifGpu>,
 }
 
 /// Per-edge runtime state.
@@ -395,6 +419,11 @@ struct Edge {
     /// at construction; the CSR writes into it, the `step` pipeline
     /// then adds it into the destination population's I_syn scratch.
     i_syn_scratch: Vec<f32>,
+    /// Phase 9a — GPU CSR forward. `Some` iff `use_gpu_forward`
+    /// was requested at construction. Uploaded once; weights are
+    /// re-uploaded after homeostatic scaling each step (hot sync).
+    #[cfg(feature = "cuda")]
+    csr_gpu: Option<crate::csr::CsrGpu>,
 }
 
 /// Spiking neural network — the Phase 3 composition.
@@ -512,6 +541,18 @@ impl SnnNetwork {
                     pop_idx,
                     msg: format!("basket: {e}"),
                 })?;
+            // Phase 9a — GPU LIF integrator, opt-in via config.
+            #[cfg(feature = "cuda")]
+            let lif_gpu = if config.use_gpu_forward {
+                Some(
+                    crate::lif::LifGpu::new(spec.n_neurons, &spec.lif).map_err(|e| {
+                        SnnError::GpuUnavailable(format!("LifGpu pop {pop_idx}: {e:?}"))
+                    })?,
+                )
+            } else {
+                None
+            };
+
             populations.push(Pop {
                 spec: spec.clone(),
                 state,
@@ -531,7 +572,17 @@ impl SnnNetwork {
                 substrate_tick_counter,
                 substrate_dropout_rng,
                 substrate_plasticity_count,
+                #[cfg(feature = "cuda")]
+                lif_gpu,
             });
+        }
+
+        // Reject GPU request when feature not compiled in.
+        #[cfg(not(feature = "cuda"))]
+        if config.use_gpu_forward {
+            return Err(SnnError::GpuUnavailable(
+                "crate built without --features cuda".into(),
+            ));
         }
 
         let mut edges: Vec<Edge> = Vec::with_capacity(config.edges.len());
@@ -576,11 +627,23 @@ impl SnnNetwork {
             );
             let i_syn_scratch = vec![0.0_f32; dst_pop.spec.n_neurons as usize];
 
+            // Phase 9a — GPU CSR forward, opt-in via config.
+            #[cfg(feature = "cuda")]
+            let csr_gpu = if config.use_gpu_forward {
+                Some(crate::csr::CsrGpu::new(&csr).map_err(|e| {
+                    SnnError::GpuUnavailable(format!("CsrGpu edge {edge_idx}: {e:?}"))
+                })?)
+            } else {
+                None
+            };
+
             edges.push(Edge {
                 spec: spec.clone(),
                 csr,
                 rstdp,
                 i_syn_scratch,
+                #[cfg(feature = "cuda")]
+                csr_gpu,
             });
         }
 
@@ -867,11 +930,47 @@ impl SnnNetwork {
             } else {
                 Some(&self.populations[src].depression_scale_scratch)
             };
-            edge.csr.i_syn_cpu_with_pre_scale(
-                src_spikes,
-                pre_scale,
-                &mut edge.i_syn_scratch,
-            );
+
+            // Phase 9a — GPU path when CsrGpu present. STD pre-scale
+            // isn't wired on GPU yet (substrate/depression/basket stay
+            // CPU); fall back to CPU when a scale vector is supplied.
+            #[cfg(feature = "cuda")]
+            let used_gpu = if pre_scale.is_none() {
+                if let Some(csr_gpu) = edge.csr_gpu.as_mut() {
+                    // Re-upload weights each step — homeostatic + R-STDP
+                    // wrote CPU-side; GPU mirror must catch up.
+                    // In 9b this sync goes away when plasticity runs
+                    // on device.
+                    csr_gpu
+                        .upload_weights(&edge.csr.weights)
+                        .map_err(|e| {
+                            tracing::warn!(?e, "CsrGpu upload_weights failed; falling back to CPU");
+                            e
+                        })
+                        .ok();
+                    csr_gpu
+                        .i_syn(src_spikes, &mut edge.i_syn_scratch)
+                        .map_err(|e| {
+                            tracing::warn!(?e, "CsrGpu i_syn failed; falling back to CPU");
+                            e
+                        })
+                        .is_ok()
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            #[cfg(not(feature = "cuda"))]
+            let used_gpu = false;
+
+            if !used_gpu {
+                edge.csr.i_syn_cpu_with_pre_scale(
+                    src_spikes,
+                    pre_scale,
+                    &mut edge.i_syn_scratch,
+                );
+            }
         }
         for edge in &self.edges {
             let dst_pop = &mut self.populations[edge.spec.dst];
@@ -891,7 +990,45 @@ impl SnnNetwork {
                 &pop.spec.lif,
                 pop.substrate_effects.as_ref(),
             );
-            lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &effective, dt_ms);
+
+            // Phase 9a — GPU LIF when LifGpu present AND no CPU-side
+            // v_mem prep this step (noise / adaptation / basket /
+            // substrate). LifGpu holds v_mem on-device and Phase 9a
+            // doesn't sync CPU prep to GPU — that's 9b/9c. The guard
+            // keeps correctness: we only use the GPU path when the
+            // CPU-side prep would have been a no-op anyway.
+            let cpu_prep_modified_v_mem = pop.spec.noise.rate_hz > 0.0
+                || pop.adaptation_ahp.is_some()
+                || pop.adaptation_pump.is_some()
+                || pop.basket.is_some()
+                || pop.spec.substrate.enabled;
+            #[cfg(feature = "cuda")]
+            let used_gpu = if !cpu_prep_modified_v_mem
+                && let Some(lif_gpu) = pop.lif_gpu.as_mut()
+            {
+                let mut spikes_buf: Vec<u8> = Vec::with_capacity(pop.state.spike.len());
+                match lif_gpu.step(&pop.i_syn_scratch, &mut spikes_buf, &effective, dt_ms) {
+                    Ok(()) => {
+                        let n = spikes_buf.len().min(pop.state.spike.len());
+                        pop.state.spike[..n].copy_from_slice(&spikes_buf[..n]);
+                        true
+                    }
+                    Err(e) => {
+                        tracing::warn!(?e, "LifGpu::step failed; falling back to CPU");
+                        false
+                    }
+                }
+            } else {
+                false
+            };
+            #[cfg(not(feature = "cuda"))]
+            let used_gpu = false;
+            #[cfg(not(feature = "cuda"))]
+            let _ = cpu_prep_modified_v_mem; // silence unused warning
+
+            if !used_gpu {
+                lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &effective, dt_ms);
+            }
 
             // Substrate emergency silence + probabilistic spike dropout.
             if pop.spec.substrate.enabled {
@@ -1253,6 +1390,7 @@ mod tests {
             reward_coupled_homeostatic: false,
             intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig::default(),
             thalamic: None,
+            use_gpu_forward: false,
         }
     }
 

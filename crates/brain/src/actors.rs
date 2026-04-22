@@ -716,6 +716,7 @@ mod tests {
             reward_coupled_homeostatic: false,
             intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
             thalamic: None,
+            use_gpu_forward: false,
         })
         .expect("snn build")
     }

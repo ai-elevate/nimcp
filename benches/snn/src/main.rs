@@ -155,6 +155,11 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
         reward_coupled_homeostatic: stability,
         intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
         thalamic: None,
+        // Opt-in GPU via NIMCP_GPU=1 env var. Only meaningful when
+        // stability is off — the 9a GPU path falls back to CPU when
+        // CPU-side prep (noise / adaptation / basket / substrate)
+        // would have modified v_mem.
+        use_gpu_forward: std::env::var("NIMCP_GPU").ok().as_deref() == Some("1"),
     }
 }
 
