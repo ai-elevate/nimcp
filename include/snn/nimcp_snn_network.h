@@ -78,6 +78,25 @@ void snn_network_destroy(snn_network_t* network);
  */
 int snn_network_reset(snn_network_t* network);
 
+/**
+ * @brief Attach a neural substrate to an SNN for biological modulation.
+ *
+ * WHAT: Sets the borrowed substrate pointer that the SNN's step function
+ *       consults each tick for ATP/temperature/ion/membrane-driven
+ *       modulation of tau, refractory, spike survival, and plasticity LR.
+ * WHY:  The substrate carries slow-varying biological state that governs
+ *       metabolic constraints; the SNN needs a handle to read it without
+ *       owning its lifecycle.
+ * HOW:  Null-tolerant pass-through; resets the update period counter so
+ *       effects are recomputed on the next step. The network does NOT
+ *       destroy the substrate in snn_network_destroy.
+ *
+ * @param net Network to attach to (NULL-tolerant: returns silently).
+ * @param sub Substrate pointer or NULL to detach.
+ */
+void snn_network_attach_substrate(snn_network_t* net,
+                                  struct neural_substrate* sub);
+
 //=============================================================================
 // Simulation
 //=============================================================================

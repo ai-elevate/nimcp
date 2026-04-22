@@ -28,6 +28,7 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "core/neuralnet/nimcp_sparse_synapse.h"
+#include "core/substrate/nimcp_substrate_effects.h"  /* substrate_apply_lr */
 
 /* Explicit includes for symbols used by the tunable-param section + the
  * intrinsic-reward computation below. Without these we rely on
@@ -109,6 +110,26 @@ static float g_snn_basket_enabled   = 1.0f;
 static float g_snn_basket_fraction  = 0.2f;
 static float g_snn_noise_ei_ratio   = 0.5f;
 
+/* Substrate adapter (Phase 1 biological-substrate wiring).
+ *
+ *   enabled            : master switch; when 0 the SNN ignores its
+ *                        attached substrate entirely.
+ *   update_period      : how many SNN steps between fresh
+ *                        substrate_compute_effects() calls. 10 steps is
+ *                        a good default — effects vary on ~100 ms
+ *                        timescales, dt is typically 0.1-1 ms.
+ *   spike_dropout_on   : 0 disables per-spike survival rolls (keeps all
+ *                        spikes), 1 enables (may drop a fraction).
+ *   plasticity_mod_on  : 0 disables substrate-modulated R-STDP LR
+ *                        (uses static g_rstdp_lr), 1 enables.
+ *
+ * All flags normalize to exactly 0.0f / 1.0f on assignment. Period is
+ * clamped to [1, 10000]. */
+static float g_snn_substrate_enabled           = 1.0f;
+static float g_snn_substrate_update_period     = 10.0f;
+static float g_snn_substrate_spike_dropout_on  = 1.0f;
+static float g_snn_substrate_plasticity_mod_on = 1.0f;
+
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
 void snn_tune_set_rstdp_baseline_alpha(float v)  { if (v > 0.0f && v <= 1.0f)    g_rstdp_baseline_alpha = v; }
@@ -144,6 +165,14 @@ void snn_tune_set_basket_enabled(float v)        { g_snn_basket_enabled = (v != 
 void snn_tune_set_basket_fraction(float v)       { if (v >= 0.01f && v <= 0.5f)     g_snn_basket_fraction = v; }
 void snn_tune_set_noise_ei_ratio(float v)        { if (v >= 0.0f && v <= 1.0f)      g_snn_noise_ei_ratio = v; }
 
+/* Substrate adapter setters — booleans accept any nonzero as on; period
+ * is clamped to [1, 10000] steps. Out-of-range values for the period
+ * are ignored (no change). */
+void snn_tune_set_substrate_enabled(float v)           { g_snn_substrate_enabled           = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_substrate_update_period(float v)     { if (v >= 1.0f && v <= 10000.0f)  g_snn_substrate_update_period = v; }
+void snn_tune_set_substrate_spike_dropout_on(float v)  { g_snn_substrate_spike_dropout_on  = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_substrate_plasticity_mod_on(float v) { g_snn_substrate_plasticity_mod_on = (v != 0.0f) ? 1.0f : 0.0f; }
+
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
 float snn_tune_get_rstdp_baseline_alpha(void)  { return g_rstdp_baseline_alpha; }
@@ -172,6 +201,12 @@ float snn_tune_get_pump_gain_mv(void)          { return g_snn_pump_gain_mv; }
 float snn_tune_get_basket_enabled(void)        { return g_snn_basket_enabled; }
 float snn_tune_get_basket_fraction(void)       { return g_snn_basket_fraction; }
 float snn_tune_get_noise_ei_ratio(void)        { return g_snn_noise_ei_ratio; }
+
+/* Substrate adapter getters — mirror the setters. */
+float snn_tune_get_substrate_enabled(void)           { return g_snn_substrate_enabled; }
+float snn_tune_get_substrate_update_period(void)     { return g_snn_substrate_update_period; }
+float snn_tune_get_substrate_spike_dropout_on(void)  { return g_snn_substrate_spike_dropout_on; }
+float snn_tune_get_substrate_plasticity_mod_on(void) { return g_snn_substrate_plasticity_mod_on; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"
@@ -652,6 +687,17 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
     /* R-STDP learning rate — now runtime-tunable via snn_tune_set_rstdp_lr().
      * Default 0.0001 after iteration history: 0.001 → 0.0005 → 0.0001. */
     float lr = g_rstdp_lr;
+    /* Substrate-modulated plasticity. When the network has a substrate
+     * attached AND both the master enabled + plasticity_mod_on knobs are
+     * set, scale the effective LR by the cached dendrite plasticity
+     * multiplier. At baseline (atp=1) the multiplier is 1.0 and this is
+     * a no-op. Low ATP (depleted substrate) shrinks the multiplier and
+     * slows learning — biological fidelity: tired circuits learn less. */
+    if (network && network->substrate &&
+        snn_tune_get_substrate_enabled() != 0.0f &&
+        snn_tune_get_substrate_plasticity_mod_on() != 0.0f) {
+        lr = substrate_apply_lr(lr, &network->cached_dend_effects);
+    }
     float scale = lr * reward_modulation;
 
     /* Apply eligibility-modulated update to network synapses */

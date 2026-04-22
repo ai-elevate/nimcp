@@ -60,9 +60,20 @@
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "utils/tensor/nimcp_tensor.h"
 
+/* Substrate effects struct types (axon/dendrite). We embed values (not
+ * pointers) in snn_network_s so the full definitions are required. Pulled
+ * in via the small effects header — which itself only forward-declares
+ * neural_substrate_t, so no cycle. */
+#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* axon_/dendrite_substrate_effects_t */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Forward decl of the full substrate state struct. The pointer on
+ * snn_network_s is borrowed (not owned) — whoever created the substrate
+ * is responsible for its lifecycle. */
+struct neural_substrate;
 
 //=============================================================================
 // Constants
@@ -593,6 +604,17 @@ struct snn_network_s {
 
     /* Statistics */
     snn_stats_t stats;              /**< Network statistics */
+
+    /* Substrate integration (Phase 1 biological-substrate adapter).
+     * The substrate pointer is BORROWED — the network does not own it.
+     * Cached effect structs are recomputed every N steps (controlled by
+     * g_snn_substrate_update_period) and read inside the hot per-neuron
+     * loop to modulate tau_mem, refractory period, spike survival, and
+     * plasticity learning rate. See snn_network_attach_substrate. */
+    struct neural_substrate*     substrate;
+    axon_substrate_effects_t     cached_axon_effects;
+    dendrite_substrate_effects_t cached_dend_effects;
+    uint32_t                     substrate_steps_since_update;
 };
 
 //=============================================================================

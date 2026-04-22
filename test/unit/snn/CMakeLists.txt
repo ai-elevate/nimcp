@@ -345,6 +345,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_depression_tuning.cpp)
 endif()
 
 # ============================================================================
+# Test 11: SNN Substrate Adapter (Phase 1 biological-substrate wiring)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_substrate_adapter.cpp)
+    add_executable(unit_snn_test_snn_substrate_adapter
+        test_snn_substrate_adapter.cpp
+    )
+
+    target_link_libraries(unit_snn_test_snn_substrate_adapter
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_snn_test_snn_substrate_adapter
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_snn_test_snn_substrate_adapter PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_snn_test_snn_substrate_adapter
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;substrate"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added SNN unit test: test_snn_substrate_adapter")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_snn_population.cpp

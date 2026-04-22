@@ -246,6 +246,56 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_thalamic_substrate_compose.cpp)
 endif()
 
 # ============================================================================
+# SNN Substrate Integration Test (2026-04-22)
+# ============================================================================
+# WHAT: Integration tests for the SNN substrate adapter (Phase 1 biological-
+#       substrate wiring) running inside a live snn_network_step loop with
+#       the Wave A+B biophysics in composition.
+# WHY:  The unit tests isolate the effects cache + tunables; integration is
+#       where composition with AHP/pump/basket/noise is verified — they must
+#       stack without destabilization and the substrate must observably
+#       modulate firing across a multi-step run.
+# HOW:  Google Test. Lightweight CSR pops + CPU fallback. Three cases:
+#       ATP ramp-down → reduced firing in last window; full biophysics +
+#       substrate stable (no NaN/Inf); update_period rate-limits the cache.
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_substrate_integration.cpp)
+    add_executable(integration_snn_test_snn_substrate_integration
+        test_snn_substrate_integration.cpp
+    )
+
+    target_link_libraries(integration_snn_test_snn_substrate_integration
+        PRIVATE
+            nimcp_snn
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            Threads::Threads
+            m
+            z
+    )
+
+    target_include_directories(integration_snn_test_snn_substrate_integration
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+    )
+
+    target_compile_features(integration_snn_test_snn_substrate_integration
+        PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_snn_test_snn_substrate_integration
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;substrate"
+            TIMEOUT 300
+    )
+
+    message(STATUS "  Added SNN substrate integration test: "
+                   "test_snn_substrate_integration")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)

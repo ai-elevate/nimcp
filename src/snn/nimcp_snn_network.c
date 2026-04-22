@@ -22,6 +22,8 @@
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_adaptation.h"
 #include "snn/nimcp_snn_basket.h"
+#include "snn/nimcp_snn_training.h"  /* snn_tune_get_substrate_* */
+#include "core/substrate/nimcp_substrate_effects.h"  /* substrate_compute_effects, apply helpers */
 #include "gpu/snn/nimcp_snn_gpu.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
@@ -591,6 +593,18 @@ void snn_network_destroy(snn_network_t* network) {
     NIMCP_LOGGING_DEBUG("snn_network_destroy: network destroyed");
 }
 
+void snn_network_attach_substrate(snn_network_t* net,
+                                  struct neural_substrate* sub) {
+    if (!net) return;  /* null-tolerant: silent drop */
+    net->substrate = sub;
+    /* Reset cached effects + counter so the next step recomputes fresh. */
+    memset(&net->cached_axon_effects, 0, sizeof(net->cached_axon_effects));
+    memset(&net->cached_dend_effects, 0, sizeof(net->cached_dend_effects));
+    net->substrate_steps_since_update = 0;
+    NIMCP_LOGGING_DEBUG("snn_network_attach_substrate: substrate=%p",
+                        (void*)sub);
+}
+
 int snn_network_reset(snn_network_t* network) {
     if (!network) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_network_reset: null network pointer");
@@ -1048,6 +1062,33 @@ int snn_network_step(snn_network_t* network, float dt) {
     if (!gpu_executed) {
     /* ===== CPU FALLBACK PATH ===== */
 
+    /* Substrate adapter: refresh cached effect structs once per step
+     * (not per pop). The ratelimit `substrate_update_period` controls
+     * how often the substrate state is re-read — biological effects
+     * vary on ~100 ms timescales so recomputing every 10 steps is
+     * plenty fine-grained while keeping the per-step cost to one
+     * substrate snapshot. When the substrate is NULL or the enabled
+     * knob is off, the cached pointers stay NULL and the hot loop
+     * short-circuits every modulation (no extra work). */
+    const axon_substrate_effects_t*     se_axon = NULL;
+    const dendrite_substrate_effects_t* se_dend = NULL;
+    if (network->substrate && snn_tune_get_substrate_enabled() != 0.0f) {
+        const uint32_t period = (uint32_t)snn_tune_get_substrate_update_period();
+        if (network->substrate_steps_since_update == 0 || period == 0) {
+            substrate_compute_effects(network->substrate,
+                                      &network->cached_axon_effects,
+                                      &network->cached_dend_effects);
+        }
+        network->substrate_steps_since_update++;
+        if (period > 0 && network->substrate_steps_since_update >= period) {
+            network->substrate_steps_since_update = 0;
+        }
+        se_axon = &network->cached_axon_effects;
+        se_dend = &network->cached_dend_effects;
+    }
+    const int substrate_spike_dropout_on =
+        (snn_tune_get_substrate_spike_dropout_on() != 0.0f);
+
     /* Process each population */
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
@@ -1061,6 +1102,18 @@ int snn_network_step(snn_network_t* network, float dt) {
         float v_reset = network->config.v_reset;
         float v_rest = network->config.v_rest;
         float tau_mem = network->config.tau_mem;
+
+        /* Substrate-modulated tau (dendritic membrane time constant) and
+         * refractory period (axonal Na+/K+ pump recovery). When no
+         * substrate is attached these collapse to the config values. */
+        float tau_eff  = se_dend ? substrate_apply_tau(tau_mem, se_dend) : tau_mem;
+        float tref_eff = se_axon ? substrate_apply_tref(network->config.t_ref, se_axon)
+                                 : network->config.t_ref;
+        /* Emergency silence: when axonal capacity collapses (ATP or ion
+         * gradient critically low), the neuron cannot propagate an AP.
+         * We skip the entire LIF update for this step on that pop. */
+        const int substrate_emergency_silence =
+            (se_axon && se_axon->overall_capacity < 0.1f);
 
         /* Fetch Poisson noise parameters ONCE per population to avoid
          * the extern-call overhead inside the inner per-neuron loop.
@@ -1136,6 +1189,16 @@ int snn_network_step(snn_network_t* network, float dt) {
             for (uint32_t n = 0; n < pop->n_neurons; n++) {
                 spike_data[n] = 0.0f;
 
+                /* Substrate emergency silence: overall axon capacity has
+                 * collapsed (ATP/ion critical). The neuron cannot
+                 * generate or propagate an action potential this step.
+                 * Decrement refractory so it continues to tick down
+                 * correctly when the substrate recovers. */
+                if (substrate_emergency_silence) {
+                    if (ref_data[n] > 0.0f) ref_data[n] -= dt_ms;
+                    continue;
+                }
+
                 if (ref_data[n] > 0.0f) {
                     ref_data[n] -= dt_ms;
                     continue;
@@ -1197,8 +1260,9 @@ int snn_network_step(snn_network_t* network, float dt) {
                 if (pump_hyp) hyp += pump_hyp[n];
                 I_syn -= hyp;
 
-                /* LIF dynamics */
-                float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
+                /* LIF dynamics — use substrate-modulated tau (tau_eff
+                 * collapses to tau_mem when no substrate is attached). */
+                float dv = (v_rest - v_data[n] + I_syn) / tau_eff * dt_ms;
                 v_data[n] += dv;
 
                 /* Intrinsic plasticity: effective threshold = config + per-neuron offset.
@@ -1207,12 +1271,32 @@ int snn_network_step(snn_network_t* network, float dt) {
                 if (pop->threshold_offset) v_thresh_n += pop->threshold_offset[n];
 
                 if (v_data[n] >= v_thresh_n) {
-                    spike_data[n] = 1.0f;
-                    v_data[n] = v_reset;
-                    ref_data[n] = network->config.t_ref;
-                    record_spike(&pop->spike_trains[n], network->sim->current_time_us);
-                    total_spikes++;
-                    pop->total_spikes++;
+                    /* Substrate spike-survival gate: a fraction of spikes
+                     * drop at the axon hillock when reliability is low
+                     * (weak AP amplitude, low ion gradient). When the
+                     * substrate is absent or the knob is off, every
+                     * threshold-crossing spike survives. When a spike
+                     * fails to survive we do NOT set spike_data, do NOT
+                     * reset v, and do NOT enter refractory — the
+                     * membrane simply sits above threshold and the
+                     * neuron will try again next step. */
+                    int spike_ok = 1;
+                    if (substrate_spike_dropout_on && se_axon) {
+                        float rand01 = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
+                        if (!substrate_spike_survives(se_axon, rand01)) {
+                            spike_ok = 0;
+                        }
+                    }
+                    if (spike_ok) {
+                        spike_data[n] = 1.0f;
+                        v_data[n] = v_reset;
+                        /* Substrate-modulated refractory period (tref_eff
+                         * collapses to config.t_ref when no substrate). */
+                        ref_data[n] = tref_eff;
+                        record_spike(&pop->spike_trains[n], network->sim->current_time_us);
+                        total_spikes++;
+                        pop->total_spikes++;
+                    }
                 }
             }
 
@@ -1328,6 +1412,22 @@ int snn_network_step(snn_network_t* network, float dt) {
             /* Clear external_current for next step (input is per-step) */
             if (pop->external_current) {
                 memset(pop->external_current, 0, pop->n_neurons * sizeof(float));
+            }
+
+            /* Report this pop's activity to the substrate. n_plasticity=0
+             * here; any plasticity application downstream (homeostasis,
+             * R-STDP) debits separately. region_id=0 since pop-level
+             * region tagging is not yet plumbed. */
+            if (network->substrate &&
+                snn_tune_get_substrate_enabled() != 0.0f) {
+                uint32_t pop_spikes_this_step = 0;
+                for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                    if (spike_data[n] > 0.5f) pop_spikes_this_step++;
+                }
+                substrate_debit_activity(network->substrate,
+                                         0 /* region_id */,
+                                         pop_spikes_this_step,
+                                         0 /* n_plasticity */);
             }
         } else {
         /* ===== LEGACY NEURON_T PATH ===== */
@@ -2814,11 +2914,13 @@ uint32_t snn_network_force_homeostasis(snn_network_t* network,
                                        void* ctx,
                                        uint32_t n_iter) {
     if (!network || !ctx || n_iter == 0) return 0;
-    /* Forward-declare snn_homeostatic_apply to avoid a new include cycle. */
-    extern uint32_t snn_homeostatic_apply(void* ctx, snn_network_t* network);
+    /* snn_homeostatic_apply is declared in nimcp_snn_training.h (included
+     * at the top of this file). ctx is a snn_training_ctx_t*; we take
+     * void* through the force-homeostasis signature to keep the public
+     * force-homeostasis API loose, but cast on the call site. */
     uint32_t total_scaled = 0;
     for (uint32_t i = 0; i < n_iter; i++) {
-        total_scaled += snn_homeostatic_apply(ctx, network);
+        total_scaled += snn_homeostatic_apply((snn_training_ctx_t*)ctx, network);
     }
     return total_scaled;
 }

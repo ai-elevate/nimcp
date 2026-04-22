@@ -382,6 +382,11 @@ void  snn_tune_set_pump_gain_mv(float v);
 void  snn_tune_set_basket_enabled(float v);
 void  snn_tune_set_basket_fraction(float v);
 void  snn_tune_set_noise_ei_ratio(float v);
+/* Substrate adapter tunables (Phase 1 biological-substrate wiring). */
+void  snn_tune_set_substrate_enabled(float v);
+void  snn_tune_set_substrate_update_period(float v);
+void  snn_tune_set_substrate_spike_dropout_on(float v);
+void  snn_tune_set_substrate_plasticity_mod_on(float v);
 
 float snn_tune_get_rstdp_lr(void);
 float snn_tune_get_rstdp_baseline_alpha(void);
@@ -410,6 +415,10 @@ float snn_tune_get_pump_gain_mv(void);
 float snn_tune_get_basket_enabled(void);
 float snn_tune_get_basket_fraction(void);
 float snn_tune_get_noise_ei_ratio(void);
+float snn_tune_get_substrate_enabled(void);
+float snn_tune_get_substrate_update_period(void);
+float snn_tune_get_substrate_spike_dropout_on(void);
+float snn_tune_get_substrate_plasticity_mod_on(void);
 
 /*============================================================================
  * Intrinsic SNN reward — firing-rate-target-based. Use as the primary
