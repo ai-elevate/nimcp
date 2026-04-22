@@ -24,7 +24,7 @@
 extern "C" {
 #include "lnn/nimcp_lnn_hamiltonian.h"
 #include "utils/tensor/nimcp_tensor.h"
-#include "core/nimcp_axon_dendrite_substrate_bridge.h"
+#include "core/substrate/nimcp_substrate_effects.h"
 }
 
 /*============================================================================

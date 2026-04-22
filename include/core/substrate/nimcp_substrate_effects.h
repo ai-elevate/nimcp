@@ -14,7 +14,6 @@
 #include <stdbool.h>
 
 #include "utils/error/nimcp_error_codes.h"
-#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* effect struct types */
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +22,73 @@ extern "C" {
 /* Forward decl (full type in nimcp_neural_substrate.h). */
 struct neural_substrate;
 typedef struct neural_substrate neural_substrate_t;
+
+/**
+ * @brief Per-axon substrate-modulated effect multipliers.
+ *
+ * Migrated from include/core/nimcp_axon_dendrite_substrate_bridge.h (now
+ * deleted) into this header as the single source of truth for substrate-
+ * effect types. Cached as values on snn_network_t / lnn_network_t /
+ * cortex_cnn_processor_t and refreshed per step via
+ * substrate_compute_effects().
+ */
+typedef struct {
+    /* Conduction velocity modulation */
+    float temperature_q10_factor;     /**< Q10 temperature effect [0.5-1.5] */
+    float atp_velocity_factor;        /**< ATP effect on velocity [0-1] */
+    float myelin_efficiency;          /**< Myelination ATP efficiency [0-1] */
+    float overall_velocity_mod;       /**< Combined velocity multiplier */
+
+    /* Action potential reliability */
+    float ion_gradient_strength;     /**< Na+/K+ gradient quality [0-1] */
+    float ap_amplitude_mod;           /**< AP amplitude modulation [0-1] */
+    float spike_reliability;          /**< Propagation reliability [0-1] */
+
+    /* Refractory period modulation */
+    float pump_activity;              /**< Na+/K+-ATPase activity [0-1] */
+    float refractory_period_mod;      /**< Refractory multiplier [0.7-1.3] */
+
+    /* Axonal transport */
+    float transport_efficiency;       /**< Vesicle transport [0-1] */
+    float kinesin_activity;           /**< Motor protein activity [0-1] */
+
+    /* Membrane effects */
+    float membrane_capacitance_mod;   /**< Capacitance change [0.8-1.2] */
+    float membrane_leak_mod;          /**< Leak conductance [1.0-3.0] */
+
+    /* Overall capacity */
+    float overall_capacity;           /**< Combined axon capacity [0-1] */
+} axon_substrate_effects_t;
+
+/**
+ * @brief Per-dendrite substrate-modulated effect multipliers.
+ */
+typedef struct {
+    /* Integration efficiency */
+    float membrane_time_constant_mod; /**< τ_m modulation [0.5-1.5] */
+    float space_constant_mod;         /**< λ modulation [0.5-1.5] */
+    float integration_efficiency;     /**< Overall integration [0-1] */
+    float attenuation_mod;            /**< Voltage attenuation [1.0-2.0] */
+
+    /* Dendritic spike threshold */
+    float nmda_mg_block_mod;          /**< Mg2+ block sensitivity [0.8-1.2] */
+    float spike_threshold_mod;        /**< Threshold voltage shift [0.8-1.2] */
+    float na_channel_availability;    /**< Dendritic Na+ channels [0-1] */
+
+    /* Calcium dynamics */
+    float ca_pump_efficiency;         /**< Ca2+ extrusion [0-1] */
+    float ca_buffer_capacity;         /**< Buffering capacity [0-1] */
+    float ca_handling_mod;            /**< Overall Ca2+ handling [0-1] */
+
+    /* Plasticity capacity */
+    float ltp_capacity;               /**< LTP induction ability [0-1] */
+    float ltd_capacity;               /**< LTD induction ability [0-1] */
+    float spine_growth_capacity;      /**< Structural plasticity [0-1] */
+    float plasticity_mod;             /**< Overall plasticity [0-1] */
+
+    /* Overall capacity */
+    float overall_capacity;           /**< Combined dendrite capacity [0-1] */
+} dendrite_substrate_effects_t;
 
 /**
  * Compute both effect structs from the substrate state. Reads the substrate's

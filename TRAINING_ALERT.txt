@@ -21912,3 +21912,41 @@ Mon Apr 20 12:35:13 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-20 15:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-20 15:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
 [2026-04-20 15:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 15:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Wed Apr 22 03:31:18 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 03:31:18 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Apr 22 03:31:43 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 03:31:43 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Apr 22 03:31:55 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 03:31:55 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-22 15:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Wed Apr 22 03:39:29 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 03:39:29 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Apr 22 03:39:55 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 03:39:55 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-22 15:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Wed Apr 22 03:40:07 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 03:40:07 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-22 15:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 15:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 15:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 16:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-22 17:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Wed Apr 22 05:02:09 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 05:02:09 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Apr 22 05:02:21 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 05:02:21 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Wed Apr 22 05:02:43 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Wed Apr 22 05:02:43 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-22 17:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.

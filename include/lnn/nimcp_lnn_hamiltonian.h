@@ -22,7 +22,7 @@
 
 #include "lnn/nimcp_lnn_types.h"
 #include "utils/tensor/nimcp_tensor.h"
-#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* axon_substrate_effects_t */
+#include "core/substrate/nimcp_substrate_effects.h"  /* axon_substrate_effects_t */
 #include <stdbool.h>
 #include <stdint.h>
 

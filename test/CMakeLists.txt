@@ -1672,11 +1672,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/thalamic")
     add_subdirectory(unit/core/thalamic)
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/substrate")
-    message(STATUS "Adding core substrate bridges regression tests...")
-    add_subdirectory(regression/core/substrate)
-endif()
-
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neural_substrate")
     message(STATUS "Adding neural substrate layer regression tests...")
     add_subdirectory(regression/core/neural_substrate)

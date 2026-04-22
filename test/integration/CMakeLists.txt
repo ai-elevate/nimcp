@@ -5,7 +5,6 @@
 message(STATUS "  [SKIP] Integration top-level tests - API has changed significantly")
 message(STATUS "    - test_brain_factory_integration.cpp")
 message(STATUS "    - test_cross_bridge_integration.cpp")
-message(STATUS "    - test_substrate_bridge_integration.cpp")
 message(STATUS "    - test_thalamic_bridge_integration.cpp")
 message(STATUS "    - test_quantum_bridge_integration.cpp")
 

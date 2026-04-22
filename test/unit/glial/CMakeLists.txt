@@ -230,7 +230,6 @@ add_subdirectory(immune)
 # ============================================================================
 add_subdirectory(sleep)
 
-# ============================================================================
-# Glial-Substrate Bridge Tests
-# ============================================================================
-add_subdirectory(substrate)
+# Glial-Substrate Bridge Tests — bridge deleted 2026-04-22 (dead code cleanup).
+# Substrate modulation is now tested via substrate_compute_effects and the
+# per-network adapter tests (test/unit/core/substrate/, test/unit/snn/, etc.).

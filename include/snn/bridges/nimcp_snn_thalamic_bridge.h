@@ -21,6 +21,16 @@
  *
  * @author NIMCP Team
  * @date 2024-12-20
+ *
+ * TODO (2026-04-22): This bridge is pre-integration scaffolding for
+ * SNN↔thalamic routing. Currently has no production callers — the new
+ * thalamic_channel_t pattern (include/core/thalamic/nimcp_thalamic_channel.h)
+ * is preferred for LNN/CNN. This file is retained because it has features
+ * the shared channel lacks (TRN lateral inhibition, burst/tonic mode
+ * detection, cortical-thalamic feedback buffer). When SNN needs attention-
+ * gated routing in production, either: (a) wire this bridge into brain
+ * init alongside substrate/thalamic_router, or (b) extend thalamic_channel_t
+ * to match and delete this file. See docs/design/substrate_thalamic_integration.md.
  */
 
 #ifndef NIMCP_SNN_THALAMIC_BRIDGE_H

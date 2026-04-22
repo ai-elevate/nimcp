@@ -40,11 +40,9 @@
 #include <stddef.h>
 #include "utils/tensor/nimcp_tensor.h"
 
-/* Substrate effects struct types (axon/dendrite). We embed values (not
- * pointers) in lnn_network_s so the full definitions are required. Pulled
- * in via the axon-dendrite substrate bridge header — same pattern the SNN
- * adapter uses (commit 6bf4e6446). */
-#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* axon_/dendrite_substrate_effects_t */
+/* Substrate effects struct types (axon/dendrite). Embedded as values in
+ * lnn_network_s so the full definitions are required. */
+#include "core/substrate/nimcp_substrate_effects.h"
 
 #ifdef __cplusplus
 extern "C" {

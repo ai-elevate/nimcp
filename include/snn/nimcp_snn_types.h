@@ -60,11 +60,9 @@
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "utils/tensor/nimcp_tensor.h"
 
-/* Substrate effects struct types (axon/dendrite). We embed values (not
- * pointers) in snn_network_s so the full definitions are required. Pulled
- * in via the small effects header — which itself only forward-declares
- * neural_substrate_t, so no cycle. */
-#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* axon_/dendrite_substrate_effects_t */
+/* Substrate effects struct types (axon/dendrite). Embedded as values in
+ * snn_network_s so the full definitions are required. */
+#include "core/substrate/nimcp_substrate_effects.h"
 
 #ifdef __cplusplus
 extern "C" {
