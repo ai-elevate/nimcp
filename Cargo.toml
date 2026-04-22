@@ -21,6 +21,7 @@ members = [
     "crates/quantum",
     "crates/checkpoint",
     "crates/brain",
+    "crates/daemon",
     "pybind",
     "rust-tests",
     "benches/mlp",
@@ -97,6 +98,7 @@ nimcp-geometry = { path = "crates/geometry" }
 nimcp-quantum = { path = "crates/quantum" }
 nimcp-checkpoint = { path = "crates/checkpoint" }
 nimcp-brain = { path = "crates/brain" }
+nimcp-daemon = { path = "crates/daemon" }
 
 # Global build settings.
 [profile.dev]
