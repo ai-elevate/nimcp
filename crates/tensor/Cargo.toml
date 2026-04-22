@@ -1,0 +1,22 @@
+[package]
+name = "nimcp-tensor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — tensor helpers (thin wrapper over ndarray with V1-style convenience API)"
+
+[lints]
+workspace = true
+
+[dependencies]
+ndarray = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+approx = "0.5"
