@@ -387,6 +387,11 @@ void  snn_tune_set_substrate_enabled(float v);
 void  snn_tune_set_substrate_update_period(float v);
 void  snn_tune_set_substrate_spike_dropout_on(float v);
 void  snn_tune_set_substrate_plasticity_mod_on(float v);
+/* F8: AHP + Na/K pump <-> substrate ATP coupling. When 1, the SNN hot
+ * path scales AHP/pump hyperpolarization by substrate pump_activity
+ * (clamped [0.1, 1.0]). When 0, the scaling factor is a hardcoded 1.0
+ * (identity, bit-exact pre-F8 behavior). */
+void  snn_tune_set_ahp_pump_substrate_coupling(float v);
 
 float snn_tune_get_rstdp_lr(void);
 float snn_tune_get_rstdp_baseline_alpha(void);
@@ -419,6 +424,7 @@ float snn_tune_get_substrate_enabled(void);
 float snn_tune_get_substrate_update_period(void);
 float snn_tune_get_substrate_spike_dropout_on(void);
 float snn_tune_get_substrate_plasticity_mod_on(void);
+float snn_tune_get_ahp_pump_substrate_coupling(void);
 
 /*============================================================================
  * Intrinsic SNN reward — firing-rate-target-based. Use as the primary

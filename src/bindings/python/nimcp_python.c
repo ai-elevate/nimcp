@@ -1871,6 +1871,7 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     extern void snn_tune_set_substrate_update_period(float);
     extern void snn_tune_set_substrate_spike_dropout_on(float);
     extern void snn_tune_set_substrate_plasticity_mod_on(float);
+    extern void snn_tune_set_ahp_pump_substrate_coupling(float);
 
     float v = (float)value;
     if      (strcmp(name, "rstdp_lr") == 0)             snn_tune_set_rstdp_lr(v);
@@ -1911,6 +1912,7 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     else if (strcmp(name, "substrate_update_period") == 0)     snn_tune_set_substrate_update_period(v);
     else if (strcmp(name, "substrate_spike_dropout_on") == 0)  snn_tune_set_substrate_spike_dropout_on(v);
     else if (strcmp(name, "substrate_plasticity_mod_on") == 0) snn_tune_set_substrate_plasticity_mod_on(v);
+    else if (strcmp(name, "ahp_pump_substrate_coupling") == 0) snn_tune_set_ahp_pump_substrate_coupling(v);
     else {
         PyErr_Format(PyExc_ValueError, "unknown tunable: %s", name);
         return NULL;
@@ -1953,6 +1955,7 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     extern float snn_tune_get_substrate_update_period(void);
     extern float snn_tune_get_substrate_spike_dropout_on(void);
     extern float snn_tune_get_substrate_plasticity_mod_on(void);
+    extern float snn_tune_get_ahp_pump_substrate_coupling(void);
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
@@ -1997,6 +2000,7 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     F("substrate_update_period",     snn_tune_get_substrate_update_period());
     F("substrate_spike_dropout_on",  snn_tune_get_substrate_spike_dropout_on());
     F("substrate_plasticity_mod_on", snn_tune_get_substrate_plasticity_mod_on());
+    F("ahp_pump_substrate_coupling", snn_tune_get_ahp_pump_substrate_coupling());
 #undef F
     return d;
 }

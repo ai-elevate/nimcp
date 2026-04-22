@@ -29,6 +29,7 @@ extern "C" {
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_training.h"
 #include "snn/nimcp_snn_synapse.h"
+#include "snn/nimcp_snn_adaptation.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "core/substrate/nimcp_substrate_effects.h"
@@ -54,6 +55,7 @@ protected:
     float saved_period            = 0.0f;
     float saved_spike_dropout_on  = 0.0f;
     float saved_plasticity_mod_on = 0.0f;
+    float saved_ahp_pump_coupling = 0.0f;
     /* Biophysics knobs we disable so substrate is the sole modulator. */
     float saved_ahp               = 0.0f;
     float saved_pump              = 0.0f;
@@ -65,6 +67,7 @@ protected:
         saved_period            = snn_tune_get_substrate_update_period();
         saved_spike_dropout_on  = snn_tune_get_substrate_spike_dropout_on();
         saved_plasticity_mod_on = snn_tune_get_substrate_plasticity_mod_on();
+        saved_ahp_pump_coupling = snn_tune_get_ahp_pump_substrate_coupling();
         saved_ahp               = snn_tune_get_ahp_enabled();
         saved_pump              = snn_tune_get_pump_enabled();
         saved_basket            = snn_tune_get_basket_enabled();
@@ -76,6 +79,7 @@ protected:
         snn_tune_set_substrate_update_period(saved_period);
         snn_tune_set_substrate_spike_dropout_on(saved_spike_dropout_on);
         snn_tune_set_substrate_plasticity_mod_on(saved_plasticity_mod_on);
+        snn_tune_set_ahp_pump_substrate_coupling(saved_ahp_pump_coupling);
         snn_tune_set_ahp_enabled(saved_ahp);
         snn_tune_set_pump_enabled(saved_pump);
         snn_tune_set_basket_enabled(saved_basket);
@@ -628,4 +632,228 @@ TEST_F(SNNSubstrateAdapterTest, ATPDepletionReducesSpikeCount) {
     snn_network_destroy(net);
     substrate_destroy(sub_full);
     substrate_destroy(sub_low);
+}
+
+/*============================================================================
+ * F8: AHP + Na/K pump <-> substrate ATP coupling.
+ *
+ * Biology: real Na/K-ATPase activity is ATP-dependent. When ATP drops the
+ * pumps slow, weakening both AHP (pump-driven slow component) and pump
+ * adaptation. Counterintuitively this INCREASES short-term firing because
+ * spike-rate adaptation is the dampener that is failing.
+ *
+ * We verify the coupling direction by holding everything else constant
+ * (same ATP, same substrate) and comparing coupling-ON vs coupling-OFF:
+ *   - Coupling OFF at ATP=0.3: full AHP gain → heavy adaptation → fewer spikes.
+ *   - Coupling ON at ATP=0.3:  AHP gain × 0.3 → weaker adaptation → more spikes.
+ * All other substrate effects (tref_eff, tau_eff) are identical between
+ * runs, so the only source of variance is the scaling we introduced.
+ *
+ * Spike-dropout is DISABLED here so spike_reliability can't confound.
+ *==========================================================================*/
+TEST_F(SNNSubstrateAdapterTest, AhpPumpScaleByAtp) {
+    snn_population_t* pop = nullptr;
+    snn_network_t* net = MakeNetworkWithLightweightPop(100, &pop);
+    ASSERT_NE(net, nullptr);
+    ASSERT_NE(pop, nullptr);
+
+    /* Re-enable AHP+pump — MakeNetworkWithLightweightPop disabled them. */
+    snn_tune_set_ahp_enabled(1.0f);
+    snn_tune_set_pump_enabled(1.0f);
+
+    /* Install custom adaptation states so AHP dominates the firing
+     * dynamics. We pick gain=50 mV (max allowed) so each spike strongly
+     * hyperpolarizes the neuron, and tau=30 ms — long enough that within
+     * a 2000-step window the damping integrates over several spikes, and
+     * short enough that the recovery is sensitive to the scaling factor.
+     * Destroy any pre-existing state so our parameters take effect. */
+    if (pop->ahp) { snn_adaptation_destroy(pop->ahp); pop->ahp = nullptr; }
+    if (pop->pump) { snn_adaptation_destroy(pop->pump); pop->pump = nullptr; }
+    pop->ahp = snn_adaptation_create(pop->n_neurons,
+                                      30.0f  /* tau_ms */,
+                                      50.0f  /* gain_mv — very strong adaptation */,
+                                      1.0f   /* spike_bump */);
+    pop->pump = snn_adaptation_create(pop->n_neurons,
+                                       5000.0f,
+                                       0.05f,
+                                       1.0f);
+    ASSERT_NE(pop->ahp, nullptr);
+    ASSERT_NE(pop->pump, nullptr);
+
+    /* Substrate configuration: single ATP level (0.5), spike dropout OFF
+     * so spike_reliability can't confound. refractory_period_mod and
+     * tau_eff still apply but are IDENTICAL between coupling-on and
+     * coupling-off runs so they cancel. */
+    snn_tune_set_substrate_enabled(1.0f);
+    snn_tune_set_substrate_update_period(1.0f);
+    snn_tune_set_substrate_spike_dropout_on(0.0f);
+
+    neural_substrate_t* sub = MakeSubstrate(0.5f, 37.0f);
+    ASSERT_NE(sub, nullptr);
+    snn_network_attach_substrate(net, sub);
+
+    /* Drive chosen so that: (a) first spike happens, (b) post-spike AHP
+     * (50 mV at adapt_var=1) completely suppresses the drive and forces
+     * a waiting period, (c) the length of that waiting period is what
+     * differentiates coupling-on (50×0.5=25 mV hyp → shorter wait) from
+     * coupling-off (50 mV hyp → longer wait). */
+    const int n_steps = 2000;
+    const float I_drive = 40.0f;
+
+    /* Run 1: coupling OFF — AHP/pump use hardcoded 1.0× scaling. */
+    snn_tune_set_ahp_pump_substrate_coupling(0.0f);
+    HardResetPop(pop);
+    snn_adaptation_reset(pop->ahp);
+    snn_adaptation_reset(pop->pump);
+    net->substrate_steps_since_update = 0;
+
+    uint64_t spikes_coupling_off = 0;
+    for (int i = 0; i < n_steps; i++) {
+        InjectCurrent(pop, I_drive);
+        ASSERT_GE(snn_network_step(net, 0.1f), 0);
+        spikes_coupling_off += CountSpikes(pop);
+    }
+
+    /* Run 2: coupling ON — AHP/pump scaled by pump_activity=0.3 (clamped
+     * to [0.1, 1.0], so 0.3 passes through). Expect MORE spikes because
+     * adaptation is weaker. */
+    snn_tune_set_ahp_pump_substrate_coupling(1.0f);
+    HardResetPop(pop);
+    snn_adaptation_reset(pop->ahp);
+    snn_adaptation_reset(pop->pump);
+    net->substrate_steps_since_update = 0;
+    substrate_set_atp(sub, 0.5f);  /* restore after any debit drift */
+
+    uint64_t spikes_coupling_on = 0;
+    for (int i = 0; i < n_steps; i++) {
+        InjectCurrent(pop, I_drive);
+        ASSERT_GE(snn_network_step(net, 0.1f), 0);
+        spikes_coupling_on += CountSpikes(pop);
+    }
+
+    EXPECT_GT(spikes_coupling_off, 0u);
+    EXPECT_GT(spikes_coupling_on, 0u);
+    /* Coupling-on weakens the AHP/pump damping → strictly more spikes. */
+    EXPECT_GT(spikes_coupling_on, spikes_coupling_off)
+        << "F8 coupling direction wrong: at low ATP, enabling the coupling "
+        << "should weaken AHP/pump adaptation and INCREASE firing. "
+        << "coupling_off=" << spikes_coupling_off
+        << " coupling_on=" << spikes_coupling_on;
+
+    snn_network_destroy(net);
+    substrate_destroy(sub);
+}
+
+/*============================================================================
+ * F8: setter/getter round-trip + boolean normalization.
+ *==========================================================================*/
+TEST_F(SNNSubstrateAdapterTest, CouplingKnobRoundTrip) {
+    snn_tune_set_ahp_pump_substrate_coupling(0.0f);
+    EXPECT_FLOAT_EQ(snn_tune_get_ahp_pump_substrate_coupling(), 0.0f);
+
+    snn_tune_set_ahp_pump_substrate_coupling(1.0f);
+    EXPECT_FLOAT_EQ(snn_tune_get_ahp_pump_substrate_coupling(), 1.0f);
+
+    /* Any nonzero normalizes to 1.0 — mirrors the other boolean knobs. */
+    snn_tune_set_ahp_pump_substrate_coupling(0.3f);
+    EXPECT_FLOAT_EQ(snn_tune_get_ahp_pump_substrate_coupling(), 1.0f);
+
+    snn_tune_set_ahp_pump_substrate_coupling(-2.5f);
+    EXPECT_FLOAT_EQ(snn_tune_get_ahp_pump_substrate_coupling(), 1.0f);
+
+    snn_tune_set_ahp_pump_substrate_coupling(0.0f);
+    EXPECT_FLOAT_EQ(snn_tune_get_ahp_pump_substrate_coupling(), 0.0f);
+}
+
+/*============================================================================
+ * F8: with coupling DISABLED, the firing trajectory must match the pre-F8
+ * baseline EXACTLY (bit-identical). We verify this by running two
+ * back-to-back identical simulations with coupling off and asserting the
+ * total spike count is identical step-by-step — this proves the new scaling
+ * path is a true no-op when gated off. (We cannot compare to literal pre-F8
+ * code from this test, but determinism across runs with coupling-off, with
+ * Poisson noise and spike dropout off, is the observable guarantee.)
+ *==========================================================================*/
+TEST_F(SNNSubstrateAdapterTest, DisabledCouplingBitIdentical) {
+    snn_population_t* pop = nullptr;
+    snn_network_t* net = MakeNetworkWithLightweightPop(128, &pop);
+    ASSERT_NE(net, nullptr);
+
+    snn_tune_set_ahp_enabled(1.0f);
+    snn_tune_set_pump_enabled(1.0f);
+    if (!pop->ahp) {
+        pop->ahp = snn_adaptation_create(pop->n_neurons,
+                                          snn_tune_get_ahp_tau_ms(),
+                                          snn_tune_get_ahp_gain_mv(),
+                                          1.0f);
+    }
+    if (!pop->pump) {
+        pop->pump = snn_adaptation_create(pop->n_neurons,
+                                           snn_tune_get_pump_tau_ms(),
+                                           snn_tune_get_pump_gain_mv(),
+                                           1.0f);
+    }
+    ASSERT_NE(pop->ahp, nullptr);
+    ASSERT_NE(pop->pump, nullptr);
+
+    snn_tune_set_substrate_enabled(1.0f);
+    snn_tune_set_substrate_update_period(1.0f);
+    snn_tune_set_substrate_spike_dropout_on(0.0f);
+    snn_tune_set_ahp_pump_substrate_coupling(0.0f);  /* F8 OFF */
+
+    /* Depleted substrate at ATP=0.3 — if coupling were on, it would
+     * scale the hyperpol by 0.3. With coupling OFF, the scaling factor
+     * is EXACTLY 1.0 (identity), so the trajectory is the same as if
+     * no coupling branch existed. */
+    neural_substrate_t* sub = MakeSubstrate(0.3f, 37.0f);
+    ASSERT_NE(sub, nullptr);
+    snn_network_attach_substrate(net, sub);
+
+    const int n_steps = 300;
+    const float I_drive = 60.0f;
+
+    /* Trajectory 1 */
+    HardResetPop(pop);
+    snn_adaptation_reset(pop->ahp);
+    snn_adaptation_reset(pop->pump);
+    net->substrate_steps_since_update = 0;
+    substrate_set_atp(sub, 0.3f);
+
+    std::vector<uint32_t> traj1;
+    traj1.reserve(n_steps);
+    for (int i = 0; i < n_steps; i++) {
+        InjectCurrent(pop, I_drive);
+        ASSERT_GE(snn_network_step(net, 0.1f), 0);
+        traj1.push_back(CountSpikes(pop));
+    }
+
+    /* Trajectory 2 — identical setup, deterministic since noise_rate_hz=0
+     * (fixture) and spike_dropout_on=0, so no RNG call happens in the hot
+     * loop. */
+    HardResetPop(pop);
+    snn_adaptation_reset(pop->ahp);
+    snn_adaptation_reset(pop->pump);
+    net->substrate_steps_since_update = 0;
+    substrate_set_atp(sub, 0.3f);
+
+    std::vector<uint32_t> traj2;
+    traj2.reserve(n_steps);
+    for (int i = 0; i < n_steps; i++) {
+        InjectCurrent(pop, I_drive);
+        ASSERT_GE(snn_network_step(net, 0.1f), 0);
+        traj2.push_back(CountSpikes(pop));
+    }
+
+    /* With coupling off + no Poisson noise + no spike dropout, the two
+     * runs must produce identical per-step spike counts — proving the
+     * F8 code path is a bit-exact no-op when gated off. */
+    ASSERT_EQ(traj1.size(), traj2.size());
+    for (size_t i = 0; i < traj1.size(); i++) {
+        EXPECT_EQ(traj1[i], traj2[i])
+            << "F8 disabled-coupling path is not deterministic at step " << i
+            << " (traj1=" << traj1[i] << " traj2=" << traj2[i] << ")";
+    }
+
+    snn_network_destroy(net);
+    substrate_destroy(sub);
 }

@@ -129,6 +129,14 @@ static float g_snn_substrate_enabled           = 1.0f;
 static float g_snn_substrate_update_period     = 10.0f;
 static float g_snn_substrate_spike_dropout_on  = 1.0f;
 static float g_snn_substrate_plasticity_mod_on = 1.0f;
+/* F8: biological feedback — when 1, AHP + Na/K pump hyperpolarization is
+ * scaled by substrate pump_activity (ATP proxy). When 0, AHP/pump gains
+ * use a hardcoded 1.0× factor (identity), matching pre-F8 behavior.
+ * Biology: real Na/K-ATPase activity is directly ATP-dependent — low
+ * ATP slows the pumps and weakens both AHP (pump-driven component) and
+ * pump adaptation currents. Clamped inside the hot loop to [0.1, 1.0]
+ * since real pumps don't stop entirely, they slow. */
+static float g_snn_ahp_pump_substrate_coupling = 1.0f;
 
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
@@ -172,6 +180,11 @@ void snn_tune_set_substrate_enabled(float v)           { g_snn_substrate_enabled
 void snn_tune_set_substrate_update_period(float v)     { if (v >= 1.0f && v <= 10000.0f)  g_snn_substrate_update_period = v; }
 void snn_tune_set_substrate_spike_dropout_on(float v)  { g_snn_substrate_spike_dropout_on  = (v != 0.0f) ? 1.0f : 0.0f; }
 void snn_tune_set_substrate_plasticity_mod_on(float v) { g_snn_substrate_plasticity_mod_on = (v != 0.0f) ? 1.0f : 0.0f; }
+/* F8: AHP/pump <-> substrate coupling. Accepts any nonzero as on, 0 as
+ * off. When on, hot path scales AHP+pump hyperpolarization by substrate
+ * pump_activity (clamped [0.1, 1.0] inside the loop); when off, scaling
+ * factor is 1.0 (identity). */
+void snn_tune_set_ahp_pump_substrate_coupling(float v) { g_snn_ahp_pump_substrate_coupling = (v != 0.0f) ? 1.0f : 0.0f; }
 
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
@@ -207,6 +220,7 @@ float snn_tune_get_substrate_enabled(void)           { return g_snn_substrate_en
 float snn_tune_get_substrate_update_period(void)     { return g_snn_substrate_update_period; }
 float snn_tune_get_substrate_spike_dropout_on(void)  { return g_snn_substrate_spike_dropout_on; }
 float snn_tune_get_substrate_plasticity_mod_on(void) { return g_snn_substrate_plasticity_mod_on; }
+float snn_tune_get_ahp_pump_substrate_coupling(void)  { return g_snn_ahp_pump_substrate_coupling; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"

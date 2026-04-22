@@ -1233,11 +1233,29 @@ int snn_network_step(snn_network_t* network, float dt) {
             extern float snn_tune_get_pump_enabled(void);
             extern float snn_tune_get_basket_enabled(void);
             extern float snn_tune_get_noise_ei_ratio(void);
+            extern float snn_tune_get_ahp_pump_substrate_coupling(void);
             const int   ahp_on    = (pop->ahp  && snn_tune_get_ahp_enabled()  != 0.0f);
             const int   pump_on   = (pop->pump && snn_tune_get_pump_enabled() != 0.0f);
             const int   basket_on = (pop->basket && snn_tune_get_basket_enabled() != 0.0f);
             const float ei_ratio  = snn_tune_get_noise_ei_ratio();
             const int   noise_exc_only = (noise_factor >= 0.9f);  /* dead-pop exception */
+
+            /* F8: biological feedback — scale AHP/pump gains by substrate
+             * pump_activity (ATP proxy). Real Na/K-ATPase is ATP-dependent:
+             * low ATP slows the pumps and weakens both AHP (pump-driven
+             * component) and pump adaptation. Clamp to [0.1, 1.0] since
+             * pumps slow but don't stop entirely. Gated on the dedicated
+             * knob so users can disable the new coupling without losing
+             * the existing substrate modulation of tau/tref/spike-survival.
+             * When se_axon is NULL (no substrate attached) or the knob is
+             * off, factor stays at 1.0 (identity). */
+            float substrate_pump_factor = 1.0f;
+            if (se_axon
+                && snn_tune_get_ahp_pump_substrate_coupling() != 0.0f) {
+                substrate_pump_factor = se_axon->pump_activity;
+                if (substrate_pump_factor < 0.1f) substrate_pump_factor = 0.1f;
+                if (substrate_pump_factor > 1.0f) substrate_pump_factor = 1.0f;
+            }
 
             float* ahp_hyp  = ahp_on
                 ? (float*)nimcp_calloc(pop->n_neurons, sizeof(float)) : NULL;
@@ -1324,11 +1342,14 @@ int snn_network_step(snn_network_t* network, float dt) {
 
                 /* AHP + pump hyperpolarization — subtract from drive.
                  * Numerically equivalent to subtracting from dV since
-                 * dV = (v_rest - v + I_syn)/tau × dt. */
+                 * dV = (v_rest - v + I_syn)/tau × dt. F8: the combined
+                 * gain is scaled by substrate_pump_factor so metabolic
+                 * state feeds back into spike-rate adaptation (weak pumps
+                 * → weak adaptation → membrane integrates longer). */
                 float hyp = 0.0f;
                 if (ahp_hyp)  hyp += ahp_hyp[n];
                 if (pump_hyp) hyp += pump_hyp[n];
-                I_syn -= hyp;
+                I_syn -= hyp * substrate_pump_factor;
 
                 /* LIF dynamics — use substrate-modulated tau (tau_eff
                  * collapses to tau_mem when no substrate is attached). */
