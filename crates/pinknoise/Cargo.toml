@@ -1,0 +1,16 @@
+[package]
+name = "nimcp-pinknoise"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — 1/f (pink) noise generator via Voss-McCartney, ported from V1"
+
+[lints]
+workspace = true
+
+[dependencies]
+rand = { workspace = true }
+rand_chacha = { workspace = true }
