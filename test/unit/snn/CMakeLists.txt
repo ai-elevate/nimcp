@@ -232,6 +232,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_numerical_stability.cpp)
 endif()
 
 # ============================================================================
+# Test 8: SNN Adaptation (shared AHP / Na-K pump state)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_adaptation.cpp)
+    add_executable(unit_snn_test_snn_adaptation
+        test_snn_adaptation.cpp
+    )
+
+    target_link_libraries(unit_snn_test_snn_adaptation
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_snn_test_snn_adaptation
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_snn_test_snn_adaptation PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_snn_test_snn_adaptation
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;adaptation"
+            TIMEOUT 60
+    )
+
+    message(STATUS "  Added SNN unit test: test_snn_adaptation")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_snn_population.cpp

@@ -1584,6 +1584,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_synapse.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_encoding.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_training.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_adaptation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_bio_async.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_immune.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_ternary.c
