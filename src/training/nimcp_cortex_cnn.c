@@ -18,6 +18,13 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* Phase 3 substrate integration: pulls in substrate_compute_effects,
+ * substrate_debit_activity, substrate_apply_lr + the axon/dendrite
+ * effect struct typedefs. */
+#include "core/substrate/nimcp_substrate_effects.h"
+#include "core/neural_substrate/nimcp_neural_substrate.h"
+#include "middleware/training/nimcp_optimizers.h"
+
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -89,14 +96,52 @@ struct cortex_cnn_processor {
     void* fno_visual;                 /* fno_audio_processor_t* for visual spatial frequencies */
     void* fno_speech;                 /* fno_audio_processor_t* for speech spectral patterns */
 
-    /* Thalamic adapter — owned channel, borrowed router. Appended at the
-     * END of the struct so P3A's substrate fields (substrate, region_id,
-     * cached_axon_effects, cached_dend_effects, substrate_steps_since_update)
-     * can land immediately before it without conflict. If both patches land
-     * out of order, the trivial union resolution is: keep BOTH blocks, with
-     * the substrate block sitting above the thalamic_channel field. */
-    struct thalamic_channel_s* thalamic_channel;  /* owned */
+    /* Substrate integration (Phase 3). Pointer borrowed. region_id is
+     * per-modality so each cortex can have different local chemistry. */
+    struct neural_substrate*      substrate;                    /* borrowed */
+    uint32_t                      region_id;                    /* 0..3 per cortex_cnn_type_t */
+    axon_substrate_effects_t      cached_axon_effects;
+    dendrite_substrate_effects_t  cached_dend_effects;
+    uint32_t                      substrate_steps_since_update; /* period counter */
+
+    /* Thalamic adapter — owned channel, borrowed router. */
+    struct thalamic_channel_s*    thalamic_channel;              /* owned */
 };
+
+/* ========================================================================= */
+/* Substrate tunables (process-wide, same pattern as SNN/LNN adapters)        */
+/* ========================================================================= */
+
+/* Rationale: these four knobs are process-wide tuning rather than per-
+ * instance config. Every live cortex CNN reads the same values from the
+ * hot forward path, and a single-variable read is cheaper than chasing
+ * a config pointer through an opaque handle. Matches snn_tune_* /
+ * lnn_tune_* convention. Defaults enable all modulation. */
+static float g_cnn_substrate_enabled           = 1.0f;
+static float g_cnn_substrate_update_period     = 10.0f;  /* forward steps */
+static float g_cnn_substrate_activation_mod_on = 1.0f;   /* scale post-act by integration_efficiency */
+static float g_cnn_substrate_plasticity_mod_on = 1.0f;   /* scale lr by plasticity_mod */
+
+/* Setters — booleans accept any nonzero as on; period clamped to [1, 10000]
+ * forward steps, out-of-range silently ignored. */
+void cortex_cnn_tune_set_substrate_enabled(float v) {
+    g_cnn_substrate_enabled = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void cortex_cnn_tune_set_substrate_update_period(float v) {
+    if (v >= 1.0f && v <= 10000.0f) g_cnn_substrate_update_period = v;
+}
+void cortex_cnn_tune_set_substrate_activation_mod_on(float v) {
+    g_cnn_substrate_activation_mod_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void cortex_cnn_tune_set_substrate_plasticity_mod_on(float v) {
+    g_cnn_substrate_plasticity_mod_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+
+/* Getters — mirror the setters. */
+float cortex_cnn_tune_get_substrate_enabled(void)           { return g_cnn_substrate_enabled; }
+float cortex_cnn_tune_get_substrate_update_period(void)     { return g_cnn_substrate_update_period; }
+float cortex_cnn_tune_get_substrate_activation_mod_on(void) { return g_cnn_substrate_activation_mod_on; }
+float cortex_cnn_tune_get_substrate_plasticity_mod_on(void) { return g_cnn_substrate_plasticity_mod_on; }
 
 /* ========================================================================= */
 /* Internal helpers                                                           */
@@ -105,6 +150,94 @@ struct cortex_cnn_processor {
 static const char* cortex_type_names[CORTEX_CNN_COUNT] = {
     "Visual", "Audio", "Speech", "Somato"
 };
+
+/**
+ * @brief Refresh cached substrate effects if the update-period tick rolled over.
+ *
+ * WHAT: On the first call since attach (counter==0) or after N=period steps,
+ *       reads the substrate and recomputes axon/dendrite effect structs into
+ *       the per-processor cache. Advances the counter and resets it at period.
+ * WHY:  Substrate effects change slowly relative to forward steps; recomputing
+ *       every step wastes cycles. Rate-limited refresh matches LNN/SNN adapters.
+ * HOW:  If the master knob is off or no substrate attached, returns NULLs.
+ *       Otherwise returns pointers into proc->cached_*_effects on success.
+ *
+ * @param proc      Processor (must be non-NULL; checked by callers)
+ * @param out_axon  [out] axon effects pointer or NULL
+ * @param out_dend  [out] dendrite effects pointer or NULL
+ */
+static void cortex_cnn_refresh_substrate(cortex_cnn_processor_t* proc,
+                                          const axon_substrate_effects_t** out_axon,
+                                          const dendrite_substrate_effects_t** out_dend) {
+    if (out_axon) *out_axon = NULL;
+    if (out_dend) *out_dend = NULL;
+    if (!proc || !proc->substrate || g_cnn_substrate_enabled == 0.0f) return;
+
+    uint32_t period = (uint32_t)g_cnn_substrate_update_period;
+    if (proc->substrate_steps_since_update == 0 || period == 0) {
+        (void)substrate_compute_effects(proc->substrate,
+                                        &proc->cached_axon_effects,
+                                        &proc->cached_dend_effects);
+    }
+    proc->substrate_steps_since_update++;
+    if (period > 0 && proc->substrate_steps_since_update >= period) {
+        proc->substrate_steps_since_update = 0;
+    }
+
+    if (out_axon) *out_axon = &proc->cached_axon_effects;
+    if (out_dend) *out_dend = &proc->cached_dend_effects;
+}
+
+/**
+ * @brief Apply substrate activation modulation to an embedding buffer.
+ *
+ * WHAT: Scales each element of embedding[0..dim-1] by dend->integration_efficiency
+ *       when the activation_mod knob is on and the multiplier differs from 1.0.
+ * WHY:  Dendritic substrate damage reduces post-synaptic integration efficiency;
+ *       mirror that in the CNN embedding amplitude so downstream consumers see
+ *       a weaker signal when chemistry is compromised.
+ * HOW:  Null-tolerant. Called by each modality forward once the embedding is
+ *       populated.
+ */
+static void cortex_cnn_apply_activation_mod(float* embedding,
+                                             uint32_t dim,
+                                             const dendrite_substrate_effects_t* dend) {
+    if (!embedding || dim == 0 || !dend) return;
+    if (g_cnn_substrate_activation_mod_on == 0.0f) return;
+    float m = dend->integration_efficiency;
+    if (m == 1.0f) return;
+    for (uint32_t i = 0; i < dim; i++) {
+        embedding[i] *= m;
+    }
+}
+
+/**
+ * @brief Report network activity back to the substrate (end-of-forward debit).
+ *
+ * WHAT: Uses L1 norm of the embedding × 100 as the activity proxy, same
+ *       pattern as the LNN adapter (continuous-valued output, no discrete
+ *       spikes to count).
+ * WHY:  Sustained activity consumes ATP; debiting closes the loop between
+ *       cortex output and metabolic state so a heavily-used cortex gradually
+ *       degrades its own substrate and therefore its own effects.
+ * HOW:  Only debits when substrate is attached AND master knob is on. Plasticity
+ *       updates are 0 in the forward phase (backward applies its own debit).
+ */
+static void cortex_cnn_debit_activity(cortex_cnn_processor_t* proc) {
+    if (!proc || !proc->substrate || g_cnn_substrate_enabled == 0.0f) return;
+    if (!proc->embedding || proc->embedding_dim == 0) return;
+
+    float sum_abs = 0.0f;
+    for (uint32_t i = 0; i < proc->embedding_dim; i++) {
+        float v = proc->embedding[i];
+        if (isfinite(v)) sum_abs += fabsf(v);
+    }
+    uint32_t activity = (uint32_t)(sum_abs * 100.0f);
+    substrate_debit_activity(proc->substrate,
+                             proc->region_id,
+                             activity,
+                             0 /* plasticity counted separately */);
+}
 
 /**
  * @brief Get or create label index for a string label
@@ -643,9 +776,41 @@ cortex_cnn_processor_t* cortex_cnn_create(cortex_cnn_type_t type, uint32_t embed
 
     proc->num_params = estimate_params(type);
 
+    /* Substrate integration: init fields. region_id mirrors the cortex type
+     * (visual=0, audio=1, speech=2, somato=3) so each modality gets its own
+     * local metabolic compartment (caller can extend to separate substrates
+     * via cortex_cnn_attach_substrate). */
+    proc->substrate = NULL;
+    proc->region_id = (uint32_t)type;
+    memset(&proc->cached_axon_effects, 0, sizeof(proc->cached_axon_effects));
+    memset(&proc->cached_dend_effects, 0, sizeof(proc->cached_dend_effects));
+    proc->substrate_steps_since_update = 0;
+
     NIMCP_LOGGING_INFO("Created %s cortex CNN processor: embed_dim=%u, ~%u params",
                       cortex_type_names[type], embedding_dim, proc->num_params);
     return proc;
+}
+
+/**
+ * @brief Attach a neural substrate to the cortex CNN (borrowed pointer).
+ *
+ * WHAT: Stores a borrowed pointer to the substrate and resets the effect
+ *       cache + update counter so the next forward step recomputes fresh.
+ * WHY:  The cortex needs a substrate handle to read ATP/temperature/ion/
+ *       membrane state on each refresh tick. Ownership remains with the
+ *       caller — the processor does not free it.
+ * HOW:  Null-tolerant on both arguments.
+ */
+void cortex_cnn_attach_substrate(cortex_cnn_processor_t* proc,
+                                 struct neural_substrate* substrate) {
+    if (!proc) return;
+    proc->substrate = substrate;
+    memset(&proc->cached_axon_effects, 0, sizeof(proc->cached_axon_effects));
+    memset(&proc->cached_dend_effects, 0, sizeof(proc->cached_dend_effects));
+    proc->substrate_steps_since_update = 0;
+    NIMCP_LOGGING_DEBUG("cortex_cnn_attach_substrate: type=%s region=%u substrate=%p",
+                        cortex_type_names[proc->type], proc->region_id,
+                        (void*)substrate);
 }
 
 void cortex_cnn_destroy(cortex_cnn_processor_t* proc) {
@@ -679,6 +844,12 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
                                         uint32_t w, uint32_t h, uint32_t ch) {
     if (!proc || proc->type != CORTEX_CNN_VISUAL || !pixels) return NULL;
     if (w == 0 || h == 0 || ch == 0) return NULL;
+
+    /* Substrate refresh (Phase 3): recompute cached effects if this is
+     * the first call since attach or the period tick has rolled over. */
+    const axon_substrate_effects_t*     axon_eff = NULL;
+    const dendrite_substrate_effects_t* dend_eff = NULL;
+    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
 
     /* Convert uint8 pixels to float [0,1] and pack as 1D tensor (H*W*C) */
     uint32_t total = w * h * ch;
@@ -724,6 +895,11 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
     proc->forward_steps++;
     extract_embedding(proc);
 
+    /* Apply substrate activation modulation to the CNN embedding before FNO
+     * mixing — dendritic integration damage shrinks the amplitude of the
+     * primary CNN signal. */
+    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
+
     /* FNO visual: spectral convolution on grayscale scanline.
      * Captures spatial frequency patterns (edges, textures) that complement CNN. */
     if (proc->fno_visual && proc->embedding) {
@@ -748,12 +924,18 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
     }
 
     cortex_apply_thalamic_gate(proc);
+    cortex_cnn_debit_activity(proc);
     return proc->embedding;
 }
 
 const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
                                        const float* mel, uint32_t mel_size) {
     if (!proc || proc->type != CORTEX_CNN_AUDIO || !mel) return NULL;
+
+    /* Substrate refresh (Phase 3). */
+    const axon_substrate_effects_t*     axon_eff = NULL;
+    const dendrite_substrate_effects_t* dend_eff = NULL;
+    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
 
     /* FNO path — spectral convolution for native frequency-domain processing */
     if (proc->fno_audio) {
@@ -769,12 +951,15 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
         }
         proc->has_fwd_result = true;
         proc->forward_steps++;
-        /* Compute confidence from embedding norm */
+        /* Apply substrate activation modulation after FNO spectral embedding. */
+        cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
+        /* Compute confidence from (post-mod) embedding norm */
         float norm = 0.0f;
         for (uint32_t i = 0; i < proc->embedding_dim; i++)
             norm += proc->embedding[i] * proc->embedding[i];
         proc->confidence = (norm > 0.0f) ? 1.0f / (1.0f + expf(-sqrtf(norm))) : 0.0f;
         cortex_apply_thalamic_gate(proc);
+        cortex_cnn_debit_activity(proc);
         return proc->embedding;
     }
 
@@ -797,13 +982,20 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
+    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
     cortex_apply_thalamic_gate(proc);
+    cortex_cnn_debit_activity(proc);
     return proc->embedding;
 }
 
 const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
                                         const float* phonemes, uint32_t size) {
     if (!proc || proc->type != CORTEX_CNN_SPEECH || !phonemes) return NULL;
+
+    /* Substrate refresh (Phase 3). */
+    const axon_substrate_effects_t*     axon_eff = NULL;
+    const dendrite_substrate_effects_t* dend_eff = NULL;
+    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
 
     /* Pack as [1, 1, 1, size] */
     uint32_t dims[4] = {1, 1, 1, size};
@@ -824,6 +1016,9 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
+
+    /* Substrate activation modulation before FNO mixing. */
+    cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
 
     /* FNO speech: spectral convolution on phoneme features */
     if (proc->fno_speech && proc->embedding) {
@@ -855,6 +1050,7 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
     }
 
     cortex_apply_thalamic_gate(proc);
+    cortex_cnn_debit_activity(proc);
     return proc->embedding;
 }
 
@@ -882,6 +1078,11 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
                                         const float* segments, uint32_t n_segments) {
     if (!proc || proc->type != CORTEX_CNN_SOMATO || !segments) return NULL;
     if (n_segments == 0) return NULL;
+
+    /* Substrate refresh (Phase 3). */
+    const axon_substrate_effects_t*     axon_eff = NULL;
+    const dendrite_substrate_effects_t* dend_eff = NULL;
+    cortex_cnn_refresh_substrate(proc, &axon_eff, &dend_eff);
 
     /* ================================================================
      * Somatosensory preprocessing pipeline (biologically inspired):
@@ -949,6 +1150,15 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
     const float* result = cortex_forward_1d(proc, wavelet_buf, total_wavelet);
     nimcp_free(wavelet_buf);
 
+    /* Apply substrate activation modulation + debit once the CNN has written
+     * its embedding. cortex_forward_1d is shared with the UTM adapter path,
+     * which already bypasses substrate modulation for somato/visual, so the
+     * wrap lives at the public forward layer. */
+    if (result) {
+        cortex_cnn_apply_activation_mod(proc->embedding, proc->embedding_dim, dend_eff);
+        cortex_cnn_debit_activity(proc);
+    }
+
     return result;
 }
 
@@ -996,8 +1206,41 @@ float cortex_cnn_backward(cortex_cnn_processor_t* proc,
         return -1.0f;
     }
 
+    /* Substrate plasticity modulation (Phase 3): scale optimizer LR by
+     * dend_effects.plasticity_mod for this step only, then restore. When
+     * the substrate knob is off (or no substrate attached, or the flag is
+     * disabled), lr_scale stays at 1.0 and this is a no-op. */
+    nimcp_optimizer_context_t* opt = cnn_trainer_get_optimizer(proc->trainer);
+    float original_lr = 0.0f;
+    float lr_scale    = 1.0f;
+    if (opt && proc->substrate
+        && g_cnn_substrate_enabled != 0.0f
+        && g_cnn_substrate_plasticity_mod_on != 0.0f) {
+        /* Reads cached effects — they are populated during the forward step.
+         * If cache is stale (forward hasn't run yet) the values are zero, in
+         * which case we skip scaling to avoid multiplying LR by 0. */
+        float pmod = proc->cached_dend_effects.plasticity_mod;
+        if (pmod > 0.0f && pmod != 1.0f) {
+            lr_scale    = pmod;
+            original_lr = nimcp_optimizer_get_lr(opt);
+            nimcp_optimizer_set_lr(opt, original_lr * lr_scale);
+        }
+    }
+
     cnn_trainer_step(proc->trainer);
     proc->backward_steps++;
+
+    /* Restore LR after the step. */
+    if (lr_scale != 1.0f && opt) {
+        nimcp_optimizer_set_lr(opt, original_lr);
+    }
+
+    /* Substrate backward debit — plasticity updates are the expensive metabolic
+     * event. Counts 1 unit per backward call (one gradient step). */
+    if (proc->substrate && g_cnn_substrate_enabled != 0.0f) {
+        substrate_debit_activity(proc->substrate, proc->region_id,
+                                 0 /* spikes */, 1 /* plasticity */);
+    }
 
     /* Compute loss approximation from last forward output vs one-hot */
     float loss = 0.0f;
@@ -1285,8 +1528,33 @@ static int cortex_adapter_backward(void* ctx, const float* dl_doutput, uint32_t 
         a->proc->trainer, grad_t, &a->proc->last_fwd);
 
     if (err == NIMCP_SUCCESS) {
+        /* Substrate plasticity modulation (Phase 3) — same pattern as
+         * cortex_cnn_backward. No-op when substrate is NULL or knobs off. */
+        nimcp_optimizer_context_t* opt = cnn_trainer_get_optimizer(a->proc->trainer);
+        float original_lr = 0.0f;
+        float lr_scale    = 1.0f;
+        if (opt && a->proc->substrate
+            && g_cnn_substrate_enabled != 0.0f
+            && g_cnn_substrate_plasticity_mod_on != 0.0f) {
+            float pmod = a->proc->cached_dend_effects.plasticity_mod;
+            if (pmod > 0.0f && pmod != 1.0f) {
+                lr_scale    = pmod;
+                original_lr = nimcp_optimizer_get_lr(opt);
+                nimcp_optimizer_set_lr(opt, original_lr * lr_scale);
+            }
+        }
+
         cnn_trainer_step(a->proc->trainer);
         a->proc->backward_steps++;
+
+        if (lr_scale != 1.0f && opt) {
+            nimcp_optimizer_set_lr(opt, original_lr);
+        }
+
+        if (a->proc->substrate && g_cnn_substrate_enabled != 0.0f) {
+            substrate_debit_activity(a->proc->substrate, a->proc->region_id,
+                                     0 /* spikes */, 1 /* plasticity */);
+        }
     }
 
     /* Copy input gradients if available */

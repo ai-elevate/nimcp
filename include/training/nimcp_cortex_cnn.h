@@ -38,9 +38,10 @@ struct cnn_trainer_s;
 struct nimcp_trainable_network_ops;
 typedef struct nimcp_trainable_network_ops nimcp_trainable_network_ops_t;
 
-/* Forward decl for thalamic router — avoids including the router header
- * (and its middleware dependencies) into public cortex consumers. */
+/* Forward decls — keep public header light (avoid pulling router +
+ * substrate headers into cortex consumers). */
 struct thalamic_router;
+struct neural_substrate;
 
 /* ========================================================================= */
 /* Types                                                                      */
@@ -292,6 +293,53 @@ int cortex_cnn_save(const cortex_cnn_processor_t* proc, const char* path);
  * @return 0 on success, -1 on error
  */
 int cortex_cnn_load(cortex_cnn_processor_t* proc, const char* path);
+
+/* ========================================================================= */
+/* Substrate Integration (Phase 3)                                            */
+/* ========================================================================= */
+
+/**
+ * @brief Attach a neural substrate to a cortex CNN processor (borrowed pointer).
+ *
+ * WHAT: Stores a borrowed pointer to the substrate on the processor and zeroes
+ *       the cached effect structs + update counter so the next forward step
+ *       recomputes fresh effects.
+ * WHY:  Each cortex modality has its own metabolic compartment (region_id =
+ *       cortex type: visual=0, audio=1, speech=2, somato=3). Substrate ATP,
+ *       temperature, ion and membrane state modulate CNN post-activation
+ *       amplitude and effective learning rate.
+ * HOW:  NULL-tolerant. Passing proc=NULL or substrate=NULL are both safe.
+ *       The substrate lifecycle is the caller's responsibility — the cortex
+ *       does not free it.
+ *
+ * @param proc       Cortex CNN processor (NULL-tolerant)
+ * @param substrate  Neural substrate (NULL detaches)
+ */
+void cortex_cnn_attach_substrate(cortex_cnn_processor_t* proc,
+                                 struct neural_substrate* substrate);
+
+/* ------------------------------------------------------------------------- */
+/* Substrate tunables (process-wide, same pattern as SNN/LNN adapters)       */
+/* ------------------------------------------------------------------------- */
+
+/** Master enable. Any nonzero is treated as 1.0. Default 1.0. */
+void  cortex_cnn_tune_set_substrate_enabled(float v);
+float cortex_cnn_tune_get_substrate_enabled(void);
+
+/** Recompute period in forward steps. Clamped to [1, 10000]. Out-of-range
+ *  values are silently ignored. Default 10.0. */
+void  cortex_cnn_tune_set_substrate_update_period(float v);
+float cortex_cnn_tune_get_substrate_update_period(void);
+
+/** Activation modulation on/off. When on, post-activation embedding is scaled
+ *  by dend_effects.integration_efficiency. Default 1.0. */
+void  cortex_cnn_tune_set_substrate_activation_mod_on(float v);
+float cortex_cnn_tune_get_substrate_activation_mod_on(void);
+
+/** Plasticity modulation on/off. When on, the effective optimizer LR for this
+ *  cortex's step is scaled by dend_effects.plasticity_mod. Default 1.0. */
+void  cortex_cnn_tune_set_substrate_plasticity_mod_on(float v);
+float cortex_cnn_tune_get_substrate_plasticity_mod_on(void);
 
 #ifdef __cplusplus
 }

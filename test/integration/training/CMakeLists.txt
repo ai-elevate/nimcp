@@ -392,5 +392,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_thalamic_compose.cpp)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# =============================================================================
+# Cortex CNN Substrate Adapter Integration Tests (Phase 3)
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_substrate_integration.cpp)
+    add_executable(integration_training_test_cortex_cnn_substrate_integration
+        test_cortex_cnn_substrate_integration.cpp
+    )
+    target_include_directories(integration_training_test_cortex_cnn_substrate_integration PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_training_test_cortex_cnn_substrate_integration PRIVATE cxx_std_20)
+    target_link_libraries(integration_training_test_cortex_cnn_substrate_integration PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_training_test_cortex_cnn_substrate_integration
+             COMMAND integration_training_test_cortex_cnn_substrate_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_training_test_cortex_cnn_substrate_integration
+        PROPERTIES
+            LABELS "integration;training;cnn;cortex;substrate"
+            TIMEOUT 300
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)

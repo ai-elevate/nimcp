@@ -3783,6 +3783,11 @@ const nimcp_tensor_t* cnn_trainer_get_input_grad(const cnn_trainer_t* trainer) {
     return trainer->last_input_grad;
 }
 
+nimcp_optimizer_context_t* cnn_trainer_get_optimizer(const cnn_trainer_t* trainer) {
+    if (!trainer) return NULL;
+    return trainer->optimizer;
+}
+
 //=============================================================================
 // Persistence (save/load)
 //=============================================================================

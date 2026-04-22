@@ -1002,6 +1002,18 @@ void cnn_trainer_set_managed_by_utm(cnn_trainer_t* trainer, bool managed);
 const nimcp_tensor_t* cnn_trainer_get_input_grad(const cnn_trainer_t* trainer);
 
 /**
+ * @brief Get the trainer's optimizer context (for runtime LR manipulation).
+ *
+ * WHAT: Exposes the opaque nimcp_optimizer_context_t* owned by the trainer.
+ * WHY:  Per-step LR scaling by external modulators (e.g. substrate-aware
+ *       cortex adapters) needs get_lr / set_lr on the optimizer without
+ *       opening the struct itself.
+ * HOW:  Returns the internal pointer. The caller MUST NOT destroy the
+ *       optimizer. Returns NULL if trainer is NULL or has no optimizer.
+ */
+nimcp_optimizer_context_t* cnn_trainer_get_optimizer(const cnn_trainer_t* trainer);
+
+/**
  * @brief C5: Backward pass with externally provided gradient (skip internal MSE)
  *
  * Used by UTM adapter: the composite loss gradient is computed by UTM,
