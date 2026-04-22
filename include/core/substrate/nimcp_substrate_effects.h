@@ -61,6 +61,14 @@ void substrate_debit_activity(
 static inline float substrate_apply_tau(float tau_base,
                                         const dendrite_substrate_effects_t* d) {
     if (!d) return tau_base;
+    /* Detect a zero-initialized (uninitialized) effects cache: both
+     * membrane_time_constant_mod and overall_capacity at exactly 0.0f means
+     * the effects have never been computed. Return tau_base unscaled so that
+     * an uninitialized cache doesn't collapse time constants to the 0.1 floor
+     * and disrupt dynamics. Belt-and-suspenders for Bug #3. */
+    if (d->membrane_time_constant_mod == 0.0f && d->overall_capacity == 0.0f) {
+        return tau_base;
+    }
     float v = tau_base * d->membrane_time_constant_mod;
     return (v < 0.1f) ? 0.1f : v;  /* floor to avoid div-by-zero downstream */
 }
@@ -77,6 +85,14 @@ static inline float substrate_apply_tref(float tref_base,
 static inline float substrate_apply_lr(float lr_base,
                                        const dendrite_substrate_effects_t* d) {
     if (!d) return lr_base;
+    /* Detect a zero-initialized (uninitialized) effects cache: both
+     * plasticity_mod and overall_capacity at exactly 0.0f means the cache
+     * has never been populated. Returning lr_base * 0 would silently kill
+     * R-STDP / learning; return the unscaled base instead. Complements the
+     * attach-side initialization fix. See Bug #3. */
+    if (d->plasticity_mod == 0.0f && d->overall_capacity == 0.0f) {
+        return lr_base;
+    }
     return lr_base * d->plasticity_mod;
 }
 

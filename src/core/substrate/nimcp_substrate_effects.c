@@ -15,9 +15,17 @@
 #include "core/substrate/nimcp_substrate_effects.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/platform/nimcp_platform_mutex.h"
 
 #include <math.h>
 #include <string.h>
+
+/* Physiologic temperature bounds (°C). Values outside this range are either
+ * non-survivable in vivo or have no sensible Q10 interpretation. Clamp here
+ * so that downstream formulas (e.g. spike_threshold_mod = nmda * (2 - q10))
+ * receive a bounded temperature regardless of sensor/config noise. */
+#define SUBSTRATE_EFFECTS_TEMP_MIN_C          20.0f
+#define SUBSTRATE_EFFECTS_TEMP_MAX_C          45.0f
 
 /* Q10 coefficient for generic channel kinetics — Hodgkin & Huxley (1952). */
 #define SUBSTRATE_EFFECTS_Q10                 2.3f
@@ -45,7 +53,13 @@ nimcp_error_t substrate_compute_effects(
     /* Read substrate state. We access fields directly (const, no mutex);
      * single-reader snapshot is acceptable for a per-step computation. */
     float atp   = clampf(substrate->metabolic.atp_level,       0.0f, 1.0f);
-    float tempC = substrate->physical.temperature;
+    /* Clamp temperature to physiologic range before computing Q10, so that
+     * extreme/sensor-noise temperature values don't produce unbounded q10
+     * values which downstream formulas (e.g. spike_threshold_mod) consume
+     * pre-clamp. See Bug #5. */
+    float tempC = clampf(substrate->physical.temperature,
+                         SUBSTRATE_EFFECTS_TEMP_MIN_C,
+                         SUBSTRATE_EFFECTS_TEMP_MAX_C);
     float ion   = clampf(substrate->physical.ion_balance,      0.0f, 1.0f);
     float mem   = clampf(substrate->physical.membrane_integrity, 0.0f, 1.0f);
 
@@ -95,16 +109,25 @@ nimcp_error_t substrate_compute_effects(
         d->attenuation_mod            = 1.0f + (1.0f - mem);  /* [1,2] */
 
         /* NMDA Mg2+ block sensitivity + Na channel availability scale w/ ions. */
-        d->nmda_mg_block_mod          = 0.8f + 0.4f * ion;    /* [0.8,1.2] */
+        float nmda_mg_block           = 0.8f + 0.4f * ion;    /* [0.8,1.2] */
+        d->nmda_mg_block_mod          = nmda_mg_block;
         d->na_channel_availability    = ion;
-        /* Higher T lowers threshold (faster kinetics), capped near 1.0. */
-        d->spike_threshold_mod        = clampf(2.0f - q10_factor, 0.8f, 1.2f);
+        /* Spike threshold: product of NMDA Mg2+ block (ion-driven) and the
+         * inverse temperature effect (2 - q10). Formula matches
+         * axon_dendrite_substrate_bridge.c:534,547 — ion × temp composition,
+         * then clamp to the same [0.8,1.2] band the helper previously used. */
+        d->spike_threshold_mod        = clampf(nmda_mg_block * (2.0f - q10_factor),
+                                              0.8f, 1.2f);
 
-        /* Ca handling: pumps need ATP, buffers partially ATP-dependent. */
-        d->ca_pump_efficiency         = atp;
-        d->ca_buffer_capacity         = 0.7f + 0.3f * atp;
-        d->ca_handling_mod            = 0.5f * (d->ca_pump_efficiency
-                                              + d->ca_buffer_capacity);
+        /* Ca handling: pumps need ATP, buffers partially ATP-dependent.
+         * Compute pump/buffer into locals first, then assign and derive
+         * the combined handling_mod — avoids silent breakage if a future
+         * edit reorders the struct-field assignments. See Bug #4. */
+        float ca_pump                 = atp;
+        float ca_buffer               = 0.7f + 0.3f * atp;
+        d->ca_pump_efficiency         = ca_pump;
+        d->ca_buffer_capacity         = ca_buffer;
+        d->ca_handling_mod            = 0.5f * (ca_pump + ca_buffer);
 
         /* Plasticity: LTP/LTD scale with ATP; LTD cheaper. */
         d->ltp_capacity               = atp;
@@ -140,9 +163,22 @@ void substrate_debit_activity(
                 + (float)n_plasticity_updates * SUBSTRATE_EFFECTS_ATP_PER_PLASTICITY;
 
     if (debit > 0.0f) {
+        /* Serialize the read-modify-write. Phase 2+3 share one
+         * neural_substrate_t across SNN, LNN, and per-cortex CNN; all
+         * those networks can call substrate_debit_activity concurrently
+         * from different threads. Without locking, lost-update races
+         * silently under-debit ATP. Matches the locking pattern in
+         * src/core/neural_substrate/nimcp_neural_substrate.c (see
+         * substrate_consume_atp / substrate_set_atp / etc.). See Bug #1. */
+        if (substrate->mutex) {
+            nimcp_platform_mutex_lock(substrate->mutex);
+        }
         float new_atp = substrate->metabolic.atp_level - debit;
         if (new_atp < 0.0f) new_atp = 0.0f;
         substrate->metabolic.atp_level = new_atp;
+        if (substrate->mutex) {
+            nimcp_platform_mutex_unlock(substrate->mutex);
+        }
     }
 
     LOG_DEBUG("substrate_debit_activity: region=%u spikes=%u plast=%u debit=%.3e",
