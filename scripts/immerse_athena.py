@@ -61,7 +61,20 @@ logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 # Import nimcp FIRST — it initializes the CUDA context for brain training.
 # In --daemon mode, nimcp is only needed for nimcp.init() which is optional
 # since the daemon process already initialized everything.
-if "--daemon" not in sys.argv:
+#
+# V2 backend: `--backend=v2` (or env NIMCP_BACKEND=v2) swaps nimcp for the
+# V2 adapter shim so the harness drives nimcp_v2.Brain unchanged.
+# See scripts/v2_brain_adapter.py + docs/V2_PLAN.md §Phase 7c/7d.
+_USE_V2 = (
+    "--backend=v2" in sys.argv
+    or os.environ.get("NIMCP_BACKEND") == "v2"
+)
+if _USE_V2:
+    # Strip the token so argparse below doesn't choke on it.
+    sys.argv = [a for a in sys.argv if a != "--backend=v2"]
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import v2_brain_adapter as nimcp  # type: ignore
+elif "--daemon" not in sys.argv:
     import nimcp
 else:
     nimcp = None  # not needed — BrainProxy handles everything
@@ -8626,6 +8639,12 @@ class AthenaIPCServer:
 def main():
     parser = argparse.ArgumentParser(
         description="Immersive Developmental Learning for Athena")
+    parser.add_argument("--backend", choices=["v1", "v2"], default="v1",
+                        help="Brain backend: v1 (default, legacy nimcp) or "
+                             "v2 (nimcp_v2 via v2_brain_adapter shim). "
+                             "Also settable via NIMCP_BACKEND env var. "
+                             "The --backend=v2 form is pre-consumed at module "
+                             "import so argparse here accepts but ignores it.")
     parser.add_argument("--stage", type=int, default=0,
                         help="Start from stage (0-3)")
     parser.add_argument("--resume", action="store_true",
