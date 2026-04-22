@@ -448,6 +448,20 @@ impl SnnNetwork {
         let n_pops = config.populations.len();
 
         use rand::SeedableRng;
+
+        // Phase 9b — one shared CudaContext for all GPU objects in this
+        // network. Was per-object in 9a, which exhausted VRAM on large
+        // shapes (6 edges × per-context overhead on 20 GB RTX 4000).
+        #[cfg(feature = "cuda")]
+        let shared_gpu_ctx: Option<std::sync::Arc<cudarc::driver::CudaContext>> =
+            if config.use_gpu_forward {
+                Some(cudarc::driver::CudaContext::new(0).map_err(|e| {
+                    SnnError::GpuUnavailable(format!("CudaContext init: {e:?}"))
+                })?)
+            } else {
+                None
+            };
+
         let mut populations: Vec<Pop> = Vec::with_capacity(config.populations.len());
         for (pop_idx, spec) in config.populations.iter().enumerate() {
             let state = LifState::new(spec.n_neurons, &spec.lif);
@@ -541,11 +555,18 @@ impl SnnNetwork {
                     pop_idx,
                     msg: format!("basket: {e}"),
                 })?;
-            // Phase 9a — GPU LIF integrator, opt-in via config.
+            // Phase 9a/9b — GPU LIF integrator. Phase 9b uses the
+            // shared context so every pop's LifGpu shares one
+            // CUcontext instead of allocating its own.
             #[cfg(feature = "cuda")]
-            let lif_gpu = if config.use_gpu_forward {
+            let lif_gpu = if let Some(ctx) = shared_gpu_ctx.as_ref() {
                 Some(
-                    crate::lif::LifGpu::new(spec.n_neurons, &spec.lif).map_err(|e| {
+                    crate::lif::LifGpu::new_with_context(
+                        ctx.clone(),
+                        spec.n_neurons,
+                        &spec.lif,
+                    )
+                    .map_err(|e| {
                         SnnError::GpuUnavailable(format!("LifGpu pop {pop_idx}: {e:?}"))
                     })?,
                 )
@@ -627,10 +648,10 @@ impl SnnNetwork {
             );
             let i_syn_scratch = vec![0.0_f32; dst_pop.spec.n_neurons as usize];
 
-            // Phase 9a — GPU CSR forward, opt-in via config.
+            // Phase 9a/9b — GPU CSR forward, shared context.
             #[cfg(feature = "cuda")]
-            let csr_gpu = if config.use_gpu_forward {
-                Some(crate::csr::CsrGpu::new(&csr).map_err(|e| {
+            let csr_gpu = if let Some(ctx) = shared_gpu_ctx.as_ref() {
+                Some(crate::csr::CsrGpu::new_with_context(ctx.clone(), &csr).map_err(|e| {
                     SnnError::GpuUnavailable(format!("CsrGpu edge {edge_idx}: {e:?}"))
                 })?)
             } else {

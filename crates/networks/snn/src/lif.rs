@@ -290,20 +290,32 @@ impl LifGpu {
     /// Propagates any [`GpuError::Cuda`] from context creation, NVRTC
     /// compilation, module load, or device allocation.
     pub fn new(n_neurons: u32, params: &LifParams) -> Result<Self, GpuError> {
+        let ctx = CudaContext::new(0).map_err(cuda_err)?;
+        Self::new_with_context(ctx, n_neurons, params)
+    }
+
+    /// Like [`Self::new`] but reuses a caller-supplied context.
+    ///
+    /// Phase 9b fix: sharing one [`CudaContext`] across every
+    /// [`LifGpu`] + [`crate::csr::CsrGpu`] in the network was the
+    /// blocker for 1.8M-neuron scale — each fresh context costs
+    /// several hundred MB of VRAM, and 6+ edges exhausted the 20 GB
+    /// RTX 4000 budget before the weights ever got uploaded.
+    pub fn new_with_context(
+        ctx: Arc<CudaContext>,
+        n_neurons: u32,
+        params: &LifParams,
+    ) -> Result<Self, GpuError> {
         if n_neurons == 0 {
             return Err(GpuError::Cuda("LifGpu::new: n_neurons must be > 0".into()));
         }
         let n = n_neurons as usize;
 
-        let ctx = CudaContext::new(0).map_err(cuda_err)?;
         let stream = ctx.default_stream();
-
-        // Compile once, reuse across every step() call.
         let ptx = cudarc::nvrtc::compile_ptx(LIF_KERNEL_SRC).map_err(cuda_err)?;
         let module = ctx.load_module(ptx).map_err(cuda_err)?;
         let kernel = module.load_function("lif_step").map_err(cuda_err)?;
 
-        // Initial state: every neuron at rest, no refractory, no spikes.
         let v_init: Vec<f32> = vec![params.v_rest; n];
         let v_mem = stream.memcpy_stod(&v_init).map_err(cuda_err)?;
         let refrac: CudaSlice<u32> = stream.alloc_zeros::<u32>(n).map_err(cuda_err)?;

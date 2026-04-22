@@ -604,6 +604,18 @@ mod gpu {
         /// if NVRTC compilation fails, or if any upload fails.
         pub fn new(csr: &CsrSynapses) -> Result<Self, GpuError> {
             let ctx = CudaContext::new(0).map_err(cuda_err)?;
+            Self::new_with_context(ctx, csr)
+        }
+
+        /// Like [`Self::new`] but reuses a caller-supplied context.
+        /// Phase 9b fix for the 1.8M-OOM: every edge used to spin up a
+        /// fresh [`CudaContext`] costing hundreds of MB of fixed
+        /// overhead; sharing one context across all edges + pops is
+        /// what makes the 6-edge × 300K-neuron shape fit in 20 GB.
+        pub fn new_with_context(
+            ctx: Arc<CudaContext>,
+            csr: &CsrSynapses,
+        ) -> Result<Self, GpuError> {
             let stream = ctx.default_stream();
 
             let ptx = cudarc::nvrtc::compile_ptx(KERNEL_SRC).map_err(cuda_err)?;
