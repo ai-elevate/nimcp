@@ -585,6 +585,8 @@ mod gpu {
         #[allow(dead_code)]
         module: Arc<CudaModule>,
         kernel: CudaFunction,
+        /// Phase 9c — homeostatic-scale kernel loaded from the same PTX.
+        scale_kernel: CudaFunction,
     }
 
     impl std::fmt::Debug for CsrGpu {
@@ -621,6 +623,9 @@ mod gpu {
             let ptx = cudarc::nvrtc::compile_ptx(KERNEL_SRC).map_err(cuda_err)?;
             let module = ctx.load_module(ptx).map_err(cuda_err)?;
             let kernel = module.load_function("csr_i_syn").map_err(cuda_err)?;
+            let scale_kernel = module
+                .load_function("csr_scale_weights")
+                .map_err(cuda_err)?;
 
             let row_ptr = stream.memcpy_stod(&csr.row_ptr).map_err(cuda_err)?;
             let col_idx = stream.memcpy_stod(&csr.col_idx).map_err(cuda_err)?;
@@ -657,6 +662,7 @@ mod gpu {
                 stream,
                 module,
                 kernel,
+                scale_kernel,
             })
         }
 
@@ -738,6 +744,40 @@ mod gpu {
             self.stream.memcpy_dtov(&self.weights).map_err(cuda_err)
         }
 
+        /// Phase 9c — homeostatic synaptic scaling **on device**.
+        ///
+        /// Multiplies every device-side weight by `scale` in one kernel
+        /// launch. This replaces the V2 CPU path:
+        ///
+        /// ```ignore
+        /// for w in &mut csr.weights { *w *= scale; }
+        /// ```
+        ///
+        /// …whose cost at 1.8M synapses is ~2-5 ms + the implicit
+        /// dirty-flag that forced a device re-upload next step. On
+        /// device, the scale is O(n_syn / threads_per_block) and the
+        /// weights stay resident — no round-trip required.
+        ///
+        /// Safe no-op when `scale == 1.0` (common case — homeostatic
+        /// deadband sentinel).
+        #[allow(clippy::float_cmp)] // deadband sentinel value
+        pub fn scale_weights(&mut self, scale: f32) -> Result<(), GpuError> {
+            if scale == 1.0 {
+                return Ok(());
+            }
+            let cfg = LaunchConfig::for_num_elems(self.n_syn);
+            let n_syn = self.n_syn;
+            let mut builder = self.stream.launch_builder(&self.scale_kernel);
+            builder.arg(&mut self.weights);
+            builder.arg(&scale);
+            builder.arg(&n_syn);
+            // SAFETY: kernel signature is
+            //   (float* weights, float scale, unsigned int n_syn);
+            // three args pushed above, `k < n_syn` guard inside kernel.
+            unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+            Ok(())
+        }
+
         /// Number of synapses held on device.
         pub fn n_synapses(&self) -> usize {
             self.n_syn as usize
@@ -754,8 +794,8 @@ mod gpu {
         }
     }
 
-    /// NVRTC kernel source. One thread per post-neuron, scatter-gather
-    /// over that neuron's incoming row in CSR.
+    /// NVRTC kernel source. One thread per post-neuron for csr_i_syn;
+    /// one thread per synapse for csr_scale_weights (Phase 9c).
     const KERNEL_SRC: &str = r#"
 extern "C" __global__ void csr_i_syn(
     const unsigned int* __restrict__ row_ptr,
@@ -776,6 +816,16 @@ extern "C" __global__ void csr_i_syn(
         }
     }
     i_syn[i] = s;
+}
+
+extern "C" __global__ void csr_scale_weights(
+    float* __restrict__ weights,
+    float scale,
+    unsigned int n_syn)
+{
+    unsigned int k = blockIdx.x * blockDim.x + threadIdx.x;
+    if (k >= n_syn) return;
+    weights[k] *= scale;
 }
 "#;
 }
@@ -1355,6 +1405,56 @@ mod tests {
             let mut gpu = CsrGpu::new(&csr).unwrap();
             let bad = vec![0.0_f32; 7]; // wrong length
             assert!(gpu.upload_weights(&bad).is_err());
+        }
+
+        /// Phase 9c — csr_scale_weights kernel: uniform multiply on
+        /// device matches the CPU `w *= scale` loop bit-for-bit.
+        #[test]
+        fn scale_weights_matches_cpu_reference() {
+            if !cuda_available() {
+                eprintln!("skipping: no CUDA device on this host");
+                return;
+            }
+            let csr = CsrSynapses::random_uniform_seeded(
+                pid(0),
+                pid(1),
+                128,
+                64,
+                16,
+                0.5,
+                0.25,
+                0xFACE_FEED,
+            );
+            let cpu_ref: Vec<f32> = csr.weights.iter().map(|w| w * 0.97).collect();
+
+            let mut gpu = CsrGpu::new(&csr).unwrap();
+            gpu.scale_weights(0.97).unwrap();
+            let downloaded = gpu.download_weights().unwrap();
+            assert_eq!(downloaded.len(), cpu_ref.len());
+            for (a, b) in downloaded.iter().zip(cpu_ref.iter()) {
+                assert!(
+                    (a - b).abs() < 1e-6,
+                    "scale drift: gpu={a} cpu_ref={b}"
+                );
+            }
+        }
+
+        /// Phase 9c — scale_weights(1.0) is a no-op fast path.
+        #[test]
+        fn scale_weights_one_is_noop() {
+            if !cuda_available() {
+                eprintln!("skipping: no CUDA device on this host");
+                return;
+            }
+            let csr =
+                CsrSynapses::random_uniform_seeded(pid(0), pid(1), 32, 16, 8, 0.5, 0.0, 0xF0F0);
+            let original: Vec<f32> = csr.weights.clone();
+            let mut gpu = CsrGpu::new(&csr).unwrap();
+            gpu.scale_weights(1.0).unwrap();
+            let downloaded = gpu.download_weights().unwrap();
+            for (a, b) in downloaded.iter().zip(original.iter()) {
+                assert_eq!(a.to_bits(), b.to_bits(), "scale(1.0) should be no-op");
+            }
         }
     }
 }
