@@ -73,6 +73,17 @@ const SHAPES: &[Shape] = &[
     },
 ];
 
+/// Whether the benchmark enables the Phase 3.5 stability mechanisms
+/// (Poisson noise, adaptation AHP+pump, basket pool, short-term
+/// depression, reward-coupled homeostatic). Controlled by the env var
+/// `NIMCP_STABILITY=1`; default is off.
+fn stability_on() -> bool {
+    std::env::var("NIMCP_STABILITY")
+        .ok()
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
 fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
     let lif = LifParams::default();
     let rstdp = RstdpParams {
@@ -81,24 +92,43 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
         ..RstdpParams::default()
     };
 
+    let stability = stability_on();
     let populations: Vec<PopulationSpec> = (0..shape.n_populations)
-        .map(|i| PopulationSpec {
-            name: format!("pop_{i}"),
-            n_neurons: shape.neurons_per_pop,
-            lif,
-            target_rate: 0.05,
-            homeostatic: HomeostaticParams::default(),
-            noise: nimcp_snn::NoiseConfig {
-                rate_hz: 0.0,
-                pulse_mv: 0.0,
-            },
-            depression: nimcp_snn::DepressionConfig {
-                inc: 0.0,
-                ..nimcp_snn::DepressionConfig::default()
-            },
-            adaptation_ahp: None,
-            adaptation_pump: None,
-            basket: None,
+        .map(|i| {
+            if stability {
+                PopulationSpec {
+                    name: format!("pop_{i}"),
+                    n_neurons: shape.neurons_per_pop,
+                    lif,
+                    target_rate: 0.05,
+                    homeostatic: HomeostaticParams::default(),
+                    // Master-tuned production defaults (20 Hz × 30 mV noise).
+                    noise: nimcp_snn::NoiseConfig::default(),
+                    depression: nimcp_snn::DepressionConfig::default(),
+                    adaptation_ahp: Some(nimcp_snn::network::AdaptationCfg::default()),
+                    adaptation_pump: Some(nimcp_snn::network::AdaptationCfg::pump_defaults()),
+                    basket: Some(nimcp_snn::network::BasketCfg::default()),
+                }
+            } else {
+                PopulationSpec {
+                    name: format!("pop_{i}"),
+                    n_neurons: shape.neurons_per_pop,
+                    lif,
+                    target_rate: 0.05,
+                    homeostatic: HomeostaticParams::default(),
+                    noise: nimcp_snn::NoiseConfig {
+                        rate_hz: 0.0,
+                        pulse_mv: 0.0,
+                    },
+                    depression: nimcp_snn::DepressionConfig {
+                        inc: 0.0,
+                        ..nimcp_snn::DepressionConfig::default()
+                    },
+                    adaptation_ahp: None,
+                    adaptation_pump: None,
+                    basket: None,
+                }
+            }
         })
         .collect();
 
@@ -119,7 +149,7 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
         edges,
         rng_seed: seed,
         rate_ema_alpha: 0.01,
-        reward_coupled_homeostatic: false,
+        reward_coupled_homeostatic: stability,
         intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
     }
 }
@@ -201,6 +231,14 @@ fn bench_shape(shape: &Shape) {
 fn main() {
     println!("NIMCP V2 — Phase 3f SNN benchmark (CPU path)");
     println!("  warmup {WARMUP_STEPS} steps, measure {MEASURE_STEPS} steps, dt_ms = {DT_MS}");
+    println!(
+        "  stability mechanisms: {}",
+        if stability_on() {
+            "ON (noise + adaptation + basket + depression + reward-coupled homeostatic)"
+        } else {
+            "OFF (Phase 3 defaults)"
+        }
+    );
 
     for shape in SHAPES {
         bench_shape(shape);
