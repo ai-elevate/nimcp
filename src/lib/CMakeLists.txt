@@ -1588,6 +1588,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_bio_async.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_immune.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_ternary.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../snn/nimcp_snn_basket.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/batch_safe/nimcp_snn_batch_safe.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_routing_bridge.c  # SNN routing bridge for cross-region spike routing
     ${CMAKE_CURRENT_SOURCE_DIR}/../snn/bridges/nimcp_snn_language_bridge.c  # SNN language bridge for spike-driven word-concept binding
