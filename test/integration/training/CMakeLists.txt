@@ -417,5 +417,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_substrate_integration.cpp)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# =============================================================================
+# FNO + HNN Substrate/Thalamic Compose Integration Tests
+# =============================================================================
+# WHAT: Verifies that FNO (embedded in cortex_cnn_processor_t) and HNN
+#       (embedded in lnn_layer_t) observe biological substrate modulation
+#       and thalamic attention gating through their parent network
+#       composition — without any FNO/HNN-specific adapter work.
+# WHY:  FNO and HNN are not standalone networks. Their parent CNN/LNN run
+#       the substrate + thalamic pipelines, and the FNO/HNN outputs flow
+#       through those pipelines for free. This is the composition that
+#       replaces the originally-planned Phase 4 P4B adapter work.
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_fno_hnn_substrate_compose.cpp)
+    add_executable(integration_training_test_fno_hnn_substrate_compose
+        test_fno_hnn_substrate_compose.cpp
+    )
+    target_include_directories(integration_training_test_fno_hnn_substrate_compose PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_training_test_fno_hnn_substrate_compose PRIVATE cxx_std_20)
+    target_link_libraries(integration_training_test_fno_hnn_substrate_compose PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_training_test_fno_hnn_substrate_compose
+             COMMAND integration_training_test_fno_hnn_substrate_compose
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_training_test_fno_hnn_substrate_compose
+        PROPERTIES LABELS "integration;training;fno;hnn;substrate;thalamic;compose"
+                   TIMEOUT 300
+                   RESOURCE_LOCK "brain_heavy")
+endif()
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)
