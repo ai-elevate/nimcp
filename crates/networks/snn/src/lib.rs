@@ -43,6 +43,7 @@ pub mod adaptation;
 pub mod basket;
 pub mod csr;
 pub mod homeostatic;
+pub mod intrinsic_reward;
 pub mod lif;
 pub mod network;
 pub mod noise;
@@ -50,6 +51,9 @@ pub mod rstdp;
 
 pub use adaptation::{AdaptationError, AdaptationState};
 pub use basket::{BasketError, BasketPool};
+pub use intrinsic_reward::{
+    IntrinsicRewardConfig, compute_network_reward, compute_per_pop_reward,
+};
 pub use noise::{NoiseConfig, inject_poisson_noise, noise_factor_for_pop};
 pub use csr::{CsrSynapses, Population, PopulationId};
 pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};
