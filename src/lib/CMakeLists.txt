@@ -577,6 +577,9 @@ set(NIMCP_CORE_SOURCES
     # Axon/Dendrite-Substrate Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/nimcp_axon_dendrite_substrate_bridge.c  # Axon/dendrite-substrate integration (myelination, ATP transport)
 
+    # Shared substrate-effects helper (consumed by SNN/LNN/CNN/FNO/HNN adapters)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/substrate/nimcp_substrate_effects.c
+
     # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_synapse_embeddings.c

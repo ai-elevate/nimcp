@@ -1662,6 +1662,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/neural_substrate")
     add_subdirectory(unit/core/neural_substrate)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/core/substrate")
+    message(STATUS "Adding shared substrate-effects unit tests...")
+    add_subdirectory(unit/core/substrate)
+endif()
+
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/substrate")
     message(STATUS "Adding core substrate bridges regression tests...")
     add_subdirectory(regression/core/substrate)
