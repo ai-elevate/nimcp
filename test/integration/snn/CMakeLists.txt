@@ -147,6 +147,55 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_language_bridge_integration.cpp)
 endif()
 
 # ============================================================================
+# SNN Biophysical Integration Test (2026-04-22)
+# ============================================================================
+# WHAT: Live integration tests for the five biophysical stability mechanisms
+#       (AHP, Na+/K+ pump, basket-cell inhibition, E/I-balanced noise,
+#       anti-reward) exercised through snn_network_step and snn_rstdp_apply.
+# WHY:  Unit tests cover each mechanism in isolation; this test verifies each
+#       knob observably changes pop-level firing or synaptic dynamics in the
+#       actual runtime hot path when toggled on/off.
+# HOW:  Google Test. Creates lightweight (CSR) populations, forces CPU
+#       fallback so the biophysics path runs, and compares baseline vs
+#       feature-enabled spike counts / peak rates / synaptic weight deltas.
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_biophysical_integration.cpp)
+    add_executable(integration_snn_test_snn_biophysical_integration
+        test_snn_biophysical_integration.cpp
+    )
+
+    target_link_libraries(integration_snn_test_snn_biophysical_integration
+        PRIVATE
+            nimcp_snn
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            Threads::Threads
+            m
+            z
+    )
+
+    target_include_directories(integration_snn_test_snn_biophysical_integration
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+    )
+
+    target_compile_features(integration_snn_test_snn_biophysical_integration
+        PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_snn_test_snn_biophysical_integration
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;biophysical"
+            TIMEOUT 300
+    )
+
+    message(STATUS "  Added SNN biophysical integration test: "
+                   "test_snn_biophysical_integration")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)
