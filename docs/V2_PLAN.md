@@ -286,9 +286,98 @@ The harness calls 77 distinct `brain.*` methods:
 - Documentation: public API, concepts, migration guide from V1
 - **Exit criteria:** 24-hour training run on RunPod with no crashes, deterministic output.
 
+### Phase 9 — Full GPU integration (4–6 weeks)
+
+Phase 2 delivered the GPU path for the adaptive MLP. SNN and LNN are
+CPU-only; Path A + Phase 3.5 stability mechanisms (adaptation / basket /
+noise / depression / intrinsic reward) have no GPU kernels. This phase
+completes the GPU story across every V2 network.
+
+#### State at entry (v2 HEAD `10c26ef2e`)
+
+| Network | GPU forward | GPU backward | GPU plasticity | Wired into `step()` |
+|---|---|---|---|---|
+| Adaptive MLP | ✓ | ✓ | ✓ (SGD) | ✓ |
+| SNN | ✓ (LIF + CSR kernels exist) | — | — | ✗ — kernels exist, not used |
+| LNN | — | — | — | — |
+
+`LifGpu` + `CsrGpu` live in `crates/networks/snn/src/{lif,csr}.rs`
+behind `cfg(feature = "cuda")`. They're unused by `SnnNetwork::step()`
+— the hot path calls `lif_step_cpu` + `csr.i_syn_cpu` unconditionally.
+
+#### Sub-phase plan
+
+- **9a — SNN forward on GPU (opt-in).** Add `use_gpu_forward: bool`
+  to `SnnConfig`. When set, `SnnNetwork::step()` uses the existing
+  `LifGpu` + `CsrGpu` kernels for the hot loop. Plasticity /
+  homeostatic / noise / adaptation / basket stay on CPU. Expected
+  win: at 1.8M neurons, 7 steps/sec (CPU stability-on) → 40+ steps/sec.
+- **9b — SNN plasticity on GPU.** New CUDA kernels for:
+    - R-STDP eligibility trace + weight update
+    - Homeostatic synaptic scaling
+    - Poisson noise injection (cuRAND)
+    - Short-term depression update
+  Wire behind the same `use_gpu_forward` flag (rename to `use_gpu`).
+- **9c — SNN stability mechanisms on GPU.**
+    - Adaptation (AHP + pump) update
+    - Basket pool step
+    - Intrinsic reward aggregation (reduction kernel)
+    - Substrate effects → device-resident cache; refresh every N steps.
+- **9d — LNN LTC forward on GPU.** New `LtcGpu` module:
+    - Pre-activation matrix-vector: `W_rec·x + W_in·u + b`
+    - Tanh kernel
+    - Euler step with per-neuron tau
+- **9e — LNN BPTT adjoint + SGD on GPU.** Hardest sub-phase:
+    - Backward pass through time (matrix-matrix kernels)
+    - Gradient clipping on device
+    - SGD step on device
+    - Respect `tau_safe` floor throughout.
+- **9f — Brain-level backend dispatch.**
+    - `BrainConfig.backend: Backend::{Cpu, Gpu, Hybrid}`
+    - `Brain::new` picks matching impl per config.
+    - Checkpoint compat: weights serialise from device → host on
+      `save_ensemble`; load inverse.
+    - Cross-backend bit-identical: same seed → same weights after
+      N training steps, independent of backend (within floating
+      tolerance noted in tests).
+
+#### Exit criteria
+
+- 1.8M-neuron SNN trains at **≥50 steps/sec** on RTX 4000 (sm_89)
+  with all stability mechanisms active (currently 3.7 steps/sec CPU).
+- LNN forward-sequence at 512 hidden × 64-step sequence: GPU ≤ 2×
+  CPU on same hardware in the degenerate case (tiny sequence) and
+  ≥10× CPU on representative-sequence lengths (≥256 timesteps).
+- `Brain::from_json` with `"backend": "gpu"` successfully constructs
+  the full ensemble on a CUDA-capable host; adaptive / SNN / LNN
+  all train together on device.
+- Bench `benches/snn` adds `--gpu` shape preset; reports GPU / CPU
+  ratio per shape. Same for a new `benches/lnn`.
+- No behaviour regression: `cargo test --workspace` passes
+  identically with and without `--features cuda`.
+
+#### Non-scope
+
+- Multi-GPU (single device for Phase 9).
+- Mixed precision (FP16 / BF16): opt-in follow-up.
+- CUDA graphs for kernel fusion: post-9f optimisation.
+- GPU-to-GPU peer transfer: post-9f optimisation.
+
+#### Dev constraint
+
+Hetzner dev server has no CUDA-capable GPU. GPU paths compile under
+`--features cuda` but require a pod (RTX 4000 on Hetzner with
+Ollama paused, or RunPod RTX 5090) for runtime tests. Each sub-phase
+lands as one or more commits that:
+1. Compile cleanly under `--features cuda`.
+2. Preserve CPU-only behaviour (disable-path bit-identical).
+3. Are validated on a pod before merging to `v2` mainline — per-phase
+   pod-run log attached to the commit message.
+
 **Total:** ~10 months single-developer to V1 core-feature parity
 (Phase 7 dropped from 5 weeks to 2–3 weeks by reusing master's harness
-via an adapter shim instead of rebuilding it).
+via an adapter shim instead of rebuilding it). Phase 9 adds 4–6 weeks
+on top of that for the full-GPU story.
 
 ---
 
