@@ -22,14 +22,35 @@ Usage:
     ./snn_tune.py --watch [--interval 2]
 
 Known tunable names:
-    rstdp_lr               R-STDP learning rate
-    rstdp_baseline_alpha   reward baseline EMA alpha
-    target_rate            homeostatic target firing fraction
-    homeo_min_scale        scale-down floor (clamp <1.0)
-    homeo_max_scale        normal scale-up ceiling
-    max_scale_dead         escape scale-up for pops far below target
-    dead_threshold         rate fraction-of-target below which max_scale_dead kicks in
-    metabolic_cap          sum(|w|) ≤ factor × fan_in
+    rstdp_lr                      R-STDP learning rate
+    rstdp_baseline_alpha          reward baseline EMA alpha
+    target_rate                   homeostatic target firing fraction
+    target_rate_input             homeostatic target firing fraction for input tier
+    homeo_min_scale               scale-down floor (clamp <1.0)
+    homeo_max_scale               normal scale-up ceiling
+    max_scale_dead                escape scale-up for pops far below target
+    dead_threshold                rate fraction-of-target below which max_scale_dead kicks in
+    metabolic_cap                 sum(|w|) ≤ factor × fan_in
+    noise_rate_hz                 Poisson background noise rate (Hz)
+    noise_pulse_mv                background noise pulse amplitude (mV)
+    intrinsic_alpha               intrinsic-reward EMA alpha
+
+  Biophysical stability (Wave A + B1):
+    anti_reward_enabled           1.0 = on, 0.0 = off
+    anti_reward_threshold_ratio   rate / target at which anti-reward kicks in (default 2.0)
+    anti_reward_gain              magnitude of negative reward at saturation (default 0.5)
+    depression_inc                per-spike short-term depression increment (0..1)
+    depression_tau_ms             short-term depression recovery time constant (ms)
+    depression_cap                max short-term depression (0..1)
+    ahp_enabled                   after-hyperpolarization adaptation on/off
+    ahp_tau_ms                    AHP decay time constant (ms)
+    ahp_gain_mv                   AHP per-spike kick (mV, hyperpolarizing)
+    pump_enabled                  Na/K pump (slow) adaptation on/off
+    pump_tau_ms                   pump decay time constant (ms, slower than AHP)
+    pump_gain_mv                  pump per-spike kick (mV, hyperpolarizing)
+    basket_enabled                fast-spiking inhibitory basket pool on/off
+    basket_fraction               basket cell fraction per population (0.01..0.5)
+    noise_ei_ratio                fraction of background noise that is inhibitory (0..1)
 """
 import argparse
 import json

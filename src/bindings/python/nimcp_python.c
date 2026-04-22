@@ -1850,6 +1850,22 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     extern void snn_tune_set_noise_pulse_mv(float);
     extern void snn_tune_set_intrinsic_alpha(float);
     extern void snn_tune_set_target_rate_input(float);
+    /* Biophysical stability tunables (Wave A + B1) */
+    extern void snn_tune_set_anti_reward_enabled(float);
+    extern void snn_tune_set_anti_reward_threshold_ratio(float);
+    extern void snn_tune_set_anti_reward_gain(float);
+    extern void snn_tune_set_depression_inc(float);
+    extern void snn_tune_set_depression_tau_ms(float);
+    extern void snn_tune_set_depression_cap(float);
+    extern void snn_tune_set_ahp_enabled(float);
+    extern void snn_tune_set_ahp_tau_ms(float);
+    extern void snn_tune_set_ahp_gain_mv(float);
+    extern void snn_tune_set_pump_enabled(float);
+    extern void snn_tune_set_pump_tau_ms(float);
+    extern void snn_tune_set_pump_gain_mv(float);
+    extern void snn_tune_set_basket_enabled(float);
+    extern void snn_tune_set_basket_fraction(float);
+    extern void snn_tune_set_noise_ei_ratio(float);
 
     float v = (float)value;
     if      (strcmp(name, "rstdp_lr") == 0)             snn_tune_set_rstdp_lr(v);
@@ -1864,6 +1880,27 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     else if (strcmp(name, "noise_rate_hz") == 0)        snn_tune_set_noise_rate_hz(v);
     else if (strcmp(name, "noise_pulse_mv") == 0)       snn_tune_set_noise_pulse_mv(v);
     else if (strcmp(name, "intrinsic_alpha") == 0)      snn_tune_set_intrinsic_alpha(v);
+    /* Anti-reward */
+    else if (strcmp(name, "anti_reward_enabled") == 0)         snn_tune_set_anti_reward_enabled(v);
+    else if (strcmp(name, "anti_reward_threshold_ratio") == 0) snn_tune_set_anti_reward_threshold_ratio(v);
+    else if (strcmp(name, "anti_reward_gain") == 0)            snn_tune_set_anti_reward_gain(v);
+    /* Short-term depression tuning */
+    else if (strcmp(name, "depression_inc") == 0)       snn_tune_set_depression_inc(v);
+    else if (strcmp(name, "depression_tau_ms") == 0)    snn_tune_set_depression_tau_ms(v);
+    else if (strcmp(name, "depression_cap") == 0)       snn_tune_set_depression_cap(v);
+    /* AHP adaptation */
+    else if (strcmp(name, "ahp_enabled") == 0)          snn_tune_set_ahp_enabled(v);
+    else if (strcmp(name, "ahp_tau_ms") == 0)           snn_tune_set_ahp_tau_ms(v);
+    else if (strcmp(name, "ahp_gain_mv") == 0)          snn_tune_set_ahp_gain_mv(v);
+    /* Na/K pump adaptation */
+    else if (strcmp(name, "pump_enabled") == 0)         snn_tune_set_pump_enabled(v);
+    else if (strcmp(name, "pump_tau_ms") == 0)          snn_tune_set_pump_tau_ms(v);
+    else if (strcmp(name, "pump_gain_mv") == 0)         snn_tune_set_pump_gain_mv(v);
+    /* Basket (fast-spiking inhibitory) pool */
+    else if (strcmp(name, "basket_enabled") == 0)       snn_tune_set_basket_enabled(v);
+    else if (strcmp(name, "basket_fraction") == 0)      snn_tune_set_basket_fraction(v);
+    /* E/I-balanced noise */
+    else if (strcmp(name, "noise_ei_ratio") == 0)       snn_tune_set_noise_ei_ratio(v);
     else {
         PyErr_Format(PyExc_ValueError, "unknown tunable: %s", name);
         return NULL;
@@ -1885,6 +1922,22 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     extern float snn_tune_get_noise_pulse_mv(void);
     extern float snn_tune_get_intrinsic_alpha(void);
     extern float snn_tune_get_target_rate_input(void);
+    /* Biophysical stability tunables (Wave A + B1) */
+    extern float snn_tune_get_anti_reward_enabled(void);
+    extern float snn_tune_get_anti_reward_threshold_ratio(void);
+    extern float snn_tune_get_anti_reward_gain(void);
+    extern float snn_tune_get_depression_inc(void);
+    extern float snn_tune_get_depression_tau_ms(void);
+    extern float snn_tune_get_depression_cap(void);
+    extern float snn_tune_get_ahp_enabled(void);
+    extern float snn_tune_get_ahp_tau_ms(void);
+    extern float snn_tune_get_ahp_gain_mv(void);
+    extern float snn_tune_get_pump_enabled(void);
+    extern float snn_tune_get_pump_tau_ms(void);
+    extern float snn_tune_get_pump_gain_mv(void);
+    extern float snn_tune_get_basket_enabled(void);
+    extern float snn_tune_get_basket_fraction(void);
+    extern float snn_tune_get_noise_ei_ratio(void);
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
@@ -1903,6 +1956,27 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     F("noise_rate_hz",          snn_tune_get_noise_rate_hz());
     F("noise_pulse_mv",         snn_tune_get_noise_pulse_mv());
     F("intrinsic_alpha",        snn_tune_get_intrinsic_alpha());
+    /* Anti-reward */
+    F("anti_reward_enabled",         snn_tune_get_anti_reward_enabled());
+    F("anti_reward_threshold_ratio", snn_tune_get_anti_reward_threshold_ratio());
+    F("anti_reward_gain",            snn_tune_get_anti_reward_gain());
+    /* Short-term depression tuning */
+    F("depression_inc",         snn_tune_get_depression_inc());
+    F("depression_tau_ms",      snn_tune_get_depression_tau_ms());
+    F("depression_cap",         snn_tune_get_depression_cap());
+    /* AHP adaptation */
+    F("ahp_enabled",            snn_tune_get_ahp_enabled());
+    F("ahp_tau_ms",             snn_tune_get_ahp_tau_ms());
+    F("ahp_gain_mv",            snn_tune_get_ahp_gain_mv());
+    /* Na/K pump adaptation */
+    F("pump_enabled",           snn_tune_get_pump_enabled());
+    F("pump_tau_ms",            snn_tune_get_pump_tau_ms());
+    F("pump_gain_mv",           snn_tune_get_pump_gain_mv());
+    /* Basket (fast-spiking inhibitory) pool */
+    F("basket_enabled",         snn_tune_get_basket_enabled());
+    F("basket_fraction",        snn_tune_get_basket_fraction());
+    /* E/I-balanced noise */
+    F("noise_ei_ratio",         snn_tune_get_noise_ei_ratio());
 #undef F
     return d;
 }
