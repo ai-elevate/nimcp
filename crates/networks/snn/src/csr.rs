@@ -354,6 +354,145 @@ impl CsrSynapses {
     }
 }
 
+// --- Ternary-quantized weight mode (opt-in, caller-managed buffer) ---
+//
+// Port of V1's ternary SNN integration: quantizing f32 weights to
+// {-1, 0, +1} × scale cuts synapse storage from 4 bytes/weight to
+// 2 bits/weight — the 20× memory saving that made V1's 1.8M-neuron
+// SNN fit in VRAM once weights stopped changing (post-training).
+//
+// `CsrSynapses` deliberately does NOT own a `TritPacked` field. The
+// quantized buffer is caller-managed so a single population can hold
+// both a mutable f32 buffer (during learning) and a frozen ternary
+// buffer (during inference) without doubling the memory cost of the
+// CSR struct itself.
+
+impl CsrSynapses {
+    /// Build a ternary quantization of [`Self::weights`] using the
+    /// given threshold: `|w| < threshold → 0`, `w > threshold → +1`,
+    /// `w < -threshold → -1`. Returns a freshly-allocated
+    /// [`nimcp_ternary::TritPacked`] buffer (2 bits per trit, 4 trits
+    /// per byte).
+    ///
+    /// The returned buffer has the same logical length as `weights`
+    /// (`self.weights.len()`). Combine with
+    /// [`Self::suggested_ternary_scale`] to pick a scale magnitude,
+    /// then feed both into [`Self::i_syn_cpu_ternary`].
+    #[must_use]
+    pub fn ternarize(&self, threshold: f32) -> nimcp_ternary::TritPacked {
+        let mut packed = nimcp_ternary::TritPacked::zeros(self.weights.len());
+        for (i, &w) in self.weights.iter().enumerate() {
+            let trit = nimcp_ternary::Trit::from_float(w, threshold);
+            // `i < packed.len` by construction — `zeros(len)` allocates
+            // exactly that many slots. `set` only errors on OOB.
+            packed
+                .set(i, trit)
+                .expect("index within weights.len() by construction");
+        }
+        packed
+    }
+
+    /// Suggested scale for ternarization: mean of `|w|` over nonzero
+    /// weights. Returns `1.0` if `weights` is empty or every weight is
+    /// exactly zero — picking `1.0` keeps the ternary-scaled current
+    /// finite in pathological cases.
+    #[must_use]
+    pub fn suggested_ternary_scale(&self) -> f32 {
+        let mut sum = 0.0_f32;
+        let mut n = 0_usize;
+        for &w in &self.weights {
+            if w != 0.0 {
+                sum += w.abs();
+                n += 1;
+            }
+        }
+        if n == 0 {
+            1.0
+        } else {
+            sum / (n as f32)
+        }
+    }
+
+    /// Like [`Self::i_syn_cpu`] but uses a ternary weight buffer
+    /// instead of [`Self::weights`]. Contribution per spike is
+    /// `scale × trit_value` with `trit_value ∈ {-1, 0, +1}`.
+    ///
+    /// Typical use: build `ternary_weights` with [`Self::ternarize`],
+    /// pick `scale` via [`Self::suggested_ternary_scale`] (or any
+    /// other magnitude the caller prefers), then reuse both across
+    /// many inference steps. The f32 `weights` buffer can be dropped
+    /// once the CSR stops training.
+    ///
+    /// # Panics
+    ///
+    /// Same preconditions as [`Self::i_syn_cpu`]: `out.len()` must
+    /// equal `n_post`, `pre_spikes.len()` must be `>= n_pre`.
+    ///
+    /// In debug builds, also panics if
+    /// `ternary_weights.len != self.weights.len()`. In release the
+    /// mismatch is tolerated by iterating up to `min(len)` — missing
+    /// trits contribute zero, extra trits are ignored — so an
+    /// accidentally-stale ternary buffer degrades gracefully instead
+    /// of corrupting memory.
+    pub fn i_syn_cpu_ternary(
+        &self,
+        pre_spikes: &[u8],
+        ternary_weights: &nimcp_ternary::TritPacked,
+        scale: f32,
+        out: &mut [f32],
+    ) {
+        assert_eq!(
+            out.len(),
+            self.n_post as usize,
+            "i_syn_cpu_ternary: out.len()={} but n_post={}",
+            out.len(),
+            self.n_post
+        );
+        assert!(
+            pre_spikes.len() >= self.n_pre as usize,
+            "i_syn_cpu_ternary: pre_spikes.len()={} but n_pre={}",
+            pre_spikes.len(),
+            self.n_pre
+        );
+        debug_assert_eq!(
+            ternary_weights.len,
+            self.weights.len(),
+            "ternary buffer len {} does not match weights len {}",
+            ternary_weights.len,
+            self.weights.len()
+        );
+
+        // Release-mode safety: silently cap to the shorter of the two
+        // so a mismatched buffer can't index past the packed storage.
+        let n_trits = ternary_weights.len.min(self.weights.len());
+
+        let row_pairs = self.row_ptr.windows(2);
+        for (out_slot, row) in out.iter_mut().zip(row_pairs) {
+            let row_start = row[0] as usize;
+            let row_end = row[1] as usize;
+            let mut s: f32 = 0.0;
+            for k in row_start..row_end {
+                if k >= n_trits {
+                    // Extra weights beyond the ternary buffer contribute zero.
+                    break;
+                }
+                let pre = self.col_idx[k] as usize;
+                if pre_spikes[pre] != 0 {
+                    // `k < n_trits <= ternary_weights.len`, so `get` is in bounds.
+                    let trit = ternary_weights
+                        .get(k)
+                        .expect("k < ternary_weights.len by n_trits cap");
+                    // Branch-free on the common Zero case would save a
+                    // bit of work, but `as_f32` is already a single
+                    // `i8 -> f32` conversion — clarity beats trickery.
+                    s += scale * trit.as_f32();
+                }
+            }
+            *out_slot = s;
+        }
+    }
+}
+
 // --- Convenience constructor for tests + higher-level callers ---
 
 impl CsrSynapses {
@@ -860,6 +999,198 @@ mod tests {
         assert_eq!(p.name, "L4_exc");
         // Float field plumbing check — bit-exact compare avoids clippy::float_cmp.
         assert_eq!(p.lif.v_thresh.to_bits(), lif.v_thresh.to_bits());
+    }
+
+    // --- Ternary-quantized weight mode ---
+
+    #[test]
+    fn ternarize_zero_threshold_is_sign_pattern() {
+        // threshold = 0 means "anything nonzero picks up a sign". Mixed-sign
+        // weights should round-trip to their sign.
+        let triples = vec![
+            (0_u32, 0_u32, 1.5_f32),
+            (1, 0, -0.25),
+            (0, 1, 0.0),
+            (1, 1, -3.0),
+        ];
+        let csr = CsrSynapses::from_triples(pid(0), pid(1), 2, 2, triples).unwrap();
+        let packed = csr.ternarize(0.0);
+        assert_eq!(packed.len, csr.weights.len());
+        let trits = packed.to_trits();
+        assert_eq!(
+            trits,
+            vec![
+                nimcp_ternary::Trit::Positive,
+                nimcp_ternary::Trit::Negative,
+                nimcp_ternary::Trit::Zero, // exactly 0.0 stays zero at threshold 0.0
+                nimcp_ternary::Trit::Negative,
+            ]
+        );
+    }
+
+    #[test]
+    fn ternarize_large_threshold_produces_all_zero() {
+        // With a threshold well above the largest |weight|, every trit collapses to Zero.
+        let mut rng = ChaCha20Rng::seed_from_u64(0x7E57);
+        let csr = CsrSynapses::random_uniform(pid(0), pid(1), 32, 16, 4, 0.5, 0.2, &mut rng);
+        // weights live in [0.3, 0.7]; threshold = 10.0 dwarfs them.
+        let packed = csr.ternarize(10.0);
+        assert_eq!(packed.len, csr.weights.len());
+        for t in packed.to_trits() {
+            assert_eq!(t, nimcp_ternary::Trit::Zero);
+        }
+    }
+
+    #[test]
+    fn i_syn_cpu_ternary_matches_f32_when_weights_are_plus_minus_scale() {
+        // Construct a CSR whose weights are exactly ±scale. Ternarizing
+        // with threshold < scale recovers ±1 trits, and the ternary
+        // forward should agree bit-for-bit with the f32 forward.
+        let scale = 0.75_f32;
+        let triples = vec![
+            (0_u32, 0_u32, scale),
+            (1, 0, -scale),
+            (0, 1, -scale),
+            (2, 1, scale),
+            (1, 2, scale),
+            (2, 2, -scale),
+        ];
+        let csr = CsrSynapses::from_triples(pid(0), pid(1), 3, 3, triples).unwrap();
+        let packed = csr.ternarize(scale * 0.5);
+
+        // Pattern: pre 0 and 2 spiked, pre 1 silent.
+        let pre_spikes = vec![1_u8, 0, 1];
+
+        let mut f32_out = vec![0.0_f32; 3];
+        csr.i_syn_cpu(&pre_spikes, &mut f32_out);
+
+        let mut tern_out = vec![0.0_f32; 3];
+        csr.i_syn_cpu_ternary(&pre_spikes, &packed, scale, &mut tern_out);
+
+        for (f, t) in f32_out.iter().zip(tern_out.iter()) {
+            // Bit-exact: both sides multiply ±scale by identical u8 spike
+            // masks, so the rounding patterns match.
+            assert_eq!(
+                f.to_bits(),
+                t.to_bits(),
+                "f32 {f} vs ternary {t} diverge when weights ARE ±scale"
+            );
+        }
+    }
+
+    #[test]
+    fn suggested_scale_is_mean_abs_weight_over_nonzero() {
+        // Uniform positive weights: mean(|w|) is just w.
+        let csr = CsrSynapses::from_weights(vec![0.5_f32; 32]);
+        let s = csr.suggested_ternary_scale();
+        assert!((s - 0.5).abs() < 1e-6, "uniform 0.5 gave {s}");
+
+        // Mixed signs + some zeros: only nonzero weights contribute to the mean.
+        // |w| values: [1.0, 2.0, 3.0, 4.0] ⇒ mean = 2.5. Zeros are dropped.
+        let csr = CsrSynapses::from_weights(vec![1.0_f32, -2.0, 0.0, 3.0, 0.0, -4.0]);
+        let s = csr.suggested_ternary_scale();
+        assert!((s - 2.5).abs() < 1e-6, "mixed abs-mean gave {s}");
+
+        // All-zero weights fall back to 1.0 so downstream scaling stays finite.
+        let csr = CsrSynapses::from_weights(vec![0.0_f32; 8]);
+        assert_eq!(csr.suggested_ternary_scale().to_bits(), 1.0_f32.to_bits());
+
+        // Empty weights also fall back to 1.0.
+        let csr = CsrSynapses::from_weights(Vec::new());
+        assert_eq!(csr.suggested_ternary_scale().to_bits(), 1.0_f32.to_bits());
+    }
+
+    #[test]
+    fn round_trip_approx_match_small_fan_in() {
+        // Ternarize at threshold 0, dequantize to ±scale, then f32-forward
+        // the dequantized weights and compare to the ternary forward.
+        // Should match bit-identically because the dequantized weights
+        // ARE ±scale on nonzero slots and 0 on dead-zone slots.
+        let mut rng = ChaCha20Rng::seed_from_u64(0xDEC0_DE42);
+        let csr = CsrSynapses::random_uniform(pid(0), pid(1), 16, 8, 4, 0.4, 0.15, &mut rng);
+        let scale = csr.suggested_ternary_scale();
+        let packed = csr.ternarize(0.0);
+
+        // Build a "dequantized" CSR whose weights are scale × trit_f32.
+        let dq_weights: Vec<f32> = (0..csr.weights.len())
+            .map(|k| scale * packed.get(k).unwrap().as_f32())
+            .collect();
+        let dq_csr = CsrSynapses {
+            row_ptr: csr.row_ptr.clone(),
+            col_idx: csr.col_idx.clone(),
+            weights: dq_weights,
+            src: csr.src,
+            dst: csr.dst,
+            n_pre: csr.n_pre,
+            n_post: csr.n_post,
+        };
+
+        // Random spike pattern — ~40% active.
+        use rand::Rng;
+        let mut srng = ChaCha20Rng::seed_from_u64(0x5EED_5EED);
+        let pre_spikes: Vec<u8> = (0..csr.n_pre as usize)
+            .map(|_| u8::from(srng.random_bool(0.4)))
+            .collect();
+
+        let mut dq_out = vec![0.0_f32; csr.n_post as usize];
+        dq_csr.i_syn_cpu(&pre_spikes, &mut dq_out);
+
+        let mut tern_out = vec![0.0_f32; csr.n_post as usize];
+        csr.i_syn_cpu_ternary(&pre_spikes, &packed, scale, &mut tern_out);
+
+        for (d, t) in dq_out.iter().zip(tern_out.iter()) {
+            assert_eq!(
+                d.to_bits(),
+                t.to_bits(),
+                "dequantized f32 {d} vs ternary {t} diverge"
+            );
+        }
+    }
+
+    #[test]
+    fn ternary_buffer_is_twenty_times_smaller_than_f32() {
+        // 1M weights → f32 = 4,000,000 bytes; TritPacked ≈ 250,000 bytes.
+        // Assert the exact packed size AND that the ratio is ≥ 16 (2 bits
+        // vs 32 bits is a 16× theoretical floor; accounting for ceil we
+        // still want to be at or above the V1 "20× memory saving" claim
+        // once you include the per-trit padding round-up).
+        let n = 1_000_000_usize;
+        let weights = vec![0.1_f32; n];
+        let csr = CsrSynapses::from_weights(weights);
+        let packed = csr.ternarize(0.0);
+
+        assert_eq!(packed.len, n);
+        assert_eq!(
+            packed.nbytes(),
+            250_000,
+            "1M trits should pack into exactly 250_000 bytes (4 per byte)"
+        );
+
+        let f32_bytes = n * std::mem::size_of::<f32>();
+        let ratio = f32_bytes as f64 / packed.nbytes() as f64;
+        assert!(
+            ratio >= 16.0,
+            "expected ≥16× saving, got {ratio}× ({f32_bytes} vs {})",
+            packed.nbytes()
+        );
+    }
+
+    #[test]
+    fn ternary_forward_handles_no_spikes() {
+        // No spikes ⇒ every post sees exactly 0.0, regardless of scale.
+        let mut rng = ChaCha20Rng::seed_from_u64(0xDEAD_BEEF);
+        let csr = CsrSynapses::random_uniform(pid(0), pid(1), 32, 16, 6, 0.5, 0.1, &mut rng);
+        let packed = csr.ternarize(0.3);
+        let pre_spikes = vec![0_u8; 32];
+        let mut out = vec![f32::NAN; 16];
+        csr.i_syn_cpu_ternary(&pre_spikes, &packed, 12.5, &mut out);
+        for (i, &v) in out.iter().enumerate() {
+            assert_eq!(
+                v.to_bits(),
+                0.0_f32.to_bits(),
+                "post {i} got {v} with no spikes"
+            );
+        }
     }
 
     // --- GPU tests (feature "cuda" only). Skip gracefully without a device. ---

@@ -21,6 +21,7 @@ cuda = ["dep:nimcp-gpu", "dep:cudarc"]
 nimcp-core = { workspace = true }
 nimcp-plasticity = { workspace = true }
 nimcp-substrate = { workspace = true }
+nimcp-ternary = { workspace = true }
 nimcp-thalamic = { workspace = true }
 nimcp-pinknoise = { workspace = true }
 nimcp-fractal = { workspace = true }
