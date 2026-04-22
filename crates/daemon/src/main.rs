@@ -45,11 +45,13 @@ const DEFAULT_METRICS_INTERVAL_SEC: u64 = 1;
 
 /// CLI.
 #[derive(Debug, Parser)]
-#[command(name = "nimcp-v2-daemon", version, about = "NIMCP V2 brain daemon")]
+#[command(name = "nimcp-v2-daemon", version, about = "NIMCP V2 brain daemon — the Hera model")]
 struct Args {
     /// Path to the Unix socket the daemon listens on. Removed before
     /// bind so a stale socket from a prior crash doesn't block startup.
-    #[arg(long, default_value = "/tmp/nimcp-brain-v2.sock")]
+    /// Production path: `/var/run/hera/brain.sock` (with systemd); this
+    /// default lives under `/tmp` so unprivileged `cargo run` works too.
+    #[arg(long, default_value = "/tmp/nimcp-hera.sock")]
     socket: PathBuf,
 
     /// Directory the brain uses for state / checkpoint staging.

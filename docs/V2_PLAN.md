@@ -3,6 +3,10 @@
 **Status:** planning
 **Branch:** `v2` (forked from `master` at `fc952e587`)
 **Target:** Rust, async-first, event-sourced, actor-model cognitive architecture
+**Model name:** **Hera** (V1 is **Athena**; V2 gets a distinct name so
+both can run side-by-side on the same host without path collisions —
+systemd unit `hera-brain.service`, socket `/var/run/hera/brain.sock`,
+checkpoints `checkpoints/hera/`).
 
 ---
 
@@ -201,8 +205,10 @@ The harness calls 77 distinct `brain.*` methods:
 - **7e — V2 daemon:** `crates/daemon` — a Rust binary wrapping `Brain`
   behind a Unix socket. Protocol is a lean subset of V1's daemon
   protocol — enough that a thin Python client can drive learn / predict
-  / save / stats. Managed via an `athena-brain-v2.service` unit cloned
-  from V1's.
+  / save / stats. Managed via a `hera-brain.service` unit modelled on
+  V1's `athena-brain.service`. **V2's model is called Hera** (the V1
+  model is Athena; V2 gets its own name to avoid confusion when both
+  are running on the same host).
 - **7f — file-based monitoring compatibility:** master's monitoring
   stack has two layers. This sub-phase covers the file-based layer
   (scripts that read logs + state files on disk, no socket calls):
@@ -215,10 +221,11 @@ The harness calls 77 distinct `brain.*` methods:
       `LossStats`.
     - `training.log` — line-oriented human-readable log (tracing
       subscriber → file appender).
-    - `checkpoints/athena/immersive_state.json` — stage-state JSON
-      the stage-completion monitor reads; harness already writes
-      this, adapter preserves it.
-    - `checkpoints/athena/snapshot_v2_*.snapshot` — timestamped
+    - `checkpoints/hera/immersive_state.json` — stage-state JSON the
+      stage-completion monitor reads. V2 owns this directory; the V1
+      `checkpoints/athena/` stays untouched when both backends run
+      side-by-side on the same host.
+    - `checkpoints/hera/snapshot_v2_*.snapshot` — timestamped
       ensemble-save directories, rotation kept at 5 (V1 policy).
   Net effort: tiny — mostly write-these-paths wiring.
 - **7g — SNN watchdog socket-RPC parity:** master's `snn_watchdog.py`
@@ -234,8 +241,8 @@ The harness calls 77 distinct `brain.*` methods:
     - `snn_force_quench {n}` → zero `n` random neurons' membrane
       potentials. V2 autonomous watchdog (`6b5853058`) already has a
       quench primitive; reuse.
-  Exit: `python3 scripts/snn_watchdog.py --socket /var/run/athena/
-  brain-v2.sock` monitors a running V2 daemon without modification.
+  Exit: `python3 scripts/snn_watchdog.py --socket /var/run/hera/
+  brain.sock` monitors a running V2 daemon without modification.
   V2 keeps its own autonomous in-process watchdog from phase 3f as
   a second line of defense (belt + suspenders).
 - **7h — end-to-end validation:** run `immerse_athena.py --backend=v2`
@@ -250,12 +257,12 @@ The harness calls 77 distinct `brain.*` methods:
   without crashing for ≥1 hour; adaptive loss monotone-decreases on
   EMA; checkpoints round-trip via `Brain::save_ensemble` /
   `load_ensemble`.
-- V2 daemon under `athena-brain-v2.service` survives operator disconnect
+- V2 daemon under `hera-brain.service` survives operator disconnect
   (same semantics as V1 daemon per commit `6b5853058`).
 - Existing file-based monitor cron (`monitor_training_cron.sh`) correctly
   reports V2's `training_active` state; `TRAINING_ALERT.txt` stays
   empty for the full run.
-- `scripts/snn_watchdog.py --socket /var/run/athena/brain-v2.sock`
+- `scripts/snn_watchdog.py --socket /var/run/hera/brain.sock`
   connects, reads population stats, and either issues no corrective
   action (healthy run) or successfully tunes / quenches on induced
   runaway (injected-fault test).
