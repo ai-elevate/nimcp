@@ -17,6 +17,29 @@
 #include <float.h>
 
 /* =========================================================================
+ * Rayleigh dissipation tunables (biologically-motivated, substrate-coupled)
+ *
+ * Process-wide globals so a single safety toggle applies uniformly across
+ * every live HNN in the address space. Default OFF so conservation is
+ * preserved for existing users; opt-in via hnn_tune_set_dissipation_enabled.
+ * ========================================================================= */
+static float g_hnn_dissipation_enabled   = 0.0f;  /* default OFF → conservation */
+static float g_hnn_dissipation_gamma_max = 0.1f;  /* max γ at capacity = 0 */
+
+void hnn_tune_set_dissipation_enabled(float v) {
+    g_hnn_dissipation_enabled = (v != 0.0f) ? 1.0f : 0.0f;
+}
+
+void hnn_tune_set_dissipation_gamma_max(float v) {
+    if (v < 0.0f)  v = 0.0f;
+    if (v > 10.0f) v = 10.0f;
+    g_hnn_dissipation_gamma_max = v;
+}
+
+float hnn_tune_get_dissipation_enabled(void)    { return g_hnn_dissipation_enabled; }
+float hnn_tune_get_dissipation_gamma_max(void)  { return g_hnn_dissipation_gamma_max; }
+
+/* =========================================================================
  * Activation functions
  * ========================================================================= */
 
@@ -353,13 +376,14 @@ int lnn_hamiltonian_grad(
  * Störmer-Verlet Symplectic Integrator
  * ========================================================================= */
 
-int lnn_hamiltonian_step_stormer_verlet(
+int lnn_hamiltonian_step_stormer_verlet_with_substrate(
     lnn_hamiltonian_net_t* net,
     nimcp_tensor_t* q,
     nimcp_tensor_t* p,
     const nimcp_tensor_t* input,
     float dt,
-    float input_coupling)
+    float input_coupling,
+    const axon_substrate_effects_t* axon_eff)
 {
     if (!net || !q || !p) return -1;
 
@@ -376,18 +400,34 @@ int lnn_hamiltonian_step_stormer_verlet(
     float* q_data = (float*)nimcp_tensor_data(q);
     float* p_data = (float*)nimcp_tensor_data(p);
 
+    /* Rayleigh damping coefficient — active ONLY when the enabled flag is
+     * set AND a substrate effects struct was supplied. Either precondition
+     * missing keeps γ = 0, preserving conservation exactly. */
+    const bool dissipate = (g_hnn_dissipation_enabled != 0.0f) && (axon_eff != NULL);
+    float gamma = 0.0f;
+    if (dissipate) {
+        float cap = axon_eff->overall_capacity;
+        if (cap < 0.0f) cap = 0.0f;
+        if (cap > 1.0f) cap = 1.0f;
+        gamma = g_hnn_dissipation_gamma_max * (1.0f - cap);
+    }
+
     /* Störmer-Verlet symplectic integrator (correct ordering):
      *   Step 1: p_{1/2} = p_n - (dt/2) * ∂H/∂q(q_n, p_n)
      *   Step 2: q_{n+1} = q_n + dt * ∂H/∂p(q_n, p_{1/2})
      *   Step 3: p_{n+1} = p_{1/2} - (dt/2) * ∂H/∂q(q_{n+1}, p_{1/2})
      * Note: p is modified in-place to p_half after step 1, then q is updated,
-     * then p_half is updated to p_new. This is the correct leapfrog ordering. */
+     * then p_half is updated to p_new. This is the correct leapfrog ordering.
+     *
+     * Rayleigh damping is applied as a half-step update on each momentum
+     * half-step — this keeps the discretization symmetric and matches the
+     * continuous-time augmentation dp/dt = -∂H/∂q - γ·p. */
 
-    /* Step 1: p_half = p - (dt/2) * ∂H/∂q(q, p) */
+    /* Step 1: p_half = p - (dt/2) * (∂H/∂q + γ·p) */
     lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
     float* dHdq = (float*)nimcp_tensor_data(dH_dq);
     for (uint32_t i = 0; i < n; i++) {
-        p_data[i] -= 0.5f * dt * dHdq[i];
+        p_data[i] -= 0.5f * dt * (dHdq[i] + gamma * p_data[i]);
     }
     /* p_data now holds p_half */
 
@@ -410,12 +450,12 @@ int lnn_hamiltonian_step_stormer_verlet(
     }
     /* q_data now holds q_{n+1} */
 
-    /* Step 3: p_new = p_half - (dt/2) * ∂H/∂q(q_new, p_half) */
+    /* Step 3: p_new = p_half - (dt/2) * (∂H/∂q + γ·p_half) */
     lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
     /* q is now q_{n+1}, p is still p_half — gradient at (q_{n+1}, p_half) */
     dHdq = (float*)nimcp_tensor_data(dH_dq);
     for (uint32_t i = 0; i < n; i++) {
-        p_data[i] -= 0.5f * dt * dHdq[i];
+        p_data[i] -= 0.5f * dt * (dHdq[i] + gamma * p_data[i]);
     }
     /* p_data now holds p_{n+1} */
 
@@ -435,6 +475,97 @@ int lnn_hamiltonian_step_stormer_verlet(
     nimcp_tensor_destroy(dH_dq);
     nimcp_tensor_destroy(dH_dp);
     return 0;
+}
+
+/* Backward-compatible wrapper: preserves exact behavior of the original
+ * symplectic integrator when no substrate is passed. */
+int lnn_hamiltonian_step_stormer_verlet(
+    lnn_hamiltonian_net_t* net,
+    nimcp_tensor_t* q,
+    nimcp_tensor_t* p,
+    const nimcp_tensor_t* input,
+    float dt,
+    float input_coupling)
+{
+    return lnn_hamiltonian_step_stormer_verlet_with_substrate(
+        net, q, p, input, dt, input_coupling, NULL);
+}
+
+/* =========================================================================
+ * Hamilton's Equations — continuous-time derivatives (no integration step)
+ *
+ * Exposed so tests and external code can probe dq/dt, dp/dt without
+ * side-effects on q, p. Equivalent to one RHS evaluation.
+ * ========================================================================= */
+
+int lnn_hamiltonian_forward_with_substrate(
+    lnn_hamiltonian_net_t* net,
+    const nimcp_tensor_t* q,
+    const nimcp_tensor_t* p,
+    nimcp_tensor_t* dq,
+    nimcp_tensor_t* dp,
+    const axon_substrate_effects_t* axon_eff)
+{
+    if (!net || !q || !p || !dq || !dp) return -1;
+
+    uint32_t n = net->state_dim;
+
+    /* Allocate scratch for ∂H/∂q and ∂H/∂p — reuse dp/dq layout by writing
+     * into temporary tensors then mapping dq = ∂H/∂p, dp = -∂H/∂q. */
+    nimcp_tensor_t* dH_dq = nimcp_tensor_zeros((uint32_t[]){n}, 1, NIMCP_DTYPE_F32);
+    nimcp_tensor_t* dH_dp = nimcp_tensor_zeros((uint32_t[]){n}, 1, NIMCP_DTYPE_F32);
+    if (!dH_dq || !dH_dp) {
+        nimcp_tensor_destroy(dH_dq);
+        nimcp_tensor_destroy(dH_dp);
+        return -1;
+    }
+
+    int rc = lnn_hamiltonian_grad(net, q, p, dH_dq, dH_dp);
+    if (rc != 0) {
+        nimcp_tensor_destroy(dH_dq);
+        nimcp_tensor_destroy(dH_dp);
+        return rc;
+    }
+
+    const float* dHdq = (const float*)nimcp_tensor_data_const(dH_dq);
+    const float* dHdp = (const float*)nimcp_tensor_data_const(dH_dp);
+    const float* p_data = (const float*)nimcp_tensor_data_const(p);
+    float* dq_data = (float*)nimcp_tensor_data(dq);
+    float* dp_data = (float*)nimcp_tensor_data(dp);
+
+    /* Hamilton's equations:
+     *   dq/dt =  ∂H/∂p
+     *   dp/dt = -∂H/∂q   (+ Rayleigh damping when dissipation is active) */
+    for (uint32_t i = 0; i < n; i++) {
+        dq_data[i] =  dHdp[i];
+        dp_data[i] = -dHdq[i];
+    }
+
+    /* Rayleigh damping — active ONLY when enabled AND substrate supplied.
+     * Either precondition missing keeps the vanilla conservation form. */
+    if (g_hnn_dissipation_enabled != 0.0f && axon_eff != NULL) {
+        float cap = axon_eff->overall_capacity;
+        if (cap < 0.0f) cap = 0.0f;
+        if (cap > 1.0f) cap = 1.0f;
+        const float gamma = g_hnn_dissipation_gamma_max * (1.0f - cap);
+        for (uint32_t i = 0; i < n; i++) {
+            dp_data[i] -= gamma * p_data[i];
+        }
+    }
+
+    nimcp_tensor_destroy(dH_dq);
+    nimcp_tensor_destroy(dH_dp);
+    return 0;
+}
+
+int lnn_hamiltonian_forward(
+    lnn_hamiltonian_net_t* net,
+    const nimcp_tensor_t* q,
+    const nimcp_tensor_t* p,
+    nimcp_tensor_t* dq,
+    nimcp_tensor_t* dp)
+{
+    return lnn_hamiltonian_forward_with_substrate(net, q, p, dq, dp, NULL);
 }
 
 /* =========================================================================
@@ -462,10 +593,15 @@ int lnn_layer_forward_hamiltonian(
         return -1;  /* Caller (lnn_layer_forward) will fall through to LTC */
     }
 
-    /* q = layer->x (state = position), p = layer->p (momentum) */
-    int rc = lnn_hamiltonian_step_stormer_verlet(
+    /* q = layer->x (state = position), p = layer->p (momentum).
+     * Pass the layer's borrowed axon-effects pointer so Rayleigh dissipation
+     * can activate when enabled + substrate attached. When NULL (no
+     * substrate, or dissipation knob off) the integrator degenerates to
+     * the classical symplectic step with exact energy conservation. */
+    int rc = lnn_hamiltonian_step_stormer_verlet_with_substrate(
         (lnn_hamiltonian_net_t*)layer->H_net, layer->x, layer->p, input, dt,
-        1.0f /* input_coupling */);
+        1.0f /* input_coupling */,
+        layer->substrate_axon_effects);
     if (rc != 0) return rc;
 
     /* Output = q (position = observable state) */

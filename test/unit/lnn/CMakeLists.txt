@@ -197,6 +197,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_thalamic_adapter.cpp)
 endif()
 
 # ============================================================================
+# Test 7: HNN Rayleigh Dissipation (biologically-motivated, substrate-coupled)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_hnn_dissipation.cpp)
+    add_executable(unit_lnn_test_hnn_dissipation
+        test_hnn_dissipation.cpp
+    )
+
+    target_link_libraries(unit_lnn_test_hnn_dissipation
+        PRIVATE ${LNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_lnn_test_hnn_dissipation
+        PRIVATE ${LNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_lnn_test_hnn_dissipation PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_lnn_test_hnn_dissipation
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;lnn;hnn;dissipation"
+            TIMEOUT 60
+    )
+
+    message(STATUS "  Added LNN unit test: test_hnn_dissipation")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_lnn_network.cpp

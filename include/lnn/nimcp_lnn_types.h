@@ -341,6 +341,14 @@ struct lnn_layer_s {
      * CPU LTC path — composition, not replacement: learned tau_base and
      * W_tau gradients continue to flow unchanged. */
     const dendrite_substrate_effects_t* substrate_dend_effects;
+
+    /* HNN Rayleigh-dissipation adapter — borrowed pointer to the owning
+     * network's cached axon effects struct. Set each forward step by
+     * lnn_network_forward_step when a substrate is attached + the HNN
+     * dissipation knob is on; cleared (NULL) otherwise. Consumed by the
+     * Hamiltonian integrator via lnn_hamiltonian_step_stormer_verlet_with_substrate
+     * to apply γ = γ_max·(1 - overall_capacity) damping on momentum. */
+    const axon_substrate_effects_t* substrate_axon_effects;
 };
 
 /**

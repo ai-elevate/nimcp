@@ -22,6 +22,7 @@
 
 #include "lnn/nimcp_lnn_types.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* axon_substrate_effects_t */
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -136,6 +137,72 @@ float lnn_hamiltonian_get_energy_deviation(const lnn_hamiltonian_net_t* net);
 
 /** Get total parameter count */
 uint32_t lnn_hamiltonian_param_count(const lnn_hamiltonian_net_t* net);
+
+/* =========================================================================
+ * Rayleigh Dissipation (biologically-motivated, substrate-coupled)
+ *
+ * Conservation is preserved by construction when dissipation is disabled
+ * (the default) or when no substrate is supplied. When enabled and an axon
+ * substrate effects struct is provided, Hamilton's equation for momentum is
+ * augmented with a Rayleigh-style damping term:
+ *
+ *   dp/dt = -∂H/∂q - γ(substrate) · p,  γ = γ_max · (1 - overall_capacity)
+ *
+ * At overall_capacity = 1.0 (healthy metabolism) γ = 0 → conservation. Under
+ * metabolic stress overall_capacity shrinks and γ grows toward γ_max,
+ * relaxing the system toward equilibrium. Off by default.
+ * ========================================================================= */
+
+/** Enable/disable Rayleigh dissipation globally. Any nonzero → on, 0 → off. */
+void  hnn_tune_set_dissipation_enabled(float v);
+/** Set γ_max in [0.0, 10.0]. Out-of-range values are clamped. */
+void  hnn_tune_set_dissipation_gamma_max(float v);
+
+/** Current enabled flag (1.0 on, 0.0 off). */
+float hnn_tune_get_dissipation_enabled(void);
+/** Current γ_max value. */
+float hnn_tune_get_dissipation_gamma_max(void);
+
+/**
+ * Compute dq/dt and dp/dt from Hamilton's equations (no integration step).
+ *   dq/dt = ∂H/∂p,   dp/dt = -∂H/∂q
+ * Legacy API — preserves exact energy conservation. Equivalent to calling
+ * the substrate-aware variant with axon_eff = NULL.
+ */
+int lnn_hamiltonian_forward(
+    lnn_hamiltonian_net_t* net,
+    const nimcp_tensor_t* q,
+    const nimcp_tensor_t* p,
+    nimcp_tensor_t* dq,
+    nimcp_tensor_t* dp);
+
+/**
+ * Substrate-aware variant. If dissipation is enabled AND axon_eff is non-NULL,
+ * subtracts γ·p from dp (Rayleigh damping). Otherwise behaves identically to
+ * lnn_hamiltonian_forward.
+ */
+int lnn_hamiltonian_forward_with_substrate(
+    lnn_hamiltonian_net_t* net,
+    const nimcp_tensor_t* q,
+    const nimcp_tensor_t* p,
+    nimcp_tensor_t* dq,
+    nimcp_tensor_t* dp,
+    const axon_substrate_effects_t* axon_eff);
+
+/**
+ * Substrate-aware Störmer-Verlet integrator. When dissipation is enabled AND
+ * axon_eff is non-NULL, applies Rayleigh damping (-γ·p) on every half-step
+ * momentum update. When axon_eff is NULL this reduces to the classical
+ * symplectic integrator and preserves energy exactly.
+ */
+int lnn_hamiltonian_step_stormer_verlet_with_substrate(
+    lnn_hamiltonian_net_t* net,
+    nimcp_tensor_t* q,
+    nimcp_tensor_t* p,
+    const nimcp_tensor_t* input,
+    float dt,
+    float input_coupling,
+    const axon_substrate_effects_t* axon_eff);
 
 #ifdef __cplusplus
 }

@@ -14,6 +14,7 @@
 #include "lnn/nimcp_lnn_layer.h"
 #include "lnn/nimcp_lnn_config.h"
 #include "lnn/nimcp_lnn_training.h"        /* lnn_tune_get_substrate_* / _thalamic_* */
+#include "lnn/nimcp_lnn_hamiltonian.h"     /* hnn_tune_get_dissipation_* */
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -454,6 +455,7 @@ int lnn_network_forward_step(
     /* Substrate adapter: refresh cached effect structs at most once per
      * forward step (not per layer). */
     const dendrite_substrate_effects_t* dend_effects_ptr = NULL;
+    const axon_substrate_effects_t*     axon_effects_ptr = NULL;
     if (network->substrate && lnn_tune_get_substrate_enabled() != 0.0f) {
         const uint32_t period = (uint32_t)lnn_tune_get_substrate_update_period();
         if (network->substrate_steps_since_update == 0 || period == 0) {
@@ -467,6 +469,12 @@ int lnn_network_forward_step(
         }
         if (lnn_tune_get_substrate_tau_compose_on() != 0.0f) {
             dend_effects_ptr = &network->cached_dend_effects;
+        }
+        /* HNN Rayleigh dissipation consumes axon effects (overall_capacity
+         * ↔ ATP/ion state). Only publish the pointer when HNN dissipation
+         * is enabled so non-HNN paths aren't paying for an unused read. */
+        if (hnn_tune_get_dissipation_enabled() != 0.0f) {
+            axon_effects_ptr = &network->cached_axon_effects;
         }
     }
 
@@ -513,6 +521,7 @@ int lnn_network_forward_step(
          * can't leak into a subsequent forward that happens to be called
          * with no substrate attached. */
         network->layers[i]->substrate_dend_effects = dend_effects_ptr;
+        network->layers[i]->substrate_axon_effects = axon_effects_ptr;
         // For last layer, write directly to output
         if (i == network->n_layers - 1) {
             layer_output = output;
@@ -620,6 +629,7 @@ int lnn_network_forward_step(
     for (uint32_t i = 0; i < network->n_layers; i++) {
         if (network->layers[i]) {
             network->layers[i]->substrate_dend_effects = NULL;
+            network->layers[i]->substrate_axon_effects = NULL;
         }
     }
 
