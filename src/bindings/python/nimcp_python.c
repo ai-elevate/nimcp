@@ -2058,6 +2058,67 @@ static PyObject* Brain_lnn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     return d;
 }
 
+/* Runtime CNN parameter tuning — no brain restart required (Phase 3 substrate + thalamic).
+ * cnn_tune(name, value) → True (raises ValueError on unknown name). */
+static PyObject* Brain_cnn_tune(BrainObject* self, PyObject* args) {
+    (void)self;
+    const char* name = NULL;
+    double value = 0.0;
+    if (!PyArg_ParseTuple(args, "sd", &name, &value)) return NULL;
+
+    /* Substrate adapter tunables (Phase 3 biological-substrate wiring for CNN) */
+    extern void cortex_cnn_tune_set_substrate_enabled(float);
+    extern void cortex_cnn_tune_set_substrate_update_period(float);
+    extern void cortex_cnn_tune_set_substrate_activation_mod_on(float);
+    extern void cortex_cnn_tune_set_substrate_plasticity_mod_on(float);
+    /* Thalamic adapter tunables (Phase 3 multi-network thalamic rollout) */
+    extern void cortex_cnn_tune_set_thalamic_enabled(float);
+    extern void cortex_cnn_tune_set_thalamic_featuremap_gain_on(float);
+    extern void cortex_cnn_tune_set_thalamic_burst_dropout_reduce_on(float);
+
+    float v = (float)value;
+    if      (strcmp(name, "substrate_enabled") == 0)              cortex_cnn_tune_set_substrate_enabled(v);
+    else if (strcmp(name, "substrate_update_period") == 0)        cortex_cnn_tune_set_substrate_update_period(v);
+    else if (strcmp(name, "substrate_activation_mod_on") == 0)    cortex_cnn_tune_set_substrate_activation_mod_on(v);
+    else if (strcmp(name, "substrate_plasticity_mod_on") == 0)    cortex_cnn_tune_set_substrate_plasticity_mod_on(v);
+    else if (strcmp(name, "thalamic_enabled") == 0)               cortex_cnn_tune_set_thalamic_enabled(v);
+    else if (strcmp(name, "thalamic_featuremap_gain_on") == 0)    cortex_cnn_tune_set_thalamic_featuremap_gain_on(v);
+    else if (strcmp(name, "thalamic_burst_dropout_reduce_on") == 0) cortex_cnn_tune_set_thalamic_burst_dropout_reduce_on(v);
+    else {
+        PyErr_Format(PyExc_ValueError, "unknown CNN tunable: %s", name);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_cnn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
+    (void)self;
+    extern float cortex_cnn_tune_get_substrate_enabled(void);
+    extern float cortex_cnn_tune_get_substrate_update_period(void);
+    extern float cortex_cnn_tune_get_substrate_activation_mod_on(void);
+    extern float cortex_cnn_tune_get_substrate_plasticity_mod_on(void);
+    extern float cortex_cnn_tune_get_thalamic_enabled(void);
+    extern float cortex_cnn_tune_get_thalamic_featuremap_gain_on(void);
+    extern float cortex_cnn_tune_get_thalamic_burst_dropout_reduce_on(void);
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyObject* v;
+#define F(k, val) v = PyFloat_FromDouble((double)(val)); \
+                  if (v) { PyDict_SetItemString(d, k, v); Py_DECREF(v); }
+    /* Substrate adapter */
+    F("substrate_enabled",                  cortex_cnn_tune_get_substrate_enabled());
+    F("substrate_update_period",            cortex_cnn_tune_get_substrate_update_period());
+    F("substrate_activation_mod_on",        cortex_cnn_tune_get_substrate_activation_mod_on());
+    F("substrate_plasticity_mod_on",        cortex_cnn_tune_get_substrate_plasticity_mod_on());
+    /* Thalamic adapter */
+    F("thalamic_enabled",                   cortex_cnn_tune_get_thalamic_enabled());
+    F("thalamic_featuremap_gain_on",        cortex_cnn_tune_get_thalamic_featuremap_gain_on());
+    F("thalamic_burst_dropout_reduce_on",   cortex_cnn_tune_get_thalamic_burst_dropout_reduce_on());
+#undef F
+    return d;
+}
+
 /* Per-population live diagnostics — firing rate + recent activity for each pop. */
 static PyObject* Brain_snn_pop_stats(BrainObject* self, PyObject* Py_UNUSED(a)) {
     if (!self->brain || !self->brain->internal_brain) Py_RETURN_NONE;
@@ -9912,6 +9973,13 @@ static PyMethodDef Brain_methods[] = {
      "thalamic_enabled, thalamic_input_gain_on, thalamic_burst_tau_clamp_on."},
     {"lnn_tune_get", (PyCFunction)Brain_lnn_tune_get, METH_NOARGS,
      "Return dict of all current LNN tunable parameter values."},
+    {"cnn_tune", (PyCFunction)Brain_cnn_tune, METH_VARARGS,
+     "Set a runtime-tunable CNN parameter: cnn_tune(name, value) -> True. "
+     "Names: substrate_enabled, substrate_update_period, substrate_activation_mod_on, "
+     "substrate_plasticity_mod_on, thalamic_enabled, thalamic_featuremap_gain_on, "
+     "thalamic_burst_dropout_reduce_on."},
+    {"cnn_tune_get", (PyCFunction)Brain_cnn_tune_get, METH_NOARGS,
+     "Return dict of all current CNN tunable parameter values."},
     {"snn_pop_stats", (PyCFunction)Brain_snn_pop_stats, METH_NOARGS,
      "List of per-population dicts: [{name, n_neurons, firing_rate_ema, rate_samples}]."},
     {"retrofit_synapse_metadata", (PyCFunction)Brain_retrofit_synapse_metadata, METH_NOARGS,
