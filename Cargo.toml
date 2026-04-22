@@ -16,6 +16,7 @@ members = [
     "crates/tensor",
     "crates/ternary",
     "crates/pinknoise",
+    "crates/fractal",
     "crates/checkpoint",
     "crates/brain",
     "pybind",
@@ -89,6 +90,7 @@ nimcp-mathutils = { path = "crates/mathutils" }
 nimcp-tensor = { path = "crates/tensor" }
 nimcp-ternary = { path = "crates/ternary" }
 nimcp-pinknoise = { path = "crates/pinknoise" }
+nimcp-fractal = { path = "crates/fractal" }
 nimcp-checkpoint = { path = "crates/checkpoint" }
 nimcp-brain = { path = "crates/brain" }
 
