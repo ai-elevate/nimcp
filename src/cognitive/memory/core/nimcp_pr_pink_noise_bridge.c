@@ -220,11 +220,11 @@ static inline bool is_valid_target(pr_pink_target_t target) {
  */
 static inline bool bridge_lock(pr_pink_bridge_t bridge) {
     if (!bridge->mutex_initialized) return true;
-    int result = nimcp_mutex_trylock(&bridge->base.mutex);
+    int result = nimcp_mutex_trylock(&bridge->mutex);
     if (result == 0) return true;
     /* Contention detected */
     atomic_fetch_add(&bridge->mutex_contentions, 1);
-    return nimcp_mutex_lock(&bridge->base.mutex) == 0;
+    return nimcp_mutex_lock(&bridge->mutex) == 0;
 }
 
 /**
@@ -232,7 +232,7 @@ static inline bool bridge_lock(pr_pink_bridge_t bridge) {
  */
 static inline void bridge_unlock(pr_pink_bridge_t bridge) {
     if (bridge->mutex_initialized) {
-        nimcp_mutex_unlock(&bridge->base.mutex);
+        nimcp_mutex_unlock(&bridge->mutex);
     }
 }
 
@@ -663,7 +663,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
     /* Initialize mutex - use NIMCP mutex abstraction (P0-6 fix) */
     mutex_attr_t attr = {.type = MUTEX_TYPE_RECURSIVE};
-    if (nimcp_mutex_init(&bridge->base.mutex, &attr) != 0) {
+    if (nimcp_mutex_init(&bridge->mutex, &attr) != 0) {
         nimcp_free(bridge);
         bridge = NULL;
         pr_pink_bridge_set_error("Failed to initialize mutex");
@@ -702,7 +702,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
                 destroy_target_generator(&bridge->targets[j]);
             }
-            nimcp_mutex_destroy(&bridge->base.mutex);
+            nimcp_mutex_destroy(&bridge->mutex);
             nimcp_free(bridge);
             bridge = NULL;
             pr_pink_bridge_set_error("Failed to initialize target %d generator", i);
@@ -732,7 +732,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
             destroy_target_generator(&bridge->targets[i]);
         }
-        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_mutex_destroy(&bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         pr_pink_bridge_set_error("Failed to create quaternion generator");
@@ -756,7 +756,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
             destroy_target_generator(&bridge->targets[i]);
         }
-        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_mutex_destroy(&bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         pr_pink_bridge_set_error("Failed to create consolidation timer");
@@ -785,7 +785,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
 
             destroy_target_generator(&bridge->targets[i]);
         }
-        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_mutex_destroy(&bridge->mutex);
         nimcp_free(bridge);
         bridge = NULL;
         pr_pink_bridge_set_error("Failed to create promotion timer");
@@ -855,7 +855,7 @@ NIMCP_EXPORT void pr_pink_bridge_destroy(pr_pink_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex_initialized) {
-        nimcp_mutex_destroy(&bridge->base.mutex);
+        nimcp_mutex_destroy(&bridge->mutex);
     }
 
     /* Clear magic and free */

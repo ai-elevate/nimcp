@@ -1978,7 +1978,7 @@ trit_t kg_get_relationship_ternary(
         return TRIT_UNKNOWN;
     }
 
-    int64_t value = 0;
+    int32_t value = 0;
     if (kg_hierarchy_get_edge_metadata_int(hier, from, to,
                                             "ternary_relationship", &value) == 0) {
         if (value > 0) return TRIT_TRUE;

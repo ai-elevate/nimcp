@@ -99,7 +99,7 @@ struct sa_fep_bridge {
 
     /* References */
     fep_orchestrator_t* orchestrator;
-    sa_fep_bridge_t* sa_bridge;
+    salience_attention_bridge_t* sa_bridge;
     uint32_t bridge_id;
     bool registered;
 

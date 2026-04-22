@@ -98,7 +98,7 @@ struct gt_exec_fep_bridge {
 
     /* References */
     fep_orchestrator_t* orchestrator;
-    gt_exec_fep_bridge_t* gt_exec_bridge;
+    game_theory_executive_bridge_t* gt_exec_bridge;
     uint32_t bridge_id;
     bool registered;
 

@@ -169,13 +169,13 @@ bool working_memory_get_total_salience(
  * @param wm Working memory instance (non-NULL)
  * @return Current item count, or 0 on error
  */
-uint32_t working_memory_get_size(working_memory_t* wm) {
+uint32_t working_memory_get_size(const working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
         return 0;
     }
 
-    // Lock mutex for thread-safe access
+    // Lock mutex for thread-safe access (cast-away-const for mutex lock; size read is logically const)
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&wm->mutex);
     uint32_t size = wm->current_size;
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);

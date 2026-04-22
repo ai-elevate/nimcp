@@ -740,7 +740,7 @@ int cnn_cortex_bridge_set_gradients(
     BRIDGE_LOCK(bridge);
 
     size_t grad_size = nimcp_tensor_numel(gradients);
-    const float* grad_data = (const float*)nimcp_tensor_data(gradients);
+    const float* grad_data = (const float*)nimcp_tensor_data((nimcp_tensor_t*)gradients);
 
     /* Allocate or reallocate gradient buffers based on connected cortexes */
     if (bridge->visual_cortex) {

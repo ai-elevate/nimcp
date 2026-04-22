@@ -334,7 +334,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         cudaError_t err;
         
         // Allocate device memory for neurons
-        err = cudaMalloc(&network->neurons_device,
+        err = cudaMalloc((void**)&network->neurons_device,
                         network->neurons_capacity * sizeof(logic_neuron_state_t));
         if (err != cudaSuccess) {
             LOG_WARN(LOG_MODULE,"GPU malloc failed, using CPU fallback");
@@ -342,7 +342,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         }
         
         // Allocate device memory for variables
-        err = cudaMalloc(&network->variables_device,
+        err = cudaMalloc((void**)&network->variables_device,
                         network->variables_capacity * sizeof(variable_binding_state_t));
         if (err != cudaSuccess) {
             LOG_WARN(LOG_MODULE,"GPU malloc failed, using CPU fallback");

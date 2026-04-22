@@ -227,8 +227,10 @@ mesh_integration_t* mesh_integration_create(
     mesh_endorsement_collector_config_t end_config;
     mesh_endorsement_collector_default_config(&end_config);
 
+    /* FIXME: endorsement_collector requires a mesh_pattern_router_t*, but integration
+     * has no pattern router yet. Passing NULL defers router-dependent features. */
     integration->endorsement_collector =
-        mesh_endorsement_collector_create(&end_config, integration->registry);
+        mesh_endorsement_collector_create(&end_config, NULL);
     if (!integration->endorsement_collector) {
         LOG_ERROR("Failed to create endorsement collector");
         mesh_integration_destroy(integration);

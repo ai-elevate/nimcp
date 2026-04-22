@@ -7,6 +7,7 @@
 
 #include "edge/nimcp_edge.h"
 #include "utils/memory/nimcp_memory.h"
+#include <math.h>
 #include <string.h>
 
 /* ============================================================================

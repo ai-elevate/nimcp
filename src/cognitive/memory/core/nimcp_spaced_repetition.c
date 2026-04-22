@@ -2547,7 +2547,7 @@ static void hash_insert(sr_system_t system, sr_spaced_item_t* item) {
     uint64_t idx = hash_id(item->item_id, system->table_size);
 
     sr_hash_entry_t* entry = (sr_hash_entry_t*)nimcp_malloc(sizeof(sr_hash_entry_t));
-    if (!entry) return -1;
+    if (!entry) return;
     entry->item_id = item->item_id;
     entry->item = item;
     entry->next = system->items_table[idx];

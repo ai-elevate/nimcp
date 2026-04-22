@@ -768,7 +768,7 @@ void mirror_substrate_apply_activity_to_myelin(
     if (!backing || !backing->myelin_sheath) {
         if (!backing) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_apply_activity_to_myelin: backing is NULL");
-            return -1;
+            return;
         }
         return;
     }
@@ -860,7 +860,7 @@ void mirror_substrate_update_spine_plasticity(
     if (!backing || backing->num_spines == 0) {
         if (!backing) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_update_spine_plasticity: backing is NULL");
-            return -1;
+            return;
         }
         return;
     }

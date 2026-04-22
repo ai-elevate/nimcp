@@ -1205,12 +1205,14 @@ int genius_plasticity_send_heartbeat(genius_plasticity_bridge_t* bridge) {
     return 0;
 }
 
-uint64_t genius_plasticity_get_last_heartbeat(genius_plasticity_bridge_t* bridge) {
+uint64_t genius_plasticity_get_last_heartbeat(const genius_plasticity_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->base.mutex);
-    uint64_t last_hb = bridge->last_heartbeat_us;
-    nimcp_mutex_unlock(bridge->base.mutex);
+    /* Cast away const for mutex lock; the read is logically const */
+    genius_plasticity_bridge_t* nc = (genius_plasticity_bridge_t*)bridge;
+    nimcp_mutex_lock(nc->base.mutex);
+    uint64_t last_hb = nc->last_heartbeat_us;
+    nimcp_mutex_unlock(nc->base.mutex);
     return last_hb;
 }
 

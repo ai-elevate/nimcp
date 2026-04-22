@@ -2472,7 +2472,7 @@ void nimcp_gt_opponent_model_init(
     if (num_actions > 0) {
         model->action_predictions = nimcp_calloc(num_actions, sizeof(float));
         model->action_counts = nimcp_calloc(num_actions, sizeof(uint32_t));
-        if (!model->action_counts) return -1;
+        if (!model->action_counts) return;
 
         /* Uniform action predictions initially */
         if (model->action_predictions) {

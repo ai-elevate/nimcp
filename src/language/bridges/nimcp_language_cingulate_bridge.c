@@ -118,7 +118,7 @@ struct language_cingulate_bridge {
     void* control_callback_data;
 
     /* Logging */
-    nimcp_log_context_t* log_ctx;
+    nimcp_log_context_t log_ctx;
 };
 
 //=============================================================================
@@ -406,7 +406,7 @@ language_cingulate_bridge_t* language_cingulate_bridge_create(
     bridge->is_initialized = true;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Language-Cingulate bridge created");
+        NIMCP_LOG_INFO("Language-Cingulate bridge created");
     }
 
     return bridge;
@@ -419,7 +419,7 @@ void language_cingulate_bridge_destroy(language_cingulate_bridge_t* bridge)
     }
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Language-Cingulate bridge destroyed");
+        NIMCP_LOG_INFO("Language-Cingulate bridge destroyed");
         nimcp_log_context_destroy(bridge->log_ctx);
     }
 
@@ -473,7 +473,7 @@ int language_cingulate_connect_broca(
     bridge->broca = broca;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Connected to Broca's area adapter");
+        NIMCP_LOG_INFO("Connected to Broca's area adapter");
     }
 
     return 0;
@@ -492,7 +492,7 @@ int language_cingulate_connect_wernicke(
     bridge->wernicke = wernicke;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Connected to Wernicke's area adapter");
+        NIMCP_LOG_INFO("Connected to Wernicke's area adapter");
     }
 
     return 0;
@@ -511,7 +511,7 @@ int language_cingulate_connect_bio_async(
     bridge->router = router;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Connected to bio-async router");
+        NIMCP_LOG_INFO("Connected to bio-async router");
     }
 
     return 0;
@@ -689,7 +689,7 @@ int language_cingulate_report_error(
     }
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_DEBUG(bridge->log_ctx, "Speech error reported: type=%d severity=%.2f",
+        NIMCP_LOG_DEBUG("Speech error reported: type=%d severity=%.2f",
                         error->type, error->severity);
     }
 
@@ -746,7 +746,7 @@ int language_cingulate_report_conflict(
     }
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_DEBUG(bridge->log_ctx, "Language conflict reported: type=%d level=%.2f",
+        NIMCP_LOG_DEBUG("Language conflict reported: type=%d level=%.2f",
                         conflict->type, conflict->conflict_level);
     }
 
@@ -879,7 +879,7 @@ int language_cingulate_start_monitoring(
     bridge->current_speech_rate = 1.0f;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_DEBUG(bridge->log_ctx, "Started monitoring utterance %u", utterance_id);
+        NIMCP_LOG_DEBUG("Started monitoring utterance %u", utterance_id);
     }
 
     return 0;

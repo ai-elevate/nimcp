@@ -376,7 +376,9 @@ int dragonfly_visual_bridge_process_frame(
     if (bridge->visual_cortex) {
         /* Get visual cortex feature extraction */
         visual_features_t features;
-        if (visual_cortex_extract_features(bridge->visual_cortex, image, width, height,
+        /* NOTE: visual_cortex_extract_features expects uint8_t* image data;
+         * we receive float*. Cast is a raw bit reinterpretation (not a conversion). */
+        if (visual_cortex_extract_features(bridge->visual_cortex, (const uint8_t*)image, width, height,
                                            channels, &features) == 0) {
             /* Extract motion blobs from V1/V2/MT hierarchy */
             for (uint32_t i = 0; i < features.num_motion_regions &&

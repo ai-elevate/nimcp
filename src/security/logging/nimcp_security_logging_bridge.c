@@ -2174,7 +2174,7 @@ int security_logging_broadcast_event(
     /* Broadcast high-severity events via bio-async */
     if (entry->severity >= SECURITY_LOG_SEV_ERROR) {
         nimcp_error_t err = bio_router_broadcast(
-            &bridge->base.bio_ctx,
+            bridge->base.bio_ctx,
             entry,
             sizeof(security_log_entry_t)
         );

@@ -377,7 +377,7 @@ void working_memory_clear(working_memory_t* wm);
  * @param wm Working memory instance (non-NULL)
  * @return Number of items [0, capacity]
  */
-uint32_t working_memory_get_size(working_memory_t* wm);
+uint32_t working_memory_get_size(const working_memory_t* wm);
 
 /**
  * @brief Get current number of items (alias for get_size)

@@ -2335,7 +2335,7 @@ bool schema_detect_violation(
 
     if (has_violation) {
         violation->schema_id = instantiation->schema->schema_id;
-        violation->slot_name = slot_name;  // Not copied
+        violation->slot_name = (char*)slot_name;  // Not copied
         violation->expected = slot->default_value;
         violation->actual = *value;
 

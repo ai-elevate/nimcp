@@ -26,6 +26,14 @@
 #include <stdio.h>
 #include <time.h>
 
+/* Silence -Wunused-result for fread — reads are best-effort; file-format magic
+ * and version checks downstream validate integrity. */
+static inline void nimcp_fread_ignore(void* ptr, size_t sz, size_t n, FILE* f) {
+    size_t got = fread(ptr, sz, n, f);
+    (void)got;
+}
+#define fread_chk nimcp_fread_ignore
+
 #define LOG_MODULE "GROUNDED_LANG"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
@@ -2153,9 +2161,9 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         fclose(f);
         return NULL;
     }
-    fread(&version, sizeof(version), 1, f);
-    fread(&semantic_dim, sizeof(semantic_dim), 1, f);
-    fread(&vocab_count, sizeof(vocab_count), 1, f);
+    fread_chk(&version, sizeof(version), 1, f);
+    fread_chk(&semantic_dim, sizeof(semantic_dim), 1, f);
+    fread_chk(&vocab_count, sizeof(vocab_count), 1, f);
 
     grounded_language_t* gl = grounded_language_create(semantic_dim, semantic_memory);
     if (!gl) { fclose(f); return NULL; }
@@ -2168,11 +2176,11 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         float valence, arousal;
         bool ctx_init;
 
-        fread(form, GL_MAX_WORD_LEN, 1, f);
-        fread(&frequency, sizeof(frequency), 1, f);
-        fread(&word_class, sizeof(word_class), 1, f);
-        fread(&valence, sizeof(valence), 1, f);
-        fread(&arousal, sizeof(arousal), 1, f);
+        fread_chk(form, GL_MAX_WORD_LEN, 1, f);
+        fread_chk(&frequency, sizeof(frequency), 1, f);
+        fread_chk(&word_class, sizeof(word_class), 1, f);
+        fread_chk(&valence, sizeof(valence), 1, f);
+        fread_chk(&arousal, sizeof(arousal), 1, f);
 
         gl_lexicon_entry_t* entry = lexicon_find_or_create(gl, form);
         if (!entry) continue;
@@ -2182,18 +2190,18 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         entry->valence = valence;
         entry->arousal = arousal;
 
-        fread(&ctx_init, sizeof(ctx_init), 1, f);
+        fread_chk(&ctx_init, sizeof(ctx_init), 1, f);
         entry->context_initialized = ctx_init;
         if (ctx_init) {
-            fread(entry->context_vector, sizeof(float), semantic_dim, f);
+            fread_chk(entry->context_vector, sizeof(float), semantic_dim, f);
         }
 
         uint32_t binding_count;
-        fread(&binding_count, sizeof(binding_count), 1, f);
+        fread_chk(&binding_count, sizeof(binding_count), 1, f);
 
         for (uint32_t b = 0; b < binding_count; b++) {
             gl_word_binding_t binding;
-            fread(&binding, sizeof(binding), 1, f);
+            fread_chk(&binding, sizeof(binding), 1, f);
 
             /* Grow bindings array if needed */
             if (entry->binding_count >= entry->binding_capacity) {
@@ -2210,9 +2218,9 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
 
     /* Templates */
     uint32_t template_count;
-    fread(&template_count, sizeof(template_count), 1, f);
+    fread_chk(&template_count, sizeof(template_count), 1, f);
     if (template_count <= gl->template_capacity) {
-        fread(gl->templates, sizeof(gl_template_t), template_count, f);
+        fread_chk(gl->templates, sizeof(gl_template_t), template_count, f);
         gl->template_count = template_count;
     }
 

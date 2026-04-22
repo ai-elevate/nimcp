@@ -325,7 +325,7 @@ typedef struct {
     //-------------------------------------------------------------------------
     // PR Integration
     //-------------------------------------------------------------------------
-    entangle_graph_t* entanglement;     /**< Graph for inter-memory associations */
+    entangle_graph_t entanglement;      /**< Graph for inter-memory associations */
     pr_node_manager_t node_manager;     /**< Node manager for memory creation */
 
     //-------------------------------------------------------------------------

@@ -837,8 +837,7 @@ int vae_thalamic_trigger_burst(vae_thalamic_bridge_t* bridge,
         ns->burst_count++;
 
         if (bridge->config.enable_logging) {
-            LOG_DEBUG(VAE_THAL_MODULE_ID,
-                      "Burst triggered in %s",
+            LOG_DEBUG("Burst triggered in %s",
                       vae_thalamic_nucleus_to_string(nucleus));
         }
     }

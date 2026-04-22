@@ -443,13 +443,13 @@ int vae_hippo_encode_tensor(vae_hippo_bridge_t* bridge,
                              vae_hippo_encode_result_t* result) {
     if (!bridge || !input || !result) return NIMCP_ERROR_VAE_HIPPO_NULL;
 
-    float* input_data = (float*)nimcp_tensor_data(input);
+    float* input_data = (float*)nimcp_tensor_data((nimcp_tensor_t*)input);
     uint32_t input_dim = nimcp_tensor_size(input);
 
     float* context_data = NULL;
     uint32_t context_dim = 0;
     if (context) {
-        context_data = (float*)nimcp_tensor_data(context);
+        context_data = (float*)nimcp_tensor_data((nimcp_tensor_t*)context);
         context_dim = nimcp_tensor_size(context);
     }
 
@@ -805,7 +805,7 @@ int vae_hippo_retrieve_tensor(vae_hippo_bridge_t* bridge,
                                nimcp_tensor_t* reconstruction) {
     if (!bridge || !cue || !reconstruction) return NIMCP_ERROR_VAE_HIPPO_NULL;
 
-    float* cue_data = (float*)nimcp_tensor_data(cue);
+    float* cue_data = (float*)nimcp_tensor_data((nimcp_tensor_t*)cue);
     uint32_t cue_dim = nimcp_tensor_size(cue);
 
     vae_hippo_retrieve_result_t result;

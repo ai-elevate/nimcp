@@ -15,6 +15,11 @@
 
 #include "edge/nimcp_edge.h"
 #include "edge/nimcp_swarm_runtime_types.h"
+
+/* Forward declaration to avoid including full nimcp_swarm_runtime.h
+ * (which conflicts with local nimcp_swarm_discovery_announce variant) */
+bool nimcp_swarm_byzantine_check_telemetry(
+    const nimcp_device_telemetry_t* telemetry);
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"

@@ -29,6 +29,11 @@
 /* Use the same forward declarations as nimcp_brain_persistence.c */
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "snn/nimcp_snn_types.h"
+#include "snn/nimcp_snn_network.h"
+#include "lnn/nimcp_lnn_network.h"
+#include "training/nimcp_cnn_training.h"
+#include "training/nimcp_cortex_cnn.h"
+#include "gpu/training/nimcp_training_bridge.h"
 #include "cognitive/nimcp_executive.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "cognitive/nimcp_working_memory.h"

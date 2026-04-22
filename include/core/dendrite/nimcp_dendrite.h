@@ -87,12 +87,21 @@ extern "C" {
 #define NIMCP_BAP_CALCIUM_FACTOR 0.5f          // Ca²⁺ influx from bAP
 
 //-----------------------------------------------------------------------------
-// STDP Constants
+// STDP Constants (dendrite-specific values — include this header before
+// nimcp_learning_constants.h to ensure these biological values win)
 //-----------------------------------------------------------------------------
+#ifndef NIMCP_STDP_TAU_PLUS_MS
 #define NIMCP_STDP_TAU_PLUS_MS 17.0f           // LTP time constant
+#endif
+#ifndef NIMCP_STDP_TAU_MINUS_MS
 #define NIMCP_STDP_TAU_MINUS_MS 34.0f          // LTD time constant
+#endif
+#ifndef NIMCP_STDP_A_PLUS
 #define NIMCP_STDP_A_PLUS 0.005f               // LTP amplitude
+#endif
+#ifndef NIMCP_STDP_A_MINUS
 #define NIMCP_STDP_A_MINUS 0.00525f            // LTD amplitude (asymmetric)
+#endif
 #define NIMCP_STDP_WINDOW_MS 100.0f            // STDP time window
 
 //-----------------------------------------------------------------------------

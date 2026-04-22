@@ -93,7 +93,7 @@ typedef struct {
     float confidence;             /**< How well understood (0-1) */
     uint64_t learned_timestamp;   /**< When learned */
     uint32_t reinforcement_count; /**< How many times reinforced */
-    char confidence_key[16];      /**< B-tree key: formatted confidence string */
+    char confidence_key[24];      /**< B-tree key: formatted "%08.6f_%05u" — 24 bytes fits max-width uint32 safely */
 
     // PART B1.1: Hyperbolic Knowledge Embeddings (geometric representation)
     poincare_point_t *hyperbolic_embedding;  /**< Position in Poincaré ball (hierarchical) */

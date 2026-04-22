@@ -393,7 +393,7 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
     }
 
     /* Track overflow occurrences for monitoring */
-    static _Atomic uint32_t s_overflow_count = 0;
+    static nimcp_atomic_uint32_t s_overflow_count = {0};
     uint32_t overflow_count = nimcp_atomic_fetch_add_u32(&s_overflow_count, 1, NIMCP_MEMORY_ORDER_RELAXED) + 1;
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);

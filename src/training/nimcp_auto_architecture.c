@@ -1876,7 +1876,7 @@ int auto_arch_save_json(const auto_arch_architecture_t* arch, const char* filepa
     fprintf(fp, "  \"magic\": %u,\n", arch->magic);
     fprintf(fp, "  \"arch_id\": %lu,\n", arch->arch_id);
     fprintf(fp, "  \"generation\": %u,\n", arch->generation);
-    fprintf(fp, "  \"parent_id\": %lu,\n", arch->parent_id);
+    fprintf(fp, "  \"parent_id\": %u,\n", arch->parent_id);
     fprintf(fp, "  \"network_type\": %d,\n", (int)arch->network_type);
     fprintf(fp, "  \"n_layers\": %u,\n", arch->n_layers);
     fprintf(fp, "  \"n_inputs\": %u,\n", arch->n_inputs);

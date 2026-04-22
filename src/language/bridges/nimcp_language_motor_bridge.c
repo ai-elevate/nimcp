@@ -109,7 +109,7 @@ struct language_motor_bridge {
     void* status_callback_data;
 
     /* Logging */
-    nimcp_log_context_t* log_ctx;
+    nimcp_log_context_t log_ctx;
 };
 
 //=============================================================================
@@ -383,7 +383,7 @@ language_motor_bridge_t* language_motor_bridge_create(
     bridge->is_initialized = true;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Language-Motor bridge created");
+        NIMCP_LOG_INFO("Language-Motor bridge created");
     }
 
     return bridge;
@@ -396,7 +396,7 @@ void language_motor_bridge_destroy(language_motor_bridge_t* bridge)
     }
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Language-Motor bridge destroyed");
+        NIMCP_LOG_INFO("Language-Motor bridge destroyed");
         nimcp_log_context_destroy(bridge->log_ctx);
     }
 
@@ -447,7 +447,7 @@ int language_motor_connect_broca(
     bridge->broca = broca;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Connected to Broca's area adapter");
+        NIMCP_LOG_INFO("Connected to Broca's area adapter");
     }
 
     return 0;
@@ -466,7 +466,7 @@ int language_motor_connect_bio_async(
     bridge->router = router;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_INFO(bridge->log_ctx, "Connected to bio-async router");
+        NIMCP_LOG_INFO("Connected to bio-async router");
     }
 
     return 0;
@@ -600,7 +600,7 @@ int language_motor_request_speech_production(
     execute_next_phoneme(bridge);
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_DEBUG(bridge->log_ctx, "Started speech production: %u phonemes",
+        NIMCP_LOG_DEBUG("Started speech production: %u phonemes",
                         request->phoneme_count);
     }
 
@@ -817,7 +817,7 @@ int language_motor_register_phoneme_program(
     bridge->phoneme_programs[program->phoneme_id].is_registered = true;
 
     if (bridge->log_ctx) {
-        NIMCP_LOG_DEBUG(bridge->log_ctx, "Registered phoneme program: %u",
+        NIMCP_LOG_DEBUG("Registered phoneme program: %u",
                         program->phoneme_id);
     }
 

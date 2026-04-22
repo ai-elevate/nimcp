@@ -456,6 +456,20 @@ int snn_network_add_population(snn_network_t* network,
                                const char* name);
 
 /**
+ * @brief Add population in lightweight/CSR mode (no dense allocation)
+ *
+ * @param network SNN network
+ * @param n_neurons Number of neurons
+ * @param neuron_type Type of neurons
+ * @param name Human-readable name
+ * @return Population ID, or negative on error
+ */
+int snn_network_add_population_lightweight(snn_network_t* network,
+                                           uint32_t n_neurons,
+                                           neuron_type_t neuron_type,
+                                           const char* name);
+
+/**
  * @brief Connect two populations
  *
  * WHAT: Create synaptic connections between populations

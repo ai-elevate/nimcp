@@ -98,7 +98,7 @@ struct me_fep_bridge {
 
     /* References */
     fep_orchestrator_t* orchestrator;
-    me_fep_bridge_t* me_bridge;
+    mirror_empathy_bridge_t* me_bridge;
     uint32_t bridge_id;
     bool registered;
 

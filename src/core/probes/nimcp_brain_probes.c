@@ -176,14 +176,14 @@ bool probe_registry_start(probe_registry_t* reg) {
     if (!reg || reg->sampler_running) return false;
 
     reg->sampler_running = true;
-    nimcp_thread_t* thread = NULL;
+    nimcp_thread_t thread = 0;
     int rc = nimcp_thread_create(&thread, sampler_thread_fn, reg, NULL);
     if (rc != 0) {
         reg->sampler_running = false;
         NIMCP_LOGGING_ERROR("Failed to start probe sampler thread");
         return false;
     }
-    reg->sampler_thread = thread;
+    reg->sampler_thread = (void*)(uintptr_t)thread;
     return true;
 }
 

@@ -769,7 +769,7 @@ int audio_logic_category_heard_recently(
         }
 
         uint32_t idx = (bridge->recent_head + MAX_RECENT_SOUNDS - 1 - i) % MAX_RECENT_SOUNDS;
-        recent_sound_t* sound = &bridge->recent_sounds[idx];
+        const recent_sound_t* sound = &bridge->recent_sounds[idx];
 
         if (now - sound->timestamp_us > window_us) {
             break;

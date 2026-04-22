@@ -79,17 +79,28 @@ extern "C" {
  * STDP (Spike-Timing-Dependent Plasticity) Constants
  *===========================================================================*/
 
+/* Guarded — dendrite module (nimcp_dendrite.h) may define these first with
+ * biologically-asymmetric values (17/34/0.005/0.00525). */
+
 /** @brief STDP potentiation amplitude (A+) */
+#ifndef NIMCP_STDP_A_PLUS
 #define NIMCP_STDP_A_PLUS                    0.01f
+#endif
 
 /** @brief STDP depression amplitude (A-) */
+#ifndef NIMCP_STDP_A_MINUS
 #define NIMCP_STDP_A_MINUS                   0.012f
+#endif
 
 /** @brief STDP potentiation time constant in ms (tau+) */
+#ifndef NIMCP_STDP_TAU_PLUS_MS
 #define NIMCP_STDP_TAU_PLUS_MS               20.0f
+#endif
 
 /** @brief STDP depression time constant in ms (tau-) */
+#ifndef NIMCP_STDP_TAU_MINUS_MS
 #define NIMCP_STDP_TAU_MINUS_MS              20.0f
+#endif
 
 /*=============================================================================
  * Gradient and Convergence Constants

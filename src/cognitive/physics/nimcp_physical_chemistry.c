@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+#include <float.h>
 #include <string.h>
 #include <math.h>
 
@@ -189,9 +190,10 @@ float pchem_partition_translational(float mass, float T, float V)
 {
     if (T < TEMP_EPSILON || mass <= 0.0f || V < VOL_EPSILON) return 1.0f;
     float thermal_wavelength_sq = (PCHEM_H * PCHEM_H) / (2.0f * (float)M_PI * mass * PCHEM_KB * T);
-    if (thermal_wavelength_sq < 1e-80f) return 1e30f;
+    /* Use FLT_MIN (~1.2e-38) as lower bound — values below are subnormal/zero on float */
+    if (thermal_wavelength_sq < FLT_MIN) return 1e30f;
     float lambda_cubed = powf(thermal_wavelength_sq, 1.5f);
-    if (lambda_cubed < 1e-80f) return 1e30f;
+    if (lambda_cubed < FLT_MIN) return 1e30f;
     return V / lambda_cubed;
 }
 

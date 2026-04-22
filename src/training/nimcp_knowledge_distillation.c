@@ -446,7 +446,7 @@ int kd_compute_loss(
         /* Forward through teacher (in eval mode) */
         nimcp_tensor_t** features = NULL;
         uint32_t num_features = 0;
-        int result = teacher->forward(teacher->model, input, teacher_output, &features, &num_features);
+        int result = teacher->forward(teacher->model, input, teacher_output, features, &num_features);
 
         /* Restore original mode if needed and if force_eval is not set */
         if (teacher->set_eval_mode && !teacher->force_eval_mode && !was_eval_mode) {
@@ -562,7 +562,7 @@ int kd_compute_loss_with_features(
             nimcp_tensor_t** teacher_features = NULL;
             uint32_t num_teacher_features = 0;
             result = teacher->forward(teacher->model, input, teacher_output,
-                                     &teacher_features, &num_teacher_features);
+                                     teacher_features, &num_teacher_features);
             if (result != 0) {
                 nimcp_tensor_destroy(teacher_output);
                 nimcp_mutex_unlock(ctx->mutex);

@@ -87,11 +87,11 @@ static inline void pr_kg_bridge_heartbeat_instance(
     #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
-    #define MUTEX_T nimcp_mutex_t
-    #define MUTEX_INIT(m) nimcp_mutex_init(&(m), NULL)
-    #define MUTEX_DESTROY(m) nimcp_mutex_destroy(&(m))
-    #define MUTEX_LOCK(m) nimcp_mutex_lock(&(m))
-    #define MUTEX_UNLOCK(m) nimcp_mutex_unlock(&(m))
+    #define MUTEX_T nimcp_mutex_t*
+    #define MUTEX_INIT(m) nimcp_mutex_init((m), NULL)
+    #define MUTEX_DESTROY(m) nimcp_mutex_destroy((m))
+    #define MUTEX_LOCK(m) nimcp_mutex_lock((m))
+    #define MUTEX_UNLOCK(m) nimcp_mutex_unlock((m))
 #endif
 
 //=============================================================================

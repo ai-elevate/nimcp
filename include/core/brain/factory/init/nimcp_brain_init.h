@@ -66,6 +66,7 @@ bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_natural_explanations_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_meta_learning_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain);
+bool nimcp_brain_factory_init_trauma_resilience(brain_t brain);
 bool nimcp_brain_factory_init_predictive_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_mirror_neurons(brain_t brain);
 bool nimcp_brain_factory_init_consolidation_subsystem(brain_t brain);

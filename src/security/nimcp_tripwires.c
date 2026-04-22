@@ -506,7 +506,7 @@ void tripwire_destroy(tripwire_system_t* system) {
 
     /* Disconnect from bio-async */
     if (system->bio_async_connected) {
-        bio_router_unregister_module(&system->bio_ctx);
+        bio_router_unregister_module(system->bio_ctx);
     }
 
     /* Free behavior distributions */

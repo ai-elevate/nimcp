@@ -1466,7 +1466,7 @@ void hyperscanning_dump(const hyperscanning_t* hs) {
                              (float)(i + 1) / (float)hs->pair_count);
         }
 
-        pair_sync_entry_t* pair = &hs->pairs[i];
+        const pair_sync_entry_t* pair = &hs->pairs[i];
         printf("  [%u-%u] PLV: D=%.2f T=%.2f A=%.2f B=%.2f G=%.2f sync=%s\n",
                pair->instance_a, pair->instance_b,
                pair->metrics.plv[SYNC_BAND_DELTA],

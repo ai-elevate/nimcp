@@ -294,7 +294,7 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
                                  brain->biology_sim);
         }
 
-        brain->intuitive_physics_enabled = (void*)(brain->intuitive_physics != NULL);
+        brain->intuitive_physics_enabled = (void*)(uintptr_t)(brain->intuitive_physics != NULL);
         LOG_INFO(LOG_MODULE, "World Model Prior: physics=%s chemistry=%s biology=%s unified=%s",
                  NULL /* {field} removed from brain_struct */ ? "yes" : "no",
                  NULL /* {field} removed from brain_struct */ ? "yes" : "no",
