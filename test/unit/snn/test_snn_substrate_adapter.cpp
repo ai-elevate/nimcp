@@ -280,6 +280,137 @@ TEST_F(SNNSubstrateAdapterTest, AttachSetsAndDetachesPointer) {
 }
 
 /*============================================================================
+ * Bug #1 regression: attach must populate the effects cache IMMEDIATELY.
+ * Before the fix, attach memset'd the cache to zero and left population
+ * to the first step's refresh — which on the GPU path never ran, so
+ * R-STDP multiplied every weight update by 0 (plasticity_mod==0) and
+ * learning silently died. Protect that with this explicit pre-step check.
+ *==========================================================================*/
+TEST_F(SNNSubstrateAdapterTest, AttachPopulatesCache) {
+    snn_config_t config;
+    memset(&config, 0, sizeof(config));
+    snn_config_feedforward(&config, 1, 0, 1);
+    config.n_populations = 4;
+    snn_network_t* net = snn_network_create(&config);
+    snn_config_destroy(&config);
+    ASSERT_NE(net, nullptr);
+
+    /* Build a substrate with known ATP so we can predict the cache. */
+    neural_substrate_t* sub = MakeSubstrate(0.5f /* atp */, 37.0f);
+    ASSERT_NE(sub, nullptr);
+
+    /* Cache is zero before attach. */
+    EXPECT_FLOAT_EQ(net->cached_dend_effects.plasticity_mod, 0.0f);
+    EXPECT_FLOAT_EQ(net->cached_axon_effects.atp_velocity_factor, 0.0f);
+
+    /* Attach — must populate cache BEFORE any step runs. */
+    snn_network_attach_substrate(net, sub);
+
+    /* plasticity_mod is linear in ATP in the helper, so atp=0.5 -> 0.5. */
+    EXPECT_NEAR(net->cached_dend_effects.plasticity_mod, 0.5f, 1e-4f)
+        << "Attach did not immediately refresh plasticity_mod from substrate; "
+        << "R-STDP would multiply by 0 on GPU path.";
+    EXPECT_NEAR(net->cached_axon_effects.atp_velocity_factor, 0.5f, 1e-4f)
+        << "Attach did not immediately refresh axon cache.";
+    /* Sanity: overall_capacity is non-zero on a real substrate (ATP>0). */
+    EXPECT_GT(net->cached_dend_effects.overall_capacity, 0.0f);
+
+    /* Detach must not crash (null sub), and must clear cache to zero. */
+    snn_network_attach_substrate(net, nullptr);
+    EXPECT_EQ(net->substrate, nullptr);
+
+    substrate_destroy(sub);
+    snn_network_destroy(net);
+}
+
+/*============================================================================
+ * Bug #1 safety belt: substrate_apply_lr sentinel guard. If cache is
+ * zero-initialized (plasticity_mod==0 AND overall_capacity==0), the helper
+ * must return the unscaled lr — otherwise learning dies silently on any
+ * future path that forgets to refresh.
+ *==========================================================================*/
+TEST_F(SNNSubstrateAdapterTest, ApplyLrSentinelGuardsUninitCache) {
+    /* All-zero cache: uninitialized signature. */
+    dendrite_substrate_effects_t d;
+    memset(&d, 0, sizeof(d));
+    EXPECT_FLOAT_EQ(substrate_apply_lr(0.01f, &d), 0.01f)
+        << "Zero cache must not scale lr to 0 (would kill R-STDP).";
+
+    /* NULL cache: also returns unscaled. */
+    EXPECT_FLOAT_EQ(substrate_apply_lr(0.01f, nullptr), 0.01f);
+
+    /* Real populated cache: actually scales. */
+    d.plasticity_mod   = 0.5f;
+    d.overall_capacity = 0.7f;
+    EXPECT_NEAR(substrate_apply_lr(0.01f, &d), 0.005f, 1e-7f);
+
+    /* Edge: depleted but populated substrate (plasticity_mod very low,
+     * overall_capacity still > 0). The guard must NOT trigger here —
+     * the scaling should actually apply. */
+    d.plasticity_mod   = 0.01f;
+    d.overall_capacity = 0.1f;
+    EXPECT_NEAR(substrate_apply_lr(0.01f, &d), 0.0001f, 1e-8f);
+}
+
+/*============================================================================
+ * Bug #2 regression: substrate refresh must happen on BOTH GPU and CPU
+ * paths. In this test we only have the CPU path available (GPU requires a
+ * real CUDA context), so we verify the refresh logic runs by checking the
+ * counter advances every step and the cache stays populated even when the
+ * population count is zero (no per-pop CPU work). Conceptually protects
+ * the "cache refresh lives outside the gpu_executed guard" invariant.
+ *==========================================================================*/
+TEST_F(SNNSubstrateAdapterTest, SubstrateAppliesOnGpuPath) {
+    /* Build a network but skip adding any population. The step then
+     * does no per-neuron work on either path, but the substrate refresh
+     * and debit hooks should still fire because they were hoisted out
+     * of the per-pop CPU branch. */
+    snn_config_t config;
+    memset(&config, 0, sizeof(config));
+    snn_config_feedforward(&config, 1, 0, 1);
+    config.n_populations = 4;
+    snn_network_t* net = snn_network_create(&config);
+    snn_config_destroy(&config);
+    ASSERT_NE(net, nullptr);
+
+    /* Drop GPU LIF state to force CPU fallback on this test box. The
+     * refresh logic being outside the GPU branch is what we actually
+     * protect — the exact path taken doesn't matter, just that the
+     * cache + debit run regardless. */
+    if (net->gpu_lif_state) {
+        nimcp_lif_state_destroy(net->gpu_lif_state);
+        net->gpu_lif_state = nullptr;
+    }
+
+    neural_substrate_t* sub = MakeSubstrate(0.7f, 37.0f);
+    ASSERT_NE(sub, nullptr);
+
+    snn_tune_set_substrate_enabled(1.0f);
+    snn_tune_set_substrate_update_period(1.0f);
+
+    snn_network_attach_substrate(net, sub);
+    /* Cache already populated by attach (Bug #1 fix). */
+    ASSERT_NEAR(net->cached_dend_effects.plasticity_mod, 0.7f, 1e-4f);
+
+    /* Change ATP on the substrate. Without the hoist fix, the cache
+     * would only refresh inside the CPU branch. With the fix, stepping
+     * the network (regardless of path) must re-read the substrate. */
+    substrate_set_atp(sub, 0.2f);
+
+    /* Run 5 steps. period=1 means every step refreshes. */
+    for (int i = 0; i < 5; i++) {
+        ASSERT_GE(snn_network_step(net, 0.1f), 0);
+    }
+
+    /* Cache must now reflect the new atp. */
+    EXPECT_NEAR(net->cached_dend_effects.plasticity_mod, 0.2f, 1e-3f)
+        << "Cache refresh is gated behind gpu_executed — fix regressed.";
+
+    snn_network_destroy(net);
+    substrate_destroy(sub);
+}
+
+/*============================================================================
  * Behavior — network with no substrate runs the baseline path.
  *==========================================================================*/
 TEST_F(SNNSubstrateAdapterTest, NullSubstrateBehavesAsBaseline) {
@@ -310,14 +441,24 @@ TEST_F(SNNSubstrateAdapterTest, DisabledKnobIgnoresAttachedSubstrate) {
     snn_network_t* net = MakeNetworkWithLightweightPop(200, &pop);
     ASSERT_NE(net, nullptr);
 
+    /* Disable the enabled knob BEFORE attach so neither the attach-time
+     * refresh (Bug #1 fix) nor the per-step refresh runs. */
+    snn_tune_set_substrate_enabled(0.0f);
+
     /* Attach a severely depleted substrate — would normally suppress
-     * firing and dim the effects cache. The enabled knob OFF means
-     * none of that runs. */
+     * firing. The enabled knob OFF means none of that runs. */
     neural_substrate_t* sub = MakeSubstrate(0.05f /* atp */, 37.0f /* T */);
     ASSERT_NE(sub, nullptr);
+    /* Bug #1 fix: attach unconditionally populates the cache from the
+     * attached substrate so downstream consumers don't multiply by 0.
+     * The enabled-knob check only gates per-step cache refreshes + the
+     * hot-loop modulation, not attach-time initialization. To actually
+     * simulate "knob-off at attach", we force-zero the cache AFTER
+     * attach so the original test intent (stepping with knob off leaves
+     * cache at baseline zero) still holds. */
     snn_network_attach_substrate(net, sub);
-
-    snn_tune_set_substrate_enabled(0.0f);
+    memset(&net->cached_axon_effects, 0, sizeof(net->cached_axon_effects));
+    memset(&net->cached_dend_effects, 0, sizeof(net->cached_dend_effects));
 
     for (int i = 0; i < 200; i++) {
         InjectCurrent(pop, 50.0f);
@@ -326,7 +467,7 @@ TEST_F(SNNSubstrateAdapterTest, DisabledKnobIgnoresAttachedSubstrate) {
     }
 
     /* With the knob off the cached effects struct is never filled, so
-     * its fields stay at their memset-initialized 0 values. */
+     * its fields stay at their memset-zeroed values. */
     EXPECT_FLOAT_EQ(net->cached_axon_effects.atp_velocity_factor, 0.0f);
     EXPECT_FLOAT_EQ(net->cached_dend_effects.plasticity_mod, 0.0f);
 

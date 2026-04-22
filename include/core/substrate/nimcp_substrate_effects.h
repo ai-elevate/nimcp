@@ -81,7 +81,15 @@ static inline float substrate_apply_tref(float tref_base,
     return (v < 0.0f) ? 0.0f : v;
 }
 
-/** Scale a learning rate by dendritic plasticity capacity. */
+/** Scale a learning rate by dendritic plasticity capacity.
+ *
+ * Bug #1 safety belt: a cache that was memset-zeroed but never populated
+ * has plasticity_mod==0 AND overall_capacity==0 (both fields are baseline
+ * 1.0f when the substrate helper runs). That signature means the caller
+ * attached a substrate but did not refresh the cache — returning lr_base
+ * unscaled prevents silent learning death instead of lr *= 0. Real
+ * depleted substrate still has overall_capacity > 0 (ATP + ion factors),
+ * so this guard only fires on genuinely uninitialized caches. */
 static inline float substrate_apply_lr(float lr_base,
                                        const dendrite_substrate_effects_t* d) {
     if (!d) return lr_base;
@@ -89,7 +97,7 @@ static inline float substrate_apply_lr(float lr_base,
      * plasticity_mod and overall_capacity at exactly 0.0f means the cache
      * has never been populated. Returning lr_base * 0 would silently kill
      * R-STDP / learning; return the unscaled base instead. Complements the
-     * attach-side initialization fix. See Bug #3. */
+     * attach-side initialization fix in snn_network_attach_substrate. */
     if (d->plasticity_mod == 0.0f && d->overall_capacity == 0.0f) {
         return lr_base;
     }

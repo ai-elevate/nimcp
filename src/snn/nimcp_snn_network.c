@@ -601,6 +601,16 @@ void snn_network_attach_substrate(snn_network_t* net,
     memset(&net->cached_axon_effects, 0, sizeof(net->cached_axon_effects));
     memset(&net->cached_dend_effects, 0, sizeof(net->cached_dend_effects));
     net->substrate_steps_since_update = 0;
+    /* Bug #1 fix: populate cache IMMEDIATELY so downstream consumers
+     * (snn_rstdp_apply) that read cached_dend_effects.plasticity_mod
+     * before the first step don't multiply LR by 0. Without this,
+     * R-STDP silently dies on the GPU path (where the CPU-fallback
+     * refresh block never runs) and on any pre-step inference. */
+    if (sub) {
+        substrate_compute_effects(sub,
+                                  &net->cached_axon_effects,
+                                  &net->cached_dend_effects);
+    }
     NIMCP_LOGGING_DEBUG("snn_network_attach_substrate: substrate=%p",
                         (void*)sub);
 }
@@ -684,6 +694,36 @@ int snn_network_step(snn_network_t* network, float dt) {
     struct timespec _step_t0, _step_t1, _phase_t0, _phase_t1;
     double _isyn_ms = 0, _lif_ms = 0, _readback_ms = 0;
     clock_gettime(CLOCK_MONOTONIC, &_step_t0);
+
+    /* ===== Substrate adapter: refresh cache EVERY step, BOTH paths =====
+     * Bug #2 fix: previously this lived inside `if (!gpu_executed)`, which
+     * meant the production GPU path never refreshed the cache and every
+     * R-STDP weight update multiplied by a stale (possibly zero) value.
+     * Hoist it to the top of snn_network_step so both CPU and GPU paths
+     * see up-to-date plasticity_mod / spike_reliability / etc.
+     *
+     * GPU-path limitation: per-neuron tau_eff/tref_eff modulation still
+     * only applies on the CPU fallback — those values feed the LIF
+     * integration loop which runs inside a CUDA kernel that doesn't read
+     * the cache. Plasticity modulation still works on GPU because it
+     * happens in snn_rstdp_apply on the host side after the step.
+     * Future work: upload the cache struct to GPU and thread it through
+     * the LIF + surrogate-gradient kernels. */
+    if (network->substrate && snn_tune_get_substrate_enabled() != 0.0f) {
+        const uint32_t period =
+            (uint32_t)snn_tune_get_substrate_update_period();
+        if (network->substrate_steps_since_update == 0 || period == 0) {
+            substrate_compute_effects(network->substrate,
+                                      &network->cached_axon_effects,
+                                      &network->cached_dend_effects);
+        }
+        network->substrate_steps_since_update++;
+        /* Bug #5 verification: cap counter to avoid uint32 overflow on
+         * very long runs + ensure deterministic modulo rollover. */
+        if (period > 0 && network->substrate_steps_since_update >= period) {
+            network->substrate_steps_since_update = 0;
+        }
+    }
 
     /* ===== GPU FAST PATH ===== */
     if (network->gpu_lif_state && network->gpu_ctx) {
@@ -1062,27 +1102,13 @@ int snn_network_step(snn_network_t* network, float dt) {
     if (!gpu_executed) {
     /* ===== CPU FALLBACK PATH ===== */
 
-    /* Substrate adapter: refresh cached effect structs once per step
-     * (not per pop). The ratelimit `substrate_update_period` controls
-     * how often the substrate state is re-read — biological effects
-     * vary on ~100 ms timescales so recomputing every 10 steps is
-     * plenty fine-grained while keeping the per-step cost to one
-     * substrate snapshot. When the substrate is NULL or the enabled
-     * knob is off, the cached pointers stay NULL and the hot loop
-     * short-circuits every modulation (no extra work). */
+    /* Substrate adapter: cache was already refreshed at the top of
+     * snn_network_step (so GPU path gets the same treatment). We just
+     * need to pick up the cached pointers here for tau_eff / tref_eff
+     * / spike-survival — the three CPU-only per-neuron hooks. */
     const axon_substrate_effects_t*     se_axon = NULL;
     const dendrite_substrate_effects_t* se_dend = NULL;
     if (network->substrate && snn_tune_get_substrate_enabled() != 0.0f) {
-        const uint32_t period = (uint32_t)snn_tune_get_substrate_update_period();
-        if (network->substrate_steps_since_update == 0 || period == 0) {
-            substrate_compute_effects(network->substrate,
-                                      &network->cached_axon_effects,
-                                      &network->cached_dend_effects);
-        }
-        network->substrate_steps_since_update++;
-        if (period > 0 && network->substrate_steps_since_update >= period) {
-            network->substrate_steps_since_update = 0;
-        }
         se_axon = &network->cached_axon_effects;
         se_dend = &network->cached_dend_effects;
     }
@@ -1430,7 +1456,11 @@ int snn_network_step(snn_network_t* network, float dt) {
                                          0 /* n_plasticity */);
             }
         } else {
-        /* ===== LEGACY NEURON_T PATH ===== */
+        /* ===== LEGACY NEURON_T PATH =====
+         * Bug #3 fix: mirror the lightweight path's substrate modulation.
+         * Use tau_eff / tref_eff (already computed above in this pop's
+         * loop iteration) instead of the raw config values so the
+         * biological substrate feedback also modulates legacy pops. */
         for (uint32_t n = 0; n < pop->n_neurons; n++) {
             spike_data[n] = 0.0f;
 
@@ -1459,13 +1489,17 @@ int snn_network_step(snn_network_t* network, float dt) {
                 }
             }
 
-            float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
+            /* LIF dynamics — use substrate-modulated tau (tau_eff
+             * collapses to tau_mem when no substrate is attached). */
+            float dv = (v_rest - v_data[n] + I_syn) / tau_eff * dt_ms;
             v_data[n] += dv;
 
             if (v_data[n] >= v_thresh) {
                 spike_data[n] = 1.0f;
                 v_data[n] = v_reset;
-                ref_data[n] = network->config.t_ref;
+                /* Refractory uses substrate-modulated tref_eff
+                 * (collapses to config.t_ref when no substrate). */
+                ref_data[n] = tref_eff;
                 record_spike(&pop->spike_trains[n], network->sim->current_time_us);
                 total_spikes++;
                 pop->total_spikes++;
@@ -1483,9 +1517,52 @@ int snn_network_step(snn_network_t* network, float dt) {
                 }
             }
         }
+
+        /* Report this pop's activity to the substrate (mirrors the
+         * lightweight branch). Bug #3 fix: legacy neuron_t pops were
+         * previously silent contributors — substrate never saw their
+         * metabolic cost. */
+        if (network->substrate &&
+            snn_tune_get_substrate_enabled() != 0.0f) {
+            uint32_t pop_spikes_this_step = 0;
+            for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                if (spike_data[n] > 0.5f) pop_spikes_this_step++;
+            }
+            substrate_debit_activity(network->substrate,
+                                     0 /* region_id */,
+                                     pop_spikes_this_step,
+                                     0 /* n_plasticity */);
+        }
         } /* end legacy */
     }
     } /* end CPU fallback */
+
+    /* ===== GPU-path substrate activity debit =====
+     * Bug #2 fix: previously substrate_debit_activity only ran inside the
+     * CPU fallback, so the GPU fast path never reported spike cost back
+     * to the substrate. Result: ATP never drained, plasticity_mod stayed
+     * pinned at ~1.0, and the metabolic feedback loop was silently open.
+     * When the GPU executed the step, walk each population's spike_output
+     * (already synced back to host above) and debit the substrate once
+     * per pop. */
+    if (gpu_executed && network->substrate &&
+        snn_tune_get_substrate_enabled() != 0.0f) {
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            snn_population_t* pop = network->populations[p];
+            if (!pop || !pop->spike_output) continue;
+            const float* sp = (const float*)nimcp_tensor_data_const(
+                pop->spike_output);
+            if (!sp) continue;
+            uint32_t pop_spikes_this_step = 0;
+            for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                if (sp[n] > 0.5f) pop_spikes_this_step++;
+            }
+            substrate_debit_activity(network->substrate,
+                                     0 /* region_id */,
+                                     pop_spikes_this_step,
+                                     0 /* n_plasticity */);
+        }
+    }
 
     /* Update simulation time */
     network->sim->current_time_us += dt_us;

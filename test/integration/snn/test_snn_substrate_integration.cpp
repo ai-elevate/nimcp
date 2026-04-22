@@ -39,6 +39,12 @@ extern "C" int snn_network_add_population_lightweight(snn_network_t* network,
                                                       const char* name);
 extern "C" void nimcp_lif_state_destroy(void* state);
 
+/* Legacy non-lightweight pop via the public add_population API — used by
+ * the Bug #3 regression test. */
+extern "C" {
+#include "core/neuralnet/nimcp_neuralnet.h"
+}
+
 /*============================================================================
  * Fixture. Saves/restores every tunable we touch.
  *==========================================================================*/
@@ -310,4 +316,132 @@ TEST_F(SNNSubstrateIntegrationTest, UpdatePeriodRateLimitsCacheRefresh) {
     /* Now the cache should reflect atp=0.2. */
     EXPECT_NEAR(network->cached_axon_effects.atp_velocity_factor, 0.2f, 1e-3f)
         << "Cache should have refreshed with new atp after period boundary.";
+}
+
+/*============================================================================
+ * Bug #3 regression: legacy (non-lightweight) neuron_t path must honour
+ * substrate modulation. Before the fix, the legacy branch read
+ * config.tau_mem and config.t_ref directly — substrate was a no-op for
+ * any pop that went through the classic neuron_t integration path.
+ *
+ * Strategy: build a non-lightweight pop, drive it with a constant
+ * external current via neuron->external_current, and compare total spikes
+ * between atp=1.0 (baseline) and atp=0.3 (depleted). The depleted run
+ * must show detectably fewer spikes, proving tau_eff/tref_eff are wired.
+ *==========================================================================*/
+TEST_F(SNNSubstrateIntegrationTest, LegacyNeuronPathModulated) {
+    /* Biophysics off — substrate is the only modulator. */
+    snn_tune_set_ahp_enabled(0.0f);
+    snn_tune_set_pump_enabled(0.0f);
+    snn_tune_set_basket_enabled(0.0f);
+    snn_tune_set_noise_rate_hz(0.0f);
+
+    snn_tune_set_substrate_enabled(1.0f);
+    snn_tune_set_substrate_update_period(1.0f);
+    /* Spike reliability dropout OFF so we measure tau/tref only — the
+     * legacy branch doesn't wire dropout, only the lightweight path does. */
+    snn_tune_set_substrate_spike_dropout_on(0.0f);
+    snn_tune_set_substrate_plasticity_mod_on(1.0f);
+
+    snn_config_t config;
+    memset(&config, 0, sizeof(config));
+    /* Legacy path needs a real neural_net — provide a small base net
+     * that leaves room for the 50-neuron legacy pop we add below.
+     * neural_network_create allocates capacity = actual_neurons * 2 for
+     * small nets, so (1 + 2 + 1) * 2 = 8 base + plenty of headroom is
+     * not enough — use a larger hidden so capacity swells. */
+    snn_config_feedforward(&config, 4, 40, 4);
+    config.n_populations = 4;
+
+    network = snn_network_create(&config);
+    snn_config_destroy(&config);
+    ASSERT_NE(network, nullptr);
+    if (network->gpu_lif_state) {
+        nimcp_lif_state_destroy(network->gpu_lif_state);
+        network->gpu_lif_state = nullptr;
+    }
+
+    /* Legacy (non-lightweight) pop — created via the default API which
+     * routes through snn_population_create_internal. The step loop's
+     * else-branch (the path we fixed) runs for this pop. Keep pop
+     * small enough to fit in the neural_net capacity (2x headroom on
+     * the 48-neuron base = 96 total capacity → 50 additional fits). */
+    int pid = snn_network_add_population(network, 40, NEURON_GENERIC_LIF,
+                                         "legacy_pop");
+    ASSERT_GE(pid, 0);
+    snn_population_t* pop = network->populations[pid];
+    ASSERT_NE(pop, nullptr);
+    ASSERT_FALSE(pop->lightweight)
+        << "Test needs a legacy non-lightweight pop.";
+
+    /* Drive each neuron with a constant external current via the
+     * underlying neuron_t.external_current field (the legacy path reads
+     * this, not pop->external_current). */
+    auto drive_neurons = [&](float I) {
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            neuron_t* nu = neural_network_get_neuron(
+                network->neural_net, pop->neuron_ids[n]);
+            ASSERT_NE(nu, nullptr);
+            nu->external_current = I;
+        }
+    };
+
+    /* Reset membrane + refractory + total_spikes for a clean run. */
+    auto hard_reset = [&]() {
+        float* v = (float*)nimcp_tensor_data(pop->membrane_v);
+        if (v) for (uint32_t n = 0; n < pop->n_neurons; n++) v[n] = -70.0f;
+        float* r = (float*)nimcp_tensor_data(pop->refractory);
+        if (r) memset(r, 0, pop->n_neurons * sizeof(float));
+        float* s = (float*)nimcp_tensor_data(pop->spike_output);
+        if (s) memset(s, 0, pop->n_neurons * sizeof(float));
+        pop->total_spikes = 0;
+    };
+
+    substrate_config_t scfg;
+    substrate_default_config(&scfg);
+    sub = substrate_create(&scfg);
+    ASSERT_NE(sub, nullptr);
+
+    /* Run 1: ATP=1.0 (baseline). tau_eff ≈ tau_mem, tref_eff ≈ t_ref. */
+    substrate_set_atp(sub, 1.0f);
+    substrate_set_temperature(sub, 37.0f);
+    snn_network_attach_substrate(network, sub);
+
+    hard_reset();
+    drive_neurons(55.0f);
+    const int n_steps = 400;
+    uint64_t baseline_spikes = 0;
+    for (int step = 0; step < n_steps; step++) {
+        drive_neurons(55.0f);  /* re-inject every step */
+        int rc = snn_network_step(network, 0.1f);
+        ASSERT_GE(rc, 0);
+        baseline_spikes += CountSpikes(pop);
+    }
+
+    /* Run 2: ATP=0.3 (depleted). refractory_period_mod ~= 3.33 → legacy
+     * pop's refractory becomes ~3x longer, so spike count should drop
+     * noticeably compared to ATP=1.0 over the same drive. */
+    substrate_set_atp(sub, 0.3f);
+    /* Force cache refresh on next step. */
+    network->substrate_steps_since_update = 0;
+
+    hard_reset();
+    uint64_t depleted_spikes = 0;
+    for (int step = 0; step < n_steps; step++) {
+        drive_neurons(55.0f);
+        int rc = snn_network_step(network, 0.1f);
+        ASSERT_GE(rc, 0);
+        depleted_spikes += CountSpikes(pop);
+    }
+
+    EXPECT_GT(baseline_spikes, 0u);
+    /* Depleted run must be detectably lower. The refractory effect is
+     * the dominant term (~3x longer) so we expect at least 10% reduction;
+     * relax the tolerance for run-to-run PRNG jitter from any other
+     * subsystems that might add variance. */
+    EXPECT_LT(depleted_spikes, (uint64_t)(0.90 * (double)baseline_spikes))
+        << "Legacy neuron_t path did not honour substrate modulation "
+        << "(baseline=" << baseline_spikes
+        << ", depleted=" << depleted_spikes << "). "
+        << "tau_eff/tref_eff are not wired into the non-lightweight branch.";
 }

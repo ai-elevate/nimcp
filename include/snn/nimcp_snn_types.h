@@ -611,6 +611,7 @@ struct snn_network_s {
      * g_snn_substrate_update_period) and read inside the hot per-neuron
      * loop to modulate tau_mem, refractory period, spike survival, and
      * plasticity learning rate. See snn_network_attach_substrate. */
+    /* not part of checkpoint schema — runtime pointers rebuilt on load */
     struct neural_substrate*     substrate;
     axon_substrate_effects_t     cached_axon_effects;
     dendrite_substrate_effects_t cached_dend_effects;
