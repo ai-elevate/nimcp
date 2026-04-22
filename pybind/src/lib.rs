@@ -15,7 +15,26 @@
 //! - `brain.stats_json() -> str` — same payload as `stats()` but as the
 //!   raw JSON string, for callers that want to log / pipe / save.
 //!
-//! Later phases add SNN config, memory/landmark API, streaming sensory I/O.
+//! Phase 7b surface (full ensemble + memory + ensemble checkpoint):
+//!
+//! - `Brain.from_json(config_json: str) -> Brain` — alternative constructor
+//!   accepting a full `BrainConfig` as JSON. Use this to build a brain
+//!   with SNN, LNN, and/or memory configured. Hand-writing the JSON is
+//!   straightforward; the adapter shim builds it from harness configs.
+//! - `brain.snn_step(drive, reward, dt_ms) -> int` — one SNN integration
+//!   step. `drive` is `list[list[float]]` — one current vector per
+//!   population. Returns total spikes this step.
+//! - `brain.lnn_reset()` — clear LNN transient state.
+//! - `brain.lnn_forward_step(input) -> list[float]` — one sample.
+//! - `brain.lnn_forward_sequence(inputs) -> list[list[float]]` — multi-sample.
+//! - `brain.lnn_train_step_mse(inputs, targets, lr, grad_clip) -> (loss, grad_norm)`
+//! - `brain.memory_insert(id, features, t_ms, salience=0.0)`
+//! - `brain.memory_mark_landmark(id, reason)`
+//! - `brain.memory_query_all(query, k) -> list[dict]`
+//! - `brain.memory_query_landmarks(query, k) -> list[dict]`
+//! - `brain.memory_consolidate(dt_seconds) -> (promotions, demotions, evictions)`
+//! - `brain.save_ensemble(dir)` / `brain.load_ensemble(dir)` — atomic
+//!   directory checkpoint covering every configured subsystem.
 //!
 //! Built with `maturin develop` for editable installs.
 
@@ -29,6 +48,8 @@
 use ndarray::Array1;
 use nimcp_adaptive::{Activation, AdaptiveConfig};
 use nimcp_brain::{Brain, BrainConfig};
+use nimcp_lnn::TrainParams;
+use nimcp_memory::MemoryNode;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use std::path::PathBuf;
@@ -188,6 +209,188 @@ impl PyBrain {
     /// disk / a socket / a log without ever touching the structure.
     fn stats_json(&self) -> PyResult<String> {
         self.inner.stats_json().map_err(rt_err)
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 7b — full-ensemble constructor + SNN / LNN / memory surface.
+    // -------------------------------------------------------------------------
+
+    /// Alternative constructor accepting a full `BrainConfig` as JSON.
+    /// The Python caller builds a dict mirroring the `BrainConfig`
+    /// struct and hands `json.dumps(cfg)`; use this path to enable
+    /// SNN / LNN / memory on the brain.
+    ///
+    /// Args:
+    ///     config_json (str): JSON serialization of `BrainConfig`.
+    /// Returns:
+    ///     Brain
+    ///
+    /// Raises:
+    ///     ValueError: JSON didn't decode to a `BrainConfig`.
+    ///     RuntimeError: Brain construction failed (shape / config errors).
+    #[staticmethod]
+    fn from_json(config_json: &str) -> PyResult<Self> {
+        let cfg: BrainConfig = serde_json::from_str(config_json)
+            .map_err(|e| PyValueError::new_err(format!("BrainConfig JSON decode: {e}")))?;
+        let inner = Brain::new(cfg).map_err(rt_err)?;
+        Ok(Self { inner })
+    }
+
+    /// One SNN integration step.
+    ///
+    /// Args:
+    ///     drive  (list[list[float]]): external `I_syn` current per population.
+    ///         Outer list length must equal the number of populations; each
+    ///         inner list is either empty (no external drive for that
+    ///         population) or length-equal to the population size.
+    ///     reward (float): global reward signal for R-STDP.
+    ///     dt_ms  (float): integration step in milliseconds.
+    /// Returns:
+    ///     int: total spikes emitted this step.
+    fn snn_step(&mut self, drive: Vec<Vec<f32>>, reward: f32, dt_ms: f32) -> PyResult<u32> {
+        let slices: Vec<&[f32]> = drive.iter().map(Vec::as_slice).collect();
+        self.inner.snn_step(&slices, reward, dt_ms).map_err(rt_err)
+    }
+
+    /// Reset the LNN's transient state to zeros. No-op on brains without LNN.
+    fn lnn_reset(&mut self) {
+        self.inner.lnn_reset();
+    }
+
+    /// Step the LNN forward one sample; returns readout.
+    /// State carries across calls; use `lnn_reset()` to start a fresh sequence.
+    fn lnn_forward_step(&mut self, input: Vec<f32>) -> PyResult<Vec<f32>> {
+        let x = Array1::from_vec(input);
+        self.inner
+            .lnn_forward_step(&x)
+            .map(|out| out.to_vec())
+            .map_err(rt_err)
+    }
+
+    /// Run the LNN over a full sequence (resets state first).
+    /// Returns per-step readouts.
+    fn lnn_forward_sequence(&mut self, inputs: Vec<Vec<f32>>) -> PyResult<Vec<Vec<f32>>> {
+        let arrays: Vec<Array1<f32>> = inputs.into_iter().map(Array1::from_vec).collect();
+        self.inner
+            .lnn_forward_sequence(&arrays)
+            .map(|outs| outs.into_iter().map(|a| a.to_vec()).collect())
+            .map_err(rt_err)
+    }
+
+    /// One LNN training step (MSE over sequence). Returns `(loss, grad_norm)`.
+    #[pyo3(signature = (inputs, targets, lr = 0.01, grad_clip = 1.0))]
+    fn lnn_train_step_mse(
+        &mut self,
+        inputs: Vec<Vec<f32>>,
+        targets: Vec<Vec<f32>>,
+        lr: f32,
+        grad_clip: f32,
+    ) -> PyResult<(f32, f32)> {
+        if inputs.len() != targets.len() {
+            return Err(shape_err(format!(
+                "len(inputs)={} != len(targets)={}",
+                inputs.len(),
+                targets.len()
+            )));
+        }
+        let inputs_a: Vec<Array1<f32>> = inputs.into_iter().map(Array1::from_vec).collect();
+        let targets_a: Vec<Array1<f32>> = targets.into_iter().map(Array1::from_vec).collect();
+        let params = TrainParams { lr, grad_clip };
+        self.inner
+            .lnn_train_step_mse(&inputs_a, &targets_a, &params)
+            .map_err(rt_err)
+    }
+
+    /// Insert a new memory node into the Z-Ladder.
+    ///
+    /// Args:
+    ///     id (int): caller-assigned unique ID.
+    ///     features (list[float]): payload vector; round-trips
+    ///         bit-for-bit through checkpoints.
+    ///     t_ms (int): insertion time in milliseconds (used for age).
+    ///     salience (float, optional): initial salience in [0, 1].
+    ///         Higher values make Z0→Z1 promotion more likely.
+    #[pyo3(signature = (id, features, t_ms, salience = 0.0))]
+    fn memory_insert(
+        &mut self,
+        id: u64,
+        features: Vec<f32>,
+        t_ms: u64,
+        salience: f32,
+    ) -> PyResult<()> {
+        let mut node = MemoryNode::new(id, features, t_ms);
+        node.salience = salience.clamp(0.0, 1.0);
+        self.inner.memory_insert(node).map_err(rt_err)
+    }
+
+    /// Promote a node to Z3 and protect it from demotion indefinitely.
+    fn memory_mark_landmark(&mut self, id: u64, reason: &str) -> PyResult<()> {
+        self.inner.memory_mark_landmark(id, reason).map_err(rt_err)
+    }
+
+    /// Top-`k` cosine similarity matches across every tier.
+    ///
+    /// Returns:
+    ///     list[dict]: each entry is `{node_id, similarity, tier}`,
+    ///     sorted descending by similarity.
+    fn memory_query_all<'py>(
+        &self,
+        py: Python<'py>,
+        query: Vec<f32>,
+        k: usize,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let hits = self.inner.memory_query_all(&query, k).map_err(rt_err)?;
+        let json = serde_json::to_string(&hits)
+            .map_err(|e| PyRuntimeError::new_err(format!("QueryHit encode: {e}")))?;
+        py.import("json")?.call_method1("loads", (json,))
+    }
+
+    /// Top-`k` cosine similarity matches across the landmark subset only.
+    fn memory_query_landmarks<'py>(
+        &self,
+        py: Python<'py>,
+        query: Vec<f32>,
+        k: usize,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let hits = self
+            .inner
+            .memory_query_landmarks(&query, k)
+            .map_err(rt_err)?;
+        let json = serde_json::to_string(&hits)
+            .map_err(|e| PyRuntimeError::new_err(format!("QueryHit encode: {e}")))?;
+        py.import("json")?.call_method1("loads", (json,))
+    }
+
+    /// Run one consolidation tick: age-decay, promote / demote / evict.
+    ///
+    /// Args:
+    ///     dt_seconds (float): wall-clock time since last consolidate.
+    /// Returns:
+    ///     tuple[int, int, int]: (total_promotions, total_demotions, total_evictions)
+    ///     applied by this tick.
+    ///
+    /// Raises:
+    ///     RuntimeError: no memory subsystem on this brain.
+    fn memory_consolidate(&mut self, dt_seconds: f32) -> PyResult<(usize, usize, usize)> {
+        let mem = self
+            .inner
+            .memory_mut()
+            .ok_or_else(|| rt_err("memory not configured on this brain"))?;
+        Ok(mem.consolidate(dt_seconds))
+    }
+
+    /// Atomic ensemble checkpoint. Writes `<dir>/{adaptive.rkyv,
+    /// snn.json, lnn.json, memory.json, manifest.json}` via a temp dir
+    /// + rename, so the old state survives any write failure.
+    fn save_ensemble(&self, dir: PathBuf) -> PyResult<()> {
+        self.inner.save_ensemble(&dir).map_err(rt_err)
+    }
+
+    /// Restore a full ensemble from a directory previously written by
+    /// `save_ensemble()`. Shape mismatches (layer widths, SNN pop sizes,
+    /// memory capacities) surface as `RuntimeError`.
+    fn load_ensemble(&mut self, dir: PathBuf) -> PyResult<()> {
+        self.inner.load_ensemble(&dir).map_err(rt_err)
     }
 
     /// String representation for Python repr.

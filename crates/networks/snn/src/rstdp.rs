@@ -62,6 +62,7 @@ use crate::csr::CsrSynapses;
 /// `stdp` is the classic timing kernel; the remaining fields wrap it with
 /// eligibility decay, reward gating, TD baseline, warmup, and weight clipping.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(default)]
 pub struct RstdpParams {
     /// Classic STDP shape (A⁺, A⁻, τ⁺, τ⁻).
     pub stdp: StdpParams,

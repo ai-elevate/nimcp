@@ -39,6 +39,7 @@ pub const DEFAULT_GAIN: f32 = 1.0;
 
 /// Homeostatic scaling parameters.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HomeostaticParams {
     /// Lower bound on the returned scale factor. Default `0.98`.
     pub min_scale: f32,

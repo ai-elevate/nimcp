@@ -105,6 +105,7 @@ pub fn default_tier_config(tier: Tier) -> TierConfig {
 
 /// Top-level [`ZLadder`](crate::ZLadder) configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ZLadderConfig {
     /// Per-tier configuration (indexed by `Tier as usize`).
     pub tiers: [TierConfig; 4],

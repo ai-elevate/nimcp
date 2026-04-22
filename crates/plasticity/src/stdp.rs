@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 /// All magnitudes are positive. The sign of the weight change is determined
 /// by the kernel branch selected from `Δt`, not by these fields.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct StdpParams {
     /// Potentiation amplitude (`A⁺`). Must be `≥ 0`.
     pub a_plus: f32,
