@@ -84,6 +84,14 @@ typedef struct lnn_config_s lnn_config_t;
 typedef struct lnn_wiring_s lnn_wiring_t;
 typedef struct lnn_gradient_ctx_s lnn_gradient_ctx_t;
 
+/* Forward declarations for thalamic routing integration (Phase 2).
+ * Defined in include/core/thalamic/nimcp_thalamic_channel.h and
+ * include/middleware/routing/nimcp_thalamic_router.h respectively.
+ * The LNN holds a borrowed router pointer and an owned channel; callers
+ * supply the router via lnn_network_attach_thalamic_router(). */
+struct thalamic_channel_s;
+struct thalamic_router;
+
 /*=============================================================================
  * Enumerations
  *===========================================================================*/
@@ -411,20 +419,16 @@ struct lnn_network_s {
     lnn_network_stats_t stats;  /**< Global network statistics */
 
     /* Substrate integration (Phase 2 biological-substrate adapter).
-     * The substrate pointer is BORROWED — the network does not own it.
-     * Cached effect structs are recomputed every N steps (controlled by
-     * g_lnn_substrate_update_period) and read inside the forward / optimizer
-     * hot paths to modulate the effective tau used in the ODE decay term,
-     * and the effective LR applied to gradients.
-     *
-     * Composition rule: substrate wraps the LEARNED tau (tau_base * sigmoid(...)),
-     * it does NOT replace it. Gradients still flow to tau_base/W_tau normally
-     * because the modulation is applied to a temporary tensor, leaving
-     * learned parameters untouched. See lnn_network_attach_substrate. */
+     * The substrate pointer is BORROWED — the network does not own it. */
     struct neural_substrate*     substrate;
     axon_substrate_effects_t     cached_axon_effects;
     dendrite_substrate_effects_t cached_dend_effects;
     uint32_t                     substrate_steps_since_update;
+
+    /* Thalamic routing — Phase 2 of multi-network thalamic rollout.
+     * Channel pointer is owned; created at lnn_network_attach_thalamic_router
+     * and destroyed at lnn_network_destroy. Null when not attached. */
+    struct thalamic_channel_s*   thalamic_channel;
 };
 
 /**

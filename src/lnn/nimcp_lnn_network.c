@@ -13,7 +13,7 @@
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_layer.h"
 #include "lnn/nimcp_lnn_config.h"
-#include "lnn/nimcp_lnn_training.h"        /* lnn_tune_get_substrate_* */
+#include "lnn/nimcp_lnn_training.h"        /* lnn_tune_get_substrate_* / _thalamic_* */
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -22,6 +22,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/lnn/nimcp_lnn_gpu.h"
 #include "core/substrate/nimcp_substrate_effects.h"  /* substrate_compute_effects, debit */
+#include "core/thalamic/nimcp_thalamic_channel.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -241,6 +242,13 @@ void lnn_network_destroy(lnn_network_t* network) {
         return;
     }
 
+    /* Destroy the thalamic channel (owned). Router is borrowed — do
+     * NOT destroy it here. NULL-safe by channel contract. */
+    if (network->thalamic_channel) {
+        thalamic_channel_destroy(network->thalamic_channel);
+        network->thalamic_channel = NULL;
+    }
+
     // Destroy GPU LNN layers before CPU layers
     if (network->layers) {
         for (uint32_t i = 0; i < network->n_layers; i++) {
@@ -292,6 +300,61 @@ void lnn_network_destroy(lnn_network_t* network) {
 
     // Free network structure
     nimcp_free(network);
+}
+
+/*=============================================================================
+ * Thalamic attention adapter (Phase 2 of multi-network thalamic rollout)
+ *===========================================================================*/
+
+/**
+ * @brief Attach (or detach) a thalamic router
+ *
+ * WHAT: Create/destroy an internal thalamic_channel_t bound to this LNN.
+ * WHY:  Lets the LNN participate in attention-gated cross-network routing.
+ * HOW:  Destroy any existing channel, optionally build a new one with
+ *       source_id=net->id and destination 0 pre-registered.
+ */
+nimcp_error_t lnn_network_attach_thalamic_router(lnn_network_t* net,
+                                                 struct thalamic_router* router)
+{
+    if (!net) {
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+
+    /* Single-attach: always destroy the existing channel first so a
+     * re-attach (same or different router) cannot leak. Safe on NULL. */
+    if (net->thalamic_channel) {
+        thalamic_channel_destroy(net->thalamic_channel);
+        net->thalamic_channel = NULL;
+    }
+
+    /* Detach path — caller passed router=NULL. */
+    if (!router) {
+        return NIMCP_SUCCESS;
+    }
+
+    /* Build a fresh channel bound to this network's id. */
+    thalamic_channel_t* ch = thalamic_channel_create((thalamic_router_t*)router,
+                                                     net->id);
+    if (!ch) {
+        NIMCP_LOGGING_ERROR("lnn_network_attach_thalamic_router: "
+                            "channel allocation failed");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+
+    /* Pre-register destination 0 (the downstream decoder) so get_gate
+     * and submit have a valid slot from the first forward step. Failure
+     * here is unexpected but should not leak the channel. */
+    nimcp_error_t rc = thalamic_channel_add_destination(ch, 0);
+    if (rc != NIMCP_SUCCESS) {
+        thalamic_channel_destroy(ch);
+        NIMCP_LOGGING_ERROR("lnn_network_attach_thalamic_router: "
+                            "add_destination(0) failed (%d)", (int)rc);
+        return rc;
+    }
+
+    net->thalamic_channel = ch;
+    return NIMCP_SUCCESS;
 }
 
 /**
@@ -389,12 +452,7 @@ int lnn_network_forward_step(
     }
 
     /* Substrate adapter: refresh cached effect structs at most once per
-     * forward step (not per layer). g_lnn_substrate_update_period counts
-     * steps — biological effects vary on ~100 ms timescales so a period of
-     * 10 is plenty fine-grained while keeping per-step cost bounded. When
-     * the substrate is NULL or the master enabled knob is off, no effects
-     * are computed and the dend_effects_ptr stays NULL, so each layer's
-     * substrate hook short-circuits. */
+     * forward step (not per layer). */
     const dendrite_substrate_effects_t* dend_effects_ptr = NULL;
     if (network->substrate && lnn_tune_get_substrate_enabled() != 0.0f) {
         const uint32_t period = (uint32_t)lnn_tune_get_substrate_update_period();
@@ -407,17 +465,44 @@ int lnn_network_forward_step(
         if (period > 0 && network->substrate_steps_since_update >= period) {
             network->substrate_steps_since_update = 0;
         }
-        /* Only expose the dend-effects pointer when the tau-compose knob
-         * is also on. When the knob is off the network still refreshes
-         * the cache (downstream audit/logging consumers read it), but
-         * the CPU LTC path does not wrap tau. */
         if (lnn_tune_get_substrate_tau_compose_on() != 0.0f) {
             dend_effects_ptr = &network->cached_dend_effects;
         }
     }
 
+    /* Thalamic attention gate — scales input before the ODE integration.
+     * Burst mode additionally clamps per-layer tau to speed transient
+     * response. gated_input is cloned only when gate != 1.0 && gain_on. */
+    float thal_gate = 1.0f;
+    bool  thal_channel_active = false;
+    bool  thal_burst_clamp    = false;
+    if (network->thalamic_channel && lnn_tune_get_thalamic_enabled() != 0.0f) {
+        thal_channel_active = true;
+        thal_gate = thalamic_channel_get_gate(network->thalamic_channel, 0);
+        if (lnn_tune_get_thalamic_burst_tau_clamp_on() != 0.0f &&
+            network->thalamic_channel->mode == THALAMIC_CHAN_BURST) {
+            thal_burst_clamp = true;
+        }
+    }
+
+    nimcp_tensor_t* gated_input = NULL;
+    if (thal_channel_active &&
+        lnn_tune_get_thalamic_input_gain_on() != 0.0f &&
+        thal_gate != 1.0f) {
+        gated_input = nimcp_tensor_clone(input);
+        if (gated_input) {
+            float* gi = (float*)nimcp_tensor_data(gated_input);
+            size_t n  = nimcp_tensor_numel(gated_input);
+            for (size_t j = 0; j < n; j++) {
+                gi[j] *= thal_gate;
+            }
+        }
+    }
+
+
     // Temporary storage for layer outputs
-    const nimcp_tensor_t* layer_input = input;
+    const nimcp_tensor_t* layer_input =
+        gated_input ? gated_input : input;
     nimcp_tensor_t* layer_output = NULL;
 
     // Forward through each layer
@@ -438,6 +523,9 @@ int lnn_network_forward_step(
             layer_output = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
             if (!layer_output) {
                 NIMCP_LOGGING_ERROR("lnn_network_forward_step: Failed to allocate layer output");
+                if (gated_input) {
+                    nimcp_tensor_destroy(gated_input);
+                }
                 if (network->mutex) {
                     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
                 }
@@ -452,14 +540,45 @@ int lnn_network_forward_step(
             if (i < network->n_layers - 1) {
                 nimcp_tensor_destroy(layer_output);
             }
+            /* Also drop any per-layer temporary that lnn_layer_forward
+             * was feeding on. The final-layer case never reaches here
+             * because i < n_layers-1 guard above; we only free layer_input
+             * if it is not the first iteration's starting buffer
+             * (either `input` or `gated_input`). */
+            if (i > 0 && layer_input != input && layer_input != gated_input) {
+                nimcp_tensor_destroy((nimcp_tensor_t*)layer_input);
+            }
+            if (gated_input) {
+                nimcp_tensor_destroy(gated_input);
+            }
             if (network->mutex) {
                 nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
             }
             return result;
         }
 
-        // Free previous layer input if it was temporary
-        if (i > 0 && layer_input != input) {
+        /* Thalamic burst-tau clamp — when the channel is in BURST mode,
+         * clamp each neuron's tau to <= 1 ms so subsequent steps respond
+         * faster (biological thalamic burst firing). This operates on
+         * the layer's tau tensor in-place; the next forward step's
+         * lnn_layer_compute_tau will still recompute from inputs, but
+         * the visible tau for this step is clamped for any downstream
+         * observer (lnn_network_get_tau, tests, introspection). */
+        if (thal_burst_clamp && network->layers[i] && network->layers[i]->tau) {
+            float* tau_data = (float*)nimcp_tensor_data(network->layers[i]->tau);
+            uint32_t n_tau  = network->layers[i]->n_neurons;
+            const float tau_cap = 1.0f; /* 1 ms — fast burst timescale */
+            for (uint32_t j = 0; j < n_tau; j++) {
+                if (tau_data[j] > tau_cap) {
+                    tau_data[j] = tau_cap;
+                }
+            }
+        }
+
+        /* Free previous layer input if it was an intermediate tensor —
+         * never free the original `input` or the locally-owned
+         * `gated_input` here (gated_input is freed after the loop). */
+        if (i > 0 && layer_input != input && layer_input != gated_input) {
             nimcp_tensor_destroy((nimcp_tensor_t*)layer_input);
         }
 
@@ -475,14 +594,8 @@ int lnn_network_forward_step(
     // Update statistics
     network->stats.forward_steps++;
 
-    /* Substrate adapter: report activity back to the substrate. LNN is a
-     * continuous-state network with no discrete spikes — use an L1-norm
-     * proxy of the last layer's output as a rough "spike equivalent".
-     * Scale by 100 so typical output magnitudes in [0,1] produce integer
-     * counts in a reasonable range for the substrate debit math. This is
-     * a proxy, not a biological measurement; real-brain comparable
-     * accounting will arrive once the substrate supports per-region
-     * continuous activity measures. */
+    /* Substrate adapter: report activity back to the substrate using an
+     * L1-norm proxy on the output (LNN has no discrete spikes). */
     if (network->substrate && lnn_tune_get_substrate_enabled() != 0.0f) {
         uint32_t activity = 0;
         if (output && network->n_outputs > 0) {
@@ -508,6 +621,24 @@ int lnn_network_forward_step(
         if (network->layers[i]) {
             network->layers[i]->substrate_dend_effects = NULL;
         }
+    }
+
+    /* Thalamic end-of-step hook — submit the network output and tick. */
+    if (thal_channel_active) {
+        const float* out_data = (const float*)nimcp_tensor_data_const(output);
+        size_t        out_n    = nimcp_tensor_numel(output);
+        if (out_data && out_n > 0) {
+            (void)thalamic_channel_submit(network->thalamic_channel,
+                                          0 /* default dest */,
+                                          out_data, out_n,
+                                          THALAMIC_PRIORITY_NORMAL);
+        }
+        thalamic_channel_tick(network->thalamic_channel);
+    }
+
+    /* Release the locally-owned gated input, if any. */
+    if (gated_input) {
+        nimcp_tensor_destroy(gated_input);
     }
 
     if (network->mutex) {

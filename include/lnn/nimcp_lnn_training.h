@@ -697,19 +697,6 @@ int lnn_training_validate_config(const lnn_training_config_t* config);
 
 /*=============================================================================
  * Substrate adapter tunables (Phase 2 biological-substrate wiring).
- *
- *   enabled           : master switch; when 0 the LNN ignores its attached
- *                       substrate entirely.
- *   update_period     : how many LNN forward steps between fresh
- *                       substrate_compute_effects() calls. 10 steps is a
- *                       good default — effects vary on ~100 ms timescales.
- *   tau_compose_on    : 0 disables substrate modulation of the ODE decay
- *                       tau (learned tau used as-is); 1 enables composition
- *                       (tau_eff = learned_tau * membrane_time_constant_mod).
- *
- * Each setter normalizes non-range values per the field's rule:
- *   - enabled / tau_compose_on: any nonzero -> 1.0f, zero -> 0.0f
- *   - update_period: clamped to [1, 10000]; out-of-range ignored.
  *===========================================================================*/
 void  lnn_tune_set_substrate_enabled(float v);
 void  lnn_tune_set_substrate_update_period(float v);
@@ -718,6 +705,20 @@ void  lnn_tune_set_substrate_tau_compose_on(float v);
 float lnn_tune_get_substrate_enabled(void);
 float lnn_tune_get_substrate_update_period(void);
 float lnn_tune_get_substrate_tau_compose_on(void);
+
+/*=============================================================================
+ * Thalamic adapter tunables (Phase 2 of multi-network thalamic rollout).
+ *   enabled:            master switch
+ *   input_gain_on:      scale input vector by channel attention gate
+ *   burst_tau_clamp_on: clamp tau to <=1ms when channel in BURST mode
+ *===========================================================================*/
+void  lnn_tune_set_thalamic_enabled(float v);
+void  lnn_tune_set_thalamic_input_gain_on(float v);
+void  lnn_tune_set_thalamic_burst_tau_clamp_on(float v);
+
+float lnn_tune_get_thalamic_enabled(void);
+float lnn_tune_get_thalamic_input_gain_on(void);
+float lnn_tune_get_thalamic_burst_tau_clamp_on(void);
 
 #ifdef __cplusplus
 }

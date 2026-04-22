@@ -2,17 +2,16 @@
 # LNN Integration Tests CMakeLists.txt
 # ============================================================================
 # WHAT: Build configuration for LNN integration tests
-# WHY:  Verify LNN integration with other modules (substrate, etc.)
-# HOW:  Build GoogleTest executables linking required modules
+# WHY:  Verify LNN composes correctly with cross-module subsystems
+#       (thalamic routing, substrate, plasticity, etc.)
+# HOW:  Build GoogleTest executables linking nimcp_lnn + nimcp
 # ============================================================================
 
-# Guard: Check GTest availability
 if(NOT GTest_FOUND)
     message(STATUS "GTest not found - skipping LNN integration tests")
     return()
 endif()
 
-# Common link libraries for LNN integration tests
 set(LNN_INTEGRATION_TEST_LIBS
     nimcp_lnn
     nimcp
@@ -22,24 +21,14 @@ set(LNN_INTEGRATION_TEST_LIBS
     m
 )
 
-# Common include directories
 set(LNN_INTEGRATION_TEST_INCLUDES
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/lnn
 )
 
 # ============================================================================
-# LNN Substrate Integration Test (2026-04-22)
+# LNN Substrate Integration Test (Phase 2 — ATP/temperature modulation)
 # ============================================================================
-# WHAT: Integration tests for the LNN substrate adapter (Phase 2 biological-
-#       substrate wiring) running inside a multi-step forward loop.
-# WHY:  The unit tests isolate the effects cache + tunables; integration is
-#       where composition with the learned LNN dynamics is verified over
-#       many steps. The adapter must observably modulate outputs when "on"
-#       and be a bit-perfect no-op when "off".
-# HOW:  Google Test. Small 1-layer LNN, CPU-only forward, substrate
-#       ramp-down over 100 steps vs. no-substrate baseline.
-
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_substrate_integration.cpp)
     add_executable(integration_lnn_test_lnn_substrate_integration
         test_lnn_substrate_integration.cpp
@@ -65,4 +54,33 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_substrate_integration.cpp)
 
     message(STATUS "  Added LNN substrate integration test: "
                    "test_lnn_substrate_integration")
+endif()
+
+# ============================================================================
+# LNN Thalamic Compose Test (Phase 2 — attention-gated input modulation)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_thalamic_compose.cpp)
+    add_executable(integration_lnn_test_lnn_thalamic_compose
+        test_lnn_thalamic_compose.cpp
+    )
+
+    target_link_libraries(integration_lnn_test_lnn_thalamic_compose
+        PRIVATE ${LNN_INTEGRATION_TEST_LIBS}
+    )
+
+    target_include_directories(integration_lnn_test_lnn_thalamic_compose
+        PRIVATE ${LNN_INTEGRATION_TEST_INCLUDES}
+    )
+
+    target_compile_features(integration_lnn_test_lnn_thalamic_compose
+        PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_lnn_test_lnn_thalamic_compose
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;lnn;thalamic"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added LNN integration test: test_lnn_thalamic_compose")
 endif()

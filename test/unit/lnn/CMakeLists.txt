@@ -169,6 +169,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_substrate_adapter.cpp)
 endif()
 
 # ============================================================================
+# Test 6: LNN Thalamic Adapter (Phase 2 — attention-gated input modulation)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_thalamic_adapter.cpp)
+    add_executable(unit_lnn_test_lnn_thalamic_adapter
+        test_lnn_thalamic_adapter.cpp
+    )
+
+    target_link_libraries(unit_lnn_test_lnn_thalamic_adapter
+        PRIVATE ${LNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_lnn_test_lnn_thalamic_adapter
+        PRIVATE ${LNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_lnn_test_lnn_thalamic_adapter PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_lnn_test_lnn_thalamic_adapter
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;lnn;thalamic;adapter"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added LNN unit test: test_lnn_thalamic_adapter")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_lnn_network.cpp

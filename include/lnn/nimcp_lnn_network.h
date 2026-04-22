@@ -96,6 +96,7 @@
 #include "lnn/nimcp_lnn_config.h"
 #include "lnn/nimcp_lnn_layer.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/error/nimcp_error_codes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -444,6 +445,38 @@ int lnn_network_connect_gradient_manager(lnn_network_t* network, void* grad_mgr)
  * @return 0 on success, negative on error
  */
 int lnn_network_connect_thread_pool(lnn_network_t* network, void* pool);
+
+/**
+ * @brief Attach (or detach) a thalamic router to this LNN
+ *
+ * WHAT: Wire a thalamic_router_t into the LNN so forward steps can
+ *       consult attention gates and submit output spikes through the
+ *       shared thalamic adapter.
+ * WHY:  Lets the LNN participate in attention-gated cross-network
+ *       routing alongside SNN/CNN/FNO/HNN without each needing a
+ *       bespoke bridge.
+ * HOW:  Allocates an internal thalamic_channel_t with source_id equal
+ *       to net->id, registers destination 0 (the downstream decoder),
+ *       and stores the channel on net->thalamic_channel. Subsequent
+ *       lnn_network_forward_step() calls scale the input by
+ *       channel_get_gate(dest=0), optionally clamp tau for burst mode,
+ *       submit the output to destination 0, then tick the channel.
+ *
+ *       Passing router == NULL detaches and destroys any existing
+ *       channel. Idempotent: if a channel already exists, it is
+ *       destroyed before a new one is created (single-attach only).
+ *
+ *       The LNN does NOT take ownership of the router — callers retain
+ *       responsibility for its lifecycle.
+ *
+ * @param net    LNN network (must be non-NULL)
+ * @param router Thalamic router (NULL to detach)
+ * @return 0 (NIMCP_SUCCESS) on success, negative error code on failure.
+ *         NIMCP_ERROR_NULL_POINTER when net is NULL.
+ *         NIMCP_ERROR_NO_MEMORY when channel allocation fails.
+ */
+nimcp_error_t lnn_network_attach_thalamic_router(lnn_network_t* net,
+                                                 struct thalamic_router* router);
 
 /*=============================================================================
  * Statistics

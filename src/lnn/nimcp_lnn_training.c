@@ -153,6 +153,45 @@ static float compute_warmup_cosine_lr(
 }
 
 /*=============================================================================
+ * Thalamic adapter tunables (Phase 2 of multi-network thalamic rollout)
+ *
+ * These globals control how a network attached via
+ * lnn_network_attach_thalamic_router() interacts with the thalamic
+ * router during forward steps. They are deliberately process-wide (not
+ * per-network) so a single safety toggle applies uniformly across
+ * every LNN in the process — same discipline as the SNN tunables.
+ *
+ * Default: all three enabled (1.0) so that attaching a router has a
+ * visible effect out of the box.
+ *===========================================================================*/
+static float g_lnn_thalamic_enabled              = 1.0f;  /* 1 = channel-aware forward path */
+static float g_lnn_thalamic_input_gain_on        = 1.0f;  /* 1 = attention scales input vector */
+static float g_lnn_thalamic_burst_tau_clamp_on   = 1.0f;  /* 1 = burst mode clamps tau low */
+
+/* Setters — accept any nonzero value as on, zero as off. Matches SNN
+ * tunable convention (snn_tune_set_substrate_enabled et al.). */
+void lnn_tune_set_thalamic_enabled(float v) {
+    g_lnn_thalamic_enabled = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void lnn_tune_set_thalamic_input_gain_on(float v) {
+    g_lnn_thalamic_input_gain_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void lnn_tune_set_thalamic_burst_tau_clamp_on(float v) {
+    g_lnn_thalamic_burst_tau_clamp_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+
+/* Getters — mirror the setters for diagnostic queries. */
+float lnn_tune_get_thalamic_enabled(void) {
+    return g_lnn_thalamic_enabled;
+}
+float lnn_tune_get_thalamic_input_gain_on(void) {
+    return g_lnn_thalamic_input_gain_on;
+}
+float lnn_tune_get_thalamic_burst_tau_clamp_on(void) {
+    return g_lnn_thalamic_burst_tau_clamp_on;
+}
+
+/*=============================================================================
  * Lifecycle Functions
  *===========================================================================*/
 
