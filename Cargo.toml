@@ -10,6 +10,7 @@ members = [
     "crates/networks/lnn",
     "crates/plasticity",
     "crates/memory",
+    "crates/substrate",
     "crates/checkpoint",
     "crates/brain",
     "pybind",
@@ -77,6 +78,7 @@ nimcp-snn = { path = "crates/networks/snn" }
 nimcp-lnn = { path = "crates/networks/lnn" }
 nimcp-plasticity = { path = "crates/plasticity" }
 nimcp-memory = { path = "crates/memory" }
+nimcp-substrate = { path = "crates/substrate" }
 nimcp-checkpoint = { path = "crates/checkpoint" }
 nimcp-brain = { path = "crates/brain" }
 
