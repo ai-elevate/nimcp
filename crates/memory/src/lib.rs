@@ -32,15 +32,28 @@
 //! - [`ladder`] — [`ZLadder`] itself, basic ops + consolidation +
 //!   landmark API.
 //! - [`query`] — cosine-similarity retrieval.
+//! - [`hilbert_addr`] — pure helpers that reuse
+//!   [`nimcp_fractal::hilbert`] as an alternative locality-preserving
+//!   1D address for memory-node IDs.
+//! - [`poincare_embed`] — pure helpers that reuse
+//!   [`nimcp_geometry::poincare`] as an alternative hierarchical
+//!   distance primitive (hyperbolic on the Poincaré disk).
+//!
+//! Both address / distance helpers are **additive**: they do not
+//! mutate [`ZLadder`] state. Callers opt in per-query.
 
 #![forbid(unsafe_code)]
 
 pub mod config;
+pub mod hilbert_addr;
 pub mod ladder;
 pub mod node;
+pub mod poincare_embed;
 pub mod query;
 
 pub use config::{TierConfig, ZLadderConfig, ZLadderError};
+pub use hilbert_addr::{hilbert_address, hilbert_coord, hilbert_manhattan_distance};
 pub use ladder::{ZLadder, ZLadderStats};
 pub use node::{MemoryNode, Tier};
+pub use poincare_embed::{embed_2d, embed_unit_disk, hyperbolic_distance_2d};
 pub use query::QueryHit;

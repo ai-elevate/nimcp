@@ -13,6 +13,8 @@ workspace = true
 
 [dependencies]
 nimcp-core = { workspace = true }
+nimcp-fractal = { workspace = true }
+nimcp-geometry = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
