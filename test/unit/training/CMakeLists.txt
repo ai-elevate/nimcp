@@ -460,6 +460,29 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cross_network_bridges.cpp)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# Cortex CNN Thalamic Adapter Unit Tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_thalamic.cpp)
+    add_executable(unit_training_test_cortex_cnn_thalamic
+        test_cortex_cnn_thalamic.cpp
+    )
+    target_include_directories(unit_training_test_cortex_cnn_thalamic PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(unit_training_test_cortex_cnn_thalamic PRIVATE cxx_std_20)
+    target_link_libraries(unit_training_test_cortex_cnn_thalamic PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME unit_training_test_cortex_cnn_thalamic
+             COMMAND unit_training_test_cortex_cnn_thalamic
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(unit_training_test_cortex_cnn_thalamic
+        PROPERTIES
+            LABELS "unit;training;cnn;cortex;thalamic"
+            TIMEOUT 120
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
 # Training Integration Hub Unit Tests
 add_subdirectory(integration)
 

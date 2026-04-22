@@ -27,6 +27,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "utils/error/nimcp_error_codes.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,6 +37,10 @@ extern "C" {
 struct cnn_trainer_s;
 struct nimcp_trainable_network_ops;
 typedef struct nimcp_trainable_network_ops nimcp_trainable_network_ops_t;
+
+/* Forward decl for thalamic router — avoids including the router header
+ * (and its middleware dependencies) into public cortex consumers. */
+struct thalamic_router;
 
 /* ========================================================================= */
 /* Types                                                                      */
@@ -228,6 +234,48 @@ const char* cortex_cnn_type_name(cortex_cnn_type_t type);
 int cortex_cnn_utm_adapter_create(cortex_cnn_processor_t* proc,
                                    const nimcp_trainable_network_ops_t** ops,
                                    void** ctx);
+
+/* ========================================================================= */
+/* Thalamic Router Adapter                                                    */
+/* ========================================================================= */
+
+/**
+ * @brief Attach a thalamic router to this cortex CNN processor
+ *
+ * WHAT: Creates an internal thalamic_channel_t whose source_id equals the
+ *       processor's cortex_cnn_type_t so the router learns per-cortex routes
+ *       via Hebbian strengthening.
+ * WHY:  Gives each cortex an attention gate that scales its final embedding
+ *       at the end of forward; lets the thalamic router prioritize
+ *       downstream targets per modality.
+ * HOW:  On attach, a single destination (id=0) is pre-registered so the
+ *       first forward step has a valid gate slot. Passing router=NULL
+ *       detaches (destroys the existing channel, if any).
+ *
+ * Double-attach is supported: the previous channel is destroyed before a
+ * new one is created. The router itself is borrowed — the caller retains
+ * ownership of the router's lifecycle.
+ *
+ * @param proc    Cortex CNN processor
+ * @param router  Thalamic router to attach, or NULL to detach
+ * @return NIMCP_SUCCESS on success, NIMCP_ERROR_NULL_POINTER if proc is NULL
+ */
+nimcp_error_t cortex_cnn_attach_thalamic_router(cortex_cnn_processor_t* proc,
+                                                struct thalamic_router* router);
+
+/* ========================================================================= */
+/* Thalamic Adapter Tunables (process-wide)                                   */
+/* ========================================================================= */
+
+/* Setters — accept any nonzero as on, zero as off. */
+void cortex_cnn_tune_set_thalamic_enabled(float v);
+void cortex_cnn_tune_set_thalamic_featuremap_gain_on(float v);
+void cortex_cnn_tune_set_thalamic_burst_dropout_reduce_on(float v);
+
+/* Getters — diagnostic. */
+float cortex_cnn_tune_get_thalamic_enabled(void);
+float cortex_cnn_tune_get_thalamic_featuremap_gain_on(void);
+float cortex_cnn_tune_get_thalamic_burst_dropout_reduce_on(void);
 
 /* ========================================================================= */
 /* Checkpoint                                                                 */

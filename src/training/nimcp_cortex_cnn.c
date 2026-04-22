@@ -12,6 +12,8 @@
 #include "training/nimcp_cnn_training.h"
 #include "training/nimcp_fno_layer.h"
 #include "training/nimcp_unified_training.h"
+#include "core/thalamic/nimcp_thalamic_channel.h"
+#include "middleware/routing/nimcp_thalamic_router.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -19,6 +21,11 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+
+/* Forward-decl: avoids pulling the full thalamic_channel header into the
+ * struct's public forward declarations. The full type is available via the
+ * include above for internal use. */
+struct thalamic_channel_s;
 
 /* ========================================================================= */
 /* Default embedding dimensions per modality                                  */
@@ -31,6 +38,22 @@
 
 #define CORTEX_CNN_MAX_LABELS     4096
 #define CORTEX_CNN_ATTENTION_TEMP  0.5f
+
+/* ========================================================================= */
+/* Thalamic adapter tunables (process-wide)                                   */
+/*                                                                            */
+/* These globals control how a cortex CNN attached via                        */
+/* cortex_cnn_attach_thalamic_router() interacts with its channel during      */
+/* forward. They are deliberately process-wide (not per-processor) so a       */
+/* single safety toggle applies uniformly across all four modalities —        */
+/* matches the SNN / LNN tunable convention.                                  */
+/*                                                                            */
+/* Default: all three enabled (1.0) so that attaching a router has a          */
+/* visible effect out of the box.                                             */
+/* ========================================================================= */
+static float g_cnn_thalamic_enabled                 = 1.0f;
+static float g_cnn_thalamic_featuremap_gain_on      = 1.0f;
+static float g_cnn_thalamic_burst_dropout_reduce_on = 1.0f;
 
 /* ========================================================================= */
 /* Internal processor structure                                               */
@@ -65,6 +88,14 @@ struct cortex_cnn_processor {
     void* fno_audio;                  /* fno_audio_processor_t* for audio */
     void* fno_visual;                 /* fno_audio_processor_t* for visual spatial frequencies */
     void* fno_speech;                 /* fno_audio_processor_t* for speech spectral patterns */
+
+    /* Thalamic adapter — owned channel, borrowed router. Appended at the
+     * END of the struct so P3A's substrate fields (substrate, region_id,
+     * cached_axon_effects, cached_dend_effects, substrate_steps_since_update)
+     * can land immediately before it without conflict. If both patches land
+     * out of order, the trivial union resolution is: keep BOTH blocks, with
+     * the substrate block sitting above the thalamic_channel field. */
+    struct thalamic_channel_s* thalamic_channel;  /* owned */
 };
 
 /* ========================================================================= */
@@ -137,6 +168,65 @@ static void extract_embedding(cortex_cnn_processor_t* proc) {
 }
 
 /**
+ * @brief Apply thalamic attention gating and submit-for-routing after forward
+ *
+ * WHAT: (1) If a thalamic channel is attached, scale the final embedding by
+ *       the channel's attention gate for destination 0. (2) Submit the
+ *       (possibly gated) embedding to the router. (3) Tick the channel.
+ * WHY:  Per-cortex attention gating lets the router dynamically suppress
+ *       a modality whose signal is stale/irrelevant. The submit-tick pair
+ *       lets the router's Hebbian learning update routes based on which
+ *       modalities actually fire together.
+ * HOW:  Zero-cost no-op when either the channel is not attached or the
+ *       master enable tunable is 0. The gate-!=-1 check avoids the embed
+ *       scaling loop when the router has not diverged from its default
+ *       uniform attention.
+ *
+ * Must be called AFTER the embedding has been finalized (post-FNO mix-in)
+ * but BEFORE the forward function returns.
+ */
+static void cortex_apply_thalamic_gate(cortex_cnn_processor_t* proc) {
+    if (!proc) return;
+    if (!proc->thalamic_channel) return;
+    if (g_cnn_thalamic_enabled == 0.0f) return;
+    if (!proc->embedding || proc->embedding_dim == 0) return;
+
+    thalamic_channel_t* ch = (thalamic_channel_t*)proc->thalamic_channel;
+
+    /* (1) Feature-map attention gain. */
+    if (g_cnn_thalamic_featuremap_gain_on != 0.0f) {
+        float gate = thalamic_channel_get_gate(ch, 0 /* dest */);
+        if (gate != 1.0f) {
+            for (uint32_t i = 0; i < proc->embedding_dim; ++i) {
+                proc->embedding[i] *= gate;
+            }
+        }
+    }
+
+    /* (2) Burst-mode dropout reduction: the actual dropout adjustment
+     * requires plumbing into cnn_trainer's dropout-layer state, which is
+     * out of scope for this adapter. For this MVP we log the mode at
+     * low frequency so callers can observe burst transitions. */
+    if (g_cnn_thalamic_burst_dropout_reduce_on != 0.0f &&
+        ch->mode == THALAMIC_CHAN_BURST) {
+        /* Log once every ~1024 forward steps to avoid flooding. */
+        if ((proc->forward_steps & 1023u) == 0u) {
+            NIMCP_LOGGING_DEBUG(
+                "cortex_cnn[%d]: thalamic channel in BURST mode "
+                "(dropout-reduce hint active, actual clamp is a future wiring)",
+                (int)proc->type);
+        }
+    }
+
+    /* (3) Submit embedding to router + tick channel. */
+    thalamic_channel_submit(ch, 0 /* dest */,
+                            proc->embedding,
+                            (size_t)proc->embedding_dim,
+                            THALAMIC_PRIORITY_NORMAL);
+    thalamic_channel_tick(ch);
+}
+
+/**
  * @brief Run CNN forward on a 1D float tensor
  */
 static const float* cortex_forward_1d(cortex_cnn_processor_t* proc,
@@ -163,6 +253,7 @@ static const float* cortex_forward_1d(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
+    cortex_apply_thalamic_gate(proc);
     return proc->embedding;
 }
 
@@ -560,6 +651,12 @@ cortex_cnn_processor_t* cortex_cnn_create(cortex_cnn_type_t type, uint32_t embed
 void cortex_cnn_destroy(cortex_cnn_processor_t* proc) {
     if (!proc) return;
 
+    /* Free the thalamic channel (router is borrowed — not freed here). */
+    if (proc->thalamic_channel) {
+        thalamic_channel_destroy((thalamic_channel_t*)proc->thalamic_channel);
+        proc->thalamic_channel = NULL;
+    }
+
     if (proc->trainer) {
         cnn_trainer_destroy(proc->trainer);
     }
@@ -650,6 +747,7 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
         }
     }
 
+    cortex_apply_thalamic_gate(proc);
     return proc->embedding;
 }
 
@@ -676,6 +774,7 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
         for (uint32_t i = 0; i < proc->embedding_dim; i++)
             norm += proc->embedding[i] * proc->embedding[i];
         proc->confidence = (norm > 0.0f) ? 1.0f / (1.0f + expf(-sqrtf(norm))) : 0.0f;
+        cortex_apply_thalamic_gate(proc);
         return proc->embedding;
     }
 
@@ -698,6 +797,7 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
     proc->has_fwd_result = true;
     proc->forward_steps++;
     extract_embedding(proc);
+    cortex_apply_thalamic_gate(proc);
     return proc->embedding;
 }
 
@@ -754,6 +854,7 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
         }
     }
 
+    cortex_apply_thalamic_gate(proc);
     return proc->embedding;
 }
 
@@ -1044,6 +1145,78 @@ cortex_cnn_type_t cortex_cnn_get_type(const cortex_cnn_processor_t* proc) {
 const char* cortex_cnn_type_name(cortex_cnn_type_t type) {
     if (type >= 0 && type < CORTEX_CNN_COUNT) return cortex_type_names[type];
     return "Unknown";
+}
+
+/* ========================================================================= */
+/* Thalamic Router Adapter                                                    */
+/* ========================================================================= */
+
+nimcp_error_t cortex_cnn_attach_thalamic_router(cortex_cnn_processor_t* proc,
+                                                struct thalamic_router* router) {
+    if (!proc) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Single-attach: destroy any existing channel before creating a new
+     * one (or leaving detached when router==NULL). */
+    if (proc->thalamic_channel) {
+        thalamic_channel_destroy((thalamic_channel_t*)proc->thalamic_channel);
+        proc->thalamic_channel = NULL;
+    }
+
+    if (router) {
+        /* Use the processor's cortex type as the router source_id so the
+         * router can learn per-cortex routing (Visual=0, Audio=1, Speech=2,
+         * Somato=3). */
+        thalamic_channel_t* ch = thalamic_channel_create(
+            (thalamic_router_t*)router, (uint32_t)proc->type);
+        if (ch) {
+            /* Pre-register destination 0 so the first forward step has a
+             * valid gate slot. Non-fatal on capacity exceed — the channel
+             * still works, get_gate falls back to 1.0. */
+            thalamic_channel_add_destination(ch, 0);
+            proc->thalamic_channel = (struct thalamic_channel_s*)ch;
+            NIMCP_LOGGING_INFO(
+                "cortex_cnn[%s]: attached thalamic router (source_id=%u)",
+                cortex_type_names[proc->type], (uint32_t)proc->type);
+        } else {
+            NIMCP_LOGGING_WARN(
+                "cortex_cnn[%s]: thalamic_channel_create failed",
+                cortex_type_names[proc->type]);
+        }
+    }
+    return NIMCP_SUCCESS;
+}
+
+/* ========================================================================= */
+/* Thalamic Adapter Tunables (process-wide)                                   */
+/* ========================================================================= */
+
+void cortex_cnn_tune_set_thalamic_enabled(float v) {
+    g_cnn_thalamic_enabled = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void cortex_cnn_tune_set_thalamic_featuremap_gain_on(float v) {
+    g_cnn_thalamic_featuremap_gain_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void cortex_cnn_tune_set_thalamic_burst_dropout_reduce_on(float v) {
+    g_cnn_thalamic_burst_dropout_reduce_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+
+float cortex_cnn_tune_get_thalamic_enabled(void) {
+    return g_cnn_thalamic_enabled;
+}
+float cortex_cnn_tune_get_thalamic_featuremap_gain_on(void) {
+    return g_cnn_thalamic_featuremap_gain_on;
+}
+float cortex_cnn_tune_get_thalamic_burst_dropout_reduce_on(void) {
+    return g_cnn_thalamic_burst_dropout_reduce_on;
+}
+
+/* Test-only accessor: exposes the internal thalamic channel so white-box
+ * tests can verify attach/detach behaviour without reaching into the
+ * opaque processor struct. Not part of the public API — declared in the
+ * test file's extern "C" block. */
+thalamic_channel_t* cortex_cnn_test_get_thalamic_channel(
+    const cortex_cnn_processor_t* proc) {
+    return proc ? (thalamic_channel_t*)proc->thalamic_channel : NULL;
 }
 
 /* ========================================================================= */

@@ -367,5 +367,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_backprop_integration.cpp)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# =============================================================================
+# Cortex CNN Thalamic Compose Integration Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cortex_cnn_thalamic_compose.cpp)
+    add_executable(integration_training_test_cortex_cnn_thalamic_compose
+        test_cortex_cnn_thalamic_compose.cpp
+    )
+    target_include_directories(integration_training_test_cortex_cnn_thalamic_compose PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_training_test_cortex_cnn_thalamic_compose PRIVATE cxx_std_20)
+    target_link_libraries(integration_training_test_cortex_cnn_thalamic_compose PRIVATE
+        GTest::gtest GTest::gtest_main nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME integration_training_test_cortex_cnn_thalamic_compose
+             COMMAND integration_training_test_cortex_cnn_thalamic_compose
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_training_test_cortex_cnn_thalamic_compose
+        PROPERTIES
+            LABELS "integration;training;cnn;cortex;thalamic;compose"
+            TIMEOUT 180
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
 # Training Exception Handling Integration Tests
 add_subdirectory(exception)
