@@ -59,6 +59,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <stdio.h>  /* snprintf/printf family — pulled in centrally so */
+                    /* cognitive .c files that use these don't have to */
+                    /* include <stdio.h> themselves.                    */
 
 #ifdef __cplusplus
 extern "C" {

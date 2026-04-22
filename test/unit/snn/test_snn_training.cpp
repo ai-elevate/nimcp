@@ -158,7 +158,7 @@ TEST_F(SNNTrainingTest, CreateSurrogateContextWithValidConfig) {
     /* WHAT: Create surrogate gradient context */
     snn_training_ctx_t* ctx = snn_training_create_surrogate(&surrogate_config, 10, 5);
     ASSERT_NE(ctx, nullptr);
-    EXPECT_EQ(ctx->mode, SNN_TRAIN_EPROP);  /* Uses eProp mode internally */
+    EXPECT_EQ(ctx->mode, SNN_TRAIN_SURROGATE);
     EXPECT_NE(ctx->grad_weights, nullptr);
     snn_training_destroy(ctx);
 }

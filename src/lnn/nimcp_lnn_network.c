@@ -512,6 +512,7 @@ int lnn_network_forward_step(
     const nimcp_tensor_t* layer_input =
         gated_input ? gated_input : input;
     nimcp_tensor_t* layer_output = NULL;
+    int forward_rc = LNN_SUCCESS;
 
     // Forward through each layer
     for (uint32_t i = 0; i < network->n_layers; i++) {
@@ -532,13 +533,10 @@ int lnn_network_forward_step(
             layer_output = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
             if (!layer_output) {
                 NIMCP_LOGGING_ERROR("lnn_network_forward_step: Failed to allocate layer output");
-                if (gated_input) {
-                    nimcp_tensor_destroy(gated_input);
-                }
-                if (network->mutex) {
-                    nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
-                }
-                return LNN_ERROR_OUT_OF_MEMORY;
+                forward_rc = LNN_ERROR_OUT_OF_MEMORY;
+                /* layer_output is NULL; goto cleanup will free any
+                 * intermediate layer_input still owned by this function. */
+                goto cleanup;
             }
         }
 
@@ -546,24 +544,8 @@ int lnn_network_forward_step(
         int result = lnn_layer_forward(network->layers[i], layer_input, layer_output, dt);
         if (result != LNN_SUCCESS) {
             NIMCP_LOGGING_ERROR("lnn_network_forward_step: Layer %u forward failed", i);
-            if (i < network->n_layers - 1) {
-                nimcp_tensor_destroy(layer_output);
-            }
-            /* Also drop any per-layer temporary that lnn_layer_forward
-             * was feeding on. The final-layer case never reaches here
-             * because i < n_layers-1 guard above; we only free layer_input
-             * if it is not the first iteration's starting buffer
-             * (either `input` or `gated_input`). */
-            if (i > 0 && layer_input != input && layer_input != gated_input) {
-                nimcp_tensor_destroy((nimcp_tensor_t*)layer_input);
-            }
-            if (gated_input) {
-                nimcp_tensor_destroy(gated_input);
-            }
-            if (network->mutex) {
-                nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
-            }
-            return result;
+            forward_rc = result;
+            goto cleanup;
         }
 
         /* Thalamic burst-tau clamp — when the channel is in BURST mode,
@@ -624,16 +606,8 @@ int lnn_network_forward_step(
                                  0 /* n_plasticity — optimizer step debits separately */);
     }
 
-    /* Clear per-layer substrate pointer so subsequent forwards without
-     * substrate don't read stale cache. */
-    for (uint32_t i = 0; i < network->n_layers; i++) {
-        if (network->layers[i]) {
-            network->layers[i]->substrate_dend_effects = NULL;
-            network->layers[i]->substrate_axon_effects = NULL;
-        }
-    }
-
-    /* Thalamic end-of-step hook — submit the network output and tick. */
+    /* Thalamic end-of-step hook — submit the network output and tick.
+     * Only runs on the success path (before cleanup). */
     if (thal_channel_active) {
         const float* out_data = (const float*)nimcp_tensor_data_const(output);
         size_t        out_n    = nimcp_tensor_numel(output);
@@ -646,16 +620,62 @@ int lnn_network_forward_step(
         thalamic_channel_tick(network->thalamic_channel);
     }
 
-    /* Release the locally-owned gated input, if any. */
+cleanup:
+    /* Unified cleanup — reachable via both the success fall-through and
+     * `goto cleanup` from any error branch above. Every exit path must
+     * leave the network in a clean state:
+     *   1. No leaked intermediate layer tensors (the per-loop temp that
+     *      was going to become the next layer_input, and the freshly
+     *      allocated layer_output on the iteration that failed).
+     *   2. No stale substrate_{dend,axon}_effects pointers on any layer
+     *      (they are borrowed from network->cached_* which may change
+     *      next step, or disappear entirely if the substrate is
+     *      detached).
+     *   3. No leaked gated_input clone.
+     *   4. Mutex released (if held). */
+
+    /* (1a) Free layer_output if it's an intermediate tensor that we
+     * allocated but never handed off to layer_input. On success, the
+     * loop's final iteration assigns layer_input = layer_output where
+     * layer_output == output (the caller's buffer), so the pointer
+     * equality check below keeps us from double-freeing the caller's
+     * output. On the allocation failure path, layer_output is NULL. */
+    if (layer_output && layer_output != output && layer_output != layer_input) {
+        nimcp_tensor_destroy(layer_output);
+    }
+    /* (1b) Free layer_input if it's an intermediate (neither the
+     * caller's input nor our locally-owned gated_input). On success,
+     * layer_input == output (the last layer wrote directly into it),
+     * so this branch is a no-op. On an error mid-loop, layer_input
+     * may be a prior iteration's temp tensor that must be released. */
+    if (layer_input && layer_input != input &&
+        layer_input != gated_input && layer_input != output) {
+        nimcp_tensor_destroy((nimcp_tensor_t*)layer_input);
+    }
+
+    /* (2) Clear per-layer substrate pointers on ALL layers — not just
+     * those we touched — so a subsequent forward without substrate
+     * attached can't read stale cache from an earlier step. This was
+     * previously only done on the success path; it is now
+     * unconditional so error paths don't leave dangling pointers. */
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        if (network->layers[i]) {
+            network->layers[i]->substrate_dend_effects = NULL;
+            network->layers[i]->substrate_axon_effects = NULL;
+        }
+    }
+
+    /* (3) Release the locally-owned gated input, if any. */
     if (gated_input) {
         nimcp_tensor_destroy(gated_input);
     }
 
+    /* (4) Release the mutex we acquired at the top of the function. */
     if (network->mutex) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
     }
 
-    return LNN_SUCCESS;
+    return forward_rc;
 }
 
 /**

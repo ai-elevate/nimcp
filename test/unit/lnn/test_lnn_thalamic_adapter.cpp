@@ -194,16 +194,21 @@ TEST_F(LnnThalamicAdapterTest, ForwardWithEnabledZeroIsUnchanged) {
     lnn_reset_state(net);
     ASSERT_EQ(LNN_SUCCESS, lnn_network_forward_step(net, in, out2, 1.0f));
 
-    /* With enabled=0 and a default gate of 1.0, both runs should
-     * produce finite values. We don't require bit equality because
-     * router-side state may still mutate between calls; we require
-     * no NaN/Inf, which proves the disabled path didn't touch the
-     * tensor in a harmful way. */
+    /* With enabled=0 and a default gate of 1.0, both runs must be
+     * numerically identical: the enabled path uses gate=1.0 which is
+     * a no-op multiplication, and the disabled path skips the gate
+     * entirely. Both reach the same ODE integration over the same
+     * input with state reset between runs. Router-side submit/tick
+     * happen AFTER the output is written, so they cannot affect the
+     * output tensor of this step. A deviation here would indicate
+     * either the gate is being applied when it shouldn't be, or the
+     * disabled path is accidentally mutating layer state. */
     const float* d1 = (const float*)nimcp_tensor_data_const(out1);
     const float* d2 = (const float*)nimcp_tensor_data_const(out2);
     for (int i = 0; i < 2; i++) {
         EXPECT_TRUE(std::isfinite(d1[i]));
         EXPECT_TRUE(std::isfinite(d2[i]));
+        EXPECT_FLOAT_EQ(d1[i], d2[i]);
     }
 
     nimcp_tensor_destroy(in);
