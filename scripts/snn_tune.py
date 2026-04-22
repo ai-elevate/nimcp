@@ -51,6 +51,12 @@ Known tunable names:
     basket_enabled                fast-spiking inhibitory basket pool on/off
     basket_fraction               basket cell fraction per population (0.01..0.5)
     noise_ei_ratio                fraction of background noise that is inhibitory (0..1)
+
+  Substrate adapter (Phase 1 biological-substrate wiring):
+    substrate_enabled             1.0 = substrate modulates SNN dynamics, 0 = off
+    substrate_update_period       steps between substrate effect recomputations (default 10)
+    substrate_spike_dropout_on    1.0 = ATP-dependent spike reliability, 0 = off
+    substrate_plasticity_mod_on   1.0 = ATP-modulated R-STDP LR, 0 = off
 """
 import argparse
 import json

@@ -60,6 +60,11 @@ TUNABLES = [
     ("basket_enabled",                   1.0,    None),   # bool-like: no clamp rejection
     ("basket_fraction",                  0.15,   0.8),    # must be in [0.01, 0.5]
     ("noise_ei_ratio",                   0.3,    1.5),    # must be in [0, 1]
+    # Substrate adapter (Phase 1 biological-substrate wiring)
+    ("substrate_enabled",                1.0,    None),   # bool-like: no clamp rejection
+    ("substrate_update_period",          25.0,   0.5),    # must be in [1, 10000]
+    ("substrate_spike_dropout_on",       1.0,    None),   # bool-like: no clamp rejection
+    ("substrate_plasticity_mod_on",      1.0,    None),   # bool-like: no clamp rejection
 ]
 
 EPS = 1e-5
@@ -161,7 +166,27 @@ def test_defaults_reasonable():
     bf = float(params["basket_fraction"])
     if not (0.01 <= bf <= 0.5):
         raise AssertionError(f"basket_fraction default out of range [0.01, 0.5]: {bf}")
-    print(f"  PASS: Wave A + B1 defaults match design (4 enables ON, ranges sane)")
+
+    # Substrate adapter defaults (Phase 1): all three enables default ON, update
+    # period defaults to 10 steps (in valid range [1, 10000]).
+    expected_substrate = {
+        "substrate_enabled":           1.0,
+        "substrate_spike_dropout_on":  1.0,
+        "substrate_plasticity_mod_on": 1.0,
+    }
+    missing_sub = [k for k in expected_substrate if k not in params]
+    if missing_sub:
+        raise AssertionError(f"substrate keys missing from snn_tune_get: {missing_sub}")
+    sub_off = [k for k, want in expected_substrate.items() if float(params[k]) != want]
+    if sub_off:
+        raise AssertionError(
+            f"expected substrate enables default-ON ({expected_substrate}), but got: "
+            + ", ".join(f"{k}={params[k]}" for k in sub_off)
+        )
+    sup = float(params["substrate_update_period"])
+    if not (1.0 <= sup <= 10000.0):
+        raise AssertionError(f"substrate_update_period default out of range [1,10000]: {sup}")
+    print(f"  PASS: Wave A + B1 + substrate defaults match design (7 enables ON, ranges sane)")
 
 
 def main():
