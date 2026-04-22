@@ -368,6 +368,16 @@ struct snn_population_s {
      * Effective synaptic drive = weight × (1 - depression_amount[src_neuron])
      * Depression recovers exponentially with time constant tau_d. */
     float* depression;              /**< [n_neurons] current depression [0..0.5] */
+
+    /* Biophysical stability mechanisms — added to prevent saturation/collapse
+     * oscillation observed in 1.8M-neuron pod runs (see
+     * project_snn_structural_fixes_2026-04-21.md). Each is allocated only
+     * when its feature is enabled via snn_tune_set_*_enabled(1.0). Freed
+     * in snn_population_destroy. Opaque pointers; forward-declared so this
+     * header does not depend on their internals. */
+    struct snn_adaptation_state_s* ahp;     /**< fast spike-rate adaptation (AHP / M-current) */
+    struct snn_adaptation_state_s* pump;    /**< slow Na+/K+ pump adaptation */
+    struct snn_basket_pool_s*       basket; /**< fast-spiking inhibitory interneurons */
 };
 
 #define SNN_POP_HISTORY_LEN 256
