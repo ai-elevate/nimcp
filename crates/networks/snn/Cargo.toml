@@ -22,6 +22,8 @@ nimcp-core = { workspace = true }
 nimcp-plasticity = { workspace = true }
 nimcp-substrate = { workspace = true }
 nimcp-thalamic = { workspace = true }
+nimcp-pinknoise = { workspace = true }
+nimcp-fractal = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }

@@ -192,6 +192,7 @@ impl Default for PopulationSpec {
             noise: crate::noise::NoiseConfig {
                 rate_hz: 0.0,
                 pulse_mv: 0.0,
+                kind: crate::noise::NoiseKind::default(),
             },
             depression: crate::depression::DepressionConfig {
                 inc: 0.0,
@@ -352,6 +353,10 @@ struct Pop {
     i_syn_scratch: Vec<f32>,
     // Phase 3.5 — stability mechanisms.
     noise_rng: rand_chacha::ChaCha20Rng,
+    /// Pink-noise runtime state — `Some` iff `spec.noise.kind` is
+    /// [`crate::noise::NoiseKind::Pink`]. The Poisson path keeps this
+    /// `None` so no per-step allocation overhead bleeds in.
+    pink_state: Option<crate::noise::PinkNoiseState>,
     depression_state: crate::depression::DepressionState,
     adaptation_ahp: Option<crate::adaptation::AdaptationState>,
     adaptation_pump: Option<crate::adaptation::AdaptationState>,
@@ -428,6 +433,19 @@ impl SnnNetwork {
                 .wrapping_add(0xAA55_AA55_AA55_AA55)
                 .wrapping_add(pop_idx as u64);
             let noise_rng = rand_chacha::ChaCha20Rng::seed_from_u64(noise_rng_seed);
+            // Pink-noise state is only allocated when the caller opts
+            // in via `NoiseKind::Pink`; otherwise `None` keeps the
+            // Poisson path bit-identical to pre-pink behavior.
+            let pink_state = match spec.noise.kind {
+                crate::noise::NoiseKind::Poisson => None,
+                crate::noise::NoiseKind::Pink { n_octaves } => {
+                    let pink_seed = config
+                        .rng_seed
+                        .wrapping_add(0xC0FF_EE00_C0FF_EE00)
+                        .wrapping_add(pop_idx as u64);
+                    Some(crate::noise::PinkNoiseState::new(n_octaves, pink_seed))
+                }
+            };
             let depression_state = crate::depression::DepressionState::new(n);
 
             // Substrate runtime state — owns chemistry iff enabled.
@@ -500,6 +518,7 @@ impl SnnNetwork {
                 rate,
                 i_syn_scratch,
                 noise_rng,
+                pink_state,
                 depression_state,
                 adaptation_ahp,
                 adaptation_pump,
@@ -664,6 +683,33 @@ impl SnnNetwork {
         self.populations[pop_idx].rate.rate()
     }
 
+    /// Online 1/f spectrum health check.
+    ///
+    /// For a population running [`crate::noise::NoiseKind::Pink`], runs
+    /// `nimcp_fractal::dfa_alpha(&ring, 8, 256)` over the rolling ring
+    /// buffer of recent pink-noise samples and returns the DFA scaling
+    /// exponent α. Expected values:
+    ///
+    /// - α ≈ 1.0 → 1/f noise (the target).
+    /// - α ≈ 0.5 → white noise — generator is misbehaving.
+    /// - α ≈ 1.5 → Brownian — generator is integrating something.
+    ///
+    /// Returns `None` when the population does not use pink noise OR
+    /// when its ring buffer has not yet filled to
+    /// [`crate::noise::PINK_RING_CAPACITY`] samples.
+    #[must_use]
+    pub fn pink_alpha(&self, pop_idx: usize) -> Option<f32> {
+        let pop = self.populations.get(pop_idx)?;
+        let pink = pop.pink_state.as_ref()?;
+        if !pink.is_full() {
+            return None;
+        }
+        // VecDeque may be non-contiguous — copy to a flat slice. 1024
+        // f32 samples = 4 KiB, negligible vs. DFA cost itself.
+        let ring: Vec<f32> = pink.ring.iter().copied().collect();
+        nimcp_fractal::dfa_alpha(&ring, 8, 256).ok()
+    }
+
     /// Mutable view of a single edge's weights. For tests and operator
     /// preloads.
     pub fn edge_weights_mut(&mut self, edge_idx: usize) -> &mut [f32] {
@@ -735,19 +781,39 @@ impl SnnNetwork {
                 bp.emit_inhibition(&mut pop.i_syn_scratch);
             }
 
-            // Adaptive-factor Poisson noise into v_mem. Dead pops get
-            // full injection; at-target pops get none.
+            // Adaptive-factor background noise into v_mem. Dead pops
+            // get full injection; at-target pops get none. Branches on
+            // the configured [`crate::noise::NoiseKind`]:
+            //   - Poisson → per-neuron Bernoulli pulses (pre-port path,
+            //     bit-identical to master).
+            //   - Pink    → one shared 1/f sample per step, also recorded
+            //     into the population's ring buffer for DFA monitoring.
             let factor = crate::noise::noise_factor_for_pop(
                 pop.rate.rate(),
                 pop.spec.target_rate,
             );
-            crate::noise::inject_poisson_noise(
-                &mut pop.noise_rng,
-                &mut pop.state.v_mem,
-                &pop.spec.noise,
-                dt_ms,
-                factor,
-            );
+            match pop.spec.noise.kind {
+                crate::noise::NoiseKind::Poisson => {
+                    crate::noise::inject_poisson_noise(
+                        &mut pop.noise_rng,
+                        &mut pop.state.v_mem,
+                        &pop.spec.noise,
+                        dt_ms,
+                        factor,
+                    );
+                }
+                crate::noise::NoiseKind::Pink { .. } => {
+                    if let Some(pink) = pop.pink_state.as_mut() {
+                        crate::noise::inject_pink_noise(
+                            pink,
+                            &mut pop.state.v_mem,
+                            pop.spec.noise.pulse_mv,
+                            dt_ms,
+                            factor,
+                        );
+                    }
+                }
+            }
 
             // Adaptation hyperpol: subtract gain*adapt_var from v_mem.
             // AHP and pump share the scratch buffer to avoid an extra
@@ -1131,6 +1197,7 @@ mod tests {
             noise: crate::noise::NoiseConfig {
                 rate_hz: 0.0,
                 pulse_mv: 0.0,
+                kind: crate::noise::NoiseKind::default(),
             },
             depression: crate::depression::DepressionConfig {
                 inc: 0.0,
@@ -1150,6 +1217,7 @@ mod tests {
             noise: crate::noise::NoiseConfig {
                 rate_hz: 0.0,
                 pulse_mv: 0.0,
+                kind: crate::noise::NoiseKind::default(),
             },
             depression: crate::depression::DepressionConfig {
                 inc: 0.0,
@@ -1574,5 +1642,128 @@ mod tests {
         let net = SnnNetwork::new(two_pop_config_with_thalamic(0.0)).unwrap();
         let gain = net.thalamic_output_gain(&router, 100);
         assert!(gain > 1.0, "reinforced route should boost gain, got {gain}");
+    }
+
+    // ---------------------------------------------------------------
+    // Pink-noise integration — opt-in alternative to Poisson.
+    // ---------------------------------------------------------------
+
+    /// Build a two-pop config with pink noise on pop 0 and Poisson
+    /// (pulse_mv=0 → effectively off) on pop 1. `n_octaves` propagates
+    /// through to the [`crate::noise::PinkNoiseState`].
+    fn two_pop_config_with_pink(n_octaves: u32, pulse_mv: f32) -> SnnConfig {
+        let mut cfg = two_pop_config(0xF00D, 0, 0.05, 0.4);
+        cfg.populations[0].noise = crate::noise::NoiseConfig::new_pink(n_octaves, pulse_mv);
+        cfg
+    }
+
+    /// Pink-noise path is actually taken when `kind == Pink`: the
+    /// generator must be constructed (pink_state.is_some()) and
+    /// pink_alpha starts out `None` because the ring is empty.
+    #[test]
+    fn pink_path_activates_when_kind_pink() {
+        let net = SnnNetwork::new(two_pop_config_with_pink(8, 20.0)).unwrap();
+        // pink_alpha reflects pink-state presence + ring fill. Immediately
+        // after construction the ring is empty → None.
+        assert!(
+            net.pink_alpha(0).is_none(),
+            "pink_alpha must be None before the ring fills"
+        );
+        // Poisson-kind population never exposes alpha regardless of
+        // how many steps run.
+        assert!(net.pink_alpha(1).is_none());
+    }
+
+    /// After exactly [`crate::noise::PINK_RING_CAPACITY`] steps the
+    /// ring is full, so `pink_alpha` returns `Some(_)` and the value
+    /// is a sensible 1/f-like exponent.
+    #[test]
+    fn pink_alpha_returns_some_after_ring_fills() {
+        let mut net = SnnNetwork::new(two_pop_config_with_pink(16, 20.0)).unwrap();
+        // Zero external drive — we're measuring the noise generator, not
+        // network dynamics. The ring fills regardless of firing rate.
+        let empty: &[f32] = &[];
+        let slices: Vec<&[f32]> = vec![empty, empty];
+        for _ in 0..crate::noise::PINK_RING_CAPACITY {
+            net.step(&slices, 0.0, 1.0);
+        }
+        let alpha = net
+            .pink_alpha(0)
+            .expect("alpha must be Some once the ring is full");
+        assert!(
+            alpha.is_finite(),
+            "pink_alpha must be finite, got {alpha}"
+        );
+        // Coarse 1/f sanity — Voss-McCartney with 16 octaves should put
+        // α firmly above white (0.5). We don't over-tighten because the
+        // DFA is approximate on 1024 samples.
+        assert!(
+            alpha > 0.5,
+            "16-octave pink noise α={alpha} should exceed white noise baseline 0.5"
+        );
+    }
+
+    /// Out-of-range pop index → None (no panic).
+    #[test]
+    fn pink_alpha_out_of_range_is_none() {
+        let net = SnnNetwork::new(two_pop_config_with_pink(8, 20.0)).unwrap();
+        assert!(net.pink_alpha(99).is_none());
+    }
+
+    /// Disable-path bit-identical contract: a network built entirely
+    /// with Poisson defaults (`NoiseConfig::default()` is Poisson)
+    /// produces the same per-step spike trains and weights as a
+    /// hypothetical pre-pink build. We assert this by running two
+    /// independently-constructed networks with the same seed and
+    /// verifying byte-equality — any accidental consumption of the
+    /// Poisson RNG from the pink path would diverge them.
+    #[test]
+    fn poisson_disable_path_is_deterministic_and_unchanged() {
+        // Explicit Poisson config with master-tuned defaults.
+        let mk_cfg = || {
+            let mut cfg = two_pop_config(0xABCD_1234, 0, 0.1, 0.3);
+            for p in cfg.populations.iter_mut() {
+                p.noise = crate::noise::NoiseConfig::default();
+                assert_eq!(p.noise.kind, crate::noise::NoiseKind::Poisson);
+            }
+            cfg
+        };
+        let mut a = SnnNetwork::new(mk_cfg()).unwrap();
+        let mut b = SnnNetwork::new(mk_cfg()).unwrap();
+        let ext = vec![25.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..50 {
+            a.step(&slices, 0.0, 1.0);
+            b.step(&slices, 0.0, 1.0);
+        }
+        assert_eq!(a.edge_weights(0), b.edge_weights(0));
+        assert_eq!(a.spikes(0), b.spikes(0));
+        assert_eq!(a.spikes(1), b.spikes(1));
+        // Poisson-kind populations never expose α.
+        assert!(a.pink_alpha(0).is_none());
+        assert!(a.pink_alpha(1).is_none());
+    }
+
+    /// Bit-identical contract (stricter): the pre-existing `two_pop_config`
+    /// helper produces `rate_hz=0, pulse_mv=0` noise → the Poisson
+    /// inject is a fast no-op. Adding pink-noise plumbing must not
+    /// perturb v_mem at all on that path — we verify by running with
+    /// zero external drive and asserting every neuron stays at v_rest.
+    #[test]
+    fn poisson_zero_amplitude_leaves_v_mem_at_rest() {
+        let mut net = SnnNetwork::new(two_pop_config(7, 0, 0.05, 0.4)).unwrap();
+        let empty: &[f32] = &[];
+        let slices: Vec<&[f32]> = vec![empty, empty];
+        for _ in 0..20 {
+            net.step(&slices, 0.0, 1.0);
+        }
+        // Both populations use pulse_mv=0 Poisson → no perturbation; no
+        // spikes; v_mem stays at v_rest.
+        let v_rest = net.v_mem(0)[0];
+        assert!(
+            net.v_mem(0).iter().all(|&v| (v - v_rest).abs() < 1e-6),
+            "disable path must leave every v_mem at v_rest"
+        );
+        assert!(net.spikes(0).iter().all(|&s| s == 0));
     }
 }

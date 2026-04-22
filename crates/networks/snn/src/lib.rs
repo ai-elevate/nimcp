@@ -59,7 +59,10 @@ pub use homeostatic::step_homeostatic_with_reward;
 pub use intrinsic_reward::{
     IntrinsicRewardConfig, compute_network_reward, compute_per_pop_reward,
 };
-pub use noise::{NoiseConfig, inject_poisson_noise, noise_factor_for_pop};
+pub use noise::{
+    NoiseConfig, NoiseKind, PinkNoiseState, inject_pink_noise, inject_poisson_noise,
+    noise_factor_for_pop,
+};
 pub use tuning::{HealthyStreak, TunableState};
 pub use csr::{CsrSynapses, Population, PopulationId};
 pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};

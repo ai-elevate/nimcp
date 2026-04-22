@@ -120,6 +120,7 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
                     noise: nimcp_snn::NoiseConfig {
                         rate_hz: 0.0,
                         pulse_mv: 0.0,
+                        kind: nimcp_snn::NoiseKind::default(),
                     },
                     depression: nimcp_snn::DepressionConfig {
                         inc: 0.0,
