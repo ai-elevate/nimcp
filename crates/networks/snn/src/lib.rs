@@ -40,6 +40,7 @@
 #![cfg_attr(feature = "cuda", allow(unsafe_code))]
 
 pub mod adaptation;
+pub mod basket;
 pub mod csr;
 pub mod homeostatic;
 pub mod lif;
@@ -47,6 +48,7 @@ pub mod network;
 pub mod rstdp;
 
 pub use adaptation::{AdaptationError, AdaptationState};
+pub use basket::{BasketError, BasketPool};
 pub use csr::{CsrSynapses, Population, PopulationId};
 pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};
 pub use lif::{LifParams, LifState, lif_step_cpu};
