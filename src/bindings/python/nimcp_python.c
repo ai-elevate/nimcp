@@ -2001,6 +2001,63 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     return d;
 }
 
+/* Runtime LNN parameter tuning — no brain restart required (Phase 2 substrate + thalamic).
+ * lnn_tune(name, value) → True (raises ValueError on unknown name). */
+static PyObject* Brain_lnn_tune(BrainObject* self, PyObject* args) {
+    (void)self;
+    const char* name = NULL;
+    double value = 0.0;
+    if (!PyArg_ParseTuple(args, "sd", &name, &value)) return NULL;
+
+    /* Substrate adapter tunables (Phase 2 biological-substrate wiring for LNN) */
+    extern void lnn_tune_set_substrate_enabled(float);
+    extern void lnn_tune_set_substrate_update_period(float);
+    extern void lnn_tune_set_substrate_tau_compose_on(float);
+    /* Thalamic adapter tunables (Phase 2 multi-network thalamic rollout) */
+    extern void lnn_tune_set_thalamic_enabled(float);
+    extern void lnn_tune_set_thalamic_input_gain_on(float);
+    extern void lnn_tune_set_thalamic_burst_tau_clamp_on(float);
+
+    float v = (float)value;
+    if      (strcmp(name, "substrate_enabled") == 0)           lnn_tune_set_substrate_enabled(v);
+    else if (strcmp(name, "substrate_update_period") == 0)     lnn_tune_set_substrate_update_period(v);
+    else if (strcmp(name, "substrate_tau_compose_on") == 0)    lnn_tune_set_substrate_tau_compose_on(v);
+    else if (strcmp(name, "thalamic_enabled") == 0)            lnn_tune_set_thalamic_enabled(v);
+    else if (strcmp(name, "thalamic_input_gain_on") == 0)      lnn_tune_set_thalamic_input_gain_on(v);
+    else if (strcmp(name, "thalamic_burst_tau_clamp_on") == 0) lnn_tune_set_thalamic_burst_tau_clamp_on(v);
+    else {
+        PyErr_Format(PyExc_ValueError, "unknown LNN tunable: %s", name);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* Brain_lnn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
+    (void)self;
+    extern float lnn_tune_get_substrate_enabled(void);
+    extern float lnn_tune_get_substrate_update_period(void);
+    extern float lnn_tune_get_substrate_tau_compose_on(void);
+    extern float lnn_tune_get_thalamic_enabled(void);
+    extern float lnn_tune_get_thalamic_input_gain_on(void);
+    extern float lnn_tune_get_thalamic_burst_tau_clamp_on(void);
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyObject* v;
+#define F(k, val) v = PyFloat_FromDouble((double)(val)); \
+                  if (v) { PyDict_SetItemString(d, k, v); Py_DECREF(v); }
+    /* Substrate adapter */
+    F("substrate_enabled",          lnn_tune_get_substrate_enabled());
+    F("substrate_update_period",    lnn_tune_get_substrate_update_period());
+    F("substrate_tau_compose_on",   lnn_tune_get_substrate_tau_compose_on());
+    /* Thalamic adapter */
+    F("thalamic_enabled",           lnn_tune_get_thalamic_enabled());
+    F("thalamic_input_gain_on",     lnn_tune_get_thalamic_input_gain_on());
+    F("thalamic_burst_tau_clamp_on",lnn_tune_get_thalamic_burst_tau_clamp_on());
+#undef F
+    return d;
+}
+
 /* Per-population live diagnostics — firing rate + recent activity for each pop. */
 static PyObject* Brain_snn_pop_stats(BrainObject* self, PyObject* Py_UNUSED(a)) {
     if (!self->brain || !self->brain->internal_brain) Py_RETURN_NONE;
@@ -9849,6 +9906,12 @@ static PyMethodDef Brain_methods[] = {
      "homeo_max_scale, max_scale_dead, dead_threshold, metabolic_cap."},
     {"snn_tune_get", (PyCFunction)Brain_snn_tune_get, METH_NOARGS,
      "Return dict of all current SNN tunable parameter values."},
+    {"lnn_tune", (PyCFunction)Brain_lnn_tune, METH_VARARGS,
+     "Set a runtime-tunable LNN parameter: lnn_tune(name, value) -> True. "
+     "Names: substrate_enabled, substrate_update_period, substrate_tau_compose_on, "
+     "thalamic_enabled, thalamic_input_gain_on, thalamic_burst_tau_clamp_on."},
+    {"lnn_tune_get", (PyCFunction)Brain_lnn_tune_get, METH_NOARGS,
+     "Return dict of all current LNN tunable parameter values."},
     {"snn_pop_stats", (PyCFunction)Brain_snn_pop_stats, METH_NOARGS,
      "List of per-population dicts: [{name, n_neurons, firing_rate_ema, rate_samples}]."},
     {"retrofit_synapse_metadata", (PyCFunction)Brain_retrofit_synapse_metadata, METH_NOARGS,
