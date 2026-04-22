@@ -376,6 +376,16 @@ void lnn_network_attach_substrate(lnn_network_t* net,
     memset(&net->cached_axon_effects, 0, sizeof(net->cached_axon_effects));
     memset(&net->cached_dend_effects, 0, sizeof(net->cached_dend_effects));
     net->substrate_steps_since_update = 0;
+    /* F1 CRITICAL mirror: populate cache IMMEDIATELY so downstream consumers
+     * that read cached_dend_effects.plasticity_mod before the first forward
+     * step don't multiply LR by 0. Without this, learning silently dies on
+     * any pre-step inference or training hop that skips the refresh block. */
+    if (sub) {
+        substrate_compute_effects(sub,
+                                  &net->cached_axon_effects,
+                                  &net->cached_dend_effects);
+        NIMCP_LOGGING_DEBUG("lnn_network_attach_substrate: eager-populated substrate cache after attach");
+    }
     NIMCP_LOGGING_DEBUG("lnn_network_attach_substrate: substrate=%p",
                         (void*)sub);
 }

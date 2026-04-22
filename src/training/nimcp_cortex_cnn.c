@@ -854,6 +854,16 @@ void cortex_cnn_attach_substrate(cortex_cnn_processor_t* proc,
     memset(&proc->cached_axon_effects, 0, sizeof(proc->cached_axon_effects));
     memset(&proc->cached_dend_effects, 0, sizeof(proc->cached_dend_effects));
     proc->substrate_steps_since_update = 0;
+    /* F1 CRITICAL mirror: populate cache IMMEDIATELY so downstream consumers
+     * that read cached_dend_effects.plasticity_mod before the first forward
+     * step don't multiply LR by 0. Without this, learning silently dies on
+     * any pre-step inference or training hop that skips the refresh block. */
+    if (substrate) {
+        substrate_compute_effects(substrate,
+                                  &proc->cached_axon_effects,
+                                  &proc->cached_dend_effects);
+        NIMCP_LOGGING_DEBUG("cortex_cnn_attach_substrate: eager-populated substrate cache after attach");
+    }
     NIMCP_LOGGING_DEBUG("cortex_cnn_attach_substrate: type=%s region=%u substrate=%p",
                         cortex_type_names[proc->type], proc->region_id,
                         (void*)substrate);
@@ -1501,6 +1511,20 @@ float cortex_cnn_tune_get_thalamic_burst_dropout_reduce_on(void) {
 thalamic_channel_t* cortex_cnn_test_get_thalamic_channel(
     const cortex_cnn_processor_t* proc) {
     return proc ? (thalamic_channel_t*)proc->thalamic_channel : NULL;
+}
+
+/* Test-only accessors: expose the cached substrate effects so white-box
+ * tests can verify that cortex_cnn_attach_substrate eagerly populates the
+ * cache (F1 CRITICAL mirror). Not part of the public API — declared in
+ * the test file's extern "C" block. */
+const dendrite_substrate_effects_t* cortex_cnn_test_get_cached_dend_effects(
+    const cortex_cnn_processor_t* proc) {
+    return proc ? &proc->cached_dend_effects : NULL;
+}
+
+const axon_substrate_effects_t* cortex_cnn_test_get_cached_axon_effects(
+    const cortex_cnn_processor_t* proc) {
+    return proc ? &proc->cached_axon_effects : NULL;
 }
 
 /* ========================================================================= */

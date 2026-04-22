@@ -43,6 +43,12 @@ extern void cortex_cnn_set_fno_visual(cortex_cnn_processor_t* proc, void* fno);
 /* Test-only accessor for the thalamic channel, defined in nimcp_cortex_cnn.c */
 thalamic_channel_t* cortex_cnn_test_get_thalamic_channel(
     const cortex_cnn_processor_t* proc);
+
+/* Test-only accessors for cached substrate effects (F1 CRITICAL mirror). */
+const dendrite_substrate_effects_t* cortex_cnn_test_get_cached_dend_effects(
+    const cortex_cnn_processor_t* proc);
+const axon_substrate_effects_t* cortex_cnn_test_get_cached_axon_effects(
+    const cortex_cnn_processor_t* proc);
 }
 
 /*============================================================================
@@ -167,6 +173,60 @@ TEST_F(CortexCNNSubstrateAdapterTest, TunablePlasticityModRoundTrip) {
 TEST_F(CortexCNNSubstrateAdapterTest, AttachNullProcessorIsNoOp) {
     cortex_cnn_attach_substrate(nullptr, nullptr);
     SUCCEED();  /* Should not crash. */
+}
+
+/*============================================================================
+ * F1 CRITICAL mirror: attach must populate the effects cache IMMEDIATELY.
+ * Before the fix, attach memset'd the cache to zero and left population to
+ * the first forward refresh — so any consumer that reads
+ * cached_dend_effects.plasticity_mod before the first step saw 0, and
+ * learning silently died (lr × 0). Protect that with this explicit
+ * pre-step check. Mirrors test_snn_substrate_adapter.cpp::AttachPopulatesCache.
+ *==========================================================================*/
+TEST_F(CortexCNNSubstrateAdapterTest, AttachPopulatesCache) {
+    cortex_cnn_processor_t* proc = cortex_cnn_create(CORTEX_CNN_SPEECH, 32);
+    ASSERT_NE(proc, nullptr);
+
+    /* Cache is zero before attach. */
+    const dendrite_substrate_effects_t* dend0 =
+        cortex_cnn_test_get_cached_dend_effects(proc);
+    const axon_substrate_effects_t* axon0 =
+        cortex_cnn_test_get_cached_axon_effects(proc);
+    ASSERT_NE(dend0, nullptr);
+    ASSERT_NE(axon0, nullptr);
+    EXPECT_FLOAT_EQ(dend0->plasticity_mod, 0.0f);
+    EXPECT_FLOAT_EQ(axon0->atp_velocity_factor, 0.0f);
+
+    /* Build substrate with known ATP so we can predict the cache. */
+    neural_substrate_t* sub = MakeSubstrate(0.5f, 1.0f);
+    ASSERT_NE(sub, nullptr);
+
+    /* Attach — must populate cache BEFORE any forward step runs. */
+    cortex_cnn_attach_substrate(proc, sub);
+
+    const dendrite_substrate_effects_t* dend1 =
+        cortex_cnn_test_get_cached_dend_effects(proc);
+    const axon_substrate_effects_t* axon1 =
+        cortex_cnn_test_get_cached_axon_effects(proc);
+    ASSERT_NE(dend1, nullptr);
+    ASSERT_NE(axon1, nullptr);
+
+    /* plasticity_mod is linear in ATP in the substrate helper, so atp=0.5
+     * yields plasticity_mod≈0.5. Must be non-zero to prove eager population. */
+    EXPECT_NE(dend1->plasticity_mod, 0.0f)
+        << "Attach did not immediately refresh plasticity_mod from substrate; "
+        << "downstream LR × 0 would silently kill learning.";
+    EXPECT_NEAR(dend1->plasticity_mod, 0.5f, 1e-4f);
+    EXPECT_NEAR(axon1->atp_velocity_factor, 0.5f, 1e-4f)
+        << "Attach did not immediately refresh axon cache.";
+    /* Sanity: overall_capacity is non-zero on a real substrate (ATP>0). */
+    EXPECT_GT(dend1->overall_capacity, 0.0f);
+
+    /* Detach must not crash (null sub). */
+    cortex_cnn_attach_substrate(proc, nullptr);
+
+    substrate_destroy(sub);
+    cortex_cnn_destroy(proc);
 }
 
 TEST_F(CortexCNNSubstrateAdapterTest, AttachSubstrateAndDetach) {

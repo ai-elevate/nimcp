@@ -247,6 +247,48 @@ TEST_F(LNNSubstrateAdapterTest, AttachSetsAndDetachesPointer) {
 }
 
 /*============================================================================
+ * F1 CRITICAL mirror: attach must populate the effects cache IMMEDIATELY.
+ * Before the fix, attach memset'd the cache to zero and left population
+ * to the first forward step's refresh — so any consumer that reads
+ * cached_dend_effects.plasticity_mod before the first step saw 0, and
+ * learning silently died (lr × 0). Protect that with this explicit
+ * pre-step check. Mirrors test_snn_substrate_adapter.cpp::AttachPopulatesCache.
+ *==========================================================================*/
+TEST_F(LNNSubstrateAdapterTest, AttachPopulatesCache) {
+    lnn_network_t* net = MakeSmallNetwork();
+    ASSERT_NE(net, nullptr);
+
+    /* Build a substrate with known ATP so we can predict the cache. */
+    neural_substrate_t* sub = MakeSubstrate(0.5f, 37.0f, 1.0f);
+    ASSERT_NE(sub, nullptr);
+
+    /* Cache is zero before attach. */
+    EXPECT_FLOAT_EQ(net->cached_dend_effects.plasticity_mod, 0.0f);
+    EXPECT_FLOAT_EQ(net->cached_axon_effects.atp_velocity_factor, 0.0f);
+
+    /* Attach — must populate cache BEFORE any forward step runs. */
+    lnn_network_attach_substrate(net, sub);
+
+    /* plasticity_mod is linear in ATP in the substrate helper, so atp=0.5
+     * yields plasticity_mod≈0.5. Must be non-zero to prove eager population. */
+    EXPECT_NE(net->cached_dend_effects.plasticity_mod, 0.0f)
+        << "Attach did not immediately refresh plasticity_mod from substrate; "
+        << "downstream LR × 0 would silently kill learning.";
+    EXPECT_NEAR(net->cached_dend_effects.plasticity_mod, 0.5f, 1e-4f);
+    EXPECT_NEAR(net->cached_axon_effects.atp_velocity_factor, 0.5f, 1e-4f)
+        << "Attach did not immediately refresh axon cache.";
+    /* Sanity: overall_capacity is non-zero on a real substrate (ATP>0). */
+    EXPECT_GT(net->cached_dend_effects.overall_capacity, 0.0f);
+
+    /* Detach must not crash (null sub). */
+    lnn_network_attach_substrate(net, nullptr);
+    EXPECT_EQ(net->substrate, nullptr);
+
+    substrate_destroy(sub);
+    lnn_network_destroy(net);
+}
+
+/*============================================================================
  * Null-substrate + no-attach forward behaves identically to the baseline
  * path (regression safeguard).
  *==========================================================================*/
@@ -421,10 +463,19 @@ TEST_F(LNNSubstrateAdapterTest, DisabledKnobIgnoresAttachedSubstrate) {
     /* Severely damaged substrate — would normally mangle tau + LR. */
     neural_substrate_t* sub = MakeSubstrate(0.05f, 37.0f, 0.05f);
     ASSERT_NE(sub, nullptr);
-    lnn_network_attach_substrate(net, sub);
 
-    /* Master knob OFF: cache stays zeroed. */
+    /* Master knob OFF: per-step refresh will not run. */
     lnn_tune_set_substrate_enabled(0.0f);
+
+    /* F1 CRITICAL mirror: attach unconditionally populates the cache from
+     * the attached substrate so downstream consumers don't multiply by 0.
+     * The enabled-knob check only gates per-step cache refreshes + the
+     * hot-loop modulation, not attach-time initialization. To preserve the
+     * original test intent (stepping with knob off leaves cache at baseline
+     * zero), force-zero the cache AFTER attach so the stepping check holds. */
+    lnn_network_attach_substrate(net, sub);
+    memset(&net->cached_axon_effects, 0, sizeof(net->cached_axon_effects));
+    memset(&net->cached_dend_effects, 0, sizeof(net->cached_dend_effects));
 
     nimcp_tensor_t* in  = MakeInput(net->n_inputs, 0.5f);
     nimcp_tensor_t* out = MakeOutput(net->n_outputs);
@@ -433,7 +484,7 @@ TEST_F(LNNSubstrateAdapterTest, DisabledKnobIgnoresAttachedSubstrate) {
         ASSERT_EQ(lnn_forward_step(net, in, out, 1.0f), LNN_SUCCESS);
     }
 
-    /* With the knob off, the cached effects are never populated. */
+    /* With the knob off, the cached effects are never repopulated. */
     EXPECT_FLOAT_EQ(net->cached_axon_effects.atp_velocity_factor, 0.0f);
     EXPECT_FLOAT_EQ(net->cached_dend_effects.plasticity_mod, 0.0f);
 
