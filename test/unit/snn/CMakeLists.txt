@@ -20,6 +20,7 @@ set(SNN_TEST_LIBS
     GTest::gtest_main
     Threads::Threads
     m
+    z
 )
 
 # Common include directories
@@ -138,6 +139,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_training.cpp)
     )
 
     message(STATUS "  Added SNN unit test: test_snn_training")
+endif()
+
+# ============================================================================
+# Test 4b: SNN Anti-Reward Branch
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_anti_reward.cpp)
+    add_executable(unit_snn_test_snn_anti_reward
+        test_snn_anti_reward.cpp
+    )
+
+    target_link_libraries(unit_snn_test_snn_anti_reward
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_snn_test_snn_anti_reward
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_snn_test_snn_anti_reward PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_snn_test_snn_anti_reward
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;training;anti_reward"
+            TIMEOUT 60
+    )
+
+    message(STATUS "  Added SNN unit test: test_snn_anti_reward")
 endif()
 
 # ============================================================================

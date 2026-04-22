@@ -73,6 +73,14 @@ static float g_target_rate_input      = 0.05f;    /* input_* pops — looser sin
 /* g_homeo_target_rate (defined above) stays at 0.03 as the default for
  * everything else (L1_feature_*, L2_pattern_*, ..., output_*). */
 
+/* Anti-reward: when a population's firing rate exceeds
+ * threshold_ratio × target, the intrinsic reward goes negative so
+ * R-STDP can push the offending synapses down. Without this, reward
+ * saturates at 0 once rate >> target and R-STDP is powerless. */
+static float g_snn_anti_reward_enabled         = 1.0f;  /* 1.0 = on */
+static float g_snn_anti_reward_threshold_ratio = 2.0f;  /* trigger at rate > 2×target */
+static float g_snn_anti_reward_gain            = 0.5f;  /* (rate-2×target)/target × gain */
+
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
 void snn_tune_set_rstdp_baseline_alpha(float v)  { if (v > 0.0f && v <= 1.0f)    g_rstdp_baseline_alpha = v; }
@@ -88,6 +96,11 @@ void snn_tune_set_noise_rate_hz(float v)         { if (v >= 0.0f && v < 500.0f) 
 void snn_tune_set_noise_pulse_mv(float v)        { if (v > 0.0f && v < 200.0f)   g_snn_noise_pulse_mv = v; }
 void snn_tune_set_intrinsic_alpha(float v)       { if (v >= 0.0f && v <= 1.0f)   g_snn_intrinsic_alpha = v; }
 void snn_tune_set_target_rate_input(float v)     { if (v > 0.0f && v < 0.5f)     g_target_rate_input = v; }
+/* Anti-reward setters. enabled: any nonzero treated as on.
+ * threshold_ratio: must be > 1.0 and < 10.0. gain: must be >= 0.0 and < 10.0. */
+void snn_tune_set_anti_reward_enabled(float v)         { g_snn_anti_reward_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_anti_reward_threshold_ratio(float v) { if (v > 1.0f && v < 10.0f)  g_snn_anti_reward_threshold_ratio = v; }
+void snn_tune_set_anti_reward_gain(float v)            { if (v >= 0.0f && v < 10.0f) g_snn_anti_reward_gain = v; }
 
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
@@ -102,6 +115,9 @@ float snn_tune_get_noise_rate_hz(void)         { return g_snn_noise_rate_hz; }
 float snn_tune_get_noise_pulse_mv(void)        { return g_snn_noise_pulse_mv; }
 float snn_tune_get_intrinsic_alpha(void)       { return g_snn_intrinsic_alpha; }
 float snn_tune_get_target_rate_input(void)     { return g_target_rate_input; }
+float snn_tune_get_anti_reward_enabled(void)         { return g_snn_anti_reward_enabled; }
+float snn_tune_get_anti_reward_threshold_ratio(void) { return g_snn_anti_reward_threshold_ratio; }
+float snn_tune_get_anti_reward_gain(void)            { return g_snn_anti_reward_gain; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"
@@ -154,6 +170,9 @@ float snn_compute_intrinsic_reward(snn_network_t* network) {
     if (!network) return 0.0f;
     float sum = 0.0f;
     int n = 0;
+    const int anti_on = (g_snn_anti_reward_enabled != 0.0f);
+    const float thr_ratio = g_snn_anti_reward_threshold_ratio;
+    const float gain      = g_snn_anti_reward_gain;
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
         if (!pop) continue;
@@ -163,9 +182,16 @@ float snn_compute_intrinsic_reward(snn_network_t* network) {
         const float target = _target_rate_for_pop(pop);
         const float sigma  = target * 0.5f;
         const float two_sigma_sq = 2.0f * sigma * sigma;
-        float rate = pop->firing_rate_ema;
-        float err  = rate - target;
-        sum += expf(-(err * err) / two_sigma_sq);
+        const float rate = pop->firing_rate_ema;
+        const float err  = rate - target;
+        float r = expf(-(err * err) / two_sigma_sq);
+        /* Anti-reward: subtract a penalty when this pop is far above
+         * target. Penalty is linear in (rate - thr×target)/target so it
+         * stays bounded; gain controls magnitude. r can go negative. */
+        if (anti_on && rate > thr_ratio * target) {
+            r -= gain * (rate - thr_ratio * target) / target;
+        }
+        sum += r;
         n++;
     }
     return n > 0 ? sum / (float)n : 0.0f;

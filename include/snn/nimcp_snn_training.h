@@ -365,6 +365,9 @@ void  snn_tune_set_metabolic_cap(float v);
 void  snn_tune_set_noise_rate_hz(float v);
 void  snn_tune_set_noise_pulse_mv(float v);
 void  snn_tune_set_intrinsic_alpha(float v);
+void  snn_tune_set_anti_reward_enabled(float v);
+void  snn_tune_set_anti_reward_threshold_ratio(float v);
+void  snn_tune_set_anti_reward_gain(float v);
 void  snn_tune_set_target_rate_input(float v);
 
 float snn_tune_get_rstdp_lr(void);
@@ -378,6 +381,9 @@ float snn_tune_get_metabolic_cap(void);
 float snn_tune_get_noise_rate_hz(void);
 float snn_tune_get_noise_pulse_mv(void);
 float snn_tune_get_intrinsic_alpha(void);
+float snn_tune_get_anti_reward_enabled(void);
+float snn_tune_get_anti_reward_threshold_ratio(void);
+float snn_tune_get_anti_reward_gain(void);
 float snn_tune_get_target_rate_input(void);
 
 /*============================================================================
