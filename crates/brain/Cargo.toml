@@ -36,3 +36,5 @@ tempfile = "3"
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 nimcp-plasticity = { workspace = true }
+nimcp-quantum = { workspace = true }
+nimcp-mathutils = { workspace = true }
