@@ -81,6 +81,15 @@ static float g_snn_anti_reward_enabled         = 1.0f;  /* 1.0 = on */
 static float g_snn_anti_reward_threshold_ratio = 2.0f;  /* trigger at rate > 2×target */
 static float g_snn_anti_reward_gain            = 0.5f;  /* (rate-2×target)/target × gain */
 
+/* Short-term synaptic depression dynamics. Per-spike bump adds
+ * g_snn_dep_inc; recovery decays exponentially with tau g_snn_dep_tau_ms.
+ * Biology's STD acts on ms timescale — our prior hardcoded decay (0.95
+ * per step at dt=1ms) corresponded to an effective tau of ~19ms, which
+ * is in range but inflexible. Now runtime-tunable. */
+static float g_snn_dep_inc    = 0.3f;    /* per-spike depression increment (was ~0.05) */
+static float g_snn_dep_tau_ms = 50.0f;   /* exponential recovery time constant */
+static float g_snn_dep_cap    = 0.5f;    /* max depression; effective drive = 1 - depression */
+
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
 void snn_tune_set_rstdp_baseline_alpha(float v)  { if (v > 0.0f && v <= 1.0f)    g_rstdp_baseline_alpha = v; }
@@ -101,6 +110,9 @@ void snn_tune_set_target_rate_input(float v)     { if (v > 0.0f && v < 0.5f)    
 void snn_tune_set_anti_reward_enabled(float v)         { g_snn_anti_reward_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
 void snn_tune_set_anti_reward_threshold_ratio(float v) { if (v > 1.0f && v < 10.0f)  g_snn_anti_reward_threshold_ratio = v; }
 void snn_tune_set_anti_reward_gain(float v)            { if (v >= 0.0f && v < 10.0f) g_snn_anti_reward_gain = v; }
+void snn_tune_set_depression_inc(float v)        { if (v >= 0.0f && v <= 1.0f)   g_snn_dep_inc = v; }
+void snn_tune_set_depression_tau_ms(float v)     { if (v >= 1.0f && v <= 10000.0f) g_snn_dep_tau_ms = v; }
+void snn_tune_set_depression_cap(float v)        { if (v >= 0.0f && v <= 1.0f)   g_snn_dep_cap = v; }
 
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
@@ -118,6 +130,9 @@ float snn_tune_get_target_rate_input(void)     { return g_target_rate_input; }
 float snn_tune_get_anti_reward_enabled(void)         { return g_snn_anti_reward_enabled; }
 float snn_tune_get_anti_reward_threshold_ratio(void) { return g_snn_anti_reward_threshold_ratio; }
 float snn_tune_get_anti_reward_gain(void)            { return g_snn_anti_reward_gain; }
+float snn_tune_get_depression_inc(void)        { return g_snn_dep_inc; }
+float snn_tune_get_depression_tau_ms(void)     { return g_snn_dep_tau_ms; }
+float snn_tune_get_depression_cap(void)        { return g_snn_dep_cap; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"

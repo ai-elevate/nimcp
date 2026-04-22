@@ -317,6 +317,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_basket.cpp)
 endif()
 
 # ============================================================================
+# Test 10: SNN Depression Tuning (runtime-tunable STD dynamics)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_depression_tuning.cpp)
+    add_executable(unit_snn_test_snn_depression_tuning
+        test_snn_depression_tuning.cpp
+    )
+
+    target_link_libraries(unit_snn_test_snn_depression_tuning
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_snn_test_snn_depression_tuning
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_snn_test_snn_depression_tuning PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_snn_test_snn_depression_tuning
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;depression_tuning"
+            TIMEOUT 60
+    )
+
+    message(STATUS "  Added SNN unit test: test_snn_depression_tuning")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_snn_population.cpp

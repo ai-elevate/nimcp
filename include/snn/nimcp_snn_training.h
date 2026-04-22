@@ -369,6 +369,9 @@ void  snn_tune_set_anti_reward_enabled(float v);
 void  snn_tune_set_anti_reward_threshold_ratio(float v);
 void  snn_tune_set_anti_reward_gain(float v);
 void  snn_tune_set_target_rate_input(float v);
+void  snn_tune_set_depression_inc(float v);
+void  snn_tune_set_depression_tau_ms(float v);
+void  snn_tune_set_depression_cap(float v);
 
 float snn_tune_get_rstdp_lr(void);
 float snn_tune_get_rstdp_baseline_alpha(void);
@@ -385,6 +388,9 @@ float snn_tune_get_anti_reward_enabled(void);
 float snn_tune_get_anti_reward_threshold_ratio(void);
 float snn_tune_get_anti_reward_gain(void);
 float snn_tune_get_target_rate_input(void);
+float snn_tune_get_depression_inc(void);
+float snn_tune_get_depression_tau_ms(void);
+float snn_tune_get_depression_cap(void);
 
 /*============================================================================
  * Intrinsic SNN reward — firing-rate-target-based. Use as the primary

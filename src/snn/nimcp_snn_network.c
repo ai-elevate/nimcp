@@ -1107,9 +1107,18 @@ int snn_network_step(snn_network_t* network, float dt) {
                 const float ip_alpha = 0.01f;             /* rate EMA smoothing */
                 const float ip_gain  = 0.5f;              /* mV per unit rate error */
                 const float ip_cap   = 10.0f;             /* clamp offset ± */
-                const float dep_decay = 0.95f;            /* per step decay → tau ≈ 20 steps */
-                const float dep_inc  = 0.2f;
-                const float dep_cap  = 0.5f;
+                /* Short-term depression dynamics — runtime-tunable via
+                 * snn_tune_set_depression_*. Fetch ONCE per pop step
+                 * (not per neuron) to avoid extern-call overhead in the
+                 * hot loop. dep_decay = exp(-dt_ms / tau) so tuning tau
+                 * directly controls recovery timescale in ms. */
+                extern float snn_tune_get_depression_inc(void);
+                extern float snn_tune_get_depression_tau_ms(void);
+                extern float snn_tune_get_depression_cap(void);
+                const float dep_inc   = snn_tune_get_depression_inc();
+                const float dep_tau   = snn_tune_get_depression_tau_ms();
+                const float dep_cap   = snn_tune_get_depression_cap();
+                const float dep_decay = expf(-dt_ms / dep_tau);
 
                 /* === Phase 4.1 wiring: when the batch-safe flag is set,
                  * route through the batch-safe C functions (B=1 here).
