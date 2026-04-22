@@ -108,6 +108,7 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
                     adaptation_ahp: Some(nimcp_snn::network::AdaptationCfg::default()),
                     adaptation_pump: Some(nimcp_snn::network::AdaptationCfg::pump_defaults()),
                     basket: Some(nimcp_snn::network::BasketCfg::default()),
+                    substrate: nimcp_snn::network::SnnSubstrateCfg::default(),
                 }
             } else {
                 PopulationSpec {
@@ -127,6 +128,7 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
                     adaptation_ahp: None,
                     adaptation_pump: None,
                     basket: None,
+                    substrate: nimcp_snn::network::SnnSubstrateCfg::default(),
                 }
             }
         })

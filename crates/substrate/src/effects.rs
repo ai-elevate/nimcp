@@ -293,8 +293,10 @@ mod tests {
 
     #[test]
     fn non_default_is_not_identity() {
-        let mut a = AxonSubstrateEffects::default();
-        a.spike_reliability = 0.9;
+        let a = AxonSubstrateEffects {
+            spike_reliability: 0.9,
+            ..AxonSubstrateEffects::default()
+        };
         assert!(!a.is_identity());
     }
 }

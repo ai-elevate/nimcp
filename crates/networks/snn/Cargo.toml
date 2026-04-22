@@ -20,6 +20,7 @@ cuda = ["dep:nimcp-gpu", "dep:cudarc"]
 [dependencies]
 nimcp-core = { workspace = true }
 nimcp-plasticity = { workspace = true }
+nimcp-substrate = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }

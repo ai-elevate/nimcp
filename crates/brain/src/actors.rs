@@ -673,6 +673,7 @@ mod tests {
                     adaptation_ahp: None,
                     adaptation_pump: None,
                     basket: None,
+                    substrate: nimcp_snn::network::SnnSubstrateCfg::default(),
                 },
                 PopulationSpec {
                     name: "out".into(),
@@ -691,6 +692,7 @@ mod tests {
                     adaptation_ahp: None,
                     adaptation_pump: None,
                     basket: None,
+                    substrate: nimcp_snn::network::SnnSubstrateCfg::default(),
                 },
             ],
             edges: vec![EdgeSpec {

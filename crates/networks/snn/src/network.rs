@@ -87,6 +87,53 @@ impl Default for BasketCfg {
     }
 }
 
+/// Opt-in biological substrate config — Path A Phase 1.
+///
+/// When `enabled`, the population owns a [`nimcp_substrate::NeuralSubstrate`]
+/// that modulates its LIF dynamics (tau_mem, threshold, refractory),
+/// R-STDP learning rate, and spike reliability each step. Cached
+/// effects are recomputed every `update_period` steps (default `N=10`,
+/// matching V1's cadence — chemistry changes slower than spikes).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SnnSubstrateCfg {
+    /// Master switch. `false` disables substrate entirely — effects
+    /// cache is never populated, hot path is identical to pre-Phase-1.
+    pub enabled: bool,
+    /// Recompute effects every N steps. Lower = more responsive,
+    /// higher = cheaper. Default `10`.
+    pub update_period: u32,
+    /// Apply `spike_reliability` as probabilistic dropout after LIF
+    /// threshold crossing. Default `true` (when `enabled`).
+    pub spike_dropout_on: bool,
+    /// Scale R-STDP learning rate by `plasticity_mod`. Default `true`.
+    pub plasticity_mod_on: bool,
+    /// Scale intrinsic-reward amplitude by `ca_handling_mod`. Default `true`.
+    pub reward_mod_on: bool,
+    /// Silence the population when `overall_capacity < threshold`.
+    /// Matches V1's emergency-silence convention. Default `0.1`.
+    pub emergency_silence_threshold: f32,
+    /// Initial chemistry state. Default = full health.
+    pub initial_state: nimcp_substrate::NeuralSubstrate,
+    /// Per-spike / per-plasticity costs + passive recovery.
+    pub dynamics: nimcp_substrate::NeuralSubstrateConfig,
+}
+
+impl Default for SnnSubstrateCfg {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            update_period: 10,
+            spike_dropout_on: true,
+            plasticity_mod_on: true,
+            reward_mod_on: true,
+            emergency_silence_threshold: 0.1,
+            initial_state: nimcp_substrate::NeuralSubstrate::default(),
+            dynamics: nimcp_substrate::NeuralSubstrateConfig::default(),
+        }
+    }
+}
+
 /// Static description of one neuron population.
 ///
 /// [`Default`] produces a backward-compatible profile with every Phase 3.5
@@ -124,6 +171,11 @@ pub struct PopulationSpec {
     /// Optional basket-cell pool. `None` disables.
     #[serde(default)]
     pub basket: Option<BasketCfg>,
+    /// Biological substrate config — Path A Phase 1. Default disabled;
+    /// when enabled, wires this population's chemistry state through
+    /// the nimcp-substrate effect multipliers.
+    #[serde(default)]
+    pub substrate: SnnSubstrateCfg,
 }
 
 impl Default for PopulationSpec {
@@ -148,6 +200,7 @@ impl Default for PopulationSpec {
             adaptation_ahp: None,
             adaptation_pump: None,
             basket: None,
+            substrate: SnnSubstrateCfg::default(),
         }
     }
 }
@@ -264,6 +317,22 @@ struct Pop {
     /// Per-pre-neuron depression scale = `1 - depression.d[i]`, clamped
     /// to `[1 - cap, 1]`. Recomputed each step from depression_state.
     depression_scale_scratch: Vec<f32>,
+    // Phase 1 — substrate state (Path A).
+    /// Per-population chemistry. `None` when `spec.substrate.enabled = false`.
+    substrate_state: Option<nimcp_substrate::NeuralSubstrate>,
+    /// Cached effect bundles, recomputed every `spec.substrate.update_period` steps.
+    substrate_effects: Option<(
+        nimcp_substrate::AxonSubstrateEffects,
+        nimcp_substrate::DendriteSubstrateEffects,
+    )>,
+    /// Tick counter for substrate effect recomputation cadence.
+    substrate_tick_counter: u32,
+    /// Dedicated RNG for substrate-driven spike dropout, so it doesn't
+    /// consume the Poisson-noise RNG's stream.
+    substrate_dropout_rng: rand_chacha::ChaCha20Rng,
+    /// Counter of plasticity updates this step — fed to
+    /// `debit_activity` at end of step.
+    substrate_plasticity_count: u32,
 }
 
 /// Per-edge runtime state.
@@ -307,6 +376,30 @@ impl SnnNetwork {
                 .wrapping_add(pop_idx as u64);
             let noise_rng = rand_chacha::ChaCha20Rng::seed_from_u64(noise_rng_seed);
             let depression_state = crate::depression::DepressionState::new(n);
+
+            // Substrate runtime state — owns chemistry iff enabled.
+            let substrate_state = if spec.substrate.enabled {
+                let mut s = spec.substrate.initial_state;
+                // Propagate the population's index as region_id if
+                // caller didn't set one (keeps per-region chemistry
+                // identifiable in stats).
+                if s.region_id == 0 {
+                    s.region_id = pop_idx as u32;
+                }
+                s.clamp();
+                Some(s)
+            } else {
+                None
+            };
+            let substrate_effects = None;
+            let substrate_tick_counter = 0_u32;
+            let substrate_dropout_rng = rand_chacha::ChaCha20Rng::seed_from_u64(
+                config
+                    .rng_seed
+                    .wrapping_add(0x5A5A_5A5A_5A5A_5A5A)
+                    .wrapping_add(pop_idx as u64),
+            );
+            let substrate_plasticity_count = 0_u32;
             let adaptation_ahp = spec
                 .adaptation_ahp
                 .as_ref()
@@ -361,6 +454,11 @@ impl SnnNetwork {
                 hyperpol_scratch,
                 fired_f32_scratch,
                 depression_scale_scratch,
+                substrate_state,
+                substrate_effects,
+                substrate_tick_counter,
+                substrate_dropout_rng,
+                substrate_plasticity_count,
             });
         }
 
@@ -478,6 +576,26 @@ impl SnnNetwork {
     ///
     /// Returns total spikes emitted across all populations this step.
     pub fn step(&mut self, external_i_syn: &[&[f32]], reward: f32, dt_ms: f32) -> u32 {
+        // 0. Substrate effect cadence — recompute cached (axon, dendrite)
+        //    effects every `update_period` steps for each substrate-
+        //    enabled population. Reset per-step plasticity count too.
+        for pop in self.populations.iter_mut() {
+            if !pop.spec.substrate.enabled {
+                continue;
+            }
+            pop.substrate_plasticity_count = 0;
+            let should_recompute = pop.substrate_effects.is_none()
+                || pop.substrate_tick_counter >= pop.spec.substrate.update_period;
+            if should_recompute {
+                if let Some(ref s) = pop.substrate_state {
+                    pop.substrate_effects = Some(nimcp_substrate::compute_effects(s));
+                    pop.substrate_tick_counter = 0;
+                }
+            } else {
+                pop.substrate_tick_counter = pop.substrate_tick_counter.saturating_add(1);
+            }
+        }
+
         // 1. Per-pop prep: zero scratches, inject external drive, apply
         //    Poisson noise and basket inhibition, refresh per-source
         //    depression scale. Adaptation hyperpol is subtracted from
@@ -586,9 +704,41 @@ impl SnnNetwork {
             }
         }
 
-        // 3. Advance LIF dynamics.
+        // 3. Advance LIF dynamics. Substrate-enabled populations use
+        //    effective params (tau / threshold / refractory modulated).
         for pop in self.populations.iter_mut() {
-            lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &pop.spec.lif, dt_ms);
+            let effective = crate::substrate_adapter::effective_lif(
+                &pop.spec.lif,
+                pop.substrate_effects.as_ref(),
+            );
+            lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &effective, dt_ms);
+
+            // Substrate emergency silence + probabilistic spike dropout.
+            if pop.spec.substrate.enabled {
+                if crate::substrate_adapter::emergency_silence(
+                    pop.substrate_effects.as_ref(),
+                    pop.spec.substrate.emergency_silence_threshold,
+                ) {
+                    // Chemistry stress — zero every spike this step.
+                    for s in pop.state.spike.iter_mut() {
+                        *s = 0;
+                    }
+                } else if pop.spec.substrate.spike_dropout_on {
+                    if let Some((axon, _)) = pop.substrate_effects {
+                        let reliability = axon.spike_reliability.clamp(0.0, 1.0);
+                        if reliability < 1.0 {
+                            use rand::Rng;
+                            for s in pop.state.spike.iter_mut() {
+                                if *s != 0
+                                    && pop.substrate_dropout_rng.random::<f32>() > reliability
+                                {
+                                    *s = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // 4. Post-LIF: update adaptation + depression + basket using
@@ -623,10 +773,26 @@ impl SnnNetwork {
             }
         }
 
-        // 5. R-STDP weight updates.
+        // 5. R-STDP weight updates. Destination pop's substrate
+        //    modulates the effective LR + Ca-handling scales reward.
         for edge in &mut self.edges {
             let src = edge.spec.src;
             let dst = edge.spec.dst;
+            let dst_effects = self.populations[dst].substrate_effects.as_ref().copied();
+            let dst_plasticity_mod_on = self.populations[dst].spec.substrate.enabled
+                && self.populations[dst].spec.substrate.plasticity_mod_on;
+            let dst_reward_mod_on = self.populations[dst].spec.substrate.enabled
+                && self.populations[dst].spec.substrate.reward_mod_on;
+            let eff_rstdp = crate::substrate_adapter::effective_rstdp(
+                &edge.spec.rstdp,
+                dst_effects.as_ref(),
+                dst_plasticity_mod_on,
+            );
+            let eff_reward = crate::substrate_adapter::effective_reward(
+                reward,
+                dst_effects.as_ref(),
+                dst_reward_mod_on,
+            );
             let (pre_spikes, post_spikes): (&[u8], &[u8]) = if src < dst {
                 let (a, b) = self.populations.split_at(dst);
                 (&a[src].state.spike, &b[0].state.spike)
@@ -639,11 +805,18 @@ impl SnnNetwork {
                 &mut edge.rstdp,
                 pre_spikes,
                 post_spikes,
-                reward,
+                eff_reward,
                 self.t_ms,
                 dt_ms,
-                &edge.spec.rstdp,
+                &eff_rstdp,
             );
+            // Count plasticity updates for substrate debit: approximate
+            // as one update per post-spike (an eligibility window per
+            // post-spike triggers weight writes).
+            let n_post_spikes: u32 = post_spikes.iter().map(|&s| u32::from(s != 0)).sum();
+            self.populations[dst].substrate_plasticity_count = self.populations[dst]
+                .substrate_plasticity_count
+                .saturating_add(n_post_spikes);
         }
 
         // 6. Homeostatic scaling per destination population — reward-
@@ -675,7 +848,21 @@ impl SnnNetwork {
             }
         }
 
-        // 7. Advance clock and tally activity.
+        // 7. Substrate debit: decrement ATP / ion / membrane based on
+        //    this step's spikes + plasticity updates.
+        for pop in self.populations.iter_mut() {
+            if !pop.spec.substrate.enabled {
+                continue;
+            }
+            let Some(ref mut s) = pop.substrate_state else {
+                continue;
+            };
+            let n_spikes = u64::from(pop.state.n_spikes_this_step());
+            let n_plast = u64::from(pop.substrate_plasticity_count);
+            nimcp_substrate::debit_activity(s, &pop.spec.substrate.dynamics, n_spikes, n_plast);
+        }
+
+        // 8. Advance clock and tally activity.
         self.t_ms += dt_ms;
         self.populations
             .iter()
@@ -816,6 +1003,7 @@ mod tests {
             adaptation_ahp: None,
             adaptation_pump: None,
             basket: None,
+            substrate: SnnSubstrateCfg::default(),
         };
         let pop_b = PopulationSpec {
             name: "B".into(),
@@ -834,6 +1022,7 @@ mod tests {
             adaptation_ahp: None,
             adaptation_pump: None,
             basket: None,
+            substrate: SnnSubstrateCfg::default(),
         };
         // w_max bumped so a saturated edge can drive the downstream
         // population to fire on a single pre-spike step — V1's
@@ -996,5 +1185,144 @@ mod tests {
         let mut snap = b.snapshot();
         snap.edge_weights[0].truncate(1);
         assert!(!a.restore(&snap));
+    }
+
+    // ---------------------------------------------------------------
+    // Phase 1 Path A — SNN substrate adapter integration tests.
+    // ---------------------------------------------------------------
+
+    /// Helper: build a two-pop config and enable substrate on every
+    /// population with a given initial ATP level (everything else at
+    /// full health).
+    fn two_pop_config_with_substrate(atp: f32) -> SnnConfig {
+        let mut cfg = two_pop_config(11, 0, 0.05, 0.4);
+        for p in cfg.populations.iter_mut() {
+            let mut initial = nimcp_substrate::NeuralSubstrate::default();
+            initial.atp_level = atp;
+            initial.clamp();
+            p.substrate = SnnSubstrateCfg {
+                enabled: true,
+                initial_state: initial,
+                // Disable passive recovery so debits actually stick
+                // visibly across the short test run.
+                dynamics: nimcp_substrate::NeuralSubstrateConfig {
+                    atp_passive_recovery: 0.0,
+                    ..nimcp_substrate::NeuralSubstrateConfig::default()
+                },
+                ..SnnSubstrateCfg::default()
+            };
+        }
+        cfg
+    }
+
+    /// Disable path: a substrate-off network steps identically to a
+    /// pre-Phase-1 network — no crash, no NaN, substrate_effects stays
+    /// `None` (never populated because enabled=false).
+    #[test]
+    fn substrate_disable_path_no_effects_cache() {
+        let mut net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.5)).unwrap();
+        let ext = vec![1000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..20 {
+            net.step(&slices, 0.0, 1.0);
+        }
+        assert!(net.populations[0].substrate_state.is_none());
+        assert!(net.populations[0].substrate_effects.is_none());
+    }
+
+    /// Substrate on at full health: effects get cached on the first
+    /// step, substrate_state is populated, and the full-health effects
+    /// equal the identity — so the hot path sees identity modulation.
+    #[test]
+    fn substrate_full_health_caches_identity_effects() {
+        let mut net = SnnNetwork::new(two_pop_config_with_substrate(1.0)).unwrap();
+        let ext = vec![1000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        net.step(&slices, 0.0, 1.0);
+        let effects = net.populations[0].substrate_effects.as_ref().unwrap();
+        assert!(effects.0.is_identity(), "axon effects should be identity");
+        assert!(effects.1.is_identity(), "dendrite effects should be identity");
+    }
+
+    /// Substrate at very low ATP + activity: ATP continues to drop as
+    /// the debit loop subtracts per-spike cost from pop 0. Without
+    /// passive recovery (disabled in helper) the delta is observable.
+    #[test]
+    fn substrate_debits_atp_as_spikes_accumulate() {
+        // Use a generous per-spike cost so 10 steps at ~100% firing
+        // produces a measurable debit even with a small population.
+        let mut cfg = two_pop_config_with_substrate(0.5);
+        for p in cfg.populations.iter_mut() {
+            p.substrate.dynamics.atp_cost_per_spike = 1.0e-4;
+        }
+        let mut net = SnnNetwork::new(cfg).unwrap();
+        let ext = vec![1000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+
+        let atp_before = net.populations[0]
+            .substrate_state
+            .as_ref()
+            .map(|s| s.atp_level)
+            .unwrap();
+        assert!((atp_before - 0.5).abs() < 1e-5);
+
+        for _ in 0..20 {
+            net.step(&slices, 0.0, 1.0);
+        }
+
+        let atp_after = net.populations[0]
+            .substrate_state
+            .as_ref()
+            .map(|s| s.atp_level)
+            .unwrap();
+        assert!(
+            atp_after < atp_before,
+            "ATP should have debited: {atp_before} -> {atp_after}"
+        );
+    }
+
+    /// Emergency silence: substrate with very low overall_capacity
+    /// (crashed chemistry) zeros every spike on the next step.
+    #[test]
+    fn substrate_emergency_silence_zeros_spikes() {
+        let mut cfg = two_pop_config_with_substrate(0.01);
+        for p in cfg.populations.iter_mut() {
+            // Threshold much higher than axon.overall_capacity at
+            // atp=0.01 ensures the silence branch fires.
+            p.substrate.emergency_silence_threshold = 0.8;
+            // Also crash membrane + ion balance so overall_capacity collapses.
+            p.substrate.initial_state.membrane_integrity = 0.05;
+            p.substrate.initial_state.ion_balance = 0.05;
+        }
+        let mut net = SnnNetwork::new(cfg).unwrap();
+        let ext = vec![10_000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..10 {
+            net.step(&slices, 0.0, 1.0);
+        }
+        // Every spike should have been zeroed by the silence branch.
+        let any_spike = net.spikes(0).iter().any(|&s| s != 0);
+        assert!(!any_spike, "emergency silence should zero all spikes");
+    }
+
+    /// Effects cadence: after the first step, effects are cached;
+    /// after `update_period` further steps, they recompute.
+    #[test]
+    fn substrate_effects_cache_respects_cadence() {
+        let mut cfg = two_pop_config_with_substrate(1.0);
+        for p in cfg.populations.iter_mut() {
+            p.substrate.update_period = 5;
+        }
+        let mut net = SnnNetwork::new(cfg).unwrap();
+        let ext = vec![500.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+
+        // No effects yet — first step will populate them.
+        assert!(net.populations[0].substrate_effects.is_none());
+        net.step(&slices, 0.0, 1.0);
+        assert!(
+            net.populations[0].substrate_effects.is_some(),
+            "effects should be cached after first step"
+        );
     }
 }

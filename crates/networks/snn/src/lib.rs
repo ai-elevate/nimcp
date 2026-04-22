@@ -49,6 +49,7 @@ pub mod lif;
 pub mod network;
 pub mod noise;
 pub mod rstdp;
+pub mod substrate_adapter;
 pub mod tuning;
 
 pub use adaptation::{AdaptationError, AdaptationState};
