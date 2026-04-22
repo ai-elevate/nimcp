@@ -34,6 +34,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>  /* UINT32_MAX (neural_network_add_neuron sentinel) */
 
 /*=============================================================================
  * Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
@@ -126,6 +127,84 @@ static snn_population_t* snn_population_create_internal(
     pop->topology = SNN_TOPO_FULL;
     pop->connectivity = 1.0f;
 
+    /* Homeostatic + intrinsic-plasticity + biophysical state.
+     *
+     * Bug fix (pre-existing Wave A+B gap): the lightweight path (below)
+     * allocates ahp, pump, basket, threshold_offset, neuron_rate_ema,
+     * depression, and seeds EMAs. The non-lightweight path (this
+     * function) previously left those NULL even though the same step
+     * code runs for both. Non-lightweight pops silently lacked their
+     * biophysical stability mechanisms.
+     *
+     * Fix: mirror the same allocations here. All allocation failures
+     * are non-fatal — the step code branches on NULL, so a missing
+     * mechanism simply becomes a no-op. */
+    pop->firing_rate_ema = 0.03f;
+    pop->rate_samples = 0;
+    memset(pop->spike_count_history, 0, sizeof(pop->spike_count_history));
+    pop->history_write_idx = 0;
+    pop->history_total_steps = 0;
+
+    pop->threshold_offset = nimcp_calloc(n_neurons, sizeof(float));
+    pop->neuron_rate_ema  = nimcp_calloc(n_neurons, sizeof(float));
+    pop->depression       = nimcp_calloc(n_neurons, sizeof(float));
+    if (!pop->threshold_offset || !pop->neuron_rate_ema || !pop->depression) {
+        NIMCP_LOGGING_WARN(
+            "snn_population_create_internal: partial allocation of intrinsic "
+            "plasticity / depression buffers for pop '%s' (%u neurons); "
+            "mechanism will be no-op", name ? name : "unnamed", n_neurons);
+    } else {
+        const float ip_target = 0.03f;
+        for (uint32_t i = 0; i < n_neurons; i++) {
+            pop->neuron_rate_ema[i] = ip_target;
+        }
+    }
+
+    extern float snn_tune_get_ahp_enabled(void);
+    extern float snn_tune_get_pump_enabled(void);
+    extern float snn_tune_get_basket_enabled(void);
+    extern float snn_tune_get_ahp_tau_ms(void);
+    extern float snn_tune_get_ahp_gain_mv(void);
+    extern float snn_tune_get_pump_tau_ms(void);
+    extern float snn_tune_get_pump_gain_mv(void);
+    extern float snn_tune_get_basket_fraction(void);
+
+    if (snn_tune_get_ahp_enabled() != 0.0f) {
+        pop->ahp = snn_adaptation_create(n_neurons,
+                                         snn_tune_get_ahp_tau_ms(),
+                                         snn_tune_get_ahp_gain_mv(),
+                                         1.0f);
+        if (!pop->ahp) {
+            NIMCP_LOGGING_WARN(
+                "snn_population_create_internal: AHP allocation failed for "
+                "pop '%s'; adaptation will be no-op",
+                name ? name : "unnamed");
+        }
+    }
+    if (snn_tune_get_pump_enabled() != 0.0f) {
+        pop->pump = snn_adaptation_create(n_neurons,
+                                          snn_tune_get_pump_tau_ms(),
+                                          snn_tune_get_pump_gain_mv(),
+                                          1.0f);
+        if (!pop->pump) {
+            NIMCP_LOGGING_WARN(
+                "snn_population_create_internal: pump allocation failed for "
+                "pop '%s'; adaptation will be no-op",
+                name ? name : "unnamed");
+        }
+    }
+    if (snn_tune_get_basket_enabled() != 0.0f) {
+        pop->basket = snn_basket_pool_create(pop->id,
+                                             n_neurons,
+                                             snn_tune_get_basket_fraction());
+        if (!pop->basket) {
+            NIMCP_LOGGING_WARN(
+                "snn_population_create_internal: basket-pool allocation failed "
+                "for pop '%s'; inhibitory pool will be no-op",
+                name ? name : "unnamed");
+        }
+    }
+
     return pop;
 }
 
@@ -148,7 +227,16 @@ static snn_population_t* snn_population_create_lightweight(
         id, n_neurons, type, name, logical_base);
     if (!pop) return NULL;
 
-    /* Allocate lightweight-specific storage */
+    /* Allocate lightweight-specific storage.
+     *
+     * NOTE: Homeostatic state, intrinsic plasticity buffers
+     * (threshold_offset, neuron_rate_ema, depression) and the
+     * biophysical stability mechanisms (ahp, pump, basket) are
+     * allocated and seeded by snn_population_create_internal() itself
+     * — lightweight does NOT re-allocate them here. (Previously
+     * lightweight was the only path that allocated them; the
+     * non-lightweight path left them NULL. That gap has been closed
+     * in snn_population_create_internal.) */
     pop->lightweight = true;
     pop->external_current = nimcp_calloc(n_neurons, sizeof(float));
     pop->incoming_csr = snn_csr_create(n_neurons, n_neurons * 20);
@@ -158,70 +246,12 @@ static snn_population_t* snn_population_create_lightweight(
         return NULL;
     }
 
-    /* Homeostatic state seeded at the biological target firing rate
-     * so early training steps don't over-scale before the EMA warms up. */
-    pop->firing_rate_ema = 0.03f;
-    pop->rate_samples = 0;
-
-    /* Temporal history ring buffer initialized to zero. */
-    memset(pop->spike_count_history, 0, sizeof(pop->spike_count_history));
-    pop->history_write_idx = 0;
-    pop->history_total_steps = 0;
-
-    /* Intrinsic plasticity state — per-neuron. */
-    pop->threshold_offset = nimcp_calloc(n_neurons, sizeof(float));
-    pop->neuron_rate_ema  = nimcp_calloc(n_neurons, sizeof(float));
-    pop->depression       = nimcp_calloc(n_neurons, sizeof(float));
-    if (!pop->threshold_offset || !pop->neuron_rate_ema || !pop->depression) {
-        snn_population_destroy_internal(pop);
-        return NULL;
-    }
-    /* Seed per-neuron rate EMA at the target (0.03) so initial threshold
-     * adaptation doesn't spuriously drift toward easier-firing before
-     * any real activity has been observed. */
-    const float ip_target = 0.03f;
-    for (uint32_t i = 0; i < n_neurons; i++) {
-        pop->neuron_rate_ema[i] = ip_target;
-    }
-
     /* Initialize membrane potential to resting potential */
     float* v = (float*)nimcp_tensor_data(pop->membrane_v);
     if (v) {
         for (uint32_t i = 0; i < n_neurons; i++) {
             v[i] = -65.0f;  /* v_rest default */
         }
-    }
-
-    /* Biophysical stability mechanisms — each gated by its own runtime
-     * enable knob. All default-enabled (knob = 1.0f) so out-of-the-box
-     * the SNN has biological stability. Allocation failure for any
-     * individual mechanism is non-fatal: the step code branches on
-     * NULL so a disabled / unallocated mechanism is a silent no-op. */
-    extern float snn_tune_get_ahp_enabled(void);
-    extern float snn_tune_get_pump_enabled(void);
-    extern float snn_tune_get_basket_enabled(void);
-    extern float snn_tune_get_ahp_tau_ms(void);
-    extern float snn_tune_get_ahp_gain_mv(void);
-    extern float snn_tune_get_pump_tau_ms(void);
-    extern float snn_tune_get_pump_gain_mv(void);
-    extern float snn_tune_get_basket_fraction(void);
-
-    if (snn_tune_get_ahp_enabled() != 0.0f) {
-        pop->ahp = snn_adaptation_create(n_neurons,
-                                         snn_tune_get_ahp_tau_ms(),
-                                         snn_tune_get_ahp_gain_mv(),
-                                         1.0f);
-    }
-    if (snn_tune_get_pump_enabled() != 0.0f) {
-        pop->pump = snn_adaptation_create(n_neurons,
-                                          snn_tune_get_pump_tau_ms(),
-                                          snn_tune_get_pump_gain_mv(),
-                                          1.0f);
-    }
-    if (snn_tune_get_basket_enabled() != 0.0f) {
-        pop->basket = snn_basket_pool_create(pop->id,
-                                             n_neurons,
-                                             snn_tune_get_basket_fraction());
     }
 
     return pop;
@@ -419,8 +449,21 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
         return NULL;
     }
 
-    /* Allocate population array */
-    uint32_t max_populations = (config->n_populations > 0) ? config->n_populations : SNN_MAX_POPULATIONS;
+    /* Allocate population array.
+     *
+     * Bug fix (pre-existing heap overflow): the old code sized this array by
+     * `config->n_populations` when > 0. For a feedforward config with a
+     * hidden layer, that yields exactly 3 slots — and calling
+     * snn_network_add_population() later would then write populations[3],
+     * corrupting the heap. `snn_network_add_population{,_lightweight}()`
+     * only guarded against `SNN_MAX_POPULATIONS`, not the actual alloc size.
+     *
+     * Fix: ALWAYS allocate SNN_MAX_POPULATIONS slots regardless of config.
+     * Cost: 128 * sizeof(ptr) = 1 KB per network — trivial at 2M-neuron
+     * scale. We also record the actual allocation size in
+     * `populations_capacity` so the add-population guards can use it
+     * directly (decoupling the bound from the constant). */
+    uint32_t max_populations = SNN_MAX_POPULATIONS;
     network->populations = (snn_population_t**)nimcp_malloc(
         max_populations * sizeof(snn_population_t*));
     if (!network->populations) {
@@ -431,6 +474,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
         return NULL;
     }
     memset(network->populations, 0, max_populations * sizeof(snn_population_t*));
+    network->populations_capacity = max_populations;
 
     /* Create simulation context */
     uint32_t total_snn_neurons = config->n_inputs + config->n_hidden + config->n_outputs;
@@ -2566,10 +2610,15 @@ int snn_network_add_population(snn_network_t* network,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_SIZE, "snn_network_add_population: zero neurons");
         return SNN_ERROR_INVALID_DIMENSION;
     }
-    if (network->n_populations >= SNN_MAX_POPULATIONS) {
+    /* Bug fix: guard against the actual allocation size, not just
+     * SNN_MAX_POPULATIONS. Legacy code tripped over this when
+     * populations[] was sized by config->n_populations. */
+    uint32_t capacity = network->populations_capacity;
+    if (capacity == 0) capacity = SNN_MAX_POPULATIONS; /* legacy safety */
+    if (network->n_populations >= capacity) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_SIZE,
             "snn_network_add_population: max populations exceeded");
-        return SNN_ERROR_INVALID_DIMENSION;
+        return SNN_ERROR_OUT_OF_MEMORY;
     }
 
     uint32_t pop_id = network->n_populations;
@@ -2578,10 +2627,29 @@ int snn_network_add_population(snn_network_t* network,
         pop_id, n_neurons, neuron_type, name, 0);
     if (!pop) return SNN_ERROR_OUT_OF_MEMORY;
 
-    /* Add neurons to underlying neural network */
+    /* Add neurons to underlying neural network.
+     * Bug fix: neural_network_add_neuron returns UINT32_MAX on capacity
+     * exhaustion. The old code stored that sentinel into
+     * pop->neuron_ids[i] without checking, and later
+     * neural_net->neurons[pop->neuron_ids[i]] segfaulted. Now we detect
+     * the sentinel, destroy the partially-built population, and return
+     * SNN_ERROR_OUT_OF_MEMORY. Any neurons already added to the
+     * underlying neural_network_t are leak-tolerated: no
+     * neural_network_remove_neuron exists, and those slots will be
+     * freed on neural_network_destroy with the rest of the network. */
     for (uint32_t i = 0; i < n_neurons; i++) {
         uint32_t neuron_id = neural_network_add_neuron(
             network->neural_net, ACTIVATION_SIGMOID);
+        if (neuron_id == UINT32_MAX) {
+            NIMCP_LOGGING_ERROR(
+                "snn_network_add_population: neural_network_add_neuron "
+                "exhausted at slot %u/%u for pop '%s'; %u neurons already "
+                "added to neural_network are leak-tolerated "
+                "(no remove API)",
+                i, n_neurons, name ? name : "unnamed", i);
+            snn_population_destroy_internal(pop);
+            return SNN_ERROR_OUT_OF_MEMORY;
+        }
         pop->neuron_ids[i] = neuron_id;
     }
 
@@ -2600,7 +2668,11 @@ int snn_network_add_population_lightweight(snn_network_t* network,
                                            const char* name) {
     if (!network) return -1;
     if (n_neurons == 0) return -1;
-    if (network->n_populations >= SNN_MAX_POPULATIONS) return -1;
+    /* Bug fix: guard against the actual allocation size, not just
+     * SNN_MAX_POPULATIONS. See snn_network_add_population for details. */
+    uint32_t capacity = network->populations_capacity;
+    if (capacity == 0) capacity = SNN_MAX_POPULATIONS; /* legacy safety */
+    if (network->n_populations >= capacity) return -1;
 
     uint32_t pop_id = network->n_populations;
     snn_population_t* pop = snn_population_create_lightweight(

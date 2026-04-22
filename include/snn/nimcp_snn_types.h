@@ -559,8 +559,9 @@ struct snn_network_s {
     neural_network_t neural_net;    /**< Existing neural network with neurons/synapses */
 
     /* Population organization */
-    snn_population_t** populations; /**< Array of population pointers [n_populations] */
-    uint32_t n_populations;         /**< Number of populations */
+    snn_population_t** populations; /**< Array of population pointers [populations_capacity] */
+    uint32_t n_populations;         /**< Current number of populations */
+    uint32_t populations_capacity;  /**< Allocated slots in populations[] (<= SNN_MAX_POPULATIONS) */
 
     /* Special populations */
     snn_population_t* input_pop;    /**< Input population (encoding layer) */

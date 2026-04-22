@@ -16,8 +16,11 @@
  */
 
 #include <gtest/gtest.h>
-#include <cstring>
+#include <climits>
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <vector>
 
 // Headers have their own extern "C" guards
@@ -428,7 +431,14 @@ TEST_F(SnnNetworkTest, AddPopulationCreatesNewPopulation) {
 
     uint32_t initial_count = network->n_populations;
 
-    int pop_id = snn_network_add_population(network, 16, NEURON_GENERIC_LIF, "hidden");
+    // Reduced from 16 -> 4 to fit within the underlying neural_network_t's
+    // post-create capacity (2x num_neurons growth headroom leaves only
+    // ~14 free slots for a 4/8/2 feedforward net). Pre-fix, this test
+    // also exposed Bug #1 (populations[3] heap overflow) and Bug #2
+    // (UINT32_MAX neuron sentinel silently stored). Post-fix both are
+    // detected; keeping the request small lets the happy path verify
+    // the new slot actually got the pop.
+    int pop_id = snn_network_add_population(network, 4, NEURON_GENERIC_LIF, "hidden");
     EXPECT_GE(pop_id, 0);
     EXPECT_EQ(initial_count + 1, network->n_populations);
 }
@@ -616,6 +626,138 @@ TEST_F(SnnNetworkTest, SimulationUpdatesStats) {
     snn_network_run(network, 10.0f);
 
     EXPECT_GT(network->stats.total_steps, 0ULL);
+}
+
+//=============================================================================
+// Pre-existing Allocator Bug Regressions
+// Fixes:
+//   Bug #1: populations[] heap overflow (sized by config->n_populations)
+//   Bug #2: UINT32_MAX sentinel silently propagated
+//   Bug #3: non-lightweight pops didn't allocate ahp/pump/basket/depression
+//=============================================================================
+
+TEST_F(SnnNetworkTest, AddPopulationBeyondInitialCapacityGrows) {
+    // Feedforward config requests n_populations=3 (input+hidden+output).
+    // Pre-fix: populations[] was sized to 3, so adding a 4th pop corrupted
+    // the heap. Post-fix: populations[] is always SNN_MAX_POPULATIONS slots.
+    // Verify we can add 5 more populations without crashing or missing slots.
+    CreateNetwork();
+    ASSERT_NE(nullptr, network);
+
+    uint32_t initial_count = network->n_populations;  // should be 3
+    ASSERT_EQ(3u, initial_count);
+    ASSERT_GE(network->populations_capacity, 3u + 5u);
+
+    // Use 2 neurons/pop * 5 pops = 10, fits within the ~14 free slots of
+    // the 2x-growth-headroom neural_network_t for a 4/8/2 config.
+    for (int i = 0; i < 5; ++i) {
+        char name[32];
+        snprintf(name, sizeof(name), "extra_%d", i);
+        int pop_id = snn_network_add_population(network, 2,
+                                                NEURON_GENERIC_LIF, name);
+        EXPECT_GE(pop_id, 0);
+    }
+
+    EXPECT_EQ(initial_count + 5, network->n_populations);
+    // Slots occupied must all be non-NULL.
+    for (uint32_t i = 0; i < network->n_populations; ++i) {
+        EXPECT_NE(nullptr, network->populations[i])
+            << "populations[" << i << "] is NULL";
+    }
+}
+
+TEST_F(SnnNetworkTest, AddPopulationPastMaxReturnsError) {
+    // Fill populations[] to SNN_MAX_POPULATIONS, then verify the next
+    // add returns OOM rather than corrupting memory.
+    CreateNetwork();
+    ASSERT_NE(nullptr, network);
+
+    const uint32_t cap = network->populations_capacity;
+    ASSERT_EQ(SNN_MAX_POPULATIONS, cap);
+
+    // Force n_populations right up against the cap without actually
+    // allocating populations (cheap + sufficient to exercise the guard).
+    uint32_t saved_count = network->n_populations;
+    network->n_populations = cap;
+
+    int pop_id = snn_network_add_population(network, 1,
+                                            NEURON_GENERIC_LIF, "overflow");
+    EXPECT_LT(pop_id, 0) << "Expected error (OOM) when past max populations";
+
+    // Restore so TearDown can destroy cleanly.
+    network->n_populations = saved_count;
+}
+
+TEST_F(SnnNetworkTest, AddNeuronExhaustionDoesNotCorrupt) {
+    // When neural_network_add_neuron runs out of capacity, it returns
+    // UINT32_MAX. Pre-fix, add_population stored that sentinel into
+    // pop->neuron_ids[i] without checking, turning into a later segfault.
+    // Post-fix: detect, destroy the partial pop, return OOM.
+    //
+    // We exhaust the backing neural_network_t by requesting far more
+    // neurons than available capacity. With a 1+0+1 feedforward config,
+    // initial num_neurons=2 and capacity = 2 * 2 = 4 (per neural_network_create
+    // small-network growth rule). Requesting 64 neurons in the new pop
+    // definitely exceeds the 2 remaining slots.
+    snn_config_feedforward(&config, 1, 0, 1);
+    CreateNetwork();
+    ASSERT_NE(nullptr, network);
+
+    uint32_t pops_before = network->n_populations;
+
+    int pop_id = snn_network_add_population(network, 64,
+                                            NEURON_GENERIC_LIF, "too_big");
+    EXPECT_LT(pop_id, 0)
+        << "Expected error when underlying neural_network capacity is exhausted";
+
+    // Guarantee: no sentinel neuron_id was committed to any population.
+    // (If the check is missing, the partial pop would have been stored
+    // with neuron_ids containing UINT32_MAX entries.)
+    EXPECT_EQ(pops_before, network->n_populations)
+        << "Failed add must not increment n_populations";
+    for (uint32_t p = 0; p < network->n_populations; ++p) {
+        snn_population_t* pop = network->populations[p];
+        ASSERT_NE(nullptr, pop);
+        if (pop->neuron_ids) {
+            for (uint32_t i = 0; i < pop->n_neurons; ++i) {
+                EXPECT_NE(UINT32_MAX, pop->neuron_ids[i])
+                    << "pop " << p << " neuron_ids[" << i
+                    << "] is UINT32_MAX sentinel";
+            }
+        }
+    }
+}
+
+TEST_F(SnnNetworkTest, NonLightweightPopHasBiophysics) {
+    // Pre-fix: snn_population_create_internal zero'd the pop struct but
+    // didn't allocate ahp / pump / basket / depression / threshold_offset
+    // / neuron_rate_ema. Only snn_population_create_lightweight did.
+    // Post-fix: non-lightweight pops get the same biophysical buffers so
+    // the step code isn't silently a no-op.
+    CreateNetwork();
+    ASSERT_NE(nullptr, network);
+
+    // 4 neurons fits in the ~14 free slots of the 4/8/2 feedforward
+    // neural_network_t.
+    int pop_id = snn_network_add_population(network, 4,
+                                            NEURON_GENERIC_LIF, "biophys");
+    ASSERT_GE(pop_id, 0);
+
+    snn_population_t* pop = network->populations[pop_id];
+    ASSERT_NE(nullptr, pop);
+
+    // Non-lightweight: lightweight flag must be false.
+    EXPECT_FALSE(pop->lightweight);
+
+    // Intrinsic plasticity / short-term depression buffers.
+    EXPECT_NE(nullptr, pop->threshold_offset);
+    EXPECT_NE(nullptr, pop->neuron_rate_ema);
+    EXPECT_NE(nullptr, pop->depression);
+
+    // Biophysical mechanisms (default-enabled via snn_tune_get_*_enabled()).
+    EXPECT_NE(nullptr, pop->ahp);
+    EXPECT_NE(nullptr, pop->pump);
+    EXPECT_NE(nullptr, pop->basket);
 }
 
 TEST_F(SnnNetworkTest, ReservoirConfigurationWorks) {
