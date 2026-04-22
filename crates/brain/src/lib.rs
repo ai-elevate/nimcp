@@ -95,6 +95,10 @@ pub struct Brain {
     /// Phase 6c — training-loss tracker for the LNN, matched to
     /// `self.lnn.is_some()`.
     lnn_loss: Option<stats::LossTracker>,
+    /// Path A — shared thalamic router. Built lazily when any wired
+    /// network has a thalamic channel. `None` when no network declares
+    /// a thalamic config.
+    thalamic_router: Option<nimcp_thalamic::ThalamicRouter>,
 }
 
 impl Brain {
@@ -146,6 +150,47 @@ impl Brain {
             "brain created"
         );
         let lnn_loss = lnn.as_ref().map(|_| stats::LossTracker::default());
+
+        // Shared thalamic router — opened iff any network declares a
+        // thalamic channel. Each network's channel lives on the network
+        // itself; the router holds Hebbian weights across (source, dst)
+        // pairs and is ticked once per `tick_thalamic()` call.
+        let mut thalamic_router: Option<nimcp_thalamic::ThalamicRouter> = None;
+        let needs_router = snn
+            .as_ref()
+            .is_some_and(|s| s.thalamic_channel().is_some())
+            || lnn
+                .as_ref()
+                .is_some_and(|l| l.thalamic_channel.is_some());
+        if needs_router {
+            let mut router = nimcp_thalamic::ThalamicRouter::new(
+                nimcp_thalamic::ThalamicRouterConfig::default(),
+            );
+            if let Some(s) = snn.as_ref()
+                && let Some(ch) = s.thalamic_channel()
+            {
+                let dests: Vec<u32> = ch
+                    .destinations
+                    .iter()
+                    .take(ch.n_destinations as usize)
+                    .copied()
+                    .collect();
+                let _ = router.open_channel(ch.source_id, &dests);
+            }
+            if let Some(l) = lnn.as_ref()
+                && let Some(ch) = l.thalamic_channel.as_ref()
+            {
+                let dests: Vec<u32> = ch
+                    .destinations
+                    .iter()
+                    .take(ch.n_destinations as usize)
+                    .copied()
+                    .collect();
+                let _ = router.open_channel(ch.source_id, &dests);
+            }
+            thalamic_router = Some(router);
+        }
+
         Ok(Self {
             config,
             scheduler,
@@ -156,7 +201,61 @@ impl Brain {
             memory,
             adaptive_loss: stats::LossTracker::default(),
             lnn_loss,
+            thalamic_router,
         })
+    }
+
+    // -------------------------------------------------------------------------
+    // Path A Phase 3 — brain-level thalamic router.
+    // -------------------------------------------------------------------------
+
+    /// Immutable handle to the shared thalamic router, if any network
+    /// has a thalamic channel open.
+    pub fn thalamic_router(&self) -> Option<&nimcp_thalamic::ThalamicRouter> {
+        self.thalamic_router.as_ref()
+    }
+
+    /// Tick the thalamic router: for each open source whose channel
+    /// reported submits this step, bump the Hebbian weight + decay.
+    ///
+    /// The networks' channels hold their own `submits_this_step`
+    /// counters — we forward those into the router's own `record_submit`
+    /// (which flows through its per-channel counter) before calling
+    /// `tick()`. This double-book-keeping keeps the router authoritative
+    /// without requiring the network to know about the router.
+    ///
+    /// Returns the number of submits forwarded this tick (diagnostic).
+    pub fn tick_thalamic(&mut self) -> u32 {
+        let Some(router) = self.thalamic_router.as_mut() else {
+            return 0;
+        };
+        let mut forwarded = 0_u32;
+
+        if let Some(snn) = self.snn.as_mut()
+            && let Some(ch) = snn.thalamic_channel_mut()
+        {
+            let count = ch.submits_this_step;
+            for _ in 0..count {
+                if router.record_submit(ch.source_id) {
+                    forwarded = forwarded.saturating_add(1);
+                }
+            }
+            // Network-side counter is cleared by the network's own tick;
+            // we don't mutate it here, just forward observations.
+        }
+        if let Some(lnn) = self.lnn.as_mut()
+            && let Some(ch) = lnn.thalamic_channel.as_mut()
+        {
+            let count = ch.submits_this_step;
+            for _ in 0..count {
+                if router.record_submit(ch.source_id) {
+                    forwarded = forwarded.saturating_add(1);
+                }
+            }
+        }
+
+        router.tick();
+        forwarded
     }
 
     /// Accessor for the config.

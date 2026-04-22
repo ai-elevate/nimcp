@@ -21,6 +21,8 @@ nimcp-snn = { workspace = true }
 nimcp-lnn = { workspace = true }
 nimcp-plasticity = { workspace = true }
 nimcp-memory = { workspace = true }
+nimcp-substrate = { workspace = true }
+nimcp-thalamic = { workspace = true }
 nimcp-checkpoint = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
