@@ -1,0 +1,15 @@
+[package]
+name = "nimcp-mathutils"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "NIMCP V2 — numerically stable math helpers ported from V1"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
