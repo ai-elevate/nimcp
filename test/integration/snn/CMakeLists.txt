@@ -196,6 +196,56 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_biophysical_integration.cpp)
 endif()
 
 # ============================================================================
+# SNN Thalamic Substrate Composition Test (2026-04-22)
+# ============================================================================
+# WHAT: Integration test verifying the existing SNN thalamic bridge composes
+#       correctly with Wave A+B biophysical features (basket pool, AHP,
+#       Na+/K+ pump, E/I-balanced noise, anti-reward).
+# WHY:  The bridge predates these features. Wave A+B changes the distribution
+#       of pop->spike_output — prove the bridge still routes, attention
+#       gates stay finite, and burst-mode thresholds remain sensible.
+# HOW:  Google Test. Creates lightweight CSR populations, forces CPU
+#       fallback so biophysics runs, builds the thalamic router + SNN
+#       thalamic bridge on top, routes spikes through the bridge for each
+#       Wave A+B knob configuration.
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_thalamic_substrate_compose.cpp)
+    add_executable(integration_snn_test_snn_thalamic_substrate_compose
+        test_snn_thalamic_substrate_compose.cpp
+    )
+
+    target_link_libraries(integration_snn_test_snn_thalamic_substrate_compose
+        PRIVATE
+            nimcp_snn
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            Threads::Threads
+            m
+            z
+    )
+
+    target_include_directories(integration_snn_test_snn_thalamic_substrate_compose
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+    )
+
+    target_compile_features(integration_snn_test_snn_thalamic_substrate_compose
+        PRIVATE cxx_std_17)
+
+    gtest_discover_tests(integration_snn_test_snn_thalamic_substrate_compose
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;thalamic;biophysical"
+            TIMEOUT 300
+    )
+
+    message(STATUS "  Added SNN thalamic substrate composition test: "
+                   "test_snn_thalamic_substrate_compose")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)
