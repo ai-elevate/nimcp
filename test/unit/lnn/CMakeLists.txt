@@ -141,6 +141,34 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_sleep_bridge.cpp)
 endif()
 
 # ============================================================================
+# Test 5: LNN Substrate Adapter (Phase 2 biological-substrate wiring)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lnn_substrate_adapter.cpp)
+    add_executable(unit_lnn_test_lnn_substrate_adapter
+        test_lnn_substrate_adapter.cpp
+    )
+
+    target_link_libraries(unit_lnn_test_lnn_substrate_adapter
+        PRIVATE ${LNN_TEST_LIBS}
+    )
+
+    target_include_directories(unit_lnn_test_lnn_substrate_adapter
+        PRIVATE ${LNN_TEST_INCLUDES}
+    )
+
+    target_compile_features(unit_lnn_test_lnn_substrate_adapter PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_lnn_test_lnn_substrate_adapter
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;lnn;substrate"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added LNN unit test: test_lnn_substrate_adapter")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_lnn_network.cpp

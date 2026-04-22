@@ -717,11 +717,40 @@ int lnn_layer_forward(
                            layer->id);
     }
 
-    /* 1. Compute time constants */
+    /* 1. Compute time constants (produces layer->tau = tau_base * sigmoid(...)) */
     int ret = lnn_layer_compute_tau(layer, input);
     if (ret != LNN_SUCCESS) return ret;
 
-    /* 2. Compute derivatives */
+    /* 1b. Substrate adapter (Phase 2 biological-substrate wiring).
+     * When the owning network has attached a substrate AND the relevant
+     * tunables are on, the network writes layer->substrate_dend_effects
+     * with a borrowed pointer to its cached dendrite effect struct. We
+     * multiply each element of layer->tau by the membrane_time_constant_mod
+     * scalar (same floor as the compute-tau stability clamp).
+     *
+     * CRITICAL: We modulate the EPHEMERAL layer->tau tensor, not the
+     * learned layer->tau_base or W_tau parameters. Gradients flowing
+     * through backward still reach tau_base via the adjoint through the
+     * full learned expression. Substrate composes, never replaces. */
+    if (layer->substrate_dend_effects && layer->tau) {
+        const float mod = layer->substrate_dend_effects->membrane_time_constant_mod;
+        /* At baseline (healthy membrane) mod=1.0 → no-op, exactly matching
+         * the no-substrate path. Mod only departs from 1.0 when membrane
+         * integrity < 1.0. */
+        if (mod != 1.0f) {
+            float* tau_data = (float*)nimcp_tensor_data(layer->tau);
+            uint32_t n = layer->n_neurons;
+            for (uint32_t i = 0; i < n; i++) {
+                float v = tau_data[i] * mod;
+                /* Re-enforce the same 0.01 floor compute_tau uses to
+                 * prevent -x/tau blowup when mod pushes tau sub-floor. */
+                if (!isfinite(v) || v < 0.01f) v = 0.01f;
+                tau_data[i] = v;
+            }
+        }
+    }
+
+    /* 2. Compute derivatives (consumes layer->tau in -x/tau decay) */
     ret = lnn_layer_compute_derivatives(layer, input);
     if (ret != LNN_SUCCESS) return ret;
 

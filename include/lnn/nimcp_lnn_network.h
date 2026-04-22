@@ -168,6 +168,26 @@ void lnn_network_destroy(lnn_network_t* network);
  */
 int lnn_network_init_weights(lnn_network_t* network, uint64_t seed);
 
+/**
+ * @brief Attach a neural substrate to an LNN for biological modulation.
+ *
+ * WHAT: Sets the borrowed substrate pointer that the LNN's forward/optimizer
+ *       paths consult each tick for ATP/temperature/ion/membrane-driven
+ *       modulation of effective tau (ODE decay) and plasticity LR.
+ * WHY:  The substrate carries slow-varying biological state that governs
+ *       metabolic constraints. Unlike SNN, LNN has LEARNED tau per neuron;
+ *       the substrate multiplier composes on top of the learned value rather
+ *       than overwriting it. Gradients continue flowing to tau_base normally.
+ * HOW:  Null-tolerant pass-through; resets cached effects and the update
+ *       counter so effects are recomputed on the next forward step. The
+ *       network does NOT destroy the substrate in lnn_network_destroy.
+ *
+ * @param net Network to attach to (NULL-tolerant: returns silently).
+ * @param sub Substrate pointer or NULL to detach.
+ */
+void lnn_network_attach_substrate(lnn_network_t* net,
+                                  struct neural_substrate* sub);
+
 /*=============================================================================
  * Forward Pass
  *===========================================================================*/

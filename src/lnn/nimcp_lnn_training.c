@@ -35,6 +35,46 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_training)
 
+/*=============================================================================
+ * Substrate adapter globals (Phase 2 biological-substrate wiring).
+ *
+ * Three runtime-tunable knobs controlling how the LNN consumes substrate
+ * state in the forward / optimizer paths. Defaults are "on, moderate":
+ *   - enabled        : master switch (1.0 = read substrate; 0.0 = bypass).
+ *   - update_period  : recompute substrate effects every N forward steps.
+ *                      10 is a good balance given 100 ms substrate timescales.
+ *   - tau_compose_on : multiplicative composition of substrate
+ *                      membrane_time_constant_mod with the learned tau
+ *                      tensor (post-compute_tau). When 0 the learned tau
+ *                      is used as-is in the ODE decay term.
+ *
+ * Rationale for making these globals (matches the SNN adapter pattern from
+ * commit 6bf4e6446): the effects are process-wide tuning rather than per-
+ * instance config, identical values are read by every live LNN in the
+ * address space, and the call sites are hot paths where a single atomic
+ * read is cheaper than chasing a config pointer.
+ *===========================================================================*/
+static float g_lnn_substrate_enabled         = 1.0f;
+static float g_lnn_substrate_update_period   = 10.0f;
+static float g_lnn_substrate_tau_compose_on  = 1.0f;
+
+/* Substrate adapter setters — booleans accept any nonzero as on; period
+ * is clamped to [1, 10000] forward steps. Out-of-range period is ignored. */
+void lnn_tune_set_substrate_enabled(float v) {
+    g_lnn_substrate_enabled = (v != 0.0f) ? 1.0f : 0.0f;
+}
+void lnn_tune_set_substrate_update_period(float v) {
+    if (v >= 1.0f && v <= 10000.0f) g_lnn_substrate_update_period = v;
+}
+void lnn_tune_set_substrate_tau_compose_on(float v) {
+    g_lnn_substrate_tau_compose_on = (v != 0.0f) ? 1.0f : 0.0f;
+}
+
+/* Substrate adapter getters — mirror the setters. */
+float lnn_tune_get_substrate_enabled(void)        { return g_lnn_substrate_enabled; }
+float lnn_tune_get_substrate_update_period(void)  { return g_lnn_substrate_update_period; }
+float lnn_tune_get_substrate_tau_compose_on(void) { return g_lnn_substrate_tau_compose_on; }
+
 static float compute_step_schedule_lr(
     float base_lr,
     uint64_t step,
@@ -621,6 +661,34 @@ int lnn_training_step(
                                     grads[i] *= lr_scale_tau;
                                 }
                                 offset += tau_size;
+                            }
+                        }
+
+                        /* Substrate-modulated plasticity (Phase 2).
+                         * When the network has a substrate attached AND the
+                         * master enabled knob is on, scale ALL gradients by
+                         * the cached dendrite plasticity_mod (linear in ATP
+                         * at the helper). This is the LR-path hook: at
+                         * baseline (atp=1) mod=1 so no-op; depleted
+                         * substrate shrinks the effective LR uniformly.
+                         * Biological fidelity: tired circuits learn slower.
+                         * We scale gradients (not the optimizer's LR) so
+                         * Adam's per-parameter moments are not perturbed
+                         * by a transient LR change — the effective step
+                         * size still tracks the substrate signal. */
+                        if (ctx->network->substrate &&
+                            lnn_tune_get_substrate_enabled() != 0.0f) {
+                            const float plast_mod =
+                                ctx->network->cached_dend_effects.plasticity_mod;
+                            /* plast_mod is clamped [0,1] in the helper so
+                             * values outside that range mean the cache was
+                             * never populated — skip rather than apply a
+                             * meaningless zero. */
+                            if (plast_mod >= 0.0f && plast_mod <= 1.0f &&
+                                plast_mod != 1.0f) {
+                                for (size_t i = 0; i < actual_grads; i++) {
+                                    grads[i] *= plast_mod;
+                                }
                             }
                         }
 

@@ -2027,6 +2027,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/lnn/CMakeLists.txt")
     add_subdirectory(unit/lnn)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/lnn/CMakeLists.txt")
+    message(STATUS "Adding LNN integration tests...")
+    add_subdirectory(integration/lnn)
+endif()
+
 # ============================================================================
 # SNN Tests (Spiking Neural Network)
 # ============================================================================

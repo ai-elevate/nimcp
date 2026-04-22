@@ -40,9 +40,20 @@
 #include <stddef.h>
 #include "utils/tensor/nimcp_tensor.h"
 
+/* Substrate effects struct types (axon/dendrite). We embed values (not
+ * pointers) in lnn_network_s so the full definitions are required. Pulled
+ * in via the axon-dendrite substrate bridge header — same pattern the SNN
+ * adapter uses (commit 6bf4e6446). */
+#include "core/nimcp_axon_dendrite_substrate_bridge.h"  /* axon_/dendrite_substrate_effects_t */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Forward decl of the full substrate state struct. The pointer on
+ * lnn_network_s is borrowed (not owned) — whoever created the substrate
+ * is responsible for its lifecycle. Defined in nimcp_neural_substrate.h. */
+struct neural_substrate;
 
 //=============================================================================
 // Constants
@@ -312,6 +323,16 @@ struct lnn_layer_s {
     /* GPU acceleration (NULL = CPU only) */
     void* gpu_lnn_layer;            /**< nimcp_lnn_layer_gpu_t* (GPU-resident layer state) */
     void* gpu_ctx;                  /**< nimcp_gpu_context_t* for GPU tensor uploads */
+
+    /* Substrate integration (Phase 2 biological-substrate adapter).
+     * Borrowed pointer to the owning network's cached dendrite effects
+     * struct. Set each forward step by lnn_network_forward_step when a
+     * substrate is attached + the enabled/tau_compose knobs are on;
+     * cleared (NULL) otherwise. `lnn_layer_forward` consults this to
+     * wrap the learned tau tensor with the substrate multiplier in the
+     * CPU LTC path — composition, not replacement: learned tau_base and
+     * W_tau gradients continue to flow unchanged. */
+    const dendrite_substrate_effects_t* substrate_dend_effects;
 };
 
 /**
@@ -388,6 +409,22 @@ struct lnn_network_s {
 
     /* Statistics */
     lnn_network_stats_t stats;  /**< Global network statistics */
+
+    /* Substrate integration (Phase 2 biological-substrate adapter).
+     * The substrate pointer is BORROWED — the network does not own it.
+     * Cached effect structs are recomputed every N steps (controlled by
+     * g_lnn_substrate_update_period) and read inside the forward / optimizer
+     * hot paths to modulate the effective tau used in the ODE decay term,
+     * and the effective LR applied to gradients.
+     *
+     * Composition rule: substrate wraps the LEARNED tau (tau_base * sigmoid(...)),
+     * it does NOT replace it. Gradients still flow to tau_base/W_tau normally
+     * because the modulation is applied to a temporary tensor, leaving
+     * learned parameters untouched. See lnn_network_attach_substrate. */
+    struct neural_substrate*     substrate;
+    axon_substrate_effects_t     cached_axon_effects;
+    dendrite_substrate_effects_t cached_dend_effects;
+    uint32_t                     substrate_steps_since_update;
 };
 
 /**

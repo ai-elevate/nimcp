@@ -13,6 +13,7 @@
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_layer.h"
 #include "lnn/nimcp_lnn_config.h"
+#include "lnn/nimcp_lnn_training.h"        /* lnn_tune_get_substrate_* */
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -20,6 +21,7 @@
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/lnn/nimcp_lnn_gpu.h"
+#include "core/substrate/nimcp_substrate_effects.h"  /* substrate_compute_effects, debit */
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -293,6 +295,28 @@ void lnn_network_destroy(lnn_network_t* network) {
 }
 
 /**
+ * @brief Attach a neural substrate to the LNN network (borrowed pointer).
+ *
+ * WHAT: Sets network->substrate and zeroes the cached effect structs +
+ *       update counter, so the next forward step recomputes fresh.
+ * WHY:  LNN substrate adapter needs a handle to read ATP/temperature/ion/
+ *       membrane state each tick. The adapter owns nothing — the substrate
+ *       lifecycle is the caller's responsibility.
+ * HOW:  NULL-tolerant. Passing sub=NULL detaches cleanly.
+ */
+void lnn_network_attach_substrate(lnn_network_t* net,
+                                  struct neural_substrate* sub) {
+    if (!net) return;  /* null-tolerant: silent drop */
+    net->substrate = sub;
+    /* Reset cache + counter so the next step recomputes fresh effects. */
+    memset(&net->cached_axon_effects, 0, sizeof(net->cached_axon_effects));
+    memset(&net->cached_dend_effects, 0, sizeof(net->cached_dend_effects));
+    net->substrate_steps_since_update = 0;
+    NIMCP_LOGGING_DEBUG("lnn_network_attach_substrate: substrate=%p",
+                        (void*)sub);
+}
+
+/**
  * @brief Initialize network weights
  *
  * WHAT: Initialize all layer weights with random values
@@ -364,12 +388,46 @@ int lnn_network_forward_step(
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)network->mutex);
     }
 
+    /* Substrate adapter: refresh cached effect structs at most once per
+     * forward step (not per layer). g_lnn_substrate_update_period counts
+     * steps — biological effects vary on ~100 ms timescales so a period of
+     * 10 is plenty fine-grained while keeping per-step cost bounded. When
+     * the substrate is NULL or the master enabled knob is off, no effects
+     * are computed and the dend_effects_ptr stays NULL, so each layer's
+     * substrate hook short-circuits. */
+    const dendrite_substrate_effects_t* dend_effects_ptr = NULL;
+    if (network->substrate && lnn_tune_get_substrate_enabled() != 0.0f) {
+        const uint32_t period = (uint32_t)lnn_tune_get_substrate_update_period();
+        if (network->substrate_steps_since_update == 0 || period == 0) {
+            substrate_compute_effects(network->substrate,
+                                      &network->cached_axon_effects,
+                                      &network->cached_dend_effects);
+        }
+        network->substrate_steps_since_update++;
+        if (period > 0 && network->substrate_steps_since_update >= period) {
+            network->substrate_steps_since_update = 0;
+        }
+        /* Only expose the dend-effects pointer when the tau-compose knob
+         * is also on. When the knob is off the network still refreshes
+         * the cache (downstream audit/logging consumers read it), but
+         * the CPU LTC path does not wrap tau. */
+        if (lnn_tune_get_substrate_tau_compose_on() != 0.0f) {
+            dend_effects_ptr = &network->cached_dend_effects;
+        }
+    }
+
     // Temporary storage for layer outputs
     const nimcp_tensor_t* layer_input = input;
     nimcp_tensor_t* layer_output = NULL;
 
     // Forward through each layer
     for (uint32_t i = 0; i < network->n_layers; i++) {
+        /* Propagate the per-step cached dend effects pointer. Layers pick
+         * it up inside lnn_layer_forward (compute_tau → substrate wrap →
+         * compute_derivatives). Reset after the step so stale pointers
+         * can't leak into a subsequent forward that happens to be called
+         * with no substrate attached. */
+        network->layers[i]->substrate_dend_effects = dend_effects_ptr;
         // For last layer, write directly to output
         if (i == network->n_layers - 1) {
             layer_output = output;
@@ -416,6 +474,41 @@ int lnn_network_forward_step(
 
     // Update statistics
     network->stats.forward_steps++;
+
+    /* Substrate adapter: report activity back to the substrate. LNN is a
+     * continuous-state network with no discrete spikes — use an L1-norm
+     * proxy of the last layer's output as a rough "spike equivalent".
+     * Scale by 100 so typical output magnitudes in [0,1] produce integer
+     * counts in a reasonable range for the substrate debit math. This is
+     * a proxy, not a biological measurement; real-brain comparable
+     * accounting will arrive once the substrate supports per-region
+     * continuous activity measures. */
+    if (network->substrate && lnn_tune_get_substrate_enabled() != 0.0f) {
+        uint32_t activity = 0;
+        if (output && network->n_outputs > 0) {
+            const float* out_data = (const float*)nimcp_tensor_data_const(output);
+            if (out_data) {
+                float sum_abs = 0.0f;
+                for (uint32_t i = 0; i < network->n_outputs; i++) {
+                    float v = out_data[i];
+                    if (isfinite(v)) sum_abs += fabsf(v);
+                }
+                activity = (uint32_t)(sum_abs * 100.0f);
+            }
+        }
+        substrate_debit_activity(network->substrate,
+                                 0 /* region_id */,
+                                 activity,
+                                 0 /* n_plasticity — optimizer step debits separately */);
+    }
+
+    /* Clear per-layer substrate pointer so subsequent forwards without
+     * substrate don't read stale cache. */
+    for (uint32_t i = 0; i < network->n_layers; i++) {
+        if (network->layers[i]) {
+            network->layers[i]->substrate_dend_effects = NULL;
+        }
+    }
 
     if (network->mutex) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)network->mutex);
