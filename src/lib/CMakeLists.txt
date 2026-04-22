@@ -580,6 +580,11 @@ set(NIMCP_CORE_SOURCES
     # Shared substrate-effects helper (consumed by SNN/LNN/CNN/FNO/HNN adapters)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/substrate/nimcp_substrate_effects.c
 
+    # Shared thalamic-channel adapter (consumed by LNN/CNN/FNO/HNN; SNN keeps
+    # its existing bridge. Narrow get_gate/submit/tick interface over the
+    # thalamic router.)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/thalamic/nimcp_thalamic_channel.c
+
     # Synapse type system - NIMCP 2.8.7 (Phase 8.7) - BIOLOGICAL DIVERSITY
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/synapse_types/nimcp_synapse_types.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuralnet/nimcp_synapse_embeddings.c
