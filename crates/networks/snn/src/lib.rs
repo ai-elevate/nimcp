@@ -49,14 +49,17 @@ pub mod lif;
 pub mod network;
 pub mod noise;
 pub mod rstdp;
+pub mod tuning;
 
 pub use adaptation::{AdaptationError, AdaptationState};
 pub use basket::{BasketError, BasketPool};
 pub use depression::{DepressionConfig, DepressionState, step_depression, weight_multiplier};
+pub use homeostatic::step_homeostatic_with_reward;
 pub use intrinsic_reward::{
     IntrinsicRewardConfig, compute_network_reward, compute_per_pop_reward,
 };
 pub use noise::{NoiseConfig, inject_poisson_noise, noise_factor_for_pop};
+pub use tuning::{HealthyStreak, TunableState};
 pub use csr::{CsrSynapses, Population, PopulationId};
 pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};
 pub use lif::{LifParams, LifState, lif_step_cpu};

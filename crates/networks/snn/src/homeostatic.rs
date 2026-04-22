@@ -189,6 +189,74 @@ pub fn step_homeostatic(
 }
 
 // -------------------------------------------------------------------------
+// Phase 3.5 — reward-coupled homeostatic (master `1a495f51d` Fix 3)
+// -------------------------------------------------------------------------
+
+/// Reward threshold below which we consider R-STDP "stuck" — the
+/// intrinsic-reward Gaussian has collapsed to ~0 because the population
+/// is far above target. Default `0.1` (matches V1 heuristic).
+pub const REWARD_STUCK_THRESHOLD: f32 = 0.1;
+/// Rate-over-target ratio above which we consider the population
+/// saturated. Default `1.5` (V1 matches).
+pub const SATURATION_RATIO: f32 = 1.5;
+/// Widened scale-down floor when saturated + reward-stuck. Default
+/// `0.90` — ten times larger scale-down per step than the tight
+/// `[0.98, 1.02]` loop. Use only when normal homeostatic can't pull
+/// the pop back down because R-STDP has given up.
+pub const SATURATED_MIN_SCALE: f32 = 0.90;
+
+/// Like [`step_homeostatic`] but widens the scale-down floor when the
+/// population is saturated AND R-STDP reward has collapsed.
+///
+/// Concretely: when `reward < REWARD_STUCK_THRESHOLD`
+/// **and** `rate_ema > SATURATION_RATIO × target_rate`, the effective
+/// `HomeostaticParams::min_scale` is dropped to
+/// [`SATURATED_MIN_SCALE`] (`0.90`) instead of the default `0.98`.
+/// The upper bound is untouched — we never aggressively potentiate.
+///
+/// Port of master commit `1a495f51d feat(snn): three control fixes` —
+/// specifically the reward-coupled homeostatic block that breaks the
+/// SATURATION↔FULL_COLLAPSE oscillation by giving homeostatic enough
+/// authority to pull the pop down when R-STDP can't.
+// HOT PATH: called per population per step.
+pub fn step_homeostatic_with_reward(
+    csr: &mut CsrSynapses,
+    rate: &mut PopulationRateEma,
+    fraction_spiking_this_step: f32,
+    params: &HomeostaticParams,
+    reward: f32,
+) -> Option<f32> {
+    // Update rate EMA unconditionally so warmup advances even if we
+    // don't scale — same as step_homeostatic.
+    rate.update(fraction_spiking_this_step);
+    if !rate.warmup_done() {
+        return None;
+    }
+
+    let saturated = rate.ema > SATURATION_RATIO * rate.target_rate;
+    let stuck = reward < REWARD_STUCK_THRESHOLD;
+    let effective_params = if saturated && stuck {
+        HomeostaticParams {
+            min_scale: SATURATED_MIN_SCALE.min(params.min_scale),
+            ..*params
+        }
+    } else {
+        *params
+    };
+
+    let scale = homeostatic_scale(rate.ema, rate.target_rate, &effective_params);
+    #[allow(clippy::float_cmp)]
+    if scale == 1.0 {
+        return None;
+    }
+
+    for w in &mut csr.weights {
+        *w *= scale;
+    }
+    Some(scale)
+}
+
+// -------------------------------------------------------------------------
 // Quiet-start transform
 // -------------------------------------------------------------------------
 
@@ -583,5 +651,77 @@ mod tests {
         for (c, b) in csrs.iter().zip(before.iter()) {
             assert_eq!(&c.weights, b, "weights moved on length mismatch");
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Phase 3.5 — reward-coupled homeostatic (master 1a495f51d Fix 3)
+    // ---------------------------------------------------------------------
+
+    /// Saturated + reward-stuck → widened scale-down bound (0.90 instead
+    /// of 0.98) lets homeostatic pull the pop down more aggressively
+    /// than the tight loop allows.
+    #[test]
+    fn reward_coupled_widens_scale_down_when_stuck() {
+        let mut csr = csr_with(1.0, 8);
+        let mut rate = PopulationRateEma::new(DEFAULT_RATE_EMA_ALPHA, 0.03);
+        for _ in 0..200 {
+            rate.update(1.0);
+        }
+        let params = HomeostaticParams::default();
+        // Reward collapsed (< 0.1) AND rate far above target → saturated.
+        let scale = step_homeostatic_with_reward(&mut csr, &mut rate, 1.0, &params, 0.0)
+            .expect("expected Some(scale) at saturated+stuck");
+        // Widened lower bound is 0.90, so the actual scale is 0.90 not 0.98.
+        assert!(
+            scale < 0.95,
+            "widened scale-down not applied: got {scale}, expected ~0.90"
+        );
+        assert!(scale >= 0.90 - 1e-6, "scale overshot widened floor: {scale}");
+    }
+
+    /// Saturated but reward healthy → normal tight bounds apply. Reward
+    /// is doing its job; homeostatic stays on its tight leash.
+    #[test]
+    fn reward_coupled_keeps_tight_bounds_when_reward_healthy() {
+        let mut csr = csr_with(1.0, 8);
+        let mut rate = PopulationRateEma::new(DEFAULT_RATE_EMA_ALPHA, 0.03);
+        for _ in 0..200 {
+            rate.update(1.0);
+        }
+        let params = HomeostaticParams::default();
+        // reward=0.5 > 0.1 threshold → R-STDP is still functional.
+        let scale = step_homeostatic_with_reward(&mut csr, &mut rate, 1.0, &params, 0.5)
+            .expect("expected Some(scale) at saturated+healthy-reward");
+        assert_eq!(scale, 0.98, "tight bound violated when reward is healthy");
+    }
+
+    /// Reward collapsed but rate inside band → no scaling needed at all.
+    /// Widening shouldn't fire just because reward happens to be low;
+    /// the rate must also be saturated.
+    #[test]
+    fn reward_coupled_no_op_inside_band() {
+        let mut csr = csr_with(1.0, 8);
+        // Fast alpha + enough samples so ema settles cleanly at target.
+        let mut rate = PopulationRateEma::new(0.1, 0.03);
+        for _ in 0..500 {
+            rate.update(0.03);
+        }
+        assert!((rate.rate() - 0.03).abs() < 1e-4, "EMA should settle to target");
+        let params = HomeostaticParams::default();
+        let outcome = step_homeostatic_with_reward(&mut csr, &mut rate, 0.03, &params, 0.0);
+        assert!(outcome.is_none(), "unexpected scale inside deadband");
+    }
+
+    /// Warmup is respected by the reward-coupled variant, same as the
+    /// plain one — no scaling before the sample threshold.
+    #[test]
+    fn reward_coupled_respects_warmup() {
+        let mut csr = csr_with(1.0, 8);
+        let before = csr.weights.clone();
+        let mut rate = PopulationRateEma::new(DEFAULT_RATE_EMA_ALPHA, 0.03);
+        let params = HomeostaticParams::default();
+        let outcome = step_homeostatic_with_reward(&mut csr, &mut rate, 1.0, &params, 0.0);
+        assert!(outcome.is_none());
+        assert_eq!(csr.weights, before);
     }
 }
