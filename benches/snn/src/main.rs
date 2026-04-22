@@ -88,6 +88,17 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
             lif,
             target_rate: 0.05,
             homeostatic: HomeostaticParams::default(),
+            noise: nimcp_snn::NoiseConfig {
+                rate_hz: 0.0,
+                pulse_mv: 0.0,
+            },
+            depression: nimcp_snn::DepressionConfig {
+                inc: 0.0,
+                ..nimcp_snn::DepressionConfig::default()
+            },
+            adaptation_ahp: None,
+            adaptation_pump: None,
+            basket: None,
         })
         .collect();
 
@@ -108,6 +119,8 @@ fn build_config(shape: &Shape, seed: u64) -> SnnConfig {
         edges,
         rng_seed: seed,
         rate_ema_alpha: 0.01,
+        reward_coupled_homeostatic: false,
+        intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
     }
 }
 

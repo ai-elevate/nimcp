@@ -297,6 +297,24 @@ impl CsrSynapses {
     /// `out.len() != self.n_post as usize`. Panicking beats silent
     /// corruption for a tight inner-loop precondition.
     pub fn i_syn_cpu(&self, pre_spikes: &[u8], out: &mut [f32]) {
+        self.i_syn_cpu_with_pre_scale(pre_spikes, None, out);
+    }
+
+    /// Like [`Self::i_syn_cpu`] but scales each contributing synapse by
+    /// an optional per-pre-neuron multiplier (short-term depression).
+    /// `pre_scale[i]` is applied to all outgoing contributions of
+    /// neuron `i`. `None` is equivalent to all-ones (no scaling).
+    ///
+    /// # Panics
+    /// Same as [`Self::i_syn_cpu`], plus: when `Some(pre_scale)` is
+    /// supplied, its length must be `>= n_pre`.
+    // HOT PATH: called per edge per step.
+    pub fn i_syn_cpu_with_pre_scale(
+        &self,
+        pre_spikes: &[u8],
+        pre_scale: Option<&[f32]>,
+        out: &mut [f32],
+    ) {
         assert_eq!(
             out.len(),
             self.n_post as usize,
@@ -310,10 +328,15 @@ impl CsrSynapses {
             pre_spikes.len(),
             self.n_pre
         );
+        if let Some(ps) = pre_scale {
+            assert!(
+                ps.len() >= self.n_pre as usize,
+                "i_syn_cpu: pre_scale.len()={} but n_pre={}",
+                ps.len(),
+                self.n_pre
+            );
+        }
 
-        // HOT PATH: one pass over row_ptr, inner gather over col_idx/weights.
-        // Zip row pairs with the output slot so the outer loop is cleanly
-        // iterator-based (clippy::needless_range_loop).
         let row_pairs = self.row_ptr.windows(2);
         for (out_slot, row) in out.iter_mut().zip(row_pairs) {
             let row_start = row[0] as usize;
@@ -321,11 +344,9 @@ impl CsrSynapses {
             let mut s: f32 = 0.0;
             for k in row_start..row_end {
                 let pre = self.col_idx[k] as usize;
-                // `!= 0` so callers can store counts/magnitudes without
-                // the result double-weighting; we still treat any non-zero
-                // value as "spiked" for summation.
                 if pre_spikes[pre] != 0 {
-                    s += self.weights[k];
+                    let scale = pre_scale.map_or(1.0, |ps| ps[pre]);
+                    s += self.weights[k] * scale;
                 }
             }
             *out_slot = s;

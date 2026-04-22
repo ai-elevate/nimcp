@@ -662,6 +662,17 @@ mod tests {
                     lif: LifParams::default(),
                     target_rate: 0.1,
                     homeostatic: HomeostaticParams::default(),
+                    noise: nimcp_snn::NoiseConfig {
+                        rate_hz: 0.0,
+                        pulse_mv: 0.0,
+                    },
+                    depression: nimcp_snn::DepressionConfig {
+                        inc: 0.0,
+                        ..nimcp_snn::DepressionConfig::default()
+                    },
+                    adaptation_ahp: None,
+                    adaptation_pump: None,
+                    basket: None,
                 },
                 PopulationSpec {
                     name: "out".into(),
@@ -669,6 +680,17 @@ mod tests {
                     lif: LifParams::default(),
                     target_rate: 0.1,
                     homeostatic: HomeostaticParams::default(),
+                    noise: nimcp_snn::NoiseConfig {
+                        rate_hz: 0.0,
+                        pulse_mv: 0.0,
+                    },
+                    depression: nimcp_snn::DepressionConfig {
+                        inc: 0.0,
+                        ..nimcp_snn::DepressionConfig::default()
+                    },
+                    adaptation_ahp: None,
+                    adaptation_pump: None,
+                    basket: None,
                 },
             ],
             edges: vec![EdgeSpec {
@@ -685,6 +707,8 @@ mod tests {
             }],
             rng_seed: 0x55,
             rate_ema_alpha: 0.05,
+            reward_coupled_homeostatic: false,
+            intrinsic_reward: nimcp_snn::IntrinsicRewardConfig::default(),
         })
         .expect("snn build")
     }

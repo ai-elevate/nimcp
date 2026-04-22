@@ -120,6 +120,7 @@ fn build_brain(seed: u64) -> Brain {
                 lif: LifParams::default(),
                 target_rate: 0.1,
                 homeostatic: HomeostaticParams::default(),
+                ..PopulationSpec::default()
             },
             PopulationSpec {
                 name: "readout".into(),
@@ -127,6 +128,7 @@ fn build_brain(seed: u64) -> Brain {
                 lif: LifParams::default(),
                 target_rate: 0.1,
                 homeostatic: HomeostaticParams::default(),
+                ..PopulationSpec::default()
             },
         ],
         edges: vec![EdgeSpec {
@@ -143,6 +145,7 @@ fn build_brain(seed: u64) -> Brain {
         }],
         rng_seed: seed.wrapping_add(1),
         rate_ema_alpha: 0.05,
+        ..SnnConfig::default()
     };
 
     let lnn = LnnConfig {

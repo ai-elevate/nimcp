@@ -38,7 +38,63 @@ use crate::rstdp::{RstdpParams, RstdpState, step_rstdp};
 // Config
 // -------------------------------------------------------------------------
 
+/// Opt-in adaptation-mechanism config (used for both AHP and pump).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AdaptationCfg {
+    /// Exponential decay time constant (ms).
+    pub tau_ms: f32,
+    /// Hyperpolarization per unit adapt_var (mV).
+    pub gain_mv: f32,
+    /// Increment on each spike (usually 1.0).
+    pub spike_bump: f32,
+}
+
+impl Default for AdaptationCfg {
+    /// Fast AHP defaults — tau ~150 ms, gain 0.6 mV.
+    fn default() -> Self {
+        Self {
+            tau_ms: 150.0,
+            gain_mv: 0.6,
+            spike_bump: 1.0,
+        }
+    }
+}
+
+impl AdaptationCfg {
+    /// Slow Na/K pump defaults — tau ~5 s, gain 0.05 mV.
+    #[must_use]
+    pub fn pump_defaults() -> Self {
+        Self {
+            tau_ms: 5_000.0,
+            gain_mv: 0.05,
+            spike_bump: 1.0,
+        }
+    }
+}
+
+/// Opt-in basket-cell pool config.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BasketCfg {
+    /// Basket pool size as a fraction of parent population. Clamped to [0.01, 0.5].
+    pub fraction: f32,
+}
+
+impl Default for BasketCfg {
+    fn default() -> Self {
+        Self { fraction: 0.2 }
+    }
+}
+
 /// Static description of one neuron population.
+///
+/// [`Default`] produces a backward-compatible profile with every Phase 3.5
+/// stability mechanism **off**: `noise.rate_hz = 0`, `depression.inc = 0`,
+/// all `Option` fields `None`. Callers who want the master-tuned
+/// production defaults set `noise: NoiseConfig::default()` etc.
+/// explicitly — JSON construction via `#[serde(default)]` already
+/// picks those.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopulationSpec {
     /// Human-readable label.
@@ -51,6 +107,49 @@ pub struct PopulationSpec {
     pub target_rate: f32,
     /// Homeostatic bounds + deadband + gain.
     pub homeostatic: HomeostaticParams,
+    /// Poisson background noise config. Default is V1's 20 Hz × 30 mV;
+    /// set `rate_hz = 0.0` to disable.
+    #[serde(default)]
+    pub noise: crate::noise::NoiseConfig,
+    /// Short-term depression config. Default `inc=0.3, tau=50ms, cap=0.5`;
+    /// set `inc = 0.0` to disable.
+    #[serde(default)]
+    pub depression: crate::depression::DepressionConfig,
+    /// Optional fast M-current AHP adaptation. `None` disables.
+    #[serde(default)]
+    pub adaptation_ahp: Option<AdaptationCfg>,
+    /// Optional slow Na/K pump adaptation. `None` disables.
+    #[serde(default)]
+    pub adaptation_pump: Option<AdaptationCfg>,
+    /// Optional basket-cell pool. `None` disables.
+    #[serde(default)]
+    pub basket: Option<BasketCfg>,
+}
+
+impl Default for PopulationSpec {
+    /// Stability-mechanism-OFF profile — preserves Phase 3 test behavior.
+    /// Use this as a base for `..Default::default()` struct-update syntax
+    /// when you only want to override the fields that matter.
+    fn default() -> Self {
+        Self {
+            name: "pop".into(),
+            n_neurons: 16,
+            lif: LifParams::default(),
+            target_rate: 0.05,
+            homeostatic: HomeostaticParams::default(),
+            noise: crate::noise::NoiseConfig {
+                rate_hz: 0.0,
+                pulse_mv: 0.0,
+            },
+            depression: crate::depression::DepressionConfig {
+                inc: 0.0,
+                ..crate::depression::DepressionConfig::default()
+            },
+            adaptation_ahp: None,
+            adaptation_pump: None,
+            basket: None,
+        }
+    }
 }
 
 /// Static description of one directed synapse edge (src → dst).
@@ -81,6 +180,20 @@ pub struct SnnConfig {
     pub rng_seed: u64,
     /// Initial alpha for every population's firing-rate EMA.
     pub rate_ema_alpha: f32,
+    /// Intrinsic-reward config shared across populations. See
+    /// [`SnnNetwork::compute_intrinsic_reward`]; callers pass the
+    /// result as the `reward` argument to [`SnnNetwork::step`] when
+    /// they want rate-driven R-STDP.
+    #[serde(default)]
+    pub intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig,
+    /// When `true`, `step()` uses [`crate::homeostatic::step_homeostatic_with_reward`]
+    /// (widens scale-down floor to 0.90 when reward is stuck AND rate is
+    /// saturated). When `false` (default, backward-compat), uses the
+    /// tight-bounds [`crate::homeostatic::step_homeostatic`]. Enable on
+    /// brains that drive the SNN with a reward signal and want the
+    /// Phase 3.5 safety net against saturation↔collapse oscillation.
+    #[serde(default)]
+    pub reward_coupled_homeostatic: bool,
 }
 
 impl Default for SnnConfig {
@@ -90,6 +203,8 @@ impl Default for SnnConfig {
             edges: Vec::new(),
             rng_seed: 0,
             rate_ema_alpha: DEFAULT_RATE_EMA_ALPHA,
+            intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig::default(),
+            reward_coupled_homeostatic: false,
         }
     }
 }
@@ -119,6 +234,15 @@ pub enum SnnError {
         /// Underlying [`CsrError`].
         err: CsrError,
     },
+    /// A per-population stability mechanism (adaptation, basket, etc.)
+    /// failed to initialize. Message encodes the pop index + mechanism.
+    #[error("population {pop_idx}: stability mechanism init failed — {msg}")]
+    StabilityInit {
+        /// Offending population index.
+        pop_idx: usize,
+        /// Detail — which mechanism and the underlying error.
+        msg: String,
+    },
 }
 
 /// Per-population runtime state.
@@ -127,6 +251,19 @@ struct Pop {
     state: LifState,
     rate: PopulationRateEma,
     i_syn_scratch: Vec<f32>,
+    // Phase 3.5 — stability mechanisms.
+    noise_rng: rand_chacha::ChaCha20Rng,
+    depression_state: crate::depression::DepressionState,
+    adaptation_ahp: Option<crate::adaptation::AdaptationState>,
+    adaptation_pump: Option<crate::adaptation::AdaptationState>,
+    basket: Option<crate::basket::BasketPool>,
+    /// Per-neuron hyperpolarization buffer (shared between AHP + pump).
+    hyperpol_scratch: Vec<f32>,
+    /// Per-neuron `fired` buffer as f32, for adaptation + depression updates.
+    fired_f32_scratch: Vec<f32>,
+    /// Per-pre-neuron depression scale = `1 - depression.d[i]`, clamped
+    /// to `[1 - cap, 1]`. Recomputed each step from depression_state.
+    depression_scale_scratch: Vec<f32>,
 }
 
 /// Per-edge runtime state.
@@ -145,6 +282,7 @@ pub struct SnnNetwork {
     populations: Vec<Pop>,
     edges: Vec<Edge>,
     t_ms: f32,
+    reward_coupled_homeostatic: bool,
 }
 
 impl SnnNetwork {
@@ -153,21 +291,78 @@ impl SnnNetwork {
     pub fn new(config: SnnConfig) -> Result<Self, SnnError> {
         let n_pops = config.populations.len();
 
-        let populations: Vec<Pop> = config
-            .populations
-            .iter()
-            .map(|spec| {
-                let state = LifState::new(spec.n_neurons, &spec.lif);
-                let rate = PopulationRateEma::new(config.rate_ema_alpha, spec.target_rate);
-                let i_syn_scratch = vec![0.0; spec.n_neurons as usize];
-                Pop {
-                    spec: spec.clone(),
-                    state,
-                    rate,
-                    i_syn_scratch,
-                }
-            })
-            .collect();
+        use rand::SeedableRng;
+        let mut populations: Vec<Pop> = Vec::with_capacity(config.populations.len());
+        for (pop_idx, spec) in config.populations.iter().enumerate() {
+            let state = LifState::new(spec.n_neurons, &spec.lif);
+            let rate = PopulationRateEma::new(config.rate_ema_alpha, spec.target_rate);
+            let n = spec.n_neurons as usize;
+            let i_syn_scratch = vec![0.0; n];
+            let hyperpol_scratch = vec![0.0; n];
+            let fired_f32_scratch = vec![0.0; n];
+            let depression_scale_scratch = vec![1.0; n];
+            let noise_rng_seed = config
+                .rng_seed
+                .wrapping_add(0xAA55_AA55_AA55_AA55)
+                .wrapping_add(pop_idx as u64);
+            let noise_rng = rand_chacha::ChaCha20Rng::seed_from_u64(noise_rng_seed);
+            let depression_state = crate::depression::DepressionState::new(n);
+            let adaptation_ahp = spec
+                .adaptation_ahp
+                .as_ref()
+                .map(|cfg| {
+                    crate::adaptation::AdaptationState::new(
+                        n,
+                        cfg.tau_ms,
+                        cfg.gain_mv,
+                        cfg.spike_bump,
+                    )
+                })
+                .transpose()
+                .map_err(|e| SnnError::StabilityInit {
+                    pop_idx,
+                    msg: format!("adaptation_ahp: {e}"),
+                })?;
+            let adaptation_pump = spec
+                .adaptation_pump
+                .as_ref()
+                .map(|cfg| {
+                    crate::adaptation::AdaptationState::new(
+                        n,
+                        cfg.tau_ms,
+                        cfg.gain_mv,
+                        cfg.spike_bump,
+                    )
+                })
+                .transpose()
+                .map_err(|e| SnnError::StabilityInit {
+                    pop_idx,
+                    msg: format!("adaptation_pump: {e}"),
+                })?;
+            let basket = spec
+                .basket
+                .as_ref()
+                .map(|cfg| crate::basket::BasketPool::new(pop_idx as u32, n, cfg.fraction))
+                .transpose()
+                .map_err(|e| SnnError::StabilityInit {
+                    pop_idx,
+                    msg: format!("basket: {e}"),
+                })?;
+            populations.push(Pop {
+                spec: spec.clone(),
+                state,
+                rate,
+                i_syn_scratch,
+                noise_rng,
+                depression_state,
+                adaptation_ahp,
+                adaptation_pump,
+                basket,
+                hyperpol_scratch,
+                fired_f32_scratch,
+                depression_scale_scratch,
+            });
+        }
 
         let mut edges: Vec<Edge> = Vec::with_capacity(config.edges.len());
         for (edge_idx, spec) in config.edges.iter().enumerate() {
@@ -223,6 +418,7 @@ impl SnnNetwork {
             populations,
             edges,
             t_ms: 0.0,
+            reward_coupled_homeostatic: config.reward_coupled_homeostatic,
         })
     }
 
@@ -282,11 +478,17 @@ impl SnnNetwork {
     ///
     /// Returns total spikes emitted across all populations this step.
     pub fn step(&mut self, external_i_syn: &[&[f32]], reward: f32, dt_ms: f32) -> u32 {
-        // 1. Zero I_syn scratches; inject external drive where provided.
+        // 1. Per-pop prep: zero scratches, inject external drive, apply
+        //    Poisson noise and basket inhibition, refresh per-source
+        //    depression scale. Adaptation hyperpol is subtracted from
+        //    v_mem directly so the LIF step sees the post-adaptation
+        //    membrane.
         for (pop_idx, pop) in self.populations.iter_mut().enumerate() {
+            // Zero I_syn scratch.
             for v in pop.i_syn_scratch.iter_mut() {
                 *v = 0.0;
             }
+            // External drive.
             if let Some(ext) = external_i_syn.get(pop_idx)
                 && ext.len() == pop.i_syn_scratch.len()
             {
@@ -294,22 +496,85 @@ impl SnnNetwork {
                     *dst = src;
                 }
             }
+
+            // Basket inhibition (uses PRIOR-step basket spike_output —
+            // first step is a no-op because spike_output is all zeros).
+            if let Some(bp) = &pop.basket {
+                bp.emit_inhibition(&mut pop.i_syn_scratch);
+            }
+
+            // Adaptive-factor Poisson noise into v_mem. Dead pops get
+            // full injection; at-target pops get none.
+            let factor = crate::noise::noise_factor_for_pop(
+                pop.rate.rate(),
+                pop.spec.target_rate,
+            );
+            crate::noise::inject_poisson_noise(
+                &mut pop.noise_rng,
+                &mut pop.state.v_mem,
+                &pop.spec.noise,
+                dt_ms,
+                factor,
+            );
+
+            // Adaptation hyperpol: subtract gain*adapt_var from v_mem.
+            // AHP and pump share the scratch buffer to avoid an extra
+            // allocation per step.
+            let n = pop.state.v_mem.len();
+            if pop.adaptation_ahp.is_some() || pop.adaptation_pump.is_some() {
+                for x in pop.hyperpol_scratch.iter_mut().take(n) {
+                    *x = 0.0;
+                }
+                if let Some(a) = &pop.adaptation_ahp {
+                    // Fill scratch with AHP contribution.
+                    a.compute_hyperpol(&mut pop.hyperpol_scratch);
+                }
+                if let Some(a) = &pop.adaptation_pump {
+                    // Add pump contribution on top. Use a temporary so
+                    // we don't overwrite AHP.
+                    let mut tmp = vec![0.0; n];
+                    a.compute_hyperpol(&mut tmp);
+                    for (h, &t) in pop.hyperpol_scratch.iter_mut().zip(tmp.iter()) {
+                        *h += t;
+                    }
+                }
+                for (v, &h) in pop.state.v_mem.iter_mut().zip(pop.hyperpol_scratch.iter()) {
+                    *v -= h;
+                }
+            }
+
+            // Refresh per-source depression scale from depression_state.
+            let cap = pop.spec.depression.cap;
+            for (scale, &d) in pop
+                .depression_scale_scratch
+                .iter_mut()
+                .zip(pop.depression_state.d.iter())
+            {
+                *scale = (1.0 - d).clamp(1.0 - cap, 1.0);
+            }
         }
 
-        // 2. Forward every CSR edge (prior-step spike → current-step I_syn).
-        //    Self-loops (src == dst) are unsupported in Phase 3. Each edge
-        //    has its own preallocated `i_syn_scratch`; the CSR writes
-        //    into it, then we add into the destination pop's scratch.
+        // 2. Forward every CSR edge, applying per-source depression scale.
         for edge in &mut self.edges {
             let src = edge.spec.src;
             let dst = edge.spec.dst;
             debug_assert_ne!(src, dst, "self-loops unsupported in Phase 3");
 
             let src_spikes = &self.populations[src].state.spike;
-            edge.csr.i_syn_cpu(src_spikes, &mut edge.i_syn_scratch);
+            // Depression scale — only supply when STD actually in play,
+            // so the non-depression hot path stays at v1 perf.
+            let pre_scale: Option<&[f32]> = if self.populations[src].spec.depression.is_disabled()
+            {
+                None
+            } else {
+                Some(&self.populations[src].depression_scale_scratch)
+            };
+            edge.csr.i_syn_cpu_with_pre_scale(
+                src_spikes,
+                pre_scale,
+                &mut edge.i_syn_scratch,
+            );
         }
-        // Separate pass so the destination borrow doesn't fight with the
-        // source-spike immutable borrow above.
         for edge in &self.edges {
             let dst_pop = &mut self.populations[edge.spec.dst];
             for (d, &s) in dst_pop
@@ -326,11 +591,39 @@ impl SnnNetwork {
             lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &pop.spec.lif, dt_ms);
         }
 
-        // 4. R-STDP weight updates. We need two disjoint `&[u8]` spike
-        //    buffers from `populations`; Rust's borrow checker can't
-        //    prove src != dst are disjoint indices, so we use
-        //    `split_at_mut` to get provably-disjoint slices without
-        //    cloning.
+        // 4. Post-LIF: update adaptation + depression + basket using
+        //    the fresh spike output.
+        for pop in self.populations.iter_mut() {
+            // Build f32 fired buffer once per pop.
+            for (f, &s) in pop.fired_f32_scratch.iter_mut().zip(pop.state.spike.iter()) {
+                *f = if s != 0 { 1.0 } else { 0.0 };
+            }
+            if let Some(a) = pop.adaptation_ahp.as_mut() {
+                a.update(&pop.fired_f32_scratch, dt_ms);
+            }
+            if let Some(a) = pop.adaptation_pump.as_mut() {
+                a.update(&pop.fired_f32_scratch, dt_ms);
+            }
+            if !pop.spec.depression.is_disabled() {
+                crate::depression::step_depression(
+                    &mut pop.depression_state,
+                    &pop.spec.depression,
+                    &pop.fired_f32_scratch,
+                    dt_ms,
+                );
+            }
+            if let Some(bp) = pop.basket.as_mut() {
+                let n = pop.state.n_neurons as usize;
+                let mean_fire = if n == 0 {
+                    0.0
+                } else {
+                    pop.state.n_spikes_this_step() as f32 / n as f32
+                };
+                bp.step(mean_fire, dt_ms);
+            }
+        }
+
+        // 5. R-STDP weight updates.
         for edge in &mut self.edges {
             let src = edge.spec.src;
             let dst = edge.spec.dst;
@@ -353,10 +646,9 @@ impl SnnNetwork {
             );
         }
 
-        // 5. Homeostatic scaling per destination population. Drive the
-        //    dst pop's rate EMA with its fraction spiking, then scale
-        //    incoming edge weights if the gate opened and we're outside
-        //    the deadband.
+        // 6. Homeostatic scaling per destination population — reward-
+        //    coupled variant: widens scale-down when reward is stuck
+        //    near zero AND rate is saturated.
         for edge in &mut self.edges {
             let dst_pop = &mut self.populations[edge.spec.dst];
             let n_post = dst_pop.state.n_neurons as usize;
@@ -365,20 +657,45 @@ impl SnnNetwork {
             } else {
                 dst_pop.state.n_spikes_this_step() as f32 / n_post as f32
             };
-            let _ = step_homeostatic(
-                &mut edge.csr,
-                &mut dst_pop.rate,
-                fraction_spiking,
-                &dst_pop.spec.homeostatic,
-            );
+            if self.reward_coupled_homeostatic {
+                let _ = crate::homeostatic::step_homeostatic_with_reward(
+                    &mut edge.csr,
+                    &mut dst_pop.rate,
+                    fraction_spiking,
+                    &dst_pop.spec.homeostatic,
+                    reward,
+                );
+            } else {
+                let _ = step_homeostatic(
+                    &mut edge.csr,
+                    &mut dst_pop.rate,
+                    fraction_spiking,
+                    &dst_pop.spec.homeostatic,
+                );
+            }
         }
 
-        // 6. Advance clock and tally activity.
+        // 7. Advance clock and tally activity.
         self.t_ms += dt_ms;
         self.populations
             .iter()
             .map(|p| p.state.n_spikes_this_step())
             .sum()
+    }
+
+    /// Compute the network-level intrinsic reward from per-population
+    /// firing-rate EMAs and the configured [`IntrinsicRewardConfig`].
+    /// Returns the scalar R-STDP teaching signal — pass as the
+    /// `reward` argument to [`Self::step`] when running intrinsic-only
+    /// training. Combine with external reward additively when needed.
+    #[must_use]
+    pub fn compute_intrinsic_reward(&self, cfg: &crate::intrinsic_reward::IntrinsicRewardConfig) -> f32 {
+        crate::intrinsic_reward::compute_network_reward(
+            self.populations
+                .iter()
+                .map(|p| (p.rate.rate(), p.spec.target_rate)),
+            cfg,
+        )
     }
 
     /// Load-time weight transform — applied whenever weights may have
@@ -488,6 +805,17 @@ mod tests {
             lif,
             target_rate,
             homeostatic: HomeostaticParams::default(),
+            noise: crate::noise::NoiseConfig {
+                rate_hz: 0.0,
+                pulse_mv: 0.0,
+            },
+            depression: crate::depression::DepressionConfig {
+                inc: 0.0,
+                ..crate::depression::DepressionConfig::default()
+            },
+            adaptation_ahp: None,
+            adaptation_pump: None,
+            basket: None,
         };
         let pop_b = PopulationSpec {
             name: "B".into(),
@@ -495,6 +823,17 @@ mod tests {
             lif,
             target_rate,
             homeostatic: HomeostaticParams::default(),
+            noise: crate::noise::NoiseConfig {
+                rate_hz: 0.0,
+                pulse_mv: 0.0,
+            },
+            depression: crate::depression::DepressionConfig {
+                inc: 0.0,
+                ..crate::depression::DepressionConfig::default()
+            },
+            adaptation_ahp: None,
+            adaptation_pump: None,
+            basket: None,
         };
         // w_max bumped so a saturated edge can drive the downstream
         // population to fire on a single pre-spike step — V1's
@@ -518,6 +857,8 @@ mod tests {
             edges: vec![edge],
             rng_seed: seed,
             rate_ema_alpha: 0.05,
+            reward_coupled_homeostatic: false,
+            intrinsic_reward: crate::intrinsic_reward::IntrinsicRewardConfig::default(),
         }
     }
 
