@@ -75,6 +75,7 @@ fn full_ensemble_cfg(seed: u64) -> BrainConfig {
         }],
         rng_seed: seed + 2,
         dt_ms: 0.1,
+        ..LnnConfig::default()
     });
 
     BrainConfig {

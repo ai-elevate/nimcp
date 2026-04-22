@@ -649,6 +649,8 @@ mod tests {
             }],
             rng_seed: 0x11,
             dt_ms: 0.1,
+            substrate: nimcp_lnn::LnnSubstrateCfg::default(),
+            thalamic: None,
         })
         .expect("lnn build")
     }

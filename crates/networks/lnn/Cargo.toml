@@ -13,6 +13,8 @@ workspace = true
 
 [dependencies]
 nimcp-core = { workspace = true }
+nimcp-substrate = { workspace = true }
+nimcp-thalamic = { workspace = true }
 ndarray = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }

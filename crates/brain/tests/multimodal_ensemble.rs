@@ -159,6 +159,7 @@ fn build_brain(seed: u64) -> Brain {
         }],
         rng_seed: seed.wrapping_add(2),
         dt_ms: 0.1,
+        ..LnnConfig::default()
     };
 
     let cfg = BrainConfig {

@@ -50,10 +50,15 @@
 
 pub mod ltc;
 pub mod network;
+pub mod substrate_adapter;
 pub mod train;
 
 pub use ltc::{LTC_STATE_CLAMP, LTC_TAU_MIN, LtcLayer, LtcParams, LtcState, ltc_forward_step};
-pub use network::{LnnConfig, LnnNetwork};
+pub use network::{LnnConfig, LnnNetwork, LnnSubstrateCfg, LnnThalamicCfg};
+pub use substrate_adapter::{
+    attention_scale_input, burst_tau_clamp_ms, effective_dt_ms, effective_lr, effective_tau,
+    ltc_forward_step_with_tau_override, ltp_ltd_gates,
+};
 pub use train::{
     LnnGradients, LnnTrace, TrainParams, clip_gradients, mse_sequence_loss, sgd_step,
     train_step_mse,

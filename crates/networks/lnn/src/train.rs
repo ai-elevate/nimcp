@@ -614,6 +614,8 @@ mod tests {
             }],
             rng_seed: 0x9999,
             dt_ms: 0.1,
+            substrate: crate::network::LnnSubstrateCfg::default(),
+            thalamic: None,
         }
     }
 
@@ -637,6 +639,8 @@ mod tests {
             ],
             rng_seed: 0x1357,
             dt_ms: 0.1,
+            substrate: crate::network::LnnSubstrateCfg::default(),
+            thalamic: None,
         }
     }
 
