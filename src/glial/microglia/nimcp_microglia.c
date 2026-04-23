@@ -129,16 +129,17 @@ static nimcp_error_t handle_microglia_prune_request_message(
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
-    // Parse synapse ID from payload
-    if (msg_size < sizeof(bio_message_header_t) + sizeof(uint32_t)) {
+    // Parse synapse ID from payload (G7: uint64 synapse_id).
+    if (msg_size < sizeof(bio_message_header_t) + sizeof(uint64_t)) {
         LOG_MODULE_ERROR("MICROGLIA", "Prune request message too small");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     const uint8_t* payload = (const uint8_t*)msg + sizeof(bio_message_header_t);
-    uint32_t synapse_id = *(const uint32_t*)payload;
+    uint64_t synapse_id = *(const uint64_t*)payload;
 
-    LOG_MODULE_DEBUG("MICROGLIA", "Prune request for synapse %u", synapse_id);
+    LOG_MODULE_DEBUG("MICROGLIA", "Prune request for synapse %llu",
+                     (unsigned long long)synapse_id);
 
     // Publish pruning decision via NOREPINEPHRINE
     bio_router_publish_signal(g_microglia_bio_ctx, "microglia.pruning", 1.0F);
@@ -416,7 +417,7 @@ void microglia_unregister_bio_handlers(void)
  *
  * Bounds checking: Validates mg pointer and synapses array before access.
  */
-static int32_t find_synapse_index(const microglia_t* mg, uint32_t synapse_id)
+static int32_t find_synapse_index(const microglia_t* mg, uint64_t synapse_id)
 {
     if (!mg || !mg->synapses) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse_index: required parameter is NULL (mg, mg->synapses)");
@@ -580,9 +581,9 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
     }
     memset(mg->synapses, 0, mg->max_monitored_synapses * sizeof(monitored_synapse_t));
 
-    // Legacy arrays for backward compatibility
-    mg->monitored_synapse_ids = (uint32_t*)nimcp_malloc(
-        mg->max_monitored_synapses * sizeof(uint32_t));
+    // Legacy arrays for backward compatibility (G7: synapse_id widened to uint64)
+    mg->monitored_synapse_ids = (uint64_t*)nimcp_malloc(
+        mg->max_monitored_synapses * sizeof(uint64_t));
     mg->synapse_activity_scores = (float*)nimcp_malloc(
         mg->max_monitored_synapses * sizeof(float));
     mg->last_activity_times = (uint64_t*)nimcp_malloc(
@@ -596,7 +597,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
     }
 
     for (uint32_t i = 0; i < mg->max_monitored_synapses; i++) {
-        mg->monitored_synapse_ids[i] = UINT32_MAX;
+        mg->monitored_synapse_ids[i] = UINT64_MAX;
         mg->synapse_activity_scores[i] = 0.0F;
         mg->last_activity_times[i] = 0;
     }
@@ -780,7 +781,7 @@ void microglia_network_destroy(microglia_network_t* network)
 // SYNAPSE MONITORING
 //=============================================================================
 
-nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id,
+nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint64_t synapse_id,
                                              float x, float y, float z)
 {
     NIMCP_CHECK_THROW(mg, NIMCP_ERROR_INVALID_PARAM, "mg is NULL");
@@ -832,7 +833,7 @@ nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id
     return NIMCP_SUCCESS;
 }
 
-nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint32_t synapse_id)
+nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint64_t synapse_id)
 {
     // Default position at microglia location
     NIMCP_CHECK_THROW(mg, NIMCP_ERROR_INVALID_PARAM, "mg is NULL");
@@ -840,7 +841,7 @@ nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint32_t synapse_id)
                                          mg->position[0], mg->position[1], mg->position[2]);
 }
 
-void microglia_track_synapse_activity(microglia_t* mg, uint32_t synapse_id,
+void microglia_track_synapse_activity(microglia_t* mg, uint64_t synapse_id,
                                        float activity, uint64_t timestamp)
 {
     if (!mg) return;
@@ -908,7 +909,7 @@ void microglia_update_activity_scores(microglia_t* mg, uint64_t current_time)
     nimcp_spinlock_unlock(&mg->lock);
 }
 
-float microglia_get_synapse_activity_score(microglia_t* mg, uint32_t synapse_id)
+float microglia_get_synapse_activity_score(microglia_t* mg, uint64_t synapse_id)
 {
     if (!mg) return 0.0F;
 
@@ -921,7 +922,7 @@ float microglia_get_synapse_activity_score(microglia_t* mg, uint32_t synapse_id)
     return score;
 }
 
-void microglia_set_synapse_centrality(microglia_t* mg, uint32_t synapse_id,
+void microglia_set_synapse_centrality(microglia_t* mg, uint64_t synapse_id,
                                        float centrality)
 {
     if (!mg) return;
@@ -1080,7 +1081,7 @@ uint32_t microglia_apply_complement_tags(microglia_t* mg, uint64_t current_time)
     return newly_tagged;
 }
 
-complement_tag_t microglia_get_complement_tag(const microglia_t* mg, uint32_t synapse_id)
+complement_tag_t microglia_get_complement_tag(const microglia_t* mg, uint64_t synapse_id)
 {
     if (!mg) return COMPLEMENT_NONE;
 
@@ -1304,7 +1305,7 @@ uint32_t microglia_prune_weak_synapses(microglia_t* mg)
     return num_pruned;
 }
 
-bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
+bool microglia_should_prune_synapse(const microglia_t* mg, uint64_t synapse_id)
 {
     if (!mg) {
         return false;
@@ -1505,7 +1506,7 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
 }
 
 microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,
-                                                uint32_t synapse_id)
+                                                uint64_t synapse_id)
 {
     if (!network) {
 
@@ -1962,13 +1963,13 @@ nimcp_result_t microglia_cow_prepare_write(microglia_t* mg)
                mg->num_monitored_synapses * sizeof(monitored_synapse_t));
     }
 
-    // Deep copy legacy arrays
+    // Deep copy legacy arrays (G7: synapse_id widened to uint64)
     if (original->monitored_synapse_ids && mg->max_monitored_synapses > 0) {
-        mg->monitored_synapse_ids = (uint32_t*)nimcp_malloc(
-            mg->max_monitored_synapses * sizeof(uint32_t));
+        mg->monitored_synapse_ids = (uint64_t*)nimcp_malloc(
+            mg->max_monitored_synapses * sizeof(uint64_t));
         if (mg->monitored_synapse_ids) {
             memcpy(mg->monitored_synapse_ids, original->monitored_synapse_ids,
-                   mg->num_monitored_synapses * sizeof(uint32_t));
+                   mg->num_monitored_synapses * sizeof(uint64_t));
         }
     }
 

@@ -229,7 +229,7 @@ nimcp_result_t glial_integration_set_spatial_neuromod_system(
  *
  * @param gi Glial integration system
  * @param astrocyte_id ID of astrocyte
- * @param synapse_id ID of synapse (pre_neuron_id * 10000 + post_neuron_id)
+ * @param synapse_id ID of synapse (G7: uint64, packed (pre<<32)|post)
  *
  * @return NIMCP_SUCCESS on success
  *
@@ -237,7 +237,7 @@ nimcp_result_t glial_integration_set_spatial_neuromod_system(
  */
 nimcp_result_t glial_integration_assign_astrocyte_to_synapse(glial_integration_t* gi,
                                                              uint32_t astrocyte_id,
-                                                             uint32_t synapse_id);
+                                                             uint64_t synapse_id);
 
 /**
  * @brief Assign oligodendrocyte to myelinate a neuron
@@ -267,7 +267,7 @@ nimcp_result_t glial_integration_assign_oligodendrocyte_to_neuron(glial_integrat
  */
 nimcp_result_t glial_integration_assign_microglia_to_synapse(glial_integration_t* gi,
                                                              uint32_t microglia_id,
-                                                             uint32_t synapse_id);
+                                                             uint64_t synapse_id);
 
 // ============================================================================
 // AUTOMATIC SPATIAL ASSIGNMENT

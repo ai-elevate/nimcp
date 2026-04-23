@@ -45,8 +45,20 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(glial_integration)
 /**
  * @brief Dynamic array for storing lists of IDs in reverse mappings
  */
+/**
+ * G7: synapse_id is now uint64 to survive 2M-scale neuron counts.
+ * Prior `pre*10000+post` overflowed uint32 at pre >= 429,497 and collided
+ * deterministically when post >= 10000 (e.g. (pre=1,post=20000) ==
+ * (pre=3,post=0)). The new packing `(pre << 32) | post` is bijective over
+ * (uint32, uint32) pairs — zero collisions.
+ *
+ * id_list_t stores uint64 too so it can back both the synapse-reverse
+ * lookups (uint64 synapse_ids) and the neuron-reverse lookup (uint32
+ * neuron_ids trivially widen to uint64). 4 bytes/entry memory overhead
+ * is negligible at these scales.
+ */
 typedef struct {
-    uint32_t* ids;      // Array of IDs
+    uint64_t* ids;      // Array of IDs (uint64 holds synapse_ids and neuron_ids)
     uint32_t count;     // Number of IDs
     uint32_t capacity;  // Allocated capacity
 } id_list_t;
@@ -63,7 +75,7 @@ static id_list_t* id_list_create(void) {
 
     list->capacity = 8;  // Initial capacity
     list->count = 0;
-    list->ids = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * list->capacity);
+    list->ids = (uint64_t*)nimcp_malloc(sizeof(uint64_t) * list->capacity);
     if (!list->ids) {
         nimcp_free(list);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "id_list_create: list->ids is NULL");
@@ -89,7 +101,7 @@ static void id_list_value_destructor(void* value, size_t value_size) {
 }
 
 
-static bool id_list_add(id_list_t* list, uint32_t id) {
+static bool id_list_add(id_list_t* list, uint64_t id) {
     if (!list) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "id_list_add: list is NULL");
         return false;
@@ -105,7 +117,7 @@ static bool id_list_add(id_list_t* list, uint32_t id) {
     // Expand if needed
     if (list->count >= list->capacity) {
         uint32_t new_capacity = list->capacity * 2;
-        uint32_t* new_ids = (uint32_t*)nimcp_realloc(list->ids, sizeof(uint32_t) * new_capacity);
+        uint64_t* new_ids = (uint64_t*)nimcp_realloc(list->ids, sizeof(uint64_t) * new_capacity);
         if (!new_ids) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "id_list_add: new_ids is NULL");
             return false;
@@ -120,10 +132,14 @@ static bool id_list_add(id_list_t* list, uint32_t id) {
 }
 
 /**
- * @brief Generate synapse ID from pre/post neuron IDs
+ * @brief Generate synapse ID from pre/post neuron IDs.
+ *
+ * G7: Bit-packed uint64 `(pre << 32) | post`. Bijective over (uint32,
+ * uint32) pairs — zero collisions at any brain scale. Replaces the old
+ * `pre*10000 + post` which overflowed + collided at 2M neurons.
  */
-static inline uint32_t make_synapse_id(uint32_t pre_neuron_id, uint32_t post_neuron_id) {
-    return pre_neuron_id * 10000 + post_neuron_id;
+static inline uint64_t make_synapse_id(uint32_t pre_neuron_id, uint32_t post_neuron_id) {
+    return ((uint64_t)pre_neuron_id << 32) | (uint64_t)post_neuron_id;
 }
 
 // ============================================================================
@@ -145,19 +161,31 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
 
     gi->network = network;
 
-    // Config for forward mappings (glial_id → uint32_t)
-    hash_table_config_t forward_config = {
+    // G7: synapse-keyed tables use UINT64 (synapse_id = packed (pre,post)).
+    // Neuron-keyed tables stay UINT32 (neuron_id fits).
+    hash_table_config_t forward_config_u32 = {  // neuron_id → glial_id
         .initial_buckets = max_mappings > 256 ? max_mappings : 256,
         .key_type = HASH_KEY_UINT32,
         .hash_algorithm = HASH_ALG_MURMUR3,
         .custom_hash_fn = NULL,
         .custom_compare_fn = NULL,
-        .value_destructor = NULL,  // Values are uint32_t, no cleanup needed
+        .value_destructor = NULL,
+        .case_insensitive = false,
+        .thread_safe = false
+    };
+    hash_table_config_t forward_config_u64 = {  // synapse_id → glial_id
+        .initial_buckets = max_mappings > 256 ? max_mappings : 256,
+        .key_type = HASH_KEY_UINT64,
+        .hash_algorithm = HASH_ALG_MURMUR3,
+        .custom_hash_fn = NULL,
+        .custom_compare_fn = NULL,
+        .value_destructor = NULL,
         .case_insensitive = false,
         .thread_safe = false
     };
 
-    // Config for reverse mappings (glial_id → id_list_t*)
+    // Config for reverse mappings (glial_id → id_list_t*). Keys are
+    // glial cell IDs which are uint32.
     hash_table_config_t reverse_config = {
         .initial_buckets = max_mappings > 256 ? max_mappings : 256,
         .key_type = HASH_KEY_UINT32,
@@ -169,10 +197,10 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
         .thread_safe = false
     };
 
-    // Forward mappings
-    gi->synapse_to_astrocyte = hash_table_create(&forward_config);
-    gi->neuron_to_oligodendrocyte = hash_table_create(&forward_config);
-    gi->synapse_to_microglia = hash_table_create(&forward_config);
+    // Forward mappings (G7: synapse tables now uint64-keyed)
+    gi->synapse_to_astrocyte = hash_table_create(&forward_config_u64);
+    gi->neuron_to_oligodendrocyte = hash_table_create(&forward_config_u32);
+    gi->synapse_to_microglia = hash_table_create(&forward_config_u64);
 
     // Reverse mappings
     gi->astrocyte_to_synapses = hash_table_create(&reverse_config);
@@ -316,14 +344,13 @@ nimcp_result_t glial_integration_set_spatial_neuromod_system(
 
 nimcp_result_t glial_integration_assign_astrocyte_to_synapse(glial_integration_t* gi,
                                                              uint32_t astrocyte_id,
-                                                             uint32_t synapse_id) {
+                                                             uint64_t synapse_id) {
     NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
 
-    // Forward mapping: synapse → astrocyte
-    // Store the astrocyte_id directly (not a pointer to it)
-    hash_table_insert_uint32(gi->synapse_to_astrocyte, synapse_id, &astrocyte_id, sizeof(uint32_t));
+    // Forward mapping: synapse → astrocyte (G7: uint64 key)
+    hash_table_insert_uint64(gi->synapse_to_astrocyte, synapse_id, &astrocyte_id, sizeof(uint32_t));
 
     // Reverse mapping: astrocyte → list of synapses
     id_list_t** list_ptr = (id_list_t**)hash_table_lookup_uint32(gi->astrocyte_to_synapses, astrocyte_id);
@@ -392,14 +419,13 @@ nimcp_result_t glial_integration_assign_oligodendrocyte_to_neuron(glial_integrat
 
 nimcp_result_t glial_integration_assign_microglia_to_synapse(glial_integration_t* gi,
                                                              uint32_t microglia_id,
-                                                             uint32_t synapse_id) {
+                                                             uint64_t synapse_id) {
     NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
 
-    // Forward mapping: synapse → microglia
-    // Store the microglia_id directly (not a pointer to it)
-    hash_table_insert_uint32(gi->synapse_to_microglia, synapse_id, &microglia_id, sizeof(uint32_t));
+    // Forward mapping: synapse → microglia (G7: uint64 key)
+    hash_table_insert_uint64(gi->synapse_to_microglia, synapse_id, &microglia_id, sizeof(uint32_t));
 
     // Reverse mapping: microglia → list of synapses
     id_list_t** list_ptr = (id_list_t**)hash_table_lookup_uint32(gi->microglia_to_synapses, microglia_id);
@@ -557,13 +583,13 @@ void glial_integration_on_synapse_fired(glial_integration_t* gi, uint32_t pre_ne
                                         uint64_t timestamp) {
     if (!gi) return;
 
-    uint32_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
+    uint64_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
 
     nimcp_mutex_lock(&gi->lock);
 
     // Find assigned astrocyte
     if (gi->enable_astrocyte_modulation && gi->astrocyte_network) {
-        uint32_t* astrocyte_id_ptr = (uint32_t*)hash_table_lookup_uint32(
+        uint32_t* astrocyte_id_ptr = (uint32_t*)hash_table_lookup_uint64(
             gi->synapse_to_astrocyte, synapse_id);
 
         if (astrocyte_id_ptr) {
@@ -581,7 +607,7 @@ void glial_integration_on_synapse_fired(glial_integration_t* gi, uint32_t pre_ne
 
     // Notify microglia if assigned
     if (gi->enable_microglia_pruning && gi->microglia_network) {
-        uint32_t* microglia_id_ptr = (uint32_t*)hash_table_lookup_uint32(
+        uint32_t* microglia_id_ptr = (uint32_t*)hash_table_lookup_uint64(
             gi->synapse_to_microglia, synapse_id);
 
         if (microglia_id_ptr) {
@@ -635,13 +661,13 @@ float glial_integration_get_synaptic_modulation(glial_integration_t* gi, uint32_
         return 1.0F; // Neutral modulation
     }
 
-    uint32_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
+    uint64_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
 
     nimcp_mutex_lock(&gi->lock);
 
     // Find assigned astrocyte
     if (gi->astrocyte_network) {
-        uint32_t* astrocyte_id_ptr = (uint32_t*)hash_table_lookup_uint32(
+        uint32_t* astrocyte_id_ptr = (uint32_t*)hash_table_lookup_uint64(
             gi->synapse_to_astrocyte, synapse_id);
 
         if (astrocyte_id_ptr) {
@@ -707,13 +733,13 @@ bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pr
         return false;  /* Pruning disabled - normal config */
     }
 
-    uint32_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
+    uint64_t synapse_id = make_synapse_id(pre_neuron_id, post_neuron_id);
 
     nimcp_mutex_lock(&gi->lock);
 
     // Find assigned microglia
     if (gi->microglia_network) {
-        uint32_t* microglia_id_ptr = (uint32_t*)hash_table_lookup_uint32(
+        uint32_t* microglia_id_ptr = (uint32_t*)hash_table_lookup_uint64(
             gi->synapse_to_microglia, synapse_id);
 
         if (microglia_id_ptr) {

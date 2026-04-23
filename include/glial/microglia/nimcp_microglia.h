@@ -231,7 +231,7 @@ typedef struct {
  * centrality scores, and filtered activity.
  */
 typedef struct {
-    uint32_t synapse_id;           /**< Synapse identifier */
+    uint64_t synapse_id;           /**< Synapse identifier (G7: uint64 packs pre/post neuron IDs bijectively) */
     float position[3];             /**< Synapse 3D position (µm) */
     float activity_score;          /**< Current activity (EMA) */
     float filtered_activity;       /**< Low-pass filtered activity */
@@ -298,7 +298,7 @@ typedef struct {
     //-------------------------------------------------------------------------
     // Legacy Arrays (For backward compatibility)
     //-------------------------------------------------------------------------
-    uint32_t* monitored_synapse_ids;     /**< Array of synapse IDs */
+    uint64_t* monitored_synapse_ids;     /**< Array of synapse IDs (G7: uint64) */
     float* synapse_activity_scores;      /**< Activity level per synapse */
     uint64_t* last_activity_times;       /**< Last active timestamp */
 
@@ -501,7 +501,7 @@ void microglia_network_destroy(microglia_network_t* network);
  *
  * @return NIMCP_SUCCESS on success
  */
-nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id,
+nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint64_t synapse_id,
                                              float x, float y, float z);
 
 /**
@@ -512,7 +512,7 @@ nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id
  *
  * @return NIMCP_SUCCESS on success
  */
-nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint32_t synapse_id);
+nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint64_t synapse_id);
 
 /**
  * @brief Track activity for a monitored synapse
@@ -522,7 +522,7 @@ nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint32_t synapse_id);
  * @param activity Activity level (0-10)
  * @param timestamp Current timestamp (µs)
  */
-void microglia_track_synapse_activity(microglia_t* mg, uint32_t synapse_id,
+void microglia_track_synapse_activity(microglia_t* mg, uint64_t synapse_id,
                                        float activity, uint64_t timestamp);
 
 /**
@@ -541,7 +541,7 @@ void microglia_update_activity_scores(microglia_t* mg, uint64_t current_time);
  *
  * @return Activity score (0-1+) or 0.0 if not found
  */
-float microglia_get_synapse_activity_score(microglia_t* mg, uint32_t synapse_id);
+float microglia_get_synapse_activity_score(microglia_t* mg, uint64_t synapse_id);
 
 /**
  * @brief Set centrality score for a synapse
@@ -550,7 +550,7 @@ float microglia_get_synapse_activity_score(microglia_t* mg, uint32_t synapse_id)
  * @param synapse_id Synapse identifier
  * @param centrality Centrality score (0-1)
  */
-void microglia_set_synapse_centrality(microglia_t* mg, uint32_t synapse_id,
+void microglia_set_synapse_centrality(microglia_t* mg, uint64_t synapse_id,
                                        float centrality);
 
 //=============================================================================
@@ -626,7 +626,7 @@ uint32_t microglia_apply_complement_tags(microglia_t* mg, uint64_t current_time)
  * @return Complement tag state
  */
 complement_tag_t microglia_get_complement_tag(const microglia_t* mg,
-                                               uint32_t synapse_id);
+                                               uint64_t synapse_id);
 
 /**
  * @brief Decay complement tags over time
@@ -722,7 +722,7 @@ uint32_t microglia_prune_weak_synapses(microglia_t* mg);
  *
  * @return true if synapse should be pruned
  */
-bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id);
+bool microglia_should_prune_synapse(const microglia_t* mg, uint64_t synapse_id);
 
 //=============================================================================
 // NETWORK OPERATIONS
@@ -783,7 +783,7 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
  * @return Microglia pointer or NULL
  */
 microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,
-                                                uint32_t synapse_id);
+                                                uint64_t synapse_id);
 
 /**
  * @brief Find nearest microglia to a position
