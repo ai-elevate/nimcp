@@ -872,25 +872,34 @@ class BrainService:
     def _cmd_submit_sensory(self, req):
         modality = req["modality"]
         data = req["data"]
+        n = len(data) if isinstance(data, (list, tuple)) else -1
         if True:  # RWLock in handle()
             # Stage sensory data on brain struct so cortex CNNs get created
             # and trained during the next learn_vector call.
+            # Symmetric logging — prior code only logged visual, creating
+            # the false appearance that other modalities were silent.
             if modality == "visual":
                 logger.info("submit_sensory VISUAL: %d elements, w=%s h=%s ch=%s",
-                            len(data) if isinstance(data, (list, tuple)) else -1,
-                            req.get("width"), req.get("height"), req.get("channels"))
+                            n, req.get("width"), req.get("height"),
+                            req.get("channels"))
                 self.brain.submit_sensory("visual", data,
                                           width=req.get("width", 32),
                                           height=req.get("height", 32),
                                           channels=req.get("channels", 3))
             elif modality == "audio":
+                logger.info("submit_sensory AUDIO: %d samples", n)
                 self.brain.submit_sensory("audio", data)
             elif modality == "speech":
+                logger.info("submit_sensory SPEECH: %d samples", n)
                 self.brain.submit_sensory("speech", data)
             elif modality == "somatosensory" or modality == "somato":
+                logger.info("submit_sensory SOMATO: %d elements, n_segments=%s",
+                            n, req.get("n_segments", n))
                 self.brain.submit_sensory("somatosensory", data,
-                                          n_segments=req.get("n_segments", len(data)))
+                                          n_segments=req.get("n_segments", n))
             else:
+                logger.warning("submit_sensory UNKNOWN: modality='%s' (ignored)",
+                               modality)
                 return {"ok": True}
         return {"ok": True}
 

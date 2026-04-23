@@ -17,6 +17,16 @@
 #include <string.h>
 #include <math.h>
 
+/* G8: guarded lightweight-pop assignment. See attention bridge for rationale. */
+static int g8_add_lw_pop(snn_network_t* snn, uint32_t n, neuron_type_t t,
+                         const char* name, uint32_t* out)
+{
+    int id = snn_network_add_population_lightweight(snn, n, t, name);
+    if (id < 0) { return -1; }
+    *out = (uint32_t)id;
+    return 0;
+}
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -235,21 +245,30 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
     }
     bridge->owns_snn = true;
 
-    /* Create populations for emotion processing
-     * API: snn_network_add_population(network, n_neurons, neuron_type, name) */
-    bridge->input_pop = snn_network_add_population(
-        bridge->snn, bridge->config.input_dim, NEURON_GENERIC_LIF, "emotion_input");
-
-    bridge->hidden_pop = snn_network_add_population(
-        bridge->snn, bridge->config.hidden_dim, NEURON_GENERIC_LIF, "emotion_hidden");
-
-    bridge->output_pop = snn_network_add_population(
-        bridge->snn, bridge->config.output_dim, NEURON_GENERIC_LIF, "emotion_output");
+    /* Create populations for emotion processing (G8: guarded lightweight)
+     * API: snn_network_add_population_lightweight(network, n_neurons, neuron_type, name) */
+    if (g8_add_lw_pop(bridge->snn, bridge->config.input_dim, NEURON_GENERIC_LIF,
+                      "emotion_input", &bridge->input_pop) != 0
+     || g8_add_lw_pop(bridge->snn, bridge->config.hidden_dim, NEURON_GENERIC_LIF,
+                      "emotion_hidden", &bridge->hidden_pop) != 0
+     || g8_add_lw_pop(bridge->snn, bridge->config.output_dim, NEURON_GENERIC_LIF,
+                      "emotion_output", &bridge->output_pop) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "emotion_snn_create: core lightweight pop alloc failed");
+        emotion_snn_destroy(bridge);
+        return NULL;
+    }
 
     /* Valence-arousal population (optional) */
     if (bridge->config.enable_va_encoding) {
-        bridge->va_pop = snn_network_add_population(
-            bridge->snn, bridge->config.va_dim * 2, NEURON_GENERIC_LIF, "emotion_va");
+        if (g8_add_lw_pop(bridge->snn, bridge->config.va_dim * 2,
+                          NEURON_GENERIC_LIF, "emotion_va",
+                          &bridge->va_pop) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "emotion_snn_create: va_pop alloc failed");
+            emotion_snn_destroy(bridge);
+            return NULL;
+        }
     }
 
     /* Add connections using correct API:
@@ -262,6 +281,19 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
     snn_network_connect_populations(bridge->snn,
         bridge->hidden_pop, bridge->output_pop,
         SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA, 0.5f, 0.1f);
+
+    /* G8/H1 input shunt: dense input_pop (id 0) → bridge's lightweight input. */
+    snn_network_connect_populations(bridge->snn,
+        /*src=dense input_pop*/ 0, bridge->input_pop,
+        SNN_TOPO_FEEDFORWARD, 1.0f, SYNAPSE_AMPA, 0.6f, 0.1f);
+
+    /* G8/H1 output shunt: bridge's output_pop → dense output_pop (id 2). */
+    snn_network_connect_populations(bridge->snn,
+        bridge->output_pop, /*dst=dense output_pop*/ 2,
+        SNN_TOPO_FEEDFORWARD, 1.0f, SYNAPSE_AMPA, 0.7f, 0.05f);
+
+    /* G8: finalize lightweight CSR after all connections built. */
+    snn_network_finalize_connections(bridge->snn);
 
     /* Allocate buffers */
     bridge->input_buffer = nimcp_calloc(bridge->config.input_dim, sizeof(float));

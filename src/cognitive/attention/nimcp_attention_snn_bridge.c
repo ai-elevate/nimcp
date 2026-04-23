@@ -17,6 +17,20 @@
 #include <math.h>
 #include <stdio.h>
 
+/* G8: guarded lightweight-pop assignment. Wraps the int-returning API in a
+ * typed check so we don't silently store 0xFFFFFFFF on failure. Returns 0
+ * on success, -1 on failure (and *out is left untouched). */
+static int g8_add_lw_pop(snn_network_t* snn, uint32_t n, neuron_type_t t,
+                         const char* name, uint32_t* out)
+{
+    int id = snn_network_add_population_lightweight(snn, n, t, name);
+    if (id < 0) {
+        return -1;
+    }
+    *out = (uint32_t)id;
+    return 0;
+}
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
@@ -367,7 +381,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
         return NULL;
     }
 
-    /* Create populations for each attention head */
+    /* Create populations for each attention head (G8: guarded lightweight) */
     char pop_name[NIMCP_ID_BUFFER_SIZE];
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
         /* Phase 8: Loop progress heartbeat */
@@ -377,21 +391,40 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
         }
 
         snprintf(pop_name, sizeof(pop_name), "attention_head_%u", h);
-        bridge->head_pops[h] = snn_network_add_population(
-            bridge->snn, bridge->config.neurons_per_head, NEURON_GENERIC_LIF, pop_name);
+        if (g8_add_lw_pop(bridge->snn, bridge->config.neurons_per_head,
+                          NEURON_GENERIC_LIF, pop_name,
+                          &bridge->head_pops[h]) != 0) {
+            NIMCP_LOG_ERROR(LOG_MODULE, "attention_snn_create: head_pop[%u] alloc failed", h);
+            attention_snn_destroy(bridge);
+            return NULL;
+        }
     }
 
     /* Salience population */
-    bridge->salience_pop = snn_network_add_population(
-        bridge->snn, bridge->config.salience_dim, NEURON_GENERIC_LIF, "attention_salience");
+    if (g8_add_lw_pop(bridge->snn, bridge->config.salience_dim,
+                      NEURON_GENERIC_LIF, "attention_salience",
+                      &bridge->salience_pop) != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "attention_snn_create: salience_pop alloc failed");
+        attention_snn_destroy(bridge);
+        return NULL;
+    }
 
     /* Competition population (one neuron per head for WTA) */
-    bridge->competition_pop = snn_network_add_population(
-        bridge->snn, bridge->config.num_heads, NEURON_GENERIC_LIF, "attention_competition");
+    if (g8_add_lw_pop(bridge->snn, bridge->config.num_heads,
+                      NEURON_GENERIC_LIF, "attention_competition",
+                      &bridge->competition_pop) != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "attention_snn_create: competition_pop alloc failed");
+        attention_snn_destroy(bridge);
+        return NULL;
+    }
 
     /* Gate population */
-    bridge->gate_pop = snn_network_add_population(
-        bridge->snn, 32, NEURON_GENERIC_LIF, "attention_gate");
+    if (g8_add_lw_pop(bridge->snn, 32, NEURON_GENERIC_LIF, "attention_gate",
+                      &bridge->gate_pop) != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "attention_snn_create: gate_pop alloc failed");
+        attention_snn_destroy(bridge);
+        return NULL;
+    }
 
     /* Connect head populations to competition layer */
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
@@ -420,6 +453,30 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
             bridge->gate_pop, bridge->competition_pop,
             SNN_TOPO_RANDOM, 0.3f, SYNAPSE_AMPA, 0.3f, 0.05f);
     }
+
+    /* G8/H1 input shunt: snn_network_create made dense input_pop at id 0 to
+     * receive snn_network_set_inputs. Wire it to each attention head so
+     * external input actually reaches the bridge's lightweight graph. */
+    for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        snn_network_connect_populations(bridge->snn,
+            /*src=dense input_pop*/ 0, bridge->head_pops[h],
+            SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA, 0.4f, 0.1f);
+    }
+
+    /* G8/M2 salience wire: salience_pop was created but had no outgoing
+     * connection. Route it into competition so it modulates head selection. */
+    snn_network_connect_populations(bridge->snn,
+        bridge->salience_pop, bridge->competition_pop,
+        SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA, 0.3f, 0.1f);
+
+    /* G8/H1 output shunt: competition_pop's WTA result must reach the dense
+     * output_pop at id 2 so snn_network_get_outputs returns meaningful rates. */
+    snn_network_connect_populations(bridge->snn,
+        bridge->competition_pop, /*dst=dense output_pop*/ 2,
+        SNN_TOPO_FEEDFORWARD, 1.0f, SYNAPSE_AMPA, 0.7f, 0.05f);
+
+    /* G8: finalize lightweight CSR after all connections built. */
+    snn_network_finalize_connections(bridge->snn);
 
     /* Allocate buffers */
     uint32_t head_buffer_size = bridge->config.num_heads * bridge->config.neurons_per_head;

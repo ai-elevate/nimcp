@@ -25,6 +25,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/* G8: guarded lightweight-pop assignment. See attention bridge for rationale. */
+static int g8_add_lw_pop(snn_network_t* snn, uint32_t n, neuron_type_t t,
+                         const char* name, uint32_t* out)
+{
+    int id = snn_network_add_population_lightweight(snn, n, t, name);
+    if (id < 0) { return -1; }
+    *out = (uint32_t)id;
+    return 0;
+}
+
 //=============================================================================
 // Module Constants
 //=============================================================================
@@ -184,7 +194,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
         return NULL;
     }
 
-    /* Create populations for each memory slot */
+    /* Create populations for each memory slot (G8: guarded lightweight) */
     char pop_name[NIMCP_ID_BUFFER_SIZE];
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
         /* Phase 8: Loop progress heartbeat */
@@ -194,20 +204,32 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
         }
 
         snprintf(pop_name, sizeof(pop_name), "wm_slot_%u", s);
-        bridge->slot_pops[s] = snn_network_add_population(
-            bridge->snn, bridge->config.neurons_per_slot,
-            NEURON_GENERIC_LIF, pop_name);
+        if (g8_add_lw_pop(bridge->snn, bridge->config.neurons_per_slot,
+                          NEURON_GENERIC_LIF, pop_name,
+                          &bridge->slot_pops[s]) != 0) {
+            NIMCP_LOG_ERROR(LOG_MODULE, "wm_snn_create: slot_pop[%u] alloc failed", s);
+            wm_snn_destroy(bridge);
+            return NULL;
+        }
     }
 
     /* Hidden population */
-    bridge->hidden_pop = snn_network_add_population(
-        bridge->snn, bridge->config.hidden_dim,
-        NEURON_GENERIC_LIF, "wm_hidden");
+    if (g8_add_lw_pop(bridge->snn, bridge->config.hidden_dim,
+                      NEURON_GENERIC_LIF, "wm_hidden",
+                      &bridge->hidden_pop) != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "wm_snn_create: hidden_pop alloc failed");
+        wm_snn_destroy(bridge);
+        return NULL;
+    }
 
     /* Output population (one neuron per slot for retrieval) */
-    bridge->output_pop = snn_network_add_population(
-        bridge->snn, bridge->config.max_slots,
-        NEURON_GENERIC_LIF, "wm_output");
+    if (g8_add_lw_pop(bridge->snn, bridge->config.max_slots,
+                      NEURON_GENERIC_LIF, "wm_output",
+                      &bridge->output_pop) != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "wm_snn_create: output_pop alloc failed");
+        wm_snn_destroy(bridge);
+        return NULL;
+    }
 
     /* Connect slot populations to hidden */
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
@@ -245,9 +267,13 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
 
     /* Lateral inhibition between slots */
     if (bridge->config.enable_lateral_inhibition) {
-        bridge->inhibition_pop = snn_network_add_population(
-            bridge->snn, bridge->config.max_slots,
-            NEURON_GENERIC_LIF, "wm_inhibition");
+        if (g8_add_lw_pop(bridge->snn, bridge->config.max_slots,
+                          NEURON_GENERIC_LIF, "wm_inhibition",
+                          &bridge->inhibition_pop) != 0) {
+            NIMCP_LOG_ERROR(LOG_MODULE, "wm_snn_create: inhibition_pop alloc failed");
+            wm_snn_destroy(bridge);
+            return NULL;
+        }
 
         for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
             /* Phase 8: Loop progress heartbeat */
@@ -278,6 +304,22 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
             }
         }
     }
+
+    /* G8/H1 input shunt: dense input_pop (id 0) → each slot_pop so
+     * snn_network_set_inputs reaches the lightweight graph. */
+    for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        snn_network_connect_populations(bridge->snn,
+            /*src=dense input_pop*/ 0, bridge->slot_pops[s],
+            SNN_TOPO_RANDOM, 0.3f, SYNAPSE_AMPA, 0.4f, 0.1f);
+    }
+
+    /* G8/H1 output shunt: bridge's output_pop → dense output_pop (id 2). */
+    snn_network_connect_populations(bridge->snn,
+        bridge->output_pop, /*dst=dense output_pop*/ 2,
+        SNN_TOPO_FEEDFORWARD, 1.0f, SYNAPSE_AMPA, 0.7f, 0.05f);
+
+    /* G8: finalize lightweight CSR after all connections built. */
+    snn_network_finalize_connections(bridge->snn);
 
     /* Allocate per-slot state */
     bridge->slot_states = nimcp_calloc(bridge->config.max_slots,

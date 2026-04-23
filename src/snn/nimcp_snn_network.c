@@ -1994,9 +1994,16 @@ int snn_network_step_sparse(snn_network_t* network, float dt,
                 continue;
             }
 
-            /* Get synaptic input */
+            /* Get synaptic input (G8/M1 lightweight-safe branch).
+             * Lightweight pops have no dense neuron_ids[] — dereferencing
+             * would index into the wrong neural_net slot or segfault. Read
+             * from the pop's own external_current[] instead. */
             float I_syn = 0.0f;
-            if (network->neural_net) {
+            if (pop->lightweight) {
+                if (pop->external_current) {
+                    I_syn = pop->external_current[n];
+                }
+            } else if (network->neural_net) {
                 neuron_t* neuron = neural_network_get_neuron(
                     network->neural_net, pop->neuron_ids[n]);
                 if (neuron) {

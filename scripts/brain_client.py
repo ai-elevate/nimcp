@@ -492,11 +492,27 @@ class BrainProxy:
         req = {"cmd": "submit_sensory", "modality": modality,
                "data": _to_list(data)}
         req.update(kwargs)
+        # Symmetric logging across all modalities — prior code only logged
+        # visual which created the illusion that audio/speech/somato streams
+        # were not running. Modality → tag mapping keeps log volume sane.
+        tag = {
+            "visual":         "VISUAL-CLIENT",
+            "audio":          "AUDIO-CLIENT",
+            "speech":         "SPEECH-CLIENT",
+            "somatosensory":  "SOMATO-CLIENT",
+            "somato":         "SOMATO-CLIENT",
+        }.get(modality, f"{modality.upper()}-CLIENT")
+        import sys
+        print(f"  [{tag}] sending {len(req['data'])} elements",
+              file=sys.stderr, flush=True)
+        # Visual remains blocking (its data is large + needs sync confirmation
+        # for the visual cortex staging). Non-visual stays fire-and-forget
+        # so audio/speech/somato don't stall the training loop waiting for
+        # per-frame ACKs.
         if modality == "visual":
-            import sys
-            print(f"  [VISUAL-CLIENT] sending {len(req['data'])} elements via _send", file=sys.stderr, flush=True)
             resp = self._send(req)
-            print(f"  [VISUAL-CLIENT] response: {resp}", file=sys.stderr, flush=True)
+            print(f"  [{tag}] response: {resp}",
+                  file=sys.stderr, flush=True)
         else:
             self._send_fire_and_forget(req)
 

@@ -23,6 +23,16 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* G8: guarded lightweight-pop assignment. See attention bridge for rationale. */
+static int g8_add_lw_pop(snn_network_t* snn, uint32_t n, neuron_type_t t,
+                         const char* name, uint32_t* out)
+{
+    int id = snn_network_add_population_lightweight(snn, n, t, name);
+    if (id < 0) { return -1; }
+    *out = (uint32_t)id;
+    return 0;
+}
+
 #define LOG_MODULE "mirror_snn_bridge"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
@@ -296,15 +306,20 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
     }
     bridge->owns_snn = true;
 
-    /* Add populations for observation and execution pathways */
-    bridge->observation_pop = snn_network_add_population(
-        bridge->snn, bridge->config.input_dim, NEURON_GENERIC_LIF, "observation");
-    bridge->execution_pop = snn_network_add_population(
-        bridge->snn, bridge->config.input_dim, NEURON_GENERIC_LIF, "execution");
-    bridge->hidden_pop = snn_network_add_population(
-        bridge->snn, bridge->config.hidden_dim, NEURON_GENERIC_LIF, "hidden");
-    bridge->output_pop = snn_network_add_population(
-        bridge->snn, bridge->config.output_dim, NEURON_GENERIC_LIF, "output");
+    /* Add populations for observation and execution pathways (G8: guarded) */
+    if (g8_add_lw_pop(bridge->snn, bridge->config.input_dim, NEURON_GENERIC_LIF,
+                      "observation", &bridge->observation_pop) != 0
+     || g8_add_lw_pop(bridge->snn, bridge->config.input_dim, NEURON_GENERIC_LIF,
+                      "execution", &bridge->execution_pop) != 0
+     || g8_add_lw_pop(bridge->snn, bridge->config.hidden_dim, NEURON_GENERIC_LIF,
+                      "hidden", &bridge->hidden_pop) != 0
+     || g8_add_lw_pop(bridge->snn, bridge->config.output_dim, NEURON_GENERIC_LIF,
+                      "output", &bridge->output_pop) != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "mirror_snn_create: lightweight pop alloc failed");
+        snn_network_destroy(bridge->snn);
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     /* Connect populations */
     snn_network_connect_populations(bridge->snn, bridge->observation_pop,
@@ -319,6 +334,27 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
         snn_network_connect_populations(bridge->snn, bridge->hidden_pop,
             bridge->hidden_pop, SNN_TOPO_RANDOM, 0.1f, SYNAPSE_AMPA, 0.3f, 0.1f);
     }
+
+    /* G8/H1 input shunt: snn_network_create made a dense input_pop at id 0
+     * to catch snn_network_set_inputs. Route it to both observation and
+     * execution pathways so external input reaches the lightweight graph. */
+    snn_network_connect_populations(bridge->snn,
+        /*src=dense input_pop*/ 0, bridge->observation_pop,
+        SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA, 0.5f, 0.1f);
+    snn_network_connect_populations(bridge->snn,
+        /*src=dense input_pop*/ 0, bridge->execution_pop,
+        SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA, 0.5f, 0.1f);
+
+    /* G8/H1 output shunt: bridge's output_pop → dense output_pop (id 2) so
+     * snn_network_get_outputs returns the bridge's result. */
+    snn_network_connect_populations(bridge->snn,
+        bridge->output_pop, /*dst=dense output_pop*/ 2,
+        SNN_TOPO_FEEDFORWARD, 1.0f, SYNAPSE_AMPA, 0.7f, 0.05f);
+
+    /* G8: lightweight CSR populations store synapses in COO form during
+     * connect_populations; finalize builds row_ptr for O(1) incoming lookup
+     * during forward pass. Skipped for dense pops (no-op). */
+    snn_network_finalize_connections(bridge->snn);
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "mirror_snn") != 0) {
