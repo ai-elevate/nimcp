@@ -152,6 +152,111 @@ bool nimcp_brain_factory_init_glial_subsystem(brain_t brain)
         return false;
     }
 
+    // ------------------------------------------------------------------------
+    // G1: Create astrocyte / oligodendrocyte / microglia networks and wire
+    // them into the glial_integration layer.
+    //
+    // Without this block, glial_integration_t->astrocyte_network et al.
+    // stay NULL, which means get_synaptic_modulation() returns 1.0,
+    // get_myelination_factor() returns 0.0, and should_prune_synapse()
+    // returns false — the entire glial cascade is a no-op despite
+    // glial_integration_step() firing every 50 ticks.
+    //
+    // Default counts (when config has 0): neurons/5, /7, /10 per brain.h docs.
+    // Upper bound: never exceed the brain's actual neuron count — counts
+    // are cell-level, not per-neuron, and millions is unrealistic.
+    // ------------------------------------------------------------------------
+    {
+        uint32_t neuron_count = brain->config.neuron_count > 0
+                                ? (uint32_t)brain->config.neuron_count
+                                : 1000;  // sane floor for tiny test brains
+        uint32_t n_astro = brain->config.num_astrocytes      > 0
+                           ? brain->config.num_astrocytes      : (neuron_count / 5);
+        uint32_t n_oligo = brain->config.num_oligodendrocytes > 0
+                           ? brain->config.num_oligodendrocytes : (neuron_count / 7);
+        uint32_t n_micro = brain->config.num_microglia       > 0
+                           ? brain->config.num_microglia       : (neuron_count / 10);
+
+        // Cap each at neuron_count — glial cells follow neuron scale, not exceed.
+        if (n_astro > neuron_count) n_astro = neuron_count;
+        if (n_oligo > neuron_count) n_oligo = neuron_count;
+        if (n_micro > neuron_count) n_micro = neuron_count;
+        // Min floor for integration to have anything to do
+        if (n_astro < 1) n_astro = 1;
+        if (n_oligo < 1) n_oligo = 1;
+        if (n_micro < 1) n_micro = 1;
+
+        // Astrocytes
+        if (!brain->astrocyte_network) {
+            brain->astrocyte_network = astrocyte_network_create(n_astro);
+            if (brain->astrocyte_network) {
+                nimcp_result_t r = glial_integration_set_astrocyte_network(
+                    brain->glial, brain->astrocyte_network);
+                if (r != NIMCP_SUCCESS) {
+                    LOG_WARN(LOG_MODULE,
+                             "glial_integration_set_astrocyte_network → %d (non-fatal)",
+                             (int)r);
+                }
+                LOG_INFO(LOG_MODULE,
+                         "Astrocyte network created: capacity=%u (neurons/5)", n_astro);
+            } else {
+                LOG_WARN(LOG_MODULE,
+                         "astrocyte_network_create(%u) failed — tripartite synapse "
+                         "modulation inert", n_astro);
+            }
+        }
+
+        // Oligodendrocytes
+        if (!brain->oligodendrocyte_network) {
+            brain->oligodendrocyte_network = oligodendrocyte_network_create(n_oligo);
+            if (brain->oligodendrocyte_network) {
+                nimcp_result_t r = glial_integration_set_oligodendrocyte_network(
+                    brain->glial, brain->oligodendrocyte_network);
+                if (r != NIMCP_SUCCESS) {
+                    LOG_WARN(LOG_MODULE,
+                             "glial_integration_set_oligodendrocyte_network → %d",
+                             (int)r);
+                }
+                LOG_INFO(LOG_MODULE,
+                         "Oligodendrocyte network created: capacity=%u (neurons/7)",
+                         n_oligo);
+            } else {
+                LOG_WARN(LOG_MODULE,
+                         "oligodendrocyte_network_create(%u) failed — myelination inert",
+                         n_oligo);
+            }
+        }
+
+        // Microglia
+        if (!brain->microglia_network) {
+            brain->microglia_network = microglia_network_create(n_micro);
+            if (brain->microglia_network) {
+                nimcp_result_t r = glial_integration_set_microglia_network(
+                    brain->glial, brain->microglia_network);
+                if (r != NIMCP_SUCCESS) {
+                    LOG_WARN(LOG_MODULE,
+                             "glial_integration_set_microglia_network → %d",
+                             (int)r);
+                }
+                LOG_INFO(LOG_MODULE,
+                         "Microglia network created: capacity=%u (neurons/10)", n_micro);
+            } else {
+                LOG_WARN(LOG_MODULE,
+                         "microglia_network_create(%u) failed — synaptic pruning inert",
+                         n_micro);
+            }
+        }
+
+        // Enable the modulation paths in glial_integration so that queries
+        // actually consult the glial cells (defaults would otherwise be
+        // returning 1.0/0.0/false).
+        glial_integration_set_astrocyte_modulation_enabled(brain->glial, true);
+        glial_integration_set_oligodendrocyte_myelination_enabled(brain->glial, true);
+        // Pruning stays off by default — user opts in via config flag; see
+        // nimcp_brain_attach_glial() below.
+        glial_integration_set_microglia_pruning_enabled(brain->glial, false);
+    }
+
     // Initialize myelin sheath network if enabled
     if (brain->config.enable_myelin_sheath) {
         // Check if already initialized
@@ -177,7 +282,131 @@ bool nimcp_brain_factory_init_glial_subsystem(brain_t brain)
         }
     }
 
+    // C1 FIX: publish the glial_integration pointer onto the base neural
+    // network so that compute_input_for_neuron() can see it during forward
+    // pass. Without this, G3/G4/G5 hot-path code that gates on
+    // `network->glial_integration` runs NULL-check-fails and the whole
+    // glial wiring is a no-op. Mirror fix of the substrate/thalamic
+    // "statue" problem from the F6 campaign.
+    {
+        extern bool neural_network_set_glial_integration(neural_network_t,
+                                                         void*);
+        (void)neural_network_set_glial_integration(base, brain->glial);
+    }
+
+    // G2: Populate lookup tables immediately so the cache isn't empty for
+    // the first BRAIN_ENSURE_GLIAL tick. Mirrors F1/F7 (attach_substrate cache-populate).
+    nimcp_brain_attach_glial(brain);
+
     return true;
+}
+
+/*---------------------------------------------------------------------------
+ * G2: Attach helper — populate glial_integration lookup tables after networks
+ * exist. Mirrors F1/F7 pattern (attach_substrate cache-populate). Idempotent.
+ *
+ * When to call:
+ *   - End of nimcp_brain_factory_init_glial_subsystem() (done below)
+ *   - After brain_load() / checkpoint restore (networks rebuilt)
+ *   - After brain resize (nimcp_brain_part_processing.c glial recreate)
+ *
+ * Effects:
+ *   1. glial_integration_auto_assign_spatial() — uses spatial positions on
+ *      neurons/synapses to populate synapse→astrocyte, neuron→oligo,
+ *      synapse→microglia maps. If neurons lack positions, this no-ops
+ *      silently (safe default).
+ *   2. Respects brain->config.enable_microglia_pruning flag — default off.
+ *---------------------------------------------------------------------------*/
+void nimcp_brain_attach_glial(brain_t brain)
+{
+    if (!brain || !brain->glial) {
+        return;
+    }
+
+    // Trigger spatial assignment (populates lookup tables). Returns the number
+    // of assignments made; zero is not an error (just means neurons don't have
+    // positions yet or no glial cells were created).
+    uint32_t n_assigned = glial_integration_auto_assign_spatial(brain->glial);
+    LOG_INFO(LOG_MODULE,
+             "Glial spatial auto-assign: %u synapse/neuron ↔ glial mappings", n_assigned);
+
+    // Honor the user's pruning flag. Defaults off; user opts in via
+    // config.enable_microglia_pruning (see nimcp_brain.h).
+    // Note: enable_microglia_pruning is a new config flag added in G5;
+    // tolerate the case where it's not present by checking field access
+    // through the gi setter which is idempotent.
+    if (brain->config.enable_microglia_pruning) {
+        glial_integration_set_microglia_pruning_enabled(brain->glial, true);
+        LOG_INFO(LOG_MODULE, "Microglia pruning ENABLED via config");
+    } else {
+        glial_integration_set_microglia_pruning_enabled(brain->glial, false);
+    }
+}
+
+/*---------------------------------------------------------------------------
+ * Accessor helpers (opaque pointer reads). Used by tests and by other init
+ * stages that need to verify the glial subsystem is up.
+ *---------------------------------------------------------------------------*/
+/* Accessors return void* to dodge typedef clashes in brain_internal.h
+ * (see comment in subsystems.h). Callers that need field access cast back
+ * to the concrete type after including the relevant glial header. */
+void* nimcp_brain_get_glial(brain_t brain)
+{
+    return brain ? (void*)brain->glial : NULL;
+}
+
+void* nimcp_brain_get_astrocyte_network(brain_t brain)
+{
+    return brain ? (void*)brain->astrocyte_network : NULL;
+}
+
+void* nimcp_brain_get_oligodendrocyte_network(brain_t brain)
+{
+    return brain ? (void*)brain->oligodendrocyte_network : NULL;
+}
+
+void* nimcp_brain_get_microglia_network(brain_t brain)
+{
+    return brain ? (void*)brain->microglia_network : NULL;
+}
+
+bool nimcp_brain_glial_is_enabled(brain_t brain)
+{
+    return brain && brain->config.enable_glial && brain->glial != NULL;
+}
+
+/*---------------------------------------------------------------------------
+ * Destroy helper — tear down glial networks in correct order.
+ *
+ * Order matters:
+ *   1. glial_integration_destroy() — releases lookup tables but NOT networks
+ *      (per header contract: "caller retains ownership").
+ *   2. Each glial network destroy — after the integration layer no longer
+ *      holds borrowed pointers.
+ *   3. myelin_sheath destroy follows separately in lifecycle.c.
+ *
+ * Safe to call multiple times (NULL-tolerant).
+ *---------------------------------------------------------------------------*/
+void nimcp_brain_factory_destroy_glial_subsystem(brain_t brain)
+{
+    if (!brain) return;
+
+    if (brain->glial) {
+        glial_integration_destroy(brain->glial);
+        brain->glial = NULL;
+    }
+    if (brain->astrocyte_network) {
+        astrocyte_network_destroy(brain->astrocyte_network);
+        brain->astrocyte_network = NULL;
+    }
+    if (brain->oligodendrocyte_network) {
+        oligodendrocyte_network_destroy(brain->oligodendrocyte_network);
+        brain->oligodendrocyte_network = NULL;
+    }
+    if (brain->microglia_network) {
+        microglia_network_destroy(brain->microglia_network);
+        brain->microglia_network = NULL;
+    }
 }
 
 bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)

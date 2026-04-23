@@ -1710,13 +1710,32 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
 
         // Early-exit: skip metadata lookup for simple synapses (95% case)
         if (in_h->metadata_index == SPARSE_SYNAPSE_NO_METADATA) {
-            total_input += pre_activity * in_h->weight * in_h->strength;
-            // Still notify glial system if needed
-            if (network->glial_integration && pre_activity * in_h->weight * in_h->strength > 0.0F) {
-                glial_integration_on_synapse_fired(
-                    (glial_integration_t*)network->glial_integration,
-                    src_id, neuron->id, in_h->weight, network->network_time);
+            float simple_trans = pre_activity * in_h->weight * in_h->strength;
+            // G3: astrocyte modulation [0.8, 1.2] on synapse efficacy.
+            // G4: myelin conduction bonus — a fully-myelinated presynaptic
+            // axon has saltatory conduction that delivers the spike with
+            // minimal attenuation. Modeled here as a transmission efficacy
+            // bonus of up to +0.5 (×1.5) instead of a true delay model.
+            // G5: microglia pruning — if the microglia marked this synapse
+            // for pruning, zero the transmission (synapse is functionally
+            // dead). Weight stays non-zero until the learning sweep cleans
+            // it up; this keeps the forward pass side-effect free.
+            if (network->glial_integration && simple_trans > 0.0F) {
+                glial_integration_t* gi =
+                    (glial_integration_t*)network->glial_integration;
+                if (glial_integration_should_prune_synapse(gi, src_id, neuron->id)) {
+                    simple_trans = 0.0F;
+                } else {
+                    float astro_mod = glial_integration_get_synaptic_modulation(gi,
+                        src_id, neuron->id);
+                    float myel_boost = 1.0F + 0.5F *
+                        glial_integration_get_myelination_factor(gi, src_id);
+                    simple_trans *= astro_mod * myel_boost;
+                    glial_integration_on_synapse_fired(gi,
+                        src_id, neuron->id, in_h->weight, network->network_time);
+                }
             }
+            total_input += simple_trans;
             continue;
         }
 
@@ -1781,6 +1800,26 @@ static float sum_synaptic_inputs(neuron_t* neuron, neural_network_t network)
             // Relevance in [0,1]: 0=irrelevant, 1=highly relevant
             float semantic_modulation = 0.5F + 0.5F * incoming_meta->semantic_relevance;
             synaptic_transmission *= semantic_modulation;
+        }
+
+        // G3 + G4 + G5: astrocyte modulation + myelin bonus + microglia
+        // pruning. See matching block in the no-metadata path above for the
+        // biological rationale. Applied AFTER STP + semantic modulation so
+        // the glial signals act on the final transmission value. Pruning
+        // zeros the transmission (synapse is functionally dead); the weight
+        // itself is cleaned up by the learning-path sweep.
+        if (network->glial_integration && synaptic_transmission > 0.0F) {
+            glial_integration_t* gi =
+                (glial_integration_t*)network->glial_integration;
+            if (glial_integration_should_prune_synapse(gi, src_id, neuron->id)) {
+                synaptic_transmission = 0.0F;
+            } else {
+                float astro_mod = glial_integration_get_synaptic_modulation(gi,
+                    src_id, neuron->id);
+                float myel_boost = 1.0F + 0.5F *
+                    glial_integration_get_myelination_factor(gi, src_id);
+                synaptic_transmission *= astro_mod * myel_boost;
+            }
         }
 
         total_input += synaptic_transmission;
@@ -4866,6 +4905,15 @@ bool neural_network_set_glial_integration(neural_network_t network, void* glial_
     network->glial_integration = glial_system;
 
     return true;
+}
+
+/*
+ * Getter for regression test coverage (confirms the setter actually wrote
+ * the pointer through). Keep lightweight — NULL-tolerant, no locking.
+ */
+void* neural_network_get_glial_integration(neural_network_t network)
+{
+    return network ? network->glial_integration : NULL;
 }
 
 /**

@@ -50,49 +50,91 @@ bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new
         return false;
     }
 
-    // Destroy and recreate glial integration (if glial system exists)
+    // Destroy and recreate glial integration (if glial system exists).
+    // Uses the factory destroy/init pair so astrocyte/oligo/microglia
+    // networks are freed + rebuilt scaled to the new neuron count.
     if (brain->glial) {
+        bool enable_glial = brain->config.enable_glial;
         LOG_INFO(LOG_MODULE, "brain_resize: Destroying old glial integration system");
 
-        // Save configuration flags before destroying
-        bool enable_glial = brain->config.enable_glial;
+        // Destroy integration + all three glial networks (G1/G2 additions).
+        nimcp_brain_factory_destroy_glial_subsystem(brain);
 
-        // Destroy entire glial integration (frees all nested structures)
-        glial_integration_destroy(brain->glial);
-        brain->glial = NULL;
-
-        // Recreate glial integration with new network
         if (enable_glial) {
-            LOG_INFO(LOG_MODULE, "brain_resize: Creating new glial integration system for %u neurons", new_neuron_count);
+            LOG_INFO(LOG_MODULE,
+                     "brain_resize: Recreating glial integration for %u neurons",
+                     new_neuron_count);
 
-            // Create new glial integration system
-            brain->glial = glial_integration_create(new_base_network, 1000);  // 1000 = max_mappings
+            // Recreate glial integration with new network (still manual because
+            // factory init reads adaptive_network_get_base_network(brain->network);
+            // here we have the new_base_network in hand from the caller).
+            brain->glial = glial_integration_create(new_base_network, 1000);
 
             if (brain->glial) {
-                LOG_INFO(LOG_MODULE, "brain_resize: Glial integration system created successfully");
+                LOG_INFO(LOG_MODULE, "brain_resize: Glial integration recreated");
+
+                // Rebuild the three glial networks scaled to new neuron count.
+                uint32_t n_astro = brain->config.num_astrocytes      > 0
+                                   ? brain->config.num_astrocytes      : (new_neuron_count / 5);
+                uint32_t n_oligo = brain->config.num_oligodendrocytes > 0
+                                   ? brain->config.num_oligodendrocytes : (new_neuron_count / 7);
+                uint32_t n_micro = brain->config.num_microglia       > 0
+                                   ? brain->config.num_microglia       : (new_neuron_count / 10);
+                if (n_astro > new_neuron_count) n_astro = new_neuron_count;
+                if (n_oligo > new_neuron_count) n_oligo = new_neuron_count;
+                if (n_micro > new_neuron_count) n_micro = new_neuron_count;
+                if (n_astro < 1) n_astro = 1;
+                if (n_oligo < 1) n_oligo = 1;
+                if (n_micro < 1) n_micro = 1;
+
+                brain->astrocyte_network       = astrocyte_network_create(n_astro);
+                brain->oligodendrocyte_network = oligodendrocyte_network_create(n_oligo);
+                brain->microglia_network       = microglia_network_create(n_micro);
+
+                if (brain->astrocyte_network) {
+                    glial_integration_set_astrocyte_network(brain->glial, brain->astrocyte_network);
+                }
+                if (brain->oligodendrocyte_network) {
+                    glial_integration_set_oligodendrocyte_network(brain->glial, brain->oligodendrocyte_network);
+                }
+                if (brain->microglia_network) {
+                    glial_integration_set_microglia_network(brain->glial, brain->microglia_network);
+                }
+                glial_integration_set_astrocyte_modulation_enabled(brain->glial, true);
+                glial_integration_set_oligodendrocyte_myelination_enabled(brain->glial, true);
+                glial_integration_set_microglia_pruning_enabled(brain->glial,
+                    brain->config.enable_microglia_pruning);
 
                 // Recreate spatial neuromodulator system
-                LOG_INFO(LOG_MODULE, "brain_resize: Creating new spatial neuromodulator system");
-
-                // Enable all neuromodulator types by default
                 bool enabled_types[NEUROMOD_COUNT] = {true, true, true, true};
                 spatial_neuromod_config_t configs[NEUROMOD_COUNT];
-
-                // Use default configs for all types
                 configs[0] = spatial_neuromod_default_config(NEUROMOD_DOPAMINE);
                 configs[1] = spatial_neuromod_default_config(NEUROMOD_SEROTONIN);
                 configs[2] = spatial_neuromod_default_config(NEUROMOD_ACETYLCHOLINE);
                 configs[3] = spatial_neuromod_default_config(NEUROMOD_NOREPINEPHRINE);
 
-                spatial_neuromod_system_t* new_spatial = spatial_neuromod_system_create(new_base_network, enabled_types, configs);
+                spatial_neuromod_system_t* new_spatial = spatial_neuromod_system_create(
+                    new_base_network, enabled_types, configs);
                 if (new_spatial) {
                     brain->glial->spatial_neuromod = new_spatial;
-                    LOG_INFO(LOG_MODULE, "brain_resize: Spatial neuromodulator system created successfully");
                 } else {
-                    LOG_WARN(LOG_MODULE, "brain_resize: Failed to create spatial neuromodulator system");
+                    LOG_WARN(LOG_MODULE,
+                             "brain_resize: spatial_neuromod recreation failed");
                 }
+
+                // C1 FIX mirror: publish the new glial_integration pointer
+                // onto the resized base network so the forward pass sees it.
+                {
+                    extern bool neural_network_set_glial_integration(
+                        neural_network_t, void*);
+                    (void)neural_network_set_glial_integration(
+                        new_base_network, brain->glial);
+                }
+
+                // Populate lookup tables for new size.
+                nimcp_brain_attach_glial(brain);
             } else {
-                LOG_WARN(LOG_MODULE, "brain_resize: Failed to create glial integration system");
+                LOG_WARN(LOG_MODULE, "brain_resize: glial_integration_create failed");
                 brain->config.enable_glial = false;
             }
         }

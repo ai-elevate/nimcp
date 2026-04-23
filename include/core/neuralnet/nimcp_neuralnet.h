@@ -686,6 +686,13 @@ bool neural_network_set_neuromodulator_system(neural_network_t network, void* ne
 bool neural_network_set_glial_integration(neural_network_t network, void* glial_system);
 
 /**
+ * @brief Read back the currently-attached glial integration pointer.
+ * @param network Neural network (NULL-tolerant, returns NULL).
+ * @return Opaque pointer set by neural_network_set_glial_integration, or NULL.
+ */
+void* neural_network_get_glial_integration(neural_network_t network);
+
+/**
  * @brief Get neuromodulation level for synapse computation
  *
  * WHAT: Query current neuromodulation level (dopamine, primarily)

@@ -340,6 +340,12 @@ struct brain_struct {
     glial_integration_t* glial;                  // Glial cells (struct type, needs *)
     brain_oscillation_analyzer_t* oscillations;  // Brain wave analysis (struct type, needs *)
     myelin_sheath_network_t* myelin_sheath;      // Myelin structural modeling (struct type, needs *)
+    // Glial cell networks (owned by brain; borrowed references held by brain->glial).
+    // Populated during nimcp_brain_factory_init_glial_subsystem() when enable_glial=true.
+    // Destroyed after brain->glial in the brain destroy chain.
+    astrocyte_network_t*       astrocyte_network;      // Astrocytes (num_astrocytes)
+    oligodendrocyte_network_t* oligodendrocyte_network; // Oligodendrocytes (num_oligodendrocytes)
+    microglia_network_t*       microglia_network;      // Microglia (num_microglia)
 
     // Consciousness & Cognition (most use pointer typedefs)
     introspection_context_t introspection;       // Self-awareness (already pointer type*)

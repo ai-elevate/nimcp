@@ -26,6 +26,18 @@ extern "C" {
 
 // Glial and biological subsystems
 bool nimcp_brain_factory_init_glial_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_glial_subsystem(brain_t brain);
+void nimcp_brain_attach_glial(brain_t brain);
+
+// Glial accessors (opaque pointer returns; tests and diagnostics).
+// The underlying types are defined in include/glial/{integration,astrocytes,
+// oligodendrocytes,microglia}/*.h. Tests that need field access include
+// those headers directly and cast the void* back.
+void* nimcp_brain_get_glial(brain_t brain);
+void* nimcp_brain_get_astrocyte_network(brain_t brain);
+void* nimcp_brain_get_oligodendrocyte_network(brain_t brain);
+void* nimcp_brain_get_microglia_network(brain_t brain);
+bool  nimcp_brain_glial_is_enabled(brain_t brain);
 bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain);
 bool nimcp_brain_factory_init_pink_noise_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain);

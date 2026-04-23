@@ -107,3 +107,19 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_kg_wiring_modules.cpp")
 
     message(STATUS "  Added Unit test: unit_brain_test_kg_wiring_modules")
 endif()
+
+# G6: Brain glial init/attach/destroy wiring (G1+G2 coverage)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_glial_init.cpp")
+    add_executable(unit_brain_test_glial_init
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_glial_init.cpp
+    )
+    target_link_libraries(unit_brain_test_glial_init
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m)
+    target_include_directories(unit_brain_test_glial_init
+        PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+    target_compile_features(unit_brain_test_glial_init PRIVATE cxx_std_17)
+    add_test(NAME unit_brain_test_glial_init COMMAND unit_brain_test_glial_init)
+    set_tests_properties(unit_brain_test_glial_init PROPERTIES
+        LABELS "unit;brain;glial;wiring" TIMEOUT 60)
+    message(STATUS "  Added Unit test: unit_brain_test_glial_init (G1/G2)")
+endif()

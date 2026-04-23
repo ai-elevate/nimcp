@@ -82,6 +82,7 @@
 // NOTE: Only including modules that currently exist
 #include "glial/integration/nimcp_glial_integration.h"
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"       // Myelin sheath structural modeling
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  // G1/G2: glial destroy + attach helpers
 #include "core/axon/nimcp_axon.h"                          // Phase 1.5.6: Axon signal propagation
 #include "core/dendrite/nimcp_dendrite.h"                  // Phase 1.5.7: Dendrite integration
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"

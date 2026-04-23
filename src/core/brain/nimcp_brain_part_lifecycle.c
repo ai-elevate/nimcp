@@ -9,6 +9,7 @@
  * (includes inside function bodies are non-standard and cause warnings) */
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"  /* Phase 3c: amygdala destroy */
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* glial destroy helper */
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
 #include "generation/nimcp_language_generator.h"
@@ -428,11 +429,12 @@ void brain_destroy(brain_t brain)
         distrib_cognition_destroy(brain->distributed);
     }
 
-    // Phase 5/6: Cleanup glial integration
-    if (brain->glial) {
-        glial_integration_destroy(brain->glial);
-        brain->glial = NULL;
-    }
+    // Phase 5/6: Cleanup glial integration + astrocyte/oligo/microglia networks.
+    // Order matters: integration layer holds borrowed pointers to the three
+    // networks; destroy it FIRST so it can't dereference freed memory, then
+    // destroy the networks themselves. nimcp_brain_factory_destroy_glial_subsystem
+    // does both in the correct order.
+    nimcp_brain_factory_destroy_glial_subsystem(brain);
 
     // Phase 5/6: Cleanup myelin sheath network (after glial to avoid dangling pointers)
     if (brain->myelin_sheath) {

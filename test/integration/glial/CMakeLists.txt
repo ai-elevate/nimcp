@@ -175,3 +175,22 @@ set_tests_properties(integration_glial_test_myelin_biophysics
         TIMEOUT 300
         LABELS "integration;glial;myelin;biophysics;math"
 )
+
+# =============================================================================
+# G6: Hot-path modulation integration test (G3/G4/G5)
+# =============================================================================
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_glial_hot_path.cpp")
+    add_executable(integration_glial_test_hot_path
+        test_glial_hot_path.cpp
+    )
+    target_link_libraries(integration_glial_test_hot_path
+        PRIVATE GTest::GTest GTest::Main nimcp pthread)
+    target_compile_features(integration_glial_test_hot_path PRIVATE cxx_std_17)
+    target_include_directories(integration_glial_test_hot_path
+        PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+    add_test(NAME integration_glial_test_hot_path
+             COMMAND integration_glial_test_hot_path)
+    set_tests_properties(integration_glial_test_hot_path PROPERTIES
+        LABELS "integration;glial;hot_path;G3;G4;G5" TIMEOUT 120)
+    message(STATUS "  Added Integration test: integration_glial_test_hot_path (G3/G4/G5)")
+endif()

@@ -597,6 +597,9 @@ typedef struct {
     uint32_t num_astrocytes;  /**< Number of astrocytes (default: neurons/5) */
     uint32_t num_oligodendrocytes; /**< Number of oligodendrocytes (default: neurons/7) */
     uint32_t num_microglia;   /**< Number of microglia (default: neurons/10) */
+    bool enable_microglia_pruning; /**< G5: allow microglia to mark synapses for pruning during learning (default: false — enable only after validation) */
+    bool enable_glial_synaptic_modulation; /**< G3: apply astrocyte modulation to synaptic weights during forward pass (default: true when enable_glial) */
+    bool enable_glial_myelin_conduction;   /**< G4: apply myelin conduction factor in propagation (default: true when enable_glial + enable_myelin_sheath) */
 
     // === LAZY INITIALIZATION (Performance optimization for all brain sizes) ===
     /**
