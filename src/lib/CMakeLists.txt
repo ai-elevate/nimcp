@@ -3204,11 +3204,19 @@ target_include_directories(nimcp
 if(CUDAToolkit_FOUND)
     target_include_directories(nimcp PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
 
-    # Set CUDA properties
+    # Set CUDA properties.
+    # compute_120 (Blackwell, RTX 5090) is only supported by CUDA >= 12.8;
+    # older toolchains (e.g. CUDA 12.0 on local dev) reject it with
+    # "nvcc fatal : Unsupported gpu architecture 'compute_120'".
+    if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "12.8")
+        set(_nimcp_cuda_archs "75;80;86;89;120")
+    else()
+        set(_nimcp_cuda_archs "75;80;86;89")
+    endif()
     set_target_properties(nimcp PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_STANDARD 14
-        CUDA_ARCHITECTURES "75;80;86;89"  # Turing, Ampere, Ada Lovelace
+        CUDA_ARCHITECTURES "${_nimcp_cuda_archs}"  # Turing, Ampere, Ada Lovelace, +Blackwell if CUDA>=12.8
     )
 
     # NVCC doesn't support some GCC flags - set per-file compile options
