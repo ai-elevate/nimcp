@@ -1650,6 +1650,14 @@ class AutoCheckpointer:
         self._lock = threading.Lock()
         self._save_count = 0
         self._loaded_from_checkpoint = False
+        # Tracks the size of the most recent successful save from THIS
+        # session, so the shrink check compares like-for-like. Prior to
+        # this, the shrink check compared against whatever stale
+        # athena_immersive.bin happened to be on disk — so after a
+        # struct-layout change (e.g. G8 lightweight CSR), the new daemon's
+        # first save could be legitimately smaller than the pre-change
+        # file and get rejected forever. See 2026-04-23 postmortem.
+        self._prev_session_save_size = 0
 
     def set_loaded_from_checkpoint(self, loaded):
         """Mark whether this brain was loaded from a checkpoint.
@@ -1757,17 +1765,48 @@ class AutoCheckpointer:
                 os.remove(tmp_path)
                 return
 
-            # STEP 3: Never replace a larger file with a smaller one
-            # (trained brain should always be >= previous trained brain)
-            if existing_size > 0 and tmp_size < existing_size * 0.8:
-                logger.error("Checkpoint SHRANK from %d to %d bytes (%.0f%%) — "
-                             "REFUSING to overwrite (possible corruption)",
-                             existing_size, tmp_size,
-                             tmp_size / existing_size * 100)
+            # STEP 3: Shrink check — within-session only.
+            # Compare against the previous save from THIS daemon session
+            # (not the stale on-disk file from an earlier session/build).
+            # This catches true mid-session corruption (brain state
+            # suddenly smaller after tens of learn_vector calls) while
+            # allowing legitimate size reductions when (a) the daemon
+            # cold-starts against a pre-existing file from a different
+            # build, or (b) the brain's struct layout has changed between
+            # sessions.
+            #
+            # Rationale: prior code compared `tmp_size` to `existing_size`
+            # (the on-disk file). After any struct-layout change — e.g.
+            # the G8 lightweight-CSR migration shrinking synapse storage —
+            # the new build's legitimate save was always smaller than
+            # the legacy file on disk, and the shrink check rejected
+            # EVERY save for the full session. 5 hours of G8 training
+            # silently discarded on 2026-04-23.
+            if self._prev_session_save_size > 0 and \
+               tmp_size < self._prev_session_save_size * 0.8:
+                logger.error("Checkpoint SHRANK mid-session from %d to %d bytes "
+                             "(%.0f%%) — REFUSING to overwrite (possible corruption)",
+                             self._prev_session_save_size, tmp_size,
+                             tmp_size / self._prev_session_save_size * 100)
+                os.remove(tmp_path)
+                return
+            # First save of a session: if there's an on-disk file from a
+            # previous session and our save is catastrophically smaller
+            # (less than 5% of existing — a clear sign we wrote essentially
+            # nothing, not a structural delta), still refuse. This allows
+            # normal size variance (e.g. 80% shrink from a struct change)
+            # without allowing near-empty writes.
+            elif existing_size > 0 and tmp_size < existing_size * 0.05:
+                logger.error("Checkpoint essentially empty (%d bytes vs %d prior "
+                             "session) — REFUSING to overwrite",
+                             tmp_size, existing_size)
                 os.remove(tmp_path)
                 return
 
-            # STEP 4: Atomic rename core file + move all sidecars
+            # STEP 4: Atomic rename core file + move all sidecars.
+            # Also record the size of this successful save so the next
+            # shrink check compares within-session (see STEP 3 rationale).
+            self._prev_session_save_size = tmp_size
             os.replace(tmp_path, canonical)
             # Move sidecars: tmp_path.snn -> canonical.snn, etc.
             import glob as _glob
