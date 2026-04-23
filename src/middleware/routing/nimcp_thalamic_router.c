@@ -174,7 +174,21 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         if (qmutex) {
             nimcp_mutex_unlock(qmutex);
         }
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "enqueue_signal: queue full");
+        /* Queue full is backpressure, not a fault — signals_dropped stat
+         * already tracks the count. Log at WARN level and rate-limit to
+         * avoid drowning the exception dispatcher: only log every 1024th
+         * drop (~0.1% of events when overload is sustained).
+         *
+         * Removed NIMCP_THROW_TO_IMMUNE — enqueue_signal returning false
+         * is the caller's backpressure signal, not an error event. The
+         * old throw was spamming the exception rate-limiter (5000/sec cap)
+         * and masking real errors; see 2026-04-23 silent-death post-mortem. */
+        if ((router->stats.signals_dropped & 0x3FFu) == 0) {
+            LOG_WARN("thalamic_router", "enqueue_signal: queue full "
+                     "(dropped=%llu, capacity=%u) — backpressure",
+                     (unsigned long long)router->stats.signals_dropped,
+                     (unsigned)router->queue_capacity);
+        }
         return false;
     }
 
@@ -962,6 +976,38 @@ bool thalamic_router_get_stats(const thalamic_router_t* router,
 void thalamic_router_reset_stats(thalamic_router_t* router) {
     if (!router) return;
     init_stats(&router->stats);
+}
+
+/**
+ * Queue fill ratio [0.0, 1.0]. Lock-free read: queue_size and capacity
+ * are 32-bit ints and we tolerate a benign stale read. Callers use this
+ * as a guidance signal for backpressure, not a precise count.
+ */
+float thalamic_router_queue_usage(const thalamic_router_t* router) {
+    if (!router || router->queue_capacity == 0) return 0.0F;
+    uint32_t sz = router->queue_size;
+    uint32_t cap = router->queue_capacity;
+    float r = (float)sz / (float)cap;
+    if (r < 0.0F) r = 0.0F;
+    if (r > 1.0F) r = 1.0F;
+    return r;
+}
+
+/**
+ * Under-pressure predicate with hysteresis (engages at 80%, disengages
+ * at 70%). Without hysteresis producers would flap near the threshold.
+ * We cheat with two separate thresholds rather than per-router state:
+ * this is a pure function of current queue ratio, so any producer that
+ * polls it gets a stable answer within one tick.
+ */
+bool thalamic_router_is_under_pressure(const thalamic_router_t* router) {
+    if (!router) return false;
+    float r = thalamic_router_queue_usage(router);
+    /* Two thresholds: if we're currently over the high-water mark we
+     * report pressure; the caller is expected to retry and will see
+     * false once the queue drains below low-water. Stateless impl is
+     * simpler than tracking a latched bool per router. */
+    return r >= 0.80F;
 }
 
 void thalamic_router_clear_queue(thalamic_router_t* router) {

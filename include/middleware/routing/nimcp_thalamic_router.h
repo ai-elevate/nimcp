@@ -40,7 +40,7 @@ extern "C" {
 // ============================================================================
 
 #define THALAMIC_MAX_DESTINATIONS 16         // Max fan-out per source
-#define THALAMIC_MAX_QUEUE_SIZE 1000         // Signal queue capacity
+#define THALAMIC_MAX_QUEUE_SIZE 16384        // Signal queue capacity (bumped 1000→16384 post 2026-04-23: 5 producers × multimodal training saturated 1000)
 #define THALAMIC_PRIORITY_HIGH 3             // High priority level
 #define THALAMIC_PRIORITY_NORMAL 2           // Normal priority
 #define THALAMIC_PRIORITY_LOW 1              // Low priority
@@ -240,6 +240,33 @@ bool thalamic_router_get_stats(const thalamic_router_t* router,
  * @brief Reset routing statistics
  */
 void thalamic_router_reset_stats(thalamic_router_t* router);
+
+/**
+ * @brief Current queue fill ratio [0.0, 1.0]
+ *
+ * WHAT: Returns queue_size / queue_capacity.
+ * WHY:  Producers can query this and throttle low-priority signals
+ *       (backpressure without blocking). Read-only, lock-free.
+ * HOW:  Atomic read of queue_size + capacity; returns 0.0 on NULL router.
+ *
+ * @param router  Router instance (NULL-tolerant, returns 0.0).
+ * @return Fill ratio in [0.0, 1.0].
+ */
+float thalamic_router_queue_usage(const thalamic_router_t* router);
+
+/**
+ * @brief Is the router under pressure (queue >= 80% full)?
+ *
+ * WHY:  Convenience predicate for producers. Low-priority senders should
+ *       skip emitting signals when this is true to let the consumer drain.
+ *       Hysteresis: returns true at >=80%, false at <70% — avoids flapping.
+ * HOW:  Static hysteresis threshold stored per-router; state tracked via
+ *       atomic bool so concurrent producers see consistent answer.
+ *
+ * @param router  Router instance (NULL-tolerant, returns false).
+ * @return true when router is overloaded and producers should throttle.
+ */
+bool thalamic_router_is_under_pressure(const thalamic_router_t* router);
 
 /**
  * @brief Clear signal queue

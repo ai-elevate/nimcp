@@ -23,6 +23,25 @@ static nimcp_status_t nimcp_init_internal(void) {
 
     LOG_INFO("Initializing NIMCP library version %s", NIMCP_VERSION_STRING);
 
+    // ------------------------------------------------------------------------
+    // SIGPIPE hardening: ignore broken-pipe signals so that a closed socket
+    // peer never silent-kills the daemon. Without this, any write()/send()
+    // on a socket whose reader has hung up delivers SIGPIPE, whose default
+    // action is *terminate with no core* — producing the "silent daemon
+    // death, no stack, no SIGSEGV" pattern observed in the 2026-04-23 crash.
+    //
+    // EWPIPE is still returned by the affected syscall so callers can handle
+    // it explicitly. SIG_IGN is the correct default for any library that
+    // might touch a Unix-socket or TCP endpoint.
+    // ------------------------------------------------------------------------
+    {
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = SIG_IGN;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGPIPE, &sa, NULL);
+    }
+
     // Install crash handler BEFORE any other subsystem so if anything
     // below SEGVs during init, we get a backtrace. The handler writes
     // to /var/log/nimcp_crash.log (or /tmp fallback). Calls a signal-

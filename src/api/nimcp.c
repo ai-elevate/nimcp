@@ -73,6 +73,7 @@ static void api_set_error(const char* fmt, ...);
 #include <stdarg.h>
 #include <unistd.h>
 #include <math.h>
+#include <signal.h>   /* SIGPIPE ignore in nimcp_init_internal */
 #include <float.h>  // I-H3 FIX: FLT_MAX for NaN-safe argmax in predict_fast
 
 /**
