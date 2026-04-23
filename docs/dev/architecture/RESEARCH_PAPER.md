@@ -116,7 +116,48 @@ NIMCP implements 9 biologically-typed synapse models, each with distinct tempora
 
 This diversity is grounded in Destexhe et al.'s (1994) kinetic models of synaptic receptors, which demonstrated that different receptor types produce qualitatively different postsynaptic responses.
 
-### 3.4 Decision Pipeline
+### 3.4 Glial Cell Infrastructure
+
+The 2.7.0 release (2026-04) added a first-class glial subsystem. Three
+non-neuronal cell types, each with its own network alongside the main
+neural graph, modulate synaptic transmission every forward pass:
+
+- **Astrocytes** (default count = neurons/5) implement tripartite-synapse
+  modulation. Each astrocyte maintains its own calcium dynamics; when
+  assigned to a set of synapses, it scales their transmission efficacy
+  in the range [0.8, 1.2] based on accumulated calcium. Biological
+  grounding: Perea, Navarrete, and Araque (2009) on astrocyte-mediated
+  synaptic modulation.
+- **Oligodendrocytes** (default = neurons/7) produce an activity-dependent
+  myelination factor per neuron in [0.0, 1.0]. The hot path applies a
+  conduction-efficacy boost of `1.0 + 0.5 × myelination_factor`, up to
+  1.5×. A full saltatory-delay model remains deferred. Biological
+  grounding: Fields (2015) on activity-dependent myelination.
+- **Microglia** (default = neurons/10) monitor per-synapse activity via
+  an exponential moving average and can flag low-utility synapses for
+  pruning. When enabled, the forward pass zeros transmission for
+  flagged synapses. Biological grounding: Schafer et al. (2012) on
+  microglial synaptic pruning.
+
+Synapse identification uses a bijective uint64 packing
+`((uint64_t)pre << 32) | post` so that modulation and pruning never
+collide at 2M-neuron scale. The glial layer is non-invasive: it operates
+through ID-to-glial-cell hash tables rather than modifying the neuron
+or synapse structures.
+
+### 3.5 Neural Substrate
+
+Also added in 2.7.0: a shared `neural_substrate_t` represents the
+biological milieu every neuron operates in — ATP, oxygen, glucose,
+temperature, membrane potential, and ion balance — with defaults set
+to healthy resting values (ATP 0.95, temp 37 °C, membrane 0.98). The
+SNN, LNN, and per-cortex CNNs each consult the substrate every forward
+pass to modulate AHP strength, Na/K pump gain, noise floor,
+receptive-field width, and Rayleigh dissipation (in the HNN case).
+Cognitive modules do not read the substrate directly; they observe its
+effects through modulated network outputs.
+
+### 3.6 Decision Pipeline
 
 When the system makes a decision, the candidate action passes through multiple safety-relevant stages:
 

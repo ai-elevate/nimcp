@@ -1,8 +1,21 @@
 # NIMCP Project Reference
 
-**Version**: 0.9.0-beta
-**Last Updated**: 2026-03-27
+**Version**: 0.9.0-beta (tag 2.7.0 — glial + substrate + SNN lightweight campaign)
+**Last Updated**: 2026-04-23
 **Path**: `/home/bbrelin/nimcp`
+
+**Recent release highlights** (see `CHANGELOG.md` for the full entry):
+- Glial networks now created + wired into the forward-pass hot path
+  (astrocyte modulation, oligodendrocyte myelin boost, microglia pruning).
+- Neural substrate + thalamic router created at brain init and attached to
+  every SNN/LNN/cortex-CNN — Phase 1-4 adapters are no longer dormant.
+- SNN cognitive bridges (attention, mirror-neurons, emotion, working-memory)
+  migrated off dense pops to lightweight CSR.
+- `synapse_id` widened uint32 → uint64 (bijective at 2M neuron scale).
+- SIGPIPE `SIG_IGN` installed in `nimcp_init_internal` — daemon no longer
+  silent-dies on closed socket peers.
+- Thalamic router queue 1000 → 16384 + new backpressure-query API.
+- RTX 5090 (Blackwell, `compute_120`) enabled when CUDA ≥ 12.8.
 
 > **Documentation is modularized.** See `docs/claude/` for detailed documentation.
 > **Master Index**: See `docs/INDEX.md` for complete documentation navigation.
@@ -74,6 +87,8 @@
 | Brain Immune System | [modules/brain-immune.md](docs/claude/modules/brain-immune.md) |
 | Training-Immune Integration | [modules/training-immune.md](docs/claude/modules/training-immune.md) |
 | Cross-Bridge Integration | [modules/cross-bridge.md](docs/claude/modules/cross-bridge.md) |
+| Neural Substrate + Thalamic Router | [modules/substrate.md](docs/claude/modules/substrate.md) |
+| Glial Cell Infrastructure | [modules/glial.md](docs/claude/modules/glial.md) |
 | Liquid Neural Networks | [modules/lnn.md](docs/claude/modules/lnn.md) |
 | Bio-Async Integration | [modules/bio-async.md](docs/claude/modules/bio-async.md) |
 | Introspection | [modules/introspection.md](docs/claude/modules/introspection.md) |

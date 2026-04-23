@@ -1,6 +1,14 @@
 # Athena Documentation — Master Index
 
-**Last Updated:** 2026-04-19
+**Last Updated:** 2026-04-23
+
+## New this release (2.7.0 — 2026-04-23)
+
+| Topic | File |
+|-------|------|
+| Glial cell infrastructure (astrocyte / oligodendrocyte / microglia, G1–G8 wiring) | [claude/modules/glial.md](claude/modules/glial.md) |
+| Neural substrate + thalamic router (F1–F9 campaign, backpressure API) | [claude/modules/substrate.md](claude/modules/substrate.md) |
+| Full release notes (G-campaign + F-campaign + SIGPIPE + thalamic tuning + CUDA 12.8/Blackwell) | [../CHANGELOG.md](../CHANGELOG.md#270---2026-04-23) |
 
 ## Start Here
 

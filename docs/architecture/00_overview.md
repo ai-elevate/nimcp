@@ -1,7 +1,30 @@
 # Athena Architecture — Overview
 
-**Version:** 0.9.0-beta
-**Last Updated:** 2026-04-19
+**Version:** 0.9.0-beta (tag 2.7.0)
+**Last Updated:** 2026-04-23
+
+## Recent release — 2.7.0 (2026-04-23)
+
+The F-campaign (F1–F9) and G-campaign (G1–G8) activated previously-dormant
+biological subsystems at the hot-path level:
+
+- **Glial cells** (astrocytes / oligodendrocytes / microglia) are now
+  created during brain init and modulate synaptic transmission every
+  forward pass. See [../claude/modules/glial.md](../claude/modules/glial.md).
+- **Neural substrate + thalamic router** are created at init and attached
+  to every SNN / LNN / cortex-CNN network. Phase 1-4 adapters that read
+  substrate state are no longer dormant. See
+  [../claude/modules/substrate.md](../claude/modules/substrate.md).
+- **SNN cognitive bridges** (attention, mirror-neurons, emotion,
+  working-memory) migrated off dense pops to lightweight CSR.
+- **synapse_id** widened uint32 → uint64 (bijective at 2M neuron scale).
+- **SIGPIPE SIG_IGN** installed in `nimcp_init_internal` — daemon no
+  longer silent-dies when a socket peer closes.
+- **Thalamic router queue** bumped 1000 → 16384 + new backpressure API
+  (`thalamic_router_queue_usage` / `_is_under_pressure`).
+- **RTX 5090 (Blackwell, compute_120)** enabled when CUDA ≥ 12.8.
+
+Full release notes: [`../../CHANGELOG.md`](../../CHANGELOG.md#270---2026-04-23).
 
 Athena is a biologically-plausible hybrid brain simulator. This document
 summarizes the top-level architecture as it stands after the 2026-04

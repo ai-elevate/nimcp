@@ -1,6 +1,32 @@
 # SNN Architecture
 
-**Last Updated:** 2026-04-19 (schema v7)
+**Last Updated:** 2026-04-23 (schema v7 + G7 synapse_id + G8 lightweight bridges)
+
+## Recent updates (2.7.0 release)
+
+- **G7** widened `synapse_id` from uint32 to **uint64** (bijective
+  `(pre<<32)|post`). The pre-G7 hash `pre*10000 + post` overflowed
+  uint32 at 430K pre-neurons and collided deterministically when
+  post ≥ 10000 — modulation / pruning would route to the wrong
+  astrocyte / microglia at 2M scale. Propagated through
+  `glial_integration_t`, `monitored_synapse_t`, the microglia
+  public API (signature change: uint32 → uint64).
+- **G8** converted the four cognitive SNN bridges
+  (attention, mirror-neurons, emotion, working-memory) off the dense
+  `snn_network_add_population` path to the lightweight CSR variant.
+  Prior to G8 these bridges exhausted the base `neural_network_t` slot
+  budget, leaving populations like `wm_inhibition`, `emotion_va`, and
+  mirror-neurons' `hidden` / `output` empty at init. All 17 bridge
+  pop-creation sites now use `snn_network_add_population_lightweight()`.
+  Each bridge calls `snn_network_finalize_connections()` once after all
+  `connect_populations` calls.
+- **G8 H1 shunts** added per bridge: dense `input_pop` (id 0) →
+  bridge's primary lightweight input pop, and bridge's output pop →
+  dense `output_pop` (id 2), so `snn_network_set_inputs()` and
+  `snn_network_get_outputs()` reach the bridge's custom graph.
+- **`snn_network_step_sparse` lightweight-safe branch (M1)**: reads
+  from `pop->external_current[n]` when `pop->lightweight`, avoiding
+  a segfault on empty `neuron_ids[]`.
 
 ## Scale
 

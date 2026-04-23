@@ -2,6 +2,16 @@
 
 *A biologically-grounded cognitive architecture that learns from experience, develops through stages, and speaks its own language — running on a single GPU.*
 
+**Latest release: 2.7.0 (2026-04-23)** — Large biological-subsystem
+activation: glial cells (astrocytes / oligodendrocytes / microglia) are
+now wired into the forward-pass hot path, the neural substrate
+(ATP / temperature / membrane health) is attached to every network,
+SNN cognitive bridges migrated to lightweight CSR, `synapse_id` widened
+to uint64 (bijective at 2M-neuron scale), SIGPIPE silent-death class
+fixed, thalamic router queue 16× larger with a new backpressure API,
+and RTX 5090 (Blackwell, compute_120) support. See
+[`CHANGELOG.md`](CHANGELOG.md#270---2026-04-23) for details.
+
 ## Motivation
 
 Every major AI system today is the same architecture: a transformer predicting the next token. They're powerful at language but they don't learn after training, don't have memories, don't have bodies, and don't develop over time.
