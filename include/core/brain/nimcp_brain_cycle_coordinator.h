@@ -131,6 +131,10 @@ typedef enum {
     BRAIN_CYCLE_PHYSICS_BRIDGES,    /**< Wave 8C: ephaptic/hh/thermo bio_async + ephaptic_fft (16ms) */
     BRAIN_CYCLE_META_LEARNING,      /**< Wave 4: meta_adapt_learning_rate tick (100ms) */
     BRAIN_CYCLE_INTUITIVE_PHYSICS,  /**< Wave 5: intuitive_physics_step tick (16ms) */
+    BRAIN_CYCLE_HYPOTHALAMUS,       /**< Wave 8B-c: drives/homeostasis/HPA/autonomic (100ms) */
+    BRAIN_CYCLE_ENTORHINAL,         /**< Wave 8B-c: spatial/grid cells / MTL (16ms) — PARTIAL */
+    BRAIN_CYCLE_CEREBELLUM,         /**< Wave 8B-c: motor-error forward model + bio-msg drain (16ms) */
+    BRAIN_CYCLE_BASAL_GANGLIA,      /**< Wave 8B-c: action selection / reward gating (16ms) */
     BRAIN_CYCLE_COUNT               /**< Total number of cycle types */
 } brain_cycle_type_t;
 

@@ -1902,6 +1902,7 @@ struct brain_struct {
     struct cochlea_thalamic_bridge*         cochlea_thalamic_bridge;      // Cochlea → thalamus MGN
     struct cochlea_verification_bridge*     cochlea_verification_bridge;  // Cochlea self-verification
     bool                                    cochlea_bridges_enabled;      // True if register_driven succeeded
+    void*                                   cochlea_output_buffer;        // Wave 8A+ (2026-04-24): cochlea_output_t* — shared zero-fill output buffer passed to all 11 NULL-rejecting bridges; owned by brain, created/destroyed with cochlea. Void* because cochlea_output_t is an anonymous-struct typedef.
 
     //=========================================================================
     // Physics Bridges (Wave 8C, 2026-04-24)

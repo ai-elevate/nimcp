@@ -1175,6 +1175,40 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         brain_tick_physics_bridges(brain, 16.6f);
     }
 
+    /* [BLV-PHASE] hypothalamus — Wave 8B-c (2026-04-24): drives/homeostasis,
+     * SCN circadian, HPA axis, autonomic balance. hypothalamus_update was a
+     * statue prior — no recurring caller. Null-guarded in the tick driver. */
+    {
+        extern void brain_tick_hypothalamus(brain_t brain, float dt_ms);
+        brain_tick_hypothalamus(brain, 16.6f);
+    }
+
+    /* [BLV-PHASE] entorhinal — Wave 8B-c (2026-04-24): spatial/grid cells.
+     * PARTIAL — no brain owner for entorhinal_adapter; driver is a no-op
+     * shell that documents the integration gap. */
+    {
+        extern void brain_tick_entorhinal(brain_t brain, float dt_ms);
+        brain_tick_entorhinal(brain, 16.6f);
+    }
+
+    /* [BLV-PHASE] cerebellum — Wave 8B-c (2026-04-24): motor-error forward
+     * model. cerebellum_adapter has no public dt step; driver drains the
+     * bio-router inbox so incoming climbing-fibre / mossy / coordination
+     * messages are integrated. */
+    {
+        extern void brain_tick_cerebellum(brain_t brain, float dt_ms);
+        brain_tick_cerebellum(brain, 16.6f);
+    }
+
+    /* [BLV-PHASE] basal_ganglia — Wave 8B-c (2026-04-24): action selection /
+     * reward gating. bg_enhanced_step was a statue prior — invoked only
+     * from coordinator-less paths. Drives striatum dynamics, beta
+     * oscillations, vigor decay, neuromodulator clearance. */
+    {
+        extern void brain_tick_basal_ganglia(brain_t brain, float dt_ms);
+        brain_tick_basal_ganglia(brain, 16.6f);
+    }
+
     /* Phase E3: auto-insert high-confidence training episodes into the
      * Z-Ladder as memory nodes. Opt-in — no-op unless Python has set
      * brain.long_term_set_auto_insert(True, ...). */
@@ -3022,28 +3056,32 @@ sequential_training:
         extern int cochlea_substrate_bridge_update(void*, const void*, float);
         extern int cochlea_verification_bridge_update(void*, float);
 
+        /* Wave 8A+ (2026-04-24): pass the shared cochlea_output_buffer
+         * instead of NULL. 11 of 15 bridges hard-reject NULL input, so
+         * without this the wiring was a semi-statue. */
+        const void* _cb_out = brain->cochlea_output_buffer;
         if (brain->cochlea_audio_cortex_bridge)
-            (void)cochlea_audio_cortex_bridge_update(brain->cochlea_audio_cortex_bridge, NULL, NULL, _cb_dt_ms);
+            (void)cochlea_audio_cortex_bridge_update(brain->cochlea_audio_cortex_bridge, _cb_out, NULL, _cb_dt_ms);
         if (brain->cochlea_bio_async_bridge)
-            (void)cochlea_bio_async_bridge_update(brain->cochlea_bio_async_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_bio_async_bridge_update(brain->cochlea_bio_async_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_broca_bridge)
-            (void)cochlea_broca_bridge_update(brain->cochlea_broca_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_broca_bridge_update(brain->cochlea_broca_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_collective_bridge)
-            (void)cochlea_collective_bridge_update(brain->cochlea_collective_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_collective_bridge_update(brain->cochlea_collective_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_cortical_deep_bridge)
-            (void)cochlea_cortical_deep_bridge_update(brain->cochlea_cortical_deep_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_cortical_deep_bridge_update(brain->cochlea_cortical_deep_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_fep_bridge)
-            (void)cochlea_fep_bridge_update(brain->cochlea_fep_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_fep_bridge_update(brain->cochlea_fep_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_immune_bridge)
-            (void)cochlea_immune_bridge_update(brain->cochlea_immune_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_immune_bridge_update(brain->cochlea_immune_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_medulla_bridge)
-            (void)cochlea_medulla_bridge_update(brain->cochlea_medulla_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_medulla_bridge_update(brain->cochlea_medulla_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_occipital_bridge)
-            (void)cochlea_occipital_bridge_update(brain->cochlea_occipital_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_occipital_bridge_update(brain->cochlea_occipital_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_rcog_bridge)
-            (void)cochlea_rcog_bridge_update(brain->cochlea_rcog_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_rcog_bridge_update(brain->cochlea_rcog_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_substrate_bridge)
-            (void)cochlea_substrate_bridge_update(brain->cochlea_substrate_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_substrate_bridge_update(brain->cochlea_substrate_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_verification_bridge)
             (void)cochlea_verification_bridge_update(brain->cochlea_verification_bridge, _cb_dt_ms);
     }

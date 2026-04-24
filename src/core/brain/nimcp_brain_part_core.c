@@ -114,15 +114,23 @@ static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision)
         if (edges) brain_kg_edge_list_destroy(edges);
     }
 
-    /* Consumer B — prior-decision recurrence */
+    /* Consumer B — prior-decision recurrence.
+     *
+     * Walkthrough bug-fix (2026-04-24): use max-VALUE argmax (NaN-safe) to
+     * match determine_output_label. Previous code used |value| argmax, so
+     * "decision_history_<argmax>" referenced a different index than the
+     * canonical label — recurrence tracking was indexed against the wrong
+     * action for signed outputs. If every output is NaN/Inf, skip this
+     * consumer entirely (argmax is undefined). */
     if (decision->output_vector && decision->output_size > 0) {
         uint32_t argmax = 0;
-        float mx = 0.0f;
+        float mx = -FLT_MAX;
+        bool has_valid = false;
         for (uint32_t i = 0; i < decision->output_size; i++) {
-            float a = decision->output_vector[i];
-            if (a < 0.0f) a = -a;
-            if (a > mx) { mx = a; argmax = i; }
+            float v = decision->output_vector[i];
+            if (isfinite(v) && v > mx) { mx = v; argmax = i; has_valid = true; }
         }
+        if (!has_valid) return;
         char node_name[64];
         snprintf(node_name, sizeof(node_name),
                  "decision_history_%u", argmax);
@@ -1425,28 +1433,34 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         extern int cochlea_substrate_bridge_update(void*, const void*, float);
         extern int cochlea_verification_bridge_update(void*, float);
 
+        /* Wave 8A+ (2026-04-24): 11 of the 15 cochlea bridges hard-reject a
+         * NULL cochlea_output and early-return, turning the wiring into a
+         * semi-statue. brain->cochlea_output_buffer is a shared zero-filled
+         * cochlea_output_t* allocated by init_cochlea. Passing it makes each
+         * bridge actually advance state per tick. */
+        const void* _cb_out = brain->cochlea_output_buffer;
         if (brain->cochlea_audio_cortex_bridge)
-            (void)cochlea_audio_cortex_bridge_update(brain->cochlea_audio_cortex_bridge, NULL, NULL, _cb_dt_ms);
+            (void)cochlea_audio_cortex_bridge_update(brain->cochlea_audio_cortex_bridge, _cb_out, NULL, _cb_dt_ms);
         if (brain->cochlea_bio_async_bridge)
-            (void)cochlea_bio_async_bridge_update(brain->cochlea_bio_async_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_bio_async_bridge_update(brain->cochlea_bio_async_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_broca_bridge)
-            (void)cochlea_broca_bridge_update(brain->cochlea_broca_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_broca_bridge_update(brain->cochlea_broca_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_collective_bridge)
-            (void)cochlea_collective_bridge_update(brain->cochlea_collective_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_collective_bridge_update(brain->cochlea_collective_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_cortical_deep_bridge)
-            (void)cochlea_cortical_deep_bridge_update(brain->cochlea_cortical_deep_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_cortical_deep_bridge_update(brain->cochlea_cortical_deep_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_fep_bridge)
-            (void)cochlea_fep_bridge_update(brain->cochlea_fep_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_fep_bridge_update(brain->cochlea_fep_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_immune_bridge)
-            (void)cochlea_immune_bridge_update(brain->cochlea_immune_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_immune_bridge_update(brain->cochlea_immune_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_medulla_bridge)
-            (void)cochlea_medulla_bridge_update(brain->cochlea_medulla_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_medulla_bridge_update(brain->cochlea_medulla_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_occipital_bridge)
-            (void)cochlea_occipital_bridge_update(brain->cochlea_occipital_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_occipital_bridge_update(brain->cochlea_occipital_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_rcog_bridge)
-            (void)cochlea_rcog_bridge_update(brain->cochlea_rcog_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_rcog_bridge_update(brain->cochlea_rcog_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_substrate_bridge)
-            (void)cochlea_substrate_bridge_update(brain->cochlea_substrate_bridge, NULL, _cb_dt_ms);
+            (void)cochlea_substrate_bridge_update(brain->cochlea_substrate_bridge, _cb_out, _cb_dt_ms);
         if (brain->cochlea_verification_bridge)
             (void)cochlea_verification_bridge_update(brain->cochlea_verification_bridge, _cb_dt_ms);
     }
@@ -1496,6 +1510,21 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         /* Wave 8C: HALF-STATUE physics bridges (ephaptic/hh/thermo bio_async) */
         extern void brain_tick_physics_bridges(brain_t brain, float dt_ms);
         brain_tick_physics_bridges(brain, _tick_dt_ms);
+
+        /* Wave 8B-c (2026-04-24): drives/MTL/cerebellum/BG region adapters.
+         * Each null-guards on its brain field + enabled flag. entorhinal is
+         * PARTIAL (no brain owner, documented no-op). */
+        extern void brain_tick_hypothalamus(brain_t brain, float dt_ms);
+        brain_tick_hypothalamus(brain, _tick_dt_ms);
+
+        extern void brain_tick_entorhinal(brain_t brain, float dt_ms);
+        brain_tick_entorhinal(brain, _tick_dt_ms);
+
+        extern void brain_tick_cerebellum(brain_t brain, float dt_ms);
+        brain_tick_cerebellum(brain, _tick_dt_ms);
+
+        extern void brain_tick_basal_ganglia(brain_t brain, float dt_ms);
+        brain_tick_basal_ganglia(brain, _tick_dt_ms);
     }
 
     // G3: Inference timeout check — after pre-forward stages
@@ -4519,29 +4548,38 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
     /* Empathy observation: feed the just-computed decision into
      * brain->empathy_network so its mirror-neuron state reflects recent
      * brain activity. Null-safe — if empathy_network isn't configured,
-     * skip. Uses first output dim as confidence proxy; output_index
-     * becomes the feature_low encoding. */
+     * skip.
+     *
+     * Walkthrough bug-fix (2026-04-24): argmax now matches
+     * determine_output_label (max VALUE, NaN-safe) so feature_low/high
+     * encode the canonical action index. Confidence proxy is |max_value|
+     * clamped to [0, 1] — that still captures "how strongly did we fire
+     * this action", which is the biological mirror-neuron signal. */
     if (brain->empathy_network && decision &&
         decision->output_vector && decision->output_size > 0) {
-        /* Find argmax and its magnitude for confidence. */
         uint32_t argmax = 0;
-        float max_abs = 0.0f;
+        float max_value = -FLT_MAX;
+        bool has_valid = false;
         for (uint32_t i = 0; i < decision->output_size; i++) {
-            float a = decision->output_vector[i];
-            if (a < 0.0f) a = -a;
-            if (a > max_abs) { max_abs = a; argmax = i; }
+            float v = decision->output_vector[i];
+            if (isfinite(v) && v > max_value) {
+                max_value = v; argmax = i; has_valid = true;
+            }
         }
-        if (max_abs > 1.0f) max_abs = 1.0f;
-        event_packet_t self_action = {0};
-        self_action.version_flags  = EVENT_FLAG_EXCITATORY;
-        self_action.source_node_id = 0;                         /* self */
-        self_action.confidence     = (uint16_t)(max_abs * 65535.0f);
-        self_action.feature_low    = (uint16_t)(argmax & 0xFFFF);
-        self_action.feature_high   = (uint16_t)((argmax >> 16) & 0xFFFF);
-        self_action.hop_count      = 0;
-        self_action.timestamp      = 0;
-        (void)empathy_network_observe(
-            (empathy_network_t)brain->empathy_network, &self_action, 0);
+        if (has_valid) {
+            float conf_mag = max_value < 0.0f ? -max_value : max_value;
+            if (conf_mag > 1.0f) conf_mag = 1.0f;
+            event_packet_t self_action = {0};
+            self_action.version_flags  = EVENT_FLAG_EXCITATORY;
+            self_action.source_node_id = 0;                         /* self */
+            self_action.confidence     = (uint16_t)(conf_mag * 65535.0f);
+            self_action.feature_low    = (uint16_t)(argmax & 0xFFFF);
+            self_action.feature_high   = (uint16_t)((argmax >> 16) & 0xFFFF);
+            self_action.hop_count      = 0;
+            self_action.timestamp      = 0;
+            (void)empathy_network_observe(
+                (empathy_network_t)brain->empathy_network, &self_action, 0);
+        }
     }
 
     /* W9-finish: empathetic_response dispatch. Uses arousal (emotional
@@ -4570,20 +4608,33 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
 
     /* W9-finish: middleware_controller pattern dispatch. argmax(output)
      * as pattern_id, |max| as similarity. Fires all active pattern
-     * subscribers. Null-safe. */
+     * subscribers. Null-safe.
+     *
+     * Walkthrough bug-fix (2026-04-24): argmax is now max-VALUE (NaN-safe)
+     * so pattern_id matches the canonical label index from
+     * determine_output_label. Similarity is |max_value| clamped to [0,1]
+     * (subscribers compare against confidence_threshold ∈ [0,1]). Paired
+     * with the wildcard-at-match-time fix in middleware_controller.c so
+     * the W9-finish seeded tracer actually fires on every decision
+     * (previously only fired when argmax happened to be 0). */
     if (brain->middleware_controller && brain->enable_middleware_controller &&
         decision && decision->output_vector && decision->output_size > 0) {
         uint32_t mw_argmax = 0;
-        float mw_max = 0.0f;
+        float mw_max_value = -FLT_MAX;
+        bool mw_has_valid = false;
         for (uint32_t i = 0; i < decision->output_size; i++) {
-            float a = decision->output_vector[i];
-            if (a < 0.0f) a = -a;
-            if (a > mw_max) { mw_max = a; mw_argmax = i; }
+            float v = decision->output_vector[i];
+            if (isfinite(v) && v > mw_max_value) {
+                mw_max_value = v; mw_argmax = i; mw_has_valid = true;
+            }
         }
-        if (mw_max > 1.0f) mw_max = 1.0f;
-        middleware_controller_on_pattern_match(
-            (struct middleware_controller*)brain->middleware_controller,
-            mw_argmax, mw_max, /*region_id=*/0);
+        if (mw_has_valid) {
+            float mw_similarity = mw_max_value < 0.0f ? -mw_max_value : mw_max_value;
+            if (mw_similarity > 1.0f) mw_similarity = 1.0f;
+            middleware_controller_on_pattern_match(
+                (struct middleware_controller*)brain->middleware_controller,
+                mw_argmax, mw_similarity, /*region_id=*/0);
+        }
     }
 
     /* W16-A + W16-B: KG salience bias + prior-decision recurrence.

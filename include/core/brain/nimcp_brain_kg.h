@@ -84,11 +84,15 @@ extern "C" {
  * CONSTANTS
  * ============================================================================ */
 
-/** Maximum nodes in the internal KG */
-#define BRAIN_KG_MAX_NODES          1024
+/** Maximum nodes in the internal KG
+ * Sized for the post-retrofit load: ~200 structural roots (regions,
+ * networks, cognitive families, safety) plus timestamped runtime event
+ * nodes. Original cap of 1024 was set pre-retrofit and would fill in
+ * minutes of training, after which every emit silently dropped. */
+#define BRAIN_KG_MAX_NODES          16384
 
 /** Maximum edges in the internal KG */
-#define BRAIN_KG_MAX_EDGES          4096
+#define BRAIN_KG_MAX_EDGES          65536
 
 /** Maximum length of node name */
 #define BRAIN_KG_MAX_NAME_LEN       128

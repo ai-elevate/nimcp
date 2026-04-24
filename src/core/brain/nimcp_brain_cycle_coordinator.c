@@ -219,6 +219,10 @@ static const char* get_cycle_name(brain_cycle_type_t type) {
     case BRAIN_CYCLE_PHYSICS_BRIDGES:  return "physics_bridges";
     case BRAIN_CYCLE_META_LEARNING:    return "meta_learning";
     case BRAIN_CYCLE_INTUITIVE_PHYSICS: return "intuitive_physics";
+    case BRAIN_CYCLE_HYPOTHALAMUS:     return "hypothalamus";
+    case BRAIN_CYCLE_ENTORHINAL:       return "entorhinal";
+    case BRAIN_CYCLE_CEREBELLUM:       return "cerebellum";
+    case BRAIN_CYCLE_BASAL_GANGLIA:    return "basal_ganglia";
     default:                           return "unknown";
     }
 }
@@ -235,6 +239,9 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
     case BRAIN_CYCLE_LANGUAGE:
     case BRAIN_CYCLE_PHYSICS_BRIDGES:
     case BRAIN_CYCLE_INTUITIVE_PHYSICS:
+    case BRAIN_CYCLE_ENTORHINAL:
+    case BRAIN_CYCLE_CEREBELLUM:
+    case BRAIN_CYCLE_BASAL_GANGLIA:
         return BRAIN_CYCLE_CATEGORY_FAST;
     case BRAIN_CYCLE_HEALTH_AGENT:
     case BRAIN_CYCLE_LONG_TERM_MEMORY:
@@ -242,6 +249,7 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
     case BRAIN_CYCLE_NEUROVASCULAR:
     case BRAIN_CYCLE_PREDICTIVE_IMMUNE:
     case BRAIN_CYCLE_META_LEARNING:
+    case BRAIN_CYCLE_HYPOTHALAMUS:
         return BRAIN_CYCLE_CATEGORY_MEDIUM;
     case BRAIN_CYCLE_SLEEP_WAKE:
     case BRAIN_CYCLE_CIRCADIAN:
@@ -276,6 +284,10 @@ static uint64_t get_default_interval_us(brain_cycle_type_t type) {
     case BRAIN_CYCLE_PHYSICS_BRIDGES:  return 16000;     /* 16ms — LFP sampling / inbox drain */
     case BRAIN_CYCLE_META_LEARNING:    return 100000;    /* 100ms — LR adaptation cadence; slower than inference hot path */
     case BRAIN_CYCLE_INTUITIVE_PHYSICS: return 16000;    /* 16ms — matches BRAIN_UPDATE cadence (stage_physics_task also uses 16ms) */
+    case BRAIN_CYCLE_HYPOTHALAMUS:     return 100000;    /* 100ms — slow drive: SCN/HPA/autonomic evolve over seconds */
+    case BRAIN_CYCLE_ENTORHINAL:       return 16000;     /* 16ms — grid/place cell phase precession ~theta band */
+    case BRAIN_CYCLE_CEREBELLUM:       return 16000;     /* 16ms — bio-msg drain; matches BRAIN_UPDATE cadence */
+    case BRAIN_CYCLE_BASAL_GANGLIA:    return 16000;     /* 16ms — beta oscillations + vigor decay are 10-100ms scale */
     case BRAIN_CYCLE_SLEEP_WAKE:       return 0;          /* state machine */
     case BRAIN_CYCLE_CIRCADIAN:        return 0;          /* continuous */
     case BRAIN_CYCLE_AROUSAL:          return 0;          /* event-driven */

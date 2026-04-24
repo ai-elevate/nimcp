@@ -1119,12 +1119,23 @@ void middleware_controller_on_pattern_match(
 
     nimcp_mutex_lock(&controller->mutex);
 
-    /* Phase 1: Collect matching subscriptions (under lock) */
+    /* Phase 1: Collect matching subscriptions (under lock).
+     *
+     * Walkthrough bug-fix (2026-04-24): A subscription with pattern_id == 0
+     * is treated as a WILDCARD that matches any dispatched pattern_id. The
+     * W9-finish tracer subscribes with pattern_id=0 intending "catch every
+     * decision" (see nimcp_brain_init_monitoring.c middleware_tracer_cb),
+     * but the old exact-match rule only fired when brain_decide's argmax
+     * happened to be 0 — in practice almost never. Making pattern_id=0 a
+     * wildcard matches the documented seed intent AND is the only current
+     * subscriber shape, so no other caller regresses. Dispatchers that
+     * explicitly use pattern_id=0 still match pattern_id=0 subscribers
+     * (wildcard matches itself). */
     for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
         pattern_subscription_t* sub = &controller->subscriptions[i];
 
         if (sub->active &&
-            sub->pattern_id == pattern_id &&
+            (sub->pattern_id == pattern_id || sub->pattern_id == 0) &&
             similarity >= (sub->confidence_threshold * w16_threshold_scale) &&
             sub->callback != NULL) {
 

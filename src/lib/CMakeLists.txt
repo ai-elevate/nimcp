@@ -889,6 +889,10 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_meta_learning.c    # Wave 4: meta_adapt_learning_rate tick wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_intuitive_physics.c  # Wave 5: intuitive_physics_step tick wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_chemistry.c        # Wave 6: protons + buffers + pH + NO hot-path tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_hypothalamus.c     # Wave 8B-c: hypothalamus drives/homeostasis hot-path tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_entorhinal.c       # Wave 8B-c: entorhinal MTL hot-path tick (PARTIAL — no brain owner)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_cerebellum.c       # Wave 8B-c: cerebellum bio-msg drain hot-path tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_basal_ganglia.c    # Wave 8B-c: basal_ganglia action selection hot-path tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_perception_bridges.c  # Round A/2: activate 10 orphan bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)

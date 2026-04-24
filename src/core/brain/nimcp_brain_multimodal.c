@@ -1256,3 +1256,35 @@ bool brain_process_multimodal(
 
     return success;
 }
+
+/**
+ * @brief Convenience wrapper — see header for rationale.
+ *
+ * Null-safe on features and output (required). `text` may be NULL; when
+ * present, it's passed through as language_text with its byte length. The
+ * direct_data pointer aliases caller memory (no copy); the input struct is
+ * stack-allocated and valid only for the duration of this call.
+ */
+bool brain_process_features_with_text(brain_t brain,
+                                      const float* features,
+                                      uint32_t num_features,
+                                      const char* text,
+                                      brain_multimodal_output_t* output)
+{
+    if (!brain || !features || num_features == 0 || !output) {
+        return false;
+    }
+
+    brain_multimodal_input_t input;
+    memset(&input, 0, sizeof(input));
+    input.direct_data  = features;
+    input.direct_dim   = num_features;
+    if (text) {
+        input.language_text   = text;
+        input.language_length = (uint32_t)strlen(text);
+    }
+    input.timestamp_ms = 0;
+
+    memset(output, 0, sizeof(*output));
+    return brain_process_multimodal(brain, &input, output);
+}

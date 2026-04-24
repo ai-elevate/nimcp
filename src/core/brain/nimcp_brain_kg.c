@@ -6,6 +6,7 @@
  */
 
 #include "core/brain/nimcp_brain_kg.h"
+#include "utils/containers/nimcp_hash_table.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -75,6 +76,13 @@ struct brain_kg {
     uint32_t node_capacity;
     uint32_t next_node_id;
 
+    /* Name→slot index for O(1) find_node (W-review fix).
+     * Backed by nimcp_hash_table (FNV-1a, separate chaining). Stores the
+     * node array slot index as the value; dereferencing gives the node in
+     * O(1). Caller must hold kg->mutex when touching this table — the
+     * generic hash_table is not thread-safe internally. */
+    hash_table_t* name_index;
+
     /* Edge storage */
     brain_kg_edge_t* edges;
     uint32_t edge_count;
@@ -114,6 +122,44 @@ static uint32_t compute_hash(const void* data, size_t len) {
         hash *= 16777619u;
     }
     return hash;
+}
+
+/* Name→slot index helpers — thin wrappers over the generic nimcp_hash_table.
+ * Caller must hold kg->mutex (the generic table is external-sync). Value
+ * stored is the node's array slot index (uint32_t), so lookup resolves to
+ * the node in O(1) via a direct array access. */
+static void name_hash_insert_unlocked(brain_kg_t* kg, const char* name,
+                                       uint32_t node_slot) {
+    if (!kg->name_index || !name) return;
+    (void)hash_table_insert_string(kg->name_index, name,
+                                   &node_slot, sizeof(uint32_t));
+}
+
+static void name_hash_remove_unlocked(brain_kg_t* kg, const char* name,
+                                       uint32_t node_slot) {
+    (void)node_slot;  /* hash_table keys by name, slot is the value */
+    if (!kg->name_index || !name) return;
+    (void)hash_table_remove_string(kg->name_index, name);
+}
+
+static brain_kg_node_id_t name_hash_lookup_unlocked(const brain_kg_t* kg,
+                                                     const char* name) {
+    if (!kg->name_index || !name) return BRAIN_KG_INVALID_NODE;
+    const uint32_t* slot_ptr =
+        (const uint32_t*)hash_table_lookup_string((hash_table_t*)kg->name_index,
+                                                   name);
+    if (!slot_ptr) return BRAIN_KG_INVALID_NODE;
+    uint32_t node_slot = *slot_ptr;
+    if (node_slot >= kg->node_capacity) return BRAIN_KG_INVALID_NODE;
+    const brain_kg_node_t* n = &kg->nodes[node_slot];
+    if (!n->in_use) return BRAIN_KG_INVALID_NODE;
+    /* Defensive verify: if the name doesn't match the node at that slot,
+     * the slot was reused without index update. Shouldn't happen if
+     * add_node + remove_node both call the insert/remove helpers. */
+    if (strncmp(n->name, name, BRAIN_KG_MAX_NAME_LEN) != 0) {
+        return BRAIN_KG_INVALID_NODE;
+    }
+    return n->id;
 }
 
 /* Generate random token */
@@ -313,6 +359,28 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     }
     memset(kg->nodes, 0, kg->node_capacity * sizeof(brain_kg_node_t));
 
+    /* Name→slot index for O(1) find_node (W-review fix).
+     * Sized to hold one entry per possible node; generic table handles
+     * bucket resizing if load factor grows. External-sync — we hold
+     * kg->mutex around all hash_table_* calls. */
+    {
+        hash_table_config_t hcfg = {0};
+        hcfg.initial_buckets   = kg->node_capacity * 2;
+        hcfg.key_type          = HASH_KEY_STRING;
+        hcfg.hash_algorithm    = HASH_ALG_FNV1A;
+        hcfg.case_insensitive  = false;
+        hcfg.thread_safe       = false;  /* KG mutex provides external sync */
+        kg->name_index = hash_table_create(&hcfg);
+        if (!kg->name_index) {
+            NIMCP_LOGGING_ERROR("Failed to create KG name hash index");
+            nimcp_free(kg->nodes);
+            nimcp_free(kg);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                                  "brain_kg_create: name_index is NULL");
+            return NULL;
+        }
+    }
+
     /* Allocate edges */
     kg->edges = nimcp_malloc(kg->edge_capacity * sizeof(brain_kg_edge_t));
     if (!kg->edges) {
@@ -391,6 +459,12 @@ void brain_kg_destroy(brain_kg_t* kg) {
         nimcp_free(kg->nodes);
     }
 
+    /* Free the name→slot hash index (W-review O(1) find_node fix). */
+    if (kg->name_index) {
+        hash_table_destroy(kg->name_index);
+        kg->name_index = NULL;
+    }
+
     nimcp_free(kg);
     NIMCP_LOGGING_INFO("Brain KG destroyed");
 }
@@ -414,21 +488,23 @@ brain_kg_node_id_t brain_kg_add_node(
 
     nimcp_mutex_lock(kg->mutex);
 
-    /* Check if name already exists */
-    for (uint32_t i = 0; i < kg->node_capacity; i++) {
-        if (kg->nodes[i].in_use &&
-            strncmp(kg->nodes[i].name, name, BRAIN_KG_MAX_NAME_LEN) == 0) {
+    /* Check if name already exists — O(1) via name hash index. */
+    {
+        brain_kg_node_id_t existing = name_hash_lookup_unlocked(kg, name);
+        if (existing != BRAIN_KG_INVALID_NODE) {
             nimcp_mutex_unlock(kg->mutex);
             NIMCP_LOGGING_WARN("Node '%s' already exists", name);
-            return kg->nodes[i].id;  /* Return existing ID */
+            return existing;
         }
     }
 
     /* Find free slot */
     brain_kg_node_t* node = NULL;
+    uint32_t node_slot = 0;
     for (uint32_t i = 0; i < kg->node_capacity; i++) {
         if (!kg->nodes[i].in_use) {
             node = &kg->nodes[i];
+            node_slot = i;
             break;
         }
     }
@@ -458,6 +534,9 @@ brain_kg_node_id_t brain_kg_add_node(
     kg->stats.nodes_by_type[type]++;
     kg->stats.last_modified = node->created_time;
     kg->stats.modifications_count++;
+
+    /* W-review fix: maintain O(1) name→slot index for find_node. */
+    name_hash_insert_unlocked(kg, node->name, node_slot);
 
     nimcp_mutex_unlock(kg->mutex);
 
@@ -493,16 +572,10 @@ brain_kg_node_id_t brain_kg_find_node(const brain_kg_t* kg, const char* name) {
 
     brain_kg_t* mkg = (brain_kg_t*)kg;
     nimcp_mutex_lock(mkg->mutex);
-
-    brain_kg_node_id_t result = BRAIN_KG_INVALID_NODE;
-    for (uint32_t i = 0; i < kg->node_capacity; i++) {
-        if (kg->nodes[i].in_use &&
-            strncmp(kg->nodes[i].name, name, BRAIN_KG_MAX_NAME_LEN) == 0) {
-            result = kg->nodes[i].id;
-            break;
-        }
-    }
-
+    /* O(1) via name_index (nimcp_hash_table, FNV-1a). The previous
+     * linear-scan implementation was a hot-path bottleneck once W16/W17
+     * wired KG queries into brain_decide / brain_learn_vector. */
+    brain_kg_node_id_t result = name_hash_lookup_unlocked(kg, name);
     nimcp_mutex_unlock(mkg->mutex);
     return result;
 }
@@ -630,6 +703,9 @@ int brain_kg_remove_node(brain_kg_t* kg, brain_kg_node_id_t id) {
             kg->stats.edges_by_type[kg->edges[i].type]--;
         }
     }
+
+    /* W-review fix: remove from name→slot index before clearing in_use. */
+    name_hash_remove_unlocked(kg, node->name, (uint32_t)(node - kg->nodes));
 
     /* Update statistics */
     kg->stats.nodes_by_type[node->type]--;

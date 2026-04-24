@@ -83,6 +83,35 @@ bool brain_process_multimodal(brain_t brain,
                               const brain_multimodal_input_t* input,
                               brain_multimodal_output_t* output);
 
+/**
+ * @brief Convenience wrapper: process features + optional text through the
+ *        multimodal pipeline.
+ *
+ * WHAT: Constructs a minimal brain_multimodal_input_t from a direct feature
+ *       vector + optional UTF-8 text and dispatches to brain_process_multimodal.
+ * WHY:  brain_process_multimodal expects a fully-populated multimodal_input_t
+ *       with visual/audio/language/direct slots. Most callers only have a
+ *       feature vector (and sometimes text) — this wrapper builds the input
+ *       struct for them so the multimodal pipeline has a convenient entry
+ *       point without hand-constructing the full bundle.
+ * HOW:  Populates direct_data + (optional) language_text + timestamp on the
+ *       stack-allocated input, zeroes the output, then calls
+ *       brain_process_multimodal. Output owned by caller per the existing
+ *       multimodal API contract.
+ *
+ * @param brain        Brain handle
+ * @param features     Feature vector (required)
+ * @param num_features Feature count (required, > 0)
+ * @param text         Optional UTF-8 text (may be NULL for feature-only calls)
+ * @param output       Pre-allocated output struct (required)
+ * @return true on success, false on error
+ */
+bool brain_process_features_with_text(brain_t brain,
+                                      const float* features,
+                                      uint32_t num_features,
+                                      const char* text,
+                                      brain_multimodal_output_t* output);
+
 #ifdef __cplusplus
 }
 #endif

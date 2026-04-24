@@ -216,50 +216,56 @@ static void cochlea_bridges_tick_wrapper(void* ctx) {
     struct brain_struct* brain = (struct brain_struct*)ctx;
     if (!brain || !brain->cochlea_bridges_enabled) return;
     const float dt_ms = 10.0f;
+    /* Wave 8A+ (2026-04-24): 11 of the 15 cochlea bridges hard-reject a NULL
+     * cochlea_output and early-return. brain->cochlea_output_buffer is a
+     * shared, zero-initialized cochlea_output_t allocated at init time.
+     * Passing it instead of NULL lets each bridge actually advance state
+     * (update its predictions/precision/free-energy/etc.) on every tick. */
+    const cochlea_output_t* cb = (const cochlea_output_t*)brain->cochlea_output_buffer;
 
     if (brain->cochlea_audio_cortex_bridge) {
         (void)cochlea_audio_cortex_bridge_update(
-            brain->cochlea_audio_cortex_bridge, NULL, NULL, dt_ms);
+            brain->cochlea_audio_cortex_bridge, cb, NULL, dt_ms);
     }
     if (brain->cochlea_bio_async_bridge) {
         (void)cochlea_bio_async_bridge_update(
-            brain->cochlea_bio_async_bridge, NULL, dt_ms);
+            brain->cochlea_bio_async_bridge, cb, dt_ms);
     }
     if (brain->cochlea_broca_bridge) {
         (void)cochlea_broca_bridge_update(
-            brain->cochlea_broca_bridge, NULL, dt_ms);
+            brain->cochlea_broca_bridge, cb, dt_ms);
     }
     if (brain->cochlea_collective_bridge) {
         (void)cochlea_collective_bridge_update(
-            brain->cochlea_collective_bridge, NULL, dt_ms);
+            brain->cochlea_collective_bridge, cb, dt_ms);
     }
     if (brain->cochlea_cortical_deep_bridge) {
         (void)cochlea_cortical_deep_bridge_update(
-            brain->cochlea_cortical_deep_bridge, NULL, dt_ms);
+            brain->cochlea_cortical_deep_bridge, cb, dt_ms);
     }
     if (brain->cochlea_fep_bridge) {
         (void)cochlea_fep_bridge_update(
-            brain->cochlea_fep_bridge, NULL, dt_ms);
+            brain->cochlea_fep_bridge, cb, dt_ms);
     }
     if (brain->cochlea_immune_bridge) {
         (void)cochlea_immune_bridge_update(
-            brain->cochlea_immune_bridge, NULL, dt_ms);
+            brain->cochlea_immune_bridge, cb, dt_ms);
     }
     if (brain->cochlea_medulla_bridge) {
         (void)cochlea_medulla_bridge_update(
-            brain->cochlea_medulla_bridge, NULL, dt_ms);
+            brain->cochlea_medulla_bridge, cb, dt_ms);
     }
     if (brain->cochlea_occipital_bridge) {
         (void)cochlea_occipital_bridge_update(
-            brain->cochlea_occipital_bridge, NULL, dt_ms);
+            brain->cochlea_occipital_bridge, cb, dt_ms);
     }
     if (brain->cochlea_rcog_bridge) {
         (void)cochlea_rcog_bridge_update(
-            brain->cochlea_rcog_bridge, NULL, dt_ms);
+            brain->cochlea_rcog_bridge, cb, dt_ms);
     }
     if (brain->cochlea_substrate_bridge) {
         (void)cochlea_substrate_bridge_update(
-            brain->cochlea_substrate_bridge, NULL, dt_ms);
+            brain->cochlea_substrate_bridge, cb, dt_ms);
     }
     if (brain->cochlea_verification_bridge) {
         (void)cochlea_verification_bridge_update(
@@ -268,15 +274,15 @@ static void cochlea_bridges_tick_wrapper(void* ctx) {
     if (brain->cochlea_thalamic_bridge) {
         (void)cochlea_thalamic_bridge_update(
             (cochlea_thalamic_bridge_t*)brain->cochlea_thalamic_bridge,
-            NULL, dt_ms);
+            cb, dt_ms);
     }
     if (brain->cochlea_kg_bridge) {
         (void)cochlea_kg_bridge_update(
-            (cochlea_kg_bridge_t*)brain->cochlea_kg_bridge, NULL, dt_ms);
+            (cochlea_kg_bridge_t*)brain->cochlea_kg_bridge, cb, dt_ms);
     }
     if (brain->cochlea_sleep_bridge) {
         (void)cochlea_sleep_bridge_update(
-            (cochlea_sleep_bridge_t*)brain->cochlea_sleep_bridge, NULL, dt_ms);
+            (cochlea_sleep_bridge_t*)brain->cochlea_sleep_bridge, cb, dt_ms);
     }
 }
 
@@ -612,6 +618,25 @@ bool nimcp_brain_factory_init_cochlea_subsystem(brain_t brain) {
             "cochlea created (human mode, 16 kHz)");
     }
 
+    /* Wave 8A+ (2026-04-24) — allocate the shared zero-fill cochlea_output
+     * buffer that every tick will feed into the 11 NULL-rejecting consumer
+     * bridges. Without this, the bridges early-return on !cochlea_output
+     * and their state never advances, turning the whole wiring wave into a
+     * semi-statue. 1024 samples is enough for 64ms @ 16kHz per tick, matching
+     * the 10ms driven cycle with comfortable slack. */
+    if (brain->cochlea && !brain->cochlea_output_buffer) {
+        cochlea_output_t* out = cochlea_output_create(brain->cochlea, 1024u);
+        if (out) {
+            cochlea_output_clear(out);  /* Explicit zero-fill. */
+            brain->cochlea_output_buffer = (void*)out;
+            LOG_MODULE_INFO(COCHLEA_INIT_LOG_MODULE,
+                "cochlea_output_buffer allocated (1024 samples, zeroed)");
+        } else {
+            LOG_MODULE_WARN(COCHLEA_INIT_LOG_MODULE,
+                "cochlea_output_create failed — bridges will early-return on NULL");
+        }
+    }
+
     /* Bridge inits — each is independently failure-tolerant. */
     (void)init_audio_cortex_bridge(brain);
     (void)init_bio_async_bridge(brain);
@@ -766,6 +791,14 @@ void nimcp_brain_factory_destroy_cochlea_subsystem(brain_t brain) {
     if (brain->cochlea_audio_cortex_bridge) {
         cochlea_audio_cortex_bridge_destroy(brain->cochlea_audio_cortex_bridge);
         brain->cochlea_audio_cortex_bridge = NULL;
+    }
+
+    /* Shared output buffer (Wave 8A+ 2026-04-24) — destroy BEFORE the
+     * cochlea itself, because cochlea_output_destroy may read cochlea state
+     * to free its per-channel arrays safely. */
+    if (brain->cochlea_output_buffer) {
+        cochlea_output_destroy((cochlea_output_t*)brain->cochlea_output_buffer);
+        brain->cochlea_output_buffer = NULL;
     }
 
     /* Cochlea last. */

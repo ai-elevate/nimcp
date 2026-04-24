@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: shared event + read helpers
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/geometry/nimcp_differential_geometry.h"
 
@@ -2695,6 +2696,38 @@ bool multihead_attention_query_self_knowledge(multihead_attention_t mha)
 
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_query_self_knowledge: validation failed");
     return false;
+}
+
+/**
+ * @brief W9-kg read-path: query recent salience events from the KG.
+ *
+ * WHAT: Count prior `cog_attention_event_salience_*` nodes in the KG and
+ *       emit a fresh salience event for the current forward pass.
+ * WHY:  Lets the attention hot-path reason about KG-visible attention
+ *       history, biases gain toward modules with frequent prior salience,
+ *       and publishes this pass's salience so downstream W16 consumers
+ *       (brain_decide, middleware attention_focus) can see it.
+ * HOW:  Uses the shared W9-kg helpers which admin-elevate internally.
+ *       Returns the count of salience events visible *before* this call.
+ *
+ * @param mha Multihead attention instance
+ * @param head_idx Head that produced the salience
+ * @param salience Computed salience score for this head
+ * @return Number of historical salience events, 0 if KG unavailable.
+ */
+uint32_t multihead_attention_query_salience_events(multihead_attention_t mha,
+                                                   uint32_t head_idx,
+                                                   float salience)
+{
+    if (!mha) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    /* Guard: no brain -> graceful no-op (attention may still run pre-init). */
+    if (!brain) return 0;
+
+    uint32_t prior = w9kg_query_attention_salience_count(brain);
+    w9kg_emit_attention_salience(brain, head_idx, salience);
+    return prior;
 }
 
 //=============================================================================
