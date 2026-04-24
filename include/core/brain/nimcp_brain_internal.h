@@ -48,6 +48,14 @@
 #include "core/brain/learning/nimcp_brain_experience.h"  // Unified Experience API
 #include "generation/nimcp_tokenizer.h"                  // Persistent tokenizer
 
+/* Biology cluster — forward decls only. Each biology header typedefs its own
+ * `nimcp_brain_t` which conflicts with the public nimcp.h typedef, so we
+ * avoid full-including those headers here. Users of the biology modules
+ * should #include the module header directly in their .c files. */
+typedef struct nimcp_epigenetics_struct* nimcp_epigenetics_t;
+typedef struct nimcp_neurogenesis_struct* nimcp_neurogenesis_t;
+typedef struct nimcp_nvc_system_s nimcp_nvc_system_t;
+
 //=============================================================================
 // COGNITIVE SUBSYSTEMS - Using Aggregate Headers
 // OPTIMIZATION: Replaced 40+ individual cognitive includes with 4 aggregate headers
@@ -1723,6 +1731,57 @@ struct brain_struct {
     struct thalamic_router* thalamic_router;                          // Attention-gated signal router
     bool substrate_enabled;                                           // True if substrate successfully created
     bool thalamic_router_enabled;                                     // True if router successfully created
+
+    //=========================================================================
+    // SLEEP-WAKE BRIDGES (substrate, thalamic)
+    //=========================================================================
+    // Sleep-wake adapters that couple the biological substrate + thalamic
+    // gating to the sleep cycle. Both are NULL-tolerant: if substrate or
+    // thalamic_router doesn't exist, or if bridge creation fails, the
+    // pointer stays NULL and sleep cycles degrade gracefully.
+    //
+    // substrate bridge: reads real substrate ATP/fatigue each sleep tick,
+    // derives arousal/sleep_pressure/circadian_phase, pushes via bio-async.
+    // Wires metabolic fatigue into sleep pressure directly.
+    //
+    // thalamic bridge: gates the thalamic router's attention output by
+    // arousal level — during deep NREM, attention dampens; during REM and
+    // waking, attention amplifies. Exposes sleep state as a modulator.
+    //
+    struct sleep_wake_substrate_bridge* sleep_wake_substrate_bridge;  // Sleep↔substrate ATP coupling
+    struct sleep_wake_thalamic_bridge* sleep_wake_thalamic_bridge;    // Sleep↔thalamic attention gating
+
+    //=========================================================================
+    // BIOLOGY MODULES — Wired 2026-04-24 via cycle coordinator register_driven
+    //=========================================================================
+    // Three biology modules previously existed as statues (create/update APIs
+    // present, but never instantiated and never called). Now created at brain
+    // init and driven periodically by the cycle coordinator:
+    //
+    //   - epigenetics (100ms): methylation / histone / chromatin state per
+    //     neuron. Outputs get_plasticity(neuron_id) → multiplier for STDP.
+    //     Critical-period gating for developmental windows.
+    //
+    //   - neurogenesis (1s): adult neurogenesis cycle. Creates new neurons,
+    //     matures young ones, prunes unused. Callbacks fire on lifecycle
+    //     events.
+    //
+    //   - neurovascular (100ms): neurovascular coupling. Neural activity →
+    //     CBF change → HRF → BOLD signal. Downstream readers can use the
+    //     BOLD trace as a biologically plausible activity integrator.
+    //
+    // All three are NULL-tolerant: if create fails, the field stays NULL and
+    // the driver just isn't registered. Consumer-side wiring (reading
+    // get_plasticity() in STDP, listening to neurogenesis callbacks in the
+    // SNN population manager, sampling BOLD in metabolic modulation) is a
+    // separate follow-up — the present change only advances the state.
+    //
+    nimcp_epigenetics_t epigenetics;                                  // Methylation / histone / chromatin state
+    nimcp_neurogenesis_t neurogenesis;                                // Adult neuron birth / maturation / pruning
+    nimcp_nvc_system_t* nvc_system;                                   // Neurovascular coupling — HRF + BOLD
+    bool epigenetics_enabled;                                         // True if create + register_driven succeeded
+    bool neurogenesis_enabled;
+    bool neurovascular_enabled;
 
     //=========================================================================
     // GPU Inference Optimization (Phase GPU-INF)

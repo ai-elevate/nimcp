@@ -667,6 +667,29 @@ void brain_destroy(brain_t brain)
         emotion_system_destroy(brain->emotional_system);
     }
 
+    // Phase 10.4: Cleanup sleep/wake bridges (destroy BEFORE the sleep_system
+    // they reference via bridge->sleep_wake borrowed pointer)
+    if (brain->sleep_wake_substrate_bridge) {
+        extern void sleep_wake_substrate_bridge_destroy(
+            struct sleep_wake_substrate_bridge*);
+        sleep_wake_substrate_bridge_destroy(brain->sleep_wake_substrate_bridge);
+        brain->sleep_wake_substrate_bridge = NULL;
+    }
+    if (brain->sleep_wake_thalamic_bridge) {
+        extern void sleep_wake_thalamic_bridge_destroy(
+            struct sleep_wake_thalamic_bridge*);
+        sleep_wake_thalamic_bridge_destroy(brain->sleep_wake_thalamic_bridge);
+        brain->sleep_wake_thalamic_bridge = NULL;
+    }
+
+    /* Biology cluster destroy — unregisters each driven cycle (which stops +
+     * joins the driver thread) BEFORE cycle_coordinator_destroy freeing. Must
+     * run while brain->cycle_coordinator is still valid. */
+    {
+        extern void nimcp_brain_factory_destroy_biology_subsystem(brain_t);
+        nimcp_brain_factory_destroy_biology_subsystem(brain);
+    }
+
     // Phase 10.4: Cleanup sleep/wake system
     if (brain->sleep_system) {
         sleep_system_destroy(brain->sleep_system);

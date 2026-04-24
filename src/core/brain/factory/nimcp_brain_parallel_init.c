@@ -81,6 +81,9 @@ extern bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_symbolic_reasoning_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain);
 
+// Biology cluster (epigenetics + neurogenesis + NVC) — register_driven via coord
+extern bool nimcp_brain_factory_init_biology_subsystem(brain_t brain);
+
 // Wave 5: Cognitive foundations
 extern bool nimcp_brain_factory_init_attention_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain);
@@ -351,6 +354,19 @@ static bool init_pr_memory_if_needed(brain_t brain) {
     if (!brain->config.enable_pr_memory || brain->config.lazy_init_mode ||
         brain->config.lazy_pr_memory_init) return true;
     return nimcp_brain_factory_init_pr_memory_subsystem(brain);
+}
+
+static bool init_biology_if_needed(brain_t brain) {
+    /* Biology cluster: epigenetics, neurogenesis, neurovascular. All three
+     * are driven periodically via the cycle coordinator. If the coordinator
+     * is absent (enable_cycle_coordinator=false), the factory function
+     * returns false and we report that via the wave result — it's not a
+     * hard error (no consumer code crashes), just leaves the modules as
+     * NULL like they were before this wave existed. */
+    if (brain->config.lazy_init_mode) return true;
+    /* Treat init failure as soft: the wave continues. */
+    (void)nimcp_brain_factory_init_biology_subsystem(brain);
+    return true;
 }
 
 static bool init_lnn_if_needed(brain_t brain) {
@@ -748,13 +764,19 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     if (!execute_wave(pool, &ctx, tasks, n, 5)) goto cleanup;
 
     // ========================================================================
-    // WAVE 6: consolidation, pr_memory, lnn, world_model
+    // WAVE 6: consolidation, pr_memory, lnn, world_model, biology
+    //
+    // NOTE: biology (epigenetics + neurogenesis + NVC) also uses
+    // register_driven like pr_memory. Grouped here since both depend on the
+    // coordinator being available and share "per-neuron state evolution"
+    // semantics. Graceful no-op if coordinator hasn't been created yet.
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(init_consolidation_if_needed, "consolidation");
     tasks[n++] = TASK(init_pr_memory_if_needed, "pr_memory");
     tasks[n++] = TASK(init_lnn_if_needed, "lnn");
     tasks[n++] = TASK(init_world_model_if_needed, "world_model");
+    tasks[n++] = TASK(init_biology_if_needed, "biology");
     if (!execute_wave(pool, &ctx, tasks, n, 6)) goto cleanup;
 
     // ========================================================================

@@ -207,6 +207,9 @@ static const char* get_cycle_name(brain_cycle_type_t type) {
     case BRAIN_CYCLE_IO_DISPATCHER:    return "io_dispatcher";
     case BRAIN_CYCLE_BRAIN_UPDATE:     return "brain_update";
     case BRAIN_CYCLE_LONG_TERM_MEMORY: return "long_term_memory";
+    case BRAIN_CYCLE_NEUROGENESIS:     return "neurogenesis";
+    case BRAIN_CYCLE_EPIGENETICS:      return "epigenetics";
+    case BRAIN_CYCLE_NEUROVASCULAR:    return "neurovascular";
     default:                           return "unknown";
     }
 }
@@ -219,10 +222,13 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
         return BRAIN_CYCLE_CATEGORY_FAST;
     case BRAIN_CYCLE_HEALTH_AGENT:
     case BRAIN_CYCLE_LONG_TERM_MEMORY:
+    case BRAIN_CYCLE_EPIGENETICS:
+    case BRAIN_CYCLE_NEUROVASCULAR:
         return BRAIN_CYCLE_CATEGORY_MEDIUM;
     case BRAIN_CYCLE_SLEEP_WAKE:
     case BRAIN_CYCLE_CIRCADIAN:
     case BRAIN_CYCLE_AROUSAL:
+    case BRAIN_CYCLE_NEUROGENESIS:
         return BRAIN_CYCLE_CATEGORY_SLOW;
     case BRAIN_CYCLE_GC_AGENT:
     case BRAIN_CYCLE_IO_DISPATCHER:
@@ -240,6 +246,9 @@ static uint64_t get_default_interval_us(brain_cycle_type_t type) {
     case BRAIN_CYCLE_BRAIN_UPDATE:     return 16000;      /* 16ms (~60fps) */
     case BRAIN_CYCLE_LONG_TERM_MEMORY: return 100000;     /* 100ms — matches pr_consolidation_interval_us */
     case BRAIN_CYCLE_GC_AGENT:         return 60000000;   /* 60s */
+    case BRAIN_CYCLE_EPIGENETICS:      return 100000;     /* 100ms — methylation is slow but update needs sub-second resolution for critical-period gating */
+    case BRAIN_CYCLE_NEUROVASCULAR:    return 100000;     /* 100ms — HRF evolves over seconds; 100ms gives smooth interpolation */
+    case BRAIN_CYCLE_NEUROGENESIS:     return 1000000;    /* 1s — neuron birth/pruning is slow; hourly would be closer to biology */
     case BRAIN_CYCLE_SLEEP_WAKE:       return 0;          /* state machine */
     case BRAIN_CYCLE_CIRCADIAN:        return 0;          /* continuous */
     case BRAIN_CYCLE_AROUSAL:          return 0;          /* event-driven */
