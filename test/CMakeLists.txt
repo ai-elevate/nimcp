@@ -3312,4 +3312,72 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_wave4_meta_learning_hook.c")
     endif()
 endif()
 
+# ---------------------------------------------------------------------------
+# Wave 5 tests — plain C, explicit registration (mirror Wave 4 pattern).
+#
+# WHAT: Wave 5 wires intuitive_physics_step() into the post-forward parallel
+#       stage pipeline as a new stage_physics_task. Tests live at the unit,
+#       integration, and regression tiers; e2e lives under test/e2e/.
+# WHY:  Match the lightweight pattern used by the Wave-4 binaries.
+# HOW:  Explicit executable + link libnimcp only; plain C with own main().
+# ---------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_wave5_physics_stage.c")
+    if(NOT TARGET unit_test_wave5_physics_stage)
+        add_executable(unit_test_wave5_physics_stage
+            unit/test_wave5_physics_stage.c
+        )
+        target_include_directories(unit_test_wave5_physics_stage PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+        )
+        target_compile_features(unit_test_wave5_physics_stage
+            PRIVATE c_std_11)
+        target_link_libraries(unit_test_wave5_physics_stage
+            PRIVATE nimcp Threads::Threads rt m)
+        add_test(NAME unit_test_wave5_physics_stage
+                 COMMAND unit_test_wave5_physics_stage
+                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+        set_tests_properties(unit_test_wave5_physics_stage
+            PROPERTIES LABELS "unit;parallel_stages;physics;wave5" TIMEOUT 15)
+    endif()
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_wave5_integration.c")
+    add_executable(integration_test_wave5_integration
+        integration/test_wave5_integration.c
+    )
+    target_include_directories(integration_test_wave5_integration PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_test_wave5_integration
+        PRIVATE c_std_11)
+    target_link_libraries(integration_test_wave5_integration
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME integration_test_wave5_integration
+             COMMAND integration_test_wave5_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_test_wave5_integration
+        PROPERTIES LABELS "integration;parallel_stages;physics;wave5" TIMEOUT 15)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_wave5_regression.c")
+    add_executable(regression_test_wave5_regression
+        regression/test_wave5_regression.c
+    )
+    target_include_directories(regression_test_wave5_regression PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_test_wave5_regression
+        PRIVATE c_std_11)
+    target_link_libraries(regression_test_wave5_regression
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME regression_test_wave5_regression
+             COMMAND regression_test_wave5_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_test_wave5_regression
+        PROPERTIES LABELS "regression;parallel_stages;physics;wave5" TIMEOUT 15)
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

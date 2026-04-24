@@ -28,6 +28,7 @@
 #include "cognitive/memory/nimcp_wm_transfer.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "cognitive/nimcp_theory_of_mind.h"
+#include "cognitive/physics/nimcp_intuitive_physics.h"  // Wave 5: intuitive physics stage
 
 #define LOG_MODULE "BRAIN_PARALLEL"
 
@@ -243,6 +244,28 @@ static void stage_glial_task(void* arg)
     a->ctx->glial_done = true;
 }
 
+/* Wave 5: advance intuitive physics simulation by one decide-cycle dt.
+ *
+ * The physics engine maintains a rigid-body scene populated via
+ * intuitive_physics_add_object / add_ground. When the scene is empty the
+ * step is a cheap no-op — safe to run every decide cycle regardless of
+ * whether the brain has actually populated the scene yet. Previously the
+ * engine was created at Wave 6 world-model init but intuitive_physics_step
+ * was only called from an isolated parietal_cortex path (audit 2026-04-24
+ * classified this as HIGH statue). This stage runs alongside the other 8
+ * post-forward tasks in parallel; dt is 16ms to match the nominal decide
+ * cycle time (BRAIN_CYCLE_BRAIN_UPDATE cadence). */
+static void stage_physics_task(void* arg)
+{
+    post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
+    brain_t brain = a->brain;
+
+    if (brain->intuitive_physics && brain->intuitive_physics_enabled) {
+        (void)intuitive_physics_step(brain->intuitive_physics, 0.016f);
+    }
+    a->ctx->physics_done = true;
+}
+
 static void stage_tom_task(void* arg)
 {
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
@@ -383,10 +406,11 @@ bool brain_decide_submit_post_forward(
 {
     if (!brain || !pool || !ctx) return false;
 
-    post_forward_task_arg_t* args = nimcp_calloc(8, sizeof(post_forward_task_arg_t));
+    /* 9 slots: 8 existing stages + 1 new physics stage (Wave 5). */
+    post_forward_task_arg_t* args = nimcp_calloc(9, sizeof(post_forward_task_arg_t));
     if (!args) return false;
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 9; i++) {
         args[i].brain = brain;
         args[i].decision = decision;
         args[i].features = features;
@@ -441,6 +465,12 @@ bool brain_decide_submit_post_forward(
     /* Quantum Shannon: real implementation */
     if (nimcp_pool_submit(pool, stage_quantum_shannon_task, &args[6]) != NIMCP_SUCCESS) {
         ctx->quantum_shannon_done = true;
+        all_submitted = false;
+    }
+
+    /* Wave 5: intuitive physics step. No-op when engine absent, so safe. */
+    if (nimcp_pool_submit(pool, stage_physics_task, &args[8]) != NIMCP_SUCCESS) {
+        ctx->physics_done = true;
         all_submitted = false;
     }
 

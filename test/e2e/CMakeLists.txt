@@ -3333,6 +3333,32 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave4_e2e.c)
             TIMEOUT 30)
 endif()
 
+# ---------------------------------------------------------------------------
+# Wave 5 E2E — 20-iteration soak of submit_post_forward with the new physics
+# stage (intuitive_physics_step wired as stage_physics_task).
+# Mirrors the lightweight wave4 E2E pattern: plain C, own main(), libnimcp only.
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave5_e2e.c)
+    add_executable(e2e_test_wave5
+        test_wave5_e2e.c
+    )
+    target_include_directories(e2e_test_wave5 PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_wave5 PRIVATE c_std_11)
+    target_link_libraries(e2e_test_wave5 PRIVATE
+        nimcp Threads::Threads rt m
+    )
+    add_test(NAME e2e_test_wave5
+             COMMAND e2e_test_wave5
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_wave5
+        PROPERTIES
+            LABELS "e2e;parallel_stages;physics;wave5"
+            TIMEOUT 15)
+endif()
+
 # ============================================================================
 # Grounded Language E2E Tests (subdirectory)
 # ============================================================================

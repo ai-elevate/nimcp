@@ -63,6 +63,7 @@ typedef struct {
     bool tom_done;              // Stage 9 (theory of mind)
     bool shannon_done;          // Phase C4
     bool quantum_shannon_done;  // Phase C4.1
+    bool physics_done;          // Wave 5: intuitive physics step (one dt per decide cycle)
     void* _internal_args;       // Internal: heap-allocated task args, caller must free after pool_wait
 } post_forward_context_t;
 
