@@ -13,17 +13,6 @@ set(SWARM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_brain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_gateway.c
     ${CMAKE_CURRENT_SOURCE_DIR}/nimcp_swarm_logic_bridge.c
-    # Sleep bridge sources
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_brain_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_consciousness_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_consensus_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_emergence_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_flocking_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_immune_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_memory_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_pheromone_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_quorum_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/sleep/nimcp_swarm_signal_sleep_bridge.c
     # Immune bridge sources
     ${CMAKE_CURRENT_SOURCE_DIR}/immune/nimcp_swarm_brain_immune_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/immune/nimcp_swarm_consciousness_immune_bridge.c

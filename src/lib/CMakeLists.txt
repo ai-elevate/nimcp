@@ -2667,18 +2667,6 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consciousness.c  # Gestalt consciousness (collective phi)
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/nimcp_swarm_consciousness_enhanced.c  # Enhanced consciousness (peer callbacks, remote phi, dynamics)
 
-    # Swarm Sleep Bridges (Sleep-state modulation for swarm behaviors)
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_brain_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_consciousness_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_consensus_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_emergence_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_flocking_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_immune_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_memory_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_pheromone_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_quorum_sleep_bridge.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/sleep/nimcp_swarm_signal_sleep_bridge.c
-
     # Swarm Immune Bridges (Immune-state modulation for swarm behaviors)
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_brain_immune_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../swarm/immune/nimcp_swarm_consciousness_immune_bridge.c
