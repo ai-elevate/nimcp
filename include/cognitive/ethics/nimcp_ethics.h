@@ -153,6 +153,18 @@ typedef struct ethics_engine_struct* ethics_engine_t;
 ethics_engine_t ethics_engine_create(const ethics_config_t* config);
 
 /**
+ * @brief W11: set the back-reference to the parent brain for KG emission.
+ *
+ * Call this at brain init after both the brain and ethics engine exist.
+ * NULL-safe. Until set, W11 KG emission from the ethics engine is a noop
+ * (bio-async broadcast and tamper-resistant audit log continue to work).
+ *
+ * @param engine Ethics engine.
+ * @param brain  brain_t (opaque to most callers; pass the `brain_t` handle).
+ */
+void ethics_engine_set_brain(ethics_engine_t engine, void* brain);
+
+/**
  * @brief Destroy an ethics engine
  *
  * @param engine Engine to destroy

@@ -723,6 +723,10 @@ struct brain_immune_system {
     /* State */
     bool running;                          /**< System is active */
     uint64_t start_time;                   /**< System start time */
+
+    /* W11: optional back-reference to the parent brain for KG emission.
+     * Set via brain_immune_set_brain_ref() during brain init; NULL-safe. */
+    void* brain_ref;                       /**< brain_t (opaque) for W11 KG events */
 };
 
 /* ============================================================================
@@ -787,6 +791,18 @@ int brain_immune_start(brain_immune_system_t* system);
  * @return 0 on success
  */
 int brain_immune_stop(brain_immune_system_t* system);
+
+/**
+ * @brief W11: set the back-reference to the parent brain for KG emission.
+ *
+ * Call this from brain init after both the brain and immune subsystem
+ * exist. NULL-safe; leaving it unset disables W11 KG emission from the
+ * immune system (everything else continues to work).
+ *
+ * @param system Immune system.
+ * @param brain  `brain_t` (passed as void* to avoid a cyclic include).
+ */
+void brain_immune_set_brain_ref(brain_immune_system_t* system, void* brain);
 
 /* ============================================================================
  * Integration API

@@ -8,6 +8,7 @@
 #include "cognitive/shadow/nimcp_shadow_snn_bridge.h"
 #include "cognitive/shadow/nimcp_shadow_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: shadow activation events */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1183,6 +1184,34 @@ float shadow_get_insight(const shadow_emotion_system_t* system) {
 
 bool shadow_is_correcting(const shadow_emotion_system_t* system) {
     return system ? system->in_self_correction : false;
+}
+
+/* ============================================================================
+ * W10 (2026-04-24): KG runtime emit + read-path for shadow activation.
+ *
+ * Callers that hold a brain_t + shadow_emotion_system_t invoke this post-
+ * assessment to register the shadow activation into brain->internal_kg and
+ * query the stored max shadow intensity as a bias.
+ * ============================================================================ */
+float shadow_emotions_wave10_kg_emit(
+    struct brain_struct* brain,
+    const shadow_emotion_system_t* system,
+    shadow_emotion_type_t emotion)
+{
+    if (!brain || !system) return 0.5f;
+    const char* name = "shadow";
+    switch (emotion) {
+        case SHADOW_JEALOUSY:  name = "jealousy";  break;
+        case SHADOW_ENVY:      name = "envy";      break;
+        case SHADOW_OBSESSION: name = "obsession"; break;
+        case SHADOW_HUBRIS:    name = "hubris";    break;
+        case SHADOW_GREED:     name = "greed";     break;
+        case SHADOW_NARCISSISM: name = "narcissism"; break;
+        default: break;
+    }
+    float intensity = shadow_get_intensity(system, emotion);
+    wave10_shadow_emit_activation(brain, name, intensity);
+    return wave10_shadow_query_intensity_bias(brain);
 }
 
 

@@ -9,6 +9,7 @@
  */
 
 #include "cognitive/physics/nimcp_intuitive_physics.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -644,6 +645,22 @@ int intuitive_physics_step(intuitive_physics_engine_t* engine, float dt) {
     engine->stats.step_count++;
     engine->stats.active_objects = active;
     engine->stats.active_contacts = s->num_contacts;
+
+    /* W8: aggregate emit — every 64 steps, record active obj + contact
+     * counts + energy drift. Read-path checks whether a scene-graph
+     * partner is present so downstream reasoners can be wired. */
+    if ((engine->stats.step_count & 0x3F) == 0) {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            world_model_kg_emit_physics_step(_kg_brain,
+                engine->stats.step_count,
+                active, s->num_contacts,
+                engine->stats.energy_drift);
+            (void)world_model_kg_has_partner(_kg_brain,
+                "cog_physics_scene_graph");
+        }
+    }
 
     return 0;
 }

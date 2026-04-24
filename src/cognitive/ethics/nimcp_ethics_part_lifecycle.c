@@ -163,6 +163,18 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
 }
 
 
+/* W11: set the back-reference to the parent brain for KG emission. */
+void ethics_engine_set_brain(ethics_engine_t engine, void* brain) {
+    if (!engine) return;
+    engine->host_brain = (brain_t)brain;
+
+    /* W11: emit a "configured" lifecycle event (first time brain is wired). */
+    if (engine->host_brain) {
+        w11_emit_ethics_lifecycle(engine->host_brain, "configured");
+    }
+}
+
+
 void ethics_engine_destroy(ethics_engine_t engine)
 {
     if (!engine)

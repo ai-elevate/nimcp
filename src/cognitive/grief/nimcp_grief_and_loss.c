@@ -8,6 +8,7 @@
 
 #include "cognitive/nimcp_grief_and_loss.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: grief stage events */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -1208,6 +1209,24 @@ void grief_set_baseline_sadness(grief_system_t* system, float sadness_level) {
 
 
     system->current_grief.baseline_sadness = nimcp_clampf(sadness_level, 0.0F, 1.0F);
+}
+
+/* ============================================================================
+ * W10 (2026-04-24): KG runtime emit for grief stage transitions.
+ *
+ * Callers that hold a brain_t + grief_system_t invoke this to snapshot the
+ * current stage+pain intensity into brain->internal_kg and query the pain
+ * bias (read-path for downstream modulation).
+ * ============================================================================ */
+float grief_and_loss_wave10_kg_sync(struct brain_struct* brain,
+                                    const grief_system_t* system,
+                                    int from_stage)
+{
+    if (!brain || !system) return 0.5f;
+    int to_stage = (int)grief_get_current_stage(system);
+    float pain   = grief_get_pain_intensity(system);
+    wave10_grief_emit_stage_transition(brain, from_stage, to_stage, pain);
+    return wave10_grief_query_pain_bias(brain);
 }
 
 /* ============================================================================

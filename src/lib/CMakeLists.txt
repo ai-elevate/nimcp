@@ -535,7 +535,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/bridges/nimcp_sensory_integration_kg_wiring.c   # Sensory Integration KG wiring (W4)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/bridges/nimcp_subcortical_runtime_events.c                      # Per-subcortical-module runtime events (W4)
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_kg_bridges.c                   # W3+W4 region KG init wave
+    # W11 KG retrofit (2026-04-24): safety KG event emitters
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/kg_events/nimcp_w11_safety_kg_events.c                                       # W11 safety KG events (ethics/LGSS/mental_health/immune)
+
+    # W10 KG retrofit (2026-04-24): affective/social/ToM/mirror/empathy runtime emit + query helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bridges/nimcp_wave10_affective_kg.c                                         # W10 affective/social KG runtime events
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_kg_bridges.c                   # W3+W4+W10 region KG init wave
 
     # W5 KG retrofit (2026-04-24): 6 network-type KG structural wirings
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_network_kg_wiring.c                   # W5 network-type KG init wave (Wave 32)
@@ -859,6 +865,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_kg_events.c  # W6: KG event emitters for memory family
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/world_model/nimcp_world_model_kg_events.c  # W8: KG event emitters for world-model / imagination / FEP / predictive / salience family
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram_jepa_bridge.c  # Phase 4p: engram ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_consolidation_jepa_bridge.c  # Phase 4t: consolidation ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator

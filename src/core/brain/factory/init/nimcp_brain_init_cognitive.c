@@ -772,6 +772,9 @@ bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain)
         return false;
     }
 
+    /* W11: wire brain back-reference so disorder/intervention events emit to KG. */
+    mental_health_set_brain_ref(brain->mental_health_monitor, brain);
+
     return true;
 }
 

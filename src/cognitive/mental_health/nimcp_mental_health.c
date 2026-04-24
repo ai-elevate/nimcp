@@ -18,6 +18,7 @@
 #include "constants/nimcp_buffer_constants.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "core/brain/nimcp_brain.h"  // brain_decision_t for mental_health_update
+#include "security/nimcp_w11_safety_kg_events.h"  /* W11: safety KG emission */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -425,6 +426,14 @@ mental_health_config_t mental_health_default_config(void) {
     return cfg;
 }
 
+/* W11: set the back-reference to the parent brain for KG emission. */
+void mental_health_set_brain_ref(mental_health_monitor_t* monitor, void* brain) {
+    if (!is_valid_monitor(monitor)) return;
+    nimcp_mutex_lock(monitor->lock);
+    monitor->brain_ref = brain;
+    nimcp_mutex_unlock(monitor->lock);
+}
+
 mental_health_monitor_t* mental_health_create_default(void) {
     /* Phase 8: Heartbeat at operation start */
     mental_health_heartbeat("mental_healt_create_default", 0.0f);
@@ -588,12 +597,30 @@ disorder_severity_t mental_health_check(mental_health_monitor_t* mon, brain_t br
     mon->stats.total_checks++;
 
     disorder_severity_t result = mon->primary_severity;
+
+    /* W11: emit KG disorder-detection event for any non-trivial detection.
+     * Snapshot fields under lock, emit after unlock. */
+    disorder_type_t      kg_disorder   = mon->primary_disorder;
+    disorder_severity_t  kg_severity   = mon->primary_severity;
+    float                kg_score      = mon->disorder_scores[(int)mon->primary_disorder];
+
     if (mon->config.enable_auto_intervention && result >= DISORDER_SEVERITY_MODERATE) {
         nimcp_mutex_unlock(mon->lock);
+        if (brain && kg_severity >= DISORDER_SEVERITY_MILD) {
+            w11_emit_mental_health_disorder(brain, (int)kg_disorder,
+                                            disorder_to_string(kg_disorder),
+                                            (int)kg_severity, kg_score);
+        }
         mental_health_intervene(mon, (brain_t)mon->brain_ref);
         return result;
     }
     nimcp_mutex_unlock(mon->lock);
+
+    if (brain && kg_severity >= DISORDER_SEVERITY_MILD) {
+        w11_emit_mental_health_disorder(brain, (int)kg_disorder,
+                                        disorder_to_string(kg_disorder),
+                                        (int)kg_severity, kg_score);
+    }
     return result;
 }
 
@@ -673,7 +700,25 @@ bool mental_health_intervene(mental_health_monitor_t* mon, brain_t brain) {
         mon->stats.interventions_by_type[intervention]++;
         if (intervention == INTERVENTION_QUARANTINE) mon->quarantine_mode = true;
     }
+    /* Snapshot under lock for the KG emit below. */
+    intervention_type_t kg_intervention = intervention;
+    disorder_type_t     kg_disorder     = mon->primary_disorder;
     nimcp_mutex_unlock(mon->lock);
+
+    /* W11: emit KG intervention event. */
+    if (brain && kg_intervention != INTERVENTION_NONE) {
+        const char* iname = "none";
+        switch (kg_intervention) {
+            case INTERVENTION_NEUROMOD_ADJUST: iname = "neuromod_adjust"; break;
+            case INTERVENTION_MEMORY_RESET:    iname = "memory_reset";    break;
+            case INTERVENTION_QUARANTINE:      iname = "quarantine";      break;
+            case INTERVENTION_SHUTDOWN:        iname = "shutdown";        break;
+            default: break;
+        }
+        w11_emit_mental_health_intervention(brain, iname, true,
+                                            disorder_to_string(kg_disorder));
+    }
+
     return intervention != INTERVENTION_NONE;
 }
 

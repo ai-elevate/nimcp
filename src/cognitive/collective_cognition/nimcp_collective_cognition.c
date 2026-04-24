@@ -9,6 +9,7 @@
 
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: collective phi events */
 #include "cognitive/collective_cognition/nimcp_hyperscanning.h"
 #include "cognitive/collective_cognition/nimcp_extended_mind.h"
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"

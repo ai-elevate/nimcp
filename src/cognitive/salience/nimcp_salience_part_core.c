@@ -127,6 +127,25 @@ brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t eval, con
         bio_broadcast_salience_response(eval, &salience, (uint32_t)timestamp);
     }
 
+    /* W8: emit transition event when crossing high-salience threshold +
+     * read-back partner query (rate-limited via stats_evaluations). */
+    if ((eval->stats_evaluations & 0x3F) == 0) {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            int old_level =
+                (eval->running_avg_salience > eval->config.high_salience_threshold)
+                    ? 1 : 0;
+            int new_level =
+                (salience.salience > eval->config.high_salience_threshold)
+                    ? 1 : 0;
+            world_model_kg_emit_salience_transition(_kg_brain,
+                old_level, new_level, salience.salience);
+            (void)world_model_kg_has_partner(_kg_brain,
+                "cog_fep_free_energy");
+        }
+    }
+
     return salience;
 }
 

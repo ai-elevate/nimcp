@@ -13,6 +13,7 @@
 #include "cognitive/physics/nimcp_scene_graph.h"
 #include "cognitive/physics/nimcp_entity_tracker.h"
 #include "cognitive/physics/nimcp_physics_prior.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -509,6 +510,18 @@ int wsim_step(world_simulator_t* sim, float dt) {
         if (sim->couplings[i].enabled) active_couplings++;
     sim->stats.active_engines = active;
     sim->stats.active_couplings = active_couplings;
+
+    /* W8: rate-limited aggregate emit every 128 steps + partner check. */
+    if ((sim->stats.master_steps & 0x7F) == 0) {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            world_model_kg_emit_sim_step(_kg_brain,
+                sim->stats.master_steps, dt, active);
+            (void)world_model_kg_has_partner(_kg_brain,
+                "cog_physics_intuitive");
+        }
+    }
 
     return 0;
 }

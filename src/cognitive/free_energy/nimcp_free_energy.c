@@ -11,6 +11,7 @@
 
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
@@ -1050,6 +1051,24 @@ int fep_compute_free_energy(
     }
     if (fe->surprise > stats->max_surprise) {
         stats->max_surprise = fe->surprise;
+    }
+
+    /* W8: rate-limited emit (every 64 updates). Read-back queries whether
+     * the predictive root is present (common cross-consumer). */
+    if ((stats->total_updates & 0x3F) == 0) {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            /* Average precision across first hierarchy level (best-effort). */
+            float precision = 0.0f;
+            if (fep->num_levels > 0 && fep->levels[0].errors.dim > 0 &&
+                fep->levels[0].errors.precision) {
+                precision = fep->levels[0].errors.precision[0];
+            }
+            world_model_kg_emit_surprise(_kg_brain,
+                fe->total, fe->surprise, precision);
+            (void)world_model_kg_has_partner(_kg_brain, "cog_predictive");
+        }
     }
 
     return 0;

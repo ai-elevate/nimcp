@@ -255,11 +255,37 @@ bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incide
     // Update statistics
     ethics_engine_increment_violations_detected(engine);
 
+    /* Snapshot incident fields under lock for the KG emit below, to avoid
+     * touching storage outside the critical section. */
+    uint64_t kg_incident_id = storage->incident_history[index].incident_id;
+    int      kg_violation   = (int)incident->violation_type;
+    float    kg_severity    = incident->severity;
+    int      kg_action      = (int)incident->action_taken;
+    uint32_t kg_policy_id   = incident->policy_id;
+    char     kg_policy_name[64];
+    strncpy(kg_policy_name, incident->policy_name, sizeof(kg_policy_name) - 1);
+    kg_policy_name[sizeof(kg_policy_name) - 1] = '\0';
+
     nimcp_mutex_unlock(&storage->incident_mutex);
 
     // Log to console
     LOG_INFO("Incident logged: type=%d severity=%.2f action=%d",
                        incident->violation_type, incident->severity, incident->action_taken);
+
+    /* W11: emit KG incident event (parallels the B-tree / hash storage;
+     * makes the incident queryable by KG consumers). */
+    {
+        brain_t kg_brain = engine->host_brain;
+        if (kg_brain) {
+            w11_emit_ethics_incident(kg_brain,
+                                     kg_incident_id,
+                                     kg_violation,
+                                     kg_severity,
+                                     kg_action,
+                                     kg_policy_id,
+                                     kg_policy_name);
+        }
+    }
 
     return true;
 }

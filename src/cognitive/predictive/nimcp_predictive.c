@@ -31,6 +31,7 @@ BRIDGE_BOILERPLATE(predictive, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
 #include "cognitive/nimcp_predictive.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -479,6 +480,27 @@ float predictive_forward(predictive_network_t net, const float* input,
 
     // Timing disabled for simplicity
     net->total_updates++;
+
+    /* W8: rate-limited emit every 64 forward passes. Emits layer-0 error
+     * norm + current free energy; read-back queries FEP partner. */
+    if ((net->total_updates & 0x3F) == 0) {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain && net->num_layers > 0) {
+            /* Compute L2 of layer-0 prediction error for the event payload. */
+            float err_sq = 0.0f;
+            const float* err = net->layers[0]->prediction_error;
+            uint32_t sz = net->layers[0]->size;
+            if (err && sz > 0) {
+                uint32_t samples = sz < 64 ? sz : 64;
+                for (uint32_t i = 0; i < samples; i++) err_sq += err[i] * err[i];
+                err_sq = sqrtf(err_sq);
+            }
+            world_model_kg_emit_prediction_error(_kg_brain,
+                0, err_sq, net->prev_free_energy);
+            (void)world_model_kg_has_partner(_kg_brain, "cog_fep_free_energy");
+        }
+    }
 
     return net->prev_free_energy;
 }

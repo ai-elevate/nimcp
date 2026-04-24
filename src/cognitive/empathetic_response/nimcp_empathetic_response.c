@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: empathy response events */
 
 #include "cognitive/nimcp_empathetic_response.h"
 #include "cognitive/ethics/nimcp_ethics.h"  /* empathy_network_predict_impact */
@@ -663,6 +664,37 @@ void empathetic_response_track_effectiveness(
             (1.0F - alpha) * engine->strategy_effectiveness[strategy] +
             alpha * effectiveness;
     }
+}
+
+/* ============================================================================
+ * W10 (2026-04-24): KG runtime events for empathetic response.
+ *
+ * Two emits per the task: (1) response-strategy selection at generate exit,
+ * (2) effectiveness update at track_effectiveness exit. Plus one query that
+ * returns the last predicted_safety bias (read-path for crisis gating in
+ * downstream orchestration).
+ *
+ * Hot-path integration: orchestrators that hold a brain_t call these after
+ * `empathetic_response_generate` / `empathetic_response_track_effectiveness`.
+ * ============================================================================ */
+float empathetic_response_wave10_kg_emit_response(
+    struct brain_struct* brain,
+    const empathetic_response_t* response)
+{
+    if (!brain || !response) return 0.5f;
+    wave10_empathy_emit_response(brain,
+        (int)response->primary_strategy,
+        response->requires_human_escalation,
+        response->safety_score);
+    return wave10_empathy_query_safety_bias(brain);
+}
+
+void empathetic_response_wave10_kg_emit_effectiveness(
+    struct brain_struct* brain,
+    float effectiveness_score)
+{
+    if (!brain) return;
+    wave10_empathy_emit_effectiveness(brain, effectiveness_score);
 }
 
 /* ============================================================================

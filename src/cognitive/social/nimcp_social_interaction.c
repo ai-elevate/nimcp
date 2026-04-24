@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: social episode events */
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -812,6 +813,18 @@ int nimcp_social_run_episode(nimcp_social_interaction_t* si,
               result ? result->belief_convergence : 0.0f,
               result ? result->tom_accuracy : 0.0f,
               total_messages);
+
+    /* W10 (2026-04-24): emit episode outcome + query convergence bias. */
+    if (si->brain && result) {
+        wave10_social_emit_episode_outcome(
+            (struct brain_struct*)si->brain,
+            si->num_agents,
+            result->belief_convergence,
+            result->collective_reward);
+        (void)wave10_social_query_convergence_bias(
+            (struct brain_struct*)si->brain);
+    }
+
     return 0;
 }
 

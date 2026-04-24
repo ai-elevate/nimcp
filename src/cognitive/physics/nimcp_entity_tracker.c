@@ -9,6 +9,7 @@
 
 #include "cognitive/physics/nimcp_entity_tracker.h"
 #include "cognitive/physics/nimcp_intuitive_physics.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -216,6 +217,17 @@ int entity_tracker_update(entity_tracker_t* tracker,
 
         if (slot >= tracker->num_entities) tracker->num_entities = slot + 1;
         tracker->total_new_entities++;
+
+        /* W8: emit spawn event for the new entity. */
+        {
+            struct brain_struct* _kg_brain =
+                world_model_kg_events_get_registered_brain();
+            if (_kg_brain) {
+                world_model_kg_emit_entity_event(_kg_brain,
+                    ent->entity_id, 0 /* spawn */,
+                    ent->existence_confidence);
+            }
+        }
     }
 
     /* Mark unmatched visible entities as occluded */
@@ -225,6 +237,17 @@ int entity_tracker_update(entity_tracker_t* tracker,
         if (tracker->entities[e].visibility == ENTITY_VISIBLE) {
             tracker->entities[e].visibility = ENTITY_OCCLUDED;
             tracker->total_occlusions++;
+
+            /* W8: emit occlude event + read-back world-sim partner check. */
+            struct brain_struct* _kg_brain =
+                world_model_kg_events_get_registered_brain();
+            if (_kg_brain) {
+                world_model_kg_emit_entity_event(_kg_brain,
+                    tracker->entities[e].entity_id, 1 /* occlude */,
+                    tracker->entities[e].existence_confidence);
+                (void)world_model_kg_has_partner(_kg_brain,
+                    "cog_physics_world_simulator");
+            }
         }
     }
 

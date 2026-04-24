@@ -45,6 +45,11 @@
 #include "core/brain/regions/neuropeptide/bridges/nimcp_neuropeptide_kg_wiring.h"
 #include "core/brain/regions/sensory_integration/bridges/nimcp_sensory_integration_kg_wiring.h"
 
+/* W10 KG retrofit (2026-04-24): affective / social / ToM / mirror / personality
+ * / empathy / emotion-recognition / grief / shadow / collective cognition
+ * structural roots + runtime emit helpers. */
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"
+
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_region_kg_bridges, MESH_ADAPTER_CATEGORY_SYSTEM)
 
 /**
@@ -85,6 +90,9 @@ bool nimcp_brain_factory_init_region_kg_bridges_subsystem(brain_t brain) {
     (void)nimcp_neuropeptide_kg_wiring_init(brain);
     (void)nimcp_sensory_integration_kg_wiring_init(brain);
 
-    fprintf(stderr, "[W3_REGION_KG] W3+W4 region structural wiring complete\n");
+    /* W10: affective/social 10-module structural roots + cross-edges. */
+    (void)nimcp_wave10_affective_kg_init(brain);
+
+    fprintf(stderr, "[W3_REGION_KG] W3+W4+W10 structural wiring complete\n");
     return true;
 }

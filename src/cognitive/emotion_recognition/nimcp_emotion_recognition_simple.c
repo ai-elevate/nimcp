@@ -18,6 +18,7 @@
 #include <math.h>
 #include "cognitive/nimcp_emotion_recognition.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: emotion detection events */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -216,6 +217,22 @@ bool emotion_recognize_text_simple(
     *arousal = detected_arousal;
 
     return true;
+}
+
+/* ============================================================================
+ * W10 (2026-04-24): KG runtime emit + read-path for emotion detection.
+ *
+ * Callers that hold a brain_t invoke this post-detect to register the
+ * detection in brain->internal_kg and query the last-detection bias.
+ * ============================================================================ */
+float emotion_recognition_simple_wave10_kg_emit(
+    struct brain_struct* brain,
+    const char* emotion_label,
+    float confidence)
+{
+    if (!brain) return 0.5f;
+    wave10_emorec_emit_detection(brain, emotion_label, confidence);
+    return wave10_emorec_query_detection_bias(brain);
 }
 
 /* ============================================================================

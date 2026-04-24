@@ -58,6 +58,14 @@ bool mirror_neurons_observe_action(mirror_neurons_t mirror, const action_t* acti
 
     mirror->last_update_time = nimcp_time_get_ms();
 
+    /* W10 (2026-04-24): emit mirror-activation event + query activity bias
+     * (read-path for other cognitive modules to gauge observation state). */
+    if (mirror->brain) {
+        wave10_mirror_emit_activation(mirror->brain, action_idx,
+                                      activation_strength);
+        (void)wave10_mirror_query_activity_bias(mirror->brain);
+    }
+
     // Broadcast mirror neuron activation via bio-async
     if (activation_strength > 0.5F) {
         bio_broadcast_mirror_fire(mirror, action->action_id, activation_strength);

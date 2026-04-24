@@ -403,6 +403,9 @@ bool nimcp_brain_factory_init_immune_subsystem(brain_t brain)
         return true;  // Non-fatal - continue without immune system
     }
 
+    /* W11: wire brain back-reference so immune events emit to KG. */
+    brain_immune_set_brain_ref(immune, brain);
+
     // Auto-connect to BBB if enabled
     if (immune_config.enable_bbb_integration && brain->bbb_system) {
         if (brain_immune_connect_bbb(immune, brain->bbb_system) == 0) {

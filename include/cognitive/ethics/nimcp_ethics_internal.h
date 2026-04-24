@@ -151,6 +151,12 @@ struct ethics_engine_struct {
     ethics_snn_bridge_t* snn_bridge;
     ethics_plasticity_bridge_t* plasticity_bridge;
     bool bridges_enabled;
+
+    /* W11: optional back-reference to the parent brain for KG event emission.
+     * Set via ethics_engine_set_brain() at brain init time. NULL-safe;
+     * leaving it unset disables W11 KG emission (the bio-async broadcast and
+     * tamper-resistant audit log continue to work as before). */
+    brain_t host_brain;  /* W11 KG emission back-ref */
 };
 
 /**

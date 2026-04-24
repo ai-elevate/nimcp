@@ -17,6 +17,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: mirror activation events */
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_substrate.h"  // Substrate integration (Phase 10.11.2)
 #include "cognitive/mirror_neurons/nimcp_mirror_stdp.h"       // STDP learning (Phase 10.11.4)

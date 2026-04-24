@@ -42,6 +42,19 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
                  "PRIME DIRECTIVE VIOLATION: Golden Rule score %.2f indicates severe "
                  "ethical violation. Action would cause harm you would not want done to you.",
                  golden_rule_score);
+        /* W11: emit KG directive violation event. */
+        {
+            brain_t kg_brain = engine->host_brain;
+            if (kg_brain) {
+                w11_emit_ethics_directive(kg_brain, "golden_rule", false,
+                                          fabsf(golden_rule_score));
+                w11_emit_ethics_evaluation(kg_brain,
+                                           (int)result.primary_violation,
+                                           "golden_rule", false,
+                                           golden_rule_score,
+                                           result.confidence);
+            }
+        }
         return result;
     }
 
@@ -73,6 +86,20 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
         }
 
         __atomic_fetch_add(&engine->violations_detected, 1, __ATOMIC_RELAXED);
+        /* W11: emit KG Asimov directive violation event. */
+        {
+            brain_t kg_brain = engine->host_brain;
+            if (kg_brain) {
+                w11_emit_ethics_directive(kg_brain,
+                                          asimov_law_name(asimov_result.violated_law),
+                                          false, 0.95f);
+                w11_emit_ethics_evaluation(kg_brain,
+                                           (int)result.primary_violation,
+                                           "harm", false,
+                                           golden_rule_score,
+                                           result.confidence);
+            }
+        }
         return result;
     }
 
@@ -103,6 +130,32 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
 
     // Broadcast evaluation result via bio-async
     bio_broadcast_ethics_response(engine, &result, 0);
+
+    /* W11: emit KG evaluation event (additive to bio-async broadcast +
+     * tamper-resistant audit log — does not replace either). */
+    {
+        brain_t kg_brain = engine->host_brain;
+        if (kg_brain) {
+            const char* vtype = "none";
+            switch (result.primary_violation) {
+                case ETHICS_VIOLATION_TYPE_HARM:        vtype = "harm"; break;
+                case ETHICS_VIOLATION_TYPE_UNFAIRNESS:  vtype = "unfairness"; break;
+                case ETHICS_VIOLATION_TYPE_DECEPTION:   vtype = "deception"; break;
+                case ETHICS_VIOLATION_TYPE_AUTONOMY:    vtype = "autonomy"; break;
+                case ETHICS_VIOLATION_TYPE_PRIVACY:     vtype = "privacy"; break;
+                case ETHICS_VIOLATION_TYPE_CONSENT:     vtype = "consent"; break;
+                case ETHICS_VIOLATION_TYPE_DIGNITY:     vtype = "dignity"; break;
+                case ETHICS_VIOLATION_TYPE_GOLDEN_RULE: vtype = "golden_rule"; break;
+                default: break;
+            }
+            w11_emit_ethics_evaluation(kg_brain,
+                                       (int)result.primary_violation,
+                                       vtype,
+                                       result.allowed,
+                                       result.golden_rule_score,
+                                       result.confidence);
+        }
+    }
 
     return result;
 }

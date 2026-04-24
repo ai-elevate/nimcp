@@ -28,6 +28,7 @@ static const int   IMAGINATION_SIM_STEPS     = 3;      /* Number of prospective 
  * NOTE: brain_part_core.c is #included from nimcp_brain.c — brain_kg.h
  * include must live here because brain.c does not transitively expose it. */
 #include "core/brain/nimcp_brain_kg.h"
+#include "security/nimcp_w11_safety_kg_events.h"  /* W11: LGSS KG emission */
 
 static brain_t s_net_main_ann_kg_brain = NULL;
 
@@ -1119,6 +1120,15 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         safety_evaluation_t lgss_input_eval;
         int lgss_input_ret = lgss_evaluate(brain->lgss, &lgss_input_ctx, &lgss_input_eval);
+        /* W11: emit KG evaluation event (every outcome, not just DENY). */
+        if (lgss_input_ret == 0) {
+            w11_emit_lgss_evaluation(brain,
+                                     (int)lgss_input_eval.action,
+                                     (int)lgss_input_eval.max_severity,
+                                     lgss_input_eval.confidence,
+                                     "INPUT_VALIDATOR",
+                                     lgss_input_ctx.action_description);
+        }
         if (lgss_input_ret == 0 && lgss_input_eval.action == SAFETY_ACTION_DENY) {
             nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_INPUT_REJECTED, 2,
                 "LGSS input validator REJECTED inference input: %u features, "
@@ -3525,6 +3535,15 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
 
         safety_evaluation_t lgss_action_eval;
         int lgss_action_ret = lgss_evaluate(brain->lgss, &lgss_action_ctx, &lgss_action_eval);
+        /* W11: emit KG evaluation event (every outcome). */
+        if (lgss_action_ret == 0) {
+            w11_emit_lgss_evaluation(brain,
+                                     (int)lgss_action_eval.action,
+                                     (int)lgss_action_eval.max_severity,
+                                     lgss_action_eval.confidence,
+                                     "ACTION_INTERCEPTOR",
+                                     lgss_action_ctx.action_description);
+        }
         if (lgss_action_ret == 0 && lgss_action_eval.action == SAFETY_ACTION_DENY) {
             /* Block unsafe decision — reduce confidence to zero, tag label */
             decision->confidence = 0.0f;
@@ -4304,6 +4323,15 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
 
         safety_evaluation_t lgss_motor_eval;
         int lgss_motor_ret = lgss_evaluate(brain->lgss, &lgss_motor_ctx, &lgss_motor_eval);
+        /* W11: emit KG evaluation event (every outcome). */
+        if (lgss_motor_ret == 0) {
+            w11_emit_lgss_evaluation(brain,
+                                     (int)lgss_motor_eval.action,
+                                     (int)lgss_motor_eval.max_severity,
+                                     lgss_motor_eval.confidence,
+                                     "MOTOR_GATE",
+                                     lgss_motor_ctx.action_description);
+        }
         if (lgss_motor_ret == 0 && lgss_motor_eval.action == SAFETY_ACTION_DENY) {
             /* Motor gate blocked — zero out output vector and reduce confidence */
             for (uint32_t i = 0; i < decision->output_size; i++) {

@@ -275,7 +275,20 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
     ethics_policies_heartbeat("ethics_polic_ethics_add_policy", 0.0f);
 
     // Add to internal storage
-    return ethics_engine_add_policy_internal(engine, policy);
+    bool ok = ethics_engine_add_policy_internal(engine, policy);
+
+    /* W11: emit KG policy-add event. */
+    if (ok) {
+        brain_t kg_brain = engine->host_brain;
+        if (kg_brain) {
+            w11_emit_ethics_policy_change(kg_brain,
+                                          true /* added */,
+                                          policy->policy_id,
+                                          policy->name);
+        }
+    }
+
+    return ok;
 }
 
 /**
@@ -300,7 +313,20 @@ bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id)
     /* Phase 8: Heartbeat at operation start */
     ethics_policies_heartbeat("ethics_polic_ethics_remove_policy", 0.0f);
 
-    return ethics_engine_remove_policy_internal(engine, policy_id);
+    bool ok = ethics_engine_remove_policy_internal(engine, policy_id);
+
+    /* W11: emit KG policy-remove event. */
+    if (ok) {
+        brain_t kg_brain = engine->host_brain;
+        if (kg_brain) {
+            w11_emit_ethics_policy_change(kg_brain,
+                                          false /* removed */,
+                                          policy_id,
+                                          NULL);
+        }
+    }
+
+    return ok;
 }
 
 /**

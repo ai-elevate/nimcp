@@ -497,6 +497,9 @@ bool init_ethics_engine_subsystem(brain_t brain)
         return true;  /* Don't fail brain init — DoS prevention */
     }
 
+    /* W11: wire brain back-reference so ethics-engine evaluations emit to KG. */
+    ethics_engine_set_brain(brain->ethics, brain);
+
     LOG_MODULE_INFO(LOG_MODULE, "Ethics engine created (mandatory safety dependency)");
     return true;
 }

@@ -59,6 +59,15 @@ int collective_cognition_register_instance(
     cc->instance_count++;
     cc->stats.instances_joined++;
 
+    /* W10 (2026-04-24): emit collective level change + query phi bias.
+     * Uses the newly-registered instance's brain if available. */
+    if (slot->brain) {
+        int lvl = (int)cc->state.consciousness_level;
+        wave10_collective_emit_level_change((struct brain_struct*)slot->brain,
+                                            lvl, slot->local_phi);
+        (void)wave10_collective_query_phi_bias((struct brain_struct*)slot->brain);
+    }
+
     /* Register with subsystems so they can be accessed directly */
     if (cc->hyperscanning) {
         hyperscanning_register_instance(

@@ -43,6 +43,7 @@
 #include "cognitive/nimcp_meta_learning.h"
 #include "security/nimcp_audit_log.h"
 #include "security/lgss/nimcp_lgss.h"
+#include "security/nimcp_w11_safety_kg_events.h"  /* W11: LGSS KG emission */
 #include <math.h>
 #include <string.h>
 #include "utils/math/nimcp_math_helpers.h"
@@ -996,6 +997,15 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
 
         safety_evaluation_t lgss_train_eval;
         int lgss_train_ret = lgss_evaluate(brain->lgss, &lgss_train_ctx, &lgss_train_eval);
+        /* W11: emit KG evaluation event (every outcome). */
+        if (lgss_train_ret == 0) {
+            w11_emit_lgss_evaluation(brain,
+                                     (int)lgss_train_eval.action,
+                                     (int)lgss_train_eval.max_severity,
+                                     lgss_train_eval.confidence,
+                                     "TRAINING_GUARD",
+                                     lgss_train_ctx.action_description);
+        }
         if (lgss_train_ret == 0 && lgss_train_eval.action == SAFETY_ACTION_DENY) {
             nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
                 "LGSS training guard REJECTED learning step: label=%s, nan=%u",
@@ -5640,6 +5650,15 @@ uint32_t brain_apply_reward_learning(brain_t brain, float reward)
 
         safety_evaluation_t lgss_reward_eval;
         int lgss_reward_ret = lgss_evaluate(brain->lgss, &lgss_reward_ctx, &lgss_reward_eval);
+        /* W11: emit KG evaluation event (every outcome). */
+        if (lgss_reward_ret == 0) {
+            w11_emit_lgss_evaluation(brain,
+                                     (int)lgss_reward_eval.action,
+                                     (int)lgss_reward_eval.max_severity,
+                                     lgss_reward_eval.confidence,
+                                     "REWARD_ALIGNMENT",
+                                     lgss_reward_ctx.action_description);
+        }
         if (lgss_reward_ret == 0 && lgss_reward_eval.action == SAFETY_ACTION_DENY) {
             nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_REWARD_BLOCKED, 2,
                 "LGSS reward alignment BLOCKED reward signal: value=%.4f", reward);

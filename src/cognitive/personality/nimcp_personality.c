@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: personality trait events */
 
 #include "cognitive/nimcp_personality.h"
 #include "cognitive/personality/nimcp_personality_snn_bridge.h"
@@ -614,6 +615,28 @@ int personality_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * W10 (2026-04-24): KG runtime trait-expression event + extraversion bias query.
+ *
+ * Callers that hold a brain_t AND a personality_profile_t invoke this to
+ * snapshot the Big-5 trait vector into brain->internal_kg and query back the
+ * stored extraversion bias. Null/disabled-safe.
+ * Hot-path integration point: any orchestrator that applies a personality
+ * profile before social_interaction or empathetic_response invokes this.
+ * ============================================================================ */
+float personality_wave10_kg_sync(struct brain_struct* brain,
+                                 const personality_profile_t* profile)
+{
+    if (!brain || !profile) return 0.5f;
+    /* ONE emit */
+    wave10_personality_emit_trait_expression(brain,
+        profile->traits.openness, profile->traits.conscientiousness,
+        profile->traits.extraversion, profile->traits.agreeableness,
+        profile->traits.neuroticism);
+    /* ONE read/query */
+    return wave10_personality_query_extraversion_bias(brain);
 }
 
 /* ============================================================================

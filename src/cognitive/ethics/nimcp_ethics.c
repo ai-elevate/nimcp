@@ -20,6 +20,7 @@
 #include "nimcp.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_w11_safety_kg_events.h"  /* W11: safety KG emission */
 
 #include <math.h>
 #include <stdint.h>

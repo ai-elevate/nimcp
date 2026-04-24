@@ -13,6 +13,7 @@
 
 #include "cognitive/imagination/nimcp_imagination_workspace.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -505,6 +506,18 @@ scenario_id_t imagination_workspace_allocate_scenario(
     workspace->stats.scenarios_active = workspace->scenario_count;
 
     nimcp_mutex_unlock(workspace->mutex);
+
+    /* W8: emit new scenario event + read-back imagination_engine partner
+     * query so downstream cross-edges can be added later by caller. */
+    {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            world_model_kg_emit_workspace_scenario(_kg_brain,
+                (uint64_t)id, 0, 1.0f);
+            (void)world_model_kg_has_partner(_kg_brain, "imagination_engine");
+        }
+    }
 
     return id;
 }

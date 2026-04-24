@@ -23,6 +23,7 @@
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: ToM belief events */
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -749,6 +750,13 @@ tom_emotion_t tom_infer_emotion(theory_of_mind_t tom, float* confidence)
 
     if (confidence) {
         *confidence = tom->emotion_confidence;
+    }
+
+    /* W10: emit ToM emotion-inference event + query model-count bias. */
+    if (tom->self_brain) {
+        wave10_tom_emit_belief_event(tom->self_brain, 0u, "emotion",
+                                     tom->emotion_confidence);
+        (void)wave10_tom_query_model_count_bias(tom->self_brain);
     }
 
     return tom->current_emotion;

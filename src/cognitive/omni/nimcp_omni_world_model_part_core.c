@@ -823,6 +823,18 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(wm->config.enable_dreaming, NIMCP_ERROR_NOT_IMPLEMENTED, "dreaming not enabled");
 
+    /* W8: KG emit — announce the dream session. Read-path queries whether
+     * the FEP root node is present so we only cross-link when it is. */
+    {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            world_model_kg_emit_wm_step(_kg_brain,
+                (uint64_t)num_episodes, 0.0f, 0.0f);
+            (void)world_model_kg_has_partner(_kg_brain, "cog_fep_free_energy");
+        }
+    }
+
     for (uint32_t ep = 0; ep < num_episodes; ep++) {
         /* Phase 8: Loop progress heartbeat */
         if ((ep & 0xFF) == 0 && num_episodes > 256) {

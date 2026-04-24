@@ -14,6 +14,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "cognitive/imagination/nimcp_imagination_callbacks.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "security/nimcp_w11_safety_kg_events.h"   /* W11: safety KG emission */
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_wiring_helpers.h"

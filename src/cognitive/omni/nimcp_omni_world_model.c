@@ -29,6 +29,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

@@ -9,6 +9,7 @@
 
 #include "cognitive/physics/nimcp_scene_graph.h"
 #include "cognitive/physics/nimcp_intuitive_physics.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -189,6 +190,19 @@ int scene_graph_rebuild(scene_graph_t* graph, const intuitive_physics_engine_t* 
     }
 
     graph->rebuild_count++;
+
+    /* W8: emit every 64 rebuilds to avoid log firehose. Read-back
+     * queries root edge count to confirm KG reception. */
+    if ((graph->rebuild_count & 0x3F) == 0) {
+        struct brain_struct* _kg_brain =
+            world_model_kg_events_get_registered_brain();
+        if (_kg_brain) {
+            world_model_kg_emit_scene_rebuild(_kg_brain,
+                graph->num_relations, graph->rebuild_count);
+            (void)world_model_kg_root_edge_count(_kg_brain,
+                "cog_physics_scene_graph");
+        }
+    }
     return 0;
 }
 

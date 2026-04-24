@@ -20,13 +20,29 @@ int brain_immune_start(brain_immune_system_t* system) {
     system->running = true;
     system->start_time = get_timestamp_ms();
     system->phase = IMMUNE_PHASE_SURVEILLANCE;
+    void* kg_brain = system->brain_ref;
     nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Brain immune system started");
     }
 
+    /* W11: emit KG immune lifecycle event. */
+    if (kg_brain) {
+        w11_emit_immune_lifecycle((struct brain_struct*)kg_brain, "start");
+    }
+
     return 0;
+}
+
+/**
+ * @brief W11: set brain back-reference for KG emission.
+ */
+void brain_immune_set_brain_ref(brain_immune_system_t* system, void* brain) {
+    if (!system) return;
+    nimcp_mutex_lock(system->mutex);
+    system->brain_ref = brain;
+    nimcp_mutex_unlock(system->mutex);
 }
 
 
@@ -45,10 +61,16 @@ int brain_immune_stop(brain_immune_system_t* system) {
 
     nimcp_mutex_lock(system->mutex);
     system->running = false;
+    void* kg_brain = system->brain_ref;
     nimcp_mutex_unlock(system->mutex);
 
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Brain immune system stopped");
+    }
+
+    /* W11: emit KG immune lifecycle event. */
+    if (kg_brain) {
+        w11_emit_immune_lifecycle((struct brain_struct*)kg_brain, "stop");
     }
 
     return 0;
@@ -740,6 +762,8 @@ int brain_immune_present_antigen(
     brain_antigen_t antigen_copy = *antigen;
     void* callback_user_data = system->on_antigen_user_data;
     brain_immune_antigen_cb_t antigen_callback = system->on_antigen;
+    void* kg_brain = system->brain_ref;
+    uint32_t kg_severity = antigen->severity;
 
     nimcp_mutex_unlock(system->mutex);
 
@@ -752,6 +776,23 @@ int brain_immune_present_antigen(
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
             "Antigen presented: id=%u, source=%d, severity=%u",
             new_antigen_id, source, severity);
+    }
+
+    /* W11: emit KG antigen event (additive to the callback dispatch). */
+    if (kg_brain) {
+        const char* src_name = "generic";
+        switch (source) {
+            case ANTIGEN_SOURCE_BBB:     src_name = "bbb_threat";   break;
+            case ANTIGEN_SOURCE_BFT:     src_name = "byzantine";    break;
+            case ANTIGEN_SOURCE_ANOMALY: src_name = "anomaly";      break;
+            case ANTIGEN_SOURCE_SWARM:   src_name = "swarm_threat"; break;
+            case ANTIGEN_SOURCE_MANUAL:  src_name = "manual";       break;
+            default: break;
+        }
+        /* severity ∈ [0..10] in immune convention → map to [0..1]. */
+        float sev_f = (float)kg_severity / 10.0f;
+        if (sev_f > 1.0f) sev_f = 1.0f;
+        w11_emit_immune_antigen((struct brain_struct*)kg_brain, src_name, sev_f);
     }
 
     /* AUTO-RECOGNITION: Check if we've seen this threat before */

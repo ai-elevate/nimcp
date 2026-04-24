@@ -21,6 +21,7 @@
 
 #include "cognitive/nimcp_emotional_system.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave10_affective_kg.h"  /* W10: affective/social KG */
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -1151,6 +1152,27 @@ int emotional_system_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * W10 (2026-04-24): KG runtime event emission + read-path bias query.
+ *
+ * Callers that hold a brain_t AND an emotional_system_t invoke this to sync
+ * current dimensional state into brain->internal_kg and query back the stored
+ * arousal bias. Null/disabled-safe (no-ops if brain or kg unavailable).
+ * Hot-path integration point: emotion_system_set_state() consumers that own
+ * the brain handle (e.g. regulation orchestrators) call this post-update.
+ * ============================================================================ */
+float emotional_system_wave10_kg_sync(struct brain_struct* brain,
+                                      emotional_system_t* system)
+{
+    if (!brain || !system) return 0.5f;
+    emotion_state_t s;
+    if (!emotion_system_get_state(system, &s)) return 0.5f;
+    /* ONE emit at a hot path */
+    wave10_emotions_emit_state_change(brain, s.valence, s.arousal, s.intensity);
+    /* ONE read/query (downstream consumers use this as salience bias) */
+    return wave10_emotions_query_arousal_bias(brain);
 }
 
 /* ============================================================================

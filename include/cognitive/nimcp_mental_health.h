@@ -367,6 +367,18 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
  */
 void mental_health_destroy(mental_health_monitor_t* monitor);
 
+/**
+ * @brief W11: set the back-reference to the parent brain for KG emission.
+ *
+ * Call this at brain init after both the brain and monitor exist. NULL-safe.
+ * Leaving it unset disables W11 KG emission from the monitor (everything
+ * else continues to work).
+ *
+ * @param monitor Mental health monitor.
+ * @param brain   `brain_t` passed as `void*` to avoid a cyclic include.
+ */
+void mental_health_set_brain_ref(mental_health_monitor_t* monitor, void* brain);
+
 //=============================================================================
 // Monitoring API
 //=============================================================================

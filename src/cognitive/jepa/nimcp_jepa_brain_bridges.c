@@ -8,6 +8,7 @@
  */
 #include "cognitive/jepa/nimcp_jepa_brain_bridges.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8 */
 
 #include "cognitive/omni/nimcp_omni_jepa_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromod_jepa_bridge.h"
@@ -161,21 +162,31 @@ void nimcp_jepa_brain_bridges_tick(brain_t brain,
                                    uint32_t num_features) {
     if (!brain) return;
 
+    /* W8: track bridge activity for aggregated KG emit. */
+    uint32_t w8_bridges_active = 0;
+    float w8_loss_sum = 0.0f;
+
     /* --- Self-driving bridges (read their own subsystem state) --- */
     if (brain->neuromod_jepa_bridge) {
         float loss = 0.0f;
         (void)neuromod_jepa_bridge_train_step(
             (neuromod_jepa_bridge_t*)brain->neuromod_jepa_bridge, &loss);
+        w8_bridges_active++;
+        w8_loss_sum += loss;
     }
     if (brain->audio_jepa_bridge) {
         float loss = 0.0f;
         (void)audio_jepa_bridge_train_step(
             (audio_jepa_bridge_t*)brain->audio_jepa_bridge, &loss);
+        w8_bridges_active++;
+        w8_loss_sum += loss;
     }
     if (brain->soma_jepa_bridge) {
         float loss = 0.0f;
         (void)soma_jepa_bridge_train_step(
             (soma_jepa_bridge_t*)brain->soma_jepa_bridge, &loss);
+        w8_bridges_active++;
+        w8_loss_sum += loss;
     }
 
     /* --- Pair-driven bridges (need caller-provided state vector) --- */
@@ -200,5 +211,14 @@ void nimcp_jepa_brain_bridges_tick(brain_t brain,
         (void)cerebellum_jepa_bridge_tick_from_vec(
             (cerebellum_jepa_bridge_t*)brain->cerebellum_jepa_bridge,
             features, num_features);
+    }
+
+    /* W8: aggregate emit at tick end. Read-back: jepa_predictor partner
+     * check so we know the canonical wired node is reachable. */
+    {
+        float avg_loss = (w8_bridges_active > 0)
+            ? (w8_loss_sum / (float)w8_bridges_active) : 0.0f;
+        world_model_kg_emit_jepa_tick(brain, w8_bridges_active, avg_loss);
+        (void)world_model_kg_has_partner(brain, "jepa_predictor");
     }
 }

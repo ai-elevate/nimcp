@@ -259,6 +259,122 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave7_reasoning_knowledge.cpp")
 endif()
 
 # -----------------------------------------------------------------------------
+# Wave W8: world-model / imagination / FEP / predictive / salience family
+# (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave8_world_model_fep.cpp")
+    add_executable(unit_cognitive_kg_test_wave8_world_model_fep
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave8_world_model_fep.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave8_world_model_fep
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave8_world_model_fep
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave8_world_model_fep
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave8_world_model_fep
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave8_world_model_fep
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave8"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave8_world_model_fep")
+endif()
+
+# -----------------------------------------------------------------------------
+# Wave W10: affective / social / ToM / mirror / personality / empathy /
+# emotion-recognition / grief / shadow / collective cognition (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave10_emotion_social.cpp")
+    add_executable(unit_cognitive_kg_test_wave10_emotion_social
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave10_emotion_social.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave10_emotion_social
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave10_emotion_social
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave10_emotion_social
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave10_emotion_social
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave10_emotion_social
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave10"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave10_emotion_social")
+endif()
+
+# -----------------------------------------------------------------------------
+# Wave W11: safety — ethics + LGSS + mental-health + immune (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave11_safety.cpp")
+    add_executable(unit_cognitive_kg_test_wave11_safety
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave11_safety.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave11_safety
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave11_safety
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave11_safety
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave11_safety
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave11_safety
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave11"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave11_safety")
+endif()
+
+# -----------------------------------------------------------------------------
 # Wave W16: real runtime KG consumers (brain_decide salience bias + prior
 # decision recurrence + middleware attention_focus) (2026-04-24)
 # -----------------------------------------------------------------------------
