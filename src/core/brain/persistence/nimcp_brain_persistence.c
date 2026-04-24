@@ -69,6 +69,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "snn/nimcp_snn_types.h"
+#include "snn/nimcp_snn_synapse.h"  /* snn_csr_storage_t for lightweight-pop connection check */
 #include "security/nimcp_path_traversal.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
@@ -1560,25 +1561,40 @@ brain_t brain_load(const char* filepath)
             snn->config.input_current_scale = 70.0f;
             fprintf(stderr, "[INFO] Restored SNN network from %s (input_scale=70)\n", snn_path);
 
-            extern int snn_network_connect_populations(
-                struct snn_network_s*, uint32_t, uint32_t,
-                float, float, float, int);
+            /* Detect existing connections. Pre-G8 populations store synapses
+             * via neural_net->neuron[*]->outgoing. G8 lightweight populations
+             * store them in pop->incoming_csr with n_synapses > 0. We must
+             * check BOTH — prior code only looked at neural_net[0] and saw
+             * "empty" for the entire lightweight fleet, then triggered a
+             * from-scratch rewire via snn_network_connect_populations. That
+             * rewire also had a wrong extern signature (7 params vs 8
+             * actual), so topology silently became garbage, the "random"
+             * branch was skipped, and the inner loop attempted to wire
+             * every src×dst pair — ~3.24 trillion add_entry calls on a
+             * 1.8M×1.8M pair. Result: the loader hung in a CPU-bound loop
+             * that never terminates. */
             bool has_connections = false;
             if (snn->neural_net) {
                 neuron_t* n0 = neural_network_get_neuron(snn->neural_net, 0);
                 if (n0 && sparse_synapse_count(&n0->outgoing) > 0)
                     has_connections = true;
             }
-            if (!has_connections && snn->n_populations >= 2) {
-                int total_conns = 0;
-                for (uint32_t p = 0; p < snn->n_populations - 1; p++) {
-                    total_conns += snn_network_connect_populations(snn, p, p + 1,
-                        0.5f, 0.1f, 0.5f, 0);
+            if (!has_connections) {
+                for (uint32_t p = 0; p < snn->n_populations; p++) {
+                    snn_population_t* pop = snn->populations[p];
+                    if (pop && pop->lightweight && pop->incoming_csr &&
+                        pop->incoming_csr->n_synapses > 0) {
+                        has_connections = true;
+                        break;
+                    }
                 }
-                fprintf(stderr, "[INFO] SNN population wiring: %d random connections (checkpoint had none)\n",
-                        total_conns);
-            } else if (has_connections) {
+            }
+            if (has_connections) {
                 fprintf(stderr, "[INFO] SNN connections restored from checkpoint (BPTT weights preserved)\n");
+            } else if (snn->n_populations >= 2) {
+                fprintf(stderr, "[WARN] SNN checkpoint had no connections and no rewire — "
+                        "skipping reconnect (prior from-scratch rewire path had an ABI "
+                        "mismatch that caused a hang). Restart with --fresh if needed.\n");
             }
         }
 

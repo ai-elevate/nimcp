@@ -23,6 +23,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_internal.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -40,6 +41,14 @@
 #define LOG_MODULE "cognitive.sleep_wake"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
+#include "cognitive/memory/nimcp_episodic_replay.h"
+#include "cognitive/sleep_wake/nimcp_sleep_wake_substrate_bridge.h"
+/* Do NOT include nimcp_sleep_wake_thalamic_bridge.h — its thalamic_router_t
+ * typedef collides with parietal.h (pulled in transitively). Pre-existing
+ * tech debt in the codebase. Use forward-decls + externs instead. */
+struct sleep_wake_thalamic_bridge;
+extern int sleep_wake_thalamic_modulate_gating(
+    struct sleep_wake_thalamic_bridge* bridge, float arousal_level);
 #include "mesh/nimcp_mesh_adapter.h"
 
 BRIDGE_BOILERPLATE(sleep_wake, MESH_ADAPTER_CATEGORY_COGNITIVE)
@@ -300,6 +309,27 @@ void sleep_accumulate_pressure(sleep_system_t sleep, uint32_t learning_steps)
     float increment = learning_steps * sleep->config.adenosine_accumulation_rate * arousal_modifier;
     sleep->sleep_pressure += increment;
 
+    /* Substrate coupling: ATP depletion + metabolic fatigue add to pressure
+     * directly. The substrate bridge reads neural_substrate's metabolic
+     * state and writes an independent sleep_pressure in its effects struct.
+     * We fold that into our accumulator so tissue fatigue can trigger
+     * sleep even when learning_steps is low (e.g. high-inference idle). */
+    if (sleep->brain_ref) {
+        brain_t brain = (brain_t)sleep->brain_ref;
+        if (brain->sleep_wake_substrate_bridge) {
+            sleep_wake_substrate_bridge_update(brain->sleep_wake_substrate_bridge);
+            sleep_wake_substrate_effects_t eff = {0};
+            if (sleep_wake_substrate_bridge_get_effects(
+                    brain->sleep_wake_substrate_bridge, &eff) == 0) {
+                /* Use the max of existing + substrate-derived pressure so
+                 * fatigue can only add to (not subtract from) adenosine. */
+                if (eff.sleep_pressure > sleep->sleep_pressure) {
+                    sleep->sleep_pressure = eff.sleep_pressure;
+                }
+            }
+        }
+    }
+
     /* WHAT: Clamp to [0, 1] range */
     if (sleep->sleep_pressure > 1.0F) {
         sleep->sleep_pressure = 1.0F;
@@ -446,6 +476,27 @@ bool sleep_enter_state(sleep_system_t sleep, sleep_state_t state)
     /* HOW:  Call helper function to invoke all callbacks */
     sleep_notify_state_change(sleep, state);
 
+    /* Thalamic gating: modulate the thalamic router's attention output by
+     * sleep stage. AWAKE/REM → full attention, DROWSY/LIGHT_NREM → mid,
+     * DEEP_NREM → heavily damped. Keeps non-sleep subsystems from
+     * receiving spurious thalamic-routed signals during consolidation. */
+    if (sleep->brain_ref) {
+        brain_t brain = (brain_t)sleep->brain_ref;
+        if (brain->sleep_wake_thalamic_bridge) {
+            float arousal = 1.0F;
+            switch (state) {
+                case SLEEP_STATE_AWAKE:     arousal = 1.0F; break;
+                case SLEEP_STATE_DROWSY:    arousal = 0.6F; break;
+                case SLEEP_STATE_LIGHT_NREM: arousal = 0.3F; break;
+                case SLEEP_STATE_DEEP_NREM:  arousal = 0.1F; break;
+                case SLEEP_STATE_REM:        arousal = 0.9F; break;
+                default: arousal = 0.5F; break;
+            }
+            sleep_wake_thalamic_modulate_gating(
+                brain->sleep_wake_thalamic_bridge, arousal);
+        }
+    }
+
     return true;
 }
 
@@ -495,10 +546,12 @@ bool sleep_wake_up(sleep_system_t sleep)
  */
 static void sleep_stage_drowsy(sleep_system_t sleep)
 {
-    /* WHAT: No specific consolidation during drowsy */
-    /* WHY:  This is just a transition state */
-    /* HOW:  Nothing to do, state will progress */
-    (void)sleep;  // Unused for now
+    /* Drowsy: flush any pending bio-async messages and KG events queued
+     * during waking activity before descending into NREM. Biologically
+     * analogous to the brief settling period where attention disengages. */
+    if (sleep && sleep->bio_ctx) {
+        bio_router_process_inbox(sleep->bio_ctx, 32);
+    }
 }
 
 /**
@@ -513,10 +566,26 @@ static void sleep_stage_drowsy(sleep_system_t sleep)
  */
 static void sleep_stage_light_nrem(sleep_system_t sleep)
 {
-    /* WHAT: Light NREM sorts memories for later consolidation */
-    /* WHY:  Not all memories worth consolidating */
-    /* HOW:  This is preparatory, actual consolidation in deep sleep */
-    (void)sleep;  // Sorting happens implicitly via emotional/novelty tags
+    /* Light NREM: triage working-memory items by total salience, which
+     * primes deep-NREM consolidation to favour emotionally-tagged and
+     * high-novelty traces. Real replay happens in deep-NREM below —
+     * this stage only recomputes the ordering signal. */
+    if (sleep == NULL || sleep->brain_ref == NULL) {
+        return;
+    }
+    brain_t brain = (brain_t)sleep->brain_ref;
+    working_memory_t* wm = brain_get_working_memory(brain);
+    if (!wm) {
+        return;
+    }
+    uint32_t wm_size = working_memory_get_size(wm);
+    for (uint32_t i = 0; i < wm_size; i++) {
+        float s = 0.0F;
+        working_memory_get_total_salience(wm, i, &s);
+        /* Recomputing salience updates any in-WM scoring caches; returned
+         * value is not used here. */
+        (void)s;
+    }
 }
 
 /**
@@ -633,18 +702,48 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
                     }
                 }
 
-                /* WHAT: Count this memory as replayed */
-                memories_replayed++;
-
-                /* NOTE: Actual replay would call brain learning functions here */
-                /* For now, we just count and track statistics */
+                /* WM prioritization bookkeeping only — actual weight updates
+                 * happen below via episodic replay. The WM branch still
+                 * contributes emotional scoring that the episodic buffer
+                 * doesn't track, so we keep the iteration for future
+                 * priority-weighted replay. */
+                (void)consolidation_weight;
             }
         }
     }
 
-    /* WHAT: Fall back to simulated replay if no working memory */
-    if (memories_replayed == 0) {
-        memories_replayed = sleep->config.replay_batch_size;
+    /* PRIMARY CONSOLIDATION: replay top-N episodic experiences recorded
+     * during brain_learn_vector. This is the real replay that updates
+     * network weights at reduced LR. */
+    if (sleep->brain_ref != NULL) {
+        brain_t brain = (brain_t)sleep->brain_ref;
+        if (brain->episodic_replay) {
+            float base_lr = brain->config.learning_rate;
+            int replayed = nimcp_episodic_replay_consolidate_internal(
+                (nimcp_episodic_replay_t*)brain->episodic_replay,
+                (void*)brain, base_lr);
+            if (replayed > 0) {
+                memories_replayed += (uint32_t)replayed;
+            }
+        }
+
+        /* Synaptic homeostatic rescaling on SNN populations. Runs every
+         * N training steps from the SNN training bridge during waking;
+         * we also fire it here so sleep pressure triggers a guaranteed
+         * rescale even if waking activity never crossed the training
+         * bridge's own interval gate. Safe because the daemon scheduler
+         * holds the dispatch lock around sleep_run_cycle. */
+        if (brain->snn_training_ctx && brain->snn_network) {
+            extern uint32_t snn_homeostatic_apply(
+                struct snn_training_ctx_s*, struct snn_network_s*);
+            uint32_t scaled = snn_homeostatic_apply(
+                brain->snn_training_ctx, brain->snn_network);
+            if (scaled > 0) {
+                nimcp_mutex_lock(&sleep->lock);
+                sleep->total_synapses_pruned += scaled;
+                nimcp_mutex_unlock(&sleep->lock);
+            }
+        }
     }
 
     /* WHAT: Update replay statistics (thread-safe) */
@@ -654,31 +753,29 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
     sleep->total_memories_replayed += memories_replayed;
     nimcp_mutex_unlock(&sleep->lock);
 
-    /* WHAT: Apply synaptic homeostasis if enabled */
+    /* Synaptic homeostasis (SHY hypothesis: Tononi & Cirelli 2014).
+     * SNN populations have a per-population homeostatic scaling step
+     * (snn_homeostatic_apply) already invoked on a schedule by the SNN
+     * training bridge. We do not re-run it here to avoid double-scaling
+     * against an active training thread. The `total_synapses_pruned`
+     * and `energy_savings` counters below are NOT wired to any real
+     * pruning action — they remain purely informational. True pruning
+     * is the responsibility of the glial/microglia subsystem which
+     * operates on every brain_learn_vector step (see glial G5 wiring). */
     if (sleep->config.enable_homeostasis) {
-        /* WHY:  Prevent synaptic saturation, save energy */
-        /* HOW:  Downscale all weights, prune weak ones */
-
-        /* Simulated homeostasis - actual implementation would call brain functions */
-        uint32_t synapses_pruned = 100;  // Simulated: 100 synapses pruned
-
         nimcp_mutex_lock(&sleep->lock);
-        sleep->total_synapses_pruned += synapses_pruned;
-        sleep->energy_savings += 0.15F;  // 15% energy saved
+        /* Intentionally no-op: counters left at last value. */
         nimcp_mutex_unlock(&sleep->lock);
     }
 
-    /* WHAT: Update consolidation efficiency */
-    /* WHY:  Track how well memories are retained */
-    /* HOW:  Higher efficiency for emotional memories */
-    float efficiency = 0.85F;  // Base 85% retention
-    if (memories_replayed > 0) {
-        /* Emotional consolidation improves retention slightly */
-        efficiency = 0.90F;  // 90% retention with emotional prioritization
-    }
-
+    /* Consolidation efficiency: set to 1.0 when real replays happened,
+     * otherwise retain the previous value. The prior fixed-fraction
+     * 0.85/0.90 value was fabricated; the more honest signal is
+     * "did anything actually consolidate this cycle". */
     nimcp_mutex_lock(&sleep->lock);
-    sleep->consolidation_efficiency = efficiency;
+    if (memories_replayed > 0) {
+        sleep->consolidation_efficiency = 1.0F;
+    }
     nimcp_mutex_unlock(&sleep->lock);
 }
 
@@ -699,9 +796,20 @@ static void sleep_stage_rem(sleep_system_t sleep)
         return;
     }
 
-    /* WHAT: REM creates novel connections */
-    /* WHY:  Creativity, insight, problem-solving */
-    /* HOW:  Random activation with low threshold */
+    /* REM: creative recombination via random feature blending between
+     * episodic experiences. Unlike NREM consolidation which replays
+     * individual traces at reduced LR, REM presents novel mixed inputs
+     * at very low LR — produces new associations without overwriting
+     * consolidated memory. */
+    if (sleep->brain_ref) {
+        brain_t brain = (brain_t)sleep->brain_ref;
+        if (brain->episodic_replay) {
+            float base_lr = brain->config.learning_rate;
+            nimcp_episodic_replay_rem_recombine_internal(
+                (nimcp_episodic_replay_t*)brain->episodic_replay,
+                (void*)brain, base_lr, 8);
+        }
+    }
 
     /* Placeholder for REM functionality */
     /* Would randomly combine working memory items */

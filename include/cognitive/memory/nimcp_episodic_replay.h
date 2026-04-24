@@ -83,6 +83,43 @@ int nimcp_episodic_replay_consolidate(nimcp_episodic_replay_t* handle,
     nimcp_brain_t brain, float learning_rate);
 
 /**
+ * @brief Consolidate using internal brain_t pointer (for sleep cycle)
+ *
+ * Same behavior as nimcp_episodic_replay_consolidate but takes the internal
+ * brain_t (passed as void* to keep this header free of the internal brain
+ * header) and calls the internal brain_learn_vector directly. Used by the
+ * sleep-wake deep-NREM stage, which holds an internal brain reference and
+ * cannot form the public nimcp_brain_t handle without circular includes.
+ *
+ * @param handle          Replay handle
+ * @param brain_internal  Internal brain_t pointer (from sleep->brain_ref)
+ * @param learning_rate   Base learning rate (scaled by replay_lr_scale)
+ * @return Number of experiences replayed, or -1 on failure
+ */
+int nimcp_episodic_replay_consolidate_internal(nimcp_episodic_replay_t* handle,
+    void* brain_internal, float learning_rate);
+
+/**
+ * @brief REM-style random recombination pass (for sleep_stage_rem).
+ *
+ * Samples random pairs of episodic experiences and replays linearly-mixed
+ * feature vectors at very low learning rate. Biologically analogous to
+ * REM sleep's creative recombination — novel feature combinations are
+ * presented to the network, enabling new associations to form without
+ * disrupting consolidated memory. Uses internal brain_t, not the public
+ * handle.
+ *
+ * @param handle         Replay handle
+ * @param brain_internal Internal brain_t pointer
+ * @param learning_rate  Base LR (will be scaled by replay_lr_scale * 0.3)
+ * @param num_pairs      Number of random pairs to blend (default 8)
+ * @return Number of pairs actually replayed, or -1 on failure
+ */
+int nimcp_episodic_replay_rem_recombine_internal(
+    nimcp_episodic_replay_t* handle,
+    void* brain_internal, float learning_rate, uint32_t num_pairs);
+
+/**
  * @brief Get current number of experiences in buffer
  */
 uint32_t nimcp_episodic_replay_get_buffer_size(const nimcp_episodic_replay_t* handle);

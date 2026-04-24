@@ -48,6 +48,19 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_cognitive, MESH_ADAPTER_CATEGORY_SYSTEM)
 // Subsystem includes (add as needed based on functions)
 #include "glial/integration/nimcp_glial_integration.h"
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
+#include "cognitive/sleep_wake/nimcp_sleep_wake_substrate_bridge.h"
+/* Do NOT include nimcp_sleep_wake_thalamic_bridge.h here: it typedefs
+ * thalamic_router_t against the thalamic_router.h struct forward-decl,
+ * but parietal.h (transitively pulled in via cognitive includes above)
+ * defines thalamic_router_t as a pointer to thalamic_router_struct. The
+ * typedef collision is pre-existing tech debt. We forward-declare the
+ * opaque bridge type + extern the two functions we need instead. */
+struct sleep_wake_thalamic_bridge;
+struct thalamic_router;
+struct sleep_wake_thalamic_config;
+extern struct sleep_wake_thalamic_bridge* sleep_wake_thalamic_bridge_create(
+    void* sleep_wake, struct thalamic_router* router,
+    const struct sleep_wake_thalamic_config* config);
 #include "core/brain_oscillations/nimcp_brain_oscillations.h"
 #include "cognitive/introspection/nimcp_introspection.h"
 #include "cognitive/introspection/nimcp_connectivity_health.h"
@@ -354,6 +367,30 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
 
     // Connect brain reference for working memory access (Phase 10.3 integration)
     sleep_set_brain_reference(brain->sleep_system, (void*)brain);
+
+    /* Sleep-wake bridges: couple sleep cycle to substrate (ATP→pressure) and
+     * thalamic router (arousal→attention gating). Both NULL-tolerant —
+     * absence of substrate/thalamic just skips bridge creation. */
+    brain->sleep_wake_substrate_bridge = NULL;
+    brain->sleep_wake_thalamic_bridge  = NULL;
+    if (brain->substrate_enabled && brain->substrate) {
+        brain->sleep_wake_substrate_bridge = sleep_wake_substrate_bridge_create(
+            brain->sleep_system, brain->substrate, NULL);
+        if (brain->sleep_wake_substrate_bridge) {
+            LOG_INFO("[sleep_wake] substrate bridge created");
+        } else {
+            LOG_WARN("[sleep_wake] substrate bridge creation failed — sleep will not read ATP");
+        }
+    }
+    if (brain->thalamic_router_enabled && brain->thalamic_router) {
+        brain->sleep_wake_thalamic_bridge = sleep_wake_thalamic_bridge_create(
+            brain->sleep_system, brain->thalamic_router, NULL);
+        if (brain->sleep_wake_thalamic_bridge) {
+            LOG_INFO("[sleep_wake] thalamic bridge created");
+        } else {
+            LOG_WARN("[sleep_wake] thalamic bridge creation failed — arousal will not gate attention");
+        }
+    }
 
     /* =========================================================================
      * PHASE M1: Memory Engram System Initialization

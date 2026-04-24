@@ -17,6 +17,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define LOG_MODULE "EPISODIC_REPLAY"
 
@@ -24,6 +25,19 @@
 typedef int nimcp_status_t;
 extern nimcp_status_t nimcp_brain_learn_vector(
     nimcp_brain_t brain,
+    const float* features, uint32_t num_features,
+    const float* target, uint32_t target_size,
+    const char* label, float confidence);
+
+/* Internal brain_learn_vector: used by the sleep cycle, which has only the
+ * internal brain_t (void* here to keep this TU header-free of the internal
+ * brain header). The real signature is declared in
+ * include/core/brain/learning/nimcp_brain_learning.h:
+ *   float brain_learn_vector(brain_t, const float*, uint32_t,
+ *                            const float*, uint32_t, const char*, float);
+ * brain_t is itself a pointer typedef, so void* is ABI-compatible. */
+extern float brain_learn_vector(
+    void* brain_internal,
     const float* features, uint32_t num_features,
     const float* target, uint32_t target_size,
     const char* label, float confidence);
@@ -52,6 +66,13 @@ struct nimcp_episodic_replay {
 
     float* importance_scores; /* Scratch buffer for consolidation sort */
     uint32_t* sort_indices;   /* Scratch buffer for sorted indices */
+
+    /* Set true while consolidate is running through brain_learn_vector so
+     * the record hook can skip re-encoding replayed experiences as new
+     * buffer entries. Without this, each replay cycle adds replay_count
+     * fresh slots overwriting the oldest real training experiences — the
+     * buffer would be dominated by recent replays within ~20 cycles. */
+    bool replay_in_progress;
 };
 
 /* ---- helpers ---- */
@@ -202,6 +223,12 @@ int nimcp_episodic_replay_record(nimcp_episodic_replay_t* handle,
         return -1;
     }
 
+    /* Skip re-recording during consolidation — prevents the buffer from
+     * becoming dominated by recent replays. */
+    if (handle->replay_in_progress) {
+        return 0;
+    }
+
     if (num_features > EPISODIC_REPLAY_MAX_FEATURES) {
         LOG_WARN("[%s] Clamping num_features from %u to %u",
                  LOG_MODULE, num_features, EPISODIC_REPLAY_MAX_FEATURES);
@@ -273,6 +300,8 @@ int nimcp_episodic_replay_consolidate(nimcp_episodic_replay_t* handle,
         return 0;
     }
 
+    handle->replay_in_progress = true;
+
     /* Compute importance for all stored experiences */
     for (uint32_t i = 0; i < handle->buffer_count; i++) {
         handle->importance_scores[i] = compute_importance(
@@ -326,6 +355,181 @@ int nimcp_episodic_replay_consolidate(nimcp_episodic_replay_t* handle,
     LOG_INFO("[%s] Consolidated: replayed %u/%u experiences (lr=%.6f, buffer=%u)",
              LOG_MODULE, replayed, replay_target, replay_lr, handle->buffer_count);
 
+    handle->replay_in_progress = false;
+    return (int)replayed;
+}
+
+int nimcp_episodic_replay_consolidate_internal(nimcp_episodic_replay_t* handle,
+    void* brain_internal, float learning_rate)
+{
+    if (!handle || !brain_internal) {
+        LOG_ERROR("[%s] NULL argument to consolidate_internal", LOG_MODULE);
+        return -1;
+    }
+
+    if (handle->buffer_count == 0) {
+        LOG_DEBUG("[%s] No experiences to replay (internal)", LOG_MODULE);
+        return 0;
+    }
+
+    handle->replay_in_progress = true;
+
+    for (uint32_t i = 0; i < handle->buffer_count; i++) {
+        handle->importance_scores[i] = compute_importance(
+            &handle->buffer[i], handle->total_recorded, &handle->config);
+    }
+
+    sort_by_importance_desc(handle->importance_scores,
+                            handle->sort_indices, handle->buffer_count);
+
+    float replay_lr = learning_rate * handle->config.replay_lr_scale;
+    uint32_t replay_target = handle->config.replay_count;
+    if (replay_target > handle->buffer_count) {
+        replay_target = handle->buffer_count;
+    }
+
+    uint32_t replayed = 0;
+
+    for (uint32_t r = 0; r < replay_target; r++) {
+        uint32_t idx = handle->sort_indices[r];
+        float importance = handle->importance_scores[idx];
+
+        if (importance < handle->config.importance_threshold) {
+            LOG_DEBUG("[%s] Stopping replay at rank %u (importance=%.4f < threshold=%.4f)",
+                      LOG_MODULE, r, importance, handle->config.importance_threshold);
+            break;
+        }
+
+        episodic_experience_t* exp = &handle->buffer[idx];
+        if (!exp->features || exp->num_features == 0) continue;
+
+        float confidence = replay_lr;
+        const char* replay_label = exp->label[0] ? exp->label : "replay";
+
+        float loss = brain_learn_vector(
+            brain_internal,
+            exp->features, exp->num_features,
+            exp->target, exp->target_size,
+            replay_label, confidence);
+
+        if (loss >= 0.0f) {
+            replayed++;
+        } else {
+            LOG_WARN("[%s] brain_learn_vector failed for experience idx=%u (loss=%.2f)",
+                     LOG_MODULE, idx, loss);
+        }
+    }
+
+    LOG_INFO("[%s] Consolidated (internal): replayed %u/%u experiences (lr=%.6f, buffer=%u)",
+             LOG_MODULE, replayed, replay_target, replay_lr, handle->buffer_count);
+
+    handle->replay_in_progress = false;
+    return (int)replayed;
+}
+
+int nimcp_episodic_replay_rem_recombine_internal(
+    nimcp_episodic_replay_t* handle,
+    void* brain_internal, float learning_rate, uint32_t num_pairs)
+{
+    if (!handle || !brain_internal) {
+        return -1;
+    }
+    if (handle->buffer_count < 2 || num_pairs == 0) {
+        return 0;
+    }
+
+    handle->replay_in_progress = true;
+
+    /* Very low LR — REM should not overwrite consolidated memory, only
+     * seed novel associations. */
+    float rem_lr = learning_rate * handle->config.replay_lr_scale * 0.3f;
+    uint32_t replayed = 0;
+
+    /* Scratch buffer for mixed features. Size by the largest source. */
+    uint32_t max_features = 0;
+    uint32_t max_target = 0;
+    for (uint32_t i = 0; i < handle->buffer_count; i++) {
+        if (handle->buffer[i].num_features > max_features) {
+            max_features = handle->buffer[i].num_features;
+        }
+        if (handle->buffer[i].target_size > max_target) {
+            max_target = handle->buffer[i].target_size;
+        }
+    }
+    if (max_features == 0) {
+        handle->replay_in_progress = false;
+        return 0;
+    }
+
+    float* mix_features = nimcp_calloc(max_features, sizeof(float));
+    if (!mix_features) {
+        handle->replay_in_progress = false;
+        return -1;
+    }
+    float* mix_target = NULL;
+    if (max_target > 0) {
+        mix_target = nimcp_calloc(max_target, sizeof(float));
+        if (!mix_target) {
+            nimcp_free(mix_features);
+            handle->replay_in_progress = false;
+            return -1;
+        }
+    }
+
+    for (uint32_t p = 0; p < num_pairs; p++) {
+        /* Pick two distinct random indices. */
+        uint32_t a = (uint32_t)(rand() % handle->buffer_count);
+        uint32_t b = (uint32_t)(rand() % handle->buffer_count);
+        if (a == b) {
+            b = (a + 1) % handle->buffer_count;
+        }
+        episodic_experience_t* ea = &handle->buffer[a];
+        episodic_experience_t* eb = &handle->buffer[b];
+        if (!ea->features || !eb->features ||
+            ea->num_features == 0 || eb->num_features == 0) {
+            continue;
+        }
+
+        /* Random blend ratio in [0.3, 0.7] — keeps both traces visible. */
+        float alpha = 0.3f + 0.4f * ((float)rand() / (float)RAND_MAX);
+        uint32_t nf = ea->num_features < eb->num_features
+                        ? ea->num_features : eb->num_features;
+        for (uint32_t i = 0; i < nf; i++) {
+            mix_features[i] = alpha * ea->features[i] +
+                              (1.0f - alpha) * eb->features[i];
+        }
+
+        /* Blend target analogously if both present. */
+        uint32_t nt = 0;
+        if (ea->target && eb->target &&
+            ea->target_size > 0 && eb->target_size > 0) {
+            nt = ea->target_size < eb->target_size
+                    ? ea->target_size : eb->target_size;
+            if (mix_target) {
+                for (uint32_t i = 0; i < nt; i++) {
+                    mix_target[i] = alpha * ea->target[i] +
+                                    (1.0f - alpha) * eb->target[i];
+                }
+            }
+        }
+
+        float loss = brain_learn_vector(
+            brain_internal,
+            mix_features, nf,
+            (nt > 0 ? mix_target : NULL), nt,
+            "rem_recombine", rem_lr);
+        if (loss >= 0.0f) {
+            replayed++;
+        }
+    }
+
+    if (mix_target) nimcp_free(mix_target);
+    nimcp_free(mix_features);
+
+    LOG_INFO("[%s] REM recombine: %u/%u pairs blended (lr=%.6f)",
+             LOG_MODULE, replayed, num_pairs, rem_lr);
+
+    handle->replay_in_progress = false;
     return (int)replayed;
 }
 
