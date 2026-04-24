@@ -91,13 +91,21 @@ void net_main_ann_kg_trigger_event(brain_t brain, const char* kind,
  * Consumer A — salience bias via insula outgoing edges (up to +0.05).
  * Consumer B — prior-decision recurrence (+0.02 if history node exists,
  *              else create it so future calls find it).
+ *
+ * `from_cache` param (2026-04-24 fix): skip Consumer B on cache-hit
+ * paths so identical repeated inputs return stable confidence. The
+ * recurrence marker should be created/consulted once per unique input,
+ * not on every cache access. Consumer A still runs on cache hits because
+ * its salience bias reflects current KG state (which may have changed
+ * since the cached decision was computed).
  * Bumps brain->kg_consumer_hits for every hit. Null-safe. */
-static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision)
+static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision,
+                                    bool from_cache)
 {
     if (!brain || !decision) return;
     if (!brain->internal_kg_enabled || !brain->internal_kg) return;
 
-    /* Consumer A — KG salience bias */
+    /* Consumer A — KG salience bias (runs on both fresh and cached paths) */
     brain_kg_node_id_t salience_root = brain_kg_find_node(
         brain->internal_kg, "insula");
     if (salience_root != BRAIN_KG_INVALID_NODE) {
@@ -115,6 +123,10 @@ static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision)
     }
 
     /* Consumer B — prior-decision recurrence.
+     * Gated on from_cache=false: cached decisions already incorporated
+     * this consumer's boost on their original (non-cached) call. Re-running
+     * on every cache hit would monotonically increase confidence with each
+     * repeated identical input, breaking determinism tests.
      *
      * Walkthrough bug-fix (2026-04-24): use max-VALUE argmax (NaN-safe) to
      * match determine_output_label. Previous code used |value| argmax, so
@@ -122,6 +134,7 @@ static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision)
      * canonical label — recurrence tracking was indexed against the wrong
      * action for signed outputs. If every output is NaN/Inf, skip this
      * consumer entirely (argmax is undefined). */
+    if (from_cache) return;
     if (decision->output_vector && decision->output_size > 0) {
         uint32_t argmax = 0;
         float mx = -FLT_MAX;
@@ -1233,10 +1246,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             // Use atomic increment for thread-safe stats update
             __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
             /* W16: apply KG consumers on cache hits too — the KG may have
-             * changed between calls (new salience events, or this argmax is
-             * now a recurrence). Otherwise cache hits bypass the consumer
-             * entirely and the KG never influences repeat inputs. */
-            w16_apply_kg_consumers(brain, cached_copy);
+             * changed between calls (new salience events). Pass from_cache=true
+             * so Consumer B (decision_history recurrence) is skipped — it
+             * already ran on the original non-cached call and re-running it
+             * would monotonically increase confidence across repeat inputs. */
+            w16_apply_kg_consumers(brain, cached_copy, /*from_cache=*/true);
             nimcp_free(local_features);
             return cached_copy;
         }
@@ -2043,7 +2057,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
         /* W16: apply KG consumers on the fast path too so classification-mode
          * inference still gets the salience-bias + prior-decision boosts. */
-        w16_apply_kg_consumers(brain, decision);
+        w16_apply_kg_consumers(brain, decision, /*from_cache=*/false);
 
         // Cache decision
         if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
@@ -2072,7 +2086,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         update_inference_stats(brain, decision);
 
         /* W16: apply KG consumers on training fast path too. */
-        w16_apply_kg_consumers(brain, decision);
+        w16_apply_kg_consumers(brain, decision, /*from_cache=*/false);
 
         if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
             cache_decision(brain, features, num_features, decision);
@@ -4639,8 +4653,9 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
 
     /* W16-A + W16-B: KG salience bias + prior-decision recurrence.
      * Makes the KG actually affect brain_decide's output. See
-     * w16_apply_kg_consumers() for details. */
-    w16_apply_kg_consumers(brain, decision);
+     * w16_apply_kg_consumers() for details. Full-pipeline path — never
+     * from cache, so both consumers apply. */
+    w16_apply_kg_consumers(brain, decision, /*from_cache=*/false);
 
     brain_clear_error();
     return decision;

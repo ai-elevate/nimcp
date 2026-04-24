@@ -513,9 +513,52 @@ brain_kg_node_id_t brain_kg_add_node(
     }
 
     if (!node) {
-        nimcp_mutex_unlock(kg->mutex);
-        NIMCP_LOGGING_ERROR("Node capacity reached (%u)", kg->node_capacity);
-        return BRAIN_KG_INVALID_NODE;
+        /* Capacity reached — try LRU eviction of the oldest event node.
+         * Event nodes are identifiable by the "_event_" substring in their
+         * name (convention established by W2-W15 emit helpers). Structural
+         * nodes (regions, cognitive roots, networks) are NEVER evicted
+         * because they're referenced by edges from many event nodes and
+         * removal would orphan those edges. When the KG is full of
+         * structural nodes (no event nodes to evict), we genuinely are
+         * out of room and return INVALID. */
+        brain_kg_node_t* victim = NULL;
+        uint32_t victim_slot = 0;
+        uint64_t oldest_time = UINT64_MAX;
+        for (uint32_t i = 0; i < kg->node_capacity; i++) {
+            if (kg->nodes[i].in_use &&
+                strstr(kg->nodes[i].name, "_event_") != NULL &&
+                kg->nodes[i].created_time < oldest_time) {
+                oldest_time = kg->nodes[i].created_time;
+                victim = &kg->nodes[i];
+                victim_slot = i;
+            }
+        }
+        if (!victim) {
+            nimcp_mutex_unlock(kg->mutex);
+            NIMCP_LOGGING_ERROR(
+                "Node capacity reached (%u) with no evictable event nodes",
+                kg->node_capacity);
+            return BRAIN_KG_INVALID_NODE;
+        }
+        /* Evict: remove edges referencing the victim, drop from hash index,
+         * clear in_use. Caller reuses the slot below. */
+        brain_kg_node_id_t victim_id = victim->id;
+        for (uint32_t i = 0; i < kg->edge_capacity; i++) {
+            if (kg->edges[i].in_use &&
+                (kg->edges[i].from == victim_id ||
+                 kg->edges[i].to   == victim_id)) {
+                kg->edges[i].in_use = false;
+                kg->edge_count--;
+                kg->stats.total_edges--;
+                kg->stats.edges_by_type[kg->edges[i].type]--;
+            }
+        }
+        name_hash_remove_unlocked(kg, victim->name, victim_slot);
+        kg->stats.nodes_by_type[victim->type]--;
+        victim->in_use = false;
+        kg->node_count--;
+        node = victim;
+        node_slot = victim_slot;
     }
 
     /* Initialize node */

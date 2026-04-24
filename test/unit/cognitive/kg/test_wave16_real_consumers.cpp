@@ -166,28 +166,34 @@ TEST_F(Wave16ConsumersTest, BrainDecideBumpsKGConsumerHitsAndBoostsOnRecurrence)
 
 TEST_F(Wave16ConsumersTest, ConsumerAGracefullySkipsWhenInsulaAbsent) {
     /* Do NOT seed insula. If insula wasn't created by brain init, Consumer A
-     * should no-op. Consumer B still fires on first call (creates node) and
-     * second call (finds it). */
+     * should no-op. Consumer B fires on the first call (creates node) and
+     * on a NON-CACHED subsequent call with a different input whose argmax
+     * happens to match (finds the node). The from_cache guard in
+     * w16_apply_kg_consumers skips Consumer B on cache-hit paths to keep
+     * repeated-identical-input decisions deterministic — we use distinct
+     * feature vectors here to exercise the non-cache path twice. */
     brain_kg_node_id_t insula_pre =
         brain_kg_find_node(brain->internal_kg, "insula");
 
     uint64_t hits_initial = __atomic_load_n(&brain->kg_consumer_hits,
                                             __ATOMIC_RELAXED);
 
-    std::vector<float> features(8, 0.1f);
-    features[1] = 2.0f;
+    std::vector<float> features1(8, 0.1f);
+    features1[1] = 2.0f;
+    std::vector<float> features2(8, 0.3f);  /* distinct → avoids cache hit */
+    features2[1] = 2.1f;
 
-    brain_decision_t* d1 = brain_decide(brain, features.data(), 8);
+    brain_decision_t* d1 = brain_decide(brain, features1.data(), 8);
     ASSERT_NE(d1, nullptr);
-    brain_decision_t* d2 = brain_decide(brain, features.data(), 8);
+    brain_decision_t* d2 = brain_decide(brain, features2.data(), 8);
     ASSERT_NE(d2, nullptr);
 
     uint64_t hits_final = __atomic_load_n(&brain->kg_consumer_hits,
                                           __ATOMIC_RELAXED);
 
-    /* Consumer B fires on second call regardless of insula state. */
+    /* Consumer B fires at least once per non-cached brain_decide. */
     EXPECT_GT(hits_final, hits_initial)
-        << "Consumer B should fire on recurrence even when insula is absent";
+        << "Consumer B should fire on non-cached calls even when insula is absent";
 
     (void)insula_pre;  /* silence unused warning when insula was auto-created */
 

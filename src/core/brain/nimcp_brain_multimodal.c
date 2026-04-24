@@ -60,6 +60,14 @@
 #include "mesh/nimcp_mesh_participant.h"
 #include "mesh/nimcp_mesh_adapter.h"
 #include "constants/nimcp_buffer_constants.h"
+/* cochlea_process via extern using void* — including perception/nimcp_cochlea.h
+ * here pulls in a medulla_t / thalamus_t typedef that collides with other
+ * headers included transitively via nimcp_brain.c. Pointer-typed parameters
+ * are ABI-compatible with the real cochlea_t* / cochlea_output_t* so this
+ * declaration links cleanly. */
+extern nimcp_error_t cochlea_process(
+    void* cochlea, const float* audio_in,
+    uint32_t num_samples, void* output);
 
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_multimodal, MESH_ADAPTER_CATEGORY_COGNITIVE)
 
@@ -1287,4 +1295,17 @@ bool brain_process_features_with_text(brain_t brain,
 
     memset(output, 0, sizeof(*output));
     return brain_process_multimodal(brain, &input, output);
+}
+
+bool brain_feed_audio(brain_t brain,
+                      const float* audio,
+                      uint32_t num_samples)
+{
+    if (!brain || !audio || num_samples == 0) return false;
+    if (!brain->cochlea || !brain->cochlea_output_buffer) return false;
+
+    nimcp_error_t err = cochlea_process(
+        (void*)brain->cochlea, audio, num_samples,
+        (void*)brain->cochlea_output_buffer);
+    return err == NIMCP_SUCCESS;
 }

@@ -112,6 +112,32 @@ bool brain_process_features_with_text(brain_t brain,
                                       const char* text,
                                       brain_multimodal_output_t* output);
 
+/**
+ * @brief Feed raw audio into the brain's cochlea — populates
+ *        `brain->cochlea_output_buffer` so the 11 cochlea consumer
+ *        bridges see live data instead of the zero-init placeholder.
+ *
+ * WHY:  The brain owns a single shared cochlea_output_t buffer that all
+ *       downstream bridges read from. Without a caller pushing audio in,
+ *       the buffer stays zeroed and bridges process silence forever.
+ *       This is the designed entry point — the Python binding or
+ *       training script calls it whenever audio is available, and the
+ *       next region_cycles tick pass propagates the output.
+ *
+ * HOW:  Invokes `cochlea_process(brain->cochlea, audio, num_samples,
+ *       brain->cochlea_output_buffer)`. Null-safe on missing cochlea or
+ *       buffer. Does NOT trigger bridge ticks — those fire on the
+ *       coordinator's cadence.
+ *
+ * @param brain        Brain handle
+ * @param audio        Mono float audio (required, length=num_samples)
+ * @param num_samples  Sample count
+ * @return true on success, false if audio/cochlea/buffer absent
+ */
+bool brain_feed_audio(brain_t brain,
+                      const float* audio,
+                      uint32_t num_samples);
+
 #ifdef __cplusplus
 }
 #endif
