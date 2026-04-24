@@ -12,6 +12,7 @@
 
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/graphs/nimcp_graph_theory_bridge.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"
@@ -79,6 +80,9 @@ struct graph_theory_bridge {
 
     /** Next request ID */
     uint64_t next_request_id;
+
+    /** W15: brain backpointer for admin-token self-elevation on runtime emit */
+    brain_t kg_brain;
 };
 
 //=============================================================================
@@ -1250,4 +1254,84 @@ static uint32_t* louvain_communities(NimcpGraph* graph, uint32_t* num_communitie
     }
 
     return assignments;
+}
+
+/*=============================================================================
+ * W15: Runtime metric-event emission + read path (graph_theory)
+ *
+ * Rate-limit: emit only when analysis-complete fires or a metric crosses
+ * a threshold. Never inside the inner graph walk.
+ *===========================================================================*/
+
+void graph_theory_kg_register_brain(graph_theory_bridge_t bridge, brain_t brain) {
+    if (!bridge) return;
+    bridge->kg_brain = brain;
+}
+
+void graph_theory_kg_trigger_metric_event(graph_theory_bridge_t bridge,
+                                          const char* kind,
+                                          float metric,
+                                          uint64_t ts_us) {
+    if (!bridge || !kind) return;
+    if (!bridge->kg) return;
+
+    brain_kg_t* kg = bridge->kg;
+
+    /* Admin-token self-elevation when we have the brain handle. */
+    uint64_t token = 0;
+    brain_t b = bridge->kg_brain;
+    if (b) token = b->internal_kg_admin_token;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN, token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "graph_theory_event_%s_%llu",
+             kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "Graph-theory metric event: kind=%s value=%.6f",
+             kind, metric);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_UTILITY, desc);
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t owner = brain_kg_find_node(kg, "graph_theory");
+        if (owner != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+                "metric_event", metric);
+        }
+        char buf[48];
+        snprintf(buf, sizeof(buf), "%.6f", metric);
+        brain_kg_add_metadata(kg, ev, "metric", buf);
+        brain_kg_add_metadata(kg, ev, "kind", kind);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+uint32_t graph_theory_kg_count_metric_events(graph_theory_bridge_t bridge,
+                                             const char* kind_substr) {
+    if (!bridge || !bridge->kg) return 0;
+    brain_kg_node_id_t root = brain_kg_find_node(bridge->kg, "graph_theory");
+    if (root == BRAIN_KG_INVALID_NODE) return 0;
+    brain_kg_edge_list_t* out = brain_kg_get_outgoing(bridge->kg, root);
+    if (!out) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < out->count; ++i) {
+        const brain_kg_edge_t* e = out->edges[i];
+        if (!e) continue;
+        const brain_kg_node_t* to = brain_kg_get_node(bridge->kg, e->to);
+        if (!to) continue;
+        if (!kind_substr || !*kind_substr) {
+            count++;
+        } else if ((to->name && strstr(to->name, kind_substr)) ||
+                   (to->description && strstr(to->description, kind_substr))) {
+            count++;
+        }
+    }
+    brain_kg_edge_list_destroy(out);
+    return count;
 }

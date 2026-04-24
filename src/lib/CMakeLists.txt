@@ -541,7 +541,16 @@ set(NIMCP_CORE_SOURCES
     # W10 KG retrofit (2026-04-24): affective/social/ToM/mirror/empathy runtime emit + query helpers
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bridges/nimcp_wave10_affective_kg.c                                         # W10 affective/social KG runtime events
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_kg_bridges.c                   # W3+W4+W10 region KG init wave
+    # W13 KG retrofit (2026-04-24): curiosity/meta/consolidation/sleep-wake/curriculum/analogy/multiscale/contrastive-self
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bridges/nimcp_wave13_metacog_kg.c                                           # W13 meta-cognitive KG runtime events
+
+    # W14 KG retrofit (2026-04-24): math disciplines + game-theory + parietal genius + financial orchestrator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bridges/nimcp_wave14_math_genius_kg.c                                       # W14 math/game/genius KG runtime events
+
+    # W12 KG retrofit (2026-04-24): language + communication runtime emit helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/bridges/nimcp_w12_language_kg_events.c                                      # W12 language/communication KG runtime events
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_kg_bridges.c                   # W3+W4+W10+W12+W13+W14 region KG init wave
 
     # W5 KG retrofit (2026-04-24): 6 network-type KG structural wirings
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_network_kg_wiring.c                   # W5 network-type KG init wave (Wave 32)
@@ -866,6 +875,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_kg_events.c  # W6: KG event emitters for memory family
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/world_model/nimcp_world_model_kg_events.c  # W8: KG event emitters for world-model / imagination / FEP / predictive / salience family
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/executive/nimcp_w9kg_events.c  # W9-kg: KG helpers for cognitive-control family
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram_jepa_bridge.c  # Phase 4p: engram ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_consolidation_jepa_bridge.c  # Phase 4t: consolidation ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator

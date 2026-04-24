@@ -805,6 +805,25 @@ const char* insight_get_last_error(void) {
 }
 
 /* ============================================================================
+ * W14 (2026-04-24): KG runtime emit + read-path for insight discovery.
+ *
+ * Callers that hold a brain_t (e.g. the parietal orchestrator) invoke this
+ * after insight_check_eureka / insight_resolve_impasse to register the
+ * discovery in brain->internal_kg and query the last-surprise bias.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+float insight_discovery_wave14_kg_emit_eureka(
+    struct brain_struct* brain,
+    uint32_t problem_id,
+    float surprise,
+    float elegance)
+{
+    if (!brain) return 0.5f;
+    wave14_insight_emit_eureka(brain, problem_id, surprise, elegance);
+    return wave14_insight_query_surprise_bias(brain);
+}
+
+/* ============================================================================
  * KG SELF-AWARENESS INTEGRATION
  * ============================================================================ */
 

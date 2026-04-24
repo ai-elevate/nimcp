@@ -35,6 +35,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain.h"
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: consolidation cycle events */
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -330,6 +331,14 @@ bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* confi
     /* WHAT: Invoke complete callback if provided */
     if (cfg->on_consolidation_complete) {
         cfg->on_consolidation_complete(cfg->callback_context);
+    }
+
+    /* W13: emit consolidation-cycle event to KG. */
+    if (success) {
+        uint32_t strengthened = (uint32_t)g_sync_stats.connections_strengthened;
+        uint32_t pruned = (uint32_t)g_sync_stats.connections_pruned;
+        wave13_consolidation_emit_cycle(brain, strengthened, pruned,
+                                        g_sync_stats.last_consolidation_time_ms);
     }
 
     return success;

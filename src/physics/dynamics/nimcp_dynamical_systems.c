@@ -6,9 +6,11 @@
  */
 
 #include "physics/dynamics/nimcp_dynamical_systems.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <stdio.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -70,6 +72,8 @@ struct dynsys_bridge_struct {
     void* bio_router;
     void* immune;
     bool initialized;
+    /** W15: brain backpointer for runtime emit admin elevation. */
+    brain_t kg_brain;
 };
 
 //=============================================================================
@@ -1046,6 +1050,84 @@ int dynsys_bridge_register_kg(dynsys_bridge_t bridge, brain_kg_t* kg)
     }
 
     return 0;
+}
+
+/*=============================================================================
+ * W15: Runtime bifurcation / attractor-switch event emission + read path
+ *===========================================================================*/
+
+void dynsys_kg_register_brain(dynsys_bridge_t bridge, brain_t brain) {
+    if (!bridge) return;
+    bridge->kg_brain = brain;
+}
+
+void dynsys_kg_trigger_bifurcation_event(dynsys_bridge_t bridge,
+                                         const char* kind,
+                                         float param_value,
+                                         float lyapunov_max,
+                                         uint64_t ts_us) {
+    if (!bridge || !kind || !bridge->kg) return;
+
+    brain_kg_t* kg = bridge->kg;
+    uint64_t token = 0;
+    brain_t b = bridge->kg_brain;
+    if (b) token = b->internal_kg_admin_token;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN, token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "dynamical_systems_event_%s_%llu",
+             kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "Dynamical-systems state transition: kind=%s param=%.4f lambda_max=%.4f",
+             kind, param_value, lyapunov_max);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_UTILITY, desc);
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t owner = brain_kg_find_node(kg, DYNSYS_MODULE_NAME);
+        if (owner != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+                "bifurcation_event",
+                lyapunov_max > 0.0f ? lyapunov_max : 1.0f);
+        }
+        char buf[48];
+        snprintf(buf, sizeof(buf), "%.6f", param_value);
+        brain_kg_add_metadata(kg, ev, "param", buf);
+        snprintf(buf, sizeof(buf), "%.6f", lyapunov_max);
+        brain_kg_add_metadata(kg, ev, "lambda_max", buf);
+        brain_kg_add_metadata(kg, ev, "kind", kind);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+uint32_t dynsys_kg_count_events(dynsys_bridge_t bridge,
+                                const char* kind_substr) {
+    if (!bridge || !bridge->kg) return 0;
+    brain_kg_node_id_t root = brain_kg_find_node(bridge->kg, DYNSYS_MODULE_NAME);
+    if (root == BRAIN_KG_INVALID_NODE) return 0;
+    brain_kg_edge_list_t* out = brain_kg_get_outgoing(bridge->kg, root);
+    if (!out) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < out->count; ++i) {
+        const brain_kg_edge_t* e = out->edges[i];
+        if (!e) continue;
+        const brain_kg_node_t* to = brain_kg_get_node(bridge->kg, e->to);
+        if (!to) continue;
+        if (!kind_substr || !*kind_substr) {
+            count++;
+        } else if ((to->name && strstr(to->name, kind_substr)) ||
+                   (to->description && strstr(to->description, kind_substr))) {
+            count++;
+        }
+    }
+    brain_kg_edge_list_destroy(out);
+    return count;
 }
 
 int dynsys_bridge_register_exception_handler(dynsys_bridge_t bridge, dynsys_exception_handler_t handler)

@@ -34,6 +34,7 @@ BRIDGE_BOILERPLATE(meta_learning, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "cognitive/meta_learning/nimcp_meta_learning_snn_bridge.h"
 #include "cognitive/meta_learning/nimcp_meta_learning_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: meta LR/inner-loop events */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -522,6 +523,14 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
 
     NIMCP_LOGGING_DEBUG("Inner loop complete: %u steps, K=%u support examples",
                        meta->config.inner_steps, num_support);
+
+    /* W13: emit inner-loop completion event against the ORIGINAL brain's KG
+     * (not the clone's — the clone is ephemeral). Best-effort final loss. */
+    if (brain) {
+        float final_loss = compute_loss(cloned, support_inputs,
+                                        support_labels, num_support);
+        wave13_meta_emit_inner_loop(brain, meta->config.inner_steps, final_loss);
+    }
 
     return true;
 }

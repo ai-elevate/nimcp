@@ -14,6 +14,7 @@
 #include "cognitive/nimcp_self_curriculum.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/memory/nimcp_memory.h"
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: curriculum events */
 
 #include <math.h>
 #include <string.h>
@@ -341,6 +342,20 @@ int nimcp_self_curriculum_generate(
             handle->generated_count++;
             total_generated++;
         }
+    }
+
+    /* W13: emit curriculum-advancement event to KG with top uncertainty. */
+    if (total_generated > 0 && n_top > 0) {
+        char top_domain[NIMCP_SC_LABEL_LEN] = {0};
+        /* Reuse first top index to report a representative domain. */
+        if (top_indices[0] < handle->domain_count) {
+            strncpy(top_domain, handle->domain_names[top_indices[0]],
+                    NIMCP_SC_LABEL_LEN - 1);
+        }
+        wave13_curriculum_emit_item_generated(brain, top_domain,
+                                              (uint32_t)total_generated);
+        wave13_curriculum_emit_uncertainty_update(brain, top_domain,
+                                                  top_vals[0]);
     }
 
     return total_generated;

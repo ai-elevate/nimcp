@@ -233,3 +233,17 @@ int genius_gauss_training_step(void* instance, float progress) {
     genius_gauss_heartbeat_instance(g_genius_gauss_health_agent, "genius_gauss_training_step", progress);
     return 0;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for Gauss genius number-theory results.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+void genius_gauss_wave14_kg_emit_result(
+    struct brain_struct* brain,
+    const char* result_label, float confidence)
+{
+    if (!brain) return;
+    wave14_genius_emit_result(brain, "gauss", result_label, confidence);
+    /* Gauss is a number-theory specialist — also emit into the discipline root. */
+    wave14_math_emit_proof(brain, "number_theory", result_label, confidence);
+}

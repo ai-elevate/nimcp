@@ -638,3 +638,17 @@ gfp_poly_t aa_poly_gcd(const gfp_poly_t *a, const gfp_poly_t *b) {
     }
     return r0;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for abstract-algebra results
+ * (group/ring/field proofs, polynomial factorizations, etc.).
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+void abstract_algebra_wave14_kg_emit(
+    struct brain_struct* brain,
+    const char* theorem_label,
+    float confidence)
+{
+    if (!brain) return;
+    wave14_math_emit_proof(brain, "algebra", theorem_label, confidence);
+}

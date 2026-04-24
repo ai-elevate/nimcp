@@ -657,6 +657,51 @@ NIMCP_EXPORT nimcp_error_t nimcp_hh_get_stats(
     float* R_in
 );
 
+//=============================================================================
+// Wave W15: Runtime KG emission + read-path (aggregated, never per-neuron)
+//
+// HH action-potential dynamics run per-tick per-neuron — emitting a KG node
+// every spike would trash the graph. Instead, the emit is aggregated by the
+// caller (e.g. every N spikes, or on firing-mode transitions between
+// quiescent / tonic / bursting).
+//=============================================================================
+
+struct brain_kg;
+
+/**
+ * @brief Register brain handle for HH runtime KG emission.
+ */
+NIMCP_EXPORT void nimcp_hh_kg_register_brain(brain_t brain);
+
+/**
+ * @brief Emit an aggregated HH firing-mode event.
+ *
+ * Rate-limit: emit only on mode-transition (quiescent↔tonic↔bursting) or
+ * every N>=100 spikes. Never call per-spike.
+ *
+ * @param brain       Brain handle (falls back to the registered one if NULL)
+ * @param kind        "mode_tonic", "mode_bursting", "mode_quiescent",
+ *                    "rate_spike", "rheobase_shift"
+ * @param firing_rate Current aggregate firing rate (Hz)
+ * @param spike_count Number of spikes since last emit (rate-limiter check)
+ * @param ts_us       Timestamp in microseconds
+ */
+NIMCP_EXPORT void nimcp_hh_kg_trigger_mode_event(
+    brain_t brain,
+    const char* kind,
+    float firing_rate,
+    uint32_t spike_count,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count HH mode events matching a kind substring.
+ */
+NIMCP_EXPORT uint32_t nimcp_hh_kg_count_events(
+    struct brain_kg* kg,
+    const char* kind_substr
+);
+
 #ifdef __cplusplus
 }
 #endif

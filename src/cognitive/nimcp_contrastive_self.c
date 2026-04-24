@@ -1,6 +1,11 @@
 /**
  * @file nimcp_contrastive_self.c
  * @brief Contrastive self-learning — sharpen categories via hard negatives
+ *
+ * KG INTEGRATION (W13, 2026-04-24): This module is a pure helper with no
+ * brain pointer. Contrastive-record events are emitted to the KG from the
+ * brain-side caller (nimcp_brain_learning.c), where the brain handle is in
+ * scope. See include/cognitive/kg/nimcp_wave13_metacog_kg.h.
  */
 #include "cognitive/nimcp_contrastive_self.h"
 #include "utils/memory/nimcp_memory.h"

@@ -30,6 +30,7 @@
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"

@@ -464,6 +464,52 @@ NIMCP_EXPORT nimcp_info_geom_error_t nimcp_manifold_geodesic(
  */
 NIMCP_EXPORT const char* nimcp_info_geom_error_string(nimcp_info_geom_error_t err);
 
+//=============================================================================
+// Wave W15: Runtime manifold-tracking events (aggregated)
+//
+// Emit only when the natural-gradient speedup ratio or the Fisher
+// conditioning crosses a threshold, or on EMA-warmup completion.
+// Never per-sample / per-Fisher update.
+//=============================================================================
+
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+struct brain_kg;
+
+/**
+ * @brief Register brain handle for info-geom runtime KG emission.
+ */
+NIMCP_EXPORT void nimcp_info_geom_kg_register_brain(brain_t brain);
+
+/**
+ * @brief Emit an aggregated info-geom manifold-tracking event.
+ *
+ * @param brain             Brain handle (falls back to registered)
+ * @param kind              "speedup_shift", "fisher_singular",
+ *                          "embedding_converged", "curvature_spike"
+ * @param speedup_ratio     Natural/standard gradient norm ratio
+ * @param ricci_curvature   Current Ricci curvature (NaN to skip)
+ * @param ts_us             Timestamp in microseconds
+ */
+NIMCP_EXPORT void nimcp_info_geom_kg_trigger_manifold_event(
+    brain_t brain,
+    const char* kind,
+    float speedup_ratio,
+    float ricci_curvature,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count info-geom manifold events.
+ */
+NIMCP_EXPORT uint32_t nimcp_info_geom_kg_count_events(
+    struct brain_kg* kg,
+    const char* kind_substr
+);
+
 #ifdef __cplusplus
 }
 #endif

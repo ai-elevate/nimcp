@@ -4,6 +4,7 @@
 
 #include "cognitive/nimcp_self_model.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 #include "cognitive/self_model/nimcp_self_model_snn_bridge.h"
 #include "cognitive/self_model/nimcp_self_model_plasticity_bridge.h"
 #include "security/nimcp_security.h"
@@ -998,6 +999,43 @@ uint32_t self_model_discover_capabilities_from_kg(self_model_system_t system)
 
     nimcp_mutex_unlock(&system->mutex);
     return discovered;
+}
+
+/* ========================================================================
+ * W9-kg READ-PATH INTEGRATION
+ * ======================================================================== */
+
+/**
+ * @brief W9-kg read-path: query autobiographical events from the KG.
+ *
+ * WHAT: Counts autobiographical event nodes in the KG; the self-model
+ *       uses this as an index of self-evidence. Emits a self_model update
+ *       event so W16 consumers can observe self-model drift.
+ * WHY:  Closes the self_model PARTIAL status. The self-model now grounds
+ *       its trait/capability inferences in the KG's autobiographical
+ *       record rather than in-process state alone.
+ * HOW:  Uses the shared W9-kg helpers. Computes a drift proxy from the
+ *       event count delta over calls (monotonically increases; the
+ *       emitted event carries the running count as drift).
+ *
+ * @param system self-model instance (non-NULL)
+ * @param update_id opaque update id for the emit
+ * @return count of autobiographical event nodes visible in the KG.
+ */
+uint32_t self_model_query_autobio_context(self_model_system_t system,
+                                          uint64_t update_id)
+{
+    if (!system) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return 0;
+
+    uint32_t autobio_count = w9kg_query_self_model_autobio(brain);
+    /* Use autobio_count as a normalized drift proxy in [0,1]. */
+    float drift = (autobio_count > 100) ? 1.0f
+                                        : ((float)autobio_count / 100.0f);
+    w9kg_emit_self_model_update(brain, update_id, drift);
+    return autobio_count;
 }
 
 /* ========================================================================

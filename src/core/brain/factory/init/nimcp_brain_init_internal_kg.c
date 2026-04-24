@@ -38,6 +38,7 @@
 #include "core/brain/nimcp_brain_kg.h"
 #include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: memory family roots */
 #include "cognitive/world_model/nimcp_world_model_kg_events.h"  /* W8: world-model family roots */
+#include "cognitive/executive/nimcp_w9kg_events.h"  /* W9-kg: cognitive-control family roots */
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -269,6 +270,11 @@ bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
     /* W8: register world-model / imagination / FEP / predictive / salience
      * family root nodes. Idempotent and admin-elevates internally. */
     (void)world_model_kg_init_roots(brain);
+
+    /* W9-kg: register cognitive-control family root nodes (attention,
+     * working memory, executive, introspection, self_model, global_workspace,
+     * self_awareness_extended, autobiographical_memory). Idempotent. */
+    (void)w9kg_init_roots(brain);
 
     /* Log statistics */
     log_internal_kg_stats(kg);

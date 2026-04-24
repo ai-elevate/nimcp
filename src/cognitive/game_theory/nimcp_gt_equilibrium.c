@@ -2071,3 +2071,22 @@ int gt_equilibrium_training_step(void* instance, float progress) {
     (void)(struct nimcp_equilibrium_struct*)instance; /* Module state available for step adaptation */
     return 0;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit + read-path for game-theory equilibrium.
+ *
+ * Callers that hold a brain_t invoke this after nimcp_equilibrium_compute /
+ * nimcp_equilibrium_solve to register the equilibrium in brain->internal_kg
+ * and query the last-payoff bias.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+float gt_equilibrium_wave14_kg_emit(
+    struct brain_struct* brain,
+    const char* equilibrium_type,
+    uint32_t num_players,
+    float payoff)
+{
+    if (!brain) return 0.5f;
+    wave14_game_emit_equilibrium(brain, equilibrium_type, num_players, payoff);
+    return wave14_game_query_payoff_bias(brain);
+}

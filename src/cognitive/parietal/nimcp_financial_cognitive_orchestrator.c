@@ -1549,3 +1549,22 @@ int financial_cognitive_orchestrator_training_step(
 
     return FIN_ORCH_ERR_OK;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for financial cognitive orchestrator.
+ *
+ * Callers that hold a brain_t invoke this after financial decision / trade
+ * generation to register the decision in brain->internal_kg and query the
+ * last-expected-return bias.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+float financial_orchestrator_wave14_kg_emit(
+    struct brain_struct* brain,
+    const char* decision_label,
+    float expected_return,
+    float risk)
+{
+    if (!brain) return 0.5f;
+    wave14_financial_emit_decision(brain, decision_label, expected_return, risk);
+    return wave14_financial_query_return_bias(brain);
+}

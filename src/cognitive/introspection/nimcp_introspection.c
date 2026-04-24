@@ -62,6 +62,7 @@
 // Internal Knowledge Graph integration
 #include "core/brain/nimcp_brain_kg_helpers.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 
 #define LOG_MODULE "introspection"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"

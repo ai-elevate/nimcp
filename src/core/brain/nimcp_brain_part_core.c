@@ -29,6 +29,7 @@ static const int   IMAGINATION_SIM_STEPS     = 3;      /* Number of prospective 
  * include must live here because brain.c does not transitively expose it. */
 #include "core/brain/nimcp_brain_kg.h"
 #include "security/nimcp_w11_safety_kg_events.h"  /* W11: LGSS KG emission */
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: analogy + multiscale events */
 
 static brain_t s_net_main_ann_kg_brain = NULL;
 
@@ -4380,10 +4381,16 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
     if (brain->analogical_transfer && decision && decision->output_vector && features) {
         extern int nimcp_analogical_apply_transfer(void*, const float*, uint32_t,
             const float*, uint32_t, float*);
-        nimcp_analogical_apply_transfer(brain->analogical_transfer,
+        int analogy_applied = nimcp_analogical_apply_transfer(brain->analogical_transfer,
             features, num_features,
             decision->output_vector, decision->output_size,
             decision->output_vector);
+        /* W13: emit analogy-match event when a transfer actually happened. */
+        if (analogy_applied) {
+            wave13_analogy_emit_match(brain, "inference",
+                                      decision->confidence,
+                                      decision->confidence);
+        }
     }
 
     /* Multi-timescale memory: push current inference to immediate buffer */
@@ -4392,6 +4399,8 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
         nimcp_multiscale_push(brain->multiscale_memory,
             decision->output_vector, decision->output_size,
             "inference", decision->confidence);
+        /* W13: emit multiscale push event (inference path). */
+        wave13_multiscale_emit_push(brain, "inference", decision->confidence);
     }
 
     /* Inner speech: refine output through self-talk loop */

@@ -607,6 +607,58 @@ NIMCP_EXPORT graph_theory_error_t graph_theory_bridge_register_bio_async(
 );
 
 //=============================================================================
+// Wave W15: Runtime event emission + read-path
+//=============================================================================
+
+/* Forward-declared brain handle for admin-token self-elevation. */
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+/**
+ * @brief Register brain handle with the graph-theory bridge for runtime emit.
+ *
+ * Once registered, `graph_theory_kg_trigger_metric_event` can self-elevate
+ * admin. Pass NULL to clear.
+ */
+NIMCP_EXPORT void graph_theory_kg_register_brain(
+    graph_theory_bridge_t bridge,
+    brain_t brain
+);
+
+/**
+ * @brief Emit an aggregated graph-metric event (modularity / clustering /
+ *        small-world transition / hub change).
+ *
+ * WHAT:  Creates event node `graph_theory_event_<kind>_<ts_us>` with
+ *        metric value + description, and edge back to the `graph_theory`
+ *        root node.
+ * WHY:   Lets downstream reasoners query for recent topology shifts.
+ * WHEN:  Call from analysis-complete callbacks or when a metric crosses
+ *        a configured threshold — never in an inner graph-walk loop.
+ *
+ * @param bridge   Graph theory bridge (must have been registered to KG)
+ * @param kind     Event kind ("modularity_shift", "clustering_drop", ...)
+ * @param metric   Metric value (e.g. the new modularity)
+ * @param ts_us    Timestamp in microseconds
+ */
+NIMCP_EXPORT void graph_theory_kg_trigger_metric_event(
+    graph_theory_bridge_t bridge,
+    const char* kind,
+    float metric,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count graph-theory event nodes matching a kind substring.
+ */
+NIMCP_EXPORT uint32_t graph_theory_kg_count_metric_events(
+    graph_theory_bridge_t bridge,
+    const char* kind_substr
+);
+
+//=============================================================================
 // Centrality Analysis API
 //=============================================================================
 

@@ -375,6 +375,125 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave11_safety.cpp")
 endif()
 
 # -----------------------------------------------------------------------------
+# Wave W13: curiosity / meta-learning / consolidation (cognitive) / sleep-wake /
+# self-curriculum / analogical-transfer / multiscale-memory / contrastive-self
+# (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave13_curiosity_meta.cpp")
+    add_executable(unit_cognitive_kg_test_wave13_curiosity_meta
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave13_curiosity_meta.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave13_curiosity_meta
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave13_curiosity_meta
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave13_curiosity_meta
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave13_curiosity_meta
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave13_curiosity_meta
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave13"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave13_curiosity_meta")
+endif()
+
+# -----------------------------------------------------------------------------
+# Wave W12: language + communication — emergent/inner-speech/native/tokenizer +
+# broca discourse/syntax/pragmatics/multimodal (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave12_language.cpp")
+    add_executable(unit_cognitive_kg_test_wave12_language
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave12_language.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave12_language
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave12_language
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave12_language
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave12_language
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave12_language
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave12"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave12_language")
+endif()
+
+# -----------------------------------------------------------------------------
+# Wave W9-kg: cognitive-control family (attention / WM / executive /
+# introspection / self_model / global_workspace / self_awareness_extended /
+# autobiographical_memory) (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave9kg_attention_wm.cpp")
+    add_executable(unit_cognitive_kg_test_wave9kg_attention_wm
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave9kg_attention_wm.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave9kg_attention_wm
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave9kg_attention_wm
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave9kg_attention_wm
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave9kg_attention_wm
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave9kg_attention_wm
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave9kg"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave9kg_attention_wm")
+endif()
+
+# -----------------------------------------------------------------------------
 # Wave W16: real runtime KG consumers (brain_decide salience bias + prior
 # decision recurrence + middleware attention_focus) (2026-04-24)
 # -----------------------------------------------------------------------------
@@ -449,4 +568,82 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave17_training_consumers.cpp")
     )
 
     message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave17_training_consumers")
+endif()
+
+# -----------------------------------------------------------------------------
+# Wave W14: math disciplines + game-theory + parietal-genius + financial
+# orchestrator (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave14_math_genius.cpp")
+    add_executable(unit_cognitive_kg_test_wave14_math_genius
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave14_math_genius.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave14_math_genius
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave14_math_genius
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave14_math_genius
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave14_math_genius
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave14_math_genius
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave14"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave14_math_genius")
+endif()
+
+# -----------------------------------------------------------------------------
+# Wave W15: physics runtime events (hodgkin-huxley / ephaptic / thermo /
+# info-geom core + 4 PARTIAL bridges) (2026-04-24)
+# -----------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave15_physics.cpp")
+    add_executable(unit_cognitive_kg_test_wave15_physics
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave15_physics.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave15_physics
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave15_physics
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave15_physics
+        PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave15_physics
+        PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave15_physics
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave15"
+            TIMEOUT 180
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave15_physics")
 endif()

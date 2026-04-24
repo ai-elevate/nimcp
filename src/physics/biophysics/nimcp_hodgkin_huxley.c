@@ -4,11 +4,20 @@
 //=============================================================================
 
 #include "physics/biophysics/nimcp_hodgkin_huxley.h"
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
+/* <complex.h> pulled in transitively via brain_internal->brain.h->quantum_walk.h
+ * defines `I` as the imaginary-unit macro, which collides with the local
+ * variable `I` used throughout this file for current. Undef here. */
+#ifdef I
+#undef I
+#endif
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread_pool.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -1207,4 +1216,121 @@ nimcp_error_t nimcp_hh_get_stats(const nimcp_hh_neuron_t* neuron,
     if (R_in) *R_in = neuron->input_resistance;
 
     return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * W15: HH aggregated KG emission + read path
+ *
+ * Rate-limiting: The caller is responsible for aggregating spikes before
+ * calling the trigger. A trigger with spike_count==0 when kind is not a
+ * mode-transition string is rejected. Never call from the per-neuron
+ * update loop.
+ *===========================================================================*/
+
+#define HH_KG_ROOT_NAME "hodgkin_huxley_runtime"
+#define HH_KG_MIN_SPIKE_BATCH 100u  /* Minimum spikes between rate events */
+
+static brain_t s_hh_kg_brain = NULL;
+
+static bool hh_kg_kind_is_mode_transition(const char* kind) {
+    if (!kind) return false;
+    return (strstr(kind, "mode_") != NULL) ||
+           (strstr(kind, "rheobase") != NULL) ||
+           (strstr(kind, "quiescent") != NULL) ||
+           (strstr(kind, "tonic") != NULL) ||
+           (strstr(kind, "bursting") != NULL);
+}
+
+void nimcp_hh_kg_register_brain(brain_t brain) {
+    s_hh_kg_brain = brain;
+}
+
+void nimcp_hh_kg_trigger_mode_event(brain_t brain,
+                                    const char* kind,
+                                    float firing_rate,
+                                    uint32_t spike_count,
+                                    uint64_t ts_us) {
+    if (!brain) brain = s_hh_kg_brain;
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    if (!kind) return;
+
+    /* Rate limit: require either a mode-transition kind OR a batch >= threshold. */
+    if (!hh_kg_kind_is_mode_transition(kind) &&
+        spike_count < HH_KG_MIN_SPIKE_BATCH) {
+        return;
+    }
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    /* Ensure the HH runtime root node exists (idempotent). */
+    brain_kg_node_id_t root = brain_kg_find_node(kg, HH_KG_ROOT_NAME);
+    if (root == BRAIN_KG_INVALID_NODE) {
+        root = brain_kg_add_node(kg, HH_KG_ROOT_NAME,
+            BRAIN_KG_NODE_CORE,
+            "Hodgkin-Huxley runtime aggregator - mode/rate events");
+        /* Hook to the static physics_layer subgraph if present. */
+        brain_kg_node_id_t phys = brain_kg_find_node(kg, "hodgkin_huxley");
+        if (root != BRAIN_KG_INVALID_NODE && phys != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, phys, root,
+                BRAIN_KG_EDGE_INTEGRATES_WITH,
+                "runtime aggregator for biophysics HH", 1.0f);
+        }
+    }
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "hodgkin_huxley_event_%s_%llu",
+             kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "HH aggregated event: kind=%s rate=%.2fHz spike_count=%u",
+             kind, firing_rate, spike_count);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    if (ev != BRAIN_KG_INVALID_NODE && root != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, root, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "hh_runtime_event",
+            firing_rate > 0.0f ? firing_rate : 1.0f);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[48];
+        snprintf(buf, sizeof(buf), "%.3f", firing_rate);
+        brain_kg_add_metadata(kg, ev, "firing_rate_hz", buf);
+        snprintf(buf, sizeof(buf), "%u", spike_count);
+        brain_kg_add_metadata(kg, ev, "spike_count", buf);
+        brain_kg_add_metadata(kg, ev, "kind", kind);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+uint32_t nimcp_hh_kg_count_events(struct brain_kg* kg_opaque,
+                                  const char* kind_substr) {
+    brain_kg_t* kg = (brain_kg_t*)kg_opaque;
+    if (!kg) return 0;
+    brain_kg_node_id_t root = brain_kg_find_node(kg, HH_KG_ROOT_NAME);
+    if (root == BRAIN_KG_INVALID_NODE) return 0;
+    brain_kg_edge_list_t* out = brain_kg_get_outgoing(kg, root);
+    if (!out) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < out->count; ++i) {
+        const brain_kg_edge_t* e = out->edges[i];
+        if (!e) continue;
+        const brain_kg_node_t* to = brain_kg_get_node(kg, e->to);
+        if (!to) continue;
+        if (!kind_substr || !*kind_substr) {
+            count++;
+        } else if ((to->name && strstr(to->name, kind_substr)) ||
+                   (to->description && strstr(to->description, kind_substr))) {
+            count++;
+        }
+    }
+    brain_kg_edge_list_destroy(out);
+    return count;
 }

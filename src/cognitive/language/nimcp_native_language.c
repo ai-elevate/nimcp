@@ -9,6 +9,7 @@
  */
 
 #include "cognitive/language/nimcp_native_language.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -368,6 +369,17 @@ int nimcp_language_generate(nimcp_native_language_t* lang,
 
     nimcp_free(query);
     nimcp_free(original_query);
+
+    /* W12 KG emit: one event per generation call (utterance-level, not
+     * per-token). recent_count is the number of sampled tokens this call. */
+    {
+        uint32_t tokens_out = lang->recent_count;
+        /* Proxy for mean-score: ratio of non-special output len to cap. */
+        float mean_score = (text_pos > 0 && max_text_length > 0)
+            ? (float)text_pos / (float)max_text_length
+            : 0.0f;
+        w12_emit_native_generate_auto(tokens_out, mean_score);
+    }
 
     if (lang->lock) nimcp_mutex_unlock(lang->lock);
     return (int)text_pos;

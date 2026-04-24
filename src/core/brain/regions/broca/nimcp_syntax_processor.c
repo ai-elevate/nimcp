@@ -32,6 +32,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #include "core/brain/regions/broca/nimcp_syntax_processor.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -428,6 +429,13 @@ bool syntax_build_tree(syntax_processor_t* processor) {
 
     processor->stats.successful_parses++;
     processor->stats.sentences_processed++;
+
+    /* W12 KG emit: one node per successful parse tree. Fires at
+     * utterance-level granularity. syntax has its own brain ptr via
+     * `syntax_set_brain`, but we use the registered-brain path for
+     * consistency with the rest of the language stack. */
+    w12_emit_syntax_parse_auto(processor->unit_count,
+                               processor->tree_depth, true);
 
     return true;
 }

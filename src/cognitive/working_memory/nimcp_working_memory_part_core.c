@@ -906,6 +906,41 @@ bool working_memory_query_self_knowledge(working_memory_t* wm)
 }
 
 
+/**
+ * @brief W9-kg read-path: query semantic-memory nodes from KG.
+ *
+ * WHAT: Ask the KG whether a named concept (semantic node) is present;
+ *       if so, this WM instance can defer retrieval to semantic memory
+ *       rather than serving from its bounded cache.
+ * WHY:  Closes the PARTIAL status for WM — it now consults the KG as a
+ *       retrieval source alongside its own buffer. Emits a WM store event
+ *       so W16 consumers see the access.
+ * HOW:  Uses the shared W9-kg helpers. Returns true when the KG has a
+ *       semantic node matching the concept name, false otherwise.
+ *
+ * @param wm working memory instance
+ * @param concept_name canonical concept name to look up
+ * @param item_id logical WM item id to associate with the lookup (for emit)
+ * @param priority salience priority for the lookup
+ * @return true if KG has a semantic node for this concept
+ */
+bool working_memory_query_semantic_kg(working_memory_t* wm,
+                                      const char* concept_name,
+                                      uint64_t item_id,
+                                      float priority)
+{
+    if (!wm) return false;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return false;
+
+    bool has_concept = w9kg_query_wm_has_semantic(brain, concept_name);
+    /* Record the WM access in the KG so downstream consumers see it. */
+    w9kg_emit_wm_item_stored(brain, item_id, priority);
+    return has_concept;
+}
+
+
 /* ============================================================================
  * Phase 8: Training Integration (Full Implementation)
  * ============================================================================ */

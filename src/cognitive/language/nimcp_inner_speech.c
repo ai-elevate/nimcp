@@ -8,6 +8,7 @@
  */
 
 #include "cognitive/language/nimcp_inner_speech.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -235,6 +236,18 @@ int nimcp_inner_speech_refine(nimcp_inner_speech_t* handle,
     }
 
     LOG_INFO("[%s] Refined in %u iterations", LOG_MODULE, handle->last_iterations);
+
+    /* W12 KG emit: one event per completed refinement cycle (not per
+     * inner iteration). Fires at utterance-level granularity, so no
+     * extra rate limiting needed. */
+    {
+        uint32_t iters = handle->last_iterations;
+        float last_cos = 0.0f;
+        if (iters > 0 && iters <= INNER_SPEECH_MAX_ITER) {
+            last_cos = handle->convergence_history[iters - 1];
+        }
+        w12_emit_inner_speech_refine_auto(iters, last_cos);
+    }
     return 0;
 }
 

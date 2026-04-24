@@ -10,6 +10,12 @@
  * DEPENDENCIES: None (standalone cognitive module)
  * TRAINING_IMPACT: None (inference-only memory system)
  *
+ * KG INTEGRATION (W13, 2026-04-24): This module is a pure helper with no
+ * brain pointer. Multi-timescale push events are emitted to the KG from the
+ * brain-side callers (nimcp_brain_part_core.c inference path and
+ * nimcp_brain_learning.c training path) where the brain handle is in scope.
+ * See include/cognitive/kg/nimcp_wave13_metacog_kg.h.
+ *
  * @author Claude Code
  * @date 2026-03
  */

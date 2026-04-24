@@ -152,3 +152,17 @@ int genius_newton_training_step(void* instance, float progress) {
     genius_newton_heartbeat_instance(g_genius_newton_health_agent, "genius_newton_training_step", progress);
     return 0;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for Newton genius calculus + mechanics.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+void genius_newton_wave14_kg_emit_result(
+    struct brain_struct* brain,
+    const char* result_label, float confidence)
+{
+    if (!brain) return;
+    wave14_genius_emit_result(brain, "newton", result_label, confidence);
+    /* Newton co-invented calculus — also emit into the discipline root. */
+    wave14_math_emit_proof(brain, "calculus", result_label, confidence);
+}

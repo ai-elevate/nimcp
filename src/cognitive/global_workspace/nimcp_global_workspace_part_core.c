@@ -797,6 +797,42 @@ int global_workspace_query_competition_knowledge(kg_reader_t* kg) {
 
 
 /* ============================================================================
+ * W9-kg READ-PATH INTEGRATION (internal_kg)
+ * ============================================================================ */
+
+/**
+ * @brief W9-kg read-path: query prior winners by salience (outgoing edges
+ *        from `cog_global_workspace` root node).
+ *
+ * WHAT: Counts outgoing edges from the GWS root node in the internal KG,
+ *       and emits a competition event noting how many competitors are
+ *       currently in the pool. Completes GWS from UNWIRED (in internal_kg)
+ *       to fully WIRED (structural root + write in broadcast_winner + read
+ *       in this fn).
+ * WHY:  Lets GWS see how many prior broadcast events are visible (as edges
+ *       from its root) — a proxy for downstream reach. W16 consumers can
+ *       then trace broadcast history.
+ * HOW:  Uses the shared W9-kg helpers. Null-safe; no-op if KG disabled.
+ *
+ * @param workspace global workspace instance (non-NULL)
+ * @param num_competitors current competition pool size
+ * @return count of outgoing edges from the GWS root
+ */
+uint32_t global_workspace_query_kg_winners(global_workspace_t* workspace,
+                                           uint32_t num_competitors)
+{
+    if (!workspace) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return 0;
+
+    uint32_t winners = w9kg_query_gws_winners_by_salience(brain);
+    w9kg_emit_gws_competition(brain, num_competitors);
+    return winners;
+}
+
+
+/* ============================================================================
  * Phase 8: Training Integration (Full Implementation)
  * ============================================================================ */
 

@@ -20,11 +20,14 @@
  */
 
 #include "physics/thermodynamics/nimcp_thermodynamics.h"
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -805,4 +808,101 @@ double nimcp_thermo_energy_to_atp(double energy_j) {
     }
 
     return energy_j / (NIMCP_THERMO_AVOGADRO * NIMCP_THERMO_ATP_ENERGY);
+}
+
+/*=============================================================================
+ * W15: Thermodynamic aggregated KG emission + read path
+ *===========================================================================*/
+
+#define THERMO_KG_ROOT_NAME "thermodynamics_runtime"
+
+static brain_t s_thermo_kg_brain = NULL;
+
+void nimcp_thermo_kg_register_brain(brain_t brain) {
+    s_thermo_kg_brain = brain;
+}
+
+void nimcp_thermo_kg_trigger_dissipation_event(brain_t brain,
+                                               const char* kind,
+                                               double entropy_rate,
+                                               double atp_ratio,
+                                               double power_consumption_w,
+                                               uint64_t ts_us) {
+    if (!brain) brain = s_thermo_kg_brain;
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    if (!kind) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    brain_kg_node_id_t root = brain_kg_find_node(kg, THERMO_KG_ROOT_NAME);
+    if (root == BRAIN_KG_INVALID_NODE) {
+        root = brain_kg_add_node(kg, THERMO_KG_ROOT_NAME,
+            BRAIN_KG_NODE_CORE,
+            "Thermodynamics runtime aggregator - dissipation / entropy summaries");
+        brain_kg_node_id_t phys = brain_kg_find_node(kg, "thermodynamics");
+        if (root != BRAIN_KG_INVALID_NODE && phys != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, phys, root,
+                BRAIN_KG_EDGE_INTEGRATES_WITH,
+                "runtime aggregator for thermo subsystem", 1.0f);
+        }
+    }
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "thermodynamics_event_%s_%llu",
+             kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "Thermo aggregated event: kind=%s dS/dt=%.4g W/K atp=%.3f power=%.3fW",
+             kind, entropy_rate, atp_ratio, power_consumption_w);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    if (ev != BRAIN_KG_INVALID_NODE && root != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, root, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "dissipation_event",
+            power_consumption_w > 0.0 ? (float)power_consumption_w : 1.0f);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%.6g W/K", entropy_rate);
+        brain_kg_add_metadata(kg, ev, "entropy_rate", buf);
+        snprintf(buf, sizeof(buf), "%.4f", atp_ratio);
+        brain_kg_add_metadata(kg, ev, "atp_ratio", buf);
+        snprintf(buf, sizeof(buf), "%.4f W", power_consumption_w);
+        brain_kg_add_metadata(kg, ev, "power", buf);
+        brain_kg_add_metadata(kg, ev, "kind", kind);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+uint32_t nimcp_thermo_kg_count_events(struct brain_kg* kg_opaque,
+                                      const char* kind_substr) {
+    brain_kg_t* kg = (brain_kg_t*)kg_opaque;
+    if (!kg) return 0;
+    brain_kg_node_id_t root = brain_kg_find_node(kg, THERMO_KG_ROOT_NAME);
+    if (root == BRAIN_KG_INVALID_NODE) return 0;
+    brain_kg_edge_list_t* out = brain_kg_get_outgoing(kg, root);
+    if (!out) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < out->count; ++i) {
+        const brain_kg_edge_t* e = out->edges[i];
+        if (!e) continue;
+        const brain_kg_node_t* to = brain_kg_get_node(kg, e->to);
+        if (!to) continue;
+        if (!kind_substr || !*kind_substr) {
+            count++;
+        } else if ((to->name && strstr(to->name, kind_substr)) ||
+                   (to->description && strstr(to->description, kind_substr))) {
+            count++;
+        }
+    }
+    brain_kg_edge_list_destroy(out);
+    return count;
 }

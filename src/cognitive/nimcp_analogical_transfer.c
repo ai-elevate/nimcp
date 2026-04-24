@@ -22,6 +22,11 @@
 #include <string.h>
 #include <math.h>
 
+/* W13: analogy events emitted from the brain-side callers (nimcp_brain_part_core.c
+ * and nimcp_brain_learning.c). This module is brain-pointerless by design
+ * (pure helper) so we do not include the W13 header here to keep the module
+ * dependency footprint unchanged. */
+
 /* ============================================================================
  * Internal Structure
  * ============================================================================ */

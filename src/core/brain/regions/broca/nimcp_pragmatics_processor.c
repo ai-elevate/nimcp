@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/broca/nimcp_pragmatics_processor.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -870,6 +871,12 @@ bool pragmatics_analyze(
         processor->stats.total_processing_time_ms /
         (double)(processor->stats.utterances_processed > 0 ?
                  processor->stats.utterances_processed : 1);
+
+    /* W12 KG emit: one node per completed pragmatic analysis. */
+    w12_emit_pragmatics_analyze_auto((int)analysis->speech_act.primary_act,
+                                     speaker_id,
+                                     analysis->implicature_count,
+                                     analysis->context_relevance);
 
     return true;
 }

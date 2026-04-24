@@ -536,6 +536,53 @@ NIMCP_EXPORT double nimcp_thermo_atp_to_energy(double atp_moles);
  */
 NIMCP_EXPORT double nimcp_thermo_energy_to_atp(double energy_j);
 
+//=============================================================================
+// Wave W15: Runtime aggregated dissipation / entropy summary events
+//
+// Emit only on ATP-critical transitions, entropy spikes, or every N>=1000
+// update calls. Never per-update.
+//=============================================================================
+
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+struct brain_kg;
+
+/**
+ * @brief Register brain handle for thermodynamic runtime KG emission.
+ */
+NIMCP_EXPORT void nimcp_thermo_kg_register_brain(brain_t brain);
+
+/**
+ * @brief Emit an aggregated thermodynamic dissipation/entropy event.
+ *
+ * @param brain                     Brain handle (falls back to registered)
+ * @param kind                      "atp_critical", "entropy_spike",
+ *                                  "dissipation_summary", "landauer_eff_drop"
+ * @param entropy_rate              Recent dS/dt (W/K)
+ * @param atp_ratio                 ATP ratio [0,1]
+ * @param power_consumption_w       Power (W) since last emit
+ * @param ts_us                     Timestamp (microseconds)
+ */
+NIMCP_EXPORT void nimcp_thermo_kg_trigger_dissipation_event(
+    brain_t brain,
+    const char* kind,
+    double entropy_rate,
+    double atp_ratio,
+    double power_consumption_w,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count thermodynamic events.
+ */
+NIMCP_EXPORT uint32_t nimcp_thermo_kg_count_events(
+    struct brain_kg* kg,
+    const char* kind_substr
+);
+
 #ifdef __cplusplus
 }
 #endif

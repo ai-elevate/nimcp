@@ -109,6 +109,7 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"      // Brain reference
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 #include "cognitive/global_workspace/nimcp_global_workspace.h"  // Global Workspace integration
 #include <string.h>
 #include <stdio.h>
@@ -2704,6 +2705,39 @@ bool executive_query_self_capabilities(executive_controller_t* exec)
 
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_query_self_capabilities: validation failed");
     return false;
+}
+
+/**
+ * @brief W9-kg read-path: query prior ethics events before committing a
+ *        decision.
+ *
+ * WHAT: Counts nodes in the KG that mention "ethics" — these are the
+ *       event-nodes emitted by ethics, immune, and audit modules.
+ *       Nonzero count signals the executive that the brain has ethical
+ *       context to honor for this decision.
+ * WHY:  Closes the executive PARTIAL status. Previously executive could
+ *       only self-describe; now it consults KG context and publishes its
+ *       decision so downstream consumers (W16) see executive intent.
+ * HOW:  Uses the shared W9-kg helpers. Emits an executive decision event
+ *       regardless of ethics event count.
+ *
+ * @param exec Executive controller (non-NULL)
+ * @param decision_id opaque decision id (for the emit event)
+ * @param confidence computed decision confidence for the emit event
+ * @return count of ethics events visible in the KG, 0 if KG unavailable.
+ */
+uint32_t executive_query_ethics_context(executive_controller_t* exec,
+                                        uint64_t decision_id,
+                                        float confidence)
+{
+    if (!exec) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return 0;
+
+    uint32_t ethics_count = w9kg_query_executive_ethics_events(brain);
+    w9kg_emit_executive_decision(brain, decision_id, confidence);
+    return ethics_count;
 }
 
 /* ============================================================================

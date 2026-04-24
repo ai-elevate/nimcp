@@ -532,3 +532,17 @@ double topo_lipschitz_constant(const topo_point_set_t *domain,
     }
     return max_L;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for topology results
+ * (homotopy equivalence, manifold properties, continuity proofs).
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+void topology_wave14_kg_emit(
+    struct brain_struct* brain,
+    const char* theorem_label,
+    float confidence)
+{
+    if (!brain) return;
+    wave14_math_emit_proof(brain, "topology", theorem_label, confidence);
+}

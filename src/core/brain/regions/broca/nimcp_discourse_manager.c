@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/broca/nimcp_discourse_manager.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
@@ -770,6 +771,11 @@ uint32_t discourse_add_turn(
     }
 
     manager->stats.turns_processed++;
+
+    /* W12 KG emit: one node per discourse turn (utterance-level). */
+    w12_emit_discourse_turn_auto(turn->turn_id, speaker_id,
+                                 (int)turn->topic_shift,
+                                 turn->coherence_score);
     return turn->turn_id;
 }
 

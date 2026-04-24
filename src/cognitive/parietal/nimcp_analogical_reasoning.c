@@ -1455,6 +1455,25 @@ const char* analogical_get_last_error(void) {
 }
 
 /* ============================================================================
+ * W14 (2026-04-24): KG runtime emit + read-path for analogical reasoning.
+ *
+ * Callers that hold a brain_t invoke this after analogical_map_entities /
+ * analogical_find_multiple_analogies to register the mapping in
+ * brain->internal_kg and query the last-mapping-score bias.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+float analogical_reasoning_wave14_kg_emit_mapping(
+    struct brain_struct* brain,
+    uint32_t src_domain_id,
+    uint32_t tgt_domain_id,
+    float mapping_score)
+{
+    if (!brain) return 0.5f;
+    wave14_analogical_emit_mapping(brain, src_domain_id, tgt_domain_id, mapping_score);
+    return wave14_analogical_query_score_bias(brain);
+}
+
+/* ============================================================================
  * Knowledge Graph Self-Awareness Integration
  * ============================================================================ */
 

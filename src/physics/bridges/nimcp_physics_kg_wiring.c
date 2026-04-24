@@ -8,14 +8,113 @@
  */
 
 #include "physics/bridges/nimcp_physics_kg_wiring.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(physics_kg_wiring)
+
+/*=============================================================================
+ * W15: Physics-wide runtime event emission + read-path
+ *
+ * Rate-limit: emit aggregated state summary only when trigger() is called.
+ * Callers choose when (epoch boundary, mode change, sleep stage flip, etc).
+ * Never call from a per-neuron / per-tick / per-spike loop.
+ *===========================================================================*/
+
+static brain_t s_physics_kg_brain = NULL;
+
+void physics_kg_wiring_register_brain(brain_t brain) {
+    s_physics_kg_brain = brain;
+}
+
+void physics_kg_trigger_state_summary(brain_t brain,
+                                      float temperature,
+                                      float atp_level,
+                                      float lfp_amp,
+                                      const char* trigger,
+                                      uint64_t ts_us) {
+    if (!brain) brain = s_physics_kg_brain;
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "physics_event_state_summary_%llu",
+             (unsigned long long)ts_us);
+    char desc[256];
+    snprintf(desc, sizeof(desc),
+             "Physics aggregated state summary: trigger=%s T=%.2fK atp=%.3f lfp=%.4fmV",
+             trigger ? trigger : "unspecified",
+             isnan(temperature) ? 0.0f : temperature,
+             isnan(atp_level)   ? 0.0f : atp_level,
+             isnan(lfp_amp)     ? 0.0f : lfp_amp);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        /* Link back to the physics_layer root and each active subsystem. */
+        brain_kg_node_id_t root = brain_kg_find_node(kg, PHYSICS_KG_ROOT_NAME);
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, root, ev, BRAIN_KG_EDGE_SENDS_TO,
+                "physics_state_summary", 1.0f);
+        }
+        /* Metadata */
+        char buf[64];
+        if (!isnan(temperature)) {
+            snprintf(buf, sizeof(buf), "%.2f K", temperature);
+            brain_kg_add_metadata(kg, ev, "temperature", buf);
+        }
+        if (!isnan(atp_level)) {
+            snprintf(buf, sizeof(buf), "%.3f", atp_level);
+            brain_kg_add_metadata(kg, ev, "atp_level", buf);
+        }
+        if (!isnan(lfp_amp)) {
+            snprintf(buf, sizeof(buf), "%.4f mV", lfp_amp);
+            brain_kg_add_metadata(kg, ev, "lfp_amplitude", buf);
+        }
+        if (trigger) {
+            brain_kg_add_metadata(kg, ev, "trigger", trigger);
+        }
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+uint32_t physics_kg_count_events(brain_kg_t* kg, const char* kind_substr) {
+    if (!kg) return 0;
+    brain_kg_node_id_t root = brain_kg_find_node(kg, PHYSICS_KG_ROOT_NAME);
+    if (root == BRAIN_KG_INVALID_NODE) return 0;
+    brain_kg_edge_list_t* out = brain_kg_get_outgoing(kg, root);
+    if (!out) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < out->count; ++i) {
+        const brain_kg_edge_t* e = out->edges[i];
+        if (!e) continue;
+        const brain_kg_node_t* to = brain_kg_get_node(kg, e->to);
+        if (!to) continue;
+        if (!kind_substr || !*kind_substr) {
+            count++;
+        } else if (to->description && strstr(to->description, kind_substr)) {
+            count++;
+        } else if (to->name && strstr(to->name, kind_substr)) {
+            count++;
+        }
+    }
+    brain_kg_edge_list_destroy(out);
+    return count;
+}
 
 //=============================================================================
 // Helper Functions

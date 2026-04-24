@@ -819,6 +819,47 @@ NIMCP_EXPORT kg_module_wiring_t* dynsys_bridge_create_wiring(
 /**
  * @brief Register with brain KG
  */
+//=============================================================================
+// Wave W15: Runtime bifurcation/attractor event emission + read path
+//=============================================================================
+
+/* Forward-declared brain handle (full struct in brain_internal.h). */
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+/**
+ * @brief Register brain handle for admin-token self-elevation on emit.
+ */
+NIMCP_EXPORT void dynsys_kg_register_brain(
+    dynsys_bridge_t bridge,
+    brain_t brain
+);
+
+/**
+ * @brief Emit an aggregated bifurcation / attractor-switch event.
+ *
+ * Rate-limit: call only on qualitative state change, never every integration
+ * step. `kind` examples: "bifurcation_detected", "attractor_switch",
+ * "chaos_onset", "stability_loss".
+ */
+NIMCP_EXPORT void dynsys_kg_trigger_bifurcation_event(
+    dynsys_bridge_t bridge,
+    const char* kind,
+    float param_value,
+    float lyapunov_max,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count dynsys event nodes matching a kind substring.
+ */
+NIMCP_EXPORT uint32_t dynsys_kg_count_events(
+    dynsys_bridge_t bridge,
+    const char* kind_substr
+);
+
 NIMCP_EXPORT int dynsys_bridge_register_kg(
     dynsys_bridge_t bridge,
     brain_kg_t* kg

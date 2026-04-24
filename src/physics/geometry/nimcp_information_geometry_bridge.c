@@ -7,10 +7,13 @@
 
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/geometry/nimcp_information_geometry_bridge.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,6 +42,8 @@ struct info_geom_bridge_struct {
     brain_kg_node_id_t root_id;
     uint32_t node_count;
     uint32_t edge_count;
+    /** W15: brain backpointer for admin elevation on runtime emit. */
+    brain_t kg_brain;
 };
 
 //=============================================================================
@@ -201,4 +206,87 @@ int info_geom_bridge_register_bio_async(info_geom_bridge_t bridge, void* channel
     }
     bridge->bio_async_channel = channel;
     return 0;
+}
+
+/*=============================================================================
+ * W15: Runtime manifold-shift event emission + read path
+ *===========================================================================*/
+
+void info_geom_bridge_kg_register_brain(info_geom_bridge_t bridge, brain_t brain) {
+    if (!bridge) return;
+    bridge->kg_brain = brain;
+}
+
+void info_geom_bridge_kg_trigger_manifold_event(info_geom_bridge_t bridge,
+                                                const char* kind,
+                                                float curvature,
+                                                float kl_div,
+                                                uint64_t ts_us) {
+    if (!bridge || !kind || !bridge->kg) return;
+
+    brain_kg_t* kg = bridge->kg;
+    uint64_t token = 0;
+    brain_t b = bridge->kg_brain;
+    if (b) token = b->internal_kg_admin_token;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN, token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "information_geometry_event_%s_%llu",
+             kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "Info-geometry manifold event: kind=%s curvature=%.4f kl_div=%.4f",
+             kind,
+             isnan(curvature) ? 0.0f : curvature,
+             isnan(kl_div) ? 0.0f : kl_div);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_UTILITY, desc);
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t owner = brain_kg_find_node(kg, "information_geometry");
+        if (owner != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+                "manifold_event", 1.0f);
+        }
+        char buf[48];
+        if (!isnan(curvature)) {
+            snprintf(buf, sizeof(buf), "%.6f", curvature);
+            brain_kg_add_metadata(kg, ev, "curvature", buf);
+        }
+        if (!isnan(kl_div)) {
+            snprintf(buf, sizeof(buf), "%.6f", kl_div);
+            brain_kg_add_metadata(kg, ev, "kl_divergence", buf);
+        }
+        brain_kg_add_metadata(kg, ev, "kind", kind);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+uint32_t info_geom_bridge_kg_count_events(info_geom_bridge_t bridge,
+                                          const char* kind_substr) {
+    if (!bridge || !bridge->kg) return 0;
+    brain_kg_node_id_t root = brain_kg_find_node(bridge->kg, "information_geometry");
+    if (root == BRAIN_KG_INVALID_NODE) return 0;
+    brain_kg_edge_list_t* out = brain_kg_get_outgoing(bridge->kg, root);
+    if (!out) return 0;
+
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < out->count; ++i) {
+        const brain_kg_edge_t* e = out->edges[i];
+        if (!e) continue;
+        const brain_kg_node_t* to = brain_kg_get_node(bridge->kg, e->to);
+        if (!to) continue;
+        if (!kind_substr || !*kind_substr) {
+            count++;
+        } else if ((to->name && strstr(to->name, kind_substr)) ||
+                   (to->description && strstr(to->description, kind_substr))) {
+            count++;
+        }
+    }
+    brain_kg_edge_list_destroy(out);
+    return count;
 }

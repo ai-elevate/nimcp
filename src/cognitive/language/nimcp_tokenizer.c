@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/language/nimcp_tokenizer.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -211,6 +212,11 @@ int nimcp_tokenizer_encode(const nimcp_tokenizer_t* tok,
     /* Copy to output */
     uint32_t out = n < max_tokens ? n : max_tokens;
     memcpy(token_ids, ids, out * sizeof(uint32_t));
+
+    /* W12 KG emit: "encode" events fire on every call to a tokenization
+     * hot path; emit is internally rate-limited to ~1 in 512. */
+    w12_emit_tokenizer_event_auto("encode", tok->vocab_size, out);
+
     return (int)out;
 }
 

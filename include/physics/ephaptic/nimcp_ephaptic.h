@@ -519,6 +519,52 @@ NIMCP_EXPORT bool nimcp_ephaptic_is_initialized(
     const nimcp_ephaptic_system_t* system
 );
 
+//=============================================================================
+// Wave W15: Runtime aggregated field-coupling events
+//
+// Never emit from the per-neuron field update loop — call from the
+// aggregator (LFP compute complete, synchronize complete, or phase
+// coherence threshold crossing).
+//=============================================================================
+
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+struct brain_kg;
+
+/**
+ * @brief Register brain handle for ephaptic runtime KG emission.
+ */
+NIMCP_EXPORT void nimcp_ephaptic_kg_register_brain(brain_t brain);
+
+/**
+ * @brief Emit an aggregated ephaptic field-coupling event.
+ *
+ * @param brain                 Brain handle (falls back to registered one)
+ * @param kind                  "field_sync", "field_desync", "lfp_spike",
+ *                              "phase_lock"
+ * @param lfp_amplitude_mv      Recent aggregate LFP amplitude (mV)
+ * @param phase_coherence       Current phase coherence [0,1]
+ * @param ts_us                 Timestamp in microseconds
+ */
+NIMCP_EXPORT void nimcp_ephaptic_kg_trigger_field_event(
+    brain_t brain,
+    const char* kind,
+    float lfp_amplitude_mv,
+    float phase_coherence,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count ephaptic events matching kind.
+ */
+NIMCP_EXPORT uint32_t nimcp_ephaptic_kg_count_events(
+    struct brain_kg* kg,
+    const char* kind_substr
+);
+
 #ifdef __cplusplus
 }
 #endif

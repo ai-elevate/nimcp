@@ -26,6 +26,7 @@ BRIDGE_BOILERPLATE(autobiographical_memory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "cognitive/autobiographical_memory/nimcp_autobio_snn_bridge.h"
 #include "cognitive/autobiographical_memory/nimcp_autobio_plasticity_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -511,8 +512,17 @@ uint64_t autobio_store(autobiographical_memory_t system,
         (1.0F - alpha) * system->stats.avg_emotional_intensity + alpha * memory->emotional_intensity;
 
     uint64_t assigned_id = slot->memory_id;
+    float assigned_importance = slot->importance;
 
     nimcp_mutex_unlock(&system->mutex);
+
+    /* W9-kg: emit autobio stored event outside the lock. */
+    {
+        struct brain_struct* brain = w9kg_get_registered_brain();
+        if (brain) {
+            w9kg_emit_autobio_stored(brain, assigned_id, assigned_importance);
+        }
+    }
 
     return assigned_id;
 }
@@ -562,6 +572,14 @@ bool autobio_retrieve(autobiographical_memory_t system,
     }
 
     nimcp_mutex_unlock(&system->mutex);
+
+    /* W9-kg: emit retrieval event (if hit) outside the lock. */
+    if (found) {
+        struct brain_struct* brain = w9kg_get_registered_brain();
+        if (brain) {
+            w9kg_emit_autobio_retrieved(brain, memory_id);
+        }
+    }
 
     return found;
 }
@@ -1237,6 +1255,30 @@ int autobiographical_memory_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/**
+ * @brief W9-kg read-path: query autobio events from the internal KG.
+ *
+ * WHAT: Count autobio event nodes (stored + retrieved) visible in the KG.
+ *       Useful for the consolidation path — when KG event count aligns
+ *       with in-process `system->count`, the module knows external
+ *       evidence converges with its store.
+ * WHY:  Closes autobiographical_memory UNWIRED status (previously only
+ *       kg_reader integration existed; now the internal_kg is also
+ *       queried).
+ *
+ * @param system autobio instance (non-NULL)
+ * @return count of autobio event nodes, 0 if KG unavailable.
+ */
+uint32_t autobiographical_memory_query_kg_events(autobiographical_memory_t system)
+{
+    if (!system) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return 0;
+
+    return w9kg_query_autobio_event_count(brain);
 }
 
 /* ============================================================================

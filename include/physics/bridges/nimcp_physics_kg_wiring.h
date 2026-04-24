@@ -383,6 +383,67 @@ NIMCP_EXPORT int physics_kg_unregister_all(
     uint64_t admin_token
 );
 
+//=============================================================================
+// Wave W15: Runtime event emission + query path
+//
+// These public triggers forward to file-scope static emit functions in the
+// physics subsystem .c files. Emit is rate-limited or mode-change gated —
+// never per-neuron, per-tick, or per-spike (see audit risk 4).
+//=============================================================================
+
+/* Forward-declared brain handle (full struct lives in brain_internal.h). */
+#ifndef NIMCP_BRAIN_T_DEFINED
+#define NIMCP_BRAIN_T_DEFINED
+typedef struct brain_struct* brain_t;
+#endif
+
+/**
+ * @brief Register brain handle for physics KG wiring runtime emit.
+ *
+ * Installs a file-scope backpointer used by `physics_kg_emit_state_summary`
+ * so the summary function can self-elevate the admin token when called from
+ * a subsystem that only has a `brain_kg_t*` and not a full `brain_t`.
+ */
+NIMCP_EXPORT void physics_kg_wiring_register_brain(brain_t brain);
+
+/**
+ * @brief Emit an aggregated physics-wide state summary event.
+ *
+ * WHAT:  Creates a single event node `physics_event_state_summary_<ts_us>`
+ *        with metadata (temperature, atp_level, lfp_amplitude, dominant
+ *        subsystem) and edges back to the physics_layer root + each active
+ *        subsystem node.
+ * WHY:   Cross-subsystem snapshot at epoch boundaries (e.g. every N ticks
+ *        or on mode change); aggregated to avoid KG firehose.
+ * WHEN:  Call from a training-epoch boundary, sleep stage transition, or
+ *        when any subsystem reports a mode change.
+ *
+ * @param brain       Brain (handle used to reach internal_kg + admin token)
+ * @param temperature Current temperature (K), or NaN to skip
+ * @param atp_level   Current ATP level [0,1], or NaN to skip
+ * @param lfp_amp     Current LFP amplitude (mV), or NaN to skip
+ * @param trigger     Free-text description of why this summary was emitted
+ * @param ts_us       Timestamp in microseconds (unique per call)
+ */
+NIMCP_EXPORT void physics_kg_trigger_state_summary(
+    brain_t brain,
+    float temperature,
+    float atp_level,
+    float lfp_amp,
+    const char* trigger,
+    uint64_t ts_us
+);
+
+/**
+ * @brief Read-path: count physics event nodes of a given kind.
+ *
+ * Walks outgoing edges of the `physics_layer` root to find event nodes
+ * whose description contains the given kind substring. Returns 0 when the
+ * KG is missing/disabled.
+ */
+NIMCP_EXPORT uint32_t physics_kg_count_events(brain_kg_t* kg,
+                                              const char* kind_substr);
+
 #ifdef __cplusplus
 }
 #endif

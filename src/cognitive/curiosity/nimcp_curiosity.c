@@ -20,6 +20,7 @@
 #include <string.h>
 #include "core/brain/nimcp_brain.h"
 #include "constants/nimcp_buffer_constants.h"
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: curiosity-spike events */
 
 //=============================================================================
 // Monte Carlo Integration - GPU acceleration with CPU fallback
@@ -1212,6 +1213,20 @@ knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const 
     if (gap.curiosity_intensity > 0.7F) {
         bio_broadcast_curiosity_spike(engine, gap.curiosity_intensity,
                                       gap.learning_potential, 0);
+    }
+
+    /* W13: emit curiosity-gap event to KG. Only for high-intensity gaps to
+     * keep the graph from firehosing, and read recent surprise from the KG
+     * so neighbour-modules can bias future probes. */
+    if (gap.curiosity_intensity > 0.5F && engine->parent_brain) {
+        wave13_curiosity_emit_gap(engine->parent_brain, concept_str,
+                                  gap.gap_size, gap.curiosity_intensity);
+        /* Trivial read-path use: refresh engine's last_novelty_score with
+         * the KG-tracked recent surprise; a neutral 0 if KG is unaware. */
+        float recent = wave13_curiosity_query_recent_surprise(engine->parent_brain);
+        if (recent > engine->gap_detector_state.last_novelty_score) {
+            engine->gap_detector_state.last_novelty_score = recent;
+        }
     }
 
     return gap;

@@ -404,6 +404,43 @@ void introspection_disconnect_internal_kg(introspection_context_t context)
 
 
 /* ========================================================================
+ * W9-kg READ-PATH INTEGRATION
+ * ======================================================================== */
+
+/**
+ * @brief W9-kg read-path: query wellbeing events from the KG.
+ *
+ * WHAT: Counts wellbeing event nodes in the KG and emits an introspection
+ *       report. Introspection reports include a health score derived from
+ *       wellbeing context when available.
+ * WHY:  Previously introspection had a self-node only. Now it reads
+ *       wellbeing context and writes its report so W16 consumers see
+ *       introspection reports.
+ * HOW:  Uses the shared W9-kg helpers. Falls back to baseline (1.0) health
+ *       when wellbeing evidence is absent.
+ *
+ * @param context introspection context (non-NULL)
+ * @param report_id logical report id for the emitted event
+ * @return count of wellbeing event nodes in the KG
+ */
+uint32_t introspection_query_wellbeing_context(introspection_context_t context,
+                                               uint64_t report_id)
+{
+    if (context == NULL) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return 0;
+
+    uint32_t wellbeing_count = w9kg_query_introspection_wellbeing(brain);
+    /* Health score: baseline 1.0 nudged down if KG reports nothing
+     * (no introspective context available). */
+    float health = (wellbeing_count > 0) ? 1.0f : 0.5f;
+    w9kg_emit_introspection_report(brain, report_id, health);
+    return wellbeing_count;
+}
+
+
+/* ========================================================================
  * KG SELF-AWARENESS INTEGRATION
  * ======================================================================== */
 

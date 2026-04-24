@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/language/nimcp_emergent_language.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -343,6 +344,10 @@ int nimcp_emergent_observe(nimcp_emergent_language_t* el,
             LOG_DEBUG("[%s] Discovered token '%s' (id=%u, vocab=%u, best_sim=%.3f)",
                       LOG_MODULE, el->tokens[slot].symbol, new_id,
                       el->vocab_size, best_sim);
+            /* W12 KG emit: brain-native vocabulary growth is a rare +
+             * semantically interesting event — always emit one node. */
+            w12_emit_emergent_vocab_auto("discovered", new_id,
+                                         el->tokens[slot].specificity);
         }
     }
 

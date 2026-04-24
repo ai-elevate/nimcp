@@ -614,3 +614,19 @@ matrix_t* matrix_null_space(const matrix_t* a, int* null_dim) {
     svd_result_free(s);
     return ns;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for linear-algebra results.
+ * Callers that hold a brain_t invoke this after matrix_solve / eigen /
+ * SVD / rank / determinant computations to register the result in the
+ * cog_math_algebra KG root.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+void linear_algebra_wave14_kg_emit(
+    struct brain_struct* brain,
+    const char* operation_label,
+    float confidence)
+{
+    if (!brain) return;
+    wave14_math_emit_proof(brain, "algebra", operation_label, confidence);
+}

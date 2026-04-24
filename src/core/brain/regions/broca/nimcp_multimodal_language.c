@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/regions/broca/nimcp_multimodal_language.h"
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
@@ -166,6 +167,11 @@ bool multimodal_lang_generate_plan(
 
     processor->stats.plans_generated++;
     processor->status = MULTIMODAL_STATUS_READY;
+
+    /* W12 KG emit: one node per utterance plan. */
+    w12_emit_multimodal_plan_auto(plan->gesture_count,
+                                  plan->expression_count,
+                                  plan->sync_score);
     return true;
 }
 

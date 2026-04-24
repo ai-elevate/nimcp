@@ -16,6 +16,7 @@
 
 #include "cognitive/nimcp_self_awareness_extended.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -691,6 +692,23 @@ bool self_awareness_reflect(self_awareness_system_t system,
 
     // TODO: Perform metacognitive assessment when performance data available
 
+    /* W9-kg: emit reflection event to the internal KG so W16 consumers
+     * see the self-awareness cycle. Confidence is taken from the temporal
+     * self-continuity score when available, else a baseline. */
+    {
+        struct brain_struct* brain = w9kg_get_registered_brain();
+        if (brain) {
+            float confidence = 0.5f;
+            if (system->temporal_self.self_continuity_score > 0.0f) {
+                confidence = system->temporal_self.self_continuity_score;
+                if (confidence > 1.0f) confidence = 1.0f;
+            }
+            w9kg_emit_self_awareness_reflection(brain,
+                                                system->reflection_count,
+                                                confidence);
+        }
+    }
+
     nimcp_mutex_unlock(&system->mutex);
 
     return true;
@@ -772,6 +790,32 @@ int self_awareness_extended_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/**
+ * @brief W9-kg read-path: query prior introspection events from the
+ *        internal KG.
+ *
+ * WHAT: Counts introspection event nodes to bias reflection cadence —
+ *       more prior evidence means reflections can weigh historical
+ *       context more heavily. Also emits a reflection event so the
+ *       aggregate KG view includes this call.
+ * WHY:  Closes self_awareness_extended from UNWIRED to WIRED.
+ * HOW:  Shared W9-kg helpers.
+ *
+ * @param system self-awareness instance (non-NULL)
+ * @return count of prior introspection events, 0 if KG unavailable.
+ */
+uint32_t self_awareness_extended_query_events(self_awareness_system_t system)
+{
+    if (!system) return 0;
+
+    struct brain_struct* brain = w9kg_get_registered_brain();
+    if (!brain) return 0;
+
+    uint32_t count = w9kg_query_self_awareness_events(brain);
+    w9kg_emit_self_awareness_reflection(brain, system->reflection_count, 0.5f);
+    return count;
 }
 
 /* ============================================================================

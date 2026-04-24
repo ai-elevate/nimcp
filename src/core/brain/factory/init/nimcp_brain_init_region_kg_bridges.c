@@ -50,6 +50,21 @@
  * structural roots + runtime emit helpers. */
 #include "cognitive/kg/nimcp_wave10_affective_kg.h"
 
+/* W13 KG retrofit (2026-04-24): curiosity / meta-learning / consolidation /
+ * sleep-wake / self-curriculum / analogical / multiscale / contrastive-self
+ * structural roots + runtime emit helpers. */
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"
+
+/* W14 KG retrofit (2026-04-24): math disciplines + game-theory + parietal
+ * genius + analogical/hypothesis/insight/financial structural roots +
+ * runtime emit/query helpers. */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+
+/* W12 KG retrofit (2026-04-24): language + communication structural roots
+ * + runtime emit helpers. Also registers brain handle for _auto wrappers
+ * used by pure-language modules that lack a brain_t pointer. */
+#include "cognitive/language/nimcp_w12_language_kg_events.h"
+
 BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_region_kg_bridges, MESH_ADAPTER_CATEGORY_SYSTEM)
 
 /**
@@ -93,6 +108,21 @@ bool nimcp_brain_factory_init_region_kg_bridges_subsystem(brain_t brain) {
     /* W10: affective/social 10-module structural roots + cross-edges. */
     (void)nimcp_wave10_affective_kg_init(brain);
 
-    fprintf(stderr, "[W3_REGION_KG] W3+W4+W10 structural wiring complete\n");
+    /* W13: curiosity/meta/consolidation/sleep/curriculum/analogy/multiscale/
+     *      contrastive-self 9-module structural roots + cross-edges. */
+    (void)nimcp_wave13_metacog_kg_init(brain);
+
+    /* W14: math disciplines + game-theory + parietal genius + analogical/
+     *      hypothesis/insight/financial structural roots + cross-edges. */
+    (void)nimcp_wave14_math_genius_kg_init(brain);
+
+    /* W12: language + communication structural roots. Also registers the
+     * brain handle so pure-language modules (emergent_language, inner_speech,
+     * native_language, tokenizer) can emit via _auto wrappers without
+     * threading a brain_t pointer through their APIs. */
+    w12_language_ensure_roots(brain);
+    w12_language_kg_register_brain(brain);
+
+    fprintf(stderr, "[W3_REGION_KG] W3+W4+W10+W12+W13+W14 structural wiring complete\n");
     return true;
 }

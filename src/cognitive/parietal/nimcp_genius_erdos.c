@@ -197,3 +197,24 @@ int genius_erdos_training_step(void* instance, float progress) {
     genius_erdos_heartbeat_instance(g_genius_erdos_health_agent, "genius_erdos_training_step", progress);
     return 0;
 }
+
+/* ============================================================================
+ * W14 (2026-04-24): KG runtime emit for Erdős genius analogies + results.
+ * Callers that hold a brain_t invoke these after genius_erdos_analyze_impl /
+ * genius_erdos_ramsey_lower_bound to register the output in brain->internal_kg.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+void genius_erdos_wave14_kg_emit_analogy(
+    struct brain_struct* brain,
+    const char* src_domain, const char* tgt_domain, float similarity)
+{
+    if (!brain) return;
+    wave14_genius_emit_analogy(brain, "erdos", src_domain, tgt_domain, similarity);
+}
+void genius_erdos_wave14_kg_emit_result(
+    struct brain_struct* brain,
+    const char* result_label, float confidence)
+{
+    if (!brain) return;
+    wave14_genius_emit_result(brain, "erdos", result_label, confidence);
+}

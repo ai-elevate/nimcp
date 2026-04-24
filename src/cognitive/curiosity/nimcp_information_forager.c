@@ -23,6 +23,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: forager learn events */
 
 #include <math.h>
 #include <stdio.h>
@@ -716,6 +717,12 @@ static int tick_learning(information_forager_t f)
 
     int result = forager_do_learn_unlocked(
         f, target, f->pending_text, f->pending_text_len, f->pending_quality);
+
+    /* W13: emit a forage-learn event to KG. */
+    if (f->brain) {
+        wave13_forager_emit_learn(f->brain, target->topic,
+                                  f->pending_quality, result);
+    }
 
     /* Clean up pending data */
     free(f->pending_text);

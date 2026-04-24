@@ -394,5 +394,17 @@ static void broadcast_winner(
         }
     }
 
+    /* W9-kg: publish broadcast event to internal KG so W16 consumers
+     * (brain_decide, middleware attention_focus) can see the winner. */
+    {
+        struct brain_struct* brain = w9kg_get_registered_brain();
+        if (brain) {
+            w9kg_emit_gws_broadcast(brain,
+                                    (uint32_t)winner->module,
+                                    winner_strength,
+                                    workspace->current_broadcast.broadcast_id);
+        }
+    }
+
     // Note: Winner removal now happens in global_workspace_compete() after broadcast
 }

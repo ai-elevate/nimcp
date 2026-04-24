@@ -44,6 +44,7 @@
 #include "security/nimcp_audit_log.h"
 #include "security/lgss/nimcp_lgss.h"
 #include "security/nimcp_w11_safety_kg_events.h"  /* W11: LGSS KG emission */
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: curriculum/analogy/multiscale/contrastive events */
 #include <math.h>
 #include <string.h>
 #include "utils/math/nimcp_math_helpers.h"
@@ -3174,6 +3175,8 @@ sequential_training:
     if (brain->self_curriculum && label) {
         extern void nimcp_self_curriculum_update_uncertainty(void*, const char*, float);
         nimcp_self_curriculum_update_uncertainty(brain->self_curriculum, label, loss);
+        /* W13: emit curriculum uncertainty-update event. */
+        wave13_curriculum_emit_uncertainty_update(brain, label, loss);
     }
 
     /* Multi-timescale memory: push to immediate buffer */
@@ -3181,6 +3184,9 @@ sequential_training:
         extern void nimcp_multiscale_push(void*, const float*, uint32_t, const char*, float);
         nimcp_multiscale_push(brain->multiscale_memory, features, num_features,
                               label ? label : "", loss);
+        /* W13: emit multiscale push event (training path). */
+        wave13_multiscale_emit_push(brain, label ? label : "training",
+                                    1.0f / (1.0f + loss));
     }
 
     /* Output attention: train task-specific attention weights */
@@ -3212,6 +3218,12 @@ sequential_training:
                                                    const float*, uint32_t, const char*);
         nimcp_contrastive_self_record(brain->contrastive_self,
             features, num_features, target, target_size, label ? label : "");
+        /* W13: emit contrastive-record event. Approximate buffer count by
+         * total_learning_steps floored at buffer capacity (200). */
+        uint32_t approx_count = (uint32_t)brain->stats.total_learning_steps;
+        if (approx_count > 200) approx_count = 200;
+        wave13_contrastive_emit_record(brain, label ? label : "sample",
+                                       approx_count);
     }
 
     /* === WORKING MEMORY SCRATCHPAD: Cache current learning context === */
@@ -3250,6 +3262,9 @@ sequential_training:
         nimcp_analogical_store_pattern(brain->analogical_transfer,
             features, num_features, target, target_size,
             label ? label : "", 1.0f - loss);
+        /* W13: emit analogy-store event (success_score = 1-loss). */
+        wave13_analogy_emit_match(brain, label ? label : "training",
+                                  1.0f - loss, 1.0f - loss);
     }
 
     /* === INNER SPEECH: Train language-thought mapping === */

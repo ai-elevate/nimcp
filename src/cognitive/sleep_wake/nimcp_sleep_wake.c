@@ -24,6 +24,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: sleep-stage transition events */
 
 #include <math.h>
 #include <stdlib.h>
@@ -466,10 +467,19 @@ bool sleep_enter_state(sleep_system_t sleep, sleep_state_t state)
     }
 
     /* WHAT: Transition to new state */
+    sleep_state_t prev_state = sleep->current_state;
     sleep->current_state = state;
     sleep->state_entered_at = now;
+    float cur_pressure = sleep->sleep_pressure;
 
     nimcp_mutex_unlock(&sleep->lock);
+
+    /* W13: emit stage-transition event to KG. */
+    if (sleep->brain_ref) {
+        wave13_sleep_emit_stage_transition((brain_t)sleep->brain_ref,
+                                           (int)prev_state, (int)state,
+                                           cur_pressure);
+    }
 
     /* WHAT: Notify all registered callbacks of state change */
     /* WHY:  Allow modules to react immediately to sleep state changes */

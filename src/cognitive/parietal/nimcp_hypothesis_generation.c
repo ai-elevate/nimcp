@@ -467,6 +467,24 @@ void hypothesis_reset_stats(hypothesis_engine_t* engine) {
 const char* hypothesis_get_last_error(void) { return g_last_error; }
 
 /* ============================================================================
+ * W14 (2026-04-24): KG runtime emit + read-path for hypothesis generation.
+ *
+ * Callers that hold a brain_t invoke this after generating/evaluating a
+ * hypothesis to register it in brain->internal_kg and query the last
+ * plausibility bias.
+ * ============================================================================ */
+#include "cognitive/kg/nimcp_wave14_math_genius_kg.h"
+float hypothesis_generation_wave14_kg_emit(
+    struct brain_struct* brain,
+    const char* hypothesis_label,
+    float plausibility)
+{
+    if (!brain) return 0.5f;
+    wave14_hypothesis_emit_generation(brain, hypothesis_label, plausibility);
+    return wave14_hypothesis_query_plausibility_bias(brain);
+}
+
+/* ============================================================================
  * MCTS-BASED HYPOTHESIS SEARCH
  * ============================================================================ */
 

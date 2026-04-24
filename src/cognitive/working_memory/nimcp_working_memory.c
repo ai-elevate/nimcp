@@ -46,6 +46,7 @@ BRIDGE_BOILERPLATE(working_memory, MESH_ADAPTER_CATEGORY_COGNITIVE)
 #include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
 #include "cognitive/working_memory/nimcp_working_memory_sleep_bridge.h"  // Sleep bridge for modulation
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
+#include "cognitive/executive/nimcp_w9kg_events.h"  // W9-kg: KG event + read helpers
 #define NIMCP_WORKING_MEMORY_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "cognitive/memory/nimcp_working_memory_quantum_bridge.h"  // Quantum retrieval bridge
 #include "cognitive/memory/nimcp_working_memory_snn_bridge.h"      // SNN bridge
