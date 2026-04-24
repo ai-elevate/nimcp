@@ -210,6 +210,7 @@ static const char* get_cycle_name(brain_cycle_type_t type) {
     case BRAIN_CYCLE_NEUROGENESIS:     return "neurogenesis";
     case BRAIN_CYCLE_EPIGENETICS:      return "epigenetics";
     case BRAIN_CYCLE_NEUROVASCULAR:    return "neurovascular";
+    case BRAIN_CYCLE_PREDICTIVE_IMMUNE: return "predictive_immune";
     default:                           return "unknown";
     }
 }
@@ -224,6 +225,7 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
     case BRAIN_CYCLE_LONG_TERM_MEMORY:
     case BRAIN_CYCLE_EPIGENETICS:
     case BRAIN_CYCLE_NEUROVASCULAR:
+    case BRAIN_CYCLE_PREDICTIVE_IMMUNE:
         return BRAIN_CYCLE_CATEGORY_MEDIUM;
     case BRAIN_CYCLE_SLEEP_WAKE:
     case BRAIN_CYCLE_CIRCADIAN:
@@ -249,6 +251,7 @@ static uint64_t get_default_interval_us(brain_cycle_type_t type) {
     case BRAIN_CYCLE_EPIGENETICS:      return 100000;     /* 100ms — methylation is slow but update needs sub-second resolution for critical-period gating */
     case BRAIN_CYCLE_NEUROVASCULAR:    return 100000;     /* 100ms — HRF evolves over seconds; 100ms gives smooth interpolation */
     case BRAIN_CYCLE_NEUROGENESIS:     return 1000000;    /* 1s — neuron birth/pruning is slow; hourly would be closer to biology */
+    case BRAIN_CYCLE_PREDICTIVE_IMMUNE: return 100000;    /* 100ms — interoceptive prediction + precision modulation cadence */
     case BRAIN_CYCLE_SLEEP_WAKE:       return 0;          /* state machine */
     case BRAIN_CYCLE_CIRCADIAN:        return 0;          /* continuous */
     case BRAIN_CYCLE_AROUSAL:          return 0;          /* event-driven */

@@ -109,6 +109,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_gpu.c   # GPU substrate subsystem initialization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_substrate_thalamic.c  # CPU substrate + thalamic router wire-up for SNN/LNN/CNN
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_biology.c             # Biology cluster (epigenetics, neurogenesis, NVC) — periodic via cycle coord
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_predictive_immune.c   # Predictive-immune coupling — periodic via cycle coord
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive_training.c  # Cognitive training subsystems (JEPA, pred hierarchy, self-heal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_cognitive_transcript.c  # Cognitive transcript for response composition
 
@@ -515,7 +516,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/bridges/nimcp_pfc_kg_wiring.c          # Prefrontal KG wiring
 
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # DISABLED: needs API updates  # Predictive coding brain region extension - DISABLED: needs refactoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_brain_region_predictive.c  # Predictive coding brain region extension — re-enabled 2026-04-24 to unlock predictive_immune
 
     # Subcortical brain structures (basal ganglia, thalamus, etc.)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/nimcp_striatum.c           # Striatum D1/D2 pathways
@@ -797,7 +798,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_immune_metrics.c  # Immune Metrics - Prometheus/JSON export for self-healing observability
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_code_immune_self_repair.c  # Code immune to self-repair pipeline integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_cognitive_meta_controller.c  # Cognitive Meta-Controller - unified arbitrator for cognitive subsystems
-    # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # DISABLED: depends on brain_region_predictive  # Predictive-immune bidirectional integration - DISABLED: depends on nimcp_brain_region_predictive.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/predictive_immune/nimcp_predictive_immune.c  # Predictive-immune bidirectional integration — re-enabled 2026-04-24 (brain_region_predictive also re-enabled)
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_pattern_immune.c  # Pattern-immune bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_feature_extractor_immune_bridge.c  # Feature extractor-immune integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../middleware/immune/nimcp_population_coding_immune_bridge.c  # Population coding-immune integration

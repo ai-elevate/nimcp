@@ -39,6 +39,7 @@
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
+#include "cognitive/nimcp_meta_learning.h"
 #include "security/nimcp_audit_log.h"
 #include "security/lgss/nimcp_lgss.h"
 #include <math.h>
@@ -3002,6 +3003,20 @@ sequential_training:
                 (float*)features, num_features < 128 ? num_features : 128,
                 refined, NULL, 0);
         }
+    }
+
+    /* Meta-learning: adapt per-region learning rate based on observed loss.
+     * No-op when meta_learner wasn't initialized (enable_meta_learning=false).
+     * Uses META_REGION_ASSOCIATION as the default general-purpose region;
+     * finer-grained per-label routing to SENSORY/PREFRONTAL is a future
+     * enhancement. The meta_adapt_learning_rate() signature takes (meta,
+     * region, loss) — no grad_norm arg in the current public header. */
+    if (brain->meta_learner) {
+        NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/meta_learning",
+                           (unsigned long long)_blv_step_tracker);
+        (void)meta_adapt_learning_rate(brain->meta_learner,
+                                       META_REGION_ASSOCIATION,
+                                       loss);
     }
 
     clear_cache(brain);

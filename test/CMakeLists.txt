@@ -3211,4 +3211,105 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_cycle_coordinator_regress
         PROPERTIES LABELS "regression;cycle_coordinator" TIMEOUT 15)
 endif()
 
+# ============================================================================
+# Wave 4 Tests — predictive_immune wiring + meta_learning hook
+# ============================================================================
+# WHAT: Integration + regression tests for Wave 4. Uses the same plain-C,
+#       explicit-registration pattern as the cycle coordinator tests above.
+# WHY:  test/integration and test/regression both have their own CMakeLists
+#       that disable auto-discovery of top-level test files.
+# HOW:  Plain C files owning their own main(), linked against libnimcp only.
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_wave4_integration.c")
+    add_executable(integration_test_wave4_integration
+        integration/test_wave4_integration.c
+    )
+    target_include_directories(integration_test_wave4_integration PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_test_wave4_integration
+        PRIVATE c_std_11)
+    target_link_libraries(integration_test_wave4_integration
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME integration_test_wave4_integration
+             COMMAND integration_test_wave4_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_test_wave4_integration
+        PROPERTIES LABELS "integration;cycle_coordinator;wave4" TIMEOUT 30)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_wave4_regression.c")
+    add_executable(regression_test_wave4_regression
+        regression/test_wave4_regression.c
+    )
+    target_include_directories(regression_test_wave4_regression PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_test_wave4_regression
+        PRIVATE c_std_11)
+    target_link_libraries(regression_test_wave4_regression
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME regression_test_wave4_regression
+             COMMAND regression_test_wave4_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_test_wave4_regression
+        PROPERTIES LABELS "regression;cycle_coordinator;wave4" TIMEOUT 15)
+endif()
+
+# ---------------------------------------------------------------------------
+# Wave 4 unit tests — plain C, explicit registration
+#
+# WHAT: Wave 4 unit tests live directly in test/unit/*.c (no subdir). The
+#       discover_category_tests(unit) pass WOULD pick them up, but that
+#       path links against GTest + Python + full helper sources, which is
+#       overkill (and breaks compilation if a test has its own main and
+#       includes brain_internal.h which conflicts with some GTest headers).
+# WHY:  Match the lightweight pattern used by unit_test_cycle_coordinator_driven.
+# HOW:  Explicit executable + link libnimcp only; same format as integration.
+# ---------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_wave4_predictive_immune_init.c")
+    # Only define if not already created by discover_category_tests(unit).
+    if(NOT TARGET unit_test_wave4_predictive_immune_init)
+        add_executable(unit_test_wave4_predictive_immune_init
+            unit/test_wave4_predictive_immune_init.c
+        )
+        target_include_directories(unit_test_wave4_predictive_immune_init PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+        )
+        target_compile_features(unit_test_wave4_predictive_immune_init
+            PRIVATE c_std_11)
+        target_link_libraries(unit_test_wave4_predictive_immune_init
+            PRIVATE nimcp Threads::Threads rt m)
+        add_test(NAME unit_test_wave4_predictive_immune_init
+                 COMMAND unit_test_wave4_predictive_immune_init
+                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+        set_tests_properties(unit_test_wave4_predictive_immune_init
+            PROPERTIES LABELS "unit;cycle_coordinator;wave4" TIMEOUT 15)
+    endif()
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_wave4_meta_learning_hook.c")
+    if(NOT TARGET unit_test_wave4_meta_learning_hook)
+        add_executable(unit_test_wave4_meta_learning_hook
+            unit/test_wave4_meta_learning_hook.c
+        )
+        target_include_directories(unit_test_wave4_meta_learning_hook PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+        )
+        target_compile_features(unit_test_wave4_meta_learning_hook
+            PRIVATE c_std_11)
+        target_link_libraries(unit_test_wave4_meta_learning_hook
+            PRIVATE nimcp Threads::Threads rt m)
+        add_test(NAME unit_test_wave4_meta_learning_hook
+                 COMMAND unit_test_wave4_meta_learning_hook
+                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+        set_tests_properties(unit_test_wave4_meta_learning_hook
+            PROPERTIES LABELS "unit;meta_learning;wave4" TIMEOUT 15)
+    endif()
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

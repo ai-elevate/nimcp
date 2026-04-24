@@ -122,6 +122,7 @@ typedef enum {
     BRAIN_CYCLE_NEUROGENESIS,       /**< Adult neurogenesis tick — neuron birth/maturation/pruning (1s) */
     BRAIN_CYCLE_EPIGENETICS,        /**< Epigenetic state tick — methylation/histone dynamics (100ms) */
     BRAIN_CYCLE_NEUROVASCULAR,      /**< Neurovascular coupling tick — HRF, CBF, BOLD response (100ms) */
+    BRAIN_CYCLE_PREDICTIVE_IMMUNE,  /**< Predictive-immune coupling tick (100ms) */
     BRAIN_CYCLE_COUNT               /**< Total number of cycle types */
 } brain_cycle_type_t;
 

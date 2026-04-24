@@ -84,6 +84,9 @@ extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain);
 // Biology cluster (epigenetics + neurogenesis + NVC) — register_driven via coord
 extern bool nimcp_brain_factory_init_biology_subsystem(brain_t brain);
 
+// Predictive-immune coupling — register_driven via coord, needs predictive_network + immune
+extern bool nimcp_brain_factory_init_predictive_immune_subsystem(brain_t brain);
+
 // Wave 5: Cognitive foundations
 extern bool nimcp_brain_factory_init_attention_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain);
@@ -366,6 +369,16 @@ static bool init_biology_if_needed(brain_t brain) {
     if (brain->config.lazy_init_mode) return true;
     /* Treat init failure as soft: the wave continues. */
     (void)nimcp_brain_factory_init_biology_subsystem(brain);
+    return true;
+}
+
+static bool init_predictive_immune_if_needed(brain_t brain) {
+    /* Predictive-immune coupling. Runs in Wave 12 (after Wave 8 predictive
+     * and Wave 11 immune have created their prerequisites). If either
+     * prereq is NULL, the factory skips cleanly. Treat failure as soft —
+     * the module stays a statue rather than breaking the wave. */
+    if (brain->config.lazy_init_mode) return true;
+    (void)nimcp_brain_factory_init_predictive_immune_subsystem(brain);
     return true;
 }
 
@@ -834,13 +847,20 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     if (!ok) goto cleanup;
 
     // ========================================================================
-    // WAVE 12: homeostatic_plasticity, dendritic_computation, bio_predictive, training
+    // WAVE 12: homeostatic_plasticity, dendritic_computation, bio_predictive,
+    //          training, predictive_immune
+    //
+    // predictive_immune placed here because it depends on predictive_network
+    // (Wave 8) + immune_system (Wave 11) both being live. Wave 12 is the
+    // earliest wave where both prereqs exist. Uses register_driven via the
+    // cycle coordinator, same semantics as biology and pr_memory.
     // ========================================================================
     n = 0;
     tasks[n++] = TASK(nimcp_brain_factory_init_homeostatic_plasticity_subsystem, "homeostatic_plasticity");
     tasks[n++] = TASK(nimcp_brain_factory_init_dendritic_computation_subsystem, "dendritic_computation");
     tasks[n++] = TASK(nimcp_brain_factory_init_biological_predictive_subsystem, "bio_predictive");
     tasks[n++] = TASK(nimcp_brain_factory_init_training_subsystem, "training");
+    tasks[n++] = TASK(init_predictive_immune_if_needed, "predictive_immune");
     if (!execute_wave(pool, &ctx, tasks, n, 12)) goto cleanup;
 
     // ========================================================================

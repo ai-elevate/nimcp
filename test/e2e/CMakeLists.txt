@@ -3303,6 +3303,36 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cycle_coordinator_e2e.c)
             TIMEOUT 30)
 endif()
 
+# ---------------------------------------------------------------------------
+# E2E: Wave 4 Multi-Cycle Soak (PREDICTIVE_IMMUNE + EPI + NVC + NEURO)
+# ---------------------------------------------------------------------------
+# WHAT: Four concurrent driven cycles (including the new BRAIN_CYCLE_PREDICTIVE_IMMUNE
+#       enum added in Wave 4) running for 2s under real pthreads.
+# WHY:  Wave 4 extended brain_cycle_type_t and added live driver threads.
+#       This soak is the last line of defense against enum collisions, thread
+#       leaks, and mutual-starvation bugs that only surface under sustained load.
+# HOW:  Plain C, links libnimcp only (no GTest — owns its own main).
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave4_e2e.c)
+    add_executable(e2e_test_wave4
+        test_wave4_e2e.c
+    )
+    target_include_directories(e2e_test_wave4 PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_wave4 PRIVATE c_std_11)
+    target_link_libraries(e2e_test_wave4 PRIVATE
+        nimcp Threads::Threads rt m
+    )
+    add_test(NAME e2e_test_wave4
+             COMMAND e2e_test_wave4
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_wave4
+        PROPERTIES
+            LABELS "e2e;cycle_coordinator;driven;wave4"
+            TIMEOUT 30)
+endif()
+
 # ============================================================================
 # Grounded Language E2E Tests (subdirectory)
 # ============================================================================

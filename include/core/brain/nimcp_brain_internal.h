@@ -56,6 +56,14 @@ typedef struct nimcp_epigenetics_struct* nimcp_epigenetics_t;
 typedef struct nimcp_neurogenesis_struct* nimcp_neurogenesis_t;
 typedef struct nimcp_nvc_system_s nimcp_nvc_system_t;
 
+/* Predictive-immune coupling — forward decl only. The full header
+ * (cognitive/nimcp_predictive_immune.h) pulls in predictive + immune +
+ * bio_messages headers, some of which redefine nimcp_brain_t. Consumers
+ * include the module header directly from their .c files. The opaque
+ * `predictive_immune_system` struct tag matches the typedef in
+ * nimcp_predictive_immune.h (no `_s` suffix). */
+typedef struct predictive_immune_system predictive_immune_system_t;
+
 //=============================================================================
 // COGNITIVE SUBSYSTEMS - Using Aggregate Headers
 // OPTIMIZATION: Replaced 40+ individual cognitive includes with 4 aggregate headers
@@ -1782,6 +1790,25 @@ struct brain_struct {
     bool epigenetics_enabled;                                         // True if create + register_driven succeeded
     bool neurogenesis_enabled;
     bool neurovascular_enabled;
+
+    //=========================================================================
+    // PREDICTIVE-IMMUNE COUPLING — Wired 2026-04-24 via cycle coordinator
+    //=========================================================================
+    // Integration layer between predictive processing and brain immune system.
+    // Previously a statue — create/update APIs implemented but never called.
+    //
+    // Bidirectional coupling:
+    //   - Immune → Predictive: inflammation reduces prediction precision
+    //     weights (cytokine noise model).
+    //   - Predictive → Immune: large/persistent prediction errors trigger
+    //     immune antigen presentation (adversarial input detector).
+    //
+    // Depends on: brain->predictive_network (Wave 8) + brain->immune_system
+    // (Wave 11). Init lives in Wave 12; if either prereq is NULL the init is
+    // a no-op and `predictive_immune` stays NULL (module stays a statue).
+    //
+    predictive_immune_system_t* predictive_immune;                    // Predictive ↔ immune coupling system (opaque)
+    bool predictive_immune_enabled;                                   // True if create + register_driven succeeded
 
     //=========================================================================
     // GPU Inference Optimization (Phase GPU-INF)

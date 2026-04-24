@@ -690,6 +690,15 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_biology_subsystem(brain);
     }
 
+    /* Predictive-immune coupling destroy — same ordering rationale as biology.
+     * Unregister drives + stop + destroy BEFORE predictive_network or
+     * immune_system are freed downstream (predictive_network destroy on line
+     * ~760 below, immune_system is managed by its own lifecycle).  */
+    {
+        extern void nimcp_brain_factory_destroy_predictive_immune_subsystem(brain_t);
+        nimcp_brain_factory_destroy_predictive_immune_subsystem(brain);
+    }
+
     // Phase 10.4: Cleanup sleep/wake system
     if (brain->sleep_system) {
         sleep_system_destroy(brain->sleep_system);

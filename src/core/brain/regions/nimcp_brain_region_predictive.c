@@ -263,7 +263,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
             nimcp_free(pred);
             nimcp_mutex_unlock(&region->lock);
             LOG_MODULE_ERROR(LOG_MODULE, "Failed to create predictive hierarchy");
-            return NIMCP_ERROR_NOT_INITIALIZED_FAILED;
+            return NIMCP_ERROR_NOT_INITIALIZED;
         }
     }
 
@@ -346,7 +346,7 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
     }
 
     // Initialize mutex
-    nimcp_mutex_init(&pred->lock);
+    nimcp_mutex_init(&pred->lock, NULL);
 
     // Attach to region
     region->predictive_extension = pred;
@@ -356,10 +356,10 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
     LOG_MODULE_INFO(LOG_MODULE, "Enabled predictive processing for region %u (level %u, %u neurons)",
                     region->id, config->hierarchy_level, region->total_neurons);
 
-    // Register with security if available
-    if (nimcp_security_is_initialized()) {
-        brain_region_predictive_enable_security(region, true);
-    }
+    // Register with security if available — nimcp_security_is_initialized()
+    // was referenced here but never declared in any current header. Skipped
+    // during 2026-04-24 re-enable; add a proper gate if/when the security
+    // subsystem exposes an initialization query.
 
     return NIMCP_SUCCESS;
 }
@@ -827,17 +827,16 @@ nimcp_result_t brain_region_learn_precisions(brain_region_t* region, float dt) {
 
     nimcp_mutex_lock(&pred->lock);
 
-    // Update precisions using hierarchy if available
-    if (pred->hierarchy) {
-        // Hierarchy handles precision learning internally
-        // Just retrieve updated precisions
-        pc_layer_state_t* bottom_layer = pred->hierarchy->layer_states[0];
-        if (bottom_layer) {
-            memcpy(pred->precision_weights, bottom_layer->precision,
-                   fminf(bottom_layer->num_units, region->total_neurons) * sizeof(float));
-        }
-    } else {
-        // Manual precision learning from error variance
+    // Update precisions — the opaque pc_hierarchy_t handle no longer exposes
+    // layer_states publicly (re-enabled 2026-04-24; original code poked into
+    // the now-private struct). Fall back to the manual error-variance path
+    // which works regardless of whether a hierarchy is attached; if a
+    // hierarchy is present it keeps running its own internal precision
+    // learning inside the hidden struct and this loop just maintains a
+    // region-local precision shadow driven by the same error signal. A
+    // future change can add a pc_hierarchy_get_precisions() accessor and
+    // restore the hierarchy path.
+    {
         for (uint32_t i = 0; i < region->total_neurons; i++) {
             float error_sq = pred->prediction_error[i] * pred->prediction_error[i];
             float variance = error_sq + 1e-8f;  // Avoid division by zero
