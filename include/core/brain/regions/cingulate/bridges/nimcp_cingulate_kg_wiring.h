@@ -120,6 +120,23 @@ NIMCP_EXPORT brain_kg_node_id_t cingulate_kg_find_subsystem(
     const char* name
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime cingulate event into the brain's internal KG
+ *
+ * Supported kinds: "conflict". Silent no-op if brain/KG unavailable.
+ * Creates `cingulate_event_<kind>_<ts_us>` node + edge to
+ * `cingulate_cortex`. Self-elevates admin token.
+ */
+NIMCP_EXPORT void cingulate_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -209,6 +209,11 @@ extern bool nimcp_brain_factory_init_core_directives_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain);
 
+// Wave 31 (W3 KG retrofit): region KG structural wirings (occipital, somato,
+// motor, broca, gustatory, olfactory, brainstem, raphe, parahippocampal,
+// perirhinal). Depends on Wave 22 internal_kg.
+extern bool nimcp_brain_factory_init_region_kg_bridges_subsystem(brain_t brain);
+
 // Wave 23-26: Coordinators and bridges
 extern bool nimcp_brain_factory_init_bio_async_orchestrator_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_plasticity_coordinator_subsystem(brain_t brain);
@@ -1095,8 +1100,21 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     ok = run_serial(&ctx, init_region_cycles_if_needed, "region_cycles");
     if (!ok) goto cleanup;
 
-    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (30 waves)");
-    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (30 waves + region_cycles)");
+    // ========================================================================
+    // WAVE 31 (W3 KG retrofit): Region KG structural wirings.
+    // Registers structural sub-region nodes for 10 previously-unwired brain
+    // regions (occipital/somatosensory/motor/broca/gustatory/olfactory/
+    // brainstem/raphe/parahippocampal/perirhinal) into brain->internal_kg.
+    // Each region's wiring_init is null-tolerant if internal_kg is disabled.
+    // Must run after Wave 22 (internal_kg). See docs/claude/
+    // kg-integration-audit-2026-04-24.md §2.1 + kg-node-naming-registry.md.
+    // ========================================================================
+    ok = run_serial(&ctx, nimcp_brain_factory_init_region_kg_bridges_subsystem,
+                    "region_kg_bridges");
+    if (!ok) goto cleanup;
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (31 waves)");
+    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (31 waves + region_cycles + region_kg_bridges)");
 
 cleanup:
     nimcp_pool_destroy(pool);

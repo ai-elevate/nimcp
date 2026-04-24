@@ -4,6 +4,7 @@
 
 #include "core/brain/factory/init/nimcp_brain_init_thalamus.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/subcortical/bridges/nimcp_subcortical_runtime_events.h"  /* W4 */
 #include "core/medulla/nimcp_medulla.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -451,8 +452,14 @@ int nimcp_brain_thal_relay(brain_t brain,
         return 0;
     }
 
-    return thalamus_relay(b->thalamus, nucleus_type, input, input_size,
-                           output, output_size);
+    int rc = thalamus_relay(b->thalamus, nucleus_type, input, input_size,
+                             output, output_size);
+    if (rc == 0) {
+        /* W4: per-relay KG event. src_idx = nucleus type, dst_idx = cortical target. */
+        subcortical_emit_routing_decision(brain,
+            (uint32_t)nucleus_type, 0u /* cortical destination not enumerated here */);
+    }
+    return rc;
 }
 
 //=============================================================================

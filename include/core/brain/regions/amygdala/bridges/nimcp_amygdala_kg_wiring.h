@@ -501,6 +501,23 @@ NIMCP_EXPORT int amygdala_kg_unregister_all(
     uint64_t admin_token
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime amygdala event into the brain's internal KG
+ *
+ * Supported kinds: "fear", "reward". Silent no-op if brain/KG unavailable.
+ * Creates `amygdala_event_<kind>_<ts_us>` node + edge to `amygdala`.
+ * Self-elevates admin token to write, restores READ on exit.
+ */
+NIMCP_EXPORT void amygdala_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -4,6 +4,7 @@
 
 #include "core/brain/factory/init/nimcp_brain_init_inferior_colliculus.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/subcortical/bridges/nimcp_subcortical_runtime_events.h"  /* W4 */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -128,7 +129,14 @@ int nimcp_brain_ic_process_audio(brain_t brain,
         return -1;
     }
 
-    return ic_process_audio(b->inferior_colliculus, left, right, num_samples);
+    int rc = ic_process_audio(b->inferior_colliculus, left, right, num_samples);
+    if (rc == 0) {
+        /* W4: emit auditory localization KG event. Azimuth/elevation not
+         * surfaced by ic_process_audio; use 0.0 placeholders — W5 network-level
+         * wiring will pass real values when IC internal state exposes them. */
+        subcortical_emit_auditory_localization(brain, 0.0f, 0.0f);
+    }
+    return rc;
 }
 
 bool nimcp_brain_ic_is_enabled(brain_t brain) {

@@ -5,6 +5,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
+#include "core/brain/subcortical/bridges/nimcp_subcortical_runtime_events.h"  /* W4 */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -327,10 +328,17 @@ int nimcp_brain_bg_select_action(brain_t brain,
                 *selected_action = i;
             }
         }
+        /* W4: emit KG event even in fallback path so symbolic queries still see it. */
+        subcortical_emit_action_selected(brain, *selected_action, max_val);
         return 0;
     }
 
-    return bg_enhanced_select_action(b->basal_ganglia, cortical_input, selected_action);
+    int rc = bg_enhanced_select_action(b->basal_ganglia, cortical_input, selected_action);
+    if (rc == 0) {
+        /* W4: per-action-selection KG event (hot-path hook). */
+        subcortical_emit_action_selected(brain, *selected_action, 1.0f);
+    }
+    return rc;
 }
 
 int nimcp_brain_bg_process_reward(brain_t brain,
@@ -345,6 +353,14 @@ int nimcp_brain_bg_process_reward(brain_t brain,
 
     if (!b->basal_ganglia_enabled || !b->basal_ganglia) {
         return 0;  /* Not enabled, skip silently */
+    }
+
+    /* W4: emit NAcc RPE event + SN dopamine release event. */
+    float rpe = reward - predicted_reward;
+    subcortical_emit_reward_prediction(brain, rpe);
+    if (rpe > 0.0f) {
+        /* Positive RPE drives phasic DA burst (Schultz 1997). */
+        subcortical_emit_dopamine_release(brain, rpe);
     }
 
     return bg_enhanced_process_reward(b->basal_ganglia, reward, predicted_reward);

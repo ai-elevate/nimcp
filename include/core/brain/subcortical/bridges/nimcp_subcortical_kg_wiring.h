@@ -535,6 +535,22 @@ NIMCP_EXPORT int subcortical_kg_unregister_all(
     uint64_t admin_token
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime subcortical event into the brain's internal KG
+ *
+ * Supported kinds: "action_selected". Silent no-op if brain/KG unavailable.
+ * Creates `subcortical_event_<kind>_<ts_us>` node + edge to `subcortical`.
+ */
+NIMCP_EXPORT void subcortical_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

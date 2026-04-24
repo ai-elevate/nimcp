@@ -515,6 +515,28 @@ set(NIMCP_CORE_SOURCES
     # Entorhinal Cortex - Grid cells, spatial mapping, memory gateway (KG wiring)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/bridges/nimcp_entorhinal_kg_wiring.c       # Entorhinal KG wiring
 
+    # W3 KG retrofit (2026-04-24): 10 previously-unwired brain regions
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/occipital/bridges/nimcp_occipital_kg_wiring.c               # Occipital KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/somatosensory/bridges/nimcp_somatosensory_kg_wiring.c       # Somatosensory KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/motor/bridges/nimcp_motor_kg_wiring.c                       # Motor KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/broca/bridges/nimcp_broca_kg_wiring.c                       # Broca KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/gustatory/bridges/nimcp_gustatory_kg_wiring.c               # Gustatory KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/olfactory/bridges/nimcp_olfactory_kg_wiring.c               # Olfactory KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/brainstem/bridges/nimcp_brainstem_kg_wiring.c               # Brainstem KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/raphe/bridges/nimcp_raphe_kg_wiring.c                       # Raphe KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/parahippocampal/bridges/nimcp_parahippocampal_kg_wiring.c   # Parahippocampal KG wiring (W3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/perirhinal/bridges/nimcp_perirhinal_kg_wiring.c             # Perirhinal KG wiring (W3)
+
+    # W4 KG retrofit (2026-04-24): 5 remaining regions + per-subcortical runtime events
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/endocannabinoid/bridges/nimcp_endocannabinoid_kg_wiring.c           # Endocannabinoid KG wiring (W4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/glymphatic/bridges/nimcp_glymphatic_kg_wiring.c                     # Glymphatic KG wiring (W4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/mammillary/bridges/nimcp_mammillary_kg_wiring.c                     # Mammillary KG wiring (W4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/neuropeptide/bridges/nimcp_neuropeptide_kg_wiring.c                 # Neuropeptide KG wiring (W4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/sensory_integration/bridges/nimcp_sensory_integration_kg_wiring.c   # Sensory Integration KG wiring (W4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/subcortical/bridges/nimcp_subcortical_runtime_events.c                      # Per-subcortical-module runtime events (W4)
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_kg_bridges.c                   # W3+W4 region KG init wave
+
     # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge

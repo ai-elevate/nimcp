@@ -116,6 +116,22 @@ NIMCP_EXPORT brain_kg_node_id_t habenula_kg_find_subsystem(
     const char* name
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime habenula event into the brain's internal KG
+ *
+ * Supported kinds: "negative_rpe". Silent no-op if brain/KG unavailable.
+ * Creates `habenula_event_<kind>_<ts_us>` node + edge to `habenula`.
+ */
+NIMCP_EXPORT void habenula_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

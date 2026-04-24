@@ -511,6 +511,23 @@ NIMCP_EXPORT int pfc_kg_unregister_all(
     uint64_t admin_token
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime prefrontal event into the brain's internal KG
+ *
+ * Supported kinds: "goal_update". Silent no-op if brain/KG unavailable.
+ * Creates `prefrontal_cortex_event_<kind>_<ts_us>` node + edge to
+ * `prefrontal_cortex`.
+ */
+NIMCP_EXPORT void pfc_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

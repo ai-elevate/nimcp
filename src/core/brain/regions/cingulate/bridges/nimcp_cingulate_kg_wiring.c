@@ -11,8 +11,10 @@
  */
 
 #include "core/brain/regions/cingulate/bridges/nimcp_cingulate_kg_wiring.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -299,4 +301,62 @@ int cingulate_kg_unregister_all(
 
     NIMCP_LOG_INFO(CINGULATE_KG_MODULE_NAME, "Unregistered Cingulate KG nodes");
     return 0;
+}
+
+//=============================================================================
+// Runtime Event Emission (Wave W2)
+//=============================================================================
+
+/*
+ * HOT-PATH GAP: Cingulate currently has only an adapter + bridges — no
+ * standalone tick .c file emitting conflict/error signals. Callers detecting
+ * response conflict should invoke cingulate_kg_emit_event(.., "conflict", ..).
+ */
+
+void cingulate_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+) {
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg || !kind) {
+        return;
+    }
+
+    brain_kg_t* kg = brain->internal_kg;
+    uint64_t tok = brain->internal_kg_admin_token;
+    if (brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN, tok) != 0) {
+        return;
+    }
+
+    char name[128];
+    char desc[192];
+    snprintf(name, sizeof(name),
+             "cingulate_event_%s_%" PRIu64, kind, ts_us);
+    snprintf(desc, sizeof(desc),
+             "cingulate runtime event: kind=%s intensity=%.3f ts_us=%" PRIu64,
+             kind, (double)intensity, ts_us);
+
+    brain_kg_node_id_t evt_id = brain_kg_add_node(
+        kg, name, BRAIN_KG_NODE_CUSTOM, desc
+    );
+
+    if (evt_id != BRAIN_KG_INVALID_NODE) {
+        char val_str[32];
+        snprintf(val_str, sizeof(val_str), "%.4f", (double)intensity);
+        brain_kg_add_metadata(kg, evt_id, "intensity", val_str);
+        brain_kg_add_metadata(kg, evt_id, "kind", kind);
+
+        brain_kg_node_id_t root = brain_kg_find_node(kg, CINGULATE_KG_ROOT_NAME);
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(
+                kg, evt_id, root,
+                BRAIN_KG_EDGE_SENDS_TO,
+                "produced_by",
+                (intensity < 0.0f ? -intensity : intensity)
+            );
+        }
+    }
+
+    (void)brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
 }

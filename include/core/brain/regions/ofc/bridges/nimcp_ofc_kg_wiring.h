@@ -482,6 +482,23 @@ NIMCP_EXPORT int ofc_kg_unregister_all(
     uint64_t admin_token
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime OFC event into the brain's internal KG
+ *
+ * Supported kinds: "decision_outcome". Silent no-op if brain/KG unavailable.
+ * Creates `orbitofrontal_cortex_event_<kind>_<ts_us>` node + edge to
+ * `orbitofrontal_cortex`.
+ */
+NIMCP_EXPORT void ofc_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

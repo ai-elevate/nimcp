@@ -112,6 +112,22 @@ NIMCP_EXPORT brain_kg_node_id_t vta_kg_find_subsystem(
     const char* name
 );
 
+/* Forward decl for runtime event emit API (W2). */
+struct brain_struct;
+
+/**
+ * @brief Emit a runtime VTA event into the brain's internal KG
+ *
+ * Supported kinds: "dopamine_rpe". Silent no-op if brain/KG unavailable.
+ * Creates `vta_event_<kind>_<ts_us>` node + edge to `vta`.
+ */
+NIMCP_EXPORT void vta_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+);
+
 #ifdef __cplusplus
 }
 #endif

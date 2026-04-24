@@ -11,8 +11,10 @@
  */
 
 #include "core/brain/regions/amygdala/bridges/nimcp_amygdala_kg_wiring.h"
+#include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -915,4 +917,68 @@ int amygdala_kg_unregister_all(
     NIMCP_LOG_INFO(AMYGDALA_KG_MODULE_NAME, "Unregistered Amygdala KG nodes");
 
     return 0;
+}
+
+//=============================================================================
+// Runtime Event Emission (Wave W2)
+//=============================================================================
+
+/*
+ * HOT-PATH GAP: The amygdala region has no dedicated tick/update .c file in
+ * this tree (only bridges + this KG-wiring file). The owning tick path lives
+ * in the subcortical amygdala bridges (see subcortical/nimcp_amygdala_*.c).
+ * Callers that observe a fear spike or reward event should invoke
+ * amygdala_kg_emit_event() at the point the event occurs; no autonomous
+ * wiring is added in W2.
+ */
+
+void amygdala_kg_emit_event(
+    struct brain_struct* brain,
+    const char* kind,
+    float intensity,
+    uint64_t ts_us
+) {
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg || !kind) {
+        return;
+    }
+
+    brain_kg_t* kg = brain->internal_kg;
+    uint64_t tok = brain->internal_kg_admin_token;
+
+    /* Elevate to ADMIN for the duration of this write. See
+     * docs/claude/kg-node-naming-registry.md §7. */
+    if (brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN, tok) != 0) {
+        return;
+    }
+
+    char name[128];
+    char desc[192];
+    snprintf(name, sizeof(name),
+             "amygdala_event_%s_%" PRIu64, kind, ts_us);
+    snprintf(desc, sizeof(desc),
+             "amygdala runtime event: kind=%s intensity=%.3f ts_us=%" PRIu64,
+             kind, (double)intensity, ts_us);
+
+    brain_kg_node_id_t evt_id = brain_kg_add_node(
+        kg, name, BRAIN_KG_NODE_CUSTOM, desc
+    );
+
+    if (evt_id != BRAIN_KG_INVALID_NODE) {
+        char val_str[32];
+        snprintf(val_str, sizeof(val_str), "%.4f", (double)intensity);
+        brain_kg_add_metadata(kg, evt_id, "intensity", val_str);
+        brain_kg_add_metadata(kg, evt_id, "kind", kind);
+
+        brain_kg_node_id_t root = brain_kg_find_node(kg, AMYGDALA_KG_ROOT_NAME);
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(
+                kg, evt_id, root,
+                BRAIN_KG_EDGE_SENDS_TO,
+                "produced_by",
+                (intensity < 0.0f ? -intensity : intensity)
+            );
+        }
+    }
+
+    (void)brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
 }
