@@ -708,6 +708,14 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_cochlea_subsystem(brain);
     }
 
+    /* Physics bridges destroy (Wave 8C) — 4 HALF-STATUE bridges +
+     * upstream ephaptic/thermo/hh modules. Bridges are destroyed first,
+     * then upstream modules freed. Null-safe throughout. */
+    {
+        extern void nimcp_brain_factory_destroy_physics_bridges_subsystem(brain_t);
+        nimcp_brain_factory_destroy_physics_bridges_subsystem(brain);
+    }
+
     /* Predictive-immune coupling destroy — same ordering rationale as biology.
      * Unregister drives + stop + destroy BEFORE predictive_network or
      * immune_system are freed downstream (predictive_network destroy on line

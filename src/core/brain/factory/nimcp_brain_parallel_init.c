@@ -89,6 +89,12 @@ extern bool nimcp_brain_factory_init_biology_subsystem(brain_t brain);
 // (Wave 14) are both available. Null-tolerant for any missing dep.
 extern bool nimcp_brain_factory_init_cochlea_subsystem(brain_t brain);
 
+// Wave 8C: 4 HALF-STATUE physics bridges (ephaptic_bio_async, ephaptic_fft,
+// hh_bio_async, thermo_bio_async) + their 3 upstream modules. Runs after
+// bio_router (Wave 13) so the bio-async bridges can connect. Null-tolerant
+// if bio_router is absent.
+extern bool nimcp_brain_factory_init_physics_bridges_subsystem(brain_t brain);
+
 // Chemistry cluster (pumps + buffers + pH + NO) — single BRAIN_CYCLE_CHEMISTRY at 10ms
 extern bool nimcp_brain_factory_init_chemistry_subsystem(brain_t brain);
 
@@ -395,6 +401,16 @@ static bool init_cochlea_if_needed(brain_t brain) {
      * leaves its bridge NULL — not a hard error. Soft failure. */
     if (brain->config.lazy_init_mode) return true;
     (void)nimcp_brain_factory_init_cochlea_subsystem(brain);
+    return true;
+}
+
+static bool init_physics_bridges_if_needed(brain_t brain) {
+    /* Wave 8C — 4 HALF-STATUE physics bridges (ephaptic_bio_async,
+     * ephaptic_fft, hh_bio_async, thermo_bio_async) + their 3 upstream
+     * modules. All deps (bio_router Wave 13) are live by Wave 15. Any
+     * missing dep results in a skipped bridge — not a hard error. */
+    if (brain->config.lazy_init_mode) return true;
+    (void)nimcp_brain_factory_init_physics_bridges_subsystem(brain);
     return true;
 }
 
@@ -919,6 +935,9 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
      * above) are now live. Bridges with still-NULL deps (broca Wave later,
      * rcog/collective Wave 27) just stay NULL. */
     tasks[n++] = TASK(init_cochlea_if_needed, "cochlea");
+    /* Wave 8C physics bridges — runs alongside cochlea in Wave 15 (same
+     * prereq: bio_router Wave 13). Soft-fail on any missing dep. */
+    tasks[n++] = TASK(init_physics_bridges_if_needed, "physics_bridges");
     if (!execute_wave(pool, &ctx, tasks, n, 15)) goto cleanup;
 
     // ========================================================================

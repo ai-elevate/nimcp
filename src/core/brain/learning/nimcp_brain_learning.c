@@ -1120,6 +1120,19 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         brain_tick_language(brain, 16.6f);
     }
 
+    /* Wave 8C (2026-04-24): drive 4 HALF-STATUE physics bridges —
+     * ephaptic_bio_async, ephaptic_fft, hh_bio_async, thermo_bio_async.
+     * The 3 quantum bridges (ephaptic_quantum, hh_quantum, thermo_quantum)
+     * are purely functional and are not wired here. All 4 bridges had
+     * create/destroy/update APIs but zero callers from brain hot paths
+     * prior to this wave. Each internal tick is null-guarded, so a brain
+     * with bio_router disabled or ephaptic/thermo/hh init failed has zero
+     * per-tick cost. */
+    {
+        extern void brain_tick_physics_bridges(brain_t brain, float dt_ms);
+        brain_tick_physics_bridges(brain, 16.6f);
+    }
+
     /* Phase E3: auto-insert high-confidence training episodes into the
      * Z-Ladder as memory nodes. Opt-in — no-op unless Python has set
      * brain.long_term_set_auto_insert(True, ...). */

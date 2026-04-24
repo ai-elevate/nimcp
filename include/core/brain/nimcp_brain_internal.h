@@ -86,6 +86,21 @@ struct cochlea_substrate_bridge;
 struct cochlea_thalamic_bridge;
 struct cochlea_verification_bridge;
 
+/* Physics bridge forward decls (Wave 8C, 2026-04-24). Like the cochlea
+ * bridges above, these are opaque pointer types declared here to avoid
+ * pulling their headers into every TU. Consumers #include the bridge
+ * header in the .c files that actually call them.
+ *
+ * The upstream physics modules (ephaptic_system, thermodynamic_state,
+ * hh_population) are stored on brain_t as void* because those types are
+ * unscoped typedef'd struct values (not pointer typedefs), and pulling
+ * their tags here would cause typedef redefinition collisions. The init
+ * + tick files cast to the concrete types at the API boundary. */
+struct ephaptic_bio_async_bridge_struct;
+struct ephaptic_fft_bridge_struct;
+struct hh_bio_async_bridge_struct;
+struct thermo_bio_async_bridge_struct;
+
 //=============================================================================
 // COGNITIVE SUBSYSTEMS - Using Aggregate Headers
 // OPTIMIZATION: Replaced 40+ individual cognitive includes with 4 aggregate headers
@@ -1884,6 +1899,34 @@ struct brain_struct {
     struct cochlea_thalamic_bridge*         cochlea_thalamic_bridge;      // Cochlea → thalamus MGN
     struct cochlea_verification_bridge*     cochlea_verification_bridge;  // Cochlea self-verification
     bool                                    cochlea_bridges_enabled;      // True if register_driven succeeded
+
+    //=========================================================================
+    // Physics Bridges (Wave 8C, 2026-04-24)
+    //
+    // Wire the 4 HALF-STATUE physics bridges that have create/destroy/update:
+    //   - ephaptic_bio_async  (Ephaptic → bio-router)
+    //   - ephaptic_fft        (Ephaptic LFP → FFT spectral analysis)
+    //   - hh_bio_async        (Hodgkin-Huxley → bio-router)
+    //   - thermo_bio_async    (Thermodynamics → bio-router)
+    //
+    // The 3 quantum bridges (ephaptic_quantum, hh_quantum, thermo_quantum)
+    // are purely functional (no create/destroy/update) — they are called
+    // on-demand by other subsystems, not ticked from a hot path. Skipped
+    // from this wiring.
+    //
+    // Upstream physics modules stored as void* to sidestep typedef collisions
+    // (see forward-decl block above). Cast at the init/tick call sites.
+    //=========================================================================
+    void*                                   ephaptic_system;              // nimcp_ephaptic_system_t* (heap)
+    void*                                   thermo_state;                 // nimcp_thermodynamic_state_t* (heap)
+    void*                                   hh_population;                // nimcp_hh_population_t* (heap)
+
+    struct ephaptic_bio_async_bridge_struct* ephaptic_bio_async_bridge;   // Ephaptic → bio-router
+    struct ephaptic_fft_bridge_struct*       ephaptic_fft_bridge;         // Ephaptic LFP → FFT spectral
+    struct hh_bio_async_bridge_struct*       hh_bio_async_bridge;         // HH → bio-router
+    struct thermo_bio_async_bridge_struct*   thermo_bio_async_bridge;     // Thermo → bio-router
+
+    bool                                    physics_bridges_enabled;      // True if any physics bridge is live
 
     //=========================================================================
     // GPU Inference Optimization (Phase GPU-INF)
