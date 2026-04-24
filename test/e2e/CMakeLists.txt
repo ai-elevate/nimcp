@@ -3391,6 +3391,35 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave6_e2e.c)
 endif()
 
 # ============================================================================
+# Wave 8A E2E: 6-cycle soak including BRAIN_CYCLE_COCHLEA_BRIDGES
+# ============================================================================
+# WHAT: Runs COCHLEA_BRIDGES (10ms) + CHEMISTRY (10ms) + EPI/NVC/PI (100ms)
+#       + NEUROGENESIS (1s) as six concurrent driven cycles on one
+#       coordinator for 2 seconds.
+# WHY:  Cross-cycle stability + thread-leak probe at the Wave 8A boundary.
+# HOW:  Plain C, links libnimcp only (no GTest — owns its own main).
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave8a_e2e.c)
+    add_executable(e2e_test_wave8a
+        test_wave8a_e2e.c
+    )
+    target_include_directories(e2e_test_wave8a PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_wave8a PRIVATE c_std_11)
+    target_link_libraries(e2e_test_wave8a PRIVATE
+        nimcp Threads::Threads rt m
+    )
+    add_test(NAME e2e_test_wave8a
+             COMMAND e2e_test_wave8a
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_wave8a
+        PROPERTIES
+            LABELS "e2e;cycle_coordinator;driven;cochlea;wave8a"
+            TIMEOUT 30)
+endif()
+
+# ============================================================================
 # Grounded Language E2E Tests (subdirectory)
 # ============================================================================
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/language")

@@ -1,16 +1,16 @@
 /**
- * @file test_wave6_regression.c
- * @brief Regression tests for Wave 6 enum/coordinator extensions.
+ * @file test_wave8a_regression.c
+ * @brief Regression tests for Wave 8A enum/coordinator extensions.
  *
- * WHAT: Guards that adding BRAIN_CYCLE_CHEMISTRY to brain_cycle_type_t did
- *       not shift any existing enum value and that all 15 cycle types
- *       (14 pre-Wave-6 + 1 Wave 6) still map to the name, category, and
+ * WHAT: Guards that adding BRAIN_CYCLE_COCHLEA_BRIDGES to brain_cycle_type_t
+ *       did not shift any existing enum value and that all 16 cycle types
+ *       (15 pre-Wave-8A + 1 Wave 8A) still map to the name, category, and
  *       default interval they had before.
  *
  * WHY:  Enum extensions are a common ABI/behavior-regression source: a
  *       typo reorders the switch, a missing case falls through to
  *       BACKGROUND, downstream callers querying get_default_interval_us
- *       silently get 0. Wave 6 also grew the enum count from 14 → 15 so
+ *       silently get 0. Wave 8A also grew the enum count from 15 → 16 so
  *       any downstream code sizing a buffer to [BRAIN_CYCLE_COUNT] is
  *       exercised under the new dimension.
  *
@@ -70,7 +70,7 @@ typedef struct {
 
 /* Order matches enum declaration in nimcp_brain_cycle_coordinator.h. */
 static const cycle_golden_t GOLDEN[] = {
-    /* Pre-Wave-6 cycles — these must not drift. */
+    /* Pre-Wave-8A cycles — these must not drift. */
     { BRAIN_CYCLE_IMMUNE_TICK,      "immune_tick",      BRAIN_CYCLE_CATEGORY_FAST,       50000    },
     { BRAIN_CYCLE_HEALTH_AGENT,     "health_agent",     BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
     { BRAIN_CYCLE_SLEEP_WAKE,       "sleep_wake",       BRAIN_CYCLE_CATEGORY_SLOW,       0        },
@@ -85,12 +85,13 @@ static const cycle_golden_t GOLDEN[] = {
     { BRAIN_CYCLE_EPIGENETICS,      "epigenetics",      BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
     { BRAIN_CYCLE_NEUROVASCULAR,    "neurovascular",    BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
     { BRAIN_CYCLE_PREDICTIVE_IMMUNE,"predictive_immune",BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
-    /* NEW in Wave 6 — explicit expectation so it too is pinned. */
     { BRAIN_CYCLE_CHEMISTRY,        "chemistry",        BRAIN_CYCLE_CATEGORY_FAST,       10000    },
+    /* NEW in Wave 8A — explicit expectation so it too is pinned. */
+    { BRAIN_CYCLE_COCHLEA_BRIDGES,  "cochlea_bridges",  BRAIN_CYCLE_CATEGORY_FAST,       10000    },
 };
 
 static void test_enum_contract_per_cycle(void) {
-    TEST("all 15 cycle types: name + category + default_interval pinned");
+    TEST("all 16 cycle types: name + category + default_interval pinned");
     const size_t n = sizeof(GOLDEN) / sizeof(GOLDEN[0]);
     for (size_t i = 0; i < n; i++) {
         const cycle_golden_t* g = &GOLDEN[i];
@@ -107,32 +108,55 @@ static void test_enum_contract_per_cycle(void) {
     PASS();
 }
 
-static void test_enum_count_is_15(void) {
+static void test_enum_count_floor_is_16(void) {
     /* Wave 8A added BRAIN_CYCLE_COCHLEA_BRIDGES; count grew 15 → 16.
-     * Relaxed to floor guard — new waves may add cycles above this,
-     * but nothing should shrink the enum below Wave 6's floor. */
-    TEST("BRAIN_CYCLE_COUNT >= 15 (Wave 6 floor — new cycles allowed above)");
-    ASSERT_TRUE((int)BRAIN_CYCLE_COUNT >= 15,
-                "BRAIN_CYCLE_COUNT dropped below Wave 6 floor");
+     * Floor guard: new waves may append above, but nothing should shrink
+     * the enum below Wave 8A's floor. */
+    TEST("BRAIN_CYCLE_COUNT >= 16 (Wave 8A floor — new cycles allowed above)");
+    ASSERT_TRUE((int)BRAIN_CYCLE_COUNT >= 16,
+                "BRAIN_CYCLE_COUNT dropped below Wave 8A floor");
     PASS();
 }
 
-static void test_enum_chemistry_slot(void) {
-    /* Wave 8A added a cycle AFTER CHEMISTRY. The invariant Wave 6 needs to
-     * pin is that CHEMISTRY's ORDINAL (14) didn't shift, not that it's last. */
-    TEST("BRAIN_CYCLE_CHEMISTRY ordinal is 14 (Wave 6 position)");
+static void test_enum_cochlea_bridges_slot(void) {
+    TEST("BRAIN_CYCLE_COCHLEA_BRIDGES ordinal is 15 (Wave 8A position)");
+    ASSERT_EQ((int)BRAIN_CYCLE_COCHLEA_BRIDGES, 15,
+              "COCHLEA_BRIDGES ordinal shifted — enum reordering is a "
+              "breaking change for tests and persisted state");
+    PASS();
+}
+
+static void test_enum_chemistry_slot_unchanged(void) {
+    /* CHEMISTRY should stay at ordinal 14 regardless of what waves append. */
+    TEST("BRAIN_CYCLE_CHEMISTRY ordinal is 14 (Wave 6 position, unchanged)");
     ASSERT_EQ((int)BRAIN_CYCLE_CHEMISTRY, 14,
-              "CHEMISTRY ordinal shifted — enum reordering is a breaking "
-              "change for tests and persisted state");
+              "CHEMISTRY slot drifted — enum reordered");
     PASS();
 }
 
 static void test_enum_predictive_immune_slot_unchanged(void) {
-    /* PREDICTIVE_IMMUNE should stay at ordinal 13 regardless of what waves
-     * append after it. */
+    /* PREDICTIVE_IMMUNE should stay at ordinal 13 regardless of new waves. */
     TEST("BRAIN_CYCLE_PREDICTIVE_IMMUNE ordinal is 13 (Wave 4 position)");
     ASSERT_EQ((int)BRAIN_CYCLE_PREDICTIVE_IMMUNE, 13,
               "PREDICTIVE_IMMUNE slot drifted — enum reordered");
+    PASS();
+}
+
+static void test_enum_early_cycles_unchanged(void) {
+    TEST("early cycles (0..12) ordinals pinned");
+    ASSERT_EQ((int)BRAIN_CYCLE_IMMUNE_TICK,      0,  "IMMUNE_TICK slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_HEALTH_AGENT,     1,  "HEALTH_AGENT slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_SLEEP_WAKE,       2,  "SLEEP_WAKE slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_CIRCADIAN,        3,  "CIRCADIAN slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_AROUSAL,          4,  "AROUSAL slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_OSCILLATIONS,     5,  "OSCILLATIONS slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_GC_AGENT,         6,  "GC_AGENT slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_IO_DISPATCHER,    7,  "IO_DISPATCHER slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_BRAIN_UPDATE,     8,  "BRAIN_UPDATE slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_LONG_TERM_MEMORY, 9,  "LONG_TERM_MEMORY slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_NEUROGENESIS,     10, "NEUROGENESIS slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_EPIGENETICS,      11, "EPIGENETICS slot drifted");
+    ASSERT_EQ((int)BRAIN_CYCLE_NEUROVASCULAR,    12, "NEUROVASCULAR slot drifted");
     PASS();
 }
 
@@ -140,33 +164,33 @@ static void test_enum_predictive_immune_slot_unchanged(void) {
 /* Behavior of register_driven on the new type mirrors existing types        */
 /* ------------------------------------------------------------------------- */
 
-static void test_register_driven_on_chemistry_type(void) {
-    TEST("register_driven(CHEMISTRY) works + unregister joins");
+static void test_register_driven_on_cochlea_bridges_type(void) {
+    TEST("register_driven(COCHLEA_BRIDGES) works + unregister joins");
     brain_cycle_coordinator_config_t cfg; make_quiet_cfg(&cfg);
     brain_cycle_coordinator_t* coord = brain_cycle_coordinator_create(&cfg);
     ASSERT_NOT_NULL(coord, "create failed");
 
     int rc = brain_cycle_coordinator_register_driven(
-        coord, BRAIN_CYCLE_CHEMISTRY, 5000,
+        coord, BRAIN_CYCLE_COCHLEA_BRIDGES, 5000,
         nosleep_tick_fn, NULL, NULL);
-    ASSERT_EQ(rc, 0, "register_driven(CHEMISTRY) failed");
+    ASSERT_EQ(rc, 0, "register_driven(COCHLEA_BRIDGES) failed");
 
     sleep_ms(50);
 
     brain_cycle_status_t st;
     int g = brain_cycle_coordinator_get_status(
-        coord, BRAIN_CYCLE_CHEMISTRY, &st);
+        coord, BRAIN_CYCLE_COCHLEA_BRIDGES, &st);
     ASSERT_EQ(g, 0, "get_status failed");
     ASSERT_TRUE(st.ticks_executed >= 1,
         "tick count zero — driver thread never ran");
 
     int ur = brain_cycle_coordinator_unregister(
-        coord, BRAIN_CYCLE_CHEMISTRY);
+        coord, BRAIN_CYCLE_COCHLEA_BRIDGES);
     ASSERT_EQ(ur, 0, "unregister failed");
 
     /* Second unregister fails (already gone). */
     int ur2 = brain_cycle_coordinator_unregister(
-        coord, BRAIN_CYCLE_CHEMISTRY);
+        coord, BRAIN_CYCLE_COCHLEA_BRIDGES);
     ASSERT_EQ(ur2, -1, "second unregister should fail");
 
     brain_cycle_coordinator_destroy(coord);
@@ -178,32 +202,30 @@ static void test_register_driven_on_chemistry_type(void) {
 /* ------------------------------------------------------------------------- */
 
 static void test_get_all_status_buffer_sized_to_count(void) {
-    TEST("get_all_status honors BRAIN_CYCLE_COUNT buffer size");
+    TEST("get_all_status honors BRAIN_CYCLE_COUNT buffer size at N>=16");
     brain_cycle_coordinator_config_t cfg; make_quiet_cfg(&cfg);
     brain_cycle_coordinator_t* coord = brain_cycle_coordinator_create(&cfg);
     ASSERT_NOT_NULL(coord, "create failed");
 
     int r1 = brain_cycle_coordinator_register(
         coord, BRAIN_CYCLE_BRAIN_UPDATE, NULL, NULL);
-    int r2 = brain_cycle_coordinator_register(
-        coord, BRAIN_CYCLE_EPIGENETICS, NULL, NULL);
+    int r2 = brain_cycle_coordinator_register_driven(
+        coord, BRAIN_CYCLE_CHEMISTRY, 10000, nosleep_tick_fn, NULL, NULL);
     int r3 = brain_cycle_coordinator_register_driven(
-        coord, BRAIN_CYCLE_CHEMISTRY, 10000,
-        nosleep_tick_fn, NULL, NULL);
+        coord, BRAIN_CYCLE_COCHLEA_BRIDGES, 10000, nosleep_tick_fn, NULL, NULL);
     ASSERT_EQ(r1, 0, "register BRAIN_UPDATE failed");
-    ASSERT_EQ(r2, 0, "register EPIGENETICS failed");
-    ASSERT_EQ(r3, 0, "register_driven CHEMISTRY failed");
+    ASSERT_EQ(r2, 0, "register_driven CHEMISTRY failed");
+    ASSERT_EQ(r3, 0, "register_driven COCHLEA_BRIDGES failed");
 
-    /* Buffer sized to BRAIN_CYCLE_COUNT entries per the public contract
-     * — this must still compile and produce a valid result at N=15. */
+    /* Buffer sized to BRAIN_CYCLE_COUNT entries per the public contract. */
     brain_cycle_status_t statuses[BRAIN_CYCLE_COUNT];
     uint32_t count = 0;
     int rc = brain_cycle_coordinator_get_all_status(
         coord, statuses, &count);
 
     (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_BRAIN_UPDATE);
-    (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_EPIGENETICS);
     (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_CHEMISTRY);
+    (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_COCHLEA_BRIDGES);
     brain_cycle_coordinator_destroy(coord);
 
     ASSERT_EQ(rc, 0, "get_all_status failed");
@@ -216,13 +238,15 @@ static void test_get_all_status_buffer_sized_to_count(void) {
 /* ------------------------------------------------------------------------- */
 
 int main(void) {
-    printf("\n=== Regression Tests: Wave 6 enum + coordinator contracts ===\n\n");
+    printf("\n=== Regression Tests: Wave 8A enum + coordinator contracts ===\n\n");
 
-    test_enum_count_is_15();
-    test_enum_chemistry_slot();
+    test_enum_count_floor_is_16();
+    test_enum_cochlea_bridges_slot();
+    test_enum_chemistry_slot_unchanged();
     test_enum_predictive_immune_slot_unchanged();
+    test_enum_early_cycles_unchanged();
     test_enum_contract_per_cycle();
-    test_register_driven_on_chemistry_type();
+    test_register_driven_on_cochlea_bridges_type();
     test_get_all_status_buffer_sized_to_count();
 
     printf("\n=== Results: %d passed, %d failed ===\n\n",

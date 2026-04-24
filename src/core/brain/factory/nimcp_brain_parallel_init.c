@@ -84,6 +84,11 @@ extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain);
 // Biology cluster (epigenetics + neurogenesis + NVC) — register_driven via coord
 extern bool nimcp_brain_factory_init_biology_subsystem(brain_t brain);
 
+// Wave 8A: Cochlea + 15 consumer bridges — register_driven via coord
+// Placed in Wave 14+ so brain->immune_system (Wave 11) and brain->fep_orchestrator
+// (Wave 14) are both available. Null-tolerant for any missing dep.
+extern bool nimcp_brain_factory_init_cochlea_subsystem(brain_t brain);
+
 // Chemistry cluster (pumps + buffers + pH + NO) — single BRAIN_CYCLE_CHEMISTRY at 10ms
 extern bool nimcp_brain_factory_init_chemistry_subsystem(brain_t brain);
 
@@ -380,6 +385,16 @@ static bool init_biology_if_needed(brain_t brain) {
     if (brain->config.lazy_init_mode) return true;
     /* Treat init failure as soft: the wave continues. */
     (void)nimcp_brain_factory_init_biology_subsystem(brain);
+    return true;
+}
+
+static bool init_cochlea_if_needed(brain_t brain) {
+    /* Wave 8A cochlea + 15 consumer bridges. Runs after Wave 14 so immune
+     * (Wave 11) and fep_orchestrator (Wave 14) prereqs are live. Any
+     * still-NULL dep (e.g. broca, rcog_engine which init later) just
+     * leaves its bridge NULL — not a hard error. Soft failure. */
+    if (brain->config.lazy_init_mode) return true;
+    (void)nimcp_brain_factory_init_cochlea_subsystem(brain);
     return true;
 }
 
@@ -899,6 +914,11 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(init_somatosensory_if_needed, "somatosensory");
     tasks[n++] = TASK(init_olfactory_if_needed, "olfactory");
     tasks[n++] = TASK(init_gustatory_if_needed, "gustatory");
+    /* Wave 8A cochlea + 15 bridges — runs here because all prereqs (immune
+     * Wave 11, fep Wave 14, medulla Wave 14, hypothalamus Wave 15 serial
+     * above) are now live. Bridges with still-NULL deps (broca Wave later,
+     * rcog/collective Wave 27) just stay NULL. */
+    tasks[n++] = TASK(init_cochlea_if_needed, "cochlea");
     if (!execute_wave(pool, &ctx, tasks, n, 15)) goto cleanup;
 
     // ========================================================================

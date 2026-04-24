@@ -64,6 +64,28 @@ typedef struct nimcp_nvc_system_s nimcp_nvc_system_t;
  * nimcp_predictive_immune.h (no `_s` suffix). */
 typedef struct predictive_immune_system predictive_immune_system_t;
 
+/* Cochlea + 15 consumer bridges — forward decls only. The bridge headers
+ * typedef their own opaque structs locally; to avoid pulling the whole
+ * perception subtree (cochlea.h → basilar_membrane.h → hair_cells.h → ...)
+ * into every TU that includes brain_internal.h, we forward-declare the
+ * struct tags here. Consumers (#include the bridge header in their .c). */
+struct cochlea;
+struct cochlea_audio_cortex_bridge;
+struct cochlea_bio_async_bridge;
+struct cochlea_broca_bridge;
+struct cochlea_collective_bridge;
+struct cochlea_cortical_deep_bridge;
+struct cochlea_fep_bridge;
+struct cochlea_immune_bridge;
+struct cochlea_kg_bridge;
+struct cochlea_medulla_bridge;
+struct cochlea_occipital_bridge;
+struct cochlea_rcog_bridge;
+struct cochlea_sleep_bridge;
+struct cochlea_substrate_bridge;
+struct cochlea_thalamic_bridge;
+struct cochlea_verification_bridge;
+
 //=============================================================================
 // COGNITIVE SUBSYSTEMS - Using Aggregate Headers
 // OPTIMIZATION: Replaced 40+ individual cognitive includes with 4 aggregate headers
@@ -1827,6 +1849,41 @@ struct brain_struct {
     //
     predictive_immune_system_t* predictive_immune;                    // Predictive ↔ immune coupling system (opaque)
     bool predictive_immune_enabled;                                   // True if create + register_driven succeeded
+
+    //=========================================================================
+    // COCHLEA + COCHLEA BRIDGES — Wired 2026-04-24 (Wave 8A)
+    //=========================================================================
+    // The cochlea subsystem + its 15 consumer bridges were flagged as
+    // HALF-STATUEs in the consumer-bridge inventory: .c files compile but
+    // zero callers from brain_decide / brain_learn_vector. Wave 8A creates
+    // brain->cochlea at init (after immune+fep are up), creates each of the
+    // 15 bridges with their respective deps, registers BRAIN_CYCLE_COCHLEA_
+    // BRIDGES at 10ms to tick them in sequence, and wires update calls into
+    // both hot paths (brain_decide + brain_learn_vector).
+    //
+    // Fields are null-tolerant: if any bridge's dep (e.g. immune_system,
+    // fep_orchestrator) is NULL at init time, that bridge stays NULL and
+    // the update call no-ops. Same semantics as biology cluster.
+    //
+    struct cochlea*                         cochlea;                      // Cochlea pipeline (BM → HC → ANF)
+    bool                                    cochlea_enabled;              // True if create succeeded
+
+    struct cochlea_audio_cortex_bridge*     cochlea_audio_cortex_bridge;  // Cochlea → A1 auditory cortex
+    struct cochlea_bio_async_bridge*        cochlea_bio_async_bridge;     // Cochlea → bio-async router
+    struct cochlea_broca_bridge*            cochlea_broca_bridge;         // Cochlea → Broca speech
+    struct cochlea_collective_bridge*       cochlea_collective_bridge;    // Cochlea → collective cognition
+    struct cochlea_cortical_deep_bridge*    cochlea_cortical_deep_bridge; // Cochlea → deep cortical columns
+    struct cochlea_fep_bridge*              cochlea_fep_bridge;           // Cochlea → FEP orchestrator
+    struct cochlea_immune_bridge*           cochlea_immune_bridge;        // Cochlea → brain immune system
+    struct cochlea_kg_bridge*                cochlea_kg_bridge;            // Cochlea → knowledge graph
+    struct cochlea_medulla_bridge*          cochlea_medulla_bridge;       // Cochlea → medulla brainstem
+    struct cochlea_occipital_bridge*        cochlea_occipital_bridge;     // Cochlea → occipital audiovisual
+    struct cochlea_rcog_bridge*             cochlea_rcog_bridge;          // Cochlea → recursive cognition
+    struct cochlea_sleep_bridge*            cochlea_sleep_bridge;         // Cochlea → sleep controller
+    struct cochlea_substrate_bridge*        cochlea_substrate_bridge;     // Cochlea → neural substrate
+    struct cochlea_thalamic_bridge*         cochlea_thalamic_bridge;      // Cochlea → thalamus MGN
+    struct cochlea_verification_bridge*     cochlea_verification_bridge;  // Cochlea self-verification
+    bool                                    cochlea_bridges_enabled;      // True if register_driven succeeded
 
     //=========================================================================
     // GPU Inference Optimization (Phase GPU-INF)

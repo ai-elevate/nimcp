@@ -3451,4 +3451,75 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_wave6_regression.c")
         PROPERTIES LABELS "regression;cycle_coordinator;chemistry;wave6" TIMEOUT 15)
 endif()
 
+# ============================================================================
+# Wave 8A: Cochlea + 15 Consumer Bridges — Unit + Integration + Regression
+# ============================================================================
+# WHAT: Wave 8A wired cochlea_t + 15 cochlea_*_bridge_t consumers into a
+#       single BRAIN_CYCLE_COCHLEA_BRIDGES driven cycle at 10ms, plus hot-
+#       path call sites in brain_decide / brain_learn_vector.
+# WHY:  Catch regressions in init/destroy control flow (16 opaque
+#       pointers), enum ordinal drift (14 pre-existing + 1 new), and
+#       cross-cycle starvation when the new 10ms cycle coexists with the
+#       Wave 6 chemistry cycle on the same coordinator.
+# HOW:  Explicit executable + link libnimcp only; plain C with own main().
+# ---------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_wave8a_cochlea_init.c")
+    if(NOT TARGET unit_test_wave8a_cochlea_init)
+        add_executable(unit_test_wave8a_cochlea_init
+            unit/test_wave8a_cochlea_init.c
+        )
+        target_include_directories(unit_test_wave8a_cochlea_init PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+        )
+        target_compile_features(unit_test_wave8a_cochlea_init
+            PRIVATE c_std_11)
+        target_link_libraries(unit_test_wave8a_cochlea_init
+            PRIVATE nimcp Threads::Threads rt m)
+        add_test(NAME unit_test_wave8a_cochlea_init
+                 COMMAND unit_test_wave8a_cochlea_init
+                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+        set_tests_properties(unit_test_wave8a_cochlea_init
+            PROPERTIES LABELS "unit;cycle_coordinator;cochlea;wave8a" TIMEOUT 15)
+    endif()
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_wave8a_integration.c")
+    add_executable(integration_test_wave8a_integration
+        integration/test_wave8a_integration.c
+    )
+    target_include_directories(integration_test_wave8a_integration PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_test_wave8a_integration
+        PRIVATE c_std_11)
+    target_link_libraries(integration_test_wave8a_integration
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME integration_test_wave8a_integration
+             COMMAND integration_test_wave8a_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_test_wave8a_integration
+        PROPERTIES LABELS "integration;cycle_coordinator;cochlea;wave8a" TIMEOUT 15)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_wave8a_regression.c")
+    add_executable(regression_test_wave8a_regression
+        regression/test_wave8a_regression.c
+    )
+    target_include_directories(regression_test_wave8a_regression PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_test_wave8a_regression
+        PRIVATE c_std_11)
+    target_link_libraries(regression_test_wave8a_regression
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME regression_test_wave8a_regression
+             COMMAND regression_test_wave8a_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_test_wave8a_regression
+        PROPERTIES LABELS "regression;cycle_coordinator;cochlea;wave8a" TIMEOUT 15)
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

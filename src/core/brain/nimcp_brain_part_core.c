@@ -1254,6 +1254,65 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     }
     } // end serial fallback for STAGE 0
 
+    // ========================================================================
+    // WAVE 8A: Cochlea + 15 consumer bridges — update each live bridge.
+    //
+    // Serial block (NOT a parallel stage task) because the bridges have an
+    // implicit ordering: audio_cortex reads what thalamic produces, FEP
+    // reads what audio_cortex produces, etc. We run them in dependency
+    // order here. Each call is null-guarded — bridges whose dep was NULL
+    // at init stay NULL and the call is skipped.
+    //
+    // The bridges also tick periodically via BRAIN_CYCLE_COCHLEA_BRIDGES
+    // (10ms); this call is the per-decide exercise that feeds the current
+    // cochlea_output into every downstream consumer. We pass NULL for
+    // cochlea_output — each bridge samples from its stored brain->cochlea
+    // pointer internally.
+    // ========================================================================
+    {
+        const float _cb_dt_ms = 16.0f; /* brain_decide cadence ~60fps */
+        /* Forward declarations — headers conflict with brain_internal.h
+         * types so we reach the bridge API via extern here. See
+         * nimcp_brain_init_cochlea.c for the full rationale. */
+        extern int cochlea_audio_cortex_bridge_update(void*, const void*, const void*, float);
+        extern int cochlea_bio_async_bridge_update(void*, const void*, float);
+        extern int cochlea_broca_bridge_update(void*, const void*, float);
+        extern int cochlea_collective_bridge_update(void*, const void*, float);
+        extern int cochlea_cortical_deep_bridge_update(void*, const void*, float);
+        extern int cochlea_fep_bridge_update(void*, const void*, float);
+        extern int cochlea_immune_bridge_update(void*, const void*, float);
+        extern int cochlea_medulla_bridge_update(void*, const void*, float);
+        extern int cochlea_occipital_bridge_update(void*, const void*, float);
+        extern int cochlea_rcog_bridge_update(void*, const void*, float);
+        extern int cochlea_substrate_bridge_update(void*, const void*, float);
+        extern int cochlea_verification_bridge_update(void*, float);
+
+        if (brain->cochlea_audio_cortex_bridge)
+            (void)cochlea_audio_cortex_bridge_update(brain->cochlea_audio_cortex_bridge, NULL, NULL, _cb_dt_ms);
+        if (brain->cochlea_bio_async_bridge)
+            (void)cochlea_bio_async_bridge_update(brain->cochlea_bio_async_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_broca_bridge)
+            (void)cochlea_broca_bridge_update(brain->cochlea_broca_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_collective_bridge)
+            (void)cochlea_collective_bridge_update(brain->cochlea_collective_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_cortical_deep_bridge)
+            (void)cochlea_cortical_deep_bridge_update(brain->cochlea_cortical_deep_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_fep_bridge)
+            (void)cochlea_fep_bridge_update(brain->cochlea_fep_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_immune_bridge)
+            (void)cochlea_immune_bridge_update(brain->cochlea_immune_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_medulla_bridge)
+            (void)cochlea_medulla_bridge_update(brain->cochlea_medulla_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_occipital_bridge)
+            (void)cochlea_occipital_bridge_update(brain->cochlea_occipital_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_rcog_bridge)
+            (void)cochlea_rcog_bridge_update(brain->cochlea_rcog_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_substrate_bridge)
+            (void)cochlea_substrate_bridge_update(brain->cochlea_substrate_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_verification_bridge)
+            (void)cochlea_verification_bridge_update(brain->cochlea_verification_bridge, _cb_dt_ms);
+    }
+
     // G3: Inference timeout check — after pre-forward stages
     if (nimcp_time_get_us() > inference_deadline_us) {
         LOG_MODULE_WARN("BRAIN", "brain_decide: inference timeout after pre-forward stages");

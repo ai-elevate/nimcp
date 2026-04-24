@@ -2787,6 +2787,55 @@ sequential_training:
         introspection_assess_connectivity_health(brain->introspection, &intro_cfg);
     }
 
+    NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: perception/cochlea_bridges",
+                       (unsigned long long)_blv_step_tracker);
+    /* === WAVE 8A: Cochlea + 15 consumer bridges ===
+     * Exercise each live cochlea bridge during training. Same null-guarded
+     * pattern as brain_decide. Bridges also tick periodically via
+     * BRAIN_CYCLE_COCHLEA_BRIDGES (10ms), but we invoke them per-learn-step
+     * here so training gradients / plasticity reach the bridge state each
+     * step. dt=1ms cadence matches the training inner loop. */
+    {
+        const float _cb_dt_ms = 1.0f;
+        extern int cochlea_audio_cortex_bridge_update(void*, const void*, const void*, float);
+        extern int cochlea_bio_async_bridge_update(void*, const void*, float);
+        extern int cochlea_broca_bridge_update(void*, const void*, float);
+        extern int cochlea_collective_bridge_update(void*, const void*, float);
+        extern int cochlea_cortical_deep_bridge_update(void*, const void*, float);
+        extern int cochlea_fep_bridge_update(void*, const void*, float);
+        extern int cochlea_immune_bridge_update(void*, const void*, float);
+        extern int cochlea_medulla_bridge_update(void*, const void*, float);
+        extern int cochlea_occipital_bridge_update(void*, const void*, float);
+        extern int cochlea_rcog_bridge_update(void*, const void*, float);
+        extern int cochlea_substrate_bridge_update(void*, const void*, float);
+        extern int cochlea_verification_bridge_update(void*, float);
+
+        if (brain->cochlea_audio_cortex_bridge)
+            (void)cochlea_audio_cortex_bridge_update(brain->cochlea_audio_cortex_bridge, NULL, NULL, _cb_dt_ms);
+        if (brain->cochlea_bio_async_bridge)
+            (void)cochlea_bio_async_bridge_update(brain->cochlea_bio_async_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_broca_bridge)
+            (void)cochlea_broca_bridge_update(brain->cochlea_broca_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_collective_bridge)
+            (void)cochlea_collective_bridge_update(brain->cochlea_collective_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_cortical_deep_bridge)
+            (void)cochlea_cortical_deep_bridge_update(brain->cochlea_cortical_deep_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_fep_bridge)
+            (void)cochlea_fep_bridge_update(brain->cochlea_fep_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_immune_bridge)
+            (void)cochlea_immune_bridge_update(brain->cochlea_immune_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_medulla_bridge)
+            (void)cochlea_medulla_bridge_update(brain->cochlea_medulla_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_occipital_bridge)
+            (void)cochlea_occipital_bridge_update(brain->cochlea_occipital_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_rcog_bridge)
+            (void)cochlea_rcog_bridge_update(brain->cochlea_rcog_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_substrate_bridge)
+            (void)cochlea_substrate_bridge_update(brain->cochlea_substrate_bridge, NULL, _cb_dt_ms);
+        if (brain->cochlea_verification_bridge)
+            (void)cochlea_verification_bridge_update(brain->cochlea_verification_bridge, _cb_dt_ms);
+    }
+
     NIMCP_LOGGING_INFO("[BLV-PHASE] step %llu: cognitive/sensor_fusion",
                        (unsigned long long)_blv_step_tracker);
     /* === SENSOR FUSION: Exercise sensor processing during training ===

@@ -698,6 +698,16 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_chemistry_subsystem(brain);
     }
 
+    /* Cochlea + 15 bridges destroy (Wave 8A) — same ordering: unregister
+     * BRAIN_CYCLE_COCHLEA_BRIDGES before any bridge pointer is freed so
+     * the tick wrapper can't race with destruction. Also runs while
+     * brain->audio_cortex / brain->fep_orchestrator / etc. are still
+     * live — the bridges' destroy funcs may reach back into those deps. */
+    {
+        extern void nimcp_brain_factory_destroy_cochlea_subsystem(brain_t);
+        nimcp_brain_factory_destroy_cochlea_subsystem(brain);
+    }
+
     /* Predictive-immune coupling destroy — same ordering rationale as biology.
      * Unregister drives + stop + destroy BEFORE predictive_network or
      * immune_system are freed downstream (predictive_network destroy on line
