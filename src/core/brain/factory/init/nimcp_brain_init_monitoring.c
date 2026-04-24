@@ -220,6 +220,21 @@ bool nimcp_brain_factory_init_connectivity_health_subsystem(brain_t brain)
 
 
 /**
+ * @brief Tracer callback for middleware_controller pattern subscriptions.
+ *
+ * W9-finish: activates middleware_controller by giving it a live
+ * subscriber so brain_decide's on_pattern_match dispatch reaches
+ * something. Counter bump is best-effort (race-tolerant for metrics).
+ */
+static void middleware_tracer_cb(uint32_t pattern_id, float similarity,
+                                  uint32_t region_id, void* user_data) {
+    (void)pattern_id; (void)similarity; (void)region_id;
+    brain_t brain = (brain_t)user_data;
+    if (!brain) return;
+    __atomic_add_fetch(&brain->middleware_pattern_callbacks, 1, __ATOMIC_RELAXED);
+}
+
+/**
  * @brief Initialize Middleware Controller subsystem (Phase 1.5.5)
  *
  * WHAT: Create unified command interface for cognitive → middleware control
@@ -250,6 +265,7 @@ bool nimcp_brain_factory_init_middleware_controller_subsystem(brain_t brain)
     // Initialize middleware controller state
     brain->middleware_controller = NULL;
     brain->enable_middleware_controller = false;  // Opt-in by default
+    brain->middleware_pattern_callbacks = 0;       // W9-finish: counter init
 
     // Create controller if executive controller is enabled (synergy with Phase 1.5.2)
     if (brain->executive) {
@@ -258,6 +274,18 @@ bool nimcp_brain_factory_init_middleware_controller_subsystem(brain_t brain)
 
         if (brain->middleware_controller) {
             brain->enable_middleware_controller = true;
+
+            /* W9-finish: seed a tracer subscription so brain_decide's
+             * on_pattern_match dispatch has a live subscriber. Wildcard
+             * pattern_id=0 with low threshold catches every decision. */
+            uint32_t sub_id = 0;
+            middleware_controller_subscribe_pattern(
+                brain->middleware_controller,
+                /*pattern_id=*/0,
+                /*confidence_threshold=*/0.05f,
+                middleware_tracer_cb,
+                /*user_data=*/(void*)brain,
+                &sub_id);
         }
         // Note: Failure to create is not fatal - cognitive control still works via executive
     }

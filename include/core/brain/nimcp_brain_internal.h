@@ -632,6 +632,7 @@ struct brain_struct {
     // === PHASE 1.5.5: MIDDLEWARE CONTROLLER (COGNITIVE → MIDDLEWARE) ===
     struct middleware_controller* middleware_controller;  // Unified cognitive-to-middleware command interface
     bool enable_middleware_controller;                    // Enable middleware controller subsystem
+    uint64_t middleware_pattern_callbacks;                // W9-finish: counter bumped by tracer_cb per dispatch
 
     // === PHASE 2 MIDDLEWARE: SPIKE ANALYSIS & POPULATION CODING ===
 

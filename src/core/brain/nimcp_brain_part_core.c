@@ -1578,7 +1578,8 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             if (brain->trauma_resilience) {
                 extern float nimcp_trauma_resilience_modulate_recall(void*, uint64_t, float, float);
                 extern void nimcp_trauma_resilience_record_recall(void*, uint64_t, float);
-                extern float nimcp_emotional_learning_get_arousal(const void*);
+                /* nimcp_emotional_learning_get_arousal declared in its header
+                 * (included in parent nimcp_brain.c via W9-finish). */
                 float arousal = brain->emotional_learning
                     ? nimcp_emotional_learning_get_arousal(brain->emotional_learning) : 0.5f;
                 /* Generate unique recall ID from label hash (FNV-1a) so
@@ -4323,6 +4324,48 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
         self_action.timestamp      = 0;
         (void)empathy_network_observe(
             (empathy_network_t)brain->empathy_network, &self_action, 0);
+    }
+
+    /* W9-finish: empathetic_response dispatch. Uses arousal (emotional
+     * intensity) as the trigger since emotional_learning exposes arousal
+     * but not signed valence. Treats high arousal as a distress proxy.
+     * Response is discarded — goal is to activate the subsystem. */
+    if (brain->empathetic_response_engine && brain->emotional_learning) {
+        float arsl = nimcp_emotional_learning_get_arousal(brain->emotional_learning);
+        if (arsl > 0.6f) {
+            emotional_state_t est = {0};
+            est.emotion_type      = (arsl > 0.85f) ? EMOTION_RAGE
+                                                   : EMOTION_FRUSTRATION;
+            est.intensity         = (arsl > 0.85f) ? EMOTION_INTENSITY_HIGH
+                                                   : EMOTION_INTENSITY_MEDIUM;
+            est.intensity_value   = arsl;
+            est.valence           = -arsl;  /* proxy: high arousal → distress */
+            est.arousal           = arsl;
+            est.crisis_flags      = 0;
+            est.crisis_confidence = 0.0f;
+
+            empathetic_response_t resp = {0};
+            (void)empathetic_response_generate(
+                brain->empathetic_response_engine, &est, &resp);
+        }
+    }
+
+    /* W9-finish: middleware_controller pattern dispatch. argmax(output)
+     * as pattern_id, |max| as similarity. Fires all active pattern
+     * subscribers. Null-safe. */
+    if (brain->middleware_controller && brain->enable_middleware_controller &&
+        decision && decision->output_vector && decision->output_size > 0) {
+        uint32_t mw_argmax = 0;
+        float mw_max = 0.0f;
+        for (uint32_t i = 0; i < decision->output_size; i++) {
+            float a = decision->output_vector[i];
+            if (a < 0.0f) a = -a;
+            if (a > mw_max) { mw_max = a; mw_argmax = i; }
+        }
+        if (mw_max > 1.0f) mw_max = 1.0f;
+        middleware_controller_on_pattern_match(
+            (struct middleware_controller*)brain->middleware_controller,
+            mw_argmax, mw_max, /*region_id=*/0);
     }
 
     brain_clear_error();

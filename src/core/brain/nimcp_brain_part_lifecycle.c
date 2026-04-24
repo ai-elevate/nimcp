@@ -839,7 +839,8 @@ void brain_destroy(brain_t brain)
 
     // Phase 11: Part I.2: Cleanup empathetic response engine (before empathy network)
     if (brain->empathetic_response_engine) {
-        extern void empathetic_response_destroy(void* engine);
+        /* empathetic_response_destroy declared via nimcp_empathetic_response.h
+         * included in the parent nimcp_brain.c (W9-finish). */
         empathetic_response_destroy(brain->empathetic_response_engine);
     }
 
@@ -1129,7 +1130,7 @@ void brain_destroy(brain_t brain)
             extern void nimcp_wms_destroy(void*);
             extern void nimcp_analogical_destroy(void*);
             extern void nimcp_multiscale_destroy(void*);
-            extern void nimcp_emotional_learning_destroy(void*);
+            /* nimcp_emotional_learning_destroy declared via its header (W9-finish include in brain.c) */
             extern void nimcp_contrastive_self_destroy(void*);
             extern void nimcp_self_curriculum_destroy(void*);
             extern void nimcp_dynamic_arch_destroy(void*);

@@ -196,6 +196,17 @@ extern void imagination_engine_destroy(imagination_engine_t* engine);
 #include "information/nimcp_cross_modal.h"             // Phase C4.7: Cross-modal information flow tracking
 #include "core/brain/information/nimcp_brain_shannon.h" // Shannon API module (extracted functions)
 #include "cognitive/nimcp_love_loyalty_friendship.h"   // Phase E4: Love, Loyalty, Friendship (positive social emotion)
+#include "cognitive/nimcp_empathetic_response.h"       // W9-finish: activate empathetic_response pipeline
+#include "cognitive/nimcp_emotional_learning.h"        // W9-finish: read arousal for empathy dispatch
+/* W9-finish: middleware_controller_on_pattern_match via extern —
+ * cannot include the full header here because it forward-declares
+ * pattern_library_t which collides with the unrelated same-named type in
+ * cognitive/immune/nimcp_heal_patterns.h (transitively included via
+ * self_heal.h). */
+struct middleware_controller;
+extern void middleware_controller_on_pattern_match(
+    struct middleware_controller* controller, uint32_t pattern_id,
+    float similarity, uint32_t region_id);
 
 // Phase 11 Enhancement C1.1: Quantum Annealing for Weight Optimization
 #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
