@@ -1094,6 +1094,32 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         nimcp_brain_tick_perception_bridges(brain, 16.6f);
     }
 
+    /* Wave 8B-a (2026-04-24): drive 5 neuromodulatory adapters — medulla,
+     * locus_coeruleus, raphe, vta, habenula. All 5 advance dt-only state
+     * machines (arousal tone, serotonin, dopamine, reward-prediction error).
+     * All were producer statues prior — created at init but never ticked. */
+    {
+        extern void brain_tick_neuromod(brain_t brain, float dt_ms);
+        brain_tick_neuromod(brain, 16.6f);
+    }
+
+    /* Wave 8B-b (2026-04-24): drive 6 sensorimotor + emotional adapters —
+     * motor, olfactory (olfact), gustatory (gust), somatosensory (soma),
+     * amygdala, cingulate. All were producer statues prior. cingulate uses
+     * a bio-message drain (no public dt step). */
+    {
+        extern void brain_tick_sensorimotor(brain_t brain, float dt_ms);
+        brain_tick_sensorimotor(brain, 16.6f);
+    }
+
+    /* Wave 8B-d (2026-04-24): drive broca + wernicke adapters via their
+     * `_process_bio_messages` drain (Round A pattern). Both adapters had
+     * the drain functions but zero external callers. dt unused. */
+    {
+        extern void brain_tick_language(brain_t brain, float dt_ms);
+        brain_tick_language(brain, 16.6f);
+    }
+
     /* Phase E3: auto-insert high-confidence training episodes into the
      * Z-Ladder as memory nodes. Opt-in — no-op unless Python has set
      * brain.long_term_set_auto_insert(True, ...). */

@@ -835,6 +835,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_consolidation_jepa_bridge.c  # Phase 4t: consolidation ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_bio_async.c  # Round A: 7 brain-region adapters tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_language.c  # Wave 8B-d: broca + wernicke tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_neuromod.c  # Wave 8B-a: 5 neuromodulatory nuclei tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_sensorimotor.c  # Wave 8B-b: motor/olfact/gust/soma/amygdala/cingulate tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_perception_bridges.c  # Round A/2: activate 10 orphan bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)

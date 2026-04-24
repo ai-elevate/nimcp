@@ -1,3 +1,22 @@
+/* ============================================================================
+ * [TOMBSTONE] DEPRECATED — proposed design, never implemented.
+ *
+ * This header declares a bridge API whose .c implementation was never written.
+ * Any code that #includes this file and calls its functions will fail at link.
+ * Preserved as a design record only; do NOT add new uses.
+ *
+ * Status: FULL-STATUE in the 2026-04-24 consumer-bridge audit. Ghost-typedef
+ * bridges like this describe cross-module couplings that were sketched but
+ * never implemented.
+ *
+ * To revive: write the backing .c file, add it to the appropriate CMakeLists,
+ * then remove this banner and validate with the `_update`/`_create` caller
+ * chain ending somewhere in a hot path. See
+ *   docs/claude/consumer-bridge-inventory-2026-04-24.md
+ * for the full inventory + the middle-path rationale for why this is
+ * tombstoned rather than deleted or implemented.
+ * ========================================================================= */
+
 //=============================================================================
 // nimcp_no_hub_bridge.h - Nitric Oxide to Cognitive Hub Integration Bridge
 //=============================================================================
