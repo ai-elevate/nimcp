@@ -1313,6 +1313,53 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             (void)cochlea_verification_bridge_update(brain->cochlea_verification_bridge, _cb_dt_ms);
     }
 
+    // ========================================================================
+    // Retrofit waves 3/4/5/6/8B/8C (2026-04-24): drive region/biology/chemistry
+    // tick drivers from inference hot path so their state advances during idle
+    // inference periods where brain_learn_vector would be silent. Each driver
+    // null-guards its subsystem pointer; all are cheap on-miss.
+    // ========================================================================
+    {
+        const float _tick_dt_ms = 16.0f; /* brain_decide cadence ~60fps */
+
+        /* Wave 3: biology (epigenetics + neurogenesis + NVC) */
+        extern void brain_tick_biology(brain_t brain, float dt_ms);
+        brain_tick_biology(brain, _tick_dt_ms);
+
+        /* Wave 4: predictive-immune coupling */
+        extern void brain_tick_predictive_immune(brain_t brain, float dt_ms);
+        brain_tick_predictive_immune(brain, _tick_dt_ms);
+
+        /* Wave 4: meta-learning LR adaptation (passes 0.0f loss internally) */
+        extern void brain_tick_meta_learning(brain_t brain, float dt_ms);
+        brain_tick_meta_learning(brain, _tick_dt_ms);
+
+        /* Wave 5: intuitive physics — redundant with stage_physics_task but
+         * harmless; physics_step integrates dt idempotently. */
+        extern void brain_tick_intuitive_physics(brain_t brain, float dt_ms);
+        brain_tick_intuitive_physics(brain, _tick_dt_ms);
+
+        /* Wave 6: chemistry (proton pumps + buffers + pH + NO) */
+        extern void brain_tick_chemistry(brain_t brain, float dt_ms);
+        brain_tick_chemistry(brain, _tick_dt_ms);
+
+        /* Wave 8B-a: neuromodulatory nuclei (medulla + LC/VTA/raphe/habenula) */
+        extern void brain_tick_neuromod(brain_t brain, float dt_ms);
+        brain_tick_neuromod(brain, _tick_dt_ms);
+
+        /* Wave 8B-b: sensorimotor + emotional adapters */
+        extern void brain_tick_sensorimotor(brain_t brain, float dt_ms);
+        brain_tick_sensorimotor(brain, _tick_dt_ms);
+
+        /* Wave 8B-d: broca + wernicke bio-msg drain */
+        extern void brain_tick_language(brain_t brain, float dt_ms);
+        brain_tick_language(brain, _tick_dt_ms);
+
+        /* Wave 8C: HALF-STATUE physics bridges (ephaptic/hh/thermo bio_async) */
+        extern void brain_tick_physics_bridges(brain_t brain, float dt_ms);
+        brain_tick_physics_bridges(brain, _tick_dt_ms);
+    }
+
     // G3: Inference timeout check — after pre-forward stages
     if (nimcp_time_get_us() > inference_deadline_us) {
         LOG_MODULE_WARN("BRAIN", "brain_decide: inference timeout after pre-forward stages");

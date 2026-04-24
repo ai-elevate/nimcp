@@ -213,6 +213,12 @@ static const char* get_cycle_name(brain_cycle_type_t type) {
     case BRAIN_CYCLE_PREDICTIVE_IMMUNE: return "predictive_immune";
     case BRAIN_CYCLE_CHEMISTRY:        return "chemistry";
     case BRAIN_CYCLE_COCHLEA_BRIDGES:  return "cochlea_bridges";
+    case BRAIN_CYCLE_NEUROMOD:         return "neuromod";
+    case BRAIN_CYCLE_SENSORIMOTOR:     return "sensorimotor";
+    case BRAIN_CYCLE_LANGUAGE:         return "language";
+    case BRAIN_CYCLE_PHYSICS_BRIDGES:  return "physics_bridges";
+    case BRAIN_CYCLE_META_LEARNING:    return "meta_learning";
+    case BRAIN_CYCLE_INTUITIVE_PHYSICS: return "intuitive_physics";
     default:                           return "unknown";
     }
 }
@@ -224,12 +230,18 @@ static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
     case BRAIN_CYCLE_BRAIN_UPDATE:
     case BRAIN_CYCLE_CHEMISTRY:
     case BRAIN_CYCLE_COCHLEA_BRIDGES:
+    case BRAIN_CYCLE_NEUROMOD:
+    case BRAIN_CYCLE_SENSORIMOTOR:
+    case BRAIN_CYCLE_LANGUAGE:
+    case BRAIN_CYCLE_PHYSICS_BRIDGES:
+    case BRAIN_CYCLE_INTUITIVE_PHYSICS:
         return BRAIN_CYCLE_CATEGORY_FAST;
     case BRAIN_CYCLE_HEALTH_AGENT:
     case BRAIN_CYCLE_LONG_TERM_MEMORY:
     case BRAIN_CYCLE_EPIGENETICS:
     case BRAIN_CYCLE_NEUROVASCULAR:
     case BRAIN_CYCLE_PREDICTIVE_IMMUNE:
+    case BRAIN_CYCLE_META_LEARNING:
         return BRAIN_CYCLE_CATEGORY_MEDIUM;
     case BRAIN_CYCLE_SLEEP_WAKE:
     case BRAIN_CYCLE_CIRCADIAN:
@@ -258,6 +270,12 @@ static uint64_t get_default_interval_us(brain_cycle_type_t type) {
     case BRAIN_CYCLE_PREDICTIVE_IMMUNE: return 100000;    /* 100ms — interoceptive prediction + precision modulation cadence */
     case BRAIN_CYCLE_CHEMISTRY:        return 10000;     /* 10ms — ion pump / buffer dynamics are ms-scale; one tick runs protons→buffers→pH→NO in order */
     case BRAIN_CYCLE_COCHLEA_BRIDGES:  return 10000;     /* 10ms — auditory nerve ISIs are sub-ms; 10ms keeps bridge state fresh without oversampling */
+    case BRAIN_CYCLE_NEUROMOD:         return 16000;     /* 16ms — neuromodulator release/decay is 10-100ms scale */
+    case BRAIN_CYCLE_SENSORIMOTOR:     return 16000;     /* 16ms — matches BRAIN_UPDATE cadence; these are per-decide modules */
+    case BRAIN_CYCLE_LANGUAGE:         return 16000;     /* 16ms — bio-msg drain; low overhead with 32-msg budget */
+    case BRAIN_CYCLE_PHYSICS_BRIDGES:  return 16000;     /* 16ms — LFP sampling / inbox drain */
+    case BRAIN_CYCLE_META_LEARNING:    return 100000;    /* 100ms — LR adaptation cadence; slower than inference hot path */
+    case BRAIN_CYCLE_INTUITIVE_PHYSICS: return 16000;    /* 16ms — matches BRAIN_UPDATE cadence (stage_physics_task also uses 16ms) */
     case BRAIN_CYCLE_SLEEP_WAKE:       return 0;          /* state machine */
     case BRAIN_CYCLE_CIRCADIAN:        return 0;          /* continuous */
     case BRAIN_CYCLE_AROUSAL:          return 0;          /* event-driven */

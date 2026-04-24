@@ -113,6 +113,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_physics_bridges.c     # Wave 8C: 3 physics upstream + 4 HALF-STATUE bridges (ephaptic/hh/thermo)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_chemistry.c           # Wave 6: Chemistry cluster (pH, pumps, buffers, NO) — single BRAIN_CYCLE_CHEMISTRY tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_predictive_immune.c   # Predictive-immune coupling — periodic via cycle coord
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_cycles.c       # 2026-04-24: register 6 tick drivers as driven coord cycles
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cognitive_training.c  # Cognitive training subsystems (JEPA, pred hierarchy, self-heal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_cognitive_transcript.c  # Cognitive transcript for response composition
 
@@ -840,6 +841,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_neuromod.c  # Wave 8B-a: 5 neuromodulatory nuclei tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_sensorimotor.c  # Wave 8B-b: motor/olfact/gust/soma/amygdala/cingulate tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_physics_bridges.c  # Wave 8C: ephaptic/hh/thermo bridge tick driver
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_biology.c         # Wave 3: epigenetics + neurogenesis + NVC hot-path tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_predictive_immune.c  # Wave 4: predictive-immune coupling hot-path tick
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_meta_learning.c    # Wave 4: meta_adapt_learning_rate tick wrapper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_intuitive_physics.c  # Wave 5: intuitive_physics_step tick wrapper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_chemistry.c        # Wave 6: protons + buffers + pH + NO hot-path tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_perception_bridges.c  # Round A/2: activate 10 orphan bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_systems_consolidation.c  # Phase M2: Systems Consolidation (hippocampus → cortex transfer)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_wm_transfer.c  # Phase M3: Working Memory Transfer (WM → engram encoding)

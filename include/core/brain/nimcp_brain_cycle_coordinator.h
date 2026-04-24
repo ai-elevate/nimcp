@@ -125,6 +125,12 @@ typedef enum {
     BRAIN_CYCLE_PREDICTIVE_IMMUNE,  /**< Predictive-immune coupling tick (100ms) */
     BRAIN_CYCLE_CHEMISTRY,          /**< Chemistry: protons/buffers/pH/NO in one tick (10ms) */
     BRAIN_CYCLE_COCHLEA_BRIDGES,    /**< Cochlea + 15 consumer bridges in one tick (10ms) */
+    BRAIN_CYCLE_NEUROMOD,           /**< Wave 8B-a: medulla/LC/raphe/VTA/habenula (16ms) */
+    BRAIN_CYCLE_SENSORIMOTOR,       /**< Wave 8B-b: motor/olf/gust/soma/amyg/cing (16ms) */
+    BRAIN_CYCLE_LANGUAGE,           /**< Wave 8B-d: broca + wernicke bio-msg drain (16ms) */
+    BRAIN_CYCLE_PHYSICS_BRIDGES,    /**< Wave 8C: ephaptic/hh/thermo bio_async + ephaptic_fft (16ms) */
+    BRAIN_CYCLE_META_LEARNING,      /**< Wave 4: meta_adapt_learning_rate tick (100ms) */
+    BRAIN_CYCLE_INTUITIVE_PHYSICS,  /**< Wave 5: intuitive_physics_step tick (16ms) */
     BRAIN_CYCLE_COUNT               /**< Total number of cycle types */
 } brain_cycle_type_t;
 

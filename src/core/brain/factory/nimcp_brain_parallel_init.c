@@ -101,6 +101,11 @@ extern bool nimcp_brain_factory_init_chemistry_subsystem(brain_t brain);
 // Predictive-immune coupling — register_driven via coord, needs predictive_network + immune
 extern bool nimcp_brain_factory_init_predictive_immune_subsystem(brain_t brain);
 
+// Wave 8B/8C + Wave 4 meta_learning + Wave 5 intuitive_physics driven cycles —
+// registers the 6 already-created tick drivers as driven coordinator cycles
+// so state advances on the coordinator's threads in addition to the hot paths.
+extern bool nimcp_brain_factory_init_region_cycles_subsystem(brain_t brain);
+
 // Wave 5: Cognitive foundations
 extern bool nimcp_brain_factory_init_attention_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain);
@@ -421,6 +426,18 @@ static bool init_predictive_immune_if_needed(brain_t brain) {
      * the module stays a statue rather than breaking the wave. */
     if (brain->config.lazy_init_mode) return true;
     (void)nimcp_brain_factory_init_predictive_immune_subsystem(brain);
+    return true;
+}
+
+static bool init_region_cycles_if_needed(brain_t brain) {
+    /* Register 6 tick drivers (neuromod/sensorimotor/language/physics_bridges
+     * + meta_learning + intuitive_physics) as driven coordinator cycles.
+     * Runs late (after all upstream modules are created) so the tick wrappers
+     * find live subsystems. Soft-fail: if coord is absent or any single
+     * register_driven rejects, the other drivers still register via the
+     * hot-path hooks — no module is silently orphaned. */
+    if (brain->config.lazy_init_mode) return true;
+    (void)nimcp_brain_factory_init_region_cycles_subsystem(brain);
     return true;
 }
 
@@ -1063,8 +1080,23 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     ok = run_serial(&ctx, nimcp_brain_factory_init_edge_subsystem, "edge");
     if (!ok) goto cleanup;
 
+    // ========================================================================
+    // WAVE 30: Region/biology/chemistry driven cycles.
+    //
+    // Registers 6 already-created tick drivers as coordinator-driven cycles
+    // (neuromod/sensorimotor/language/physics_bridges + meta_learning +
+    // intuitive_physics). Runs last so every upstream module (medulla Wave 14,
+    // LC/VTA/raphe/habenula Wave 14+, broca/wernicke, ephaptic/thermo/hh,
+    // meta_learner Wave 7, intuitive_physics Wave 6) is live. Each register
+    // is independently null-safe — a missing module leaves the cycle at
+    // register_driven's null-tolerant pass. Hot-path hooks continue to
+    // advance state even if register_driven fails for any cycle. */
+    // ========================================================================
+    ok = run_serial(&ctx, init_region_cycles_if_needed, "region_cycles");
+    if (!ok) goto cleanup;
+
     LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (30 waves)");
-    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (30 waves)");
+    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (30 waves + region_cycles)");
 
 cleanup:
     nimcp_pool_destroy(pool);

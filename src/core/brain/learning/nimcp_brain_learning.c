@@ -1103,6 +1103,36 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         brain_tick_neuromod(brain, 16.6f);
     }
 
+    /* Wave 3 (2026-04-24): drive biology cluster — epigenetics + neurogenesis
+     * + NVC. Previously advanced only via the cycle coordinator's driven
+     * threads. Added here so state progresses during training even if the
+     * coord is disabled/stalled. Null-guarded in the tick driver. */
+    {
+        extern void brain_tick_biology(brain_t brain, float dt_ms);
+        brain_tick_biology(brain, 16.6f);
+    }
+
+    /* Wave 4 (2026-04-24): drive predictive-immune coupling. Previously
+     * advanced only via the coord's 100ms driven cycle. Null-guarded. */
+    {
+        extern void brain_tick_predictive_immune(brain_t brain, float dt_ms);
+        brain_tick_predictive_immune(brain, 16.6f);
+    }
+
+    /* Wave 5 (2026-04-24): drive intuitive physics engine. Previously only
+     * advanced via brain_decide's stage_physics_task; training never saw it. */
+    {
+        extern void brain_tick_intuitive_physics(brain_t brain, float dt_ms);
+        brain_tick_intuitive_physics(brain, 16.6f);
+    }
+
+    /* Wave 6 (2026-04-24): drive chemistry cluster — proton pumps, buffers,
+     * pH dynamics, NO. Previously advanced only via coord's 10ms driven cycle. */
+    {
+        extern void brain_tick_chemistry(brain_t brain, float dt_ms);
+        brain_tick_chemistry(brain, 16.6f);
+    }
+
     /* Wave 8B-b (2026-04-24): drive 6 sensorimotor + emotional adapters —
      * motor, olfactory (olfact), gustatory (gust), somatosensory (soma),
      * amygdala, cingulate. All were producer statues prior. cingulate uses

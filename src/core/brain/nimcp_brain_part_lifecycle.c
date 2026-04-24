@@ -682,6 +682,17 @@ void brain_destroy(brain_t brain)
         brain->sleep_wake_thalamic_bridge = NULL;
     }
 
+    /* Region/biology/chemistry driven cycles destroy — unregister the 6 tick
+     * drivers (neuromod/sensorimotor/language/physics_bridges + meta_learning
+     * + intuitive_physics) registered by init_region_cycles. MUST run BEFORE
+     * the biology/chemistry destroys below so there's no race between the
+     * driven threads (which call brain_tick_*) and module teardown. Each
+     * unregister joins its driver thread. */
+    {
+        extern void nimcp_brain_factory_destroy_region_cycles_subsystem(brain_t);
+        nimcp_brain_factory_destroy_region_cycles_subsystem(brain);
+    }
+
     /* Biology cluster destroy — unregisters each driven cycle (which stops +
      * joins the driver thread) BEFORE cycle_coordinator_destroy freeing. Must
      * run while brain->cycle_coordinator is still valid. */
