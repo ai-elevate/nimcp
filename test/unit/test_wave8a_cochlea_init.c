@@ -492,6 +492,45 @@ static void test_reinit_after_destroy(void) {
 }
 
 /* ------------------------------------------------------------------------- */
+/* Init-order regression: audio_cortex_bridge must receive a non-NULL        */
+/* thalamic_bridge when brain->thalamic_router is populated. Wave 8A's first */
+/* pass wired audio_cortex BEFORE thalamic, leaving the thalamic_bridge     */
+/* reference permanently NULL. Follow-up fix: init_audio_cortex_bridge      */
+/* calls init_thalamic_bridge first (idempotent), so the real pointer       */
+/* is threaded through.                                                     */
+/* ------------------------------------------------------------------------- */
+
+static void test_audio_cortex_has_thalamic_bridge_when_available(void) {
+    TEST("audio_cortex_bridge receives live thalamic_bridge (init-order contract)");
+    struct brain_struct* b = alloc_bare_brain();
+    ASSERT_NOT_NULL(b, "calloc failed");
+
+    brain_cycle_coordinator_config_t cfg; make_quiet_cfg(&cfg);
+    brain_cycle_coordinator_t* coord = brain_cycle_coordinator_create(&cfg);
+    b->cycle_coordinator = (struct brain_cycle_coordinator*)coord;
+    b->cycle_coordinator_enabled = true;
+
+    /* Populate exactly the two deps audio_cortex_bridge needs. */
+    b->audio_cortex    = FAKE_DEP(201);
+    b->thalamic_router = (struct thalamic_router*)FAKE_DEP(202);
+
+    bool rc = nimcp_brain_factory_init_cochlea_subsystem(b);
+    ASSERT_TRUE(rc, "init should succeed");
+
+    /* Both bridges must be live. */
+    ASSERT_NOT_NULL(b->cochlea_audio_cortex_bridge,
+        "audio_cortex_bridge must exist when audio_cortex is populated");
+    ASSERT_NOT_NULL(b->cochlea_thalamic_bridge,
+        "thalamic_bridge must be wired before audio_cortex_bridge — "
+        "this was the Wave 8A init-order contract violation");
+
+    nimcp_brain_factory_destroy_cochlea_subsystem(b);
+    brain_cycle_coordinator_destroy(coord);
+    free(b);
+    PASS();
+}
+
+/* ------------------------------------------------------------------------- */
 /* Main                                                                      */
 /* ------------------------------------------------------------------------- */
 
@@ -509,6 +548,7 @@ int main(void) {
     test_destroy_clears_all_16_fields();
     test_full_lifecycle_200ms();
     test_reinit_after_destroy();
+    test_audio_cortex_has_thalamic_bridge_when_available();
 
     printf("\n=== Results: %d passed, %d failed ===\n\n",
            tests_passed, tests_failed);

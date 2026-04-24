@@ -289,6 +289,31 @@ static void cochlea_bridges_tick_wrapper(void* ctx) {
  * Only returns false if something genuinely broke (logged).
  *===========================================================================*/
 
+/* Helper: create thalamic bridge (extracted from the main factory so
+ * init_audio_cortex_bridge can call it if thalamic hasn't been wired yet).
+ * Idempotent — no-op if already created. Returns true on success or
+ * intentional skip (dep missing), false only on create failure. */
+static bool init_thalamic_bridge(struct brain_struct* brain) {
+    if (brain->cochlea_thalamic_bridge) return true;
+    if (!brain->cochlea) return true;
+    if (!brain->thalamic_router) {
+        LOG_MODULE_INFO(COCHLEA_INIT_LOG_MODULE,
+            "thalamic_bridge skipped — brain->thalamic_router is NULL");
+        return true;
+    }
+    cochlea_thalamic_bridge_t* b = cochlea_thalamic_bridge_create(
+        brain->cochlea, (void*)brain->thalamic_router, NULL);
+    if (!b) {
+        LOG_MODULE_WARN(COCHLEA_INIT_LOG_MODULE,
+            "cochlea_thalamic_bridge_create failed");
+        return false;
+    }
+    brain->cochlea_thalamic_bridge = (struct cochlea_thalamic_bridge*)b;
+    LOG_MODULE_INFO(COCHLEA_INIT_LOG_MODULE,
+        "thalamic_bridge wired (via brain->thalamic_router)");
+    return true;
+}
+
 static bool init_audio_cortex_bridge(struct brain_struct* brain) {
     if (brain->cochlea_audio_cortex_bridge) return true;
     if (!brain->cochlea) return true;
@@ -297,17 +322,29 @@ static bool init_audio_cortex_bridge(struct brain_struct* brain) {
             "audio_cortex_bridge skipped — brain->audio_cortex is NULL");
         return true;
     }
-    /* thalamic_bridge dep is NULL (bridge wiring skipped); pass NULL.
-     * audio_cortex passed as void* (bridge stores it opaquely). */
+    /* Ensure thalamic_bridge is wired BEFORE audio_cortex_bridge so we can
+     * pass the real bridge pointer. audio_cortex_bridge stores the
+     * thalamic_bridge pointer opaquely — if it's NULL at create time the
+     * reference is NULL forever and any future feature depending on
+     * MGN→A1 relay would get silently broken. Calling init_thalamic_bridge
+     * here is idempotent; the dedicated caller later in the main factory
+     * becomes a no-op. */
+    (void)init_thalamic_bridge(brain);
+
+    /* audio_cortex passed as void* (bridge stores it opaquely). */
     cochlea_audio_cortex_bridge_t* b = cochlea_audio_cortex_bridge_create(
-        brain->cochlea, NULL, (void*)brain->audio_cortex, NULL);
+        brain->cochlea,
+        (cochlea_thalamic_bridge_t*)brain->cochlea_thalamic_bridge,  /* may still be NULL if thalamic_router absent */
+        (void*)brain->audio_cortex, NULL);
     if (!b) {
         LOG_MODULE_WARN(COCHLEA_INIT_LOG_MODULE,
             "audio_cortex_bridge_create failed");
         return false;
     }
     brain->cochlea_audio_cortex_bridge = b;
-    LOG_MODULE_INFO(COCHLEA_INIT_LOG_MODULE, "audio_cortex_bridge wired");
+    LOG_MODULE_INFO(COCHLEA_INIT_LOG_MODULE,
+        "audio_cortex_bridge wired (thalamic_bridge=%s)",
+        brain->cochlea_thalamic_bridge ? "live" : "NULL");
     return true;
 }
 
