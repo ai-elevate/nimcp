@@ -3165,4 +3165,50 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/persistence")
 endif()
 endif() # GTest_FOUND checkpoint
 
+# ============================================================================
+# Cycle Coordinator Driven Cycle Tests (integration + regression)
+# ============================================================================
+# WHAT: Integration + regression tests for brain_cycle_coordinator_register_driven().
+# WHY:  Top-level test/integration and test/regression dirs have their own
+#       CMakeLists.txt that skip auto-discovery. Register targets explicitly.
+# HOW:  Plain C files, link against libnimcp; no GTest/libcheck needed.
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_cycle_coordinator_driven_integration.c")
+    add_executable(integration_test_cycle_coordinator_driven_integration
+        integration/test_cycle_coordinator_driven_integration.c
+    )
+    target_include_directories(integration_test_cycle_coordinator_driven_integration PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_test_cycle_coordinator_driven_integration
+        PRIVATE c_std_11)
+    target_link_libraries(integration_test_cycle_coordinator_driven_integration
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME integration_test_cycle_coordinator_driven_integration
+             COMMAND integration_test_cycle_coordinator_driven_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_test_cycle_coordinator_driven_integration
+        PROPERTIES LABELS "integration;cycle_coordinator;driven" TIMEOUT 30)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_cycle_coordinator_regression.c")
+    add_executable(regression_test_cycle_coordinator_regression
+        regression/test_cycle_coordinator_regression.c
+    )
+    target_include_directories(regression_test_cycle_coordinator_regression PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_test_cycle_coordinator_regression
+        PRIVATE c_std_11)
+    target_link_libraries(regression_test_cycle_coordinator_regression
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME regression_test_cycle_coordinator_regression
+             COMMAND regression_test_cycle_coordinator_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_test_cycle_coordinator_regression
+        PROPERTIES LABELS "regression;cycle_coordinator" TIMEOUT 15)
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)

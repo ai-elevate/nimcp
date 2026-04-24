@@ -98,6 +98,7 @@
 #include "cognitive/nimcp_sleep_wake.h"
 #include "core/brain/factory/init/nimcp_brain_init_medulla.h"
 #include "core/brain/nimcp_brain_state.h"
+#include "core/brain/nimcp_brain_cycle_coordinator.h"
 
 /* Biological plasticity integration */
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
@@ -4578,6 +4579,123 @@ static PyObject* Brain_sleep_get_statistics(BrainObject* self, PyObject* Py_UNUS
     PyDict_SetItemString(d, "current_sleep_pressure",
         PyFloat_FromDouble((double)stats.current_sleep_pressure));
     return d;
+}
+
+/* ========================================================================
+ * Brain Cycle Coordinator Bindings (observation-only)
+ *
+ * WHAT: Expose the C-side brain_cycle_coordinator_{register,notify_tick,
+ *       unregister} API to Python so Python-driven cycles (e.g. the sleep-wake
+ *       scheduler thread in brain_daemon.py) can report timing/health to the
+ *       coordinator without moving their cadence to C.
+ * WHY:  Keeps Python concurrency model intact (service._lock protects
+ *       sleep_run_cycle from learn_vector races) while giving the coordinator
+ *       uniform observability across C- and Python-driven cycles.
+ * HOW:  All three functions no-op gracefully when the coordinator is NULL
+ *       (common during tests or legacy setups). GIL is released around each
+ *       coordinator call because the coordinator acquires an internal mutex
+ *       and callers should not hold the GIL while potentially waiting.
+ * ======================================================================== */
+
+/**
+ * WHAT: Register a cycle with the coordinator (observation-only)
+ * WHY:  Allows a Python-driven cycle to appear in coordinator diagnostics
+ * HOW:  Passes NULL cycle_handle + NULL health_fn — coordinator infers health
+ *       purely from tick timing reported via cycle_notify_tick().
+ */
+static PyObject* Brain_cycle_register(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    int type_int;
+    if (!PyArg_ParseTuple(args, "i", &type_int)) return NULL;
+    if (type_int < 0 || type_int >= BRAIN_CYCLE_COUNT) {
+        PyErr_SetString(PyExc_ValueError, "cycle_register: type out of range");
+        return NULL;
+    }
+    struct brain_struct* b = self->brain->internal_brain;
+    brain_cycle_coordinator_t* coord = b->cycle_coordinator;
+    if (!b->cycle_coordinator_enabled || !coord) {
+        /* No coordinator — observation requested against a brain without one.
+         * This is a valid state (tests, minimal init); return 0 to signal "not
+         * an error, just not wired". */
+        return PyLong_FromLong(0);
+    }
+    int rc;
+    Py_BEGIN_ALLOW_THREADS
+    rc = brain_cycle_coordinator_register(
+        coord,
+        (brain_cycle_type_t)type_int,
+        /*cycle_handle=*/NULL,
+        /*health_fn=*/NULL);
+    Py_END_ALLOW_THREADS
+    return PyLong_FromLong((long)rc);
+}
+
+/**
+ * WHAT: Notify the coordinator that a cycle has just completed a tick
+ * WHY:  Gives coordinator the timing evidence it needs to infer health
+ * HOW:  Wraps brain_cycle_coordinator_notify_tick with GIL released
+ */
+static PyObject* Brain_cycle_notify_tick(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    int type_int;
+    unsigned long long duration_us;
+    if (!PyArg_ParseTuple(args, "iK", &type_int, &duration_us)) return NULL;
+    if (type_int < 0 || type_int >= BRAIN_CYCLE_COUNT) {
+        PyErr_SetString(PyExc_ValueError, "cycle_notify_tick: type out of range");
+        return NULL;
+    }
+    struct brain_struct* b = self->brain->internal_brain;
+    brain_cycle_coordinator_t* coord = b->cycle_coordinator;
+    if (!b->cycle_coordinator_enabled || !coord) {
+        return PyLong_FromLong(0);
+    }
+    int rc;
+    Py_BEGIN_ALLOW_THREADS
+    rc = brain_cycle_coordinator_notify_tick(
+        coord,
+        (brain_cycle_type_t)type_int,
+        (uint64_t)duration_us);
+    Py_END_ALLOW_THREADS
+    return PyLong_FromLong((long)rc);
+}
+
+/**
+ * WHAT: Unregister a cycle from the coordinator
+ * WHY:  Clean teardown at thread-shutdown time
+ * HOW:  Wraps brain_cycle_coordinator_unregister with GIL released
+ */
+static PyObject* Brain_cycle_unregister(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    CHECK_INTERNAL_BRAIN(self);
+    int type_int;
+    if (!PyArg_ParseTuple(args, "i", &type_int)) return NULL;
+    if (type_int < 0 || type_int >= BRAIN_CYCLE_COUNT) {
+        PyErr_SetString(PyExc_ValueError, "cycle_unregister: type out of range");
+        return NULL;
+    }
+    struct brain_struct* b = self->brain->internal_brain;
+    brain_cycle_coordinator_t* coord = b->cycle_coordinator;
+    if (!b->cycle_coordinator_enabled || !coord) {
+        return PyLong_FromLong(0);
+    }
+    int rc;
+    Py_BEGIN_ALLOW_THREADS
+    rc = brain_cycle_coordinator_unregister(
+        coord,
+        (brain_cycle_type_t)type_int);
+    Py_END_ALLOW_THREADS
+    return PyLong_FromLong((long)rc);
 }
 
 /**
@@ -10341,6 +10459,23 @@ static PyMethodDef Brain_methods[] = {
     {"update_medulla", (PyCFunction)Brain_update_medulla, METH_VARARGS,
      "Update medulla subsystem (circadian clock): update_medulla(delta_time_s) -> None"},
 
+    // Brain cycle coordinator (observability-only; Python drives the cadence)
+    {"cycle_register", (PyCFunction)Brain_cycle_register, METH_VARARGS,
+     "Register a Python-driven cycle with the C coordinator (observation only).\n"
+     "Pass one of the nimcp.CYCLE_* constants. Returns 0 on success or if the\n"
+     "coordinator is not present; -1 on error. Does not own the driver — the\n"
+     "Python thread still ticks the cycle and must call cycle_notify_tick().\n"
+     "Usage: brain.cycle_register(nimcp.CYCLE_SLEEP_WAKE) -> int"},
+    {"cycle_notify_tick", (PyCFunction)Brain_cycle_notify_tick, METH_VARARGS,
+     "Notify the coordinator a cycle just ticked. Call once per tick with the\n"
+     "measured duration in microseconds. Returns 0 on success (or if the\n"
+     "coordinator is absent); -1 on error.\n"
+     "Usage: brain.cycle_notify_tick(nimcp.CYCLE_SLEEP_WAKE, duration_us) -> int"},
+    {"cycle_unregister", (PyCFunction)Brain_cycle_unregister, METH_VARARGS,
+     "Unregister a cycle from the coordinator (call at thread shutdown).\n"
+     "Returns 0 on success or if the coordinator is absent; -1 on error.\n"
+     "Usage: brain.cycle_unregister(nimcp.CYCLE_SLEEP_WAKE) -> int"},
+
     // Training Integration API: reasoning
     {"ti_add_fact", (PyCFunction)Brain_ti_add_fact, METH_VARARGS,
      "Add fact to knowledge base: ti_add_fact(fact, salience) -> bool"},
@@ -11309,6 +11444,21 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     // Add status constants
     PyModule_AddIntConstant(m, "OK", NIMCP_OK);
     PyModule_AddIntConstant(m, "ERROR", NIMCP_ERROR);
+
+    // Brain cycle coordinator type enum — mirror of brain_cycle_type_t
+    // (include/core/brain/nimcp_brain_cycle_coordinator.h). Used with
+    // brain.cycle_register / cycle_notify_tick / cycle_unregister.
+    PyModule_AddIntConstant(m, "CYCLE_IMMUNE_TICK",      BRAIN_CYCLE_IMMUNE_TICK);
+    PyModule_AddIntConstant(m, "CYCLE_HEALTH_AGENT",     BRAIN_CYCLE_HEALTH_AGENT);
+    PyModule_AddIntConstant(m, "CYCLE_SLEEP_WAKE",       BRAIN_CYCLE_SLEEP_WAKE);
+    PyModule_AddIntConstant(m, "CYCLE_CIRCADIAN",        BRAIN_CYCLE_CIRCADIAN);
+    PyModule_AddIntConstant(m, "CYCLE_AROUSAL",          BRAIN_CYCLE_AROUSAL);
+    PyModule_AddIntConstant(m, "CYCLE_OSCILLATIONS",     BRAIN_CYCLE_OSCILLATIONS);
+    PyModule_AddIntConstant(m, "CYCLE_GC_AGENT",         BRAIN_CYCLE_GC_AGENT);
+    PyModule_AddIntConstant(m, "CYCLE_IO_DISPATCHER",    BRAIN_CYCLE_IO_DISPATCHER);
+    PyModule_AddIntConstant(m, "CYCLE_BRAIN_UPDATE",     BRAIN_CYCLE_BRAIN_UPDATE);
+    PyModule_AddIntConstant(m, "CYCLE_LONG_TERM_MEMORY", BRAIN_CYCLE_LONG_TERM_MEMORY);
+    PyModule_AddIntConstant(m, "CYCLE_COUNT",            BRAIN_CYCLE_COUNT);
 
     // Add ABI hash for manual validation
     PyModule_AddIntConstant(m, "ABI_LAYOUT_HASH", nimcp_abi_layout_hash());

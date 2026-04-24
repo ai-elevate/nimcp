@@ -282,6 +282,22 @@ uint64_t nimcp_brain_pr_memory_promote_event(struct brain_struct* brain,
                                               uint32_t num_features,
                                               const char* reason);
 
+/*============================================================================
+ * Phase E6: autonomous driver lifecycle.
+ *
+ * start: prefers cycle-coordinator-driven mode (register_driven); falls
+ *        back to a local pthread at 100ms cadence if no coordinator is
+ *        available. Idempotent — returns true if already running.
+ * stop:  unregisters from the coordinator (which stops + joins the
+ *        coordinator-owned thread) OR signals + joins the fallback
+ *        thread. Safe to call when not started.
+ *
+ * Normally invoked from pr_memory_init/destroy; exposed here for tests
+ * and future callers that may need to restart the driver.
+ *==========================================================================*/
+bool nimcp_brain_pr_memory_driver_start(struct brain_struct* brain);
+void nimcp_brain_pr_memory_driver_stop(struct brain_struct* brain);
+
 #ifdef __cplusplus
 }
 #endif

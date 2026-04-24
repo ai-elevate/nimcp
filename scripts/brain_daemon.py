@@ -2837,69 +2837,117 @@ def main():
     # consolidation, synaptic downscaling, microglia pruning, and
     # glymphatic clearance never fire.
     _sleep_interval_sec = max(60, args.sleep_interval_min * 60)
+
+    # Resolve the CYCLE_SLEEP_WAKE constant once (available in builds with the
+    # cycle-coordinator bindings; fall back to the enum's integer value on
+    # older .so's so the daemon still runs if someone forgot to reinstall).
+    _CYCLE_SLEEP_WAKE = getattr(nimcp, "CYCLE_SLEEP_WAKE", 2)
+
     def _sleep_scheduler():
         last_state = 0  # AWAKE
         last_log_ts = 0.0
         last_periodic_cycle_ts = time.time()
         poll_sec = 30.0
-        while not shutdown_event.is_set():
+
+        # Register with the C cycle coordinator for observability. The Python
+        # thread still owns the cadence — we just notify the coordinator after
+        # each cycle so health/timing dashboards include this cycle. A return
+        # of 0 means "registered" OR "no coordinator present"; both are fine.
+        _coord_registered = False
+        try:
+            if hasattr(brain, "cycle_register"):
+                rc = brain.cycle_register(_CYCLE_SLEEP_WAKE)
+                _coord_registered = (rc == 0)
+                logger.info("[sleep] cycle_register(SLEEP_WAKE) -> %d", rc)
+        except Exception as _reg_err:
+            logger.warning("[sleep] cycle_register failed: %s", _reg_err)
+
+        def _notify(duration_us):
+            """Observability-only; never fatal."""
+            if not _coord_registered:
+                return
             try:
-                if shutdown_event.wait(timeout=poll_sec):
-                    return
-                pressure = float(brain.sleep_get_pressure())
-                state = int(brain.sleep_get_state())
-                needed = bool(brain.sleep_is_needed())
-                _now = time.time()
-                # Visibility: emit state + pressure every 5 min (or on
-                # state change) so probe/monitor can read it from logs.
-                if _now - last_log_ts > 300 or state != last_state:
-                    logger.info(
-                        "[sleep] state=%d pressure=%.3f needed=%s "
-                        "next_periodic_in=%ds",
-                        state, pressure, needed,
-                        int(_sleep_interval_sec - (_now - last_periodic_cycle_ts)))
-                    last_log_ts = _now
-                    last_state = state
-                # --- PERIODIC trigger ---
-                elapsed_since_cycle = _now - last_periodic_cycle_ts
-                if elapsed_since_cycle >= _sleep_interval_sec:
-                    logger.info(
-                        "[sleep] periodic trigger (%.0fs since last cycle) — "
-                        "running cycle (pressure=%.3f)",
-                        elapsed_since_cycle, pressure)
-                    _t_cyc = time.time()
-                    try:
-                        # Acquire the service dispatch lock so sleep_run_cycle
-                        # (which now runs real episodic replay via
-                        # brain_learn_vector internally) cannot race against a
-                        # concurrent learn_vector on the socket thread.
-                        with service._lock:
-                            brain.sleep_run_cycle(1)
-                        logger.info("[sleep] cycle complete in %.2fs",
-                                    time.time() - _t_cyc)
-                    except Exception as _scerr:
-                        logger.warning("[sleep] periodic run_cycle failed: %s",
-                                       _scerr)
-                    last_periodic_cycle_ts = time.time()
-                # --- PRESSURE-DRIVEN trigger (between periodic cycles) ---
-                elif needed:
-                    logger.info(
-                        "[sleep] pressure %.3f ≥ threshold — extra cycle "
-                        "(periodic next in %.0fs)",
-                        pressure,
-                        _sleep_interval_sec - elapsed_since_cycle)
-                    _t_cyc = time.time()
-                    try:
-                        with service._lock:
-                            brain.sleep_run_cycle(1)
-                        logger.info("[sleep] cycle complete in %.2fs",
-                                    time.time() - _t_cyc)
-                    except Exception as _scerr:
-                        logger.warning("[sleep] pressure run_cycle failed: %s",
-                                       _scerr)
-                    last_periodic_cycle_ts = time.time()
-            except Exception as _sce:
-                logger.warning("[sleep] scheduler tick failed: %s", _sce)
+                if hasattr(brain, "cycle_notify_tick"):
+                    brain.cycle_notify_tick(_CYCLE_SLEEP_WAKE, int(duration_us))
+            except Exception as _nerr:
+                logger.debug("[sleep] cycle_notify_tick failed: %s", _nerr)
+
+        try:
+            while not shutdown_event.is_set():
+                try:
+                    if shutdown_event.wait(timeout=poll_sec):
+                        return
+                    pressure = float(brain.sleep_get_pressure())
+                    state = int(brain.sleep_get_state())
+                    needed = bool(brain.sleep_is_needed())
+                    _now = time.time()
+                    # Visibility: emit state + pressure every 5 min (or on
+                    # state change) so probe/monitor can read it from logs.
+                    if _now - last_log_ts > 300 or state != last_state:
+                        logger.info(
+                            "[sleep] state=%d pressure=%.3f needed=%s "
+                            "next_periodic_in=%ds",
+                            state, pressure, needed,
+                            int(_sleep_interval_sec - (_now - last_periodic_cycle_ts)))
+                        last_log_ts = _now
+                        last_state = state
+                    # --- PERIODIC trigger ---
+                    elapsed_since_cycle = _now - last_periodic_cycle_ts
+                    if elapsed_since_cycle >= _sleep_interval_sec:
+                        logger.info(
+                            "[sleep] periodic trigger (%.0fs since last cycle) — "
+                            "running cycle (pressure=%.3f)",
+                            elapsed_since_cycle, pressure)
+                        _t_cyc = time.time()
+                        _cycle_ok = False
+                        try:
+                            # Acquire the service dispatch lock so sleep_run_cycle
+                            # (which now runs real episodic replay via
+                            # brain_learn_vector internally) cannot race against a
+                            # concurrent learn_vector on the socket thread.
+                            with service._lock:
+                                brain.sleep_run_cycle(1)
+                            _cycle_ok = True
+                            logger.info("[sleep] cycle complete in %.2fs",
+                                        time.time() - _t_cyc)
+                        except Exception as _scerr:
+                            logger.warning("[sleep] periodic run_cycle failed: %s",
+                                           _scerr)
+                        if _cycle_ok:
+                            _notify(int((time.time() - _t_cyc) * 1_000_000))
+                        last_periodic_cycle_ts = time.time()
+                    # --- PRESSURE-DRIVEN trigger (between periodic cycles) ---
+                    elif needed:
+                        logger.info(
+                            "[sleep] pressure %.3f ≥ threshold — extra cycle "
+                            "(periodic next in %.0fs)",
+                            pressure,
+                            _sleep_interval_sec - elapsed_since_cycle)
+                        _t_cyc = time.time()
+                        _cycle_ok = False
+                        try:
+                            with service._lock:
+                                brain.sleep_run_cycle(1)
+                            _cycle_ok = True
+                            logger.info("[sleep] cycle complete in %.2fs",
+                                        time.time() - _t_cyc)
+                        except Exception as _scerr:
+                            logger.warning("[sleep] pressure run_cycle failed: %s",
+                                           _scerr)
+                        if _cycle_ok:
+                            _notify(int((time.time() - _t_cyc) * 1_000_000))
+                        last_periodic_cycle_ts = time.time()
+                except Exception as _sce:
+                    logger.warning("[sleep] scheduler tick failed: %s", _sce)
+        finally:
+            # Clean teardown — safe even if registration failed or the
+            # coordinator has since been destroyed.
+            if _coord_registered:
+                try:
+                    if hasattr(brain, "cycle_unregister"):
+                        brain.cycle_unregister(_CYCLE_SLEEP_WAKE)
+                except Exception as _uerr:
+                    logger.debug("[sleep] cycle_unregister failed: %s", _uerr)
 
     _sleep_thread = threading.Thread(
         target=_sleep_scheduler, name="sleep-scheduler", daemon=True)

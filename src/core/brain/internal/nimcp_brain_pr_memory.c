@@ -175,24 +175,19 @@ bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memor
         NIMCP_LOGGING_WARN("pr_memory: tick mutex creation failed — tick will run lock-free");
     }
 
-    /* Phase E6: spin up the autonomous pr_memory driver thread. Runs at
-     * 100ms cadence, calls pr_memory_tick and notifies the cycle
-     * coordinator's BRAIN_CYCLE_LONG_TERM_MEMORY. This makes memory
-     * consolidation + landmark hygiene independent of brain_learn_vector. */
+    /* Phase E6: spin up the autonomous pr_memory driver. Runs at 100ms
+     * cadence, calls pr_memory_tick and keeps BRAIN_CYCLE_LONG_TERM_MEMORY
+     * alive even when brain_learn_vector is idle. The cycle coordinator
+     * owns the driver thread via register_driven(); if no coordinator is
+     * present we fall back to a self-driven pthread so memory
+     * consolidation + landmark hygiene still run. */
     __atomic_store_n(&brain->pr_memory_driver_stop, 0, __ATOMIC_RELEASE);
     brain->pr_memory_driver_ticks = 0;
     brain->pr_consolidation_count = 0;
-    extern void* nimcp_brain_pr_memory_driver_run(void* arg);  /* defined below */
-    nimcp_thread_t* thr = (nimcp_thread_t*)calloc(1, sizeof(nimcp_thread_t));
-    if (thr) {
-        if (nimcp_thread_create(thr, nimcp_brain_pr_memory_driver_run,
-                                brain, NULL) == NIMCP_OK) {
-            brain->pr_memory_driver_thread = (void*)thr;
-        } else {
-            free(thr);
-            NIMCP_LOGGING_WARN("pr_memory: driver thread failed to start — "
-                               "memory will only evolve via brain_learn_vector");
-        }
+
+    if (!nimcp_brain_pr_memory_driver_start(brain)) {
+        NIMCP_LOGGING_WARN("pr_memory: driver failed to start — "
+                           "memory will only evolve via brain_learn_vector");
     }
 
     return true;
@@ -230,15 +225,10 @@ void nimcp_brain_pr_memory_destroy(struct brain_struct* brain) {
         return;
     }
 
-    /* Phase E6: stop the autonomous driver thread first so it can't
-     * observe torn-down state. Signal → join → free. */
-    if (brain->pr_memory_driver_thread) {
-        __atomic_store_n(&brain->pr_memory_driver_stop, 1, __ATOMIC_RELEASE);
-        nimcp_thread_t* thr = (nimcp_thread_t*)brain->pr_memory_driver_thread;
-        nimcp_thread_join(*thr, NULL);
-        free(thr);
-        brain->pr_memory_driver_thread = NULL;
-    }
+    /* Phase E6: stop the autonomous driver first so it can't observe
+     * torn-down state. Handles both coordinator-driven and self-driven
+     * fallback paths. */
+    nimcp_brain_pr_memory_driver_stop(brain);
 
     /* Destroy Z-Ladder first — its tracked nodes are allocated by the
      * node manager, so the manager must outlive the ladder. */
@@ -454,62 +444,116 @@ bool nimcp_brain_pr_memory_get_stats(const struct brain_struct* brain, brain_pr_
 }
 
 /*============================================================================
- * Phase E6 — autonomous driver thread
+ * Phase E6 — autonomous driver (coordinator-driven, with self-driven fallback)
  *
- * Runs at 100ms cadence. Drives pr_memory_tick (consolidation + landmark
- * hygiene) and notifies the cycle coordinator so health/timing
- * observability works even when brain_learn_vector is idle.
+ * Drives pr_memory_tick (consolidation + landmark hygiene) at 100ms cadence
+ * so memory keeps evolving even when brain_learn_vector is idle.
  *
- * The first call registers BRAIN_CYCLE_LONG_TERM_MEMORY with the
- * coordinator (if present). Unregisters on exit. Exits when
- * brain->pr_memory_driver_stop becomes non-zero.
+ * Primary path: the cycle coordinator owns the driver thread via
+ * brain_cycle_coordinator_register_driven(); it calls the tick wrapper every
+ * 100ms and records durations automatically.
+ *
+ * Fallback path: if no coordinator is present (config disabled) or
+ * registration fails, a local pthread runs the same 100ms loop so
+ * consolidation still happens. Both paths share pr_memory_driver_ticks +
+ * pr_memory_driver_thread for Python binding observability (driver_ticks /
+ * driver_running).
  *==========================================================================*/
-void* nimcp_brain_pr_memory_driver_run(void* arg) {
+
+/* Tick wrapper invoked by the coordinator every 100ms. Preserves the old
+ * gating: skip when pr_memory is disabled or the ladder is absent. */
+static void pr_memory_tick_wrapper(void* ctx) {
+    struct brain_struct* brain = (struct brain_struct*)ctx;
+    if (!brain) return;
+    if (!brain->pr_memory_enabled || !brain->pr_z_ladder) return;
+
+    struct timespec t0;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    uint64_t now_us = (uint64_t)t0.tv_sec * 1000000ull +
+                      (uint64_t)t0.tv_nsec / 1000ull;
+
+    (void)nimcp_brain_pr_memory_tick(brain, now_us);
+    brain->pr_memory_driver_ticks++;
+}
+
+/* Self-driven fallback thread: replicates the original loop for deployments
+ * where the cycle coordinator is disabled. Runs until pr_memory_driver_stop
+ * flips to 1. Does NOT touch the coordinator. */
+static void* pr_memory_fallback_loop(void* arg) {
     struct brain_struct* brain = (struct brain_struct*)arg;
     if (!brain) return NULL;
-
-    /* Lazy register with the cycle coordinator — harmless if absent. */
-    bool registered = false;
-    if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
-        int rc = brain_cycle_coordinator_register(
-            (void*)brain->cycle_coordinator,
-            BRAIN_CYCLE_LONG_TERM_MEMORY,
-            (void*)brain, NULL);
-        registered = (rc == 0);
-    }
 
     const long sleep_ns = 100L * 1000L * 1000L;  /* 100ms */
     while (__atomic_load_n(&brain->pr_memory_driver_stop,
                            __ATOMIC_ACQUIRE) == 0) {
-        struct timespec t0, t1;
-        clock_gettime(CLOCK_MONOTONIC, &t0);
-        uint64_t now_us = (uint64_t)t0.tv_sec * 1000000ull +
-                          (uint64_t)t0.tv_nsec / 1000ull;
-
-        if (brain->pr_memory_enabled && brain->pr_z_ladder) {
-            (void)nimcp_brain_pr_memory_tick(brain, now_us);
-            brain->pr_memory_driver_ticks++;
-
-            clock_gettime(CLOCK_MONOTONIC, &t1);
-            if (registered) {
-                uint64_t dur_us = ((uint64_t)t1.tv_sec - (uint64_t)t0.tv_sec) * 1000000ull +
-                                  ((uint64_t)t1.tv_nsec - (uint64_t)t0.tv_nsec) / 1000ull;
-                brain_cycle_coordinator_notify_tick(
-                    (void*)brain->cycle_coordinator,
-                    BRAIN_CYCLE_LONG_TERM_MEMORY, dur_us);
-            }
-        }
-
+        pr_memory_tick_wrapper(brain);
         struct timespec sleep_ts = { 0, sleep_ns };
         nanosleep(&sleep_ts, NULL);
     }
-
-    if (registered) {
-        brain_cycle_coordinator_unregister(
-            (void*)brain->cycle_coordinator,
-            BRAIN_CYCLE_LONG_TERM_MEMORY);
-    }
     return NULL;
+}
+
+/* Start the pr_memory driver. Prefers coordinator-driven registration;
+ * falls back to a local pthread when the coordinator is unavailable. */
+bool nimcp_brain_pr_memory_driver_start(struct brain_struct* brain) {
+    if (!brain) return false;
+    if (brain->pr_memory_driver_thread) return true;  /* idempotent */
+
+    /* Primary: hand the cycle off to the coordinator. It owns the thread,
+     * calls pr_memory_tick_wrapper every 100ms, and records duration via
+     * notify_tick automatically. */
+    if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
+        int rc = brain_cycle_coordinator_register_driven(
+            (brain_cycle_coordinator_t*)brain->cycle_coordinator,
+            BRAIN_CYCLE_LONG_TERM_MEMORY,
+            100000ull,                 /* 100ms interval */
+            pr_memory_tick_wrapper,
+            (void*)brain,
+            NULL);
+        if (rc == 0) {
+            /* Sentinel: non-NULL means "driver is running". The coordinator
+             * owns the real thread, so we don't allocate a nimcp_thread_t.
+             * The fallback branch below tests for coordinator-driven mode
+             * by comparing this pointer. */
+            brain->pr_memory_driver_thread = (void*)brain->cycle_coordinator;
+            return true;
+        }
+        NIMCP_LOGGING_WARN("pr_memory: coordinator register_driven failed "
+                           "(rc=%d) — falling back to self-driven loop", rc);
+    }
+
+    /* Fallback: self-driven pthread so consolidation still runs when the
+     * coordinator is disabled or failed to accept the registration. */
+    nimcp_thread_t* thr = (nimcp_thread_t*)calloc(1, sizeof(nimcp_thread_t));
+    if (!thr) return false;
+    if (nimcp_thread_create(thr, pr_memory_fallback_loop,
+                            brain, NULL) != NIMCP_OK) {
+        free(thr);
+        return false;
+    }
+    brain->pr_memory_driver_thread = (void*)thr;
+    return true;
+}
+
+/* Stop the pr_memory driver. Handles both coordinator-driven and
+ * self-driven paths idempotently. */
+void nimcp_brain_pr_memory_driver_stop(struct brain_struct* brain) {
+    if (!brain || !brain->pr_memory_driver_thread) return;
+
+    if (brain->cycle_coordinator &&
+        brain->pr_memory_driver_thread == (void*)brain->cycle_coordinator) {
+        /* Coordinator-driven: unregister stops + joins the driver thread. */
+        (void)brain_cycle_coordinator_unregister(
+            (brain_cycle_coordinator_t*)brain->cycle_coordinator,
+            BRAIN_CYCLE_LONG_TERM_MEMORY);
+    } else {
+        /* Self-driven fallback: signal + join + free. */
+        __atomic_store_n(&brain->pr_memory_driver_stop, 1, __ATOMIC_RELEASE);
+        nimcp_thread_t* thr = (nimcp_thread_t*)brain->pr_memory_driver_thread;
+        nimcp_thread_join(*thr, NULL);
+        free(thr);
+    }
+    brain->pr_memory_driver_thread = NULL;
 }
 
 /*============================================================================

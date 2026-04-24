@@ -3279,6 +3279,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_parallel_init_lifecycle_e2e.c)
             RESOURCE_LOCK "brain_heavy")
 endif()
 
+# ---------------------------------------------------------------------------
+# E2E: Cycle Coordinator Driven Lifecycle (plain C, no GTest/libcheck)
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_cycle_coordinator_e2e.c)
+    add_executable(e2e_test_cycle_coordinator
+        test_cycle_coordinator_e2e.c
+    )
+    target_include_directories(e2e_test_cycle_coordinator PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_cycle_coordinator PRIVATE c_std_11)
+    target_link_libraries(e2e_test_cycle_coordinator PRIVATE
+        nimcp Threads::Threads rt m
+    )
+    add_test(NAME e2e_test_cycle_coordinator
+             COMMAND e2e_test_cycle_coordinator
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_cycle_coordinator
+        PROPERTIES
+            LABELS "e2e;cycle_coordinator;driven"
+            TIMEOUT 30)
+endif()
+
 # ============================================================================
 # Grounded Language E2E Tests (subdirectory)
 # ============================================================================
