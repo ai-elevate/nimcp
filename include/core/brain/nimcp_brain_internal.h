@@ -1482,6 +1482,11 @@ struct brain_struct {
     bool hypothalamus_enabled;                                        // Hypothalamus enabled for this brain
     uint64_t last_hypothalamus_update_us;                             // Last hypothalamus update timestamp
 
+    // Entorhinal adapter (Wave 8B-c tick target). Owned at brain level
+    // so the dt-driven tick can advance grid-cell / spatial state.
+    struct entorhinal_adapter* entorhinal;                             // Entorhinal adapter
+    bool entorhinal_enabled;                                           // Enabled flag
+
     // =========================================================================
     // MOTOR CORTEX INTEGRATION (Primary Motor Control - M1)
     // =========================================================================

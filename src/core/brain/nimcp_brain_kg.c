@@ -385,6 +385,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     kg->edges = nimcp_malloc(kg->edge_capacity * sizeof(brain_kg_edge_t));
     if (!kg->edges) {
         NIMCP_LOGGING_ERROR("Failed to allocate edge array");
+        hash_table_destroy(kg->name_index);
         nimcp_free(kg->nodes);
         nimcp_free(kg);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_create: kg->edges is NULL");
@@ -396,6 +397,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     kg->mutex = nimcp_mutex_create(NULL);
     if (!kg->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        hash_table_destroy(kg->name_index);
         nimcp_free(kg->edges);
         nimcp_free(kg->nodes);
         nimcp_free(kg);
@@ -415,6 +417,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     if (!kg->msg_index.entries) {
         NIMCP_LOGGING_ERROR("Failed to allocate message index");
         nimcp_mutex_free(kg->mutex);
+        hash_table_destroy(kg->name_index);
         nimcp_free(kg->edges);
         nimcp_free(kg->nodes);
         nimcp_free(kg);

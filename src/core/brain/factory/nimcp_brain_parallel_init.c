@@ -159,8 +159,9 @@ extern bool nimcp_brain_factory_init_training_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain);
 
-// Wave 15: Hypothalamus + sensory
+// Wave 15: Hypothalamus + entorhinal + sensory
 extern bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t brain);
+extern bool nimcp_brain_factory_init_entorhinal_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_somatosensory_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_olfactory_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_gustatory_subsystem(brain_t brain);
@@ -948,10 +949,19 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     if (!execute_wave(pool, &ctx, tasks, n, 14)) goto cleanup;
 
     // ========================================================================
-    // WAVE 15: hypothalamus (serial), then sensory (parallel)
+    // WAVE 15: hypothalamus + entorhinal (serial), then sensory (parallel)
     // ========================================================================
     ok = run_serial(&ctx, nimcp_brain_factory_init_hypothalamus_subsystem, "hypothalamus");
     if (!ok) goto cleanup;
+
+    // Entorhinal (minimal adapter) runs adjacent to hypothalamus. Non-fatal
+    // on failure — the tick driver null-guards on brain->entorhinal.
+    ok = run_serial(&ctx, nimcp_brain_factory_init_entorhinal_subsystem, "entorhinal");
+    if (!ok) {
+        LOG_WARNING(LOG_MODULE, "Entorhinal init failed — continuing (non-fatal)");
+        atomic_store(&ctx.error_flag, false);  // Clear flag; non-fatal
+        ok = true;
+    }
 
     n = 0;
     tasks[n++] = TASK(init_somatosensory_if_needed, "somatosensory");

@@ -727,6 +727,16 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_physics_bridges_subsystem(brain);
     }
 
+    /* Entorhinal adapter destroy (Wave 8B-c Gap 1 completion) — runs AFTER
+     * destroy_region_cycles_subsystem above has already unregistered
+     * BRAIN_CYCLE_ENTORHINAL and joined its driver thread, so no tick can
+     * race with the adapter free. Plugs a leak that existed when the field
+     * was added without a matching destroy call. */
+    {
+        extern void nimcp_brain_factory_destroy_entorhinal_subsystem(brain_t);
+        nimcp_brain_factory_destroy_entorhinal_subsystem(brain);
+    }
+
     /* Predictive-immune coupling destroy — same ordering rationale as biology.
      * Unregister drives + stop + destroy BEFORE predictive_network or
      * immune_system are freed downstream (predictive_network destroy on line

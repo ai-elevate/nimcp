@@ -365,9 +365,11 @@ set(NIMCP_CORE_SOURCES
 
     # Entorhinal Cortex - Grid cells, path integration, memory gateway (Phase E1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal.c                     # Entorhinal core implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_adapter.c            # Entorhinal adapter (MINIMAL — Wave 8B-c)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_hypothalamus_bridge.c # Entorhinal-hypothalamus bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_omni_bridge.c         # Entorhinal omnidirectional bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/entorhinal/nimcp_entorhinal_brain_init_bridge.c   # Entorhinal brain init bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_entorhinal.c               # Entorhinal brain init (Wave 15)
 
     # Perirhinal Cortex - Object recognition memory, familiarity (Phase PR1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/perirhinal/nimcp_perirhinal.c                     # Perirhinal core implementation
@@ -890,7 +892,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_intuitive_physics.c  # Wave 5: intuitive_physics_step tick wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_chemistry.c        # Wave 6: protons + buffers + pH + NO hot-path tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_hypothalamus.c     # Wave 8B-c: hypothalamus drives/homeostasis hot-path tick
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_entorhinal.c       # Wave 8B-c: entorhinal MTL hot-path tick (PARTIAL — no brain owner)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_entorhinal.c       # Wave 8B-c: entorhinal MTL hot-path tick (ACTIVE — minimal adapter)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_cerebellum.c       # Wave 8B-c: cerebellum bio-msg drain hot-path tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_tick_basal_ganglia.c    # Wave 8B-c: basal_ganglia action selection hot-path tick
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_perception_bridges.c  # Round A/2: activate 10 orphan bridges
