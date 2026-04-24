@@ -376,8 +376,59 @@ int brain_cycle_coordinator_register(
     void* cycle_handle,
     brain_cycle_health_fn_t health_fn);
 
+//=============================================================================
+// API Functions - Driven Cycles (coordinator owns the driver thread)
+//=============================================================================
+
+/**
+ * @brief Tick callback invoked periodically by a coordinator-owned driver thread.
+ *
+ * Called from a dedicated per-cycle thread (one per driven cycle) at the configured
+ * interval. MUST be thread-safe with respect to any state it touches. MUST NOT call
+ * back into the coordinator for its own cycle type (would deadlock on the entry's
+ * mutex). May return quickly or do long work — slow ticks only delay their own cycle,
+ * not others (each driven cycle has its own thread).
+ *
+ * @param ctx Opaque context passed at register time. Lifetime must exceed
+ *            the time between register and unregister.
+ */
+typedef void (*brain_cycle_tick_fn_t)(void* ctx);
+
+/**
+ * @brief Register a cycle AND have the coordinator drive it.
+ *
+ * Unlike the observation-only `brain_cycle_coordinator_register()`, this variant
+ * owns a driver thread that calls `tick_fn(tick_ctx)` every `interval_us`
+ * microseconds and records the duration automatically via notify_tick. Use this
+ * when a cycle has a natural periodic cadence (e.g., chemistry at 10ms,
+ * neurogenesis at 1s). For hot-path cycles driven by brain_decide/learn_vector,
+ * use `register()` + manual `notify_tick()` instead.
+ *
+ * Only one registration (driven or observation) is permitted per cycle type.
+ * Unregister clears either kind; see `brain_cycle_coordinator_unregister()`.
+ *
+ * @param coord        Coordinator handle (required)
+ * @param type         Cycle type to drive
+ * @param interval_us  Desired tick period in microseconds (min 1000 = 1ms)
+ * @param tick_fn      Function invoked each period (required, must be thread-safe)
+ * @param tick_ctx     Opaque context passed to tick_fn (may be NULL)
+ * @param health_fn    Optional health query (NULL → timing-inferred health)
+ * @return 0 on success; -1 on invalid args or thread-create failure
+ */
+int brain_cycle_coordinator_register_driven(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    uint64_t interval_us,
+    brain_cycle_tick_fn_t tick_fn,
+    void* tick_ctx,
+    brain_cycle_health_fn_t health_fn);
+
 /**
  * @brief Unregister a brain cycle from the coordinator
+ *
+ * For driven cycles (registered via register_driven), this stops the driver
+ * thread, waits for any in-flight tick to finish, and joins. Safe to call
+ * on either observation-only or driven registrations.
  *
  * @param coord Coordinator handle
  * @param type  Cycle type to unregister

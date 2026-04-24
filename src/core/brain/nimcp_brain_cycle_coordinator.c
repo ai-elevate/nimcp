@@ -87,6 +87,20 @@ typedef struct {
 
     /* Monitoring */
     float    monitoring_weight;
+
+    /* Driver thread (only valid when `driven == true`).
+     *
+     * When a cycle is registered via register_driven(), the coordinator owns
+     * a dedicated thread that loops: sleep(interval_us) → tick_fn(tick_ctx)
+     *  → notify_tick(). driver_stop_flag is the cooperative shutdown signal;
+     * unregister sets it then joins.
+     */
+    bool                  driven;
+    brain_cycle_tick_fn_t tick_fn;
+    void*                 tick_ctx;
+    uint64_t              tick_interval_us;
+    nimcp_thread_t        driver_thread;
+    volatile int          driver_stop_flag;  /* 0 = run, 1 = stop (GCC atomics) */
 } cycle_entry_t;
 
 /** Internal coordinator structure */
@@ -704,6 +718,16 @@ brain_cycle_coordinator_t* brain_cycle_coordinator_create(
 void brain_cycle_coordinator_destroy(brain_cycle_coordinator_t* coord) {
     if (!coord) return;
 
+    /* Stop + join any driven cycles BEFORE freeing the coordinator — their
+     * driver threads hold a pointer to `coord` and will segfault on next
+     * notify_tick if we free underneath them. */
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        if (coord->cycles[i].registered && coord->cycles[i].driven) {
+            (void)brain_cycle_coordinator_unregister(coord,
+                (brain_cycle_type_t)i);
+        }
+    }
+
     if (coord->config.enable_logging) {
         LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
             "Brain cycle coordinator destroying (uptime=%lums, checks=%lu)",
@@ -717,6 +741,91 @@ void brain_cycle_coordinator_destroy(brain_cycle_coordinator_t* coord) {
     }
 
     nimcp_free(coord);
+}
+
+//=============================================================================
+// Driver Thread Management (for register_driven cycles)
+//
+// Design:
+//   - One pthread per driven cycle, owned by the coordinator.
+//   - Thread loops: sleep(interval) → check stop → tick_fn() → notify_tick().
+//   - Cooperative shutdown via atomic stop flag; unregister sets + joins.
+//   - tick_fn reads are done once per register (immutable after register).
+//   - The driver arg is heap-allocated so it survives past register_driven's
+//     stack frame; the driver loop frees it on exit.
+//
+// Concurrency invariants:
+//   - unregister MUST release the coordinator mutex before pthread_join, or
+//     it deadlocks with the driver (which takes the mutex in notify_tick).
+//   - `e->registered` stays true through join so stray notify_tick calls from
+//     an in-flight tick are harmless (they update stats for a still-registered
+//     entry). Registration flags are cleared AFTER join under the mutex.
+//   - destroy() unregisters all driven cycles before freeing the coordinator.
+//=============================================================================
+
+typedef struct {
+    brain_cycle_coordinator_t* coord;
+    brain_cycle_type_t         type;
+} cycle_driver_arg_t;
+
+/* The driver thread's main loop. One instance per driven cycle. */
+static void* cycle_driver_loop(void* arg_raw) {
+    cycle_driver_arg_t* arg = (cycle_driver_arg_t*)arg_raw;
+    brain_cycle_coordinator_t* coord = arg->coord;
+    brain_cycle_type_t type = arg->type;
+    int type_idx = (int)type;
+
+    /* Thread name for debugging (truncated to 15 chars + NUL by Linux). */
+    char tname[32];
+    snprintf(tname, sizeof(tname), "cc-%s", get_cycle_name(type));
+    (void)nimcp_thread_set_name(tname);
+
+    /* Read immutable-after-register fields once under the mutex. */
+    nimcp_mutex_lock(coord->mutex);
+    cycle_entry_t* e = &coord->cycles[type_idx];
+    uint64_t interval_us = e->tick_interval_us;
+    brain_cycle_tick_fn_t tick_fn = e->tick_fn;
+    void* tick_ctx = e->tick_ctx;
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (!tick_fn || interval_us == 0) {
+        /* Defensive: shouldn't happen, but don't spin forever. */
+        nimcp_free(arg);
+        return NULL;
+    }
+
+    while (__atomic_load_n(&coord->cycles[type_idx].driver_stop_flag,
+                           __ATOMIC_ACQUIRE) == 0) {
+        /* Sleep for the configured interval. Split long intervals into 100ms
+         * slices so stop-flag polling stays responsive during shutdown
+         * (a 60s GC cycle shouldn't delay shutdown by 60s). */
+        const uint64_t slice_us = 100000u;  /* 100ms */
+        uint64_t remaining = interval_us;
+        while (remaining > 0 &&
+               __atomic_load_n(&coord->cycles[type_idx].driver_stop_flag,
+                               __ATOMIC_ACQUIRE) == 0) {
+            uint64_t this_slice = (remaining > slice_us) ? slice_us : remaining;
+            struct timespec ts = {
+                .tv_sec  = (time_t)(this_slice / 1000000u),
+                .tv_nsec = (long)((this_slice % 1000000u) * 1000u)
+            };
+            nanosleep(&ts, NULL);
+            remaining -= this_slice;
+        }
+
+        if (__atomic_load_n(&coord->cycles[type_idx].driver_stop_flag,
+                            __ATOMIC_ACQUIRE))
+            break;
+
+        uint64_t t0 = get_timestamp_us();
+        tick_fn(tick_ctx);
+        uint64_t dur = get_timestamp_us() - t0;
+
+        (void)brain_cycle_coordinator_notify_tick(coord, type, dur);
+    }
+
+    nimcp_free(arg);
+    return NULL;
 }
 
 //=============================================================================
@@ -773,6 +882,123 @@ int brain_cycle_coordinator_register(
     return 0;
 }
 
+int brain_cycle_coordinator_register_driven(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    uint64_t interval_us,
+    brain_cycle_tick_fn_t tick_fn,
+    void* tick_ctx,
+    brain_cycle_health_fn_t health_fn)
+{
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_register_driven: coord is NULL");
+        return -1;
+    }
+    if ((int)type < 0 || (int)type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_register_driven: invalid cycle type %d", (int)type);
+        return -1;
+    }
+    if (!tick_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_register_driven: tick_fn is NULL");
+        return -1;
+    }
+    if (interval_us < 1000u) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_register_driven: interval_us=%llu below 1ms floor",
+            (unsigned long long)interval_us);
+        return -1;
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+
+    cycle_entry_t* e = &coord->cycles[(int)type];
+    if (e->registered) {
+        nimcp_mutex_unlock(coord->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_register_driven: cycle %s already registered",
+            get_cycle_name(type));
+        return -1;
+    }
+
+    /* Populate registration + driver fields BEFORE spawning the thread so the
+     * driver's first read-under-lock sees consistent state. */
+    e->registered = true;
+    e->enabled = true;
+    e->running = true;
+    e->cycle_handle = tick_ctx;  /* expose to health_fn as the cycle handle */
+    e->health_fn = health_fn;
+    e->health = BRAIN_CYCLE_HEALTH_UNKNOWN;
+    e->last_tick_us = get_timestamp_us();
+    e->expected_interval_us = interval_us;
+
+    e->driven = true;
+    e->tick_fn = tick_fn;
+    e->tick_ctx = tick_ctx;
+    e->tick_interval_us = interval_us;
+    __atomic_store_n(&e->driver_stop_flag, 0, __ATOMIC_RELEASE);
+
+    coord->registered_count++;
+
+    /* Allocate the thread arg BEFORE releasing the mutex — on OOM we can
+     * roll back the registration cleanly without another thread observing
+     * a half-registered state. */
+    cycle_driver_arg_t* arg = (cycle_driver_arg_t*)nimcp_malloc(sizeof(*arg));
+    if (!arg) {
+        /* Rollback */
+        e->registered = false;
+        e->enabled = false;
+        e->running = false;
+        e->driven = false;
+        e->tick_fn = NULL;
+        e->tick_ctx = NULL;
+        e->tick_interval_us = 0;
+        coord->registered_count--;
+        nimcp_mutex_unlock(coord->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "brain_cycle_coordinator_register_driven: OOM on driver arg");
+        return -1;
+    }
+    arg->coord = coord;
+    arg->type = type;
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    /* Spawn thread OUTSIDE the mutex — nimcp_thread_create shouldn't need it
+     * and holding the mutex across a thread-create call is bad style. */
+    nimcp_result_t rc = nimcp_thread_create(&e->driver_thread,
+                                            cycle_driver_loop, arg, NULL);
+    if (rc != NIMCP_OK) {
+        /* Rollback registration. We're racing with nothing because the
+         * driver thread never started. */
+        nimcp_mutex_lock(coord->mutex);
+        e->registered = false;
+        e->enabled = false;
+        e->running = false;
+        e->driven = false;
+        e->tick_fn = NULL;
+        e->tick_ctx = NULL;
+        e->tick_interval_us = 0;
+        coord->registered_count--;
+        nimcp_mutex_unlock(coord->mutex);
+        nimcp_free(arg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "brain_cycle_coordinator_register_driven: thread_create failed for %s",
+            get_cycle_name(type));
+        return -1;
+    }
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "Registered driven cycle '%s' (interval=%luus)",
+            get_cycle_name(type), (unsigned long)interval_us);
+    }
+
+    return 0;
+}
+
 int brain_cycle_coordinator_unregister(
     brain_cycle_coordinator_t* coord,
     brain_cycle_type_t type)
@@ -788,6 +1014,10 @@ int brain_cycle_coordinator_unregister(
         return -1;
     }
 
+    /* Step 1: under mutex, confirm registered + signal driver stop if driven.
+     * We do NOT clear `registered` yet — the driver may still call notify_tick
+     * during its last tick, and we want those calls to be harmless updates
+     * rather than errors. Registration is fully cleared AFTER join.           */
     nimcp_mutex_lock(coord->mutex);
 
     cycle_entry_t* e = &coord->cycles[(int)type];
@@ -797,18 +1027,45 @@ int brain_cycle_coordinator_unregister(
         return -1;
     }
 
+    bool was_driven = e->driven;
+    nimcp_thread_t driver_thread = e->driver_thread;
+
+    if (was_driven) {
+        __atomic_store_n(&e->driver_stop_flag, 1, __ATOMIC_RELEASE);
+    }
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    /* Step 2: join the driver thread WITHOUT holding the mutex.
+     * The driver's notify_tick calls take the mutex; joining under lock
+     * would deadlock. Joining is bounded by the driver's sleep slice (100ms)
+     * plus one tick's duration. */
+    if (was_driven) {
+        (void)nimcp_thread_join(driver_thread, NULL);
+    }
+
+    /* Step 3: under mutex, clear all registration/driver fields. */
+    nimcp_mutex_lock(coord->mutex);
+
     e->registered = false;
     e->enabled = false;
     e->running = false;
     e->cycle_handle = NULL;
     e->health_fn = NULL;
-    coord->registered_count--;
+    e->driven = false;
+    e->tick_fn = NULL;
+    e->tick_ctx = NULL;
+    e->tick_interval_us = 0;
+    __atomic_store_n(&e->driver_stop_flag, 0, __ATOMIC_RELEASE);
+    if (coord->registered_count > 0) coord->registered_count--;
 
     nimcp_mutex_unlock(coord->mutex);
 
     if (coord->config.enable_logging) {
         LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
-            "Unregistered cycle '%s'", get_cycle_name(type));
+            "Unregistered %scycle '%s'",
+            was_driven ? "driven " : "",
+            get_cycle_name(type));
     }
 
     return 0;
