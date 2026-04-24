@@ -164,6 +164,23 @@ int symbolic_logic_lgss_load_file(
 );
 
 /**
+ * @brief W7: Brain-aware sibling of symbolic_logic_lgss_load_file.
+ *
+ * Same as symbolic_logic_lgss_load_file plus mirrors every loaded rule into
+ * brain->internal_kg as 'cog_logic_rule_lgss_<id>' and emits a summary event.
+ * Safe to call with brain == NULL (falls back to plain load).
+ *
+ * Forward-declared as void* to avoid pulling brain_internal.h into public api.
+ */
+struct brain_struct;
+int symbolic_logic_lgss_load_file_kg(
+    const char* filepath,
+    safety_kb_t* kb,
+    lgss_load_result_t* result,
+    struct brain_struct* brain
+);
+
+/**
  * @brief Load safety rules from an LGSS JSON string
  *
  * WHAT: Parse JSON string and add rules to safety KB

@@ -14,6 +14,8 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
+#include "core/brain/nimcp_brain_internal.h"    /* W7: brain->internal_kg fields */
+#include "core/brain/nimcp_brain_kg.h"          /* W7: KG API */
 
 #define LOG_MODULE "HYPERGRAPH"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"

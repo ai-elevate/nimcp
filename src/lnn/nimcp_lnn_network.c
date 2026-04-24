@@ -22,6 +22,11 @@
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/lnn/nimcp_lnn_gpu.h"
+/* W5 KG-integration: brain_internal MUST be included before thalamic_channel.h
+ * to avoid a cognitive/parietal/nimcp_parietal.h vs nimcp_thalamic_router.h
+ * double-typedef of thalamic_router_t. */
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "core/substrate/nimcp_substrate_effects.h"  /* substrate_compute_effects, debit */
 #include "core/thalamic/nimcp_thalamic_channel.h"
 #include <string.h>
@@ -39,6 +44,68 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(lnn_network)
 #include <stddef.h>  /* for NULL */
 // Thread-safe network ID counter
 static nimcp_atomic_uint32_t g_lnn_network_id_counter = {0};
+
+/*=============================================================================
+ * W5 KG-integration — network-level aggregator event emitter (2026-04-24)
+ *
+ * File-scope backpointer to the owning brain, installed once at brain init
+ * via net_lnn_kg_register_brain(). The structural root node "net_lnn" is
+ * created by nimcp_brain_init_network_kg_wiring.c (Wave 32). Emits
+ * state-transition events (gradient_explosion, mode_transition, phase_shift)
+ * only on anomaly — never every tick, to avoid KG firehose.
+ *
+ * Admin-token self-elevation pattern per kg-node-naming-registry.md §7.
+ * (brain_internal.h + brain_kg.h are included above.)
+ *===========================================================================*/
+
+static brain_t s_net_lnn_kg_brain = NULL;
+
+/* Public setter (called from nimcp_brain_init_network_kg_wiring.c). */
+void net_lnn_kg_register_brain(brain_t brain) {
+    s_net_lnn_kg_brain = brain;
+}
+
+static void net_lnn_kg_emit_event(brain_t brain, const char* kind,
+                                  float magnitude, uint64_t ts_us) {
+    if (!brain || !kind) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "net_lnn_event_%s_%llu", kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "LNN network state transition: kind=%s magnitude=%.4f",
+             kind, magnitude);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    brain_kg_node_id_t owner = brain_kg_find_node(kg, "net_lnn");
+    if (owner != BRAIN_KG_INVALID_NODE && ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "produced_by", magnitude);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[40];
+        snprintf(buf, sizeof(buf), "%.6f", magnitude);
+        brain_kg_add_metadata(kg, ev, "magnitude", buf);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/* Public test-facing trigger — allows unit tests to verify emit behavior
+ * without having to induce a real gradient explosion. Pure forwarding. */
+void net_lnn_kg_trigger_event(brain_t brain, const char* kind,
+                              float magnitude, uint64_t ts_us) {
+    net_lnn_kg_emit_event(brain, kind, magnitude, ts_us);
+}
 
 /*=============================================================================
  * Network Lifecycle
@@ -624,6 +691,29 @@ int lnn_network_forward_step(
                                  0 /* region_id */,
                                  activity,
                                  0 /* n_plasticity — optimizer step debits separately */);
+    }
+
+    /* W5 KG: anomaly-trigger emit — scan output for NaN/explosion only on
+     * networks known to the KG. Sampled: roughly once per forward_step but
+     * gated by the anomaly threshold so normal training never writes to the
+     * KG. See kg-integration-audit-2026-04-24.md §2.12. */
+    if (s_net_lnn_kg_brain && output && network->n_outputs > 0) {
+        const float* lnn_out = (const float*)nimcp_tensor_data_const(output);
+        if (lnn_out) {
+            float l2 = 0.0f;
+            int   bad = 0;
+            for (uint32_t i = 0; i < network->n_outputs; i++) {
+                float v = lnn_out[i];
+                if (!isfinite(v)) { bad = 1; break; }
+                l2 += v * v;
+            }
+            if (bad || l2 > 1.0e12f) {
+                uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+                net_lnn_kg_emit_event(s_net_lnn_kg_brain,
+                    bad ? "gradient_explosion" : "phase_shift",
+                    bad ? INFINITY : sqrtf(l2), ts_us);
+            }
+        }
     }
 
     /* Thalamic end-of-step hook — submit the network output and tick.

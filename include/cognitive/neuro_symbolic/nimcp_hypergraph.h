@@ -244,6 +244,23 @@ typedef struct nimcp_hypergraph nimcp_hypergraph_t;
 NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create(void);
 
 /**
+ * @brief W7: Register hypergraph with brain's internal KG.
+ *
+ * Creates 'cog_neuro_symbolic_hypergraph' structural root (if absent) and
+ * emits one sync event with current vertex/edge counts.  Idempotent.
+ *
+ * Forward-declared as void* brain to avoid circular include.
+ *
+ * @param hg    Hypergraph (required).
+ * @param brain Owning brain (required).
+ * @return 0 on success, -1 on NULL arg.
+ */
+struct brain_struct;
+NIMCP_API int nimcp_hypergraph_kg_register(
+    nimcp_hypergraph_t* hg,
+    struct brain_struct* brain);
+
+/**
  * @brief Create hypergraph with configuration
  *
  * @param config Configuration (NULL for defaults)

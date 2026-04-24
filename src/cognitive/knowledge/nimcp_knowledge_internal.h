@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_internal.h"     /* W7: full brain struct access for internal_kg */
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG mirror writes */
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/containers/nimcp_btree.h"

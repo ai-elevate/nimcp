@@ -20,6 +20,128 @@ static const float IMAGINATION_FAIL_PENALTY  = 0.95F;  /* Confidence multiplier 
 static const float RCOG_CONFIDENCE_FLOOR     = 0.1F;   /* Min confidence to invoke recursive cognition */
 static const int   IMAGINATION_SIM_STEPS     = 3;      /* Number of prospective simulation steps */
 
+/* W5 KG-integration — main ANN network-level aggregator event emitter.
+ * Uses a 4-sample rolling buffer of output vectors; if consecutive outputs
+ * are nearly identical (cosine similarity > 0.98) with non-zero norm, emit
+ * "mode_collapse". Admin-token elevation per kg-node-naming-registry.md §7.
+ *
+ * NOTE: brain_part_core.c is #included from nimcp_brain.c — brain_kg.h
+ * include must live here because brain.c does not transitively expose it. */
+#include "core/brain/nimcp_brain_kg.h"
+
+static brain_t s_net_main_ann_kg_brain = NULL;
+
+/* Rolling 1-sample history + similarity detector. Mean is captured as a
+ * scalar "direction" summary (small footprint, cheap similarity proxy). */
+#define NET_MAIN_ANN_DIVERSITY_WIN 4
+static float  s_main_ann_prev_means[NET_MAIN_ANN_DIVERSITY_WIN];
+static int    s_main_ann_prev_count = 0;
+
+void net_main_ann_kg_register_brain(brain_t brain) {
+    s_net_main_ann_kg_brain = brain;
+    s_main_ann_prev_count = 0;
+    for (int i = 0; i < NET_MAIN_ANN_DIVERSITY_WIN; i++) {
+        s_main_ann_prev_means[i] = 0.0f;
+    }
+}
+
+static void net_main_ann_kg_emit_event(brain_t brain, const char* kind,
+                                       float magnitude, uint64_t ts_us) {
+    if (!brain || !kind) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "net_main_ann_event_%s_%llu", kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "Main ANN network event: kind=%s magnitude=%.4f", kind, magnitude);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    brain_kg_node_id_t owner = brain_kg_find_node(kg, "net_main_ann");
+    if (owner != BRAIN_KG_INVALID_NODE && ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "produced_by", magnitude);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[40];
+        snprintf(buf, sizeof(buf), "%.6f", magnitude);
+        brain_kg_add_metadata(kg, ev, "magnitude", buf);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/* Public test-facing trigger — forwards to static emit. */
+void net_main_ann_kg_trigger_event(brain_t brain, const char* kind,
+                                   float magnitude, uint64_t ts_us) {
+    net_main_ann_kg_emit_event(brain, kind, magnitude, ts_us);
+}
+
+/* W16: Apply KG consumers to a just-produced decision.
+ * Consumer A — salience bias via insula outgoing edges (up to +0.05).
+ * Consumer B — prior-decision recurrence (+0.02 if history node exists,
+ *              else create it so future calls find it).
+ * Bumps brain->kg_consumer_hits for every hit. Null-safe. */
+static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision)
+{
+    if (!brain || !decision) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    /* Consumer A — KG salience bias */
+    brain_kg_node_id_t salience_root = brain_kg_find_node(
+        brain->internal_kg, "insula");
+    if (salience_root != BRAIN_KG_INVALID_NODE) {
+        brain_kg_edge_list_t* edges = brain_kg_get_outgoing(
+            brain->internal_kg, salience_root);
+        if (edges && edges->count > 0) {
+            float boost = (float)edges->count * 0.001f;
+            if (boost > 0.05f) boost = 0.05f;
+            decision->confidence += boost;
+            if (decision->confidence > 1.0f) decision->confidence = 1.0f;
+            __atomic_add_fetch(&brain->kg_consumer_hits, 1,
+                               __ATOMIC_RELAXED);
+        }
+        if (edges) brain_kg_edge_list_destroy(edges);
+    }
+
+    /* Consumer B — prior-decision recurrence */
+    if (decision->output_vector && decision->output_size > 0) {
+        uint32_t argmax = 0;
+        float mx = 0.0f;
+        for (uint32_t i = 0; i < decision->output_size; i++) {
+            float a = decision->output_vector[i];
+            if (a < 0.0f) a = -a;
+            if (a > mx) { mx = a; argmax = i; }
+        }
+        char node_name[64];
+        snprintf(node_name, sizeof(node_name),
+                 "decision_history_%u", argmax);
+        brain_kg_node_id_t existing = brain_kg_find_node(
+            brain->internal_kg, node_name);
+        if (existing != BRAIN_KG_INVALID_NODE) {
+            decision->confidence += 0.02f;
+            if (decision->confidence > 1.0f) decision->confidence = 1.0f;
+            __atomic_add_fetch(&brain->kg_consumer_hits, 1,
+                               __ATOMIC_RELAXED);
+        } else {
+            brain_kg_set_access_level(brain->internal_kg,
+                BRAIN_KG_ACCESS_ADMIN, brain->internal_kg_admin_token);
+            brain_kg_add_node(brain->internal_kg, node_name,
+                BRAIN_KG_NODE_COGNITIVE, "decision history marker");
+            brain_kg_set_access_level(brain->internal_kg,
+                BRAIN_KG_ACCESS_READ, 0);
+        }
+    }
+}
+
 
 /**
  * @brief Clear decision cache (thread-safe with deadlock protection)
@@ -1091,6 +1213,11 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         if (cached_copy) {
             // Use atomic increment for thread-safe stats update
             __atomic_fetch_add(&brain->stats.total_inferences, 1, __ATOMIC_RELAXED);
+            /* W16: apply KG consumers on cache hits too — the KG may have
+             * changed between calls (new salience events, or this argmax is
+             * now a recurrence). Otherwise cache hits bypass the consumer
+             * entirely and the KG never influences repeat inputs. */
+            w16_apply_kg_consumers(brain, cached_copy);
             nimcp_free(local_features);
             return cached_copy;
         }
@@ -1747,6 +1874,53 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         nimcp_utm_swap_from_ema(brain->unified_training);
     }
 
+    /* W5 KG anomaly emit — near-collapse detector on brain_decide output.
+     * Compares the current output mean against a 4-sample rolling window;
+     * if the last 4 means are all within ±1e-4 of each other with non-zero
+     * magnitude, emit "mode_collapse". Cheap scalar summary avoids any
+     * per-decision full-vector cosine-similarity cost. */
+    if (s_net_main_ann_kg_brain && decision && decision->output_vector &&
+        decision->output_size > 0) {
+        float sum = 0.0f;
+        float absum = 0.0f;
+        int   bad = 0;
+        for (uint32_t i = 0; i < decision->output_size; i++) {
+            float v = decision->output_vector[i];
+            if (!isfinite(v)) { bad = 1; break; }
+            sum += v;
+            absum += fabsf(v);
+        }
+        if (!bad && absum > 1e-6f) {
+            float mean = sum / (float)decision->output_size;
+            if (s_main_ann_prev_count >= NET_MAIN_ANN_DIVERSITY_WIN) {
+                float mx = s_main_ann_prev_means[0];
+                float mn = s_main_ann_prev_means[0];
+                for (int i = 1; i < NET_MAIN_ANN_DIVERSITY_WIN; i++) {
+                    if (s_main_ann_prev_means[i] > mx) mx = s_main_ann_prev_means[i];
+                    if (s_main_ann_prev_means[i] < mn) mn = s_main_ann_prev_means[i];
+                }
+                float range = mx - mn;
+                if (range < 1e-4f && fabsf(mean - s_main_ann_prev_means[NET_MAIN_ANN_DIVERSITY_WIN - 1]) < 1e-4f) {
+                    uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+                    net_main_ann_kg_emit_event(s_net_main_ann_kg_brain,
+                        "mode_collapse", mean, ts_us);
+                }
+            }
+            /* shift window */
+            for (int i = 0; i < NET_MAIN_ANN_DIVERSITY_WIN - 1; i++) {
+                s_main_ann_prev_means[i] = s_main_ann_prev_means[i + 1];
+            }
+            s_main_ann_prev_means[NET_MAIN_ANN_DIVERSITY_WIN - 1] = mean;
+            if (s_main_ann_prev_count < NET_MAIN_ANN_DIVERSITY_WIN) {
+                s_main_ann_prev_count++;
+            }
+        } else if (bad) {
+            uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+            net_main_ann_kg_emit_event(s_net_main_ann_kg_brain,
+                "mode_collapse", 0.0f, ts_us);
+        }
+    }
+
     // G3: Inference timeout check — after forward pass
     if (nimcp_time_get_us() > inference_deadline_us) {
         LOG_MODULE_WARN("BRAIN", "brain_decide: inference timeout after forward pass");
@@ -1827,6 +2001,10 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // Update statistics
         update_inference_stats(brain, decision);
 
+        /* W16: apply KG consumers on the fast path too so classification-mode
+         * inference still gets the salience-bias + prior-decision boosts. */
+        w16_apply_kg_consumers(brain, decision);
+
         // Cache decision
         if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
             cache_decision(brain, features, num_features, decision);
@@ -1852,6 +2030,9 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         }
         determine_output_label(brain, decision);
         update_inference_stats(brain, decision);
+
+        /* W16: apply KG consumers on training fast path too. */
+        w16_apply_kg_consumers(brain, decision);
 
         if (nimcp_platform_mutex_lock(&brain->cache_mutex) == 0) {
             cache_decision(brain, features, num_features, decision);
@@ -4367,6 +4548,11 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
             (struct middleware_controller*)brain->middleware_controller,
             mw_argmax, mw_max, /*region_id=*/0);
     }
+
+    /* W16-A + W16-B: KG salience bias + prior-decision recurrence.
+     * Makes the KG actually affect brain_decide's output. See
+     * w16_apply_kg_consumers() for details. */
+    w16_apply_kg_consumers(brain, decision);
 
     brain_clear_error();
     return decision;

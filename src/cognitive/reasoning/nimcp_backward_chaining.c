@@ -17,6 +17,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG event emission */
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -76,6 +77,58 @@ static void set_error(const char* fmt, ...)
 const char* backward_chain_get_last_error(void)
 {
     return last_error;
+}
+
+//=============================================================================
+// W7 KG integration helpers
+//=============================================================================
+
+static void bc_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_reasoning_backward_chain")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_reasoning_backward_chain",
+                          BRAIN_KG_NODE_COGNITIVE,
+                          "Goal-driven inference engine (backward chaining)");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void bc_kg_emit_proof(brain_t brain, const char* goal, bool proven,
+                             int num_steps, uint64_t duration_ms)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name),
+             "cog_reasoning_backward_chain_event_%s_%llu",
+             proven ? "proven" : "failed",
+             (unsigned long long)nimcp_time_monotonic_us());
+
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
+    snprintf(desc, sizeof(desc),
+             "goal=%.200s steps=%d duration=%llu ms",
+             goal ? goal : "(null)", num_steps,
+             (unsigned long long)duration_ms);
+
+    brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg, node_name,
+                                               BRAIN_KG_NODE_COGNITIVE, desc);
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+            "cog_reasoning_backward_chain");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO,
+                              proven ? "proven" : "failed",
+                              proven ? 0.9f : 0.3f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
 }
 
 //=============================================================================
@@ -194,6 +247,11 @@ bool brain_backward_chain(
     result->confidence = success ? 0.95F : 0.0F;
     result->inference_time_ms = end_time - start_time;
     result->depth_reached = num_steps;
+
+    /* W7: emit proof/failure event to KG. */
+    bc_kg_ensure_root(brain);
+    bc_kg_emit_proof(brain, goal_str, success, num_steps,
+                     end_time - start_time);
 
     if (success) {
         // Store proof in working memory if enabled

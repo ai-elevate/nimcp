@@ -18,6 +18,7 @@
 #define LOG_MODULE "systems_consolidation"
 
 #include "cognitive/memory/nimcp_systems_consolidation.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"

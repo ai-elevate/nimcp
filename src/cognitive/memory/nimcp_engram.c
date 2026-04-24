@@ -32,6 +32,7 @@ BRIDGE_BOILERPLATE(engram, MESH_ADAPTER_CATEGORY_MEMORY)
 
 
 #include "cognitive/memory/nimcp_engram.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
@@ -605,6 +606,12 @@ uint64_t engram_encode(
     system->labile_count++;
     system->total_encodings++;
 
+    /* W6: emit KG event for engram formation. Null-safe if no brain
+     * registered (e.g. unit-test mode without full brain init). */
+    memory_kg_emit_engram_form(
+        memory_kg_events_get_registered_brain(),
+        engram->engram_id, engram->vividness);
+
     return engram->engram_id;
 }
 
@@ -704,6 +711,11 @@ uint64_t engram_recall(
     if (confidence_out) {
         *confidence_out = best_match * best_engram->confidence;
     }
+
+    /* W6: emit KG event for engram recall */
+    memory_kg_emit_engram_recall(
+        memory_kg_events_get_registered_brain(),
+        best_engram_id, best_match * best_engram->confidence);
 
     return best_engram_id;
 }

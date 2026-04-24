@@ -15,9 +15,12 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "cognitive/nimcp_symbolic_logic.h"
+#include "core/brain/nimcp_brain_internal.h"       /* W7: KG access */
+#include "core/brain/nimcp_brain_kg.h"             /* W7: KG event emission */
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
 #include "api/nimcp_api_exception.h"
 #include "core/events/nimcp_event_bus.h"
 
@@ -53,6 +56,55 @@ static void set_error(const char* fmt, ...)
 const char* unification_get_last_error(void)
 {
     return last_error;
+}
+
+/* ============================================================================
+ * W7 KG integration helpers
+ * ============================================================================ */
+
+static void unif_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_reasoning_unification")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_reasoning_unification",
+                          BRAIN_KG_NODE_COGNITIVE,
+                          "First-order logic unification engine");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void unif_kg_emit_binding(brain_t brain, bool success,
+                                 uint32_t num_bindings)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name),
+             "cog_reasoning_unification_event_%s_%llu",
+             success ? "ok" : "fail",
+             (unsigned long long)nimcp_time_monotonic_us());
+    char desc[128];
+    snprintf(desc, sizeof(desc),
+             "unify %s; %u bindings",
+             success ? "success" : "failure", (unsigned)num_bindings);
+    brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg, node_name,
+                                               BRAIN_KG_NODE_COGNITIVE, desc);
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+            "cog_reasoning_unification");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO,
+                              success ? "bound" : "unbound",
+                              success ? 0.7f : 0.2f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
 }
 
 bool brain_unify_terms(
@@ -101,6 +153,10 @@ bool brain_unify_terms(
         result->bindings = NULL;
         result->num_bindings = 0;
     }
+
+    /* W7: emit binding event to KG. */
+    unif_kg_ensure_root(brain);
+    unif_kg_emit_binding(brain, success, result->num_bindings);
 
     return success;
 }

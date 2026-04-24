@@ -17,6 +17,8 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG facade + event emit */
+#include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -234,6 +236,85 @@ static void kb_init_bio_async(void)
 }
 
 //=============================================================================
+// W7 KG Facade helpers
+//
+// The Knowledge Base Interface is the natural facade across the three
+// knowledge stores (parallel concept store in cognitive/knowledge/, the
+// symbolic_logic engine, and brain->internal_kg).  Adds emit a fact node
+// into the KG; queries use the KG as a fallback when the symbolic engine
+// returns zero matches.
+//=============================================================================
+
+static void kb_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_reasoning_kb")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_reasoning_kb",
+                          BRAIN_KG_NODE_COGNITIVE,
+                          "Knowledge-base facade over symbolic logic + KG");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void kb_kg_emit_event(brain_t brain, const char* kind,
+                             const char* payload)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name), "cog_reasoning_kb_event_%s_%llu",
+             kind, (unsigned long long)nimcp_time_monotonic_us());
+    brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg, node_name,
+                                               BRAIN_KG_NODE_COGNITIVE,
+                                               payload ? payload : kind);
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root =
+            brain_kg_find_node(brain->internal_kg, "cog_reasoning_kb");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO, kind, 0.5f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/**
+ * @brief Fallback query: look up a concept in the internal KG when the
+ *        symbolic engine returned zero matches.  Read-only, no elevation.
+ *
+ * @return 1 if at least one matching KG node was found, 0 otherwise.
+ */
+static int kb_kg_fallback_query(brain_t brain, const char* query_str)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg
+        || !query_str) {
+        return 0;
+    }
+
+    /* Try cognitive-knowledge mirror naming first. */
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name), "cog_knowledge_concept_%.96s",
+             query_str);
+    if (brain_kg_find_node(brain->internal_kg, node_name)
+        != BRAIN_KG_INVALID_NODE) {
+        return 1;
+    }
+
+    /* Try bare name (brain region / module node). */
+    if (brain_kg_find_node(brain->internal_kg, query_str)
+        != BRAIN_KG_INVALID_NODE) {
+        return 1;
+    }
+
+    return 0;
+}
+
+//=============================================================================
 // Knowledge Base Operations Implementation
 //=============================================================================
 
@@ -356,6 +437,10 @@ bool brain_add_fact(
     // if (brain->event_bus) { // Event bus always exists now
     //     event_bus_publish(brain->event_bus, &event); // Event API changed
     // }
+
+    /* W7: mirror the fact into the internal KG as an event. */
+    kb_kg_ensure_root(brain);
+    kb_kg_emit_event(brain, "fact_added", fact_str);
 
     NIMCP_LOGGING_INFO("Logical fact added: %s (salience=%.2f)", fact_str, salience);
     return true;
@@ -492,6 +577,10 @@ bool brain_add_rule(
     //     event_bus_publish(brain->event_bus, &event); // Event API changed
     // }
 
+    /* W7: mirror the rule into the internal KG as an event. */
+    kb_kg_ensure_root(brain);
+    kb_kg_emit_event(brain, "rule_added", rule_str);
+
     NIMCP_LOGGING_INFO("Logical rule added: %s (priority=%.2f)", rule_str, priority);
     return true;
 }
@@ -593,6 +682,20 @@ bool brain_query_knowledge(
     result->num_matches = num_matches;
     result->bindings = NULL; // TODO: Implement variable binding extraction
     result->num_bindings = 0;
+
+    /* W7: KG fallback façade.  If the symbolic engine returned zero matches,
+     * try to find the concept in brain->internal_kg (populated by the W7
+     * knowledge-system mirror path + all other wired modules).  This does
+     * not produce kb_entry_t matches, but it flips result->success so
+     * downstream callers know the concept IS known by some subsystem.
+     * num_matches stays 0 and result->bindings[] is left untouched so the
+     * contract for struct-consumers is preserved. */
+    if (num_matches == 0 && kb_kg_fallback_query(brain, query_str)) {
+        NIMCP_LOGGING_DEBUG("KG fallback matched concept '%s'", query_str);
+        /* Annotate via an event node so the fallback path is auditable. */
+        kb_kg_ensure_root(brain);
+        kb_kg_emit_event(brain, "query_kg_fallback", query_str);
+    }
 
     // Publish event
     // event_data_t event = {

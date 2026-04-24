@@ -266,6 +266,7 @@ bool nimcp_brain_factory_init_middleware_controller_subsystem(brain_t brain)
     brain->middleware_controller = NULL;
     brain->enable_middleware_controller = false;  // Opt-in by default
     brain->middleware_pattern_callbacks = 0;       // W9-finish: counter init
+    brain->kg_consumer_hits = 0;                   // W16: KG consumer counter init
 
     // Create controller if executive controller is enabled (synergy with Phase 1.5.2)
     if (brain->executive) {

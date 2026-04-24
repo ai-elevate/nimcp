@@ -421,3 +421,22 @@ int kg_get_stats_safe(
     }
     return brain_kg_get_stats(ctx->kg, stats);
 }
+
+/* ============================================================================
+ * W16 CONSUMER HELPERS
+ * ============================================================================ */
+
+bool brain_kg_helpers_query_attention_focus(brain_t brain)
+{
+    if (!brain) return false;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return false;
+
+    brain_kg_node_id_t focus = brain_kg_find_node(
+        brain->internal_kg, "attention_focus");
+    if (focus == BRAIN_KG_INVALID_NODE) {
+        return false;
+    }
+
+    __atomic_add_fetch(&brain->kg_consumer_hits, 1, __ATOMIC_RELAXED);
+    return true;
+}

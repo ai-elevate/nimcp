@@ -3,6 +3,88 @@
 // DO NOT compile separately - #included from nimcp_knowledge.c
 
 
+/* ============================================================================
+ * KG Integration — Wave W7 (2026-04-24)
+ * ----------------------------------------------------------------------------
+ * The cognitive/knowledge/ subsystem is a PARALLEL concept store (see audit
+ * risk 7 — "knowledge overloaded across 3 stores").  This wiring MIRRORS each
+ * concept addition into brain->internal_kg so that downstream reasoning, KG
+ * queries and imagination can cross-link.  We do NOT merge the three stores
+ * here; that is a larger design call.  Intent: every local concept write has
+ * a corresponding 'cog_knowledge_concept_<name>' node in the KG.
+ * ============================================================================ */
+
+/**
+ * @brief Mirror a concept addition into brain->internal_kg
+ *
+ * Idempotent — uses brain_kg_find_node before add.  Silently no-ops if the KG
+ * is disabled or the knowledge system has no brain handle.
+ */
+static void knowledge_kg_mirror_concept(knowledge_system_t system,
+                                        const char* concept_name,
+                                        knowledge_domain_t domain,
+                                        float confidence)
+{
+    if (!system || !concept_name) return;
+    brain_t brain = system->knowledge_brain;
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name), "cog_knowledge_concept_%.96s",
+             concept_name);
+
+    /* Elevate to ADMIN for the write (registry §7). */
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    brain_kg_node_id_t nid = brain_kg_find_node(brain->internal_kg, node_name);
+    if (nid == BRAIN_KG_INVALID_NODE) {
+        nid = brain_kg_add_node(brain->internal_kg, node_name,
+                                 BRAIN_KG_NODE_COGNITIVE,
+                                 "Knowledge-system concept (mirrored)");
+        if (nid != BRAIN_KG_INVALID_NODE) {
+            char meta[32];
+            snprintf(meta, sizeof(meta), "%u", (uint32_t)domain);
+            brain_kg_add_metadata(brain->internal_kg, nid, "domain", meta);
+            snprintf(meta, sizeof(meta), "%.4f", confidence);
+            brain_kg_add_metadata(brain->internal_kg, nid, "confidence", meta);
+
+            /* Link to the subsystem root node if present. */
+            brain_kg_node_id_t root =
+                brain_kg_find_node(brain->internal_kg, "cog_knowledge");
+            if (root != BRAIN_KG_INVALID_NODE) {
+                brain_kg_add_edge(brain->internal_kg, root, nid,
+                                  BRAIN_KG_EDGE_PROVIDES_TO,
+                                  "root_contains_concept", 0.5f);
+            }
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/**
+ * @brief Ensure the 'cog_knowledge' subsystem root node exists in the KG.
+ *
+ * Called on first mirror call.  Idempotent.
+ */
+static void knowledge_kg_ensure_root(knowledge_system_t system)
+{
+    if (!system) return;
+    brain_t brain = system->knowledge_brain;
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_knowledge")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_knowledge",
+                          BRAIN_KG_NODE_COGNITIVE,
+                          "Parallel concept store (mirrors to KG)");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+
 /**
  * @brief Learn from text with optimized O(n) algorithm
  *
@@ -36,6 +118,9 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
     uint32_t num_concepts = extract_concepts_optimized(text, concepts, 100);
     uint32_t learned = 0;
 
+    /* W7: ensure subsystem root exists before any mirror writes. */
+    knowledge_kg_ensure_root(system);
+
     for (uint32_t i = 0; i < num_concepts; i++) {
         /* Phase 8: Loop progress heartbeat */
         if ((i & 0xFF) == 0 && num_concepts > 256) {
@@ -45,6 +130,9 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
 
         if (process_concept(system, concepts[i], text, domain)) {
             learned++;
+            /* W7: mirror the fresh concept into the internal KG so readers
+             * (imagination, reasoning, symbolic logic) can cross-reference. */
+            knowledge_kg_mirror_concept(system, concepts[i], domain, 0.3f);
         }
     }
 
@@ -671,6 +759,12 @@ bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
 
 
     int32_t index = repository_add(system->repository, item);
+    if (index >= 0) {
+        /* W7: mirror the new concept into internal KG. */
+        knowledge_kg_ensure_root(system);
+        knowledge_kg_mirror_concept(system, item->concept_name,
+                                    item->domain, item->confidence);
+    }
     return index >= 0;
 }
 

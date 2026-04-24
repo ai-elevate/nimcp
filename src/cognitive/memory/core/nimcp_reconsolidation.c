@@ -14,6 +14,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_reconsolidation.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
@@ -515,6 +516,12 @@ NIMCP_EXPORT reconsolidation_error_t reconsolidation_on_retrieval(
     }
 
     nimcp_mutex_unlock(system->mutex);
+
+    /* W6: emit KG event for reconsolidation window open */
+    memory_kg_emit_reconsolidation_opened(
+        memory_kg_events_get_registered_brain(),
+        mem_id, activation_strength);
+
     return RECON_SUCCESS;
 }
 
@@ -751,7 +758,16 @@ NIMCP_EXPORT reconsolidation_error_t reconsolidation_commit_update(
 
     transition_to_restabilizing(window, current_time);
 
+    int emitted_outcome = (int)window->outcome;
+    uint64_t emitted_mem_id = pr_memory_node_get_id(memory);
+
     nimcp_mutex_unlock(system->mutex);
+
+    /* W6: emit KG event for reconsolidation commit */
+    memory_kg_emit_reconsolidation_committed(
+        memory_kg_events_get_registered_brain(),
+        emitted_mem_id, emitted_outcome);
+
     return RECON_SUCCESS;
 }
 

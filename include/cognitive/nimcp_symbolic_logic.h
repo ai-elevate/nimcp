@@ -193,6 +193,23 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config);
 void symbolic_logic_destroy(symbolic_logic_t* logic);
 
 /**
+ * @brief W7: Register symbolic logic engine with a brain's internal KG.
+ *
+ * Creates the 'cog_logic_symbolic_engine' structural node (if absent) and
+ * stores a back-reference so subsequent add_fact / add_rule writes mirror
+ * into brain->internal_kg.  Safe to call multiple times.
+ *
+ * Forward-declared via a void* brain to avoid header circular include.
+ *
+ * @param logic Logic engine (required).
+ * @param brain Owning brain (required).
+ * @return 0 on success, -1 on NULL arg.
+ */
+struct brain_struct;
+int symbolic_logic_kg_register(symbolic_logic_t* logic,
+                               struct brain_struct* brain);
+
+/**
  * @brief Get logic engine statistics
  * @param logic Logic engine instance
  * @param stats Output statistics structure

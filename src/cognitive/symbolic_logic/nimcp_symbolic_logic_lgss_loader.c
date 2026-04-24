@@ -21,6 +21,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG rule emit */
+#include "core/brain/nimcp_brain_internal.h"
+#include "utils/time/nimcp_time.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -1144,6 +1147,120 @@ bool symbolic_logic_lgss_get_version(
 
     json_free_value(root);
     return true;
+}
+
+//=============================================================================
+// W7 KG integration helpers
+//=============================================================================
+
+static void lgss_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_symbolic_logic_lgss")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_symbolic_logic_lgss",
+                          BRAIN_KG_NODE_SECURITY,
+                          "LGSS safety-rule loader (governance/safety KB)");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void lgss_kg_emit_load_summary(brain_t brain,
+                                      uint32_t rules_loaded,
+                                      uint32_t rules_failed,
+                                      uint32_t rules_skipped,
+                                      const char* source_name)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name),
+             "cog_symbolic_logic_lgss_event_load_%llu",
+             (unsigned long long)nimcp_time_monotonic_us());
+    char desc[NIMCP_ERROR_BUFFER_SIZE];
+    snprintf(desc, sizeof(desc),
+             "LGSS load: loaded=%u failed=%u skipped=%u source=%s",
+             (unsigned)rules_loaded, (unsigned)rules_failed,
+             (unsigned)rules_skipped,
+             source_name ? source_name : "(inline)");
+    brain_kg_node_id_t nid =
+        brain_kg_add_node(brain->internal_kg, node_name,
+                          BRAIN_KG_NODE_SECURITY, desc);
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+            "cog_symbolic_logic_lgss");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO, "rules_loaded",
+                              rules_failed ? 0.5f : 0.9f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void lgss_kg_emit_rule(brain_t brain, uint32_t rule_id,
+                              const char* rule_name)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    /* Stable rule node (not timestamped). */
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name), "cog_logic_rule_lgss_%u",
+             (unsigned)rule_id);
+    if (brain_kg_find_node(brain->internal_kg, node_name)
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg,
+            node_name, BRAIN_KG_NODE_SECURITY,
+            rule_name ? rule_name : "LGSS safety rule");
+        if (nid != BRAIN_KG_INVALID_NODE) {
+            brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+                "cog_symbolic_logic_lgss");
+            if (root != BRAIN_KG_INVALID_NODE) {
+                brain_kg_add_edge(brain->internal_kg, root, nid,
+                                  BRAIN_KG_EDGE_PROVIDES_TO, "has_rule", 0.8f);
+            }
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/**
+ * @brief W7: Brain-aware sibling of symbolic_logic_lgss_load_file.
+ *
+ * Identical behaviour to the plain loader, plus: mirrors each loaded rule
+ * into brain->internal_kg as a stable 'cog_logic_rule_lgss_<id>' node and
+ * emits a summary event.  Brain may be NULL (falls back to plain loader).
+ */
+int symbolic_logic_lgss_load_file_kg(
+    const char* filepath,
+    safety_kb_t* kb,
+    lgss_load_result_t* result,
+    brain_t brain)
+{
+    lgss_load_result_t local_result;
+    if (!result) result = &local_result;
+
+    uint32_t prev_num_rules = kb ? kb->num_rules : 0;
+    int rc = symbolic_logic_lgss_load_file(filepath, kb, result);
+    if (brain && brain->internal_kg_enabled && brain->internal_kg) {
+        lgss_kg_ensure_root(brain);
+        /* Mirror each freshly-loaded rule. */
+        if (kb && rc >= 0) {
+            for (uint32_t i = prev_num_rules; i < kb->num_rules; ++i) {
+                lgss_kg_emit_rule(brain, i, kb->rules[i].name);
+            }
+        }
+        lgss_kg_emit_load_summary(brain, result->rules_loaded,
+                                  result->rules_failed, result->rules_skipped,
+                                  filepath);
+    }
+    return rc;
 }
 
 //=============================================================================

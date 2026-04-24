@@ -13,6 +13,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cognitive/memory/core/nimcp_source_memory.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -802,6 +803,11 @@ NIMCP_EXPORT source_error_t source_memory_bind_source_by_id(
     if (entry.reality_status < REALITY_STATUS_COUNT) {
         sm->stats.entries_by_reality[entry.reality_status]++;
     }
+
+    /* W6: emit KG event for source tagging */
+    memory_kg_emit_source_bound(
+        memory_kg_events_get_registered_brain(),
+        memory_id, (int)source->type);
 
     return SOURCE_SUCCESS;
 }

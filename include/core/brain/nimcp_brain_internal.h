@@ -633,6 +633,8 @@ struct brain_struct {
     struct middleware_controller* middleware_controller;  // Unified cognitive-to-middleware command interface
     bool enable_middleware_controller;                    // Enable middleware controller subsystem
     uint64_t middleware_pattern_callbacks;                // W9-finish: counter bumped by tracer_cb per dispatch
+    uint64_t kg_consumer_hits;                            // W16: counter bumped by real KG consumers (brain_decide salience/recurrence + middleware attention_focus)
+    uint64_t kg_training_consumer_hits;                   // W17: counter bumped by real KG consumers in brain_learn_vector (training_focus / familiarity / loss-gate)
 
     // === PHASE 2 MIDDLEWARE: SPIKE ANALYSIS & POPULATION CODING ===
 

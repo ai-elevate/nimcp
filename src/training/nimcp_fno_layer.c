@@ -14,6 +14,63 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+
+/* W5 KG-integration — FNO network-level aggregator event emitter.
+ * Tracks spectral mode shift: compares the dominant mode energy between
+ * consecutive forward calls and emits "spectral_shift" when the dominant
+ * mode's share of total spectral energy changes by > 0.5. Admin-token
+ * self-elevation per kg-node-naming-registry.md §7. */
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
+
+static brain_t s_net_fno_kg_brain = NULL;
+static float   s_fno_prev_dom_ratio = -1.0f;  /* <0 = no prior sample */
+
+void net_fno_kg_register_brain(brain_t brain) {
+    s_net_fno_kg_brain = brain;
+}
+
+static void net_fno_kg_emit_event(brain_t brain, const char* kind,
+                                  float magnitude, uint64_t ts_us) {
+    if (!brain || !kind) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "net_fno_event_%s_%llu", kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "FNO spectral event: kind=%s delta_ratio=%.4f", kind, magnitude);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    brain_kg_node_id_t owner = brain_kg_find_node(kg, "net_fno");
+    if (owner != BRAIN_KG_INVALID_NODE && ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "produced_by", magnitude);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[40];
+        snprintf(buf, sizeof(buf), "%.6f", magnitude);
+        brain_kg_add_metadata(kg, ev, "magnitude", buf);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/* Public test-facing trigger — forwards to static emit. */
+void net_fno_kg_trigger_event(brain_t brain, const char* kind,
+                              float magnitude, uint64_t ts_us) {
+    net_fno_kg_emit_event(brain, kind, magnitude, ts_us);
+}
 
 /* =========================================================================
  * Helpers
@@ -251,6 +308,33 @@ int fno_spectral_conv_forward(fno_spectral_conv_t* layer,
 
             pre_ptr[i] = spectral_val + bypass_val + layer->bias[oc];
             out_ptr[i] = gelu(pre_ptr[i]);
+        }
+    }
+
+    /* W5 KG anomaly emit — track dominant-mode share of the last oc's
+     * spectrum. If the ratio moves by > 0.5 between calls (new dominant
+     * mode or collapse onto a single mode), emit "spectral_shift".
+     * Only the LAST `oc`'s out_hat_* buffers are still populated — that
+     * is the sample we inspect. Single hook per forward call. */
+    if (s_net_fno_kg_brain && freq_n > 0) {
+        float total = 0.0f, peak = 0.0f;
+        for (uint32_t k = 0; k < freq_n; k++) {
+            float e = out_hat_real[k] * out_hat_real[k]
+                    + out_hat_imag[k] * out_hat_imag[k];
+            total += e;
+            if (e > peak) peak = e;
+        }
+        if (total > 1e-12f) {
+            float ratio = peak / total;
+            if (s_fno_prev_dom_ratio >= 0.0f) {
+                float delta = fabsf(ratio - s_fno_prev_dom_ratio);
+                if (delta > 0.5f) {
+                    uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+                    net_fno_kg_emit_event(s_net_fno_kg_brain,
+                        "spectral_shift", delta, ts_us);
+                }
+            }
+            s_fno_prev_dom_ratio = ratio;
         }
     }
 

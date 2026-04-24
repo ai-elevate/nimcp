@@ -19,6 +19,8 @@
 #include "async/nimcp_bio_router.h"
 
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"       /* W7: KG event emission */
+#include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/events/nimcp_event_bus.h"
@@ -63,6 +65,54 @@ const char* brain_logic_attachment_get_last_error(void)
 }
 
 //=============================================================================
+// W7 KG integration helpers
+//=============================================================================
+
+static void sla_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg,
+                           "cog_reasoning_symbolic_logic_attachment")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg,
+                          "cog_reasoning_symbolic_logic_attachment",
+                          BRAIN_KG_NODE_INTEGRATION,
+                          "Attach/detach lifecycle for symbolic logic engine");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void sla_kg_emit_attachment(brain_t brain, bool attached)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name),
+             "cog_reasoning_symbolic_logic_attachment_event_%s_%llu",
+             attached ? "attach" : "detach",
+             (unsigned long long)nimcp_time_monotonic_us());
+    brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg, node_name,
+        BRAIN_KG_NODE_INTEGRATION,
+        attached ? "symbolic logic engine attached"
+                 : "symbolic logic engine detached");
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+            "cog_reasoning_symbolic_logic_attachment");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO,
+                              attached ? "attached" : "detached",
+                              attached ? 0.9f : 0.1f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+//=============================================================================
 // Attachment API Implementation
 //=============================================================================
 
@@ -100,6 +150,14 @@ bool brain_attach_symbolic_logic(
 
 
     brain->symbolic_logic = logic_engine;
+
+    /* W7: emit an attach event to the internal KG. */
+    sla_kg_ensure_root(brain);
+    sla_kg_emit_attachment(brain, true);
+
+    /* W7: hand the brain handle to the logic engine so subsequent add_fact /
+     * add_rule writes mirror into brain->internal_kg. */
+    symbolic_logic_kg_register(logic_engine, brain);
 
     // Publish attachment event
     // event_data_t event = {
@@ -144,6 +202,10 @@ symbolic_logic_t* brain_detach_symbolic_logic(brain_t brain)
 
     // Detach the engine
     brain->symbolic_logic = NULL;
+
+    /* W7: emit a detach event to the internal KG. */
+    sla_kg_ensure_root(brain);
+    sla_kg_emit_attachment(brain, false);
 
     // Publish detachment event
     // event_data_t event = {

@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_schemas.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "constants/nimcp_buffer_constants.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -892,6 +893,12 @@ bool schema_add(schema_system_t system, schema_t* schema) {
     }
 
     clear_error();
+
+    /* W6: emit KG event for schema addition */
+    memory_kg_emit_schema_added(
+        memory_kg_events_get_registered_brain(),
+        schema->schema_id, schema->schema_name);
+
     return true;
 }
 
@@ -1321,6 +1328,11 @@ schema_instantiation_t* schema_instantiate(
     system->stats.num_active = system->num_active;
 
     clear_error();
+
+    /* W6: emit KG event for schema activation */
+    memory_kg_emit_schema_activated(
+        memory_kg_events_get_registered_brain(), schema->schema_id);
+
     return inst;
 }
 

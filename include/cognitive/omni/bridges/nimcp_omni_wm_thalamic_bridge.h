@@ -77,10 +77,15 @@ typedef struct omni_world_model omni_world_model_t;
 typedef struct thalamus_t thalamus_t;
 typedef struct thal_nucleus thal_nucleus_t;
 
-/* Thalamic Router (from nimcp_parietal.h)
- * Note: Actual type defined in nimcp_parietal.h. Forward declare struct and typedef. */
-struct thalamic_router_struct;
-typedef struct thalamic_router_struct* thalamic_router_t;
+/* Thalamic Router.  Authoritative typedef lives in
+ * middleware/routing/nimcp_thalamic_router.h as
+ *   typedef struct thalamic_router thalamic_router_t;
+ * Match that here so this header can coexist in the same TU with the
+ * authoritative one without a typedef conflict. */
+#ifndef NIMCP_THALAMIC_ROUTER_T_DEFINED
+#define NIMCP_THALAMIC_ROUTER_T_DEFINED
+typedef struct thalamic_router thalamic_router_t;
+#endif
 
 /* ============================================================================
  * Constants

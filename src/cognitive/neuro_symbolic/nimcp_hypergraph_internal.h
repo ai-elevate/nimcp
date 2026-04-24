@@ -15,6 +15,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include "core/brain/nimcp_brain.h"              /* W7: brain_t for KG register */
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG API */
+#include "core/brain/nimcp_brain_internal.h"     /* W7: internal_kg fields */
 #include "utils/time/nimcp_time.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"

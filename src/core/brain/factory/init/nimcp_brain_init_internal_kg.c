@@ -36,6 +36,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain_kg.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: memory family roots */
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -257,6 +258,12 @@ bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
 
     brain->internal_kg = kg;
     brain->internal_kg_enabled = true;
+
+    /* W6: register memory-family root nodes + cognitive umbrella while we
+     * still have ADMIN access. memory_kg_init_roots() handles its own
+     * elevate/restore so it also works if called later, but doing it now
+     * means the first events emitted by memory modules find their parents. */
+    (void)memory_kg_init_roots(brain);
 
     /* Log statistics */
     log_internal_kg_stats(kg);

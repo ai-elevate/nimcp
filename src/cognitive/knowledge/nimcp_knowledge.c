@@ -17,6 +17,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core/brain/nimcp_brain.h"
+/* W6-collision fix: W7's in-flight part_core.c uses brain->internal_kg
+ * fields (from brain_struct) + brain_kg_* API but didn't include the
+ * headers. Pulling them in here so the #include-style SRP build works.
+ * Proper fix is for W7 to put these includes in part_core itself when
+ * it gets committed. */
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "cognitive/nimcp_symbolic_logic.h"
 #include "utils/memory/nimcp_memory.h"  // CRITICAL: Declares nimcp_calloc/nimcp_free return types

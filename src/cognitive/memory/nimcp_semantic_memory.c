@@ -25,6 +25,7 @@ BRIDGE_BOILERPLATE(semantic_memory, MESH_ADAPTER_CATEGORY_MEMORY)
 
 
 #include "cognitive/memory/nimcp_semantic_memory.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "security/nimcp_security.h"
@@ -700,6 +701,11 @@ uint64_t semantic_memory_create_concept(
     system->stats.total_concepts_formed++;
     if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
+    /* W6: emit KG event for concept creation */
+    memory_kg_emit_concept_created(
+        memory_kg_events_get_registered_brain(),
+        concept->id, concept->label);
+
     return concept->id;
 }
 
@@ -1188,6 +1194,11 @@ semantic_query_result_t* semantic_memory_activate(
 
     result->count = activated_count;
     system->stats.total_retrievals++;
+
+    /* W6: emit KG spreading-activation event */
+    memory_kg_emit_spreading_activation(
+        memory_kg_events_get_registered_brain(),
+        concept_id, activated_count);
 
     return result;
 }

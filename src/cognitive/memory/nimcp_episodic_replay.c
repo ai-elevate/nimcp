@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/nimcp_episodic_replay.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include <math.h>
@@ -356,6 +357,12 @@ int nimcp_episodic_replay_consolidate(nimcp_episodic_replay_t* handle,
              LOG_MODULE, replayed, replay_target, replay_lr, handle->buffer_count);
 
     handle->replay_in_progress = false;
+
+    /* W6: emit KG event for replay cycle */
+    memory_kg_emit_replay_cycle(
+        memory_kg_events_get_registered_brain(),
+        replayed, handle->buffer_count);
+
     return (int)replayed;
 }
 
@@ -424,6 +431,12 @@ int nimcp_episodic_replay_consolidate_internal(nimcp_episodic_replay_t* handle,
              LOG_MODULE, replayed, replay_target, replay_lr, handle->buffer_count);
 
     handle->replay_in_progress = false;
+
+    /* W6: emit KG event for replay cycle (internal variant) */
+    memory_kg_emit_replay_cycle(
+        memory_kg_events_get_registered_brain(),
+        replayed, handle->buffer_count);
+
     return (int)replayed;
 }
 

@@ -209,6 +209,11 @@ extern bool nimcp_brain_factory_init_core_directives_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain);
 
+// Wave 32 (W5 KG retrofit): 6 network-type KG structural wirings (LNN, SNN,
+// CNN, FNO, HNN, main ANN) + per-network brain-backpointer install. Runs
+// after Wave 31 (region KG bridges), also null-tolerant if KG disabled.
+extern bool nimcp_brain_factory_init_network_kg_wiring_subsystem(brain_t brain);
+
 // Wave 31 (W3 KG retrofit): region KG structural wirings (occipital, somato,
 // motor, broca, gustatory, olfactory, brainstem, raphe, parahippocampal,
 // perirhinal). Depends on Wave 22 internal_kg.
@@ -1113,8 +1118,21 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
                     "region_kg_bridges");
     if (!ok) goto cleanup;
 
-    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (31 waves)");
-    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (31 waves + region_cycles + region_kg_bridges)");
+    // ========================================================================
+    // WAVE 32 (W5 KG retrofit): Network-level KG structural wirings.
+    // Registers 6 network roots (net_lnn/snn/cnn/fno/hnn/main_ann) + sample
+    // SNN population nodes + per-network brain-backpointer install (so the
+    // file-scope static emit functions inside each network .c can
+    // self-elevate and write event nodes on anomaly). Must run after
+    // Wave 22 (internal_kg). See docs/claude/
+    // kg-integration-audit-2026-04-24.md §2.12.
+    // ========================================================================
+    ok = run_serial(&ctx, nimcp_brain_factory_init_network_kg_wiring_subsystem,
+                    "network_kg_wiring");
+    if (!ok) goto cleanup;
+
+    LOG_MODULE_DEBUG(LOG_MODULE, "Full init complete (32 waves)");
+    LOG_INFO(LOG_MODULE, "Parallel subsystem init complete (32 waves + region_cycles + region_kg_bridges + network_kg_wiring)");
 
 cleanup:
     nimcp_pool_destroy(pool);

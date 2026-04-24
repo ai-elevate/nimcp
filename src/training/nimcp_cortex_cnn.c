@@ -12,6 +12,11 @@
 #include "training/nimcp_cnn_training.h"
 #include "training/nimcp_fno_layer.h"
 #include "training/nimcp_unified_training.h"
+/* W5 KG-integration: brain_internal MUST come before thalamic_channel.h /
+ * thalamic_router.h so parietal.h's NIMCP_THALAMIC_ROUTER_T_DEFINED guard
+ * wins over the non-guarded typedef in middleware/routing/. */
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "core/thalamic/nimcp_thalamic_channel.h"
 #include "middleware/routing/nimcp_thalamic_router.h"
 #include "utils/tensor/nimcp_tensor.h"
@@ -28,11 +33,64 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
 /* Forward-decl: avoids pulling the full thalamic_channel header into the
  * struct's public forward declarations. The full type is available via the
  * include above for internal use. */
 struct thalamic_channel_s;
+
+/* W5 KG-integration — CNN network-level aggregator event emitter.
+ * Emits "feature_collapse" when loss becomes non-finite or exceeds 1e6
+ * (gradient blow-up). Admin-token elevation per kg-registry §7.
+ * (brain_internal.h + brain_kg.h included above.) */
+
+static brain_t s_net_cnn_kg_brain = NULL;
+
+void net_cnn_kg_register_brain(brain_t brain) {
+    s_net_cnn_kg_brain = brain;
+}
+
+static void net_cnn_kg_emit_event(brain_t brain, const char* kind,
+                                  float magnitude, uint64_t ts_us) {
+    if (!brain || !kind) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "net_cnn_event_%s_%llu", kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "CNN training event: kind=%s magnitude=%.4f", kind, magnitude);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    brain_kg_node_id_t owner = brain_kg_find_node(kg, "net_cnn");
+    if (owner != BRAIN_KG_INVALID_NODE && ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "produced_by", magnitude);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[40];
+        snprintf(buf, sizeof(buf), "%.6f", magnitude);
+        brain_kg_add_metadata(kg, ev, "magnitude", buf);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/* Public test-facing trigger — forwards to static emit. */
+void net_cnn_kg_trigger_event(brain_t brain, const char* kind,
+                              float magnitude, uint64_t ts_us) {
+    net_cnn_kg_emit_event(brain, kind, magnitude, ts_us);
+}
 
 /* ========================================================================= */
 /* Default embedding dimensions per modality                                  */
@@ -1312,6 +1370,15 @@ float cortex_cnn_backward(cortex_cnn_processor_t* proc,
         proc->ema_loss = loss;
     } else {
         proc->ema_loss = 0.99f * proc->ema_loss + 0.01f * loss;
+    }
+
+    /* W5 KG anomaly emit — NaN/Inf or runaway loss indicates gradient
+     * explosion / feature collapse. Single hook per cnn_trainer_step. */
+    if (s_net_cnn_kg_brain && (!isfinite(loss) || loss > 1.0e6f)) {
+        uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+        net_cnn_kg_emit_event(s_net_cnn_kg_brain,
+            isfinite(loss) ? "gradient_clip" : "feature_collapse",
+            isfinite(loss) ? loss : 0.0f, ts_us);
     }
 
     return loss;

@@ -17,6 +17,8 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "core/brain/nimcp_brain_internal.h"     /* W7: KG access */
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG event emission */
 
 #include <stdio.h>
 #include <string.h>
@@ -85,6 +87,10 @@ struct symbolic_logic {
     /* Phase 5: Predicate hash index */
     pred_index_bucket_t pred_index[PRED_INDEX_BUCKETS];
     bool pred_index_built;
+
+    /* W7: KG integration — optional back-reference to the owning brain so
+     * add_fact / add_rule can mirror symbolic writes into internal_kg. */
+    brain_t kg_brain;
 };
 
 /* Phase 5: FNV-1a hash for predicate names */
@@ -878,6 +884,105 @@ static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
 }
 
 //=============================================================================
+// W7 KG integration helpers
+//
+// The logic engine is usually created BEFORE it is attached to a brain, so we
+// cannot write at create-time.  Instead the attachment path calls
+// symbolic_logic_kg_register(logic, brain) which stashes the brain and emits
+// the structural root node.  Subsequent add_fact/add_rule calls then mirror
+// into the KG.
+//=============================================================================
+
+static void sl_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_logic_symbolic_engine")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_logic_symbolic_engine",
+                          BRAIN_KG_NODE_COGNITIVE,
+                          "First-order logic engine (facts + rules + CNF)");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void sl_kg_emit_fact_added(brain_t brain, uint32_t fact_index,
+                                  const char* predicate)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name),
+             "cog_logic_fact_%u_%llu", (unsigned)fact_index,
+             (unsigned long long)nimcp_time_monotonic_us());
+    char desc[128];
+    snprintf(desc, sizeof(desc), "fact predicate=%s idx=%u",
+             predicate ? predicate : "?", (unsigned)fact_index);
+    brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg, node_name,
+                                               BRAIN_KG_NODE_COGNITIVE, desc);
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root =
+            brain_kg_find_node(brain->internal_kg, "cog_logic_symbolic_engine");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO, "has_fact", 0.6f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+static void sl_kg_emit_rule_added(brain_t brain, uint32_t rule_index,
+                                  const char* name)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    /* Stable, not timestamp-based: a rule is a persistent artifact. */
+    snprintf(node_name, sizeof(node_name), "cog_logic_rule_%u",
+             (unsigned)rule_index);
+    if (brain_kg_find_node(brain->internal_kg, node_name)
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg,
+            node_name, BRAIN_KG_NODE_COGNITIVE,
+            name ? name : "symbolic-logic rule");
+        if (nid != BRAIN_KG_INVALID_NODE) {
+            brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+                "cog_logic_symbolic_engine");
+            if (root != BRAIN_KG_INVALID_NODE) {
+                brain_kg_add_edge(brain->internal_kg, root, nid,
+                                  BRAIN_KG_EDGE_PROVIDES_TO, "has_rule", 0.7f);
+            }
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/**
+ * @brief Register a symbolic logic engine with a brain's internal KG.
+ *
+ * WHAT: Stores a weak back-reference from the logic engine to the brain so
+ *       subsequent add_fact / add_rule calls can mirror into brain->internal_kg.
+ * WHY:  The engine is created before attachment, so we can't mirror at
+ *       create-time — this is the attach-time hook.
+ *
+ * @param logic Logic engine (required).
+ * @param brain Owning brain (required; ignored if already registered).
+ * @return 0 on success, -1 on NULL arg.
+ */
+int symbolic_logic_kg_register(symbolic_logic_t* logic, brain_t brain)
+{
+    if (!logic || !brain) return -1;
+    logic->kg_brain = brain;
+    sl_kg_ensure_root(brain);
+    return 0;
+}
+
+//=============================================================================
 // Core API Implementation
 //=============================================================================
 
@@ -1121,6 +1226,14 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
     /* Phase 5: Update predicate index with new fact */
     predicate_index_add(logic, logic->num_facts - 1);
 
+    /* W7: mirror fact into the brain's internal KG (if registered). */
+    if (logic->kg_brain) {
+        const char* pred = (entry->clause && entry->clause->num_literals > 0
+                            && entry->clause->literals[0])
+            ? entry->clause->literals[0]->name : NULL;
+        sl_kg_emit_fact_added(logic->kg_brain, logic->num_facts - 1, pred);
+    }
+
     return true;
 }
 
@@ -1142,6 +1255,12 @@ bool symbolic_logic_add_rule(symbolic_logic_t* logic, inference_rule_t* rule)
     }
 
     logic->rules[logic->num_rules++] = rule;
+
+    /* W7: mirror the rule into the brain's internal KG (if registered). */
+    if (logic->kg_brain) {
+        sl_kg_emit_rule_added(logic->kg_brain, logic->num_rules - 1,
+                              rule->name);
+    }
 
     return true;
 }

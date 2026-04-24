@@ -45,6 +45,65 @@
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(snn_network)
 
+/*=============================================================================
+ * W5 KG-integration — SNN network-level aggregator event emitter.
+ *
+ * File-scope brain backpointer set once by nimcp_brain_init_network_kg_wiring.
+ * Emits spike_rate anomalies (quiescent / hyperactive) only when the per-step
+ * stats cross thresholds — never every step. Admin token elevation per
+ * kg-node-naming-registry.md §7.
+ *============================================================================*/
+#include <stdio.h>
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
+
+static brain_t s_net_snn_kg_brain = NULL;
+
+void net_snn_kg_register_brain(brain_t brain) {
+    s_net_snn_kg_brain = brain;
+}
+
+static void net_snn_kg_emit_event(brain_t brain, const char* kind,
+                                  float magnitude, uint64_t ts_us) {
+    if (!brain || !kind) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "net_snn_event_%s_%llu", kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "SNN network event: kind=%s magnitude=%.4f (spikes or rate)",
+             kind, magnitude);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    brain_kg_node_id_t owner = brain_kg_find_node(kg, "net_snn");
+    if (owner != BRAIN_KG_INVALID_NODE && ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "produced_by", magnitude);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[40];
+        snprintf(buf, sizeof(buf), "%.6f", magnitude);
+        brain_kg_add_metadata(kg, ev, "magnitude", buf);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/* Public test-facing trigger — forwards to static emit. */
+void net_snn_kg_trigger_event(brain_t brain, const char* kind,
+                              float magnitude, uint64_t ts_us) {
+    net_snn_kg_emit_event(brain, kind, magnitude, ts_us);
+}
+
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
@@ -1684,6 +1743,30 @@ int snn_network_step(snn_network_t* network, float dt) {
         network->stats.gpu_steps++;
     } else {
         network->stats.cpu_fallback_steps++;
+    }
+
+    /* W5 KG anomaly emit — compute an approximate per-step spike rate and
+     * emit only when it crosses the quiescent/hyperactive boundaries.
+     * Normal operation never writes to the KG. Rate estimate uses
+     * total_spikes over the step interval and a coarse neuron count. */
+    if (s_net_snn_kg_brain && step_ms > 0.0) {
+        uint32_t total_neurons = 0;
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            if (network->populations[p]) {
+                total_neurons += network->populations[p]->n_neurons;
+            }
+        }
+        if (total_neurons > 0) {
+            /* spikes/neuron/sec = spikes / neurons / (step_ms / 1000) */
+            float rate_hz = (float)total_spikes /
+                (float)total_neurons / ((float)step_ms / 1000.0f);
+            if (rate_hz < 0.01f || rate_hz > 100.0f) {
+                uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+                net_snn_kg_emit_event(s_net_snn_kg_brain,
+                    rate_hz < 0.01f ? "quiescent" : "spike_rate_anomaly",
+                    rate_hz, ts_us);
+            }
+        }
     }
 
     /* Log timing breakdown every step for profiling */

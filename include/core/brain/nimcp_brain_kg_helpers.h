@@ -364,6 +364,26 @@ static inline bool kg_has_node(const kg_module_context_t* ctx) {
     return kg_is_available(ctx) && ctx->self_node_id != BRAIN_KG_INVALID_NODE;
 }
 
+/* ============================================================================
+ * W16 CONSUMER HELPERS — exposed so non-brain modules (e.g. middleware) can
+ * query the KG via a brain_t pointer without pulling in brain_internal.h.
+ * ============================================================================ */
+
+/**
+ * @brief W16-C: Query attention_focus node and return true if found.
+ *
+ * Checks whether the brain's internal KG has a node named "attention_focus".
+ * If yes, bumps the kg_consumer_hits counter and returns true. Caller can
+ * use the return value to bias an attention threshold (more sensitive when
+ * focus is present).
+ *
+ * Graceful: returns false if KG disabled, brain NULL, or node missing.
+ *
+ * @param brain Brain instance (may be NULL)
+ * @return true if attention_focus node exists in the KG, false otherwise
+ */
+bool brain_kg_helpers_query_attention_focus(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

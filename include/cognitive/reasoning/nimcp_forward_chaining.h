@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "core/brain/nimcp_brain.h"
+#include "core/brain/nimcp_brain_kg.h"   /* W7: KG query API */
 #include "cognitive/nimcp_symbolic_logic.h"
 
 #ifdef __cplusplus
@@ -208,6 +209,25 @@ bool brain_get_forward_chain_stats(
  * @return Error message string (thread-local storage)
  */
 const char* forward_chain_get_last_error(void);
+
+//=============================================================================
+// W7: KG-backed antecedent lookup
+//=============================================================================
+
+/**
+ * @brief Query brain->internal_kg for antecedents (incoming edges) of a goal.
+ *
+ * @param brain   Brain handle (required, must have internal_kg enabled).
+ * @param goal    Canonical KG node name of the goal (e.g. "IsA_cat_animal").
+ * @param ids     Output buffer of node IDs.
+ * @param max     Max ids to write.
+ * @return Number of antecedent node IDs written (0 if goal absent / KG off).
+ */
+int forward_chaining_kg_query_antecedents(
+    brain_t brain,
+    const char* goal,
+    brain_kg_node_id_t* ids,
+    int max);
 
 #ifdef __cplusplus
 }

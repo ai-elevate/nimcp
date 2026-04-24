@@ -106,10 +106,13 @@ typedef struct neural_network_struct* neural_network_t;
 typedef struct code_immune_system code_immune_system_t;
 #endif
 
-/* Thalamic routing */
+/* Thalamic routing.
+ * The authoritative typedef is in middleware/routing/nimcp_thalamic_router.h
+ * as `typedef struct thalamic_router thalamic_router_t;`.  Match that
+ * convention here so the two TU includes don't conflict. */
 #ifndef NIMCP_THALAMIC_ROUTER_T_DEFINED
 #define NIMCP_THALAMIC_ROUTER_T_DEFINED
-typedef struct thalamic_router_struct* thalamic_router_t;
+typedef struct thalamic_router thalamic_router_t;
 #endif
 
 /* Substrate layer */

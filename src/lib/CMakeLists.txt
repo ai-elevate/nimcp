@@ -537,6 +537,9 @@ set(NIMCP_CORE_SOURCES
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_region_kg_bridges.c                   # W3+W4 region KG init wave
 
+    # W5 KG retrofit (2026-04-24): 6 network-type KG structural wirings
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_network_kg_wiring.c                   # W5 network-type KG init wave (Wave 32)
+
     # Prefrontal Cortex - Executive function, decision-making (Phase PF1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_adapter.c             # Prefrontal cortex core adapter
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/prefrontal/nimcp_prefrontal_quantum_bridge.c      # Prefrontal quantum bridge
@@ -855,6 +858,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/global_workspace/nimcp_gw_plasticity_bridge.c  # GW-Plasticity bidirectional integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/analysis/nimcp_network_analysis.c  # Network topology analysis and community detection
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram.c  # Phase M1: Memory Engrams (explicit memory traces)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_memory_kg_events.c  # W6: KG event emitters for memory family
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_engram_jepa_bridge.c  # Phase 4p: engram ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/memory/nimcp_consolidation_jepa_bridge.c  # Phase 4t: consolidation ↔ JEPA
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_brain_bridges.c  # Phase 4n-q: brain-level JEPA bridge orchestrator

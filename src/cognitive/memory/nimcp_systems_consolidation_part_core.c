@@ -131,6 +131,13 @@ uint64_t systems_consolidation_transfer_to_cortex(
         }
 
         existing_node->last_activation_ms = nimcp_platform_time_monotonic_ms();
+
+        /* W6: emit KG consolidation event (strengthen path) */
+        memory_kg_emit_consolidation_transfer(
+            memory_kg_events_get_registered_brain(),
+            engram_id, existing_node->id,
+            existing_node->consolidation_strength);
+
         return existing_node->id;
     }
 
@@ -177,6 +184,12 @@ uint64_t systems_consolidation_transfer_to_cortex(
             cortical_node_add_neighbor(other_node, new_node, similarity);
         }
     }
+
+    /* W6: emit KG consolidation transfer event (new node path) */
+    memory_kg_emit_consolidation_transfer(
+        memory_kg_events_get_registered_brain(),
+        engram_id, new_node->id,
+        new_node->consolidation_strength);
 
     return new_node->id;
 }

@@ -13,6 +13,7 @@
  */
 
 #include "middleware/integration/nimcp_middleware_controller.h"
+#include "core/brain/nimcp_brain_kg_helpers.h"  /* W16-C: KG attention_focus query */
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
@@ -1105,6 +1106,17 @@ void middleware_controller_on_pattern_match(
     pending_callback_t pending[MIDDLEWARE_CTRL_MAX_SUBSCRIPTIONS];
     uint32_t pending_count = 0;
 
+    /* W16-C: KG-biased attention threshold. If the brain's KG has an
+     * "attention_focus" node, effective threshold drops by 10% for this
+     * dispatch (more sensitive — more subscribers fire). Skips gracefully
+     * if brain handle absent or node missing. Counter is bumped inside
+     * the helper. */
+    float w16_threshold_scale = 1.0f;
+    if (controller->brain &&
+        brain_kg_helpers_query_attention_focus(controller->brain)) {
+        w16_threshold_scale = 0.9f;
+    }
+
     nimcp_mutex_lock(&controller->mutex);
 
     /* Phase 1: Collect matching subscriptions (under lock) */
@@ -1113,7 +1125,7 @@ void middleware_controller_on_pattern_match(
 
         if (sub->active &&
             sub->pattern_id == pattern_id &&
-            similarity >= sub->confidence_threshold &&
+            similarity >= (sub->confidence_threshold * w16_threshold_scale) &&
             sub->callback != NULL) {
 
             pending[pending_count].callback = sub->callback;

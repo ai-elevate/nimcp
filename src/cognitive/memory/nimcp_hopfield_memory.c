@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/memory/nimcp_hopfield_memory.h"
+#include "cognitive/memory/nimcp_memory_kg_events.h"  /* W6: KG event emitters */
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -500,6 +501,11 @@ int hopfield_memory_store_with_meta(hopfield_memory_t* memory,
                                    (float)memory->config.capacity;
 
     nimcp_mutex_unlock(memory->mutex);
+
+    /* W6: emit KG event for hopfield pattern stored */
+    memory_kg_emit_pattern_stored(
+        memory_kg_events_get_registered_brain(), id, strength);
+
     return NIMCP_SUCCESS;
 }
 
@@ -758,7 +764,17 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
         memory->stats.cpu_retrievals++;
     }
 
+    uint32_t emitted_pattern_id = result->pattern_id;
+    float emitted_sim = best_sim;
+    bool emitted_converged = converged;
+
     nimcp_mutex_unlock(memory->mutex);
+
+    /* W6: emit KG event for hopfield pattern completion */
+    memory_kg_emit_pattern_completed(
+        memory_kg_events_get_registered_brain(),
+        emitted_pattern_id, emitted_sim, emitted_converged);
+
     return NIMCP_SUCCESS;
 }
 

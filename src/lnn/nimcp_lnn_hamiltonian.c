@@ -14,7 +14,64 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 #include <float.h>
+
+/* W5 KG-integration — HNN network-level aggregator event emitter.
+ * Emits "energy_drift" when |H(t) - H(0)| / |H(0)| exceeds 0.1, which
+ * indicates the symplectic integrator is losing conservation (bug or
+ * numerical blow-up). Admin-token self-elevation per kg-registry §7. */
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
+
+static brain_t s_net_hnn_kg_brain = NULL;
+
+void net_hnn_kg_register_brain(brain_t brain) {
+    s_net_hnn_kg_brain = brain;
+}
+
+static void net_hnn_kg_emit_event(brain_t brain, const char* kind,
+                                  float magnitude, uint64_t ts_us) {
+    if (!brain || !kind) return;
+    if (!brain->internal_kg_enabled || !brain->internal_kg) return;
+
+    brain_kg_t* kg = brain->internal_kg;
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_ADMIN,
+                              brain->internal_kg_admin_token);
+
+    char ev_name[160];
+    snprintf(ev_name, sizeof(ev_name),
+             "net_hnn_event_%s_%llu", kind, (unsigned long long)ts_us);
+    char desc[240];
+    snprintf(desc, sizeof(desc),
+             "HNN energy conservation event: kind=%s magnitude=%.4f",
+             kind, magnitude);
+
+    brain_kg_node_id_t ev = brain_kg_add_node(kg, ev_name,
+        BRAIN_KG_NODE_CORE, desc);
+    brain_kg_node_id_t owner = brain_kg_find_node(kg, "net_hnn");
+    if (owner != BRAIN_KG_INVALID_NODE && ev != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owner, ev, BRAIN_KG_EDGE_SENDS_TO,
+            "produced_by", magnitude);
+    }
+    if (ev != BRAIN_KG_INVALID_NODE) {
+        char buf[40];
+        snprintf(buf, sizeof(buf), "%.6f", magnitude);
+        brain_kg_add_metadata(kg, ev, "magnitude", buf);
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)ts_us);
+        brain_kg_add_metadata(kg, ev, "ts_us", buf);
+    }
+
+    brain_kg_set_access_level(kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/* Public test-facing trigger — lets tests verify emit without forcing a
+ * conservation violation in real HNN dynamics. Pure forwarding. */
+void net_hnn_kg_trigger_event(brain_t brain, const char* kind,
+                              float magnitude, uint64_t ts_us) {
+    net_hnn_kg_emit_event(brain, kind, magnitude, ts_us);
+}
 
 /* =========================================================================
  * Rayleigh dissipation tunables (biologically-motivated, substrate-coupled)
@@ -471,6 +528,16 @@ int lnn_hamiltonian_step_stormer_verlet_with_substrate(
 
     /* Update energy */
     lnn_hamiltonian_eval(net, q, p);
+
+    /* W5 KG anomaly emit: conservation violation > 10% relative drift.
+     * This is the single hot-path hook for HNN — emit only on threshold
+     * cross to keep KG writes rare. */
+    if (s_net_hnn_kg_brain && net->has_initial &&
+        net->energy_deviation > 0.1f) {
+        uint64_t ts_us = (uint64_t)time(NULL) * 1000000ULL;
+        net_hnn_kg_emit_event(s_net_hnn_kg_brain, "energy_drift",
+                              net->energy_deviation, ts_us);
+    }
 
     nimcp_tensor_destroy(dH_dq);
     nimcp_tensor_destroy(dH_dp);

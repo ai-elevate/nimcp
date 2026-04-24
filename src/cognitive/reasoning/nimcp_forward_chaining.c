@@ -18,6 +18,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/reasoning/nimcp_symbolic_logic_attachment.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"           /* W7: KG event emission */
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -81,6 +82,85 @@ const char* forward_chain_get_last_error(void)
 }
 
 //=============================================================================
+// W7 KG integration helpers
+//=============================================================================
+
+static void fc_kg_ensure_root(brain_t brain)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+    if (brain_kg_find_node(brain->internal_kg, "cog_reasoning_forward_chain")
+        == BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_node(brain->internal_kg, "cog_reasoning_forward_chain",
+                          BRAIN_KG_NODE_COGNITIVE,
+                          "Data-driven inference engine (forward chaining)");
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/** Emit a single inference-step event node. */
+static void fc_kg_emit_step(brain_t brain, int num_new_facts,
+                            uint64_t duration_ms)
+{
+    if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) return;
+    uint64_t tok = brain->internal_kg_admin_token;
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_ADMIN, tok);
+
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name),
+             "cog_reasoning_forward_chain_event_step_%llu",
+             (unsigned long long)nimcp_time_monotonic_us());
+    char desc[160];
+    snprintf(desc, sizeof(desc),
+             "forward_chain produced %d new facts in %llu ms",
+             num_new_facts, (unsigned long long)duration_ms);
+    brain_kg_node_id_t nid = brain_kg_add_node(brain->internal_kg, node_name,
+                                               BRAIN_KG_NODE_COGNITIVE, desc);
+    if (nid != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t root = brain_kg_find_node(brain->internal_kg,
+            "cog_reasoning_forward_chain");
+        if (root != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(brain->internal_kg, root, nid,
+                              BRAIN_KG_EDGE_PROVIDES_TO, "derived", 0.6f);
+        }
+    }
+    brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+}
+
+/**
+ * @brief Query the KG for antecedents of a goal node.
+ *
+ * WHAT: Return up to `max` incoming-edge sources of the goal node.
+ * WHY:  Forward chaining benefits from consulting the KG when searching for
+ *       facts that feed a given conclusion.  Callers pass the raw predicate
+ *       name (e.g. "IsA_cat_animal") or a region/module name.
+ *
+ * @return Number of antecedent node IDs written, or 0 if goal absent / KG off.
+ */
+int forward_chaining_kg_query_antecedents(brain_t brain, const char* goal,
+                                          brain_kg_node_id_t* ids, int max)
+{
+    if (!brain || !brain->internal_kg || !goal || !ids || max <= 0) return 0;
+    brain_kg_node_id_t goal_id =
+        brain_kg_find_node(brain->internal_kg, goal);
+    if (goal_id == BRAIN_KG_INVALID_NODE) return 0;
+
+    brain_kg_edge_list_t* incoming =
+        brain_kg_get_incoming(brain->internal_kg, goal_id);
+    if (!incoming) return 0;
+
+    int n = 0;
+    for (uint32_t i = 0; i < incoming->count && n < max; ++i) {
+        if (incoming->edges[i]) {
+            ids[n++] = incoming->edges[i]->from;
+        }
+    }
+    brain_kg_edge_list_destroy(incoming);
+    return n;
+}
+
+//=============================================================================
 // Forward Chaining Implementation
 //=============================================================================
 
@@ -126,6 +206,10 @@ bool brain_forward_chain(
     // Get logic engine
     symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
 
+    /* W7: create the structural root early so it exists even if the chain
+     * fails (useful for observability — empty KB returns failure). */
+    fc_kg_ensure_root(brain);
+
     // Perform forward chaining
     uint64_t start_time = nimcp_time_monotonic_ms();
     logic_clause_t** new_facts = NULL;
@@ -143,6 +227,9 @@ bool brain_forward_chain(
     if (!success) {
         set_error("Forward chaining execution failed");
         NIMCP_LOGGING_ERROR("brain_forward_chain: symbolic_logic_forward_chain failed");
+        /* W7: still emit a step event with zero derived, so the KG records
+         * the failed attempt. */
+        fc_kg_emit_step(brain, 0, end_time - start_time);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_forward_chain: success is NULL");
         return false;
     }
@@ -170,6 +257,10 @@ bool brain_forward_chain(
     result->confidence = (num_new_facts > 0) ? 0.8F : 0.0F;
     result->inference_time_ms = end_time - start_time;
     result->converged = (num_new_facts == 0); // Converged if no new facts
+
+    /* W7: emit a forward-chain step event so the KG records inference. */
+    fc_kg_ensure_root(brain);
+    fc_kg_emit_step(brain, num_new_facts, end_time - start_time);
 
     NIMCP_LOGGING_INFO("Forward chaining completed: %d new facts derived in %llu ms",
                        num_new_facts, (unsigned long long)(end_time - start_time));

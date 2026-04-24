@@ -31,6 +31,7 @@
 #include "core/brain/learning/nimcp_brain_learning.h"
 #include "core/brain/nimcp_brain_lazy_init.h"
 #include "core/brain/nimcp_brain_cycle_coordinator.h"
+#include "core/brain/nimcp_brain_kg.h"  /* W17: KG consumers in training path */
 #include "core/probes/nimcp_probe_stages.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -1366,6 +1367,104 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         }
     }
 
+    /* ======================================================================
+     * W17: KG CONSUMERS IN TRAINING PATH
+     * ======================================================================
+     * Three real consumers that read from the internal KG and actually
+     * change training behavior (not just write events). Companion to W16
+     * which wired KG consumers into brain_decide (inference path).
+     *
+     * Consumer A: "training_focus" node → global LR scaling knob.
+     *   External code (e.g. introspection, curriculum controller) can add
+     *   or update this node. A node edge-count proxy (no confidence field
+     *   in the node struct) modulates LR. First-run: create node so it
+     *   can be discovered/edited.
+     *
+     * Consumer B: "train_familiarity_<hash>" node → per-sample novelty
+     *   detector. Hash the input features; presence of a matching node
+     *   means we've seen this pattern before → dampen LR. Absence →
+     *   create node + boost LR for faster acquisition on novel inputs.
+     *
+     * Consumer C: "training_pause_on_loss_above" node → external stability
+     *   gate. If present and loss exceeds its threshold, skip downstream
+     *   gradient applications (BPTT replay + secondary-network training).
+     *   Primary adaptive step already ran by that point; this prevents
+     *   bad-loss samples from cascading through LNN/SNN/CNN pathways.
+     * ====================================================================== */
+    float kg_lr_scale = 1.0f;         /* W17-A: training_focus node */
+    float kg_plasticity_scale = 1.0f; /* W17-B: familiarity scaling */
+    if (brain->internal_kg_enabled && brain->internal_kg) {
+        /* --- W17-A: training_focus ---------------------------------------
+         * brain_kg_get_node() returns const brain_kg_node_t* but the node
+         * struct has no confidence field — only metadata[] and edge counts.
+         * Use edge-degree as a crude "how much does this knob matter"
+         * signal: 0 edges → default 1.0; ≥1 edge → 1.5× boost. External
+         * code can strengthen focus by adding an edge from training_focus
+         * to any other node. Falls back cleanly if API changes. */
+        brain_kg_node_id_t focus = brain_kg_find_node(
+            brain->internal_kg, "training_focus");
+        if (focus == BRAIN_KG_INVALID_NODE) {
+            /* Idempotent first-run init so external code can discover it. */
+            uint64_t tok = brain->internal_kg_admin_token;
+            brain_kg_set_access_level(brain->internal_kg,
+                BRAIN_KG_ACCESS_ADMIN, tok);
+            brain_kg_add_node(brain->internal_kg, "training_focus",
+                BRAIN_KG_NODE_TRAINING, "learning-rate scaling knob (W17-A)");
+            brain_kg_set_access_level(brain->internal_kg,
+                BRAIN_KG_ACCESS_READ, 0);
+            /* kg_lr_scale stays 1.0 on first-run */
+        } else {
+            const brain_kg_node_t* fn = brain_kg_get_node(
+                brain->internal_kg, focus);
+            if (fn && (fn->outgoing_count > 0 || fn->incoming_count > 0)) {
+                kg_lr_scale = 1.5f;  /* connected knob = elevated focus */
+            }
+            __atomic_add_fetch(&brain->kg_training_consumer_hits, 1,
+                               __ATOMIC_RELAXED);
+        }
+
+        /* --- W17-B: familiarity check ------------------------------------
+         * FNV-1a 32-bit over first 16 feature bytes. Not cryptographic,
+         * just a stable fingerprint. Node name includes hex digest so
+         * repeated same-input training calls find the same node. */
+        if (features && num_features > 0) {
+            uint32_t hash = 2166136261u;
+            uint32_t nh = num_features < 16 ? num_features : 16;
+            for (uint32_t i = 0; i < nh; i++) {
+                uint32_t bits;
+                memcpy(&bits, &features[i], sizeof(uint32_t));
+                hash ^= bits;
+                hash *= 16777619u;
+            }
+            char fam_name[64];
+            snprintf(fam_name, sizeof(fam_name),
+                     "train_familiarity_%08x", hash);
+            brain_kg_node_id_t fam = brain_kg_find_node(
+                brain->internal_kg, fam_name);
+            if (fam != BRAIN_KG_INVALID_NODE) {
+                kg_plasticity_scale = 0.8f;  /* dampen on familiar */
+                __atomic_add_fetch(&brain->kg_training_consumer_hits, 1,
+                                   __ATOMIC_RELAXED);
+            } else {
+                uint64_t tok = brain->internal_kg_admin_token;
+                brain_kg_set_access_level(brain->internal_kg,
+                    BRAIN_KG_ACCESS_ADMIN, tok);
+                brain_kg_add_node(brain->internal_kg, fam_name,
+                    BRAIN_KG_NODE_COGNITIVE,
+                    "training pattern fingerprint (W17-B)");
+                brain_kg_set_access_level(brain->internal_kg,
+                    BRAIN_KG_ACCESS_READ, 0);
+                kg_plasticity_scale = 1.2f;  /* boost on novel */
+                __atomic_add_fetch(&brain->kg_training_consumer_hits, 1,
+                                   __ATOMIC_RELAXED);
+            }
+        }
+    }
+    /* Combine and clamp to [0.1, 3.0] to prevent runaway scaling. */
+    float kg_combined_scale = kg_lr_scale * kg_plasticity_scale;
+    if (kg_combined_scale < 0.1f) kg_combined_scale = 0.1f;
+    if (kg_combined_scale > 3.0f) kg_combined_scale = 3.0f;
+
     /* Step 1: Adaptive learns FIRST (primary network, GPU-accelerated)
      * Must complete before SNN training since SNN may share neural_network_t weights.
      *
@@ -1381,7 +1480,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
      *
      * Toggleable at runtime via set_train_ann / set_snn_only_recovery /
      * set_ensemble_warmup_scale. */
-    float effective_lr = brain->config.learning_rate * lr_memory_factor;
+    float effective_lr = brain->config.learning_rate * lr_memory_factor
+                         * kg_combined_scale;  /* W17: KG-biased scaling */
     bool ann_frozen = !brain->config.train_ann || brain->config.snn_only_recovery_mode;
     /* Apply warmup gate ONLY when not already frozen. The gate uses
      * NIMCP_TL_RANDF() (thread-local rand_r-based PRNG, seeded per
@@ -1441,13 +1541,45 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     nimcp_brain_learning_adapt_learning_rate(brain, loss);
     __atomic_fetch_add(&brain->stats.total_learning_steps, 1, __ATOMIC_RELAXED);
 
+    /* W17-C: KG loss-anomaly skip-gate.
+     * External stability knob: if a "training_pause_on_loss_above" node
+     * exists in the KG, any sample whose loss exceeds a threshold skips
+     * BPTT replay + secondary-network training (plasticity, SNN/LNN/CNN
+     * stepping further downstream). Threshold is fixed at 10.0f — loss
+     * that large indicates NaN-adjacent instability or adversarial data.
+     * Primary adaptive step has already committed (line ~1405); this
+     * prevents the bad sample from cascading through the rest of the
+     * training graph. The node is node-existence-gated (no confidence
+     * field available on brain_kg_node_t); external code adds the node
+     * to arm the gate, removes it to disarm. */
+    bool kg_loss_gate_tripped = false;
+    if (brain->internal_kg_enabled && brain->internal_kg) {
+        brain_kg_node_id_t pause_node = brain_kg_find_node(
+            brain->internal_kg, "training_pause_on_loss_above");
+        if (pause_node != BRAIN_KG_INVALID_NODE) {
+            /* Gate is armed — threshold is fixed 10.0 for now. */
+            const float kg_loss_threshold = 10.0f;
+            if (loss > kg_loss_threshold || isnan(loss) || isinf(loss)) {
+                kg_loss_gate_tripped = true;
+                __atomic_add_fetch(&brain->kg_training_consumer_hits, 1,
+                                   __ATOMIC_RELAXED);
+                /* Record the event in the audit log (best-effort). */
+                nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LEARNING, 1,
+                    "KG W17-C loss-gate tripped: loss=%.4f > %.2f "
+                    "(skipping secondary training this sample)",
+                    loss, kg_loss_threshold);
+            }
+        }
+    }
+
     /* Biological plasticity integration (skip in fast training or batch mode).
      * OPTIMIZATION: Gate expensive plasticity updates to run every 10 steps.
      * Biological plasticity operates on slower timescales than gradient updates,
      * so running every 10th step is biologically more realistic AND faster. */
     brain->plasticity_step_counter++;
     if (!brain->config.fast_training_mode && !brain->config.defer_bio_plasticity
-        && (brain->plasticity_step_counter % 10 == 0)) {
+        && (brain->plasticity_step_counter % 10 == 0)
+        && !kg_loss_gate_tripped /* W17-C: skip plasticity on anomaly */) {
         /* TPB: Loss → RPE → neuromodulator update */
         if (brain->plasticity_bridge && brain->enable_plasticity_bridge) {
             float rpe = 0.0f;
@@ -1592,7 +1724,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
          * Gated on ann_frozen — BPTT replay is an ANN-specific training
          * augmentation, so if the ANN is frozen in snn_only_recovery mode
          * or via train_ann=false, its replay must also be frozen. */
-        if (brain->bptt_count > 1 && !ann_frozen) {
+        if (brain->bptt_count > 1 && !ann_frozen && !kg_loss_gate_tripped /* W17-C */) {
             float discount = brain->bptt_discount;
             float gamma = discount;
             float bptt_lr = brain->config.learning_rate;
