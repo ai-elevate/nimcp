@@ -428,7 +428,10 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
 
     // Fuzzy logic and Internal KG defaults
     config->enable_fuzzy_logic = !minimal;
-    config->enable_internal_kg = !minimal;
+    config->enable_internal_kg = true;   /* always on — perspective-network
+                                          * sub-brains also get a KG so
+                                          * empathy simulation has facts to
+                                          * reason over, not just weights. */
 
     // Phase 5/6: Biological Realism defaults
     config->enable_glial = !minimal;

@@ -308,6 +308,111 @@ void empathy_network_destroy(empathy_network_t network)
 }
 
 /**
+ * @brief Observe another node's activity — "mirror neuron" update.
+ *
+ * Stores the observation in states[source_node_id % num_agents], setting
+ * mirror_activation from the packet's confidence (sign-flipped for
+ * inhibitory events) and recording the feature code pattern. Returns
+ * true when activation magnitude exceeds the empathy trigger threshold.
+ *
+ * This is the observation-side counterpart to empathy_network_predict_impact:
+ * observe() accumulates state from inbound spikes; predict_impact() reads
+ * forward through perspective_network.
+ */
+bool empathy_network_observe(empathy_network_t network, const event_packet_t* packet,
+                             uint64_t timestamp)
+{
+    if (!network || !packet) return false;
+    if (!network->states || network->num_agents == 0) return false;
+
+    uint32_t slot = packet->source_node_id % network->num_agents;
+    empathy_state_t* st = &network->states[slot];
+
+    feature_code_t pattern = ((feature_code_t)packet->feature_high << 16) |
+                             (feature_code_t)packet->feature_low;
+
+    float confidence = (float)packet->confidence / 65535.0f;
+    float activation = confidence;
+    if (packet->version_flags & EVENT_FLAG_INHIBITORY) {
+        activation = -activation;
+    }
+
+    st->observed_node_id   = packet->source_node_id;
+    st->observed_pattern   = pattern;
+    st->mirror_activation  = activation;
+    st->predicted_impact   = 0.0f;  /* computed lazily by predict_impact */
+    st->timestamp          = timestamp;
+
+    /* Empathy triggers when mirror activation exceeds threshold. 0.5 matches
+     * the confidence midpoint and is consistent with typical ethics policy
+     * severity thresholds elsewhere in the engine. */
+    return fabsf(activation) > 0.5f;
+}
+
+/**
+ * @brief Return the most-recent observation across all agent slots.
+ *
+ * Scans states[] for the entry with the largest timestamp. Returns false
+ * if no observation has ever been recorded (all timestamps zero).
+ */
+bool empathy_network_get_state(empathy_network_t network, empathy_state_t* state)
+{
+    if (!network || !state) return false;
+    if (!network->states || network->num_agents == 0) return false;
+
+    uint32_t latest_idx = 0;
+    uint64_t latest_ts = 0;
+    for (uint32_t i = 0; i < network->num_agents; i++) {
+        if (network->states[i].timestamp > latest_ts) {
+            latest_ts  = network->states[i].timestamp;
+            latest_idx = i;
+        }
+    }
+
+    if (latest_ts == 0) return false;
+    *state = network->states[latest_idx];
+    return true;
+}
+
+/**
+ * @brief Predict the impact of a proposed action via the perspective network.
+ *
+ * Encodes the event packet into a 20-feature vector (matching the
+ * perspective_network input size set by empathy_network_create), runs a
+ * forward pass, and returns the first output dimension — interpreted as
+ * emotional valence on [-1, +1] where negative values mean harmful.
+ *
+ * When perspective_network is unavailable, returns 0.0 (neutral).
+ */
+float empathy_network_predict_impact(empathy_network_t network, const event_packet_t* packet)
+{
+    if (!network || !packet) return 0.0f;
+    if (!network->perspective_network) return 0.0f;
+
+    float features[20] = {0};
+    features[0] = (float)packet->confidence / 65535.0f;
+    features[1] = (packet->version_flags & EVENT_FLAG_INHIBITORY) ? -1.0f : 1.0f;
+    features[2] = (packet->version_flags & EVENT_FLAG_EXCITATORY) ?  1.0f : 0.0f;
+    features[3] = (float)(packet->source_node_id % 1024) / 1024.0f;
+    features[4] = (float)(packet->feature_low  & 0xFF) / 255.0f;
+    features[5] = (float)((packet->feature_low  >> 8) & 0xFF) / 255.0f;
+    features[6] = (float)(packet->feature_high & 0xFF) / 255.0f;
+    features[7] = (float)((packet->feature_high >> 8) & 0xFF) / 255.0f;
+    features[8] = (float)packet->hop_count / 255.0f;
+    /* features[9..19] reserved for future emotional-context channels */
+
+    brain_decision_t* decision = brain_decide(network->perspective_network, features, 20);
+    if (!decision) return 0.0f;
+
+    float impact = 0.0f;
+    if (decision->output_vector && decision->output_size > 0) {
+        impact = decision->output_vector[0];
+    }
+    brain_free_decision(decision);
+    return impact;
+}
+
+/**
  * @brief Simulates agent's experience of an action
  *
  * WHY: Core of perspective-taking. Predicts how action would feel from

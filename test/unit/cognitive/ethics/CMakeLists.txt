@@ -93,3 +93,31 @@ set_tests_properties(unit_cognitive_ethics_test_health_ethics_bridge_functions P
     TIMEOUT 120
     LABELS "unit;cognitive;ethics;health;bridge;phase9"
 )
+
+# ============================================================================
+# Empathy Network API Tests (previously-phantom observe/get_state/predict_impact)
+# ============================================================================
+
+add_executable(unit_cognitive_ethics_test_empathy_network_api
+    test_empathy_network_api.cpp
+)
+target_link_libraries(unit_cognitive_ethics_test_empathy_network_api
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        m
+        pthread
+)
+target_include_directories(unit_cognitive_ethics_test_empathy_network_api
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+target_compile_features(unit_cognitive_ethics_test_empathy_network_api PRIVATE cxx_std_17)
+add_test(NAME unit_cognitive_ethics_test_empathy_network_api
+         COMMAND unit_cognitive_ethics_test_empathy_network_api)
+set_tests_properties(unit_cognitive_ethics_test_empathy_network_api PROPERTIES
+    TIMEOUT 60
+    LABELS "unit;cognitive;ethics;empathy"
+)

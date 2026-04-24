@@ -4297,6 +4297,34 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
     #undef BD_MARK
     #undef BD_MS
 
+    /* Empathy observation: feed the just-computed decision into
+     * brain->empathy_network so its mirror-neuron state reflects recent
+     * brain activity. Null-safe — if empathy_network isn't configured,
+     * skip. Uses first output dim as confidence proxy; output_index
+     * becomes the feature_low encoding. */
+    if (brain->empathy_network && decision &&
+        decision->output_vector && decision->output_size > 0) {
+        /* Find argmax and its magnitude for confidence. */
+        uint32_t argmax = 0;
+        float max_abs = 0.0f;
+        for (uint32_t i = 0; i < decision->output_size; i++) {
+            float a = decision->output_vector[i];
+            if (a < 0.0f) a = -a;
+            if (a > max_abs) { max_abs = a; argmax = i; }
+        }
+        if (max_abs > 1.0f) max_abs = 1.0f;
+        event_packet_t self_action = {0};
+        self_action.version_flags  = EVENT_FLAG_EXCITATORY;
+        self_action.source_node_id = 0;                         /* self */
+        self_action.confidence     = (uint16_t)(max_abs * 65535.0f);
+        self_action.feature_low    = (uint16_t)(argmax & 0xFFFF);
+        self_action.feature_high   = (uint16_t)((argmax >> 16) & 0xFFFF);
+        self_action.hop_count      = 0;
+        self_action.timestamp      = 0;
+        (void)empathy_network_observe(
+            (empathy_network_t)brain->empathy_network, &self_action, 0);
+    }
+
     brain_clear_error();
     return decision;
 

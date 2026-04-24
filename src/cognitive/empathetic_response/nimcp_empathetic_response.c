@@ -14,6 +14,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 
 #include "cognitive/nimcp_empathetic_response.h"
+#include "cognitive/ethics/nimcp_ethics.h"  /* empathy_network_predict_impact */
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
 
@@ -549,10 +550,8 @@ float empathetic_response_predict_safety(
         return 0.0F;
     }
 
-    // Simple heuristic safety check (would use empathy_network in full version)
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_heartbeat("empathetic_r_predict_safety", 0.0f);
-
 
     float safety_score = 1.0F;
 
@@ -575,9 +574,42 @@ float empathetic_response_predict_safety(
         }
     }
 
+    /* Empathy network refinement: ask the perspective network to predict
+     * impact of the proposed response on someone in student_state. Impact is
+     * on [-1, +1] with negative values harmful. Weight is intentionally
+     * small so the keyword-based heuristic still dominates for clear cases
+     * — empathy_network only nudges borderline responses. */
+    if (engine->empathy_network) {
+        event_packet_t proposed = {0};
+        proposed.version_flags  = EVENT_FLAG_EXCITATORY;
+        proposed.feature_high   = (uint16_t)(student_state->emotion_type & 0xFFFF);
+        proposed.feature_low    = (uint16_t)(((uint32_t)student_state->intensity & 0xFF) << 8);
+        proposed.source_node_id = 0;
+        proposed.timestamp      = 0;
+        /* Use student_state intensity as the confidence proxy. */
+        float intensity_f = student_state->intensity_value;
+        if (intensity_f < 0.0f) intensity_f = -intensity_f;
+        if (intensity_f > 1.0f) intensity_f = 1.0f;
+        proposed.confidence     = (uint16_t)(intensity_f * 65535.0f);
+        proposed.hop_count      = 1;
+
+        float impact = empathy_network_predict_impact(
+            (empathy_network_t)engine->empathy_network, &proposed);
+
+        /* Harmful predictions subtract more aggressively than benign ones add. */
+        if (impact < 0.0f) {
+            safety_score += impact * 0.2f;   /* up to -0.2 */
+        } else {
+            safety_score += impact * 0.1f;   /* up to +0.1 */
+        }
+    }
+
     // Ensure minimum safety
     if (safety_score < 0.0F) {
         safety_score = 0.0F;
+    }
+    if (safety_score > 1.0F) {
+        safety_score = 1.0F;
     }
 
     // Predict reaction (simplified - would use empathy network)
