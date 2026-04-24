@@ -2143,7 +2143,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     if (brain->inference_pool) {
         post_forward_submitted = brain_decide_submit_post_forward(
-            brain, decision, brain->inference_pool, &post_ctx);
+            brain, decision, features, num_features, brain->inference_pool, &post_ctx);
     }
 
     // SERIAL FALLBACK: Stages 3.8-3.11 if no thread pool

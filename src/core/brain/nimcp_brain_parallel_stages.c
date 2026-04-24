@@ -160,6 +160,8 @@ static void stage_predictive_task(void* arg)
 typedef struct {
     brain_t brain;
     void* decision;
+    const float* features;
+    uint32_t num_features;
     post_forward_context_t* ctx;
 } post_forward_task_arg_t;
 
@@ -246,13 +248,17 @@ static void stage_tom_task(void* arg)
     post_forward_task_arg_t* a = (post_forward_task_arg_t*)arg;
     brain_t brain = a->brain;
 
-    if (brain->theory_of_mind) {
-        /* Update ToM self-model with current decision context.
-         * Pass the brain's recent emotional state and confidence as self-observation. */
+    if (brain->theory_of_mind && a->features && a->num_features > 0) {
         float confidence = 0.0f;
         tom_infer_emotion(brain->theory_of_mind, &confidence);
-        /* Self-model update based on own decision behavior */
-        tom_update_self_model(brain->theory_of_mind, NULL, 0, "decide", confidence);
+        brain_decision_t* decision = (brain_decision_t*)a->decision;
+        const char* intention = (decision && decision->label[0]) ? decision->label : "decide";
+        float action_conf = (decision && decision->confidence >= 0.0f && decision->confidence <= 1.0f)
+                                ? decision->confidence
+                                : confidence;
+        tom_update_self_model(brain->theory_of_mind,
+                              a->features, a->num_features,
+                              intention, action_conf);
     }
     a->ctx->tom_done = true;
 }
@@ -370,6 +376,8 @@ bool brain_decide_parallel_pre_forward(
 bool brain_decide_submit_post_forward(
     brain_t brain,
     void* decision,
+    const float* features,
+    uint32_t num_features,
     struct nimcp_thread_pool* pool,
     post_forward_context_t* ctx)
 {
@@ -381,6 +389,8 @@ bool brain_decide_submit_post_forward(
     for (int i = 0; i < 8; i++) {
         args[i].brain = brain;
         args[i].decision = decision;
+        args[i].features = features;
+        args[i].num_features = num_features;
         args[i].ctx = ctx;
     }
 

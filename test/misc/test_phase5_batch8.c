@@ -263,7 +263,7 @@ static void test_pre_forward_ctx_null(void) {
 
 static void test_post_forward_ctx_null(void) {
     TEST("Brain Parallel: post_forward NULL safety");
-    bool ok = brain_decide_submit_post_forward(NULL, NULL, NULL, NULL);
+    bool ok = brain_decide_submit_post_forward(NULL, NULL, NULL, 0, NULL, NULL);
     ASSERT_TRUE(!ok, "NULL should return false");
     PASS();
 }

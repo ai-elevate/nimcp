@@ -2050,12 +2050,14 @@ class ClaudeDistiller:
         except Exception:
             return []
 
-    def make_distillation_targets(self, lesson_text, target_dim=BRAIN_OUTPUT_DIM):
+    def make_distillation_targets(self, lesson_text, target_dim=None):
         """Create additional training targets from distilled concepts.
 
         Returns list of (input_features_text, target_vector) tuples
         for supplementary training on relational structure.
         """
+        if target_dim is None:
+            target_dim = BRAIN_OUTPUT_DIM
         triples = self.distill_concepts(lesson_text)
         targets = []
         for concept1, relation, concept2, emb in triples:
@@ -2644,7 +2646,7 @@ class TargetDiversifier:
 _target_diversifier = TargetDiversifier()
 
 
-def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM, category=None):
+def make_semantic_target(text, target_dim=None, category=None):
     """Create a diversified target vector from text.
 
     Uses three strategies to spread targets apart:
@@ -2652,6 +2654,8 @@ def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM, category=None):
     2. Category one-hot signal injection
     3. Running mean subtraction (push away from centroid)
     """
+    if target_dim is None:
+        target_dim = BRAIN_OUTPUT_DIM
     emb = encode_text(text)  # 1024-dim
     emb = _target_diversifier.diversify(emb, text, category=category)
 
@@ -2661,8 +2665,10 @@ def make_semantic_target(text, target_dim=BRAIN_OUTPUT_DIM, category=None):
     return target.tolist()
 
 
-def tile_to_brain_input(embedding, dim=BRAIN_INPUT_DIM):
+def tile_to_brain_input(embedding, dim=None):
     """Tile a shorter embedding to brain input dimension."""
+    if dim is None:
+        dim = BRAIN_INPUT_DIM
     emb = np.asarray(embedding, dtype=np.float32)
     emb_len = len(emb)
     reps = (dim + emb_len - 1) // emb_len
@@ -8624,6 +8630,10 @@ class AthenaIPCServer:
 
 
 def main():
+    # Declared early — rebound below after brain.probe() to match the brain's
+    # actual layer sizes (post-checkpoint-restore). Python requires `global`
+    # to appear before any reference to these names in the function.
+    global BRAIN_INPUT_DIM, BRAIN_OUTPUT_DIM
     parser = argparse.ArgumentParser(
         description="Immersive Developmental Learning for Athena")
     parser.add_argument("--stage", type=int, default=0,
@@ -8743,6 +8753,24 @@ def main():
                             init_mode='full',
                             snn_neuron_count=args.snn_neuron_count,
                             lnn_neuron_count=args.lnn_neuron_count)
+
+    # Sync BRAIN_INPUT_DIM / BRAIN_OUTPUT_DIM with the brain's *actual* dims.
+    # On --resume the checkpoint may have layer_sizes[last] != args.num_outputs
+    # (persistence restores dims from network layers — the ground truth).
+    # Without this, make_semantic_target() tiles targets to the stale 4096
+    # default and brain_learn_vector truncates every step (lost loss signal).
+    try:
+        _probe = brain.probe()
+        _actual_in = int(_probe.get("num_inputs") or 0)
+        _actual_out = int(_probe.get("num_outputs") or 0)
+        if _actual_in and _actual_in != BRAIN_INPUT_DIM:
+            print(f"  BRAIN_INPUT_DIM: {BRAIN_INPUT_DIM} -> {_actual_in} (from brain)")
+            BRAIN_INPUT_DIM = _actual_in
+        if _actual_out and _actual_out != BRAIN_OUTPUT_DIM:
+            print(f"  BRAIN_OUTPUT_DIM: {BRAIN_OUTPUT_DIM} -> {_actual_out} (from brain)")
+            BRAIN_OUTPUT_DIM = _actual_out
+    except Exception as _dim_err:
+        print(f"  Warning: could not probe brain dims ({_dim_err}) — using defaults")
 
     # --- Training integration (Phase A-E modules) ---
     # Wraps stimulus selection, activates symbolic writers, applies innate

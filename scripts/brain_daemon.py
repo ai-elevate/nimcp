@@ -208,6 +208,21 @@ class BrainService:
             "infer_calls": 0,
             "errors": 0,
         }
+        # Cache the brain's actual input/output dims so training never
+        # mis-sizes targets. Reads from probe() (ground truth — post-checkpoint).
+        # hasattr(brain, 'config') is False (no such attr on C binding), so
+        # without this cache we'd fall back to hardcoded defaults and the
+        # C side would truncate every learn_vector call.
+        self._num_inputs = None
+        self._num_outputs = None
+        try:
+            p = brain.probe()
+            self._num_inputs = int(p.get("num_inputs", 0)) or None
+            self._num_outputs = int(p.get("num_outputs", 0)) or None
+            logger.info("Brain dims: num_inputs=%s num_outputs=%s",
+                        self._num_inputs, self._num_outputs)
+        except Exception as e:
+            logger.warning("Could not probe brain dims at init: %s", e)
         # Memory-augmented prompt assembly (optional)
         self._prompt_assembler = None
         try:
@@ -400,8 +415,8 @@ class BrainService:
         tgt_embs = encode_batch(tgt_texts)      # [N, 1024] — target embeddings
         t_encode = time.time() - t0
 
-        # Get brain output dim for target tiling
-        out_dim = self.brain.config.num_outputs if hasattr(self.brain, 'config') else 4096
+        # Get brain output dim for target tiling (cached from probe() at init)
+        out_dim = self._num_outputs if self._num_outputs else 4096
         import numpy as _np
 
         # Train each item — tight loop, no socket overhead between items
@@ -414,7 +429,7 @@ class BrainService:
         for i in range(n):
             # Features: tiled to brain input dim
             feat = feat_embs[i]
-            in_dim = self.brain.config.num_inputs if hasattr(self.brain, 'config') else 1024
+            in_dim = self._num_inputs if self._num_inputs else 1024
             if len(feat) < in_dim:
                 reps = (in_dim + len(feat) - 1) // len(feat)
                 feat = _np.tile(feat, reps)[:in_dim]
@@ -2343,6 +2358,15 @@ def main():
                         help="Auto-checkpoint directory (default: same dir as --checkpoint)")
     parser.add_argument("--checkpoint-interval", type=int, default=300,
                         help="Auto-checkpoint interval seconds (default: 300)")
+    parser.add_argument("--sleep-interval-min", type=int, default=15,
+                        help="Periodic sleep-wake cycle interval in minutes "
+                             "(default: 15). Each interval triggers one full "
+                             "drowsy→NREM→REM→awake cycle. Pressure-driven "
+                             "triggers still fire between periodic cycles. "
+                             "Rationale: replay batch=100 memories, learning "
+                             "at ~6 steps/min → 15 min ≈ 90 new memories per "
+                             "cycle, keeping consolidation paced 1:1 with "
+                             "learning.")
     parser.add_argument("--log-file", type=str, default=None,
                         help="Log file path (default: stderr)")
     args = parser.parse_args()
@@ -2527,9 +2551,23 @@ def main():
                 "/".join(s.lstrip(".") for s in _missing_sidecars))
             print(f"  [WARN] Missing sidecars: {_missing_sidecars}", flush=True)
 
-        ckpt_size = os.path.getsize(checkpoint_path) / (1024**3)
+        # Main bin + ALL sidecars — SNN sidecar is 20x larger than main.
+        # Using only main-bin size (ckpt_size_main * 300) vastly under-
+        # estimates the loader's wall-time and caused a false "load failed"
+        # on 2026-04-24 when the background thread was still running.
+        ckpt_size_main = os.path.getsize(checkpoint_path) / (1024**3)
+        ckpt_size_total = ckpt_size_main
+        for _ext in (".snn", ".lnn", ".cnn", ".meta", ".tokenizer",
+                     ".mirror_neurons", ".executive",
+                     ".cortex_visual", ".cortex_audio",
+                     ".cortex_speech", ".cortex_somato"):
+            _p = checkpoint_path + _ext
+            if os.path.exists(_p):
+                ckpt_size_total += os.path.getsize(_p) / (1024**3)
+        ckpt_size = ckpt_size_total
         print(f"  [2/8] Loading checkpoint: {os.path.basename(checkpoint_path)} "
-              f"({ckpt_size:.1f} GB)", flush=True)
+              f"({ckpt_size_main:.1f} GB main + {ckpt_size_total - ckpt_size_main:.1f} GB sidecars)",
+              flush=True)
 
         # Show a progress bar during the blocking load
         if HAS_TQDM:
@@ -2553,17 +2591,23 @@ def main():
 
             # No timeout — let the load take as long as it needs.
             # Large brains with grown metadata pools can take 15-20+ minutes.
-            est_seconds = int(ckpt_size * 300)  # ~40 min max for 8GB
+            # ~60s per GB of total checkpoint footprint; minimum 15 minutes.
+            est_seconds = max(900, int(ckpt_size * 60))
             pbar = tqdm(total=est_seconds, desc="  Loading brain",
                         unit="s", bar_format="  {desc}: {bar:40} {n_fmt}/{total_fmt}s",
                         ncols=70)
-            for tick in range(est_seconds * 10):
-                if load_done.wait(timeout=0.1):
-                    pbar.n = est_seconds
-                    pbar.refresh()
-                    break
+            tick = 0
+            while not load_done.wait(timeout=0.1):
                 if tick % 10 == 0:
-                    pbar.update(1)
+                    # Cap display at est_seconds but keep waiting for the
+                    # loader thread. Prior bug: exited the loop when tick
+                    # hit est_seconds*10, leaving brain=None while the
+                    # loader was still running → spurious "load failed".
+                    if pbar.n < est_seconds:
+                        pbar.update(1)
+                tick += 1
+            pbar.n = est_seconds
+            pbar.refresh()
             pbar.close()
 
             if load_result[1]:
@@ -2612,6 +2656,45 @@ def main():
     n_neurons = brain.get_neuron_count() if brain else 0
     print(f"  [2/8] ✓ Brain loaded: {n_neurons:,} neurons in {elapsed:.1f}s", flush=True)
     logger.info("Brain ready in %.1f seconds (%d neurons)", elapsed, n_neurons)
+
+    # CRITICAL: flip cognitive feature flags on the live brain. Without this,
+    # resumed checkpoints carry whatever config was saved (often with
+    # enable_sleep_wake_cycle=false from earlier training runs), and the
+    # gates in brain_learn_vector / brain_decide silently skip pressure
+    # accumulation, memory replay, mental-health monitoring, etc. The
+    # underlying subsystems ARE created at brain init; only the per-call
+    # gate flags are wrong. configure_cognitive() mutates the config struct
+    # in place — no allocation, no weight change.
+    try:
+        brain.configure_cognitive()
+        logger.info("Cognitive features enabled (sleep-wake, memory replay, "
+                    "synaptic homeostasis, predictive processing, ethics, "
+                    "mental health monitoring, training integration, etc)")
+    except Exception as _cc_err:
+        logger.warning("configure_cognitive() failed: %s — sleep-wake and "
+                       "related subsystems may be inert", _cc_err)
+
+    # One-shot catch-up sleep cycle after resume. Previous sessions ran
+    # without enable_sleep_wake_cycle, so 1000s of learn steps accumulated
+    # without memory replay, synaptic downscaling, or glymphatic clearance.
+    # A single forced cycle brings the network up to date:
+    #   drowsy → light-NREM (replay) → deep-NREM (downscale×0.85 +
+    #   glymphatic waste clearance + microglia pruning) → REM → awake.
+    # Expect a small loss transient immediately after as weights re-balance.
+    # Guarded with try/except so a cycle failure never blocks daemon ready.
+    try:
+        print("  [2b] Running catch-up sleep cycle (memory consolidation + "
+              "synaptic homeostasis)...", flush=True)
+        _t_sleep = time.time()
+        brain.sleep_run_cycle(1)
+        logger.info("Catch-up sleep cycle complete in %.1fs",
+                    time.time() - _t_sleep)
+        print(f"  [2b] ✓ Catch-up sleep done ({time.time() - _t_sleep:.1f}s)",
+              flush=True)
+    except Exception as _sw_err:
+        logger.warning("Catch-up sleep_run_cycle failed: %s — continuing "
+                       "(scheduler will drive future cycles)", _sw_err)
+        print(f"  [2b] ⚠ Catch-up sleep failed: {_sw_err}", flush=True)
 
     # CRITICAL: Set regression mode — no softmax on outputs.
     print("  [3/8] Setting task type to REGRESSION...", flush=True)
@@ -2713,7 +2796,6 @@ def main():
     # Pre-warm ONNX encoder
     print("  [8/8] Loading ONNX encoder (BGE-large)...", flush=True)
     try:
-        import sys
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from onnx_encoder import encode_text
         encode_text("warmup")
@@ -2730,6 +2812,101 @@ def main():
     print(f"  PID: {os.getpid()}", flush=True)
     print(f"{'=' * 60}\n", flush=True)
     logger.info("Brain daemon ready — accepting connections on %s", args.socket)
+
+    # Sleep-wake scheduler: drives sleep_run_cycle on two triggers —
+    #
+    #   1. PERIODIC (primary): every --sleep-interval-min minutes of
+    #      wall-clock time, regardless of pressure. Digital brains don't
+    #      have metabolic/thermal sleep pressure like biology — we sleep
+    #      on a schedule to keep consolidation paced with learning.
+    #      Replay batch=100 memories; at ~6 learn steps/min, a 15-min
+    #      period catches up ~90 new memories per cycle (near-1:1 pacing).
+    #      Each cycle takes milliseconds to tens of seconds of compute
+    #      (stage durations in config are decorative — stages don't
+    #      honor them, they just do their work and return).
+    #
+    #   2. PRESSURE-DRIVEN (secondary): if sleep_is_needed becomes true
+    #      between periodic ticks, fire an extra cycle. The C layer
+    #      accumulates pressure via sleep_accumulate_pressure() on every
+    #      learn and brain_decide probes sleep_is_needed(), but nothing
+    #      in the core drives the actual state transition when pressure
+    #      crosses threshold — only mental_health crisis interventions.
+    #      This secondary trigger fills that gap.
+    #
+    # Without this thread, sleep_wake stays AWAKE forever and memory
+    # consolidation, synaptic downscaling, microglia pruning, and
+    # glymphatic clearance never fire.
+    _sleep_interval_sec = max(60, args.sleep_interval_min * 60)
+    def _sleep_scheduler():
+        last_state = 0  # AWAKE
+        last_log_ts = 0.0
+        last_periodic_cycle_ts = time.time()
+        poll_sec = 30.0
+        while not shutdown_event.is_set():
+            try:
+                if shutdown_event.wait(timeout=poll_sec):
+                    return
+                pressure = float(brain.sleep_get_pressure())
+                state = int(brain.sleep_get_state())
+                needed = bool(brain.sleep_is_needed())
+                _now = time.time()
+                # Visibility: emit state + pressure every 5 min (or on
+                # state change) so probe/monitor can read it from logs.
+                if _now - last_log_ts > 300 or state != last_state:
+                    logger.info(
+                        "[sleep] state=%d pressure=%.3f needed=%s "
+                        "next_periodic_in=%ds",
+                        state, pressure, needed,
+                        int(_sleep_interval_sec - (_now - last_periodic_cycle_ts)))
+                    last_log_ts = _now
+                    last_state = state
+                # --- PERIODIC trigger ---
+                elapsed_since_cycle = _now - last_periodic_cycle_ts
+                if elapsed_since_cycle >= _sleep_interval_sec:
+                    logger.info(
+                        "[sleep] periodic trigger (%.0fs since last cycle) — "
+                        "running cycle (pressure=%.3f)",
+                        elapsed_since_cycle, pressure)
+                    _t_cyc = time.time()
+                    try:
+                        # Acquire the service dispatch lock so sleep_run_cycle
+                        # (which now runs real episodic replay via
+                        # brain_learn_vector internally) cannot race against a
+                        # concurrent learn_vector on the socket thread.
+                        with service._lock:
+                            brain.sleep_run_cycle(1)
+                        logger.info("[sleep] cycle complete in %.2fs",
+                                    time.time() - _t_cyc)
+                    except Exception as _scerr:
+                        logger.warning("[sleep] periodic run_cycle failed: %s",
+                                       _scerr)
+                    last_periodic_cycle_ts = time.time()
+                # --- PRESSURE-DRIVEN trigger (between periodic cycles) ---
+                elif needed:
+                    logger.info(
+                        "[sleep] pressure %.3f ≥ threshold — extra cycle "
+                        "(periodic next in %.0fs)",
+                        pressure,
+                        _sleep_interval_sec - elapsed_since_cycle)
+                    _t_cyc = time.time()
+                    try:
+                        with service._lock:
+                            brain.sleep_run_cycle(1)
+                        logger.info("[sleep] cycle complete in %.2fs",
+                                    time.time() - _t_cyc)
+                    except Exception as _scerr:
+                        logger.warning("[sleep] pressure run_cycle failed: %s",
+                                       _scerr)
+                    last_periodic_cycle_ts = time.time()
+            except Exception as _sce:
+                logger.warning("[sleep] scheduler tick failed: %s", _sce)
+
+    _sleep_thread = threading.Thread(
+        target=_sleep_scheduler, name="sleep-scheduler", daemon=True)
+    _sleep_thread.start()
+    logger.info("[sleep] scheduler thread started (periodic every %d min, "
+                "plus pressure-driven triggers, 30s poll interval)",
+                args.sleep_interval_min)
 
     try:
         daemon.serve_forever()

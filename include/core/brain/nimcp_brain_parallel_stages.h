@@ -94,6 +94,8 @@ bool brain_decide_parallel_pre_forward(
  *
  * @param brain Brain handle
  * @param decision Current decision being built
+ * @param features Input features — forwarded to stages that need them (e.g. ToM self-model)
+ * @param num_features Length of features array (0 => stages that need features skip)
  * @param pool Thread pool
  * @param ctx Output context
  * @return true on success
@@ -101,6 +103,8 @@ bool brain_decide_parallel_pre_forward(
 bool brain_decide_submit_post_forward(
     brain_t brain,
     void* decision,
+    const float* features,
+    uint32_t num_features,
     struct nimcp_thread_pool* pool,
     post_forward_context_t* ctx);
 
