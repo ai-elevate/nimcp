@@ -738,6 +738,9 @@ add_subdirectory(emotions)
 # Ethics tests (SNN/plasticity bridges)
 add_subdirectory(ethics)
 
+# KG integration wave tests (W1 statue-finish and later waves)
+add_subdirectory(kg)
+
 # Executive tests (includes substrate bridge)
 add_subdirectory(executive)
 

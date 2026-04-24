@@ -9,6 +9,8 @@
 #include "core/brain/factory/init/nimcp_brain_init_surface_geometry.h"
 #include "core/geometry/nimcp_surface_geometry.h"
 #include "core/brain/bridges/nimcp_surface_geometry_bridge.h"
+#include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -207,9 +209,50 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
         }
     }
 
-    /* Step 6: Register with KG wiring diagram */
-    /* In a full implementation, this would call brain_kg_add_node() */
-    subsystem->kg_node_id = 0;  /* Placeholder */
+    /* Step 6: Register with internal KG (see docs/claude/kg-node-naming-registry.md).
+     * Surface geometry is infrastructure (dendrite/axon morphology), so it lives
+     * in the BRAIN_KG_NODE_CORE category and is named by subsystem identity.
+     *
+     * This function can run AFTER brain_populate downgrades access to READ, so
+     * we elevate to ADMIN via brain->internal_kg_admin_token, write, then
+     * restore to READ (matching the pattern at init_internal_kg.c line 290). */
+    subsystem->kg_node_id = BRAIN_KG_INVALID_NODE;
+    if (brain->internal_kg_enabled && brain->internal_kg) {
+        uint64_t admin_token = brain->internal_kg_admin_token;
+        brain_kg_set_access_level(brain->internal_kg,
+                                  BRAIN_KG_ACCESS_ADMIN, admin_token);
+
+        brain_kg_node_id_t existing =
+            brain_kg_find_node(brain->internal_kg, "surface_geometry_subsystem");
+        if (existing != BRAIN_KG_INVALID_NODE) {
+            subsystem->kg_node_id = existing;
+        } else {
+            subsystem->kg_node_id = brain_kg_add_node(
+                brain->internal_kg,
+                "surface_geometry_subsystem",
+                BRAIN_KG_NODE_CORE,
+                "Surface geometry: dendrite/axon morphology + curvature models"
+            );
+        }
+
+        /* Link to neural substrate if that node exists (created elsewhere at init). */
+        if (subsystem->kg_node_id != BRAIN_KG_INVALID_NODE) {
+            brain_kg_node_id_t substrate =
+                brain_kg_find_node(brain->internal_kg, "neural_substrate");
+            if (substrate != BRAIN_KG_INVALID_NODE) {
+                brain_kg_add_edge(
+                    brain->internal_kg,
+                    subsystem->kg_node_id,
+                    substrate,
+                    BRAIN_KG_EDGE_PROVIDES_TO,
+                    "geometry provides morphology to substrate",
+                    0.8f
+                );
+            }
+        }
+
+        brain_kg_set_access_level(brain->internal_kg, BRAIN_KG_ACCESS_READ, 0);
+    }
 
     /* Mark as initialized */
     subsystem->initialized = true;

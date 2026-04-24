@@ -15,6 +15,7 @@
 
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -829,20 +830,70 @@ uint32_t wernicke_nlp_register_concept(
 {
     if (!bridge || !concept_name) return 0;
 
-    if (bridge->kg_connected && bridge->knowledge_graph) {
-        /* Would call brain_kg_add_node() */
-        bridge->stats.kg_registrations++;
+    if (!bridge->kg_connected || !bridge->knowledge_graph) {
+        (void)properties;
+        return 0;
+    }
 
+    /* Prefix concept names to avoid collisions with structural nodes
+     * (see docs/claude/kg-node-naming-registry.md §2). */
+    char node_name[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(node_name, sizeof(node_name), "cog_language_concept_%s", concept_name);
+
+    /* Idempotent: skip if already registered */
+    brain_kg_node_id_t existing = brain_kg_find_node(bridge->knowledge_graph, node_name);
+    if (existing != BRAIN_KG_INVALID_NODE) {
         if (bridge->config.enable_logging) {
-            LOG_DEBUG(LOG_MODULE, "Registered concept: %s", concept_name);
+            LOG_DEBUG(LOG_MODULE, "Concept already registered: %s (id=%u)",
+                      concept_name, existing);
         }
+        (void)properties;
+        return existing;
+    }
 
-        /* Return simulated concept ID */
-        return (uint32_t)(bridge->stats.kg_registrations);
+    char description[BRAIN_KG_MAX_DESC_LEN];
+    if (properties && properties[0]) {
+        snprintf(description, sizeof(description),
+                 "Wernicke-registered concept '%s' (%s)", concept_name, properties);
+    } else {
+        snprintf(description, sizeof(description),
+                 "Wernicke-registered concept '%s'", concept_name);
+    }
+
+    brain_kg_node_id_t node_id = brain_kg_add_node(
+        bridge->knowledge_graph,
+        node_name,
+        BRAIN_KG_NODE_COGNITIVE,
+        description
+    );
+
+    if (node_id == BRAIN_KG_INVALID_NODE) {
+        LOG_WARN(LOG_MODULE, "Failed to register concept node: %s", concept_name);
+        (void)properties;
+        return 0;
+    }
+
+    /* Link concept back to wernicke root (created by wernicke_kg_wiring).
+     * If wernicke root doesn't exist yet, the edge is skipped silently. */
+    brain_kg_node_id_t wernicke_root = brain_kg_find_node(bridge->knowledge_graph, "wernicke");
+    if (wernicke_root != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(
+            bridge->knowledge_graph,
+            wernicke_root,
+            node_id,
+            BRAIN_KG_EDGE_PROVIDES_TO,
+            "wernicke produces concept activation",
+            0.7f
+        );
+    }
+
+    bridge->stats.kg_registrations++;
+    if (bridge->config.enable_logging) {
+        LOG_DEBUG(LOG_MODULE, "Registered concept: %s (kg_id=%u)", concept_name, node_id);
     }
 
     (void)properties;
-    return 0;
+    return node_id;
 }
 
 /* ============================================================================

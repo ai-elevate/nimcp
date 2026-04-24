@@ -1,11 +1,27 @@
 /**
  * @file nimcp_rcog_brain_kg_bridge.c
  * @brief Brain Knowledge Graph Integration Bridge Implementation for Recursive Cognition
- * @version 1.0.0
- * @date 2026-01-03
+ * @version 1.1.0
+ * @date 2026-04-24
+ *
+ * W1 STATUE-FINISH NOTE (2026-04-24):
+ * This file originally spoke two different knowledge graphs:
+ *   - `struct brain_kg* kg`  — the internal runtime KG (brain->internal_kg)
+ *   - `struct kg_reader* reader` — external .aim JSONL KG for semantic queries
+ *
+ * All `kg` operations were stubs ("In full implementation, would..."); the real
+ * work went through `reader`. W1 keeps BOTH channels but replaces the stubs with
+ * real `brain_kg_add_node`/`brain_kg_add_edge` calls on the runtime KG while
+ * leaving `kg_reader` queries untouched — that separation is intentional
+ * (runtime structure vs. persistent semantic corpus). See
+ * docs/claude/kg-node-naming-registry.md for the node-naming rules.
+ *
+ * If a future refactor wants a single KG, the kg_reader path is the removable
+ * one — the internal KG is the supported long-term target.
  */
 
 #include "cognitive/recursive/nimcp_rcog_brain_kg_bridge.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -161,7 +177,11 @@ struct rcog_brain_kg_bridge {
 
 /**
  * @brief Generate a simple node ID based on type and time
+ *
+ * Retained for legacy ABI compat; no longer called after W1 (real IDs come from
+ * brain_kg_add_node now). Marked unused to suppress -Wunused-function.
  */
+__attribute__((unused))
 static rcog_kg_node_id_t generate_node_id(rcog_kg_node_type_t type) {
     /* Simple ID generation - in full implementation would use KG's system */
     uint64_t now = nimcp_platform_time_monotonic_ms();
@@ -442,24 +462,65 @@ int rcog_brain_kg_bridge_register_engine(
         return RCOG_OK;
     }
 
-    /* Generate node ID and register */
-    bridge->engine_node_id = generate_node_id(RCOG_KG_NODE_ENGINE);
-    bridge->engine_registered = true;
+    /* Real registration into brain->internal_kg (cast from opaque struct brain_kg*).
+     * Naming follows docs/claude/kg-node-naming-registry.md §2. The engine node is
+     * the root of the recursive-cognition sub-graph. */
+    brain_kg_t* kg = (brain_kg_t*)bridge->kg;
+    brain_kg_node_id_t kg_engine = brain_kg_find_node(kg, "cog_recursive_engine");
+    if (kg_engine == BRAIN_KG_INVALID_NODE) {
+        kg_engine = brain_kg_add_node(
+            kg,
+            "cog_recursive_engine",
+            BRAIN_KG_NODE_COGNITIVE,
+            "Recursive cognition engine (root of recursive sub-graph)"
+        );
+    }
+
+    bridge->engine_node_id = (rcog_kg_node_id_t)kg_engine;
+    bridge->engine_registered = (kg_engine != BRAIN_KG_INVALID_NODE);
 
     bridge->registered_nodes[RCOG_KG_NODE_ENGINE].node_id = bridge->engine_node_id;
     bridge->registered_nodes[RCOG_KG_NODE_ENGINE].node_type = RCOG_KG_NODE_ENGINE;
-    bridge->registered_nodes[RCOG_KG_NODE_ENGINE].registered = true;
+    bridge->registered_nodes[RCOG_KG_NODE_ENGINE].registered = bridge->engine_registered;
 
     *node_id = bridge->engine_node_id;
 
-    /* Register all components if configured */
-    if (bridge->config.register_all_components) {
+    /* Register each sub-component as its own KG node and link to engine root. */
+    if (bridge->config.register_all_components && kg_engine != BRAIN_KG_INVALID_NODE) {
+        /* One slot per entry in rcog_kg_node_type_t (header has 6: ENGINE,
+         * CONTEXT_STORE, ORCHESTRATOR, DELEGATION, ANSWER_REFINER, TOOL_ROUTER).
+         * If the header grows past this table, extra slots silently skip. */
+        static const char* const component_names[] = {
+            "cog_recursive_engine",           /* RCOG_KG_NODE_ENGINE (root)     */
+            "cog_recursive_context_store",    /* RCOG_KG_NODE_CONTEXT_STORE     */
+            "cog_recursive_orchestrator",     /* RCOG_KG_NODE_ORCHESTRATOR      */
+            "cog_recursive_delegation_pool",  /* RCOG_KG_NODE_DELEGATION        */
+            "cog_recursive_answer_refiner",   /* RCOG_KG_NODE_ANSWER_REFINER    */
+            "cog_recursive_tool_router",      /* RCOG_KG_NODE_TOOL_ROUTER       */
+        };
+        const int name_count = (int)(sizeof(component_names)/sizeof(component_names[0]));
+
         for (int i = 1; i < RCOG_KG_NODE_COUNT; i++) {
-            if (!bridge->registered_nodes[i].registered) {
-                bridge->registered_nodes[i].node_id = generate_node_id((rcog_kg_node_type_t)i);
-                bridge->registered_nodes[i].node_type = (rcog_kg_node_type_t)i;
-                bridge->registered_nodes[i].registered = true;
+            if (bridge->registered_nodes[i].registered) continue;
+
+            const char* cname = (i < name_count) ? component_names[i] : NULL;
+            if (!cname) continue;  /* header grew past table — skip */
+
+            brain_kg_node_id_t cid = brain_kg_find_node(kg, cname);
+            if (cid == BRAIN_KG_INVALID_NODE) {
+                cid = brain_kg_add_node(kg, cname,
+                                        BRAIN_KG_NODE_COGNITIVE,
+                                        "Recursive cognition sub-component");
             }
+            if (cid == BRAIN_KG_INVALID_NODE) continue;
+
+            bridge->registered_nodes[i].node_id = (rcog_kg_node_id_t)cid;
+            bridge->registered_nodes[i].node_type = (rcog_kg_node_type_t)i;
+            bridge->registered_nodes[i].registered = true;
+
+            brain_kg_add_edge(kg, kg_engine, cid,
+                              BRAIN_KG_EDGE_COORDINATES_WITH,
+                              "engine coordinates sub-component", 0.8f);
         }
     }
 
@@ -467,7 +528,7 @@ int rcog_brain_kg_bridge_register_engine(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
-    return RCOG_OK;
+    return bridge->engine_registered ? RCOG_OK : RCOG_ERROR_KG_NOT_CONNECTED;
 }
 
 int rcog_brain_kg_bridge_register_component(
@@ -500,7 +561,24 @@ int rcog_brain_kg_bridge_register_component(
         return RCOG_OK;
     }
 
-    bridge->registered_nodes[component_type].node_id = generate_node_id(component_type);
+    /* Generate a unique name for the requested component slot.
+     * Real ID comes from brain_kg_add_node. Names under cog_recursive_* namespace. */
+    brain_kg_t* kg = (brain_kg_t*)bridge->kg;
+    char cname[BRAIN_KG_MAX_NAME_LEN];
+    snprintf(cname, sizeof(cname), "cog_recursive_component_%d", (int)component_type);
+
+    brain_kg_node_id_t cid = brain_kg_find_node(kg, cname);
+    if (cid == BRAIN_KG_INVALID_NODE) {
+        cid = brain_kg_add_node(kg, cname,
+                                BRAIN_KG_NODE_COGNITIVE,
+                                "Recursive cognition component");
+    }
+    if (cid == BRAIN_KG_INVALID_NODE) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return RCOG_ERROR_KG_NOT_CONNECTED;
+    }
+
+    bridge->registered_nodes[component_type].node_id = (rcog_kg_node_id_t)cid;
     bridge->registered_nodes[component_type].node_type = component_type;
     bridge->registered_nodes[component_type].registered = true;
 
@@ -588,10 +666,33 @@ int rcog_brain_kg_bridge_create_edge(
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
-    /* In full implementation, would create edge in KG */
-    (void)from_node;
-    (void)to_node;
-    (void)edge_type;
+    /* Translate rcog edge type to brain_kg_edge_type_t.
+     * rcog enum values are a superset; map anything unknown to CONNECTS_TO. */
+    brain_kg_edge_type_t kg_etype;
+    switch ((int)edge_type) {
+        case 0:  kg_etype = BRAIN_KG_EDGE_CONNECTS_TO; break;
+        case 1:  kg_etype = BRAIN_KG_EDGE_SENDS_TO; break;
+        case 2:  kg_etype = BRAIN_KG_EDGE_RECEIVES_FROM; break;
+        case 3:  kg_etype = BRAIN_KG_EDGE_INTEGRATES_WITH; break;
+        case 4:  kg_etype = BRAIN_KG_EDGE_MODULATES; break;
+        case 5:  kg_etype = BRAIN_KG_EDGE_COORDINATES_WITH; break;
+        default: kg_etype = BRAIN_KG_EDGE_CONNECTS_TO; break;
+    }
+
+    brain_kg_t* kg = (brain_kg_t*)bridge->kg;
+    brain_kg_edge_id_t eid = brain_kg_add_edge(
+        kg,
+        (brain_kg_node_id_t)from_node,
+        (brain_kg_node_id_t)to_node,
+        kg_etype,
+        "rcog bridge edge",
+        0.5f
+    );
+
+    if (eid == BRAIN_KG_INVALID_NODE) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return RCOG_ERROR_KG_NOT_CONNECTED;
+    }
 
     bridge->stats.edges_created++;
 

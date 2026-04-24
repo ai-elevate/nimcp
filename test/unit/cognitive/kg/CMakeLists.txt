@@ -1,0 +1,43 @@
+# =============================================================================
+# Unit Tests for KG Integration Waves
+# =============================================================================
+# WHAT: Verify each KG retrofit wave wires the expected nodes/edges into
+#       brain->internal_kg and that idempotent re-init doesn't duplicate.
+# WHY:  Catches statue-regressions (comments where node adds should be) and
+#       catches cross-module name drift (see kg-node-naming-registry.md).
+# HOW:  GTest. Each test creates a minimal brain, exercises one wave's code
+#       path, then asserts via brain_kg_find_node.
+# =============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_wave1_statue_finish.cpp")
+    add_executable(unit_cognitive_kg_test_wave1_statue_finish
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_wave1_statue_finish.cpp
+    )
+
+    target_link_libraries(unit_cognitive_kg_test_wave1_statue_finish
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_cognitive_kg_test_wave1_statue_finish
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_compile_features(unit_cognitive_kg_test_wave1_statue_finish PRIVATE cxx_std_17)
+    target_compile_definitions(unit_cognitive_kg_test_wave1_statue_finish PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_cognitive_kg_test_wave1_statue_finish
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;cognitive;kg;wave1"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added Unit test: unit_cognitive_kg_test_wave1_statue_finish")
+endif()

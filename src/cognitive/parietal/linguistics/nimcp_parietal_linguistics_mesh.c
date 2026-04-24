@@ -14,6 +14,7 @@
  */
 
 #include "cognitive/parietal/linguistics/nimcp_parietal_linguistics_mesh.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "constants/nimcp_buffer_constants.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -1920,13 +1921,41 @@ int linguistics_mesh_connect_kg(linguistics_mesh_t* mesh, brain_kg_t* kg) {
     mesh->kg = kg;
     mesh->kg_connected = true;
 
-    /* KG node registration would happen here if brain_kg_add_node was available */
-    /* mesh->kg_node_id = brain_kg_add_node(kg, LING_MESH_KG_NODE_NAME, ...); */
+    /* Idempotent registration — see docs/claude/kg-node-naming-registry.md.
+     * LING_MESH_KG_NODE_NAME is "parietal_linguistics_mesh" in the header. */
+    brain_kg_node_id_t existing = brain_kg_find_node(kg, LING_MESH_KG_NODE_NAME);
+    if (existing != BRAIN_KG_INVALID_NODE) {
+        mesh->kg_node_id = existing;
+    } else {
+        mesh->kg_node_id = brain_kg_add_node(
+            kg,
+            LING_MESH_KG_NODE_NAME,
+            BRAIN_KG_NODE_COGNITIVE,
+            "Parietal linguistics consensus mesh (FEP/BP-based token agreement)"
+        );
+    }
+
+    /* Wire mesh into parietal + language sub-graph if the peer nodes exist. */
+    if (mesh->kg_node_id != BRAIN_KG_INVALID_NODE) {
+        brain_kg_node_id_t parietal = brain_kg_find_node(kg, "parietal_cortex");
+        if (parietal != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, parietal, mesh->kg_node_id,
+                              BRAIN_KG_EDGE_CONNECTS_TO,
+                              "parietal hosts linguistics mesh", 0.8f);
+        }
+        brain_kg_node_id_t wernicke = brain_kg_find_node(kg, "wernicke");
+        if (wernicke != BRAIN_KG_INVALID_NODE) {
+            brain_kg_add_edge(kg, mesh->kg_node_id, wernicke,
+                              BRAIN_KG_EDGE_COORDINATES_WITH,
+                              "mesh consensus informs wernicke comprehension", 0.7f);
+        }
+    }
 
     nimcp_mutex_unlock(mesh->mutex);
 
     if (mesh->config.enable_logging) {
-        nimcp_log_info(LOG_MODULE_LING_MESH, "Connected to brain KG");
+        nimcp_log_info(LOG_MODULE_LING_MESH, "Connected to brain KG (node_id=%u)",
+                       mesh->kg_node_id);
     }
 
     return LING_ERR_OK;

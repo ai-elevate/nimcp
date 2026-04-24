@@ -15,12 +15,14 @@
 
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_omni_wernicke_bridge.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 
 //=============================================================================
@@ -1082,7 +1084,43 @@ int omni_wernicke_kg_register(omni_wernicke_bridge_t* bridge) {
         return -1;
     }
 
-    /* Would call brain_kg_add_node() to register Wernicke */
+    /* brain_kg is stored as void* in the header — cast to real type here. */
+    brain_kg_t* kg = (brain_kg_t*)bridge->brain_kg;
+
+    /* Idempotent: add the omni-wernicke coordinator node only if missing.
+     * Naming follows docs/claude/kg-node-naming-registry.md §2 (cog_<family>_<name>).
+     * Note: the "wernicke" structural node is owned by wernicke_kg_wiring — we
+     * only link to it, never recreate it. */
+    const char* coord_name = "cog_language_wernicke_omni";
+    brain_kg_node_id_t coord_id = brain_kg_find_node(kg, coord_name);
+    if (coord_id == BRAIN_KG_INVALID_NODE) {
+        coord_id = brain_kg_add_node(
+            kg,
+            coord_name,
+            BRAIN_KG_NODE_COGNITIVE,
+            "Omnidirectional inference bridge for Wernicke (prediction + N400 surprise)"
+        );
+    }
+
+    if (coord_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wernicke_kg_register: failed to create coordinator node");
+        return -1;
+    }
+
+    /* Link coordinator to wernicke root and to omni_world_model, if present. */
+    brain_kg_node_id_t wernicke_root = brain_kg_find_node(kg, "wernicke");
+    if (wernicke_root != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, coord_id, wernicke_root,
+                          BRAIN_KG_EDGE_INTEGRATES_WITH,
+                          "omni layer provides predictions to wernicke", 0.9f);
+    }
+    brain_kg_node_id_t owm = brain_kg_find_node(kg, "omni_world_model");
+    if (owm != BRAIN_KG_INVALID_NODE) {
+        brain_kg_add_edge(kg, owm, coord_id,
+                          BRAIN_KG_EDGE_SENDS_TO,
+                          "world model feeds omni-wernicke predictions", 0.85f);
+    }
+
     bridge->kg_sync.kg_registered = true;
 
     /* Set capabilities */
