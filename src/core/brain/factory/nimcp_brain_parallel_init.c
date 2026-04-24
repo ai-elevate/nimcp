@@ -84,6 +84,9 @@ extern bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain);
 // Biology cluster (epigenetics + neurogenesis + NVC) — register_driven via coord
 extern bool nimcp_brain_factory_init_biology_subsystem(brain_t brain);
 
+// Chemistry cluster (pumps + buffers + pH + NO) — single BRAIN_CYCLE_CHEMISTRY at 10ms
+extern bool nimcp_brain_factory_init_chemistry_subsystem(brain_t brain);
+
 // Predictive-immune coupling — register_driven via coord, needs predictive_network + immune
 extern bool nimcp_brain_factory_init_predictive_immune_subsystem(brain_t brain);
 
@@ -357,6 +360,14 @@ static bool init_pr_memory_if_needed(brain_t brain) {
     if (!brain->config.enable_pr_memory || brain->config.lazy_init_mode ||
         brain->config.lazy_pr_memory_init) return true;
     return nimcp_brain_factory_init_pr_memory_subsystem(brain);
+}
+
+static bool init_chemistry_if_needed(brain_t brain) {
+    /* Chemistry cluster: 4 modules driven by one BRAIN_CYCLE_CHEMISTRY tick.
+     * Same no-op-on-absent-coordinator behavior as biology. */
+    if (brain->config.lazy_init_mode) return true;
+    (void)nimcp_brain_factory_init_chemistry_subsystem(brain);
+    return true;
 }
 
 static bool init_biology_if_needed(brain_t brain) {
@@ -790,6 +801,7 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(init_lnn_if_needed, "lnn");
     tasks[n++] = TASK(init_world_model_if_needed, "world_model");
     tasks[n++] = TASK(init_biology_if_needed, "biology");
+    tasks[n++] = TASK(init_chemistry_if_needed, "chemistry");
     if (!execute_wave(pool, &ctx, tasks, n, 6)) goto cleanup;
 
     // ========================================================================

@@ -690,6 +690,14 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_biology_subsystem(brain);
     }
 
+    /* Chemistry cluster destroy (Wave 6) — same ordering rationale: runs
+     * while cycle_coordinator is still valid so the driver thread can be
+     * joined cleanly before the coord is freed. */
+    {
+        extern void nimcp_brain_factory_destroy_chemistry_subsystem(brain_t);
+        nimcp_brain_factory_destroy_chemistry_subsystem(brain);
+    }
+
     /* Predictive-immune coupling destroy — same ordering rationale as biology.
      * Unregister drives + stop + destroy BEFORE predictive_network or
      * immune_system are freed downstream (predictive_network destroy on line

@@ -1,18 +1,21 @@
 /**
- * @file test_wave4_regression.c
- * @brief Regression tests for Wave 4 enum/cycle-coordinator extensions.
+ * @file test_wave6_regression.c
+ * @brief Regression tests for Wave 6 enum/coordinator extensions.
  *
- * WHAT: Guards that adding BRAIN_CYCLE_PREDICTIVE_IMMUNE to brain_cycle_type_t
- *       did not shift any existing enum value and that all pre-Wave-4 cycles
- *       still map to the same name, category, and default interval they had
- *       before.
+ * WHAT: Guards that adding BRAIN_CYCLE_CHEMISTRY to brain_cycle_type_t did
+ *       not shift any existing enum value and that all 15 cycle types
+ *       (14 pre-Wave-6 + 1 Wave 6) still map to the name, category, and
+ *       default interval they had before.
  *
- * WHY:  Enum extensions are a common ABI/behavior-regression source: a typo
- *       reorders the switch, a missing case falls through to BACKGROUND,
- *       downstream callers querying `get_default_interval_us` silently get 0.
+ * WHY:  Enum extensions are a common ABI/behavior-regression source: a
+ *       typo reorders the switch, a missing case falls through to
+ *       BACKGROUND, downstream callers querying get_default_interval_us
+ *       silently get 0. Wave 6 also grew the enum count from 14 → 15 so
+ *       any downstream code sizing a buffer to [BRAIN_CYCLE_COUNT] is
+ *       exercised under the new dimension.
  *
- * HOW:  Hard-coded expected values per pre-Wave-4 cycle — this is the
- *       contract. If someone reorders the enum this test fails loudly.
+ * HOW:  Hard-coded golden expectations per cycle — this is the contract.
+ *       If someone reorders the enum this test fails loudly.
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -67,7 +70,7 @@ typedef struct {
 
 /* Order matches enum declaration in nimcp_brain_cycle_coordinator.h. */
 static const cycle_golden_t GOLDEN[] = {
-    /* Pre-Wave-4 cycles — these must not drift. */
+    /* Pre-Wave-6 cycles — these must not drift. */
     { BRAIN_CYCLE_IMMUNE_TICK,      "immune_tick",      BRAIN_CYCLE_CATEGORY_FAST,       50000    },
     { BRAIN_CYCLE_HEALTH_AGENT,     "health_agent",     BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
     { BRAIN_CYCLE_SLEEP_WAKE,       "sleep_wake",       BRAIN_CYCLE_CATEGORY_SLOW,       0        },
@@ -81,12 +84,13 @@ static const cycle_golden_t GOLDEN[] = {
     { BRAIN_CYCLE_NEUROGENESIS,     "neurogenesis",     BRAIN_CYCLE_CATEGORY_SLOW,       1000000  },
     { BRAIN_CYCLE_EPIGENETICS,      "epigenetics",      BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
     { BRAIN_CYCLE_NEUROVASCULAR,    "neurovascular",    BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
-    /* NEW in Wave 4 — explicit expectations so it too is pinned. */
     { BRAIN_CYCLE_PREDICTIVE_IMMUNE,"predictive_immune",BRAIN_CYCLE_CATEGORY_MEDIUM,     100000   },
+    /* NEW in Wave 6 — explicit expectation so it too is pinned. */
+    { BRAIN_CYCLE_CHEMISTRY,        "chemistry",        BRAIN_CYCLE_CATEGORY_FAST,       10000    },
 };
 
 static void test_enum_contract_per_cycle(void) {
-    TEST("all 14 cycle types: name + category + default_interval pinned");
+    TEST("all 15 cycle types: name + category + default_interval pinned");
     const size_t n = sizeof(GOLDEN) / sizeof(GOLDEN[0]);
     for (size_t i = 0; i < n; i++) {
         const cycle_golden_t* g = &GOLDEN[i];
@@ -103,27 +107,27 @@ static void test_enum_contract_per_cycle(void) {
     PASS();
 }
 
-static void test_enum_count_is_14(void) {
-    /* Wave 6 added BRAIN_CYCLE_CHEMISTRY; enum count grew 14 → 15.
-     * We retain this test as a FLOOR guard: if a future change shrinks the
-     * enum below what Wave 4 needs, detect it. The exact-count invariant
-     * moves to each wave's own regression (currently test_wave6_regression). */
-    TEST("BRAIN_CYCLE_COUNT >= 14 (Wave 4 floor — new cycles allowed above)");
-    ASSERT_TRUE((int)BRAIN_CYCLE_COUNT >= 14,
-                "BRAIN_CYCLE_COUNT dropped below Wave 4 floor");
+static void test_enum_count_is_15(void) {
+    TEST("BRAIN_CYCLE_COUNT == 15 after Wave 6");
+    ASSERT_EQ((int)BRAIN_CYCLE_COUNT, 15, "BRAIN_CYCLE_COUNT changed");
     PASS();
 }
 
-static void test_enum_predictive_immune_slot(void) {
-    /* Wave 6 added a new cycle AFTER PREDICTIVE_IMMUNE, so it's no longer
-     * last. What we actually need to guard is that its ORDINAL didn't
-     * shift — both tests rely on the enum value staying at 13, and any
-     * persisted state (e.g. coordinator stats written to KG) would break
-     * if the number were reassigned. */
-    TEST("BRAIN_CYCLE_PREDICTIVE_IMMUNE ordinal is 13 (Wave 4 position)");
-    ASSERT_EQ((int)BRAIN_CYCLE_PREDICTIVE_IMMUNE, 13,
-              "PREDICTIVE_IMMUNE ordinal shifted — enum reordering is a "
-              "breaking change for tests and persisted state");
+static void test_enum_chemistry_slot(void) {
+    TEST("BRAIN_CYCLE_CHEMISTRY is the last enum value before COUNT");
+    ASSERT_EQ((int)BRAIN_CYCLE_CHEMISTRY,
+              (int)BRAIN_CYCLE_COUNT - 1,
+              "CHEMISTRY not last — enum order changed");
+    PASS();
+}
+
+static void test_enum_predictive_immune_slot_unchanged(void) {
+    /* Pre-Wave-6 PREDICTIVE_IMMUNE was last; it is now second-to-last.
+     * Pin its position explicitly to catch accidental reorderings. */
+    TEST("BRAIN_CYCLE_PREDICTIVE_IMMUNE is second-to-last (slot COUNT-2)");
+    ASSERT_EQ((int)BRAIN_CYCLE_PREDICTIVE_IMMUNE,
+              (int)BRAIN_CYCLE_COUNT - 2,
+              "PREDICTIVE_IMMUNE slot drifted — enum reordered");
     PASS();
 }
 
@@ -131,33 +135,33 @@ static void test_enum_predictive_immune_slot(void) {
 /* Behavior of register_driven on the new type mirrors existing types        */
 /* ------------------------------------------------------------------------- */
 
-static void test_register_driven_on_new_type(void) {
-    TEST("register_driven(PREDICTIVE_IMMUNE) works + unregister joins");
+static void test_register_driven_on_chemistry_type(void) {
+    TEST("register_driven(CHEMISTRY) works + unregister joins");
     brain_cycle_coordinator_config_t cfg; make_quiet_cfg(&cfg);
     brain_cycle_coordinator_t* coord = brain_cycle_coordinator_create(&cfg);
     ASSERT_NOT_NULL(coord, "create failed");
 
     int rc = brain_cycle_coordinator_register_driven(
-        coord, BRAIN_CYCLE_PREDICTIVE_IMMUNE, 5000,
+        coord, BRAIN_CYCLE_CHEMISTRY, 5000,
         nosleep_tick_fn, NULL, NULL);
-    ASSERT_EQ(rc, 0, "register_driven(PREDICTIVE_IMMUNE) failed");
+    ASSERT_EQ(rc, 0, "register_driven(CHEMISTRY) failed");
 
     sleep_ms(50);
 
     brain_cycle_status_t st;
     int g = brain_cycle_coordinator_get_status(
-        coord, BRAIN_CYCLE_PREDICTIVE_IMMUNE, &st);
+        coord, BRAIN_CYCLE_CHEMISTRY, &st);
     ASSERT_EQ(g, 0, "get_status failed");
     ASSERT_TRUE(st.ticks_executed >= 1,
         "tick count zero — driver thread never ran");
 
     int ur = brain_cycle_coordinator_unregister(
-        coord, BRAIN_CYCLE_PREDICTIVE_IMMUNE);
+        coord, BRAIN_CYCLE_CHEMISTRY);
     ASSERT_EQ(ur, 0, "unregister failed");
 
     /* Second unregister fails (already gone). */
     int ur2 = brain_cycle_coordinator_unregister(
-        coord, BRAIN_CYCLE_PREDICTIVE_IMMUNE);
+        coord, BRAIN_CYCLE_CHEMISTRY);
     ASSERT_EQ(ur2, -1, "second unregister should fail");
 
     brain_cycle_coordinator_destroy(coord);
@@ -165,28 +169,28 @@ static void test_register_driven_on_new_type(void) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* get_all_status returns the right shape with the new enum value           */
+/* get_all_status returns the right shape with the new enum value            */
 /* ------------------------------------------------------------------------- */
 
-static void test_get_all_status_sized_correctly(void) {
-    TEST("get_all_status returns N registered cycles, buffer BRAIN_CYCLE_COUNT");
+static void test_get_all_status_buffer_sized_to_count(void) {
+    TEST("get_all_status honors BRAIN_CYCLE_COUNT buffer size");
     brain_cycle_coordinator_config_t cfg; make_quiet_cfg(&cfg);
     brain_cycle_coordinator_t* coord = brain_cycle_coordinator_create(&cfg);
     ASSERT_NOT_NULL(coord, "create failed");
 
-    /* Register three cycles including the new one. */
     int r1 = brain_cycle_coordinator_register(
         coord, BRAIN_CYCLE_BRAIN_UPDATE, NULL, NULL);
     int r2 = brain_cycle_coordinator_register(
         coord, BRAIN_CYCLE_EPIGENETICS, NULL, NULL);
     int r3 = brain_cycle_coordinator_register_driven(
-        coord, BRAIN_CYCLE_PREDICTIVE_IMMUNE, 10000,
+        coord, BRAIN_CYCLE_CHEMISTRY, 10000,
         nosleep_tick_fn, NULL, NULL);
     ASSERT_EQ(r1, 0, "register BRAIN_UPDATE failed");
     ASSERT_EQ(r2, 0, "register EPIGENETICS failed");
-    ASSERT_EQ(r3, 0, "register_driven PREDICTIVE_IMMUNE failed");
+    ASSERT_EQ(r3, 0, "register_driven CHEMISTRY failed");
 
-    /* Buffer sized to BRAIN_CYCLE_COUNT entries per the public contract. */
+    /* Buffer sized to BRAIN_CYCLE_COUNT entries per the public contract
+     * — this must still compile and produce a valid result at N=15. */
     brain_cycle_status_t statuses[BRAIN_CYCLE_COUNT];
     uint32_t count = 0;
     int rc = brain_cycle_coordinator_get_all_status(
@@ -194,13 +198,10 @@ static void test_get_all_status_sized_correctly(void) {
 
     (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_BRAIN_UPDATE);
     (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_EPIGENETICS);
-    (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_PREDICTIVE_IMMUNE);
+    (void)brain_cycle_coordinator_unregister(coord, BRAIN_CYCLE_CHEMISTRY);
     brain_cycle_coordinator_destroy(coord);
 
     ASSERT_EQ(rc, 0, "get_all_status failed");
-    /* Count must be >= 3 (the three we registered). Some impls populate
-     * unregistered slots with default-initialized state; the contract we
-     * care about is "at least the registered ones were returned". */
     ASSERT_TRUE(count >= 3, "get_all_status returned fewer than 3 cycles");
     ASSERT_TRUE(count <= BRAIN_CYCLE_COUNT,
         "get_all_status returned MORE than BRAIN_CYCLE_COUNT");
@@ -210,13 +211,14 @@ static void test_get_all_status_sized_correctly(void) {
 /* ------------------------------------------------------------------------- */
 
 int main(void) {
-    printf("\n=== Regression Tests: Wave 4 enum + coordinator contracts ===\n\n");
+    printf("\n=== Regression Tests: Wave 6 enum + coordinator contracts ===\n\n");
 
-    test_enum_count_is_14();
-    test_enum_predictive_immune_slot();
+    test_enum_count_is_15();
+    test_enum_chemistry_slot();
+    test_enum_predictive_immune_slot_unchanged();
     test_enum_contract_per_cycle();
-    test_register_driven_on_new_type();
-    test_get_all_status_sized_correctly();
+    test_register_driven_on_chemistry_type();
+    test_get_all_status_buffer_sized_to_count();
 
     printf("\n=== Results: %d passed, %d failed ===\n\n",
            tests_passed, tests_failed);

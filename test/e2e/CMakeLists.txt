@@ -3359,6 +3359,37 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave5_e2e.c)
             TIMEOUT 15)
 endif()
 
+# ---------------------------------------------------------------------------
+# E2E: Wave 6 Multi-Cycle Soak (CHEMISTRY + PI + EPI + NVC + NEURO)
+# ---------------------------------------------------------------------------
+# WHAT: Five concurrent driven cycles including the new BRAIN_CYCLE_CHEMISTRY
+#       (10ms) added in Wave 6, running for 2s under real pthreads.
+# WHY:  Wave 6 introduced the first FAST-category driven cycle (10ms) running
+#       alongside medium/slow cycles. This soak is the last line of defense
+#       against enum collisions, thread leaks, and cadence failures under
+#       sustained 5-cycle load.
+# HOW:  Plain C, links libnimcp only (no GTest — owns its own main).
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_wave6_e2e.c)
+    add_executable(e2e_test_wave6
+        test_wave6_e2e.c
+    )
+    target_include_directories(e2e_test_wave6 PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_wave6 PRIVATE c_std_11)
+    target_link_libraries(e2e_test_wave6 PRIVATE
+        nimcp Threads::Threads rt m
+    )
+    add_test(NAME e2e_test_wave6
+             COMMAND e2e_test_wave6
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_wave6
+        PROPERTIES
+            LABELS "e2e;cycle_coordinator;driven;chemistry;wave6"
+            TIMEOUT 30)
+endif()
+
 # ============================================================================
 # Grounded Language E2E Tests (subdirectory)
 # ============================================================================

@@ -1792,6 +1792,24 @@ struct brain_struct {
     bool neurovascular_enabled;
 
     //=========================================================================
+    // CHEMISTRY STACK — Wired 2026-04-24 via cycle coordinator register_driven
+    //=========================================================================
+    // Four chemistry modules previously statues (compile-disabled — their .c
+    // files were not in any CMakeLists.txt). Wave 6 added them to the build
+    // and wires a single BRAIN_CYCLE_CHEMISTRY cycle at 10ms that updates
+    // all four in biological order: protons → buffers → pH → NO.
+    //
+    // Forward-declared as opaque structs to keep the chemistry headers out
+    // of brain_internal.h — each of those headers redefines nimcp_brain_t
+    // and would collide with the public nimcp.h typedef.
+    //
+    struct nimcp_ph_system_s* ph_system;                              // Intracellular/extracellular pH
+    struct nimcp_pump_system_s* proton_pumps;                         // V-ATPase, NHE, NBC pumps
+    struct nimcp_buffer_manager_s* buffer_manager;                    // Bicarbonate, phosphate, protein buffers
+    struct nimcp_no_system_s* no_system;                              // Nitric oxide gasotransmitter
+    bool chemistry_enabled;                                           // True if all 4 modules + register_driven succeeded
+
+    //=========================================================================
     // PREDICTIVE-IMMUNE COUPLING — Wired 2026-04-24 via cycle coordinator
     //=========================================================================
     // Integration layer between predictive processing and brain immune system.

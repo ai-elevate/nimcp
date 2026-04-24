@@ -3380,4 +3380,75 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_wave5_regression.c")
         PROPERTIES LABELS "regression;parallel_stages;physics;wave5" TIMEOUT 15)
 endif()
 
+# ---------------------------------------------------------------------------
+# Wave 6 tests — chemistry cluster wiring (plain C, mirror Wave 4/5 pattern).
+#
+# WHAT: Wave 6 added BRAIN_CYCLE_CHEMISTRY (10ms cadence) driving 4 previously-
+#       statue modules (proton_pumps, buffer_systems, ph_dynamics, nitric_oxide)
+#       via a single tick wrapper in brain_init_chemistry. Tests cover unit
+#       (factory init/destroy contract), integration (coexistence with other
+#       driven cycles), regression (enum-count/slot/name pinning), and e2e
+#       (5-cycle soak) tiers.
+# WHY:  Match the lightweight pattern used by Wave 4/5 binaries.
+# HOW:  Explicit executable + link libnimcp only; plain C with own main().
+# ---------------------------------------------------------------------------
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_wave6_chemistry_init.c")
+    if(NOT TARGET unit_test_wave6_chemistry_init)
+        add_executable(unit_test_wave6_chemistry_init
+            unit/test_wave6_chemistry_init.c
+        )
+        target_include_directories(unit_test_wave6_chemistry_init PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
+        )
+        target_compile_features(unit_test_wave6_chemistry_init
+            PRIVATE c_std_11)
+        target_link_libraries(unit_test_wave6_chemistry_init
+            PRIVATE nimcp Threads::Threads rt m)
+        add_test(NAME unit_test_wave6_chemistry_init
+                 COMMAND unit_test_wave6_chemistry_init
+                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+        set_tests_properties(unit_test_wave6_chemistry_init
+            PROPERTIES LABELS "unit;cycle_coordinator;chemistry;wave6" TIMEOUT 15)
+    endif()
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/test_wave6_integration.c")
+    add_executable(integration_test_wave6_integration
+        integration/test_wave6_integration.c
+    )
+    target_include_directories(integration_test_wave6_integration PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(integration_test_wave6_integration
+        PRIVATE c_std_11)
+    target_link_libraries(integration_test_wave6_integration
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME integration_test_wave6_integration
+             COMMAND integration_test_wave6_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_test_wave6_integration
+        PROPERTIES LABELS "integration;cycle_coordinator;chemistry;wave6" TIMEOUT 15)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/test_wave6_regression.c")
+    add_executable(regression_test_wave6_regression
+        regression/test_wave6_regression.c
+    )
+    target_include_directories(regression_test_wave6_regression PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(regression_test_wave6_regression
+        PRIVATE c_std_11)
+    target_link_libraries(regression_test_wave6_regression
+        PRIVATE nimcp Threads::Threads rt m)
+    add_test(NAME regression_test_wave6_regression
+             COMMAND regression_test_wave6_regression
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(regression_test_wave6_regression
+        PROPERTIES LABELS "regression;cycle_coordinator;chemistry;wave6" TIMEOUT 15)
+endif()
+
 # Overflow Check Macro Tests (P3-7) - auto-discovered by discover_category_tests(unit)
