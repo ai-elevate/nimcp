@@ -120,7 +120,16 @@ def _load_persistent_snn_tunes(brain, logger):
     applied = 0
     for name, value in overrides.items():
         try:
-            brain.snn_tune(str(name), float(value))
+            # Daemon-level knobs are kept in _runtime_state; SNN knobs go
+            # through brain.snn_tune. Routing here mirrors _cmd_snn_tune.
+            if name == 'autotune_enabled':
+                with _runtime_state_lock:
+                    _runtime_state['autotune_enabled'] = bool(float(value))
+            elif name == 'sleep_interval_sec':
+                with _runtime_state_lock:
+                    _runtime_state['sleep_interval_sec'] = float(value)
+            else:
+                brain.snn_tune(str(name), float(value))
             applied += 1
         except Exception as e:
             logger.warning("[snn_tune] persistent override %s=%s failed: %s",
@@ -150,6 +159,238 @@ def _save_persistent_snn_tune(name, value, logger):
         os.replace(tmp, SNN_TUNE_PERSIST_PATH)
     except Exception as e:
         logger.warning("[snn_tune] failed to persist %s=%s: %s", name, value, e)
+
+
+# ---------------------------------------------------------------------------
+# SNN auto-tune controller — closed-loop knob adjustment.
+#
+# Three actuators, one shared signal (post-cycle SNN recovery curve):
+#   - max_scale_dead   : homeostatic scale-up rate for dead pops [1.01, 1.10]
+#   - sleep_interval   : sec between periodic sleep cycles      [300,  3600]
+#   - noise_rate_hz    : Poisson background floor               [10,   100]
+#
+# Default mode: OBSERVATION ONLY (autotune_enabled=0). The controller
+# measures peak rate and recovery time each sleep cycle and logs its
+# would-be decisions, but applies nothing. Set autotune_enabled=1 in
+# snn_tune.json (or via the snn_tune socket command) to enable actuator
+# updates.
+#
+# Decision logic per completed cycle (priority order, at most ONE actuator
+# moves per cycle so we can attribute changes cleanly):
+#   1. SNN collapsed (peak_rate < 5 Hz two cycles in a row):
+#      → noise_rate_hz += 10 (rescue jolt)
+#   2. Recovery too slow (recovery_time > 0.7 × interval):
+#      → sleep_interval += 60s   (give more wake time)
+#   3. Peak too high (peak_rate > 1000 Hz):
+#      → max_scale_dead -= 0.005 (dampen overshoot)
+#   4. Peak too low (peak_rate < 30 Hz, NOT collapsed):
+#      → max_scale_dead += 0.005 (boost recovery rate)
+#   5. Sustained healthy (peak_rate ≥ 50, sparsity active 5-15%, three
+#      cycles in a row), AND noise_rate_hz currently above baseline 20:
+#      → noise_rate_hz -= 5 (taper rescue dose)
+#
+# The shared `_runtime_state` dict carries values between the sleep
+# scheduler thread (writes cycle metrics) and the autotuner thread (reads
+# them and writes back interval changes). All access goes through
+# _runtime_state_lock — both threads run at slow cadence so contention is
+# negligible.
+# ---------------------------------------------------------------------------
+
+_runtime_state_lock = threading.Lock()
+_runtime_state = {
+    # Sleep cycle plumbing — populated by _sleep_scheduler each cycle.
+    'sleep_interval_sec': 900,           # autotuner can mutate this
+    'sleep_last_cycle_complete_ts': 0.0,
+    'sleep_last_cycle_duration_s': 0.0,
+    'sleep_cycles_completed': 0,
+    # Autotuner state.
+    'autotune_enabled': False,           # default OFF — observation only
+    'autotune_cycles_observed': 0,
+    'autotune_collapse_streak': 0,
+    'autotune_healthy_streak': 0,
+    'autotune_last_action': '',
+}
+
+
+def _autotune_clamp(name, value):
+    """Hard min/max for each actuator. Defense in depth — even if the
+    decision logic produces a runaway value, the clamp pins it sane."""
+    bounds = {
+        'max_scale_dead':  (1.01, 1.10),
+        'sleep_interval':  (300.0, 3600.0),
+        'noise_rate_hz':   (10.0, 100.0),
+    }
+    lo, hi = bounds[name]
+    return max(lo, min(hi, value))
+
+
+def _snn_autotuner(brain, service, shutdown_event, logger):
+    """Closed-loop SNN knob controller. Runs in its own daemon thread.
+
+    Observes the SNN every 30s during the wake window between sleep cycles,
+    captures peak rate + recovery time, then on each cycle boundary emits a
+    log line and (if enabled) applies at most one actuator move."""
+    last_observed_cycles = 0
+    cycle_peak_rate = 0.0
+    cycle_recovery_t = None     # seconds from last cycle to first sample with sparsity < 0.5
+    cycle_active_t = 0.0        # seconds spent with sparsity in [0.05, 0.15]
+    last_obs_ts = time.time()
+
+    while not shutdown_event.is_set():
+        if shutdown_event.wait(timeout=30):
+            return
+        try:
+            with _runtime_state_lock:
+                cycles_done = _runtime_state['sleep_cycles_completed']
+                last_cycle_ts = _runtime_state['sleep_last_cycle_complete_ts']
+                interval = _runtime_state['sleep_interval_sec']
+                enabled = _runtime_state['autotune_enabled']
+
+            # New cycle boundary — wrap up the previous cycle's measurement.
+            if cycles_done != last_observed_cycles and last_observed_cycles > 0:
+                _autotune_decide(brain, logger, enabled,
+                                 peak_rate=cycle_peak_rate,
+                                 recovery_t=cycle_recovery_t,
+                                 active_t=cycle_active_t,
+                                 interval=interval)
+                cycle_peak_rate = 0.0
+                cycle_recovery_t = None
+                cycle_active_t = 0.0
+            last_observed_cycles = cycles_done
+
+            # Sample SNN state (best-effort; brain may be busy).
+            try:
+                stats = brain.snn_get_stats()
+            except Exception:
+                continue
+            rate = float(stats.get('mean_firing_rate', 0.0) or 0.0)
+            sparsity = float(stats.get('sparsity', 1.0) or 1.0)
+            now = time.time()
+            dt = now - last_obs_ts
+            last_obs_ts = now
+
+            # Track peak rate seen since the last cycle.
+            if rate > cycle_peak_rate:
+                cycle_peak_rate = rate
+            # First sample where sparsity drops out of trough = recovered.
+            if cycle_recovery_t is None and last_cycle_ts > 0 and sparsity < 0.5:
+                cycle_recovery_t = now - last_cycle_ts
+            # Time spent in biological active band.
+            if 0.05 <= sparsity <= 0.15:
+                cycle_active_t += dt
+        except Exception as e:
+            logger.warning("[autotune] tick failed: %s", e)
+
+
+def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
+                     active_t, interval):
+    """Evaluate one cycle's measurements and emit a decision. Applies at
+    most one actuator move (priority order). Always logs."""
+    with _runtime_state_lock:
+        _runtime_state['autotune_cycles_observed'] += 1
+        cycles = _runtime_state['autotune_cycles_observed']
+        collapse_streak = _runtime_state['autotune_collapse_streak']
+        healthy_streak = _runtime_state['autotune_healthy_streak']
+
+    # Update streak counters.
+    if peak_rate < 5.0:
+        collapse_streak += 1
+        healthy_streak = 0
+    elif peak_rate >= 50.0 and active_t > 0.3 * interval:
+        healthy_streak += 1
+        collapse_streak = 0
+    else:
+        collapse_streak = 0
+        healthy_streak = 0
+
+    # Decide.
+    action = None       # tuple of (knob_name, new_value, reason)
+    rec_str = f"{recovery_t:.0f}s" if recovery_t is not None else "n/a"
+    log_line = (f"[autotune] cycle={cycles} peak={peak_rate:.1f}Hz "
+                f"recovery={rec_str} active={active_t:.0f}s "
+                f"interval={interval:.0f}s collapse_streak={collapse_streak} "
+                f"healthy_streak={healthy_streak}")
+
+    if collapse_streak >= 2:
+        # Rule 1: collapsed → bump noise floor.
+        try:
+            cur = float(brain.snn_tune_get().get('noise_rate_hz', 20.0))
+        except Exception:
+            cur = 20.0
+        new = _autotune_clamp('noise_rate_hz', cur + 10.0)
+        if new != cur:
+            action = ('noise_rate_hz', new,
+                      f'rescue: collapse_streak={collapse_streak}')
+    elif recovery_t is not None and recovery_t > 0.7 * interval:
+        # Rule 2: recovery slow → lengthen interval.
+        new = _autotune_clamp('sleep_interval', interval + 60.0)
+        if new != interval:
+            action = ('sleep_interval', new,
+                      f'recovery_t={recovery_t:.0f}s > 0.7*interval')
+    elif peak_rate > 1000.0:
+        # Rule 3: overshooting → dampen scale.
+        try:
+            cur = float(brain.snn_tune_get().get('max_scale_dead', 1.05))
+        except Exception:
+            cur = 1.05
+        new = _autotune_clamp('max_scale_dead', cur - 0.005)
+        if new != cur:
+            action = ('max_scale_dead', new,
+                      f'peak={peak_rate:.0f}Hz > 1000')
+    elif 5.0 <= peak_rate < 30.0:
+        # Rule 4: under-recovery (not collapsed) → boost scale.
+        try:
+            cur = float(brain.snn_tune_get().get('max_scale_dead', 1.05))
+        except Exception:
+            cur = 1.05
+        new = _autotune_clamp('max_scale_dead', cur + 0.005)
+        if new != cur:
+            action = ('max_scale_dead', new,
+                      f'peak={peak_rate:.0f}Hz in [5,30)')
+    elif healthy_streak >= 3:
+        # Rule 5: sustained healthy → taper rescue noise.
+        try:
+            cur = float(brain.snn_tune_get().get('noise_rate_hz', 20.0))
+        except Exception:
+            cur = 20.0
+        if cur > 20.0:
+            new = _autotune_clamp('noise_rate_hz', cur - 5.0)
+            if new != cur:
+                action = ('noise_rate_hz', new,
+                          f'healthy_streak={healthy_streak}, taper noise')
+
+    # Update streak counters back into shared state.
+    with _runtime_state_lock:
+        _runtime_state['autotune_collapse_streak'] = collapse_streak
+        _runtime_state['autotune_healthy_streak'] = healthy_streak
+
+    # Log + (maybe) apply.
+    if action is None:
+        logger.info(f"{log_line} action=none")
+        return
+    knob, new_val, reason = action
+    if not enabled:
+        logger.info(f"{log_line} action=DRY_RUN {knob}={new_val:g} ({reason})")
+        with _runtime_state_lock:
+            _runtime_state['autotune_last_action'] = (
+                f'DRY_RUN {knob}={new_val:g} ({reason})')
+        return
+    # Apply for real.
+    try:
+        if knob == 'sleep_interval':
+            with _runtime_state_lock:
+                _runtime_state['sleep_interval_sec'] = float(new_val)
+            _save_persistent_snn_tune('sleep_interval_sec', new_val, logger)
+        else:
+            brain.snn_tune(knob, float(new_val))
+            _save_persistent_snn_tune(knob, new_val, logger)
+        logger.info(f"{log_line} action=APPLY {knob}={new_val:g} ({reason})")
+        with _runtime_state_lock:
+            _runtime_state['autotune_last_action'] = (
+                f'APPLY {knob}={new_val:g} ({reason})')
+    except Exception as e:
+        logger.warning(f"{log_line} action=APPLY {knob}={new_val:g} FAILED: {e}")
+
 
 # ---------------------------------------------------------------------------
 # Protocol helpers
@@ -701,24 +942,43 @@ class BrainService:
     def _cmd_snn_tune(self, req):
         """Set a runtime-tunable SNN parameter.
         Request: {"name": "rstdp_lr", "value": 0.0002}
-        Valid names: rstdp_lr, rstdp_baseline_alpha, target_rate,
-        homeo_min_scale, homeo_max_scale, max_scale_dead,
-        dead_threshold, metabolic_cap.
+        Valid names: any of the C-level SNN knobs (rstdp_lr,
+        rstdp_baseline_alpha, target_rate, homeo_min_scale, homeo_max_scale,
+        max_scale_dead, dead_threshold, metabolic_cap, noise_rate_hz, ...)
+        OR daemon-level knobs (autotune_enabled, sleep_interval_sec).
         """
         name = req.get("name")
         value = req.get("value")
         if name is None or value is None:
             return {"error": "snn_tune requires 'name' and 'value'"}
         try:
-            self.brain.snn_tune(str(name), float(value))
+            if name == 'autotune_enabled':
+                with _runtime_state_lock:
+                    _runtime_state['autotune_enabled'] = bool(float(value))
+            elif name == 'sleep_interval_sec':
+                # Clamp through the autotuner's bounds so a typo can't
+                # park the daemon in a useless 1-second cycle.
+                clamped = _autotune_clamp('sleep_interval', float(value))
+                with _runtime_state_lock:
+                    _runtime_state['sleep_interval_sec'] = clamped
+                value = clamped
+            else:
+                self.brain.snn_tune(str(name), float(value))
         except ValueError as e:
             return {"error": str(e)}
         _save_persistent_snn_tune(name, value, logger)
         return {"ok": True, "name": name, "value": float(value)}
 
     def _cmd_snn_tune_get(self, _req):
-        """Return dict of all current SNN tunable parameter values."""
-        return {"params": self.brain.snn_tune_get()}
+        """Return dict of all current SNN tunable parameter values, plus
+        the daemon-level knobs (autotune_enabled, sleep_interval_sec)."""
+        params = dict(self.brain.snn_tune_get() or {})
+        with _runtime_state_lock:
+            params['autotune_enabled'] = float(_runtime_state['autotune_enabled'])
+            params['sleep_interval_sec'] = _runtime_state['sleep_interval_sec']
+            params['autotune_cycles_observed'] = _runtime_state['autotune_cycles_observed']
+            params['autotune_last_action'] = _runtime_state['autotune_last_action']
+        return {"params": params}
 
     def _cmd_snn_pop_stats(self, _req):
         """Return per-population live firing-rate snapshot."""
@@ -2909,6 +3169,14 @@ def main():
     # consolidation, synaptic downscaling, microglia pruning, and
     # glymphatic clearance never fire.
     _sleep_interval_sec = max(60, args.sleep_interval_min * 60)
+    # Seed shared state so the autotuner sees the operator-configured initial
+    # interval and any persisted overrides applied by _load_persistent_snn_tunes.
+    with _runtime_state_lock:
+        if 'sleep_interval_sec' in _runtime_state and _runtime_state['sleep_interval_sec'] != 900:
+            # A persisted override was applied earlier — keep it.
+            _sleep_interval_sec = _runtime_state['sleep_interval_sec']
+        else:
+            _runtime_state['sleep_interval_sec'] = float(_sleep_interval_sec)
 
     # Resolve the CYCLE_SLEEP_WAKE constant once (available in builds with the
     # cycle-coordinator bindings; fall back to the enum's integer value on
@@ -2964,6 +3232,10 @@ def main():
                         last_log_ts = _now
                         last_state = state
                     # --- PERIODIC trigger ---
+                    # Re-read interval each iteration so the autotuner can
+                    # mutate it at runtime via _runtime_state.
+                    with _runtime_state_lock:
+                        _sleep_interval_sec = float(_runtime_state['sleep_interval_sec'])
                     elapsed_since_cycle = _now - last_periodic_cycle_ts
                     if elapsed_since_cycle >= _sleep_interval_sec:
                         logger.info(
@@ -2987,6 +3259,11 @@ def main():
                                            _scerr)
                         if _cycle_ok:
                             _notify(int((time.time() - _t_cyc) * 1_000_000))
+                            _cyc_dur = time.time() - _t_cyc
+                            with _runtime_state_lock:
+                                _runtime_state['sleep_last_cycle_complete_ts'] = time.time()
+                                _runtime_state['sleep_last_cycle_duration_s'] = _cyc_dur
+                                _runtime_state['sleep_cycles_completed'] += 1
                         last_periodic_cycle_ts = time.time()
                     # --- PRESSURE-DRIVEN trigger (between periodic cycles) ---
                     elif needed:
@@ -3027,6 +3304,20 @@ def main():
     logger.info("[sleep] scheduler thread started (periodic every %d min, "
                 "plus pressure-driven triggers, 30s poll interval)",
                 args.sleep_interval_min)
+
+    # SNN auto-tune controller — defaults to observation-only mode. Set
+    # autotune_enabled=1 in snn_tune.json (or via the snn_tune socket
+    # command) to let it actually apply knob changes.
+    _autotune_thread = threading.Thread(
+        target=_snn_autotuner,
+        args=(brain, service, shutdown_event, logger),
+        name="snn-autotuner", daemon=True)
+    _autotune_thread.start()
+    with _runtime_state_lock:
+        _at_enabled = _runtime_state['autotune_enabled']
+    logger.info("[autotune] controller thread started (mode=%s, "
+                "30s observation interval)",
+                'APPLY' if _at_enabled else 'DRY_RUN')
 
     try:
         daemon.serve_forever()

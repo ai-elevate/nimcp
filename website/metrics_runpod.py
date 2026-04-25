@@ -6,7 +6,61 @@ BRAIN_HOST = '127.0.0.1'
 BRAIN_PORT = 9900
 METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'metrics.json')
 STEP_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.step_cache.json')
+HISTORY_TSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'metrics_history.tsv')
 INTERVAL = 60
+
+# Stable column order for the history TSV. New metrics get appended to this
+# list — never inserted in the middle, never removed — so awk/pandas readers
+# can rely on positions across days. Missing values are written as empty
+# strings; nested values (dicts) are flattened with dot-paths up front.
+HISTORY_FIELDS = [
+    'timestamp', 'ok', 'training_active',
+    'uptime', 'learn_calls', 'infer_calls', 'errors', 'neuron_count',
+    'current_stage', 'current_step',
+    'ann_loss', 'cnn_loss', 'snn_loss', 'lnn_loss', 'fno_loss',
+    'ann_steps', 'fno_steps', 'fno_params',
+    'hnn_active', 'hnn_energy', 'hnn_energy_deviation',
+    'snn_spikes', 'snn_rate_hz', 'snn_sparsity',
+    'stage2.active_engines', 'stage2.fep_free_energy',
+    'stage2.attention_strength', 'stage2.warm_start_complete',
+    'stage2.inference_time_ms',
+]
+
+
+def _flatten(metrics):
+    """Flatten nested dicts (e.g. metrics['stage2']['fep_free_energy']) to
+    dot-path keys, so the TSV stays a flat 2-D table."""
+    flat = {}
+    for k, v in metrics.items():
+        if isinstance(v, dict):
+            for k2, v2 in v.items():
+                flat[f'{k}.{k2}'] = v2
+        else:
+            flat[k] = v
+    return flat
+
+
+def write_history_row(metrics):
+    """Append one row to the history TSV. Writes the header once, on first
+    create. Best-effort — TSV write failures must never block the JSON path."""
+    try:
+        flat = _flatten(metrics)
+        new_file = not os.path.exists(HISTORY_TSV)
+        with open(HISTORY_TSV, 'a') as f:
+            if new_file:
+                f.write('\t'.join(HISTORY_FIELDS) + '\n')
+            row = []
+            for col in HISTORY_FIELDS:
+                v = flat.get(col, '')
+                if isinstance(v, bool):
+                    row.append('1' if v else '0')
+                elif isinstance(v, float):
+                    row.append(f'{v:.6g}')
+                else:
+                    row.append(str(v))
+            f.write('\t'.join(row) + '\n')
+    except Exception as e:
+        print(f'[metrics] history TSV write failed: {e}', flush=True)
 
 
 def query(cmd, timeout=15):
@@ -194,6 +248,7 @@ if __name__ == '__main__':
             with open(tmp, 'w') as f:
                 json.dump(m, f)
             os.rename(tmp, METRICS_FILE)
+            write_history_row(m)
             print(f'[metrics] ok={m["ok"]} learn={m.get("learn_calls","?")} '
                   f'step={m.get("current_step","?")} active={m.get("training_active","?")}',
                   flush=True)
