@@ -437,9 +437,21 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                     atomic_fetch_add(&entry->messages_received, 1);
                 } else {
                     broadcast_failures++;
-                    /* Message loss reporting: broadcast queue full — continue to next */
-                    LOG_WARN("bio_router: broadcast handler %u (%s) failed for msg_type=0x%04X (err=%d)",
-                             entry->module_id, entry->module_name, header->type, enq_result);
+                    /* QUEUE_FULL is "subscriber too slow / no consumer loop" — common
+                     * enough (e.g. modules registered without a drain tick) that
+                     * per-message WARNs flood the log. The aggregate-failure
+                     * LOG_WARN below still fires once per broadcast, so the
+                     * problem is still visible. Other enqueue errors (timeout,
+                     * mutex failure, shutdown) remain WARN. */
+                    if (enq_result == NIMCP_ERROR_QUEUE_FULL) {
+                        LOG_DEBUG("bio_router: broadcast handler %u (%s) inbox full for "
+                                  "msg_type=0x%04X — dropping",
+                                  entry->module_id, entry->module_name, header->type);
+                    } else {
+                        LOG_WARN("bio_router: broadcast handler %u (%s) failed for "
+                                 "msg_type=0x%04X (err=%d)",
+                                 entry->module_id, entry->module_name, header->type, enq_result);
+                    }
 
                     /* Dead-letter tracking: record dropped message type */
                     nimcp_platform_mutex_lock(&g_router->stats_mutex);
