@@ -51,6 +51,10 @@ class CuriositySelector:
         """Alias for pick_fact — allows drop-in replacement of source."""
         return self.pick_fact(preferred_domain=preferred_domain)
 
+    def get_sensory(self):
+        """Pass-through for sensory queries — curiosity does not bias these."""
+        return self.source.get_sensory()
+
     def pick_object(self) -> tuple[str, str]:
         """Return (name, description) for an object-type stimulus."""
         if random.random() < self.bias:

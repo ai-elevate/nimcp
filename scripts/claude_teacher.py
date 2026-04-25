@@ -79,7 +79,7 @@ def _save_encode_cache():
         os.makedirs(os.path.dirname(_ENCODE_CACHE_PATH), exist_ok=True)
         texts = list(_encode_cache.keys())
         embeddings = [_encode_cache[t] for t in texts]
-        tmp_path = _ENCODE_CACHE_PATH + ".tmp"
+        tmp_path = _ENCODE_CACHE_PATH + ".tmp.npz"
         np.savez_compressed(tmp_path,
                             texts=np.array(texts, dtype=object),
                             embeddings=np.array(embeddings))
