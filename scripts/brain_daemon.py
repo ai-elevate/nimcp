@@ -76,6 +76,7 @@ import sys
 import threading
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 
 # Add scripts/ to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -93,6 +94,62 @@ DEFAULT_SNN_NEURONS = 1_800_000    # Hierarchical SNN target
 DEFAULT_LNN_NEURONS = 512          # LNN cap (O(n²) adjoint, sweet spot)
 CHECKPOINT_MIN_BYTES_PER_NEURON = 50  # Minimum checkpoint bytes per neuron
 CHECKPOINT_MIN_SIZE = 5_000_000    # Absolute minimum checkpoint size (5 MB)
+
+# Runtime-tunable SNN knob persistence. Any value set via the snn_tune
+# command is written here so it survives daemon restarts. On startup the
+# daemon reapplies every entry after configure_cognitive(). Living in the
+# checkpoint dir means the rsync-back to Hetzner mirrors it for free.
+SNN_TUNE_PERSIST_PATH = "/workspace/nimcp/checkpoints/athena/snn_tune.json"
+
+
+def _load_persistent_snn_tunes(brain, logger):
+    """Reapply all knob overrides saved from previous sessions. Best-effort:
+    a malformed file or unknown name should never block daemon startup."""
+    try:
+        if not os.path.exists(SNN_TUNE_PERSIST_PATH):
+            logger.info("[snn_tune] no persistent overrides file at %s",
+                        SNN_TUNE_PERSIST_PATH)
+            return
+        with open(SNN_TUNE_PERSIST_PATH) as f:
+            overrides = json.load(f)
+    except Exception as e:
+        logger.warning("[snn_tune] failed to load persistent overrides: %s", e)
+        return
+    if not isinstance(overrides, dict) or not overrides:
+        return
+    applied = 0
+    for name, value in overrides.items():
+        try:
+            brain.snn_tune(str(name), float(value))
+            applied += 1
+        except Exception as e:
+            logger.warning("[snn_tune] persistent override %s=%s failed: %s",
+                           name, value, e)
+    logger.info("[snn_tune] reapplied %d persistent override(s) from %s",
+                applied, SNN_TUNE_PERSIST_PATH)
+
+
+def _save_persistent_snn_tune(name, value, logger):
+    """Merge a single knob override into the persist file. Atomic write so
+    a crash mid-write doesn't leave the file half-formed."""
+    try:
+        existing = {}
+        if os.path.exists(SNN_TUNE_PERSIST_PATH):
+            try:
+                with open(SNN_TUNE_PERSIST_PATH) as f:
+                    existing = json.load(f) or {}
+                if not isinstance(existing, dict):
+                    existing = {}
+            except Exception:
+                existing = {}
+        existing[str(name)] = float(value)
+        os.makedirs(os.path.dirname(SNN_TUNE_PERSIST_PATH), exist_ok=True)
+        tmp = SNN_TUNE_PERSIST_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(existing, f, indent=2, sort_keys=True)
+        os.replace(tmp, SNN_TUNE_PERSIST_PATH)
+    except Exception as e:
+        logger.warning("[snn_tune] failed to persist %s=%s: %s", name, value, e)
 
 # ---------------------------------------------------------------------------
 # Protocol helpers
@@ -567,6 +624,13 @@ class BrainService:
         if True:  # RWLock in handle()
             return {"neuron_count": self.brain.get_neuron_count()}
 
+    def _cmd_get_alloc_stats(self, _req):
+        """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
+        try:
+            return {"alloc_stats": self.brain.get_alloc_stats()}
+        except Exception as e:
+            return {"error": f"get_alloc_stats: {e}"}
+
     # --- Per-network training toggles (dynamic, no rebuild required) ---
 
     def _cmd_set_train_ann(self, req):
@@ -649,6 +713,7 @@ class BrainService:
             self.brain.snn_tune(str(name), float(value))
         except ValueError as e:
             return {"error": str(e)}
+        _save_persistent_snn_tune(name, value, logger)
         return {"ok": True, "name": name, "value": float(value)}
 
     def _cmd_snn_tune_get(self, _req):
@@ -1428,7 +1493,11 @@ class BrainDaemon:
         self._ro_server_sock = None
         self._lock_fd = None
         self._running = False
-        self._worker_semaphore = threading.Semaphore(max_workers)
+        # Worker pool reuses threads instead of spawning one per connection
+        # (which leaked 8 MB stack mmaps the glibc cache couldn't absorb,
+        #  growing VmData ~30 MB/min and OOM-killing the brain every 4 h).
+        self._pool = ThreadPoolExecutor(max_workers=max_workers,
+                                        thread_name_prefix="brainsvc")
 
     def _acquire_socket_lock(self):
         """Acquire exclusive flock on the socket lock file.
@@ -1520,13 +1589,11 @@ class BrainDaemon:
                     continue
 
                 is_readonly = (self._ro_server_sock and sock is self._ro_server_sock)
-                self._worker_semaphore.acquire()
-                t = threading.Thread(
-                    target=self._handle_conn,
-                    args=(conn,),
-                    kwargs={'readonly': is_readonly},
-                    daemon=True)
-                t.start()
+                # Pool bounds concurrency to max_workers and reuses threads.
+                # If the pool is saturated, submit() returns immediately and the
+                # task waits in the pool's internal queue — same back-pressure
+                # behavior as the prior semaphore.acquire().
+                self._pool.submit(self._handle_conn, conn, readonly=is_readonly)
 
     # Heartbeat constants
     HEARTBEAT_WARN_SECONDS = 60
@@ -1597,7 +1664,7 @@ class BrainDaemon:
                 conn.close()
             except Exception:
                 pass
-            self._worker_semaphore.release()
+            # Pool reclaims the worker automatically; no semaphore to release.
 
     def rebind(self):
         """Re-create the listening socket (SIGHUP handler)."""
@@ -2674,6 +2741,11 @@ def main():
         logger.warning("configure_cognitive() failed: %s — sleep-wake and "
                        "related subsystems may be inert", _cc_err)
 
+    # Reapply any SNN knob overrides saved from previous sessions. Must
+    # run AFTER configure_cognitive (which may reset some defaults) so
+    # the persistent values win.
+    _load_persistent_snn_tunes(brain, logger)
+
     # One-shot catch-up sleep cycle after resume. Previous sessions ran
     # without enable_sleep_wake_cycle, so 1000s of learn steps accumulated
     # without memory replay, synaptic downscaling, or glymphatic clearance.
@@ -2975,19 +3047,14 @@ def main():
     except Exception:
         pass
 
-    # Wait for any in-flight requests to finish (workers hold the brain lock)
+    # Wait for any in-flight requests to finish (workers hold the brain lock).
+    # Pool.shutdown(wait=True) blocks until all submitted tasks have completed,
+    # then joins worker threads. Replaces the prior semaphore-based drain.
     logger.info("Shutdown: waiting for in-flight requests to complete...")
-    for _ in range(args.workers):
-        # Acquire all worker permits = all workers have finished
-        if not daemon._worker_semaphore.acquire(timeout=30):
-            logger.warning("Shutdown: timed out waiting for a worker thread")
-            break
-    # Release them back (cleanup)
-    for _ in range(args.workers):
-        try:
-            daemon._worker_semaphore.release()
-        except ValueError:
-            break
+    try:
+        daemon._pool.shutdown(wait=True)
+    except Exception as e:
+        logger.warning("Shutdown: pool shutdown raised %s", e)
 
     logger.info("Shutdown: saving final checkpoint...")
     checkpointer.save_now()
