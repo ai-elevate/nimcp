@@ -1,0 +1,81 @@
+[Unit]
+# NIMCP V2 ("Hera") brain daemon — Rust rewrite.
+# Companion to (and eventually replacement for) the legacy V1
+# `nimcp.service` integrated_demo binary.
+Description=NIMCP V2 (Hera) brain daemon
+Documentation=https://github.com/redmage123/nimcp
+After=network.target
+# Optional dependency on a checkpoint-archival service if one exists.
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nimcp
+Group=nimcp
+
+# V2 lives under its own deploy root so V1 + V2 can coexist on a single
+# host during the migration. The Rust binary is fully self-contained
+# (no shared .so dependencies beyond libc + cudart when --features cuda
+# was enabled at build time), so LD_LIBRARY_PATH is not needed.
+WorkingDirectory=/opt/nimcp-v2
+
+# State + log dirs the brain owns. The unit assumes systemd-tmpfiles
+# (or the deployer) created `/var/lib/nimcp-v2` and `/var/log/nimcp-v2`
+# with `nimcp:nimcp` ownership.
+Environment="NIMCP_V2_STATE=/var/lib/nimcp-v2"
+Environment="NIMCP_V2_LOG=/var/log/nimcp-v2"
+# Tracing verbosity — operations want INFO; debug runs override via
+# `systemctl edit nimcp-v2-daemon` setting RUST_LOG=debug.
+Environment="RUST_LOG=info,nimcp_brain=info,nimcp_snn=info,nimcp_lnn=info,nimcp_v2_daemon=info"
+
+# The Unix socket lives under /run so it goes away on reboot. systemd's
+# RuntimeDirectory= directive auto-creates and chowns the per-service
+# subdir.
+RuntimeDirectory=hera
+RuntimeDirectoryMode=0750
+
+# Daemon binary + args. The full BrainConfig (including backend=gpu)
+# lives in /etc/nimcp-v2/config.json so operators can edit it without
+# touching the unit file.
+ExecStart=/opt/nimcp-v2/bin/nimcp-v2-daemon \
+    --socket /run/hera/brain.sock \
+    --state-dir /var/lib/nimcp-v2 \
+    --metrics-path /var/lib/nimcp-v2/metrics.json \
+    --training-log /var/log/nimcp-v2/training.log \
+    --config-json /etc/nimcp-v2/config.json
+
+# Restart policy — match V1's tolerance: 3 fast restarts in 60s, then back off.
+# V2's daemon is more crash-resistant than V1 (no NIMCP_THROW_TO_IMMUNE
+# infinite-recursion class), so a Restart= of `on-failure` is honest:
+# clean shutdowns from a SIGTERM should NOT bounce.
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=60s
+StartLimitBurst=3
+
+# Resource limits. The V2 daemon's working set is dominated by the SNN
+# CSR + LIF buffers; 1.8M neurons + 64 fan-in ≈ 2 GB resident at most.
+# Cap RSS at 16 GB (well above headroom) so a memory-leak regression
+# trips OOM-kill before exhausting host memory.
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryHigh=12G
+MemoryMax=16G
+
+# Security hardening — same posture as V1.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nimcp-v2 /var/log/nimcp-v2 /run/hera
+
+# CPU affinity is intentionally NOT pinned — the GPU forward path
+# benefits from any of the cores; pinning costs more than it saves.
+
+# Logging.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nimcp-v2-daemon
+
+[Install]
+WantedBy=multi-user.target
