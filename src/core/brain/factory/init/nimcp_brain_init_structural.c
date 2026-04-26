@@ -514,6 +514,51 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
 
     brain->num_hypercolumns = num_hypercolumns;
 
+    // Step 2b: Actually populate the hypercolumn slots — without this the
+    // array of pointers stays NULL and nothing in brain_decide can call
+    // hypercolumn_compute(). Each HC gets minicolumns_per_hc minicolumns,
+    // softmax competition, and lateral inhibition tuned for sparse activation.
+    {
+        hypercolumn_config_t hc_cfg = {0};
+        hc_cfg.num_minicolumns          = minicolumns_per_hc;
+        hc_cfg.minicolumn_configs       = NULL;          // auto-generate
+        hc_cfg.feature_space_min        = 0.0F;
+        hc_cfg.feature_space_max        = 1.0F;
+        hc_cfg.competition              = CC_COMPETITION_SOFTMAX;
+        hc_cfg.k_winners                = 1;
+        hc_cfg.temperature              = 1.0F;
+        hc_cfg.lateral_inhibition_strength = 0.5F;
+        hc_cfg.lateral_inhibition_sigma1   = 1.0F;
+        hc_cfg.lateral_inhibition_sigma2   = 3.0F;
+
+        uint32_t hc_created = 0;
+        for (uint32_t i = 0; i < num_hypercolumns; i++) {
+            // Spread topographic positions across a unit grid so plasticity
+            // can use them later. Shape doesn't matter — we just need stable
+            // distinct coordinates.
+            hc_cfg.topographic_x = (float)(i % 4) * 0.25F;
+            hc_cfg.topographic_y = (float)(i / 4) * 0.25F;
+            brain->hypercolumns[i] = hypercolumn_create(brain->cortical_column_pool, &hc_cfg);
+            if (brain->hypercolumns[i]) {
+                hc_created++;
+            } else {
+                LOG_WARNING("hypercolumn_create failed for slot %u — pool exhausted?", i);
+            }
+        }
+        LOG_INFO("Hypercolumns populated: %u/%u (each with %u minicolumns)",
+                 hc_created, num_hypercolumns, minicolumns_per_hc);
+        if (hc_created == 0) {
+            LOG_WARNING("All hypercolumn_create calls failed — disabling cortical columns");
+            cortical_column_pool_destroy(brain->cortical_column_pool);
+            brain->cortical_column_pool = NULL;
+            nimcp_free(brain->hypercolumns);
+            brain->hypercolumns = NULL;
+            brain->num_hypercolumns = 0;
+            brain->enable_cortical_columns = false;
+            return true;
+        }
+    }
+
     // Step 3: Initialize laminar structure if enabled
     if (brain->config.enable_laminar_structure) {
         // Create default laminar structure for cortical region

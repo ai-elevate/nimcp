@@ -705,6 +705,30 @@ struct brain_struct {
     bool topographic_needs_lazy_init;                 // Flag: topographic maps need lazy init
     uint64_t last_cortical_update_us;                 // Last cortical column update timestamp
 
+    // Ternary WTA wrapper around the base hypercolumns. Drives sparse winner-
+    // take-all selection and feeds (via column_to_decision_proj) into the
+    // brain's decision output. Population gated by enable_cortical_ternary.
+    // Forward-decl typedefs — the ternary header is included from .c files
+    // that need full struct access; here we only need pointer-sized fields.
+    struct cc_ternary_connectivity_fd;
+    struct cc_ternary_hypercolumn_fd;
+    void* ternary_connectivity;            // cc_ternary_connectivity_t* — shared lateral connectivity
+    void** ternary_hypercolumns;           // cc_ternary_hypercolumn_t** — one per base hypercolumn
+    uint32_t num_ternary_hypercolumns;     // == num_hypercolumns when ON
+    bool enable_cortical_ternary;          // master enable flag
+
+    // Column-to-decision projection (zero-init on old checkpoints, learned
+    // online from the prediction error in brain_learn_vector). Shape:
+    // [column_feature_dim × output_size]. Blended additively into the
+    // adaptive network's decision output with column_blend_alpha.
+    float*    column_to_decision_proj;                // row-major, may be NULL when columns OFF
+    uint32_t  column_feature_dim;                     // == num_hypercolumns × minicolumns_per_hc
+    float     column_blend_alpha;                     // default 0.1
+    float*    column_feature_buf;                     // scratch: stitched hypercolumn distributions
+
+    uint64_t  cortical_decisions;                     // counter for diagnostics
+    uint64_t  cortical_plasticity_updates;            // counter for diagnostics
+
     // Sparse coding system — K-WTA sparsity enforcement on output layer
     // Forces only ~3% of output neurons to fire per input, breaking mode collapse
     // by requiring different inputs to activate different neuron subsets.
