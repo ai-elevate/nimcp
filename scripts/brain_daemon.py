@@ -181,7 +181,7 @@ def _save_persistent_snn_tune(name, value, logger):
 #      → noise_rate_hz += 10 (rescue jolt)
 #   2. Recovery too slow (recovery_time > 0.7 × interval):
 #      → sleep_interval += 60s   (give more wake time)
-#   3. Peak too high (peak_rate > 1000 Hz):
+#   3. Peak too high (peak_rate > 500 Hz):
 #      → max_scale_dead -= 0.005 (dampen overshoot)
 #   4. Peak too low (peak_rate < 30 Hz, NOT collapsed):
 #      → max_scale_dead += 0.005 (boost recovery rate)
@@ -327,7 +327,7 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
         if new != interval:
             action = ('sleep_interval', new,
                       f'recovery_t={recovery_t:.0f}s > 0.7*interval')
-    elif peak_rate > 1000.0:
+    elif peak_rate > 500.0:
         # Rule 3: overshooting → dampen scale.
         try:
             cur = float(brain.snn_tune_get().get('max_scale_dead', 1.05))
@@ -336,7 +336,7 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
         new = _autotune_clamp('max_scale_dead', cur - 0.005)
         if new != cur:
             action = ('max_scale_dead', new,
-                      f'peak={peak_rate:.0f}Hz > 1000')
+                      f'peak={peak_rate:.0f}Hz > 500')
     elif 5.0 <= peak_rate < 30.0:
         # Rule 4: under-recovery (not collapsed) → boost scale.
         try:
@@ -3184,6 +3184,7 @@ def main():
     _CYCLE_SLEEP_WAKE = getattr(nimcp, "CYCLE_SLEEP_WAKE", 2)
 
     def _sleep_scheduler():
+        nonlocal _sleep_interval_sec
         last_state = 0  # AWAKE
         last_log_ts = 0.0
         last_periodic_cycle_ts = time.time()
