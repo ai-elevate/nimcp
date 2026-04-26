@@ -668,6 +668,9 @@ impl LifGpu {
             refrac,
             spike,
             n_neurons: self.n_neurons,
+            // GPU LIF runs in current-mode only (per V1 design lock —
+            // CB forces CPU fallback). Snapshot is therefore CB-disabled.
+            conductance: None,
         })
     }
 }

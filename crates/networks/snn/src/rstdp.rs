@@ -369,6 +369,617 @@ pub fn step_rstdp(
     n_moved
 }
 
+// -------------------------------------------------------------------------
+// GPU backend (feature-gated) — Phase 9d
+// -------------------------------------------------------------------------
+
+#[cfg(feature = "cuda")]
+pub use gpu::RstdpGpu;
+
+/// NVRTC kernel source — three R-STDP kernels in one module so they
+/// share a single compile/load. Numeric semantics match
+/// [`step_rstdp`] exactly; the equivalence test below is the
+/// regression gate against drift.
+///
+/// Kernels:
+///   - `rstdp_decay_eligibility` — `e[k] *= elig_decay`
+///   - `rstdp_accumulate_pairs`  — pre+post scan combined; updates
+///     eligibility AND last-spike tables. Per-row parallelism (one
+///     thread per post-neuron); stays serial within a row to preserve
+///     the V1 ordering invariant (last_pre updated after pre-scan,
+///     before post-scan, on the SAME row).
+///   - `rstdp_apply_reward`      — `dw = modulator * e[k]; w[k] =
+///     clamp(w[k] + dw, w_min, w_max)`. Atomic counter for n_moved.
+#[cfg(feature = "cuda")]
+const RSTDP_KERNEL_SRC: &str = r#"
+extern "C" __global__ void rstdp_decay_eligibility(
+    float* eligibility,
+    int n_syn,
+    float elig_decay
+) {
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    if (k >= n_syn) return;
+    eligibility[k] *= elig_decay;
+}
+
+// Branchless STDP kernel — same math as crates/plasticity stdp_weight_delta.
+__device__ __forceinline__ float stdp_pair(
+    float pre_t, float post_t,
+    float a_plus, float a_minus, float tau_plus, float tau_minus
+) {
+    if (tau_plus <= 0.0f || tau_minus <= 0.0f) return 0.0f;
+    float dt = post_t - pre_t;
+    if (dt > 0.0f) {
+        return a_plus * __expf(-dt / tau_plus);
+    } else if (dt < 0.0f) {
+        return -a_minus * __expf(dt / tau_minus);
+    }
+    return 0.0f;
+}
+
+extern "C" __global__ void rstdp_accumulate_pairs(
+    float* eligibility,
+    float* last_pre_spike_ms,
+    float* last_post_spike_ms,
+    const unsigned int* row_ptr,
+    const unsigned int* col_idx,
+    const unsigned char* pre_spikes,
+    const unsigned char* post_spikes,
+    int n_post,
+    int n_pre,
+    int n_syn,
+    float t_ms,
+    float a_plus, float a_minus,
+    float tau_plus, float tau_minus
+) {
+    int j_post = blockIdx.x * blockDim.x + threadIdx.x;
+    if (j_post >= n_post) return;
+
+    unsigned int row_start = row_ptr[j_post];
+    unsigned int row_end   = row_ptr[j_post + 1];
+    if (row_start > row_end || (int)row_end > n_syn) return;
+
+    // Pre-spike scan — uses OLD last_post[j_post].
+    float last_post_j = last_post_spike_ms[j_post];
+    for (unsigned int syn = row_start; syn < row_end; ++syn) {
+        unsigned int i_pre = col_idx[syn];
+        if ((int)i_pre >= n_pre) continue;
+        if (pre_spikes[i_pre] == 0) continue;
+        eligibility[syn] += stdp_pair(t_ms, last_post_j,
+                                      a_plus, a_minus, tau_plus, tau_minus);
+    }
+    // Promote pre-spike timestamps. Many threads write the same
+    // last_pre_spike_ms[i_pre] (one per post-row that contains pre i),
+    // but they all write the same value (t_ms), so the race is benign.
+    for (unsigned int syn = row_start; syn < row_end; ++syn) {
+        unsigned int i_pre = col_idx[syn];
+        if ((int)i_pre >= n_pre) continue;
+        if (pre_spikes[i_pre] != 0) {
+            last_pre_spike_ms[i_pre] = t_ms;
+        }
+    }
+
+    // Post-spike scan — uses last_pre table (now containing this step's
+    // promotions).
+    if (post_spikes[j_post] != 0) {
+        for (unsigned int syn = row_start; syn < row_end; ++syn) {
+            unsigned int i_pre = col_idx[syn];
+            if ((int)i_pre >= n_pre) continue;
+            float last_pre_i = last_pre_spike_ms[i_pre];
+            eligibility[syn] += stdp_pair(last_pre_i, t_ms,
+                                          a_plus, a_minus, tau_plus, tau_minus);
+        }
+        last_post_spike_ms[j_post] = t_ms;
+    }
+}
+
+extern "C" __global__ void rstdp_apply_reward(
+    float* weights,
+    const float* eligibility,
+    int n_syn,
+    float modulator,
+    float w_min, float w_max,
+    unsigned int* n_moved
+) {
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    if (k >= n_syn) return;
+    float dw = modulator * eligibility[k];
+    if (dw == 0.0f) return;
+    float new_w = weights[k] + dw;
+    if (new_w < w_min) new_w = w_min;
+    if (new_w > w_max) new_w = w_max;
+    if (new_w != weights[k]) {
+        weights[k] = new_w;
+        atomicAdd(n_moved, 1u);
+    }
+}
+"#;
+
+#[cfg(feature = "cuda")]
+mod gpu {
+    use std::sync::Arc;
+
+    use cudarc::driver::{
+        CudaContext, CudaFunction, CudaModule, CudaSlice, CudaStream, LaunchConfig,
+        PushKernelArg,
+    };
+    use nimcp_gpu::GpuError;
+
+    use super::{RSTDP_KERNEL_SRC, RstdpParams, RstdpState, rate_samples_ready};
+    use crate::csr::CsrSynapses;
+
+    fn cuda_err<E: std::fmt::Debug>(e: E) -> GpuError {
+        GpuError::Cuda(format!("{e:?}"))
+    }
+
+    /// GPU-resident R-STDP state + the three compiled kernels.
+    ///
+    /// Eligibility, last-pre/last-post timestamp tables, and the CSR
+    /// topology (`row_ptr`, `col_idx`, `weights`) all live on device
+    /// across calls. Per step only the spike vectors and the scalar
+    /// `n_moved` counter cross the bus.
+    ///
+    /// This is the Phase 9d device-side equivalent of [`super::step_rstdp`].
+    pub struct RstdpGpu {
+        n_syn: u32,
+        n_pre: u32,
+        n_post: u32,
+
+        // Persistent device state (mirrors RstdpState).
+        eligibility: CudaSlice<f32>,
+        last_pre_spike_ms: CudaSlice<f32>,
+        last_post_spike_ms: CudaSlice<f32>,
+
+        // CSR topology (uploaded once, weights re-uploaded if homeostatic
+        // moved them between steps — same convention as CsrGpu).
+        row_ptr: CudaSlice<u32>,
+        col_idx: CudaSlice<u32>,
+        weights: CudaSlice<f32>,
+
+        // Per-step scratch.
+        pre_spikes_buf: CudaSlice<u8>,
+        post_spikes_buf: CudaSlice<u8>,
+        n_moved_dev: CudaSlice<u32>,
+
+        ctx: Arc<CudaContext>,
+        stream: Arc<CudaStream>,
+        #[allow(dead_code)]
+        module: Arc<CudaModule>,
+        decay_kernel: CudaFunction,
+        pair_kernel: CudaFunction,
+        apply_kernel: CudaFunction,
+    }
+
+    impl std::fmt::Debug for RstdpGpu {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("RstdpGpu")
+                .field("n_syn", &self.n_syn)
+                .field("n_pre", &self.n_pre)
+                .field("n_post", &self.n_post)
+                .finish_non_exhaustive()
+        }
+    }
+
+    impl RstdpGpu {
+        /// Upload CSR topology + initialise device-side R-STDP state.
+        ///
+        /// Reuses the caller-supplied [`CudaContext`] (Phase 9b shared
+        /// context contract). State buffers start at zero / `-inf`
+        /// matching [`RstdpState::new`].
+        pub fn new_with_context(
+            ctx: Arc<CudaContext>,
+            csr: &CsrSynapses,
+        ) -> Result<Self, GpuError> {
+            let n_syn = csr.weights.len() as u32;
+            let n_pre = csr.n_pre;
+            let n_post = csr.n_post;
+            if n_syn == 0 || n_pre == 0 || n_post == 0 {
+                return Err(GpuError::Cuda(
+                    "RstdpGpu::new: empty CSR".into(),
+                ));
+            }
+            let stream = ctx.default_stream();
+            let ptx = cudarc::nvrtc::compile_ptx(RSTDP_KERNEL_SRC).map_err(cuda_err)?;
+            let module = ctx.load_module(ptx).map_err(cuda_err)?;
+            let decay_kernel = module
+                .load_function("rstdp_decay_eligibility")
+                .map_err(cuda_err)?;
+            let pair_kernel = module
+                .load_function("rstdp_accumulate_pairs")
+                .map_err(cuda_err)?;
+            let apply_kernel = module
+                .load_function("rstdp_apply_reward")
+                .map_err(cuda_err)?;
+
+            let eligibility: CudaSlice<f32> =
+                stream.alloc_zeros::<f32>(n_syn as usize).map_err(cuda_err)?;
+            let last_pre_init: Vec<f32> = vec![f32::NEG_INFINITY; n_pre as usize];
+            let last_post_init: Vec<f32> = vec![f32::NEG_INFINITY; n_post as usize];
+            let last_pre_spike_ms = stream.memcpy_stod(&last_pre_init).map_err(cuda_err)?;
+            let last_post_spike_ms = stream.memcpy_stod(&last_post_init).map_err(cuda_err)?;
+
+            let row_ptr = stream.memcpy_stod(&csr.row_ptr).map_err(cuda_err)?;
+            let col_idx = stream.memcpy_stod(&csr.col_idx).map_err(cuda_err)?;
+            let weights = stream.memcpy_stod(&csr.weights).map_err(cuda_err)?;
+
+            let pre_spikes_buf: CudaSlice<u8> = stream
+                .alloc_zeros::<u8>(n_pre as usize)
+                .map_err(cuda_err)?;
+            let post_spikes_buf: CudaSlice<u8> = stream
+                .alloc_zeros::<u8>(n_post as usize)
+                .map_err(cuda_err)?;
+            let n_moved_dev: CudaSlice<u32> =
+                stream.alloc_zeros::<u32>(1).map_err(cuda_err)?;
+
+            tracing::info!(n_syn, n_pre, n_post, "rstdp gpu buffers allocated");
+
+            Ok(Self {
+                n_syn,
+                n_pre,
+                n_post,
+                eligibility,
+                last_pre_spike_ms,
+                last_post_spike_ms,
+                row_ptr,
+                col_idx,
+                weights,
+                pre_spikes_buf,
+                post_spikes_buf,
+                n_moved_dev,
+                ctx,
+                stream,
+                module,
+                decay_kernel,
+                pair_kernel,
+                apply_kernel,
+            })
+        }
+
+        /// Mirror [`RstdpGpu::new_with_context`] without a pre-existing context.
+        pub fn new(csr: &CsrSynapses) -> Result<Self, GpuError> {
+            let ctx = CudaContext::new(0).map_err(cuda_err)?;
+            Self::new_with_context(ctx, csr)
+        }
+
+        /// Upload weights back to device — call after any CPU-side
+        /// homeostatic scaling step, mirroring CsrGpu's contract.
+        pub fn upload_weights(&mut self, weights_host: &[f32]) -> Result<(), GpuError> {
+            if weights_host.len() != self.n_syn as usize {
+                return Err(GpuError::Cuda(format!(
+                    "RstdpGpu::upload_weights: len={} expected {}",
+                    weights_host.len(),
+                    self.n_syn
+                )));
+            }
+            self.stream
+                .memcpy_htod(weights_host, &mut self.weights)
+                .map_err(cuda_err)
+        }
+
+        /// Borrow the CUDA context (shared with sibling GPU subsystems).
+        #[must_use]
+        pub fn context(&self) -> &Arc<CudaContext> {
+            &self.ctx
+        }
+
+        /// Run one R-STDP update on device. Mirrors [`super::step_rstdp`]:
+        /// decays eligibility → accumulates pre+post pair credits →
+        /// (optionally) applies reward modulation through the warmup gate
+        /// → bumps `rate_samples`. Returns the count of weights that
+        /// actually moved.
+        ///
+        /// `state` is the **CPU-side** [`RstdpState`] handle: only its
+        /// scalar fields (`reward_trace`, `rate_samples`) are touched here
+        /// — the GPU owns the per-synapse and per-neuron arrays. Keep the
+        /// CPU handle around so checkpoint snapshots can read these
+        /// scalars without an extra device hop.
+        // HOT PATH: called every SNN tick that delivers a reward.
+        #[allow(clippy::too_many_arguments)]
+        #[allow(clippy::float_cmp)] // short-circuit guards, not fuzzy compares
+        pub fn step(
+            &mut self,
+            state: &mut RstdpState,
+            pre_spikes: &[u8],
+            post_spikes: &[u8],
+            reward: f32,
+            t_ms: f32,
+            dt_ms: f32,
+            params: &RstdpParams,
+        ) -> Result<u32, GpuError> {
+            if pre_spikes.len() != self.n_pre as usize
+                || post_spikes.len() != self.n_post as usize
+            {
+                return Err(GpuError::Cuda(format!(
+                    "RstdpGpu::step: spike len mismatch (pre={} expected={}, post={} expected={})",
+                    pre_spikes.len(),
+                    self.n_pre,
+                    post_spikes.len(),
+                    self.n_post,
+                )));
+            }
+
+            // Decay factors — same defensive short-circuit as CPU path.
+            let elig_decay = if params.eligibility_tau_ms <= 0.0 {
+                1.0
+            } else if !dt_ms.is_finite() {
+                0.0
+            } else {
+                (-dt_ms / params.eligibility_tau_ms).exp()
+            };
+            let rew_decay = if params.reward_tau_ms <= 0.0 {
+                1.0
+            } else if !dt_ms.is_finite() {
+                0.0
+            } else {
+                (-dt_ms / params.reward_tau_ms).exp()
+            };
+
+            // 1. Decay eligibility traces (skip when factor == 1.0).
+            if elig_decay != 1.0 {
+                let cfg = LaunchConfig::for_num_elems(self.n_syn);
+                let mut builder = self.stream.launch_builder(&self.decay_kernel);
+                builder.arg(&mut self.eligibility);
+                let n_syn_i32 = self.n_syn as i32;
+                builder.arg(&n_syn_i32);
+                builder.arg(&elig_decay);
+                // SAFETY: kernel signature
+                //   (float* eligibility, int n_syn, float decay)
+                // matches the three args pushed above.
+                unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+            }
+
+            // 2. Decay reward trace + inject new reward (CPU scalar).
+            state.reward_trace = state.reward_trace * rew_decay + reward;
+
+            // 3 + 4. Upload spike vectors + run pair-credit kernel.
+            self.stream
+                .memcpy_htod(pre_spikes, &mut self.pre_spikes_buf)
+                .map_err(cuda_err)?;
+            self.stream
+                .memcpy_htod(post_spikes, &mut self.post_spikes_buf)
+                .map_err(cuda_err)?;
+
+            let cfg_post = LaunchConfig::for_num_elems(self.n_post);
+            let mut builder = self.stream.launch_builder(&self.pair_kernel);
+            builder.arg(&mut self.eligibility);
+            builder.arg(&mut self.last_pre_spike_ms);
+            builder.arg(&mut self.last_post_spike_ms);
+            builder.arg(&self.row_ptr);
+            builder.arg(&self.col_idx);
+            builder.arg(&self.pre_spikes_buf);
+            builder.arg(&self.post_spikes_buf);
+            let n_post_i32 = self.n_post as i32;
+            let n_pre_i32 = self.n_pre as i32;
+            let n_syn_i32 = self.n_syn as i32;
+            builder.arg(&n_post_i32);
+            builder.arg(&n_pre_i32);
+            builder.arg(&n_syn_i32);
+            builder.arg(&t_ms);
+            builder.arg(&params.stdp.a_plus);
+            builder.arg(&params.stdp.a_minus);
+            builder.arg(&params.stdp.tau_plus_ms);
+            builder.arg(&params.stdp.tau_minus_ms);
+            // SAFETY: kernel signature has 14 args; the 14 builder.arg
+            // calls above match in order + type. The if-guards inside
+            // the kernel keep all writes within the device buffer
+            // bounds (eligibility:n_syn, last_pre:n_pre,
+            // last_post:n_post).
+            unsafe { builder.launch(cfg_post) }.map_err(cuda_err)?;
+
+            // 5. Apply reward modulation iff warmup gate is open.
+            let mut n_moved: u32 = 0;
+            if rate_samples_ready(state.rate_samples, params.warmup_samples) {
+                let modulator = state.reward_trace - params.baseline_reward;
+                if modulator != 0.0 {
+                    // Reset the device-side counter to zero before launch.
+                    let zero_host: [u32; 1] = [0];
+                    self.stream
+                        .memcpy_htod(&zero_host, &mut self.n_moved_dev)
+                        .map_err(cuda_err)?;
+
+                    let cfg_syn = LaunchConfig::for_num_elems(self.n_syn);
+                    let mut builder = self.stream.launch_builder(&self.apply_kernel);
+                    builder.arg(&mut self.weights);
+                    builder.arg(&self.eligibility);
+                    let n_syn_i32 = self.n_syn as i32;
+                    builder.arg(&n_syn_i32);
+                    builder.arg(&modulator);
+                    builder.arg(&params.w_min);
+                    builder.arg(&params.w_max);
+                    builder.arg(&mut self.n_moved_dev);
+                    // SAFETY: kernel signature has 7 args; matches the 7
+                    // pushes above. atomicAdd writes to n_moved_dev are
+                    // bounds-safe (single u32 slot).
+                    unsafe { builder.launch(cfg_syn) }.map_err(cuda_err)?;
+
+                    let host_n_moved =
+                        self.stream.memcpy_dtov(&self.n_moved_dev).map_err(cuda_err)?;
+                    n_moved = host_n_moved.first().copied().unwrap_or(0);
+                }
+            }
+
+            // 6. Bump rate counter (matches CPU contract).
+            state.rate_samples = state.rate_samples.saturating_add(1);
+            Ok(n_moved)
+        }
+
+        /// Download the current device weights into the supplied host
+        /// buffer. Mirrors [`crate::csr::CsrGpu::download_weights`] —
+        /// call after a training run to checkpoint final weights, or
+        /// inside an equivalence test.
+        pub fn download_weights(&self, out: &mut Vec<f32>) -> Result<(), GpuError> {
+            let host = self.stream.memcpy_dtov(&self.weights).map_err(cuda_err)?;
+            out.clear();
+            out.extend_from_slice(&host);
+            Ok(())
+        }
+
+        /// Download the current eligibility trace into the host buffer.
+        /// Test / debug helper; not on the hot path.
+        pub fn download_eligibility(&self, out: &mut Vec<f32>) -> Result<(), GpuError> {
+            let host = self.stream.memcpy_dtov(&self.eligibility).map_err(cuda_err)?;
+            out.clear();
+            out.extend_from_slice(&host);
+            Ok(())
+        }
+
+        /// Number of synapses on this edge.
+        #[must_use]
+        pub fn n_syn(&self) -> u32 {
+            self.n_syn
+        }
+    }
+
+    #[cfg(test)]
+    mod gpu_tests {
+        use super::*;
+        use crate::csr::PopulationId;
+        use crate::rstdp::step_rstdp;
+
+        fn fc_csr(n_pre: u32, n_post: u32, w0: f32) -> CsrSynapses {
+            let mut triples: Vec<(u32, u32, f32)> =
+                Vec::with_capacity((n_pre * n_post) as usize);
+            for post in 0..n_post {
+                for pre in 0..n_pre {
+                    triples.push((pre, post, w0));
+                }
+            }
+            CsrSynapses::from_triples(
+                PopulationId(0),
+                PopulationId(1),
+                n_pre,
+                n_post,
+                triples,
+            )
+            .expect("fc_csr")
+        }
+
+        // The GPU equivalence test is a strong contract — same inputs,
+        // same final weights to within float tolerance. Skip when no
+        // CUDA device is reachable so CI on CPU-only runners stays green.
+        #[test]
+        fn cpu_gpu_equivalence_after_warmup() {
+            let n_pre = 4;
+            let n_post = 4;
+
+            let mut csr_cpu = fc_csr(n_pre, n_post, 0.5);
+            let mut csr_gpu_host = fc_csr(n_pre, n_post, 0.5);
+            let mut state_cpu = RstdpState::new(csr_cpu.weights.len(), n_pre, n_post);
+            let mut state_gpu = RstdpState::new(csr_cpu.weights.len(), n_pre, n_post);
+            let params = RstdpParams {
+                warmup_samples: 0, // skip the gate to focus on math
+                ..RstdpParams::default()
+            };
+
+            let mut gpu = match RstdpGpu::new(&csr_gpu_host) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("[skipping] no CUDA device for rstdp gpu equivalence: {e:?}");
+                    return;
+                }
+            };
+
+            // Drive a deterministic spike pattern over 10 steps.
+            let pre_seq = [
+                [1, 0, 1, 0],
+                [0, 1, 1, 0],
+                [1, 1, 0, 0],
+                [0, 0, 1, 1],
+                [1, 0, 0, 1],
+                [0, 1, 0, 1],
+                [1, 1, 1, 0],
+                [0, 0, 0, 1],
+                [1, 0, 1, 1],
+                [0, 1, 1, 1],
+            ];
+            let post_seq = [
+                [0, 1, 0, 1],
+                [1, 0, 0, 1],
+                [0, 0, 1, 1],
+                [1, 1, 0, 0],
+                [0, 1, 1, 0],
+                [1, 0, 1, 0],
+                [0, 0, 1, 1],
+                [1, 1, 0, 0],
+                [0, 1, 0, 1],
+                [1, 0, 1, 0],
+            ];
+
+            for step in 0..10 {
+                let t_ms = step as f32;
+                let _ = step_rstdp(
+                    &mut csr_cpu,
+                    &mut state_cpu,
+                    &pre_seq[step],
+                    &post_seq[step],
+                    0.5,
+                    t_ms,
+                    1.0,
+                    &params,
+                );
+                let _ = gpu
+                    .step(
+                        &mut state_gpu,
+                        &pre_seq[step],
+                        &post_seq[step],
+                        0.5,
+                        t_ms,
+                        1.0,
+                        &params,
+                    )
+                    .expect("gpu step");
+            }
+
+            let mut gpu_weights: Vec<f32> = Vec::new();
+            gpu.download_weights(&mut gpu_weights).expect("download");
+            assert_eq!(gpu_weights.len(), csr_cpu.weights.len());
+            for (i, (g, c)) in gpu_weights.iter().zip(csr_cpu.weights.iter()).enumerate() {
+                assert!(
+                    (g - c).abs() < 1e-4,
+                    "weight {i}: gpu={g} cpu={c} (diff {})",
+                    (g - c).abs()
+                );
+            }
+            // Reward trace + rate samples should also be in lockstep.
+            assert!((state_cpu.reward_trace - state_gpu.reward_trace).abs() < 1e-4);
+            assert_eq!(state_cpu.rate_samples, state_gpu.rate_samples);
+        }
+
+        #[test]
+        fn warmup_gate_blocks_weight_motion() {
+            let n_pre = 2;
+            let n_post = 2;
+            let csr = fc_csr(n_pre, n_post, 0.5);
+            let mut state = RstdpState::new(csr.weights.len(), n_pre, n_post);
+            let params = RstdpParams::default();
+
+            let mut gpu = match RstdpGpu::new(&csr) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            for step in 0..50 {
+                let n_moved = gpu
+                    .step(
+                        &mut state,
+                        &[1, 1],
+                        &[1, 1],
+                        1.0,
+                        step as f32,
+                        1.0,
+                        &params,
+                    )
+                    .expect("gpu step");
+                assert_eq!(n_moved, 0, "warmup gate must block movement");
+            }
+            let mut w: Vec<f32> = Vec::new();
+            gpu.download_weights(&mut w).expect("download");
+            for (i, &x) in w.iter().enumerate() {
+                assert!((x - 0.5).abs() < 1e-6, "weight {i} moved during warmup: {x}");
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::float_cmp)] // exact-equality asserts are deliberate in regressions
 mod tests {

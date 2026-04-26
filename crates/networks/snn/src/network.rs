@@ -424,6 +424,13 @@ struct Edge {
     /// re-uploaded after homeostatic scaling each step (hot sync).
     #[cfg(feature = "cuda")]
     csr_gpu: Option<crate::csr::CsrGpu>,
+    /// Phase 9d — GPU R-STDP plasticity. `Some` iff `use_gpu_forward`
+    /// was requested at construction AND init succeeded. The GPU side
+    /// owns eligibility + last-spike timestamp tables; the CPU
+    /// `rstdp` field still tracks scalar state (`reward_trace`,
+    /// `rate_samples`) for checkpoint snapshots.
+    #[cfg(feature = "cuda")]
+    rstdp_gpu: Option<crate::rstdp::RstdpGpu>,
     /// CB-mode scratch buffers: per-post-neuron g_exc / g_inh deltas
     /// produced by [`CsrSynapses::i_syn_cpu_cb_with_pre_scale`].
     /// Allocated lazily on the first CB step (kept across steps once
@@ -668,6 +675,17 @@ impl SnnNetwork {
             } else {
                 None
             };
+            // Phase 9d — GPU R-STDP, same shared context.
+            #[cfg(feature = "cuda")]
+            let rstdp_gpu = if let Some(ctx) = shared_gpu_ctx.as_ref() {
+                Some(
+                    crate::rstdp::RstdpGpu::new_with_context(ctx.clone(), &csr).map_err(
+                        |e| SnnError::GpuUnavailable(format!("RstdpGpu edge {edge_idx}: {e:?}")),
+                    )?,
+                )
+            } else {
+                None
+            };
 
             edges.push(Edge {
                 spec: spec.clone(),
@@ -676,6 +694,8 @@ impl SnnNetwork {
                 i_syn_scratch,
                 #[cfg(feature = "cuda")]
                 csr_gpu,
+                #[cfg(feature = "cuda")]
+                rstdp_gpu,
                 cb_g_exc_scratch: Vec::new(),
                 cb_g_inh_scratch: Vec::new(),
             });
@@ -1327,16 +1347,73 @@ impl SnnNetwork {
                 let (a, b) = self.populations.split_at(src);
                 (&b[0].state.spike, &a[dst].state.spike)
             };
-            step_rstdp(
-                &mut edge.csr,
-                &mut edge.rstdp,
-                pre_spikes,
-                post_spikes,
-                eff_reward,
-                self.t_ms,
-                dt_ms,
-                &eff_rstdp,
-            );
+            // Phase 9d — GPU R-STDP when RstdpGpu present. Falls back
+            // to CPU on any device error so a single bad step does not
+            // halt the network.
+            #[cfg(feature = "cuda")]
+            let used_gpu = if let Some(rstdp_gpu) = edge.rstdp_gpu.as_mut() {
+                // Sync CPU-side weight updates from homeostatic / quiet-
+                // start back to device before plasticity runs.
+                let upload_ok = rstdp_gpu
+                    .upload_weights(&edge.csr.weights)
+                    .map_err(|e| {
+                        tracing::warn!(?e, "RstdpGpu upload_weights failed; falling back to CPU");
+                        e
+                    })
+                    .is_ok();
+                if upload_ok {
+                    match rstdp_gpu.step(
+                        &mut edge.rstdp,
+                        pre_spikes,
+                        post_spikes,
+                        eff_reward,
+                        self.t_ms,
+                        dt_ms,
+                        &eff_rstdp,
+                    ) {
+                        Ok(_n_moved) => {
+                            // Mirror device weights back to CPU so the
+                            // next forward + homeostatic pass sees them.
+                            // 9d intentionally keeps this sync — Phase
+                            // 9 closeout removes it once homeostatic +
+                            // forward also live on device.
+                            let mut host_w = std::mem::take(&mut edge.csr.weights);
+                            let download_ok = rstdp_gpu
+                                .download_weights(&mut host_w)
+                                .map_err(|e| {
+                                    tracing::warn!(?e, "RstdpGpu download_weights failed");
+                                    e
+                                })
+                                .is_ok();
+                            edge.csr.weights = host_w;
+                            download_ok
+                        }
+                        Err(e) => {
+                            tracing::warn!(?e, "RstdpGpu::step failed; falling back to CPU");
+                            false
+                        }
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            #[cfg(not(feature = "cuda"))]
+            let used_gpu = false;
+
+            if !used_gpu {
+                step_rstdp(
+                    &mut edge.csr,
+                    &mut edge.rstdp,
+                    pre_spikes,
+                    post_spikes,
+                    eff_reward,
+                    self.t_ms,
+                    dt_ms,
+                    &eff_rstdp,
+                );
+            }
             // Count plasticity updates for substrate debit: approximate
             // as one update per post-spike (an eligibility window per
             // post-spike triggers weight writes).
