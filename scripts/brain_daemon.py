@@ -182,12 +182,15 @@ def _save_persistent_snn_tune(name, value, logger):
 #   2. Recovery too slow (recovery_time > 0.7 × interval):
 #      → sleep_interval += 60s   (give more wake time)
 #   3. Peak too high (peak_rate > 500 Hz):
-#      → max_scale_dead -= 0.005 (dampen overshoot)
+#      → max_scale_dead -= 0.005 × (peak/500) × (1 + 0.5×overshoot_streak)
+#        (proportional + integral: 7× overshoots get a 7× nudge, and each
+#        consecutive hit amplifies further so the brake catches up)
 #   4. Peak too low (peak_rate < 30 Hz, NOT collapsed):
 #      → max_scale_dead += 0.005 (boost recovery rate)
-#   5. Sustained healthy (peak_rate ≥ 50, sparsity active 5-15%, three
-#      cycles in a row), AND noise_rate_hz currently above baseline 20:
-#      → noise_rate_hz -= 5 (taper rescue dose)
+#   5. Healthy band (peak_rate 30-500 Hz) AND noise_rate_hz above baseline:
+#      → noise_rate_hz -= 5 (taper rescue dose; fires every cycle once
+#        SNN is no longer dead, since lingering high noise contributes
+#        to the dead↔runaway oscillation)
 #
 # The shared `_runtime_state` dict carries values between the sleep
 # scheduler thread (writes cycle metrics) and the autotuner thread (reads
@@ -208,6 +211,7 @@ _runtime_state = {
     'autotune_cycles_observed': 0,
     'autotune_collapse_streak': 0,
     'autotune_healthy_streak': 0,
+    'autotune_overshoot_streak': 0,
     'autotune_last_action': '',
 }
 
@@ -291,17 +295,28 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
         cycles = _runtime_state['autotune_cycles_observed']
         collapse_streak = _runtime_state['autotune_collapse_streak']
         healthy_streak = _runtime_state['autotune_healthy_streak']
+        overshoot_streak = _runtime_state['autotune_overshoot_streak']
 
     # Update streak counters.
     if peak_rate < 5.0:
         collapse_streak += 1
         healthy_streak = 0
-    elif peak_rate >= 50.0 and active_t > 0.3 * interval:
+        overshoot_streak = 0
+    elif peak_rate > 500.0:
+        overshoot_streak += 1
+        healthy_streak = 0
+        collapse_streak = 0
+    elif peak_rate >= 30.0 and peak_rate <= 500.0:
+        # Healthy band: 30-500 Hz. Active-time gate dropped — the
+        # post-stimulus burst window is short and was rejecting valid
+        # healthy cycles, leaving rescue noise stuck at 70 Hz.
         healthy_streak += 1
         collapse_streak = 0
+        overshoot_streak = 0
     else:
         collapse_streak = 0
         healthy_streak = 0
+        overshoot_streak = 0
 
     # Decide.
     action = None       # tuple of (knob_name, new_value, reason)
@@ -309,7 +324,8 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
     log_line = (f"[autotune] cycle={cycles} peak={peak_rate:.1f}Hz "
                 f"recovery={rec_str} active={active_t:.0f}s "
                 f"interval={interval:.0f}s collapse_streak={collapse_streak} "
-                f"healthy_streak={healthy_streak}")
+                f"healthy_streak={healthy_streak} "
+                f"overshoot_streak={overshoot_streak}")
 
     if collapse_streak >= 2:
         # Rule 1: collapsed → bump noise floor.
@@ -328,15 +344,22 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
             action = ('sleep_interval', new,
                       f'recovery_t={recovery_t:.0f}s > 0.7*interval')
     elif peak_rate > 500.0:
-        # Rule 3: overshooting → dampen scale.
+        # Rule 3: overshooting → dampen scale. Step is proportional to
+        # overshoot magnitude (P) and amplified by consecutive-hit
+        # streak (I). Capped at 0.05 so a single tick can't slam the
+        # scale to its lower bound.
         try:
             cur = float(brain.snn_tune_get().get('max_scale_dead', 1.05))
         except Exception:
             cur = 1.05
-        new = _autotune_clamp('max_scale_dead', cur - 0.005)
+        p_factor = peak_rate / 500.0                 # 1.0 at threshold
+        i_factor = 1.0 + 0.5 * overshoot_streak      # 1.0, 1.5, 2.0, 2.5...
+        step = min(0.05, 0.005 * p_factor * i_factor)
+        new = _autotune_clamp('max_scale_dead', cur - step)
         if new != cur:
             action = ('max_scale_dead', new,
-                      f'peak={peak_rate:.0f}Hz > 500')
+                      f'peak={peak_rate:.0f}Hz > 500 '
+                      f'(P={p_factor:.2f} I={i_factor:.1f} step={step:.4f})')
     elif 5.0 <= peak_rate < 30.0:
         # Rule 4: under-recovery (not collapsed) → boost scale.
         try:
@@ -347,8 +370,10 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
         if new != cur:
             action = ('max_scale_dead', new,
                       f'peak={peak_rate:.0f}Hz in [5,30)')
-    elif healthy_streak >= 3:
-        # Rule 5: sustained healthy → taper rescue noise.
+    elif healthy_streak >= 1:
+        # Rule 5: any healthy cycle → taper rescue noise. Threshold dropped
+        # from 3 → 1 because the dead↔runaway oscillation never strings 3
+        # healthy cycles together, leaving noise pinned at 70 Hz.
         try:
             cur = float(brain.snn_tune_get().get('noise_rate_hz', 20.0))
         except Exception:
@@ -363,6 +388,7 @@ def _autotune_decide(brain, logger, enabled, peak_rate, recovery_t,
     with _runtime_state_lock:
         _runtime_state['autotune_collapse_streak'] = collapse_streak
         _runtime_state['autotune_healthy_streak'] = healthy_streak
+        _runtime_state['autotune_overshoot_streak'] = overshoot_streak
 
     # Log + (maybe) apply.
     if action is None:
