@@ -7781,11 +7781,17 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
                 '.cortex_speech', '.cortex_somato',
                 '.knowledge', '.pink_noise']  # finding #5: were missing
     pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
-    all_files = sorted(glob_mod.glob(pattern + "*"))
+    all_files = glob_mod.glob(pattern + "*")
 
-    # Filter to bare .bin files only (not .bin.snn, etc.)
+    # Filter to bare .bin files only (not .bin.snn, etc.).
+    # Sort by MODIFICATION TIME (oldest first) — NOT lexicographic.
+    # Bug fix 2026-04-26: lexicographic sort treats step4500 < step950
+    # ("4" < "9" at the first-differing char), so the brand-new step4500
+    # was being deleted as "oldest" and step950 (yesterday) was retained.
+    # Ship-to-hetzner then aborted: "main .bin missing step4500".
     snapshots = [s for s in all_files
                  if s.endswith(".bin") and "step" in os.path.basename(s)]
+    snapshots.sort(key=os.path.getmtime)
 
     if len(snapshots) <= max_snapshots:
         return

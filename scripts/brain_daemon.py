@@ -1064,6 +1064,18 @@ class BrainService:
         """Return per-population live firing-rate snapshot."""
         return {"pops": self.brain.snn_pop_stats() or []}
 
+    def _cmd_force_save_now(self, _req):
+        """Operator hook: force the auto-checkpointer to save immediately,
+        bypassing min_steps gate. Used to capture critical state (e.g.
+        post-CB-rescale weights) before the next restart wipes them."""
+        if not (hasattr(self, 'checkpointer') and self.checkpointer):
+            return {"error": "no auto-checkpointer attached"}
+        try:
+            self.checkpointer.save_now(force=True)
+        except Exception as e:
+            return {"error": "save failed: " + str(e)}
+        return {"ok": True}
+
     def _cmd_snn_rescale_for_conductance(self, req):
         """Rescale all CSR synapse weights for CB-mode operation. Idempotent
         (refuses double-apply via the cb_weights_rescaled sticky flag).
@@ -2122,10 +2134,19 @@ class AutoCheckpointer:
     def set_loaded_from_checkpoint(self, loaded):
         """Mark whether this brain was loaded from a checkpoint.
         If loaded, allow immediate saves (the brain already has trained state).
-        If fresh, require min_steps training before first save."""
+        If fresh, require min_steps training before first save.
+
+        Bug 2026-04-26: previously set _save_count = 1 here, but the gate
+        in save_now is `if _save_count < min_steps`. With min_steps=10,
+        a loaded brain stayed blocked at 1 forever — the comment lied.
+        notify_training_step only fires on learn_vector RPC; the live
+        trainer uses submit_multimodal exclusively, so the counter never
+        progressed. Result: 1h36m without any auto-checkpoint. Fix: set
+        to min_steps so a loaded brain truly bypasses the gate.
+        """
         self._loaded_from_checkpoint = loaded
         if loaded:
-            self._save_count = 1  # Allow saves immediately
+            self._save_count = self.min_steps  # truly allow saves immediately
 
     def start(self):
         # interval <= 0 disables the auto-checkpointer entirely.
@@ -2162,8 +2183,14 @@ class AutoCheckpointer:
 
         # GUARD 1: Never save a fresh/untrained brain
         if self._save_count < self.min_steps and not force:
-            logger.debug("Checkpoint skipped: only %d steps (need %d)",
-                         self._save_count, self.min_steps)
+            # WARN (not DEBUG) so that a misconfigured gate never silently
+            # hides a stuck auto-checkpointer for hours like the 2026-04-26
+            # incident. If you see this on a loaded brain, the bug is in
+            # set_loaded_from_checkpoint or notify_training_step coverage.
+            logger.warning("Checkpoint blocked by min_steps gate: "
+                           "save_count=%d need=%d (loaded_from_checkpoint=%s)",
+                           self._save_count, self.min_steps,
+                           self._loaded_from_checkpoint)
             return
 
         # Use ABSOLUTE path — resolve symlinks to avoid path confusion
