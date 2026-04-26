@@ -39,6 +39,28 @@ use nimcp_scheduler::{Scheduler, SchedulerConfig};
 use nimcp_snn::{SnnConfig, SnnNetwork};
 use serde::{Deserialize, Serialize};
 
+/// Phase 9h — execution backend selector. Drives whether SNN + LNN run
+/// their forward paths on CPU or GPU.
+///
+/// `Cpu` is the default — works on every host, no CUDA dependency.
+/// `Gpu` is only meaningful when the underlying network crates were
+/// compiled with `--features cuda`; on a CPU-only build the brain
+/// constructor falls back to CPU and logs a warning.
+///
+/// The selector is brain-wide rather than per-network so the user has a
+/// single knob (e.g. `nimcp.set_backend("gpu")`) to flip the entire
+/// inference pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Backend {
+    /// CPU forward pass for every network. Always available.
+    #[default]
+    Cpu,
+    /// GPU forward pass where compiled in. Falls back to CPU + logs a
+    /// warning when the `cuda` feature wasn't enabled at build time.
+    Gpu,
+}
+
 /// Top-level brain configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrainConfig {
@@ -61,6 +83,12 @@ pub struct BrainConfig {
     /// brains remain valid).
     #[serde(default)]
     pub memory: Option<ZLadderConfig>,
+    /// Phase 9h — brain-wide execution backend. When `Gpu`, SNN's
+    /// `use_gpu_forward` flag is forced on at construction and LNN's
+    /// `enable_gpu` is called automatically. When `Cpu` the per-
+    /// network configs are honored as-is.
+    #[serde(default)]
+    pub backend: Backend,
 }
 
 impl Default for BrainConfig {
@@ -73,6 +101,7 @@ impl Default for BrainConfig {
             snn: None,
             lnn: None,
             memory: None,
+            backend: Backend::Cpu,
         }
     }
 }
@@ -121,14 +150,58 @@ impl Brain {
         }
         let adaptive = AdaptiveNet::new(adaptive_cfg);
 
-        let snn = if let Some(cfg) = config.snn.clone() {
-            Some(SnnNetwork::new(cfg).map_err(|e| Error::Config(format!("snn: {e}")))?)
+        // Phase 9h — backend dispatch. When `Backend::Gpu`, force SNN's
+        // `use_gpu_forward` flag on so per-pop LifGpu / per-edge CsrGpu
+        // / RstdpGpu are allocated at construction. CPU build with
+        // `Backend::Gpu` is benign — SnnNetwork errors out with a
+        // GpuUnavailable, which we log and degrade to CPU.
+        let snn = if let Some(mut cfg) = config.snn.clone() {
+            if matches!(config.backend, Backend::Gpu) {
+                cfg.use_gpu_forward = true;
+            }
+            match SnnNetwork::new(cfg.clone()) {
+                Ok(net) => Some(net),
+                Err(e) if matches!(config.backend, Backend::Gpu) => {
+                    tracing::warn!(
+                        ?e,
+                        "Backend::Gpu requested but SNN GPU init failed; falling back to CPU"
+                    );
+                    cfg.use_gpu_forward = false;
+                    Some(
+                        SnnNetwork::new(cfg)
+                            .map_err(|e| Error::Config(format!("snn: {e}")))?,
+                    )
+                }
+                Err(e) => return Err(Error::Config(format!("snn: {e}"))),
+            }
         } else {
             None
         };
 
         let (lnn, lnn_state) = if let Some(cfg) = config.lnn.clone() {
-            let net = LnnNetwork::new(cfg).map_err(|e| Error::Config(format!("lnn: {e}")))?;
+            // `mut` only needed under cuda feature where enable_gpu
+            // mutates the network; allow-unused gates the cpu build.
+            #[cfg_attr(not(feature = "cuda"), allow(unused_mut))]
+            let mut net = LnnNetwork::new(cfg).map_err(|e| Error::Config(format!("lnn: {e}")))?;
+            // Phase 9h — Backend::Gpu also enables LNN GPU forward
+            // path. The CPU stub returns an error; on GPU build the
+            // call succeeds or the underlying nimcp_gpu::GpuError is
+            // logged and we fall back to CPU forward.
+            #[cfg(feature = "cuda")]
+            if matches!(config.backend, Backend::Gpu) {
+                if let Err(e) = net.enable_gpu() {
+                    tracing::warn!(
+                        ?e,
+                        "Backend::Gpu requested but LNN GPU init failed; using CPU forward"
+                    );
+                }
+            }
+            #[cfg(not(feature = "cuda"))]
+            if matches!(config.backend, Backend::Gpu) {
+                tracing::warn!(
+                    "Backend::Gpu requested but nimcp-lnn was not compiled with --features cuda; using CPU forward"
+                );
+            }
             let state = net.new_state();
             (Some(net), Some(state))
         } else {
@@ -684,6 +757,53 @@ mod tests {
     async fn brain_boots_with_default_config() {
         let brain = Brain::new(BrainConfig::default()).unwrap();
         assert_eq!(brain.config().rng_seed, 0x5EED);
+        // Phase 9h — default backend is CPU.
+        assert_eq!(brain.config().backend, Backend::Cpu);
+    }
+
+    /// Phase 9h — Backend::Gpu boots even on a CPU-only build by
+    /// degrading to CPU forward path with a warning. The brain handle
+    /// is fully functional for inference + learning afterward.
+    #[tokio::test]
+    async fn backend_gpu_boots_on_cpu_only_build() {
+        let cfg = BrainConfig {
+            backend: Backend::Gpu,
+            ..Default::default()
+        };
+        let brain = Brain::new(cfg).expect("Backend::Gpu must degrade gracefully on CPU build");
+        assert_eq!(brain.config().backend, Backend::Gpu);
+    }
+
+    /// Backend round-trips through serde — the deployed config can
+    /// pin the backend in JSON / YAML and the brain honors it on load.
+    #[test]
+    fn backend_serde_round_trip() {
+        let cpu = serde_json::to_string(&Backend::Cpu).unwrap();
+        let gpu = serde_json::to_string(&Backend::Gpu).unwrap();
+        assert_eq!(cpu, "\"cpu\"");
+        assert_eq!(gpu, "\"gpu\"");
+        let back_cpu: Backend = serde_json::from_str(&cpu).unwrap();
+        let back_gpu: Backend = serde_json::from_str(&gpu).unwrap();
+        assert_eq!(back_cpu, Backend::Cpu);
+        assert_eq!(back_gpu, Backend::Gpu);
+    }
+
+    /// Old configs (pre-9h, no `backend` field) deserialize with the
+    /// default Cpu — backwards compat for existing on-disk configs.
+    #[test]
+    fn backend_default_via_serde_when_field_absent() {
+        let raw = r#"{
+            "rng_seed": 42,
+            "deterministic": true,
+            "state_dir": "./state",
+            "adaptive": {
+                "layers": [4, 8, 1],
+                "rng_seed": 42,
+                "activation": "Tanh"
+            }
+        }"#;
+        let cfg: BrainConfig = serde_json::from_str(raw).expect("legacy config must parse");
+        assert_eq!(cfg.backend, Backend::Cpu);
     }
 
     /// End-to-end XOR inside the Brain API — this is the Phase 1 exit

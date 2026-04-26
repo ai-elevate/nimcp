@@ -11,6 +11,11 @@ description = "NIMCP V2 — liquid time-constant neural network, Phase 4"
 [lints]
 workspace = true
 
+[features]
+# Default is CPU-only; `cuda` compiles the LTC GPU kernels (Phase 9f).
+default = []
+cuda = ["dep:nimcp-gpu", "dep:cudarc"]
+
 [dependencies]
 nimcp-core = { workspace = true }
 nimcp-substrate = { workspace = true }
@@ -21,6 +26,10 @@ rand_chacha = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
+
+# Optional GPU backend (Phase 9f). cudarc + shared GpuError type.
+nimcp-gpu = { workspace = true, optional = true }
+cudarc = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5"

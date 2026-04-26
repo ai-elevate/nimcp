@@ -11,6 +11,13 @@ description = "NIMCP V2 — top-level brain integration"
 [lints]
 workspace = true
 
+[features]
+# Default is CPU-only. `cuda` propagates the GPU feature into nimcp-snn
+# + nimcp-lnn so Backend::Gpu can light up LifGpu / CsrGpu / RstdpGpu /
+# LtcGpu kernels.
+default = []
+cuda = ["nimcp-snn/cuda", "nimcp-lnn/cuda"]
+
 [dependencies]
 nimcp-core = { workspace = true }
 nimcp-eventlog = { workspace = true }

@@ -46,7 +46,13 @@
 //! - **`tanh` nonlinearity by default** — matches V1's LNN layer. ReLU
 //!   is not a drop-in substitute (breaks symmetry around rest).
 
-#![forbid(unsafe_code)]
+// CPU build forbids unsafe. With `--features cuda`, the LTC GPU kernel
+// launch path requires one `unsafe` block per call (cudarc's
+// `.launch(cfg)` is `unsafe fn`). Scoped to the cuda-feature `gpu`
+// submodule of `ltc.rs`.
+#![cfg_attr(not(feature = "cuda"), forbid(unsafe_code))]
+#![cfg_attr(feature = "cuda", deny(unsafe_code))]
+#![cfg_attr(feature = "cuda", allow(unsafe_code))]
 
 pub mod ltc;
 pub mod network;

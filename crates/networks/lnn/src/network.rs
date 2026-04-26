@@ -173,7 +173,12 @@ pub enum LnnError {
 }
 
 /// Stacked LTC layers + linear readout.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// `Clone` is implemented manually so the optional `lnn_gpu` field
+/// (which holds non-Clone CUDA buffers) is dropped on clone — the
+/// clone is a CPU-resident copy; if the caller needs GPU, they call
+/// [`Self::enable_gpu`] on the clone to allocate fresh device buffers.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LnnNetwork {
     /// Per-layer parameters.
     pub layers: Vec<LtcLayer>,
@@ -211,6 +216,68 @@ pub struct LnnNetwork {
     /// Submit threshold cached from thalamic cfg.
     #[serde(default)]
     pub thalamic_submit_threshold: f32,
+    /// Phase 9f/9g — optional GPU forward backend. When present every
+    /// `forward_step` routes its per-layer LTC kernel to the
+    /// device-resident [`LnnGpu`]. The host-side `state.x` is mirrored
+    /// back from device after each step so CPU observers (snapshots,
+    /// substrate adapters, downstream consumers) stay current.
+    ///
+    /// Skipped in serde — [`Self::enable_gpu`] reconstructs it from the
+    /// current `layers` after a load.
+    #[serde(skip)]
+    pub lnn_gpu: Option<LnnGpu>,
+}
+
+impl Clone for LnnNetwork {
+    /// Clone all CPU-resident parameters and state, but **drop** any
+    /// attached GPU backend. The clone is CPU-resident; call
+    /// [`Self::enable_gpu`] on it to re-allocate device buffers.
+    fn clone(&self) -> Self {
+        Self {
+            layers: self.layers.clone(),
+            w_out: self.w_out.clone(),
+            b_out: self.b_out.clone(),
+            dt_ms: self.dt_ms,
+            input_dim: self.input_dim,
+            output_dim: self.output_dim,
+            substrate_cfg: self.substrate_cfg,
+            substrate_state: self.substrate_state,
+            substrate_effects: self.substrate_effects,
+            substrate_tick_counter: self.substrate_tick_counter,
+            thalamic_channel: self.thalamic_channel.clone(),
+            thalamic_submit_threshold: self.thalamic_submit_threshold,
+            lnn_gpu: None,
+        }
+    }
+}
+
+/// Phase 9f/9g — bundle of one [`crate::ltc::LtcGpu`] per layer, sharing
+/// a single CUDA context (Phase 9b shared-context contract). Created by
+/// [`LnnNetwork::enable_gpu`]; used by [`LnnNetwork::forward_step`] when
+/// `Some`. Disable by setting `lnn_gpu = None` (drops every device
+/// buffer).
+#[cfg(feature = "cuda")]
+pub struct LnnGpu {
+    /// One per layer, in the same order as [`LnnNetwork::layers`].
+    pub layers: Vec<crate::ltc::LtcGpu>,
+}
+
+#[cfg(feature = "cuda")]
+impl std::fmt::Debug for LnnGpu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LnnGpu")
+            .field("n_layers", &self.layers.len())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Stub for the no-cuda build so [`LnnNetwork::lnn_gpu`] always
+/// type-checks. The CPU build can never construct one — `enable_gpu`
+/// is gated.
+#[cfg(not(feature = "cuda"))]
+#[derive(Debug)]
+pub struct LnnGpu {
+    _phantom: std::marker::PhantomData<()>,
 }
 
 impl LnnNetwork {
@@ -309,7 +376,61 @@ impl LnnNetwork {
             substrate_tick_counter: 0,
             thalamic_channel,
             thalamic_submit_threshold,
+            lnn_gpu: None,
         })
+    }
+
+    /// Phase 9f/9g — allocate GPU buffers for every layer and switch the
+    /// forward path onto them. After this, [`Self::forward_step`]
+    /// dispatches per-layer LTC kernels on device.
+    ///
+    /// Idempotent: if `lnn_gpu` is already `Some`, returns `Ok(())`
+    /// without rebuilding. Drop the field to disable
+    /// (`self.lnn_gpu = None`).
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`nimcp_gpu::GpuError`] from context creation, NVRTC
+    /// compilation, or any device upload.
+    #[cfg(feature = "cuda")]
+    pub fn enable_gpu(&mut self) -> Result<(), nimcp_gpu::GpuError> {
+        if self.lnn_gpu.is_some() {
+            return Ok(());
+        }
+        let ctx = cudarc::driver::CudaContext::new(0).map_err(|e| {
+            nimcp_gpu::GpuError::Cuda(format!("LnnNetwork::enable_gpu: ctx new: {e:?}"))
+        })?;
+        let mut layer_gpus: Vec<crate::ltc::LtcGpu> = Vec::with_capacity(self.layers.len());
+        for layer in &self.layers {
+            layer_gpus.push(crate::ltc::LtcGpu::new_with_context(ctx.clone(), layer)?);
+        }
+        self.lnn_gpu = Some(LnnGpu { layers: layer_gpus });
+        Ok(())
+    }
+
+    /// Stub for the CPU-only build — opting in to GPU when the crate
+    /// was compiled without `--features cuda` is a config error, not
+    /// a runtime fallback. Returns the GPU error so callers can
+    /// degrade explicitly.
+    #[cfg(not(feature = "cuda"))]
+    pub fn enable_gpu(&mut self) -> Result<(), &'static str> {
+        Err("nimcp-lnn was compiled without `--features cuda`")
+    }
+
+    /// Sync trainable weights from CPU to GPU (call after every
+    /// optimizer step). No-op when no GPU backend is attached.
+    ///
+    /// # Errors
+    /// Propagates [`nimcp_gpu::GpuError`] from any device upload.
+    #[cfg(feature = "cuda")]
+    pub fn upload_weights_to_gpu(&mut self) -> Result<(), nimcp_gpu::GpuError> {
+        let Some(lnn_gpu) = self.lnn_gpu.as_mut() else {
+            return Ok(());
+        };
+        for (layer, gpu) in self.layers.iter().zip(lnn_gpu.layers.iter_mut()) {
+            gpu.upload_weights(layer)?;
+        }
+        Ok(())
     }
 
     /// Allocate fresh zeroed per-layer state vectors.
@@ -346,6 +467,52 @@ impl LnnNetwork {
         let mut y = self.w_out.dot(&curr_input);
         y += &self.b_out;
         y
+    }
+
+    /// Phase 9f/9g — GPU forward step. Requires
+    /// [`Self::enable_gpu`] to have run first; without it returns
+    /// the synthetic error so callers can fall back. Mirrors the
+    /// CPU [`Self::forward_step`] semantics: per-layer LTC update
+    /// chained, then readout.
+    ///
+    /// `&mut self` because the GPU layers are mutable (per-step
+    /// kernel launches own stream state).
+    ///
+    /// # Errors
+    ///
+    /// Propagates any [`nimcp_gpu::GpuError`] from per-layer LTC
+    /// step. CPU readout never errors.
+    #[cfg(feature = "cuda")]
+    pub fn forward_step_gpu(
+        &mut self,
+        state: &mut [LtcState],
+        input: &Array1<f32>,
+    ) -> Result<Array1<f32>, nimcp_gpu::GpuError> {
+        debug_assert_eq!(state.len(), self.layers.len());
+        debug_assert_eq!(input.len(), self.input_dim);
+
+        let lnn_gpu = self.lnn_gpu.as_mut().ok_or_else(|| {
+            nimcp_gpu::GpuError::Cuda(
+                "LnnNetwork::forward_step_gpu: enable_gpu() must run first".into(),
+            )
+        })?;
+        if lnn_gpu.layers.len() != self.layers.len() {
+            return Err(nimcp_gpu::GpuError::Cuda(format!(
+                "LnnGpu layer count {} != LnnNetwork layers {}",
+                lnn_gpu.layers.len(),
+                self.layers.len(),
+            )));
+        }
+
+        let mut curr_input: Array1<f32> = input.clone();
+        for (gpu, st) in lnn_gpu.layers.iter_mut().zip(state.iter_mut()) {
+            let _ = gpu.step(st, &curr_input, self.dt_ms)?;
+            curr_input = st.x.clone();
+        }
+        // Readout stays on CPU — small dims, no GPU win.
+        let mut y = self.w_out.dot(&curr_input);
+        y += &self.b_out;
+        Ok(y)
     }
 
     /// Advance the network over a sequence of `T` inputs; returns the

@@ -195,6 +195,415 @@ pub fn ltc_forward_step(
 }
 
 // -------------------------------------------------------------------------
+// GPU backend (feature-gated) — Phase 9f
+// -------------------------------------------------------------------------
+
+#[cfg(feature = "cuda")]
+pub use gpu::LtcGpu;
+
+/// Fused LTC forward kernel. One thread per recurrent neuron computes:
+///
+///   pre[i] = Σ_j W_rec[i,j]·x[j] + Σ_k W_in[i,k]·u[k] + b[i]
+///   x'[i]  = clamp(x[i] + dt·(-x[i]/max(tau[i],TAU_MIN) + tanh(pre[i])),
+///                  -CLAMP, +CLAMP)
+///
+/// Matches [`ltc_forward_step`] arithmetic exactly. The pre-activation is
+/// written to `pre_out` so callers tracking it for BPTT (Phase 9g) avoid
+/// recomputing.
+///
+/// Row-major contiguous weight layout — W[i,j] = w_data[i*ncols + j].
+#[cfg(feature = "cuda")]
+const LTC_KERNEL_SRC: &str = r#"
+extern "C" __global__ void ltc_forward_step(
+    float* x,                 // [n_rec], in/out
+    const float* w_rec,       // [n_rec * n_rec], row-major
+    const float* w_in,        // [n_rec * n_in],  row-major
+    const float* b,           // [n_rec]
+    const float* tau_base,    // [n_rec]
+    const float* u,           // [n_in]
+    float* pre_out,           // [n_rec]
+    int n_rec,
+    int n_in,
+    float dt_ms,
+    float tau_min,
+    float state_clamp
+) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n_rec) return;
+
+    // Pre-activation accumulator.
+    float pre = b[i];
+    int row_rec_base = i * n_rec;
+    for (int j = 0; j < n_rec; ++j) {
+        pre += w_rec[row_rec_base + j] * x[j];
+    }
+    int row_in_base = i * n_in;
+    for (int k = 0; k < n_in; ++k) {
+        pre += w_in[row_in_base + k] * u[k];
+    }
+    pre_out[i] = pre;
+
+    // Euler step.
+    float a = tanhf(pre);
+    float tau = tau_base[i];
+    if (tau < tau_min) tau = tau_min;
+    float dx = -x[i] / tau + a;
+    float xn = x[i] + dt_ms * dx;
+    if (xn >  state_clamp) xn =  state_clamp;
+    if (xn < -state_clamp) xn = -state_clamp;
+    x[i] = xn;
+}
+"#;
+
+#[cfg(feature = "cuda")]
+mod gpu {
+    use std::sync::Arc;
+
+    use cudarc::driver::{
+        CudaContext, CudaFunction, CudaModule, CudaSlice, CudaStream, LaunchConfig,
+        PushKernelArg,
+    };
+    use ndarray::Array1;
+    use nimcp_gpu::GpuError;
+
+    use super::{LTC_KERNEL_SRC, LTC_STATE_CLAMP, LTC_TAU_MIN, LtcLayer, LtcState};
+
+    fn cuda_err<E: std::fmt::Debug>(e: E) -> GpuError {
+        GpuError::Cuda(format!("{e:?}"))
+    }
+
+    /// Device-resident LTC layer + state. Owns one [`CudaContext`]
+    /// (or shares one via [`Self::new_with_context`] — Phase 9b
+    /// shared-context contract for multi-layer brain configs).
+    pub struct LtcGpu {
+        n_in: u32,
+        n_rec: u32,
+        // Persistent device weights — re-uploaded after CPU-side
+        // optimizer step via `upload_weights`.
+        w_rec: CudaSlice<f32>,
+        w_in: CudaSlice<f32>,
+        b: CudaSlice<f32>,
+        tau_base: CudaSlice<f32>,
+        // Persistent device state — `x` survives across step calls.
+        x: CudaSlice<f32>,
+        // Per-step scratch.
+        u_buf: CudaSlice<f32>,
+        pre_buf: CudaSlice<f32>,
+        ctx: Arc<CudaContext>,
+        stream: Arc<CudaStream>,
+        #[allow(dead_code)]
+        module: Arc<CudaModule>,
+        kernel: CudaFunction,
+    }
+
+    impl std::fmt::Debug for LtcGpu {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("LtcGpu")
+                .field("n_in", &self.n_in)
+                .field("n_rec", &self.n_rec)
+                .finish_non_exhaustive()
+        }
+    }
+
+    impl LtcGpu {
+        /// Allocate a fresh CUDA context + upload the layer.
+        pub fn new(layer: &LtcLayer) -> Result<Self, GpuError> {
+            let ctx = CudaContext::new(0).map_err(cuda_err)?;
+            Self::new_with_context(ctx, layer)
+        }
+
+        /// Phase 9b shared-context constructor — when the brain creates
+        /// multiple LNN layers, reuse one context to avoid the
+        /// per-context VRAM tax that bit V1 hard at scale.
+        pub fn new_with_context(
+            ctx: Arc<CudaContext>,
+            layer: &LtcLayer,
+        ) -> Result<Self, GpuError> {
+            let n_rec = layer.params.n_rec as u32;
+            let n_in = layer.params.n_in as u32;
+            if n_rec == 0 {
+                return Err(GpuError::Cuda("LtcGpu::new: n_rec must be > 0".into()));
+            }
+            let stream = ctx.default_stream();
+            let ptx = cudarc::nvrtc::compile_ptx(LTC_KERNEL_SRC).map_err(cuda_err)?;
+            let module = ctx.load_module(ptx).map_err(cuda_err)?;
+            let kernel = module.load_function("ltc_forward_step").map_err(cuda_err)?;
+
+            // Row-major contiguous host buffers from ndarray. The layer's
+            // weights are constructed via `from_shape_fn` which produces
+            // row-major default order, so `as_slice` succeeds.
+            let w_rec_host = layer
+                .w_rec
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("w_rec not contiguous row-major".into()))?;
+            let w_in_host = layer
+                .w_in
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("w_in not contiguous row-major".into()))?;
+            let b_host = layer
+                .b
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("b not contiguous".into()))?;
+            let tau_host = layer
+                .tau_base
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("tau_base not contiguous".into()))?;
+
+            let w_rec = stream.memcpy_stod(w_rec_host).map_err(cuda_err)?;
+            let w_in = stream.memcpy_stod(w_in_host).map_err(cuda_err)?;
+            let b = stream.memcpy_stod(b_host).map_err(cuda_err)?;
+            let tau_base = stream.memcpy_stod(tau_host).map_err(cuda_err)?;
+            let x: CudaSlice<f32> = stream.alloc_zeros::<f32>(n_rec as usize).map_err(cuda_err)?;
+            let u_buf: CudaSlice<f32> = if n_in == 0 {
+                stream.alloc_zeros::<f32>(1).map_err(cuda_err)?
+            } else {
+                stream.alloc_zeros::<f32>(n_in as usize).map_err(cuda_err)?
+            };
+            let pre_buf: CudaSlice<f32> =
+                stream.alloc_zeros::<f32>(n_rec as usize).map_err(cuda_err)?;
+
+            tracing::info!(n_rec, n_in, "ltc gpu buffers allocated");
+
+            Ok(Self {
+                n_in,
+                n_rec,
+                w_rec,
+                w_in,
+                b,
+                tau_base,
+                x,
+                u_buf,
+                pre_buf,
+                ctx,
+                stream,
+                module,
+                kernel,
+            })
+        }
+
+        /// Borrow the CUDA context (shared with sibling GPU subsystems).
+        #[must_use]
+        pub fn context(&self) -> &Arc<CudaContext> {
+            &self.ctx
+        }
+
+        /// Re-upload trainable weights after a CPU-side optimizer step.
+        ///
+        /// `b` and `tau_base` follow the same contract — they're
+        /// trainable in the BPTT path (Phase 9g) so the trainer needs
+        /// to be able to refresh device copies between epochs.
+        pub fn upload_weights(&mut self, layer: &LtcLayer) -> Result<(), GpuError> {
+            let w_rec_host = layer
+                .w_rec
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("w_rec not contiguous".into()))?;
+            let w_in_host = layer
+                .w_in
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("w_in not contiguous".into()))?;
+            let b_host = layer
+                .b
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("b not contiguous".into()))?;
+            let tau_host = layer
+                .tau_base
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("tau_base not contiguous".into()))?;
+            self.stream
+                .memcpy_htod(w_rec_host, &mut self.w_rec)
+                .map_err(cuda_err)?;
+            self.stream
+                .memcpy_htod(w_in_host, &mut self.w_in)
+                .map_err(cuda_err)?;
+            self.stream.memcpy_htod(b_host, &mut self.b).map_err(cuda_err)?;
+            self.stream
+                .memcpy_htod(tau_host, &mut self.tau_base)
+                .map_err(cuda_err)?;
+            Ok(())
+        }
+
+        /// One LTC forward step on device. Returns the pre-activation
+        /// vector for callers tracking it (Phase 9g BPTT). `state.x`
+        /// is mirrored back to host so CPU-side observers stay current.
+        ///
+        /// # Errors
+        ///
+        /// Propagates [`GpuError::Cuda`] from upload, kernel launch,
+        /// or download. Length mismatch on `u` returns a synthetic
+        /// `Cuda` error.
+        // HOT PATH: every LNN tick.
+        pub fn step(
+            &mut self,
+            state: &mut LtcState,
+            u: &Array1<f32>,
+            dt_ms: f32,
+        ) -> Result<Array1<f32>, GpuError> {
+            if u.len() != self.n_in as usize {
+                return Err(GpuError::Cuda(format!(
+                    "LtcGpu::step: u.len()={} but n_in={}",
+                    u.len(),
+                    self.n_in
+                )));
+            }
+            // Upload this step's input.
+            let u_slice = u
+                .as_slice()
+                .ok_or_else(|| GpuError::Cuda("u not contiguous".into()))?;
+            if !u_slice.is_empty() {
+                self.stream
+                    .memcpy_htod(u_slice, &mut self.u_buf)
+                    .map_err(cuda_err)?;
+            }
+
+            let n_rec_i32 = self.n_rec as i32;
+            let n_in_i32 = self.n_in as i32;
+            let tau_min = LTC_TAU_MIN;
+            let state_clamp = LTC_STATE_CLAMP;
+
+            let cfg = LaunchConfig::for_num_elems(self.n_rec);
+            let mut builder = self.stream.launch_builder(&self.kernel);
+            builder.arg(&mut self.x);
+            builder.arg(&self.w_rec);
+            builder.arg(&self.w_in);
+            builder.arg(&self.b);
+            builder.arg(&self.tau_base);
+            builder.arg(&self.u_buf);
+            builder.arg(&mut self.pre_buf);
+            builder.arg(&n_rec_i32);
+            builder.arg(&n_in_i32);
+            builder.arg(&dt_ms);
+            builder.arg(&tau_min);
+            builder.arg(&state_clamp);
+            // SAFETY: kernel signature has 12 args; 12 builder.arg
+            // calls above match in order + type. The `if (i >= n_rec)`
+            // guard inside keeps writes within the n_rec-sized
+            // device buffers (x, b, tau_base, pre_out).
+            unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+
+            // Download pre-activation (BPTT needs it; cheap at n_rec sizes).
+            let pre_host = self.stream.memcpy_dtov(&self.pre_buf).map_err(cuda_err)?;
+            let pre = Array1::from(pre_host);
+
+            // Mirror x back to host so CPU-side observers (snapshot,
+            // tests, downstream consumers) see the latest state.
+            let x_host = self.stream.memcpy_dtov(&self.x).map_err(cuda_err)?;
+            state.x = Array1::from(x_host);
+
+            Ok(pre)
+        }
+
+        /// Reset the device-resident hidden state to zeros.
+        pub fn reset(&mut self) -> Result<(), GpuError> {
+            let zero: Vec<f32> = vec![0.0; self.n_rec as usize];
+            self.stream.memcpy_htod(&zero, &mut self.x).map_err(cuda_err)?;
+            Ok(())
+        }
+
+        /// Download the current device hidden state.
+        pub fn download_x(&self) -> Result<Vec<f32>, GpuError> {
+            self.stream.memcpy_dtov(&self.x).map_err(cuda_err)
+        }
+
+        /// Recurrent dimension.
+        #[must_use]
+        pub fn n_rec(&self) -> u32 {
+            self.n_rec
+        }
+        /// Input dimension.
+        #[must_use]
+        pub fn n_in(&self) -> u32 {
+            self.n_in
+        }
+    }
+
+    #[cfg(test)]
+    mod gpu_tests {
+        use super::*;
+        use crate::ltc::{LtcParams, ltc_forward_step};
+
+        fn fixture_layer() -> LtcLayer {
+            LtcLayer::new_seeded(
+                LtcParams {
+                    n_in: 3,
+                    n_rec: 8,
+                    tau_init: 1.0,
+                    init_scale: 0.5,
+                },
+                0xCAFE_BABE,
+            )
+        }
+
+        #[test]
+        fn cpu_gpu_equivalence_one_step() {
+            let layer = fixture_layer();
+            let mut gpu = match LtcGpu::new(&layer) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("[skipping] no CUDA device: {e:?}");
+                    return;
+                }
+            };
+            let mut state_cpu = LtcState::new(layer.params.n_rec);
+            let mut state_gpu = LtcState::new(layer.params.n_rec);
+            let u = Array1::from_vec(vec![0.3_f32, -0.5, 0.1]);
+
+            let pre_cpu = ltc_forward_step(&mut state_cpu, &layer, &u, 0.1);
+            let pre_gpu = gpu.step(&mut state_gpu, &u, 0.1).expect("gpu step");
+
+            for (a, b) in pre_cpu.iter().zip(pre_gpu.iter()) {
+                assert!((a - b).abs() < 1e-4, "pre mismatch cpu={a} gpu={b}");
+            }
+            for (a, b) in state_cpu.x.iter().zip(state_gpu.x.iter()) {
+                assert!((a - b).abs() < 1e-4, "x mismatch cpu={a} gpu={b}");
+            }
+        }
+
+        #[test]
+        fn cpu_gpu_equivalence_multi_step() {
+            let layer = fixture_layer();
+            let mut gpu = match LtcGpu::new(&layer) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            let mut s_cpu = LtcState::new(layer.params.n_rec);
+            let mut s_gpu = LtcState::new(layer.params.n_rec);
+            let dt = 0.5;
+            let inputs = [
+                Array1::from_vec(vec![0.2, -0.1, 0.3]),
+                Array1::from_vec(vec![-0.3, 0.4, 0.0]),
+                Array1::from_vec(vec![0.5, 0.5, -0.5]),
+                Array1::from_vec(vec![0.1, -0.2, 0.4]),
+                Array1::from_vec(vec![-0.4, 0.1, 0.2]),
+            ];
+            for u in &inputs {
+                let _ = ltc_forward_step(&mut s_cpu, &layer, u, dt);
+                let _ = gpu.step(&mut s_gpu, u, dt).expect("gpu step");
+            }
+            for (a, b) in s_cpu.x.iter().zip(s_gpu.x.iter()) {
+                assert!((a - b).abs() < 1e-3, "x divergence cpu={a} gpu={b}");
+            }
+        }
+
+        #[test]
+        fn reset_zeros_x() {
+            let layer = fixture_layer();
+            let mut gpu = match LtcGpu::new(&layer) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            let mut s = LtcState::new(layer.params.n_rec);
+            let u = Array1::from_vec(vec![1.0, 1.0, 1.0]);
+            for _ in 0..5 {
+                let _ = gpu.step(&mut s, &u, 0.1).expect("step");
+            }
+            gpu.reset().expect("reset");
+            let x = gpu.download_x().expect("download");
+            assert!(x.iter().all(|&v| v.abs() < 1e-9));
+        }
+    }
+}
+
+// -------------------------------------------------------------------------
 // Tests
 // -------------------------------------------------------------------------
 
