@@ -104,7 +104,23 @@ SNN_TUNE_PERSIST_PATH = "/workspace/nimcp/checkpoints/athena/snn_tune.json"
 
 def _load_persistent_snn_tunes(brain, logger):
     """Reapply all knob overrides saved from previous sessions. Best-effort:
-    a malformed file or unknown name should never block daemon startup."""
+    a malformed file or unknown name should never block daemon startup.
+
+    CB migration safety:
+      - cb_weights_rescaled is a runtime concept tied to the in-memory
+        weight state. Loaded checkpoints contain whatever weights were
+        in memory when the prior daemon saved (which may NOT be rescaled
+        — the rescale operation is in-memory only and only persists if
+        a checkpoint is saved AFTER rescale). So we ALWAYS skip this
+        flag from the persistent file — its old value is meaningless on
+        a fresh process.
+      - When conductance_enabled is loading as 1.0, we MUST re-rescale
+        the freshly-loaded weights before activating CB. Otherwise the
+        loaded checkpoint's un-rescaled weights would interact with CB
+        mode and produce 50× too strong drive — exactly the dead↔runaway
+        pattern CB is supposed to fix. Force-rescale and only THEN set
+        conductance_enabled.
+    """
     try:
         if not os.path.exists(SNN_TUNE_PERSIST_PATH):
             logger.info("[snn_tune] no persistent overrides file at %s",
@@ -117,9 +133,20 @@ def _load_persistent_snn_tunes(brain, logger):
         return
     if not isinstance(overrides, dict) or not overrides:
         return
+
+    # Two CB knobs are special and need to be applied AFTER everything else.
+    # Pull them out of the regular loop.
+    cb_enable_target = float(overrides.get('conductance_enabled', 0.0)) != 0.0
+
     applied = 0
     for name, value in overrides.items():
         try:
+            # Skip cb_weights_rescaled entirely — runtime-only, never persists.
+            if name == 'cb_weights_rescaled':
+                continue
+            # Defer conductance_enabled until after a force-rescale below.
+            if name == 'conductance_enabled':
+                continue
             # Daemon-level knobs are kept in _runtime_state; SNN knobs go
             # through brain.snn_tune. Routing here mirrors _cmd_snn_tune.
             if name == 'autotune_enabled':
@@ -134,6 +161,33 @@ def _load_persistent_snn_tunes(brain, logger):
         except Exception as e:
             logger.warning("[snn_tune] persistent override %s=%s failed: %s",
                            name, value, e)
+
+    # CB-on path: force a rescale of the freshly-loaded weights, then
+    # enable conductance mode. Both must happen atomically — leaving CB
+    # on with un-rescaled weights produces the dead↔runaway pattern.
+    if cb_enable_target:
+        try:
+            # Clear sticky flag (always 0 on fresh process; defensive).
+            brain.snn_tune('cb_weights_rescaled', 0.0)
+            logger.info("[snn_tune] CB enabled in JSON — force-rescaling "
+                        "freshly-loaded weights before activating conductance "
+                        "mode (safety: rescale state is volatile across restarts)")
+            brain.snn_rescale_for_conductance(1.0 / 50.0)
+            brain.snn_tune('conductance_enabled', 1.0)
+            applied += 2
+            logger.info("[snn_tune] CB activated post-rescale; "
+                        "conductance_enabled=1, cb_weights_rescaled=1")
+        except Exception as e:
+            # Failure mode: leave CB OFF rather than activate with un-rescaled
+            # weights. Log loudly so an operator sees this in monitoring.
+            logger.error("[snn_tune] CB activation FAILED at startup — "
+                         "leaving conductance_enabled=0 for safety. Cause: %s", e)
+            try:
+                brain.snn_tune('conductance_enabled', 0.0)
+                brain.snn_tune('cb_weights_rescaled', 0.0)
+            except Exception:
+                pass
+
     logger.info("[snn_tune] reapplied %d persistent override(s) from %s",
                 applied, SNN_TUNE_PERSIST_PATH)
 
@@ -1030,8 +1084,13 @@ class BrainService:
             self.brain.snn_rescale_for_conductance(factor)
         except Exception as e:
             return {"error": "rescale failed: " + str(e)}
-        # Persist the sticky flag so a daemon restart sees rescale-applied.
-        _save_persistent_snn_tune("cb_weights_rescaled", 1.0, logger)
+        # Note: cb_weights_rescaled is RUNTIME-ONLY — do NOT persist to
+        # JSON. The C global tracks "current in-memory weights are
+        # rescaled"; that state is volatile across daemon restarts
+        # because checkpoint loads bring back un-rescaled weights. The
+        # _load_persistent_snn_tunes path force-rescales whenever
+        # conductance_enabled=1 is loaded, so the runtime flag is
+        # reconstructed correctly on every startup.
         result = {"ok": True, "factor": factor, "rescaled": True}
         if enable_after:
             try:
