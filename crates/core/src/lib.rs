@@ -19,8 +19,12 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod alloc_stats;
 pub mod ids;
 
+pub use alloc_stats::{
+    AllocSnapshot, AllocTag, ProcStatusBytes, TaggedBytes, account, release, snapshot,
+};
 pub use ids::{ActorId, EventId, Id};
 
 /// Result alias used across the workspace.

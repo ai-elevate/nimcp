@@ -40,6 +40,7 @@
 #![cfg_attr(feature = "cuda", allow(unsafe_code))]
 
 pub mod adaptation;
+pub mod autotune;
 pub mod basket;
 pub mod csr;
 pub mod depression;
@@ -54,6 +55,7 @@ pub mod substrate_adapter;
 pub mod tuning;
 
 pub use adaptation::{AdaptationError, AdaptationState};
+pub use autotune::{Actuator, AutotuneController, AutotuneSnapshot, CycleMetrics, Decision};
 pub use basket::{BasketError, BasketPool};
 pub use depression::{DepressionConfig, DepressionState, step_depression, weight_multiplier};
 pub use homeostatic::step_homeostatic_with_reward;

@@ -21,14 +21,24 @@ port — they live in code paths V2 doesn't have.
 
 | Disposition  | Count |
 |--------------|------:|
-| PORTED       |    19 |
+| PORTED       |    22 |
 | N/A-DROPPED  |    72 |
-| NEEDS-PORT   |     3 |
+| NEEDS-PORT   |     0 |
 | DEFERRED     |     4 |
 
-**Update 2026-04-26 (later same day):** CB migration landed in commit
-`eb10ab00e` — V2 Phase 10. See **PORTED** section below; the
-**DEFERRED** entry is preserved for context but the gap is now closed.
+**Updates 2026-04-26 (later same day):**
+- CB migration landed in `eb10ab00e` — V2 Phase 10.
+- Autotune closed-loop SNN brake controller landed in the next commit
+  (`crates/networks/snn/src/autotune.rs`) — pure observer/actuator
+  state machine, daemon does the I/O.
+- `nimcp_get_alloc_stats` equivalent landed as
+  `crates/core/src/alloc_stats.rs` — `/proc/self/status` reads + tagged
+  byte counters (no audit-log/KG aggregation since V2 has neither).
+
+The NEEDS-PORT bucket is now empty. The remaining DEFERRED entries are
+all CB-related operational follow-ups whose V2 equivalents are
+subsumed by the cleaner `cb_weights_rescaled` snapshot field — they
+need no further action.
 
 ---
 
@@ -56,6 +66,8 @@ port — they live in code paths V2 doesn't have.
 | `35c6b5d38` | LNN thalamic adapter (attention-gated input modulation) | v2 LNN substrate adapter |
 | `dec956ab9` | Conductance-based PSC migration (CB Phase 0-4) | v2 `eb10ab00e` "Phase 10 — conductance-based PSC migration" — see Phase 10 section below |
 | `312c9b323` | Checkpoint sidecar marker (CB rescaled) | v2 `eb10ab00e` `WeightSnapshot.cb_weights_rescaled` field (cleaner than V1's JSON sidecar) |
+| `41583c5a1` `eb42bce46` `203fa0467` | Autotune closed-loop SNN brake controller (P+I) | v2 `crates/networks/snn/src/autotune.rs` — pure state machine, no daemon I/O |
+| `8f876fee4` | `nimcp_get_alloc_stats` leak attribution helper | v2 `crates/core/src/alloc_stats.rs` — `/proc/self/status` reads + per-tag byte counters |
 
 The first SNN-stability wave (Phase 3.5), Path A (substrate + thalamic
 infrastructure across SNN + LNN), and the CB migration are now all
