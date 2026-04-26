@@ -21,10 +21,14 @@ port — they live in code paths V2 doesn't have.
 
 | Disposition  | Count |
 |--------------|------:|
-| PORTED       |    18 |
+| PORTED       |    19 |
 | N/A-DROPPED  |    72 |
-| NEEDS-PORT   |     4 |
-| DEFERRED     |     5 |
+| NEEDS-PORT   |     3 |
+| DEFERRED     |     4 |
+
+**Update 2026-04-26 (later same day):** CB migration landed in commit
+`eb10ab00e` — V2 Phase 10. See **PORTED** section below; the
+**DEFERRED** entry is preserved for context but the gap is now closed.
 
 ---
 
@@ -50,9 +54,12 @@ port — they live in code paths V2 doesn't have.
 | `6c8a3cff2` | Shared thalamic channel adapter | v2 `crates/thalamic` |
 | `54effd95f` | LNN substrate adapter | v2 `crates/networks/lnn/src/substrate_adapter.rs` |
 | `35c6b5d38` | LNN thalamic adapter (attention-gated input modulation) | v2 LNN substrate adapter |
+| `dec956ab9` | Conductance-based PSC migration (CB Phase 0-4) | v2 `eb10ab00e` "Phase 10 — conductance-based PSC migration" — see Phase 10 section below |
+| `312c9b323` | Checkpoint sidecar marker (CB rescaled) | v2 `eb10ab00e` `WeightSnapshot.cb_weights_rescaled` field (cleaner than V1's JSON sidecar) |
 
-The first SNN-stability wave (Phase 3.5) and Path A (substrate + thalamic
-infrastructure across SNN + LNN) are the ones already mirrored in v2.
+The first SNN-stability wave (Phase 3.5), Path A (substrate + thalamic
+infrastructure across SNN + LNN), and the CB migration are now all
+mirrored in v2.
 
 ---
 
