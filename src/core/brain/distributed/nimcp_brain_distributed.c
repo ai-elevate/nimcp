@@ -184,6 +184,13 @@ static brain_t allocate_brain_simple(void)
     // Initialize snapshot fields
     brain->is_snapshot = false;
 
+    // Layer C: temperature scaling defaults — T=1.0 is identity (no behavior
+    // change), ece=-1 marks "never calibrated". calloc would have left T=0.0,
+    // which would produce divide-by-zero in nimcp_apply_temperature.
+    brain->decoder_temperature                  = 1.0F;
+    brain->decoder_temperature_calibrated_ece   = -1.0F;
+    brain->decoder_temperature_calibrated_at_us = 0;
+
     return brain;
 }
 

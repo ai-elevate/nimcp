@@ -447,6 +447,13 @@ brain_t allocate_brain(void)
     brain->auto_detect_communities = false;
     brain->community_detection_interval = 0.0f;
 
+    // Layer C: temperature scaling defaults — T=1.0 is identity, ece=-1 means
+    // uncalibrated. These get overwritten by nimcp_brain_calibrate_temperature
+    // once a held-out validation set + language stage are online.
+    brain->decoder_temperature                   = 1.0F;
+    brain->decoder_temperature_calibrated_ece    = -1.0F;
+    brain->decoder_temperature_calibrated_at_us  = 0;
+
     return brain;
 }
 

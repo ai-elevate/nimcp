@@ -679,6 +679,19 @@ unit_biology_simulation_test_physiology/fast:
 .PHONY : unit_biology_simulation_test_physiology/fast
 
 #=============================================================================
+# Target rules for targets named unit_brain_tick_test_wave8bc_region_ticks
+
+# Build rule for target.
+unit_brain_tick_test_wave8bc_region_ticks: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_tick_test_wave8bc_region_ticks
+.PHONY : unit_brain_tick_test_wave8bc_region_ticks
+
+# fast build rule for target.
+unit_brain_tick_test_wave8bc_region_ticks/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_brain_tick_test_wave8bc_region_ticks.dir/build.make test/CMakeFiles/unit_brain_tick_test_wave8bc_region_ticks.dir/build
+.PHONY : unit_brain_tick_test_wave8bc_region_ticks/fast
+
+#=============================================================================
 # Target rules for targets named unit_chemistry_simulation_test_analytical_chemistry
 
 # Build rule for target.
@@ -4124,6 +4137,84 @@ unit_test_comprehensive_integration/fast:
 .PHONY : unit_test_comprehensive_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_test_cycle_coordinator_driven
+
+# Build rule for target.
+unit_test_cycle_coordinator_driven: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_cycle_coordinator_driven
+.PHONY : unit_test_cycle_coordinator_driven
+
+# fast build rule for target.
+unit_test_cycle_coordinator_driven/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_cycle_coordinator_driven.dir/build.make test/CMakeFiles/unit_test_cycle_coordinator_driven.dir/build
+.PHONY : unit_test_cycle_coordinator_driven/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_wave4_meta_learning_hook
+
+# Build rule for target.
+unit_test_wave4_meta_learning_hook: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_wave4_meta_learning_hook
+.PHONY : unit_test_wave4_meta_learning_hook
+
+# fast build rule for target.
+unit_test_wave4_meta_learning_hook/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_wave4_meta_learning_hook.dir/build.make test/CMakeFiles/unit_test_wave4_meta_learning_hook.dir/build
+.PHONY : unit_test_wave4_meta_learning_hook/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_wave4_predictive_immune_init
+
+# Build rule for target.
+unit_test_wave4_predictive_immune_init: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_wave4_predictive_immune_init
+.PHONY : unit_test_wave4_predictive_immune_init
+
+# fast build rule for target.
+unit_test_wave4_predictive_immune_init/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_wave4_predictive_immune_init.dir/build.make test/CMakeFiles/unit_test_wave4_predictive_immune_init.dir/build
+.PHONY : unit_test_wave4_predictive_immune_init/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_wave5_physics_stage
+
+# Build rule for target.
+unit_test_wave5_physics_stage: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_wave5_physics_stage
+.PHONY : unit_test_wave5_physics_stage
+
+# fast build rule for target.
+unit_test_wave5_physics_stage/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_wave5_physics_stage.dir/build.make test/CMakeFiles/unit_test_wave5_physics_stage.dir/build
+.PHONY : unit_test_wave5_physics_stage/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_wave6_chemistry_init
+
+# Build rule for target.
+unit_test_wave6_chemistry_init: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_wave6_chemistry_init
+.PHONY : unit_test_wave6_chemistry_init
+
+# fast build rule for target.
+unit_test_wave6_chemistry_init/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_wave6_chemistry_init.dir/build.make test/CMakeFiles/unit_test_wave6_chemistry_init.dir/build
+.PHONY : unit_test_wave6_chemistry_init/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_wave8a_cochlea_init
+
+# Build rule for target.
+unit_test_wave8a_cochlea_init: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_wave8a_cochlea_init
+.PHONY : unit_test_wave8a_cochlea_init
+
+# fast build rule for target.
+unit_test_wave8a_cochlea_init/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_test_wave8a_cochlea_init.dir/build.make test/CMakeFiles/unit_test_wave8a_cochlea_init.dir/build
+.PHONY : unit_test_wave8a_cochlea_init/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_algorithms_test_centrality
 
 # Build rule for target.
@@ -7439,6 +7530,136 @@ test_brain_simulation_pipeline/fast:
 .PHONY : test_brain_simulation_pipeline/fast
 
 #=============================================================================
+# Target rules for targets named integration_test_cycle_coordinator_driven_integration
+
+# Build rule for target.
+integration_test_cycle_coordinator_driven_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_cycle_coordinator_driven_integration
+.PHONY : integration_test_cycle_coordinator_driven_integration
+
+# fast build rule for target.
+integration_test_cycle_coordinator_driven_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_cycle_coordinator_driven_integration.dir/build.make test/CMakeFiles/integration_test_cycle_coordinator_driven_integration.dir/build
+.PHONY : integration_test_cycle_coordinator_driven_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_test_cycle_coordinator_regression
+
+# Build rule for target.
+regression_test_cycle_coordinator_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_cycle_coordinator_regression
+.PHONY : regression_test_cycle_coordinator_regression
+
+# fast build rule for target.
+regression_test_cycle_coordinator_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_cycle_coordinator_regression.dir/build.make test/CMakeFiles/regression_test_cycle_coordinator_regression.dir/build
+.PHONY : regression_test_cycle_coordinator_regression/fast
+
+#=============================================================================
+# Target rules for targets named integration_test_wave4_integration
+
+# Build rule for target.
+integration_test_wave4_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_wave4_integration
+.PHONY : integration_test_wave4_integration
+
+# fast build rule for target.
+integration_test_wave4_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_wave4_integration.dir/build.make test/CMakeFiles/integration_test_wave4_integration.dir/build
+.PHONY : integration_test_wave4_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_test_wave4_regression
+
+# Build rule for target.
+regression_test_wave4_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_wave4_regression
+.PHONY : regression_test_wave4_regression
+
+# fast build rule for target.
+regression_test_wave4_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_wave4_regression.dir/build.make test/CMakeFiles/regression_test_wave4_regression.dir/build
+.PHONY : regression_test_wave4_regression/fast
+
+#=============================================================================
+# Target rules for targets named integration_test_wave5_integration
+
+# Build rule for target.
+integration_test_wave5_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_wave5_integration
+.PHONY : integration_test_wave5_integration
+
+# fast build rule for target.
+integration_test_wave5_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_wave5_integration.dir/build.make test/CMakeFiles/integration_test_wave5_integration.dir/build
+.PHONY : integration_test_wave5_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_test_wave5_regression
+
+# Build rule for target.
+regression_test_wave5_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_wave5_regression
+.PHONY : regression_test_wave5_regression
+
+# fast build rule for target.
+regression_test_wave5_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_wave5_regression.dir/build.make test/CMakeFiles/regression_test_wave5_regression.dir/build
+.PHONY : regression_test_wave5_regression/fast
+
+#=============================================================================
+# Target rules for targets named integration_test_wave6_integration
+
+# Build rule for target.
+integration_test_wave6_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_wave6_integration
+.PHONY : integration_test_wave6_integration
+
+# fast build rule for target.
+integration_test_wave6_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_wave6_integration.dir/build.make test/CMakeFiles/integration_test_wave6_integration.dir/build
+.PHONY : integration_test_wave6_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_test_wave6_regression
+
+# Build rule for target.
+regression_test_wave6_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_wave6_regression
+.PHONY : regression_test_wave6_regression
+
+# fast build rule for target.
+regression_test_wave6_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_wave6_regression.dir/build.make test/CMakeFiles/regression_test_wave6_regression.dir/build
+.PHONY : regression_test_wave6_regression/fast
+
+#=============================================================================
+# Target rules for targets named integration_test_wave8a_integration
+
+# Build rule for target.
+integration_test_wave8a_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_wave8a_integration
+.PHONY : integration_test_wave8a_integration
+
+# fast build rule for target.
+integration_test_wave8a_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/integration_test_wave8a_integration.dir/build.make test/CMakeFiles/integration_test_wave8a_integration.dir/build
+.PHONY : integration_test_wave8a_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_test_wave8a_regression
+
+# Build rule for target.
+regression_test_wave8a_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_wave8a_regression
+.PHONY : regression_test_wave8a_regression
+
+# fast build rule for target.
+regression_test_wave8a_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_test_wave8a_regression.dir/build.make test/CMakeFiles/regression_test_wave8a_regression.dir/build
+.PHONY : regression_test_wave8a_regression/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_brain_pipeline
 
 # Build rule for target.
@@ -7528,6 +7749,19 @@ e2e_test_reasoning_calibration: cmake_check_build_system
 e2e_test_reasoning_calibration/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_reasoning_calibration.dir/build.make test/e2e/CMakeFiles/e2e_test_reasoning_calibration.dir/build
 .PHONY : e2e_test_reasoning_calibration/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_snn_runaway_suppression
+
+# Build rule for target.
+e2e_test_snn_runaway_suppression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_runaway_suppression
+.PHONY : e2e_test_snn_runaway_suppression
+
+# fast build rule for target.
+e2e_test_snn_runaway_suppression/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_runaway_suppression.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_runaway_suppression.dir/build
+.PHONY : e2e_test_snn_runaway_suppression/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_reasoning_abduction
@@ -9764,6 +9998,71 @@ e2e_test_parallel_init_lifecycle: cmake_check_build_system
 e2e_test_parallel_init_lifecycle/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_parallel_init_lifecycle.dir/build.make test/e2e/CMakeFiles/e2e_test_parallel_init_lifecycle.dir/build
 .PHONY : e2e_test_parallel_init_lifecycle/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_cycle_coordinator
+
+# Build rule for target.
+e2e_test_cycle_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_cycle_coordinator
+.PHONY : e2e_test_cycle_coordinator
+
+# fast build rule for target.
+e2e_test_cycle_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_cycle_coordinator.dir/build.make test/e2e/CMakeFiles/e2e_test_cycle_coordinator.dir/build
+.PHONY : e2e_test_cycle_coordinator/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_wave4
+
+# Build rule for target.
+e2e_test_wave4: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_wave4
+.PHONY : e2e_test_wave4
+
+# fast build rule for target.
+e2e_test_wave4/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wave4.dir/build.make test/e2e/CMakeFiles/e2e_test_wave4.dir/build
+.PHONY : e2e_test_wave4/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_wave5
+
+# Build rule for target.
+e2e_test_wave5: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_wave5
+.PHONY : e2e_test_wave5
+
+# fast build rule for target.
+e2e_test_wave5/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wave5.dir/build.make test/e2e/CMakeFiles/e2e_test_wave5.dir/build
+.PHONY : e2e_test_wave5/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_wave6
+
+# Build rule for target.
+e2e_test_wave6: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_wave6
+.PHONY : e2e_test_wave6
+
+# fast build rule for target.
+e2e_test_wave6/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wave6.dir/build.make test/e2e/CMakeFiles/e2e_test_wave6.dir/build
+.PHONY : e2e_test_wave6/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_wave8a
+
+# Build rule for target.
+e2e_test_wave8a: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_wave8a
+.PHONY : e2e_test_wave8a
+
+# fast build rule for target.
+e2e_test_wave8a/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_wave8a.dir/build.make test/e2e/CMakeFiles/e2e_test_wave8a.dir/build
+.PHONY : e2e_test_wave8a/fast
 
 #=============================================================================
 # Target rules for targets named e2e_gpu_test_e2e_learning_pipeline_gpu
@@ -17421,6 +17720,240 @@ unit_cognitive_ethics_test_health_ethics_bridge_functions: cmake_check_build_sys
 unit_cognitive_ethics_test_health_ethics_bridge_functions/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/ethics/CMakeFiles/unit_cognitive_ethics_test_health_ethics_bridge_functions.dir/build.make test/unit/cognitive/ethics/CMakeFiles/unit_cognitive_ethics_test_health_ethics_bridge_functions.dir/build
 .PHONY : unit_cognitive_ethics_test_health_ethics_bridge_functions/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_ethics_test_empathy_network_api
+
+# Build rule for target.
+unit_cognitive_ethics_test_empathy_network_api: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_ethics_test_empathy_network_api
+.PHONY : unit_cognitive_ethics_test_empathy_network_api
+
+# fast build rule for target.
+unit_cognitive_ethics_test_empathy_network_api/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/ethics/CMakeFiles/unit_cognitive_ethics_test_empathy_network_api.dir/build.make test/unit/cognitive/ethics/CMakeFiles/unit_cognitive_ethics_test_empathy_network_api.dir/build
+.PHONY : unit_cognitive_ethics_test_empathy_network_api/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave1_statue_finish
+
+# Build rule for target.
+unit_cognitive_kg_test_wave1_statue_finish: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave1_statue_finish
+.PHONY : unit_cognitive_kg_test_wave1_statue_finish
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave1_statue_finish/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave1_statue_finish.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave1_statue_finish.dir/build
+.PHONY : unit_cognitive_kg_test_wave1_statue_finish/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave2_region_events
+
+# Build rule for target.
+unit_cognitive_kg_test_wave2_region_events: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave2_region_events
+.PHONY : unit_cognitive_kg_test_wave2_region_events
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave2_region_events/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave2_region_events.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave2_region_events.dir/build
+.PHONY : unit_cognitive_kg_test_wave2_region_events/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave3_unwired_regions
+
+# Build rule for target.
+unit_cognitive_kg_test_wave3_unwired_regions: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave3_unwired_regions
+.PHONY : unit_cognitive_kg_test_wave3_unwired_regions
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave3_unwired_regions/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave3_unwired_regions.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave3_unwired_regions.dir/build
+.PHONY : unit_cognitive_kg_test_wave3_unwired_regions/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave5_network_types
+
+# Build rule for target.
+unit_cognitive_kg_test_wave5_network_types: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave5_network_types
+.PHONY : unit_cognitive_kg_test_wave5_network_types
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave5_network_types/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave5_network_types.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave5_network_types.dir/build
+.PHONY : unit_cognitive_kg_test_wave5_network_types/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave6_memory_family
+
+# Build rule for target.
+unit_cognitive_kg_test_wave6_memory_family: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave6_memory_family
+.PHONY : unit_cognitive_kg_test_wave6_memory_family
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave6_memory_family/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave6_memory_family.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave6_memory_family.dir/build
+.PHONY : unit_cognitive_kg_test_wave6_memory_family/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave4_peptide_and_subcortical
+
+# Build rule for target.
+unit_cognitive_kg_test_wave4_peptide_and_subcortical: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave4_peptide_and_subcortical
+.PHONY : unit_cognitive_kg_test_wave4_peptide_and_subcortical
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave4_peptide_and_subcortical/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave4_peptide_and_subcortical.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave4_peptide_and_subcortical.dir/build
+.PHONY : unit_cognitive_kg_test_wave4_peptide_and_subcortical/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave7_reasoning_knowledge
+
+# Build rule for target.
+unit_cognitive_kg_test_wave7_reasoning_knowledge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave7_reasoning_knowledge
+.PHONY : unit_cognitive_kg_test_wave7_reasoning_knowledge
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave7_reasoning_knowledge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave7_reasoning_knowledge.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave7_reasoning_knowledge.dir/build
+.PHONY : unit_cognitive_kg_test_wave7_reasoning_knowledge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave8_world_model_fep
+
+# Build rule for target.
+unit_cognitive_kg_test_wave8_world_model_fep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave8_world_model_fep
+.PHONY : unit_cognitive_kg_test_wave8_world_model_fep
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave8_world_model_fep/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave8_world_model_fep.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave8_world_model_fep.dir/build
+.PHONY : unit_cognitive_kg_test_wave8_world_model_fep/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave10_emotion_social
+
+# Build rule for target.
+unit_cognitive_kg_test_wave10_emotion_social: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave10_emotion_social
+.PHONY : unit_cognitive_kg_test_wave10_emotion_social
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave10_emotion_social/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave10_emotion_social.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave10_emotion_social.dir/build
+.PHONY : unit_cognitive_kg_test_wave10_emotion_social/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave11_safety
+
+# Build rule for target.
+unit_cognitive_kg_test_wave11_safety: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave11_safety
+.PHONY : unit_cognitive_kg_test_wave11_safety
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave11_safety/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave11_safety.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave11_safety.dir/build
+.PHONY : unit_cognitive_kg_test_wave11_safety/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave13_curiosity_meta
+
+# Build rule for target.
+unit_cognitive_kg_test_wave13_curiosity_meta: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave13_curiosity_meta
+.PHONY : unit_cognitive_kg_test_wave13_curiosity_meta
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave13_curiosity_meta/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave13_curiosity_meta.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave13_curiosity_meta.dir/build
+.PHONY : unit_cognitive_kg_test_wave13_curiosity_meta/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave12_language
+
+# Build rule for target.
+unit_cognitive_kg_test_wave12_language: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave12_language
+.PHONY : unit_cognitive_kg_test_wave12_language
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave12_language/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave12_language.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave12_language.dir/build
+.PHONY : unit_cognitive_kg_test_wave12_language/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave9kg_attention_wm
+
+# Build rule for target.
+unit_cognitive_kg_test_wave9kg_attention_wm: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave9kg_attention_wm
+.PHONY : unit_cognitive_kg_test_wave9kg_attention_wm
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave9kg_attention_wm/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave9kg_attention_wm.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave9kg_attention_wm.dir/build
+.PHONY : unit_cognitive_kg_test_wave9kg_attention_wm/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave16_real_consumers
+
+# Build rule for target.
+unit_cognitive_kg_test_wave16_real_consumers: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave16_real_consumers
+.PHONY : unit_cognitive_kg_test_wave16_real_consumers
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave16_real_consumers/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave16_real_consumers.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave16_real_consumers.dir/build
+.PHONY : unit_cognitive_kg_test_wave16_real_consumers/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave17_training_consumers
+
+# Build rule for target.
+unit_cognitive_kg_test_wave17_training_consumers: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave17_training_consumers
+.PHONY : unit_cognitive_kg_test_wave17_training_consumers
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave17_training_consumers/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave17_training_consumers.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave17_training_consumers.dir/build
+.PHONY : unit_cognitive_kg_test_wave17_training_consumers/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave14_math_genius
+
+# Build rule for target.
+unit_cognitive_kg_test_wave14_math_genius: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave14_math_genius
+.PHONY : unit_cognitive_kg_test_wave14_math_genius
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave14_math_genius/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave14_math_genius.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave14_math_genius.dir/build
+.PHONY : unit_cognitive_kg_test_wave14_math_genius/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_kg_test_wave15_physics
+
+# Build rule for target.
+unit_cognitive_kg_test_wave15_physics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_kg_test_wave15_physics
+.PHONY : unit_cognitive_kg_test_wave15_physics
+
+# fast build rule for target.
+unit_cognitive_kg_test_wave15_physics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave15_physics.dir/build.make test/unit/cognitive/kg/CMakeFiles/unit_cognitive_kg_test_wave15_physics.dir/build
+.PHONY : unit_cognitive_kg_test_wave15_physics/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_executive_test_executive
@@ -26627,6 +27160,45 @@ unit_brain_test_kg_wiring_modules/fast:
 .PHONY : unit_brain_test_kg_wiring_modules/fast
 
 #=============================================================================
+# Target rules for targets named unit_brain_test_wave8bc_region_ticks
+
+# Build rule for target.
+unit_brain_test_wave8bc_region_ticks: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_test_wave8bc_region_ticks
+.PHONY : unit_brain_test_wave8bc_region_ticks
+
+# fast build rule for target.
+unit_brain_test_wave8bc_region_ticks/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/brain/CMakeFiles/unit_brain_test_wave8bc_region_ticks.dir/build.make test/unit/brain/CMakeFiles/unit_brain_test_wave8bc_region_ticks.dir/build
+.PHONY : unit_brain_test_wave8bc_region_ticks/fast
+
+#=============================================================================
+# Target rules for targets named unit_brain_test_glial_init
+
+# Build rule for target.
+unit_brain_test_glial_init: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_test_glial_init
+.PHONY : unit_brain_test_glial_init
+
+# fast build rule for target.
+unit_brain_test_glial_init/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/brain/CMakeFiles/unit_brain_test_glial_init.dir/build.make test/unit/brain/CMakeFiles/unit_brain_test_glial_init.dir/build
+.PHONY : unit_brain_test_glial_init/fast
+
+#=============================================================================
+# Target rules for targets named unit_brain_bridges_test_halfstatue_wiring
+
+# Build rule for target.
+unit_brain_bridges_test_halfstatue_wiring: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_bridges_test_halfstatue_wiring
+.PHONY : unit_brain_bridges_test_halfstatue_wiring
+
+# fast build rule for target.
+unit_brain_bridges_test_halfstatue_wiring/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/brain/bridges/CMakeFiles/unit_brain_bridges_test_halfstatue_wiring.dir/build.make test/unit/brain/bridges/CMakeFiles/unit_brain_bridges_test_halfstatue_wiring.dir/build
+.PHONY : unit_brain_bridges_test_halfstatue_wiring/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_memory_test_memory_pool
 
 # Build rule for target.
@@ -30018,6 +30590,19 @@ integration_glial_test_myelin_biophysics: cmake_check_build_system
 integration_glial_test_myelin_biophysics/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/glial/CMakeFiles/integration_glial_test_myelin_biophysics.dir/build.make test/integration/glial/CMakeFiles/integration_glial_test_myelin_biophysics.dir/build
 .PHONY : integration_glial_test_myelin_biophysics/fast
+
+#=============================================================================
+# Target rules for targets named integration_glial_test_hot_path
+
+# Build rule for target.
+integration_glial_test_hot_path: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_glial_test_hot_path
+.PHONY : integration_glial_test_hot_path
+
+# fast build rule for target.
+integration_glial_test_hot_path/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/glial/CMakeFiles/integration_glial_test_hot_path.dir/build.make test/integration/glial/CMakeFiles/integration_glial_test_hot_path.dir/build
+.PHONY : integration_glial_test_hot_path/fast
 
 #=============================================================================
 # Target rules for targets named regression_glial_performance
@@ -39705,6 +40290,19 @@ unit_snn_test_snn_substrate_adapter/fast:
 .PHONY : unit_snn_test_snn_substrate_adapter/fast
 
 #=============================================================================
+# Target rules for targets named unit_snn_test_snn_membrane_unit
+
+# Build rule for target.
+unit_snn_test_snn_membrane_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_membrane_unit
+.PHONY : unit_snn_test_snn_membrane_unit
+
+# fast build rule for target.
+unit_snn_test_snn_membrane_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_membrane_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_membrane_unit.dir/build
+.PHONY : unit_snn_test_snn_membrane_unit/fast
+
+#=============================================================================
 # Target rules for targets named test_snn_visual_bridge
 
 # Build rule for target.
@@ -40342,6 +40940,19 @@ integration_snn_test_snn_substrate_integration/fast:
 .PHONY : integration_snn_test_snn_substrate_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_test_snn_conductance_integration
+
+# Build rule for target.
+integration_snn_test_snn_conductance_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_test_snn_conductance_integration
+.PHONY : integration_snn_test_snn_conductance_integration
+
+# fast build rule for target.
+integration_snn_test_snn_conductance_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_test_snn_conductance_integration.dir/build.make test/integration/snn/CMakeFiles/integration_snn_test_snn_conductance_integration.dir/build
+.PHONY : integration_snn_test_snn_conductance_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_snn_bridge_exception
 
 # Build rule for target.
@@ -40418,6 +41029,19 @@ regression_snn_test_snn_biophysical_regression: cmake_check_build_system
 regression_snn_test_snn_biophysical_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_biophysical_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_biophysical_regression.dir/build
 .PHONY : regression_snn_test_snn_biophysical_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_conductance_regression
+
+# Build rule for target.
+regression_snn_test_snn_conductance_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_conductance_regression
+.PHONY : regression_snn_test_snn_conductance_regression
+
+# fast build rule for target.
+regression_snn_test_snn_conductance_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir/build
+.PHONY : regression_snn_test_snn_conductance_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_snn_bridge_exception
@@ -44686,6 +45310,7 @@ help:
 	@echo "... e2e_test_cortical_training_pipeline"
 	@echo "... e2e_test_curiosity_enhanced_pipeline"
 	@echo "... e2e_test_curiosity_snn_plasticity_pipeline"
+	@echo "... e2e_test_cycle_coordinator"
 	@echo "... e2e_test_distributed_pipeline"
 	@echo "... e2e_test_dragonfly_hunting_pipeline"
 	@echo "... e2e_test_dragonfly_multi_target"
@@ -44821,6 +45446,7 @@ help:
 	@echo "... e2e_test_snn_backprop"
 	@echo "... e2e_test_snn_bridge_pipeline"
 	@echo "... e2e_test_snn_pipeline"
+	@echo "... e2e_test_snn_runaway_suppression"
 	@echo "... e2e_test_somatosensory_pipeline"
 	@echo "... e2e_test_spatial_processing"
 	@echo "... e2e_test_speech_enhancement_pipeline"
@@ -44856,6 +45482,10 @@ help:
 	@echo "... e2e_test_training_validation"
 	@echo "... e2e_test_unified_training_integration"
 	@echo "... e2e_test_visual_pipeline"
+	@echo "... e2e_test_wave4"
+	@echo "... e2e_test_wave5"
+	@echo "... e2e_test_wave6"
+	@echo "... e2e_test_wave8a"
 	@echo "... e2e_test_wellbeing_enhanced_pipeline"
 	@echo "... e2e_test_wellbeing_snn_plasticity_pipeline"
 	@echo "... e2e_test_wernicke_pipeline"
@@ -45144,6 +45774,7 @@ help:
 	@echo "... integration_genius_orchestrator"
 	@echo "... integration_genius_profiles"
 	@echo "... integration_glial_test_glial_integration"
+	@echo "... integration_glial_test_hot_path"
 	@echo "... integration_glial_test_microglia_brain"
 	@echo "... integration_glial_test_myelin_axon_oligo"
 	@echo "... integration_glial_test_myelin_biophysics"
@@ -45387,6 +46018,7 @@ help:
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
 	@echo "... integration_snn_test_snn_biophysical_integration"
+	@echo "... integration_snn_test_snn_conductance_integration"
 	@echo "... integration_snn_test_snn_substrate_integration"
 	@echo "... integration_snn_test_snn_thalamic_substrate_compose"
 	@echo "... integration_social_fep"
@@ -45411,7 +46043,12 @@ help:
 	@echo "... integration_ternary_test_training_ternary_integration"
 	@echo "... integration_test_backprop_grad_clip"
 	@echo "... integration_test_brain_state_manager"
+	@echo "... integration_test_cycle_coordinator_driven_integration"
 	@echo "... integration_test_kg_module_wiring"
+	@echo "... integration_test_wave4_integration"
+	@echo "... integration_test_wave5_integration"
+	@echo "... integration_test_wave6_integration"
+	@echo "... integration_test_wave8a_integration"
 	@echo "... integration_thalamic"
 	@echo "... integration_thalamic_substrate_bridges"
 	@echo "... integration_thread_safety_test_concurrent_module_init"
@@ -45965,6 +46602,7 @@ help:
 	@echo "... regression_snn_test_numerical_regression"
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_snn_test_snn_biophysical_regression"
+	@echo "... regression_snn_test_snn_conductance_regression"
 	@echo "... regression_social_fep"
 	@echo "... regression_srp_split_test_srp_split_api_regression"
 	@echo "... regression_srp_split_test_srp_split_cross_module_regression"
@@ -45984,7 +46622,12 @@ help:
 	@echo "... regression_symbolic_logic_reasoning_test"
 	@echo "... regression_test_backprop_kernel_compat"
 	@echo "... regression_test_brain_state_manager"
+	@echo "... regression_test_cycle_coordinator_regression"
 	@echo "... regression_test_kg_module_wiring"
+	@echo "... regression_test_wave4_regression"
+	@echo "... regression_test_wave5_regression"
+	@echo "... regression_test_wave6_regression"
+	@echo "... regression_test_wave8a_regression"
 	@echo "... regression_thalamic_immune_bridge_test"
 	@echo "... regression_thalamic_router_test"
 	@echo "... regression_thalamus_test"
@@ -46451,15 +47094,19 @@ help:
 	@echo "... unit_biology_simulation_test_ecology"
 	@echo "... unit_biology_simulation_test_immunology"
 	@echo "... unit_biology_simulation_test_physiology"
+	@echo "... unit_brain_bridges_test_halfstatue_wiring"
 	@echo "... unit_brain_integration"
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_regions_kg_wiring_amygdala"
 	@echo "... unit_brain_regions_kg_wiring_hippocampus"
 	@echo "... unit_brain_regions_kg_wiring_pfc"
 	@echo "... unit_brain_spike_features"
+	@echo "... unit_brain_test_glial_init"
 	@echo "... unit_brain_test_kg_module_wiring"
 	@echo "... unit_brain_test_kg_wiring_modules"
 	@echo "... unit_brain_test_state_manager"
+	@echo "... unit_brain_test_wave8bc_region_ticks"
+	@echo "... unit_brain_tick_test_wave8bc_region_ticks"
 	@echo "... unit_chemistry_exception_handling"
 	@echo "... unit_chemistry_gasotransmitters_test_nitric_oxide"
 	@echo "... unit_chemistry_ph_test_buffer_systems"
@@ -46505,6 +47152,7 @@ help:
 	@echo "... unit_cognitive_emotions_test_thread_safety"
 	@echo "... unit_cognitive_epistemic_plasticity_bridge"
 	@echo "... unit_cognitive_epistemic_snn_bridge"
+	@echo "... unit_cognitive_ethics_test_empathy_network_api"
 	@echo "... unit_cognitive_ethics_test_ethics_plasticity_bridge"
 	@echo "... unit_cognitive_ethics_test_ethics_snn_bridge"
 	@echo "... unit_cognitive_ethics_test_health_ethics_bridge_functions"
@@ -46584,6 +47232,23 @@ help:
 	@echo "... unit_cognitive_jepa_test_jepa_weights"
 	@echo "... unit_cognitive_jepa_weights"
 	@echo "... unit_cognitive_joy_test_joy_euphoria"
+	@echo "... unit_cognitive_kg_test_wave10_emotion_social"
+	@echo "... unit_cognitive_kg_test_wave11_safety"
+	@echo "... unit_cognitive_kg_test_wave12_language"
+	@echo "... unit_cognitive_kg_test_wave13_curiosity_meta"
+	@echo "... unit_cognitive_kg_test_wave14_math_genius"
+	@echo "... unit_cognitive_kg_test_wave15_physics"
+	@echo "... unit_cognitive_kg_test_wave16_real_consumers"
+	@echo "... unit_cognitive_kg_test_wave17_training_consumers"
+	@echo "... unit_cognitive_kg_test_wave1_statue_finish"
+	@echo "... unit_cognitive_kg_test_wave2_region_events"
+	@echo "... unit_cognitive_kg_test_wave3_unwired_regions"
+	@echo "... unit_cognitive_kg_test_wave4_peptide_and_subcortical"
+	@echo "... unit_cognitive_kg_test_wave5_network_types"
+	@echo "... unit_cognitive_kg_test_wave6_memory_family"
+	@echo "... unit_cognitive_kg_test_wave7_reasoning_knowledge"
+	@echo "... unit_cognitive_kg_test_wave8_world_model_fep"
+	@echo "... unit_cognitive_kg_test_wave9kg_attention_wm"
 	@echo "... unit_cognitive_logic_test_logic_sleep_bridge"
 	@echo "... unit_cognitive_memory_test_fractal_exception_handling"
 	@echo "... unit_cognitive_memory_test_memory_sleep_bridge"
@@ -47637,6 +48302,7 @@ help:
 	@echo "... unit_snn_test_snn_depression_tuning"
 	@echo "... unit_snn_test_snn_encoding"
 	@echo "... unit_snn_test_snn_immune"
+	@echo "... unit_snn_test_snn_membrane_unit"
 	@echo "... unit_snn_test_snn_network"
 	@echo "... unit_snn_test_snn_numerical_stability"
 	@echo "... unit_snn_test_snn_substrate_adapter"
@@ -47654,6 +48320,7 @@ help:
 	@echo "... unit_ternary_exception_handling"
 	@echo "... unit_test_brain_full_simulation"
 	@echo "... unit_test_comprehensive_integration"
+	@echo "... unit_test_cycle_coordinator_driven"
 	@echo "... unit_test_energy_consistency"
 	@echo "... unit_test_evolutionary_proof"
 	@echo "... unit_test_genius_orchestrator"
@@ -47662,6 +48329,11 @@ help:
 	@echo "... unit_test_quantum_mcts"
 	@echo "... unit_test_training_integration_hub"
 	@echo "... unit_test_training_symbolic_logic_hub_bridge"
+	@echo "... unit_test_wave4_meta_learning_hook"
+	@echo "... unit_test_wave4_predictive_immune_init"
+	@echo "... unit_test_wave5_physics_stage"
+	@echo "... unit_test_wave6_chemistry_init"
+	@echo "... unit_test_wave8a_cochlea_init"
 	@echo "... unit_training_exception_handling"
 	@echo "... unit_training_state_manager"
 	@echo "... unit_training_test_adv_gs"
