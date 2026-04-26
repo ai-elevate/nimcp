@@ -171,3 +171,36 @@ def test_get_stats_has_adaptive_section() -> None:
     assert isinstance(stats, dict)
     assert "adaptive" in stats
     assert stats["adaptive"]["layer_widths"] == LAYERS
+
+
+# -----------------------------------------------------------------------------
+# (6) Phase 9h — backend selector (Cpu / Gpu)
+# -----------------------------------------------------------------------------
+def test_backend_default_is_cpu() -> None:
+    """Brain() with no `backend` arg should default to CPU."""
+    b = nimcp_v2.Brain(rng_seed=SEED, layers=LAYERS)
+    assert b.backend == "cpu"
+
+
+def test_backend_explicit_cpu() -> None:
+    b = nimcp_v2.Brain(rng_seed=SEED, layers=LAYERS, backend="cpu")
+    assert b.backend == "cpu"
+
+
+def test_backend_gpu_degrades_gracefully_on_cpu_build() -> None:
+    """Backend='gpu' must boot on a CPU-only build by degrading to CPU
+    forward path with a warning. The brain handle is fully functional
+    afterward — Phase 9h's never-break-boot contract."""
+    b = nimcp_v2.Brain(rng_seed=SEED, layers=LAYERS, backend="gpu")
+    # The reported backend mirrors the requested setting; whether the
+    # GPU path is *actually* live depends on the build flags.
+    assert b.backend == "gpu"
+    # Inference still works (CPU forward in this build).
+    out = b.predict([0.1] * LAYERS[0])
+    assert len(out) == LAYERS[-1]
+
+
+def test_backend_unknown_string_raises() -> None:
+    import pytest
+    with pytest.raises(ValueError, match="unknown backend"):
+        nimcp_v2.Brain(rng_seed=SEED, layers=LAYERS, backend="cuda")

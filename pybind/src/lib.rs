@@ -47,7 +47,7 @@
 
 use ndarray::Array1;
 use nimcp_adaptive::{Activation, AdaptiveConfig};
-use nimcp_brain::{Brain, BrainConfig};
+use nimcp_brain::{Backend, Brain, BrainConfig};
 use nimcp_lnn::TrainParams;
 use nimcp_memory::MemoryNode;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
@@ -70,6 +70,16 @@ fn parse_activation(s: &str) -> PyResult<Activation> {
     }
 }
 
+fn parse_backend(s: &str) -> PyResult<Backend> {
+    match s.to_ascii_lowercase().as_str() {
+        "cpu" => Ok(Backend::Cpu),
+        "gpu" => Ok(Backend::Gpu),
+        other => Err(PyValueError::new_err(format!(
+            "unknown backend '{other}', expected 'cpu' or 'gpu'"
+        ))),
+    }
+}
+
 fn shape_err<E: std::fmt::Display>(e: E) -> PyErr {
     PyValueError::new_err(format!("{e}"))
 }
@@ -87,20 +97,28 @@ impl PyBrain {
     ///     deterministic (bool): run in deterministic mode. Default: False.
     ///     layers (list[int]): MLP widths including input + output. Default: [64, 32, 10].
     ///     activation (str): 'relu' or 'tanh' for hidden activations. Default: 'relu'.
+    ///     backend (str): execution backend, 'cpu' (default) or 'gpu'.
+    ///         When 'gpu', SNN's `use_gpu_forward` is forced on and
+    ///         LNN's `enable_gpu()` is called automatically. On a CPU-only
+    ///         build (no `--features cuda`) 'gpu' degrades to CPU with a
+    ///         warning rather than failing.
     #[new]
     #[pyo3(signature = (
         rng_seed = 0x5EED,
         deterministic = false,
         layers = None,
         activation = "relu".to_string(),
+        backend = "cpu".to_string(),
     ))]
     fn new(
         rng_seed: u64,
         deterministic: bool,
         layers: Option<Vec<usize>>,
         activation: String,
+        backend: String,
     ) -> PyResult<Self> {
         let act = parse_activation(&activation)?;
+        let backend_enum = parse_backend(&backend)?;
         let adaptive = AdaptiveConfig {
             layers: layers.unwrap_or_else(|| vec![64, 32, 10]),
             rng_seed,
@@ -115,10 +133,21 @@ impl PyBrain {
             rng_seed,
             deterministic,
             adaptive,
+            backend: backend_enum,
             ..Default::default()
         };
         let inner = Brain::new(cfg).map_err(rt_err)?;
         Ok(Self { inner })
+    }
+
+    /// Currently-active backend, as a string. One of `"cpu"` / `"gpu"`.
+    /// Mirrors the `backend` arg passed to the constructor.
+    #[getter]
+    fn backend(&self) -> &'static str {
+        match self.inner.config().backend {
+            Backend::Cpu => "cpu",
+            Backend::Gpu => "gpu",
+        }
     }
 
     /// One gradient step; returns pre-update MSE loss.
