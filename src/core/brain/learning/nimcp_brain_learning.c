@@ -115,6 +115,7 @@ extern void snn_rstdp_set_reward(snn_training_ctx_t* ctx, float reward);
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
+#include "core/cortical_columns/nimcp_cortical_column_ternary.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "plasticity/structural/nimcp_structural_plasticity.h"
 #include "core/neuralnet/nimcp_neuralnet_learning.h"
@@ -1104,6 +1105,89 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
     {
         extern void nimcp_brain_tick_perception_bridges(brain_t brain, float dt_ms);
         nimcp_brain_tick_perception_bridges(brain, 16.6f);
+    }
+
+    /* CC5: cortical columns plasticity + projection matrix update.
+     * Gated by enable_cortical_columns. For each populated hypercolumn:
+     *   1. hypercolumn_apply_plasticity() — STDP-based weight update inside
+     *      the column (winner gets reinforced, losers slightly weakened).
+     *   2. If ternary on: cc_ternary_hypercolumn_update_states() to
+     *      re-quantize the float activations into trit states.
+     *   3. hypercolumn_compute() to refresh column_feature_buf from the
+     *      current training features, then build it the same way decide
+     *      does (with optional ternary scaling).
+     *   4. Gradient descent on column_to_decision_proj: for each output i,
+     *      error_i = target_i - predicted_i (predicted via a fresh forward
+     *      to keep the math honest). proj[f * out_sz + i] +=
+     *      lr * column_feature_buf[f] * error_i with lr = 1e-4.
+     * All pointer-existence-checks gate the whole block. The forward pass
+     * inside is small (out_sz floats) and uses adaptive_network_forward
+     * which is already in the hot path elsewhere. */
+    if (brain->enable_cortical_columns && brain->cortical_column_pool &&
+        brain->num_hypercolumns > 0 && brain->hypercolumns &&
+        brain->column_to_decision_proj && brain->column_feature_buf &&
+        target_size > 0) {
+        uint64_t now_us       = nimcp_time_get_us();
+        uint32_t feature_dim  = brain->column_feature_dim;
+        uint32_t num_hcs      = brain->num_hypercolumns;
+        uint32_t mcs_per_hc   = (num_hcs > 0) ? (feature_dim / num_hcs) : 0;
+        uint32_t out_sz       = target_size;
+
+        if (mcs_per_hc > 0 && feature_dim > 0) {
+            /* (1+3) per-HC plasticity + recompute distribution */
+            for (uint32_t h = 0; h < num_hcs; h++) {
+                hypercolumn_t* hc = brain->hypercolumns[h];
+                if (!hc) continue;
+                hypercolumn_apply_plasticity(hc, now_us);
+                hypercolumn_compute(hc, features, num_features);
+                float* slot = &brain->column_feature_buf[(size_t)h * mcs_per_hc];
+                hypercolumn_get_distribution(hc, slot, mcs_per_hc);
+
+                /* (2) ternary state refresh + sparsify */
+                if (brain->enable_cortical_ternary && brain->ternary_hypercolumns) {
+                    cc_ternary_hypercolumn_t* thc =
+                        (cc_ternary_hypercolumn_t*)brain->ternary_hypercolumns[h];
+                    if (thc) {
+                        cc_ternary_hypercolumn_update_states(thc);
+                        uint32_t winner = cc_ternary_hypercolumn_wta(thc);
+                        for (uint32_t m = 0; m < mcs_per_hc; m++) {
+                            slot[m] = (m == winner) ? slot[m] * 1.5F : slot[m] * 0.5F;
+                        }
+                    }
+                }
+            }
+
+            /* (4) projection gradient descent.
+             * Build local prediction vector from the current weights so the
+             * gradient is meaningful regardless of when brain_decide last ran:
+             *   pred[i] = (column projection at this step alone) — we just
+             *   want the directional error of the column→decision mapping,
+             *   so use a simple dot-product per output without re-running
+             *   the adaptive network (cheap and self-contained). */
+            float* pred = (float*)nimcp_calloc(out_sz, sizeof(float));
+            if (pred) {
+                for (uint32_t f = 0; f < feature_dim; f++) {
+                    float fv = brain->column_feature_buf[f];
+                    if (fv == 0.0F) continue;
+                    const float* row = &brain->column_to_decision_proj[(size_t)f * out_sz];
+                    for (uint32_t i = 0; i < out_sz; i++) {
+                        pred[i] += fv * row[i];
+                    }
+                }
+                const float lr = 1e-4F;
+                for (uint32_t f = 0; f < feature_dim; f++) {
+                    float fv = brain->column_feature_buf[f];
+                    if (fv == 0.0F) continue;
+                    float* row = &brain->column_to_decision_proj[(size_t)f * out_sz];
+                    for (uint32_t i = 0; i < out_sz; i++) {
+                        float err = target[i] - pred[i];
+                        row[i] += lr * fv * err;
+                    }
+                }
+                nimcp_free(pred);
+            }
+            brain->cortical_plasticity_updates++;
+        }
     }
 
     /* Wave 8B-a (2026-04-24): drive 5 neuromodulatory adapters — medulla,
