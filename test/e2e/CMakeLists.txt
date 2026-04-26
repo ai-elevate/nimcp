@@ -158,6 +158,11 @@ add_e2e_test(e2e_test_reasoning_calibration
     ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_calibration_e2e.cpp
 )
 
+# CB migration: runaway suppression (no e2e_test_framework — uses GTest::gtest_main).
+add_e2e_test(e2e_test_snn_runaway_suppression
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_runaway_suppression_e2e.cpp
+)
+
 add_e2e_test(e2e_test_reasoning_abduction
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_abduction_e2e.cpp

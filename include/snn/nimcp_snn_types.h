@@ -387,6 +387,15 @@ struct snn_population_s {
     struct snn_adaptation_state_s* ahp;     /**< fast spike-rate adaptation (AHP / M-current) */
     struct snn_adaptation_state_s* pump;    /**< slow Na+/K+ pump adaptation */
     struct snn_basket_pool_s*       basket; /**< fast-spiking inhibitory interneurons */
+
+    /* Conductance-based PSC state (CB migration, see docs/claude/cb-phase0-design.md).
+     * Per-neuron synaptic conductances that decay with tau_exc/tau_inh and
+     * accumulate weighted spike contributions. Used only when
+     * snn_tune_get_conductance_enabled() != 0.0; otherwise the legacy
+     * current-based path drives I_syn directly and these arrays sit idle.
+     * Both arrays NULL on alloc failure → CB mode silently no-ops. */
+    float* g_exc;   /**< [n_neurons] excitatory conductance (dimensionless) */
+    float* g_inh;   /**< [n_neurons] inhibitory conductance (dimensionless) */
 };
 
 #define SNN_POP_HISTORY_LEN 256

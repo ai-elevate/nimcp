@@ -138,6 +138,34 @@ static float g_snn_substrate_plasticity_mod_on = 1.0f;
  * since real pumps don't stop entirely, they slow. */
 static float g_snn_ahp_pump_substrate_coupling = 1.0f;
 
+/* Conductance-based PSC migration (CB).
+ *   conductance_enabled   : master switch. When 1.0, the SNN hot loop
+ *                           routes synaptic input through g_exc/g_inh
+ *                           with reversal-potential driving force,
+ *                           saturating naturally and preventing
+ *                           runaway. When 0.0, the legacy current-based
+ *                           summation runs unchanged.
+ *   cb_weights_rescaled   : sticky flag — set to 1.0 by
+ *                           snn_rescale_weights_for_conductance() to
+ *                           prevent double-application across restarts.
+ *                           Defaults 0.0; persistence is the caller's
+ *                           responsibility (see scripts/brain_daemon.py
+ *                           snn_tune.json plumbing).
+ *   e_exc / e_inh         : reversal potentials (mV). Defaults 0/-80
+ *                           (cortical AMPA / GABA-A). Globals (not
+ *                           per-config) so checkpoint binary layout is
+ *                           unchanged.
+ *   tau_exc / tau_inh     : conductance decay time constants (ms).
+ *                           Defaults 2/8 (fast AMPA / slower GABA-A
+ *                           gives I time to brake E).
+ * See docs/claude/cb-phase0-design.md. */
+static float g_snn_conductance_enabled = 0.0f;
+static float g_snn_cb_weights_rescaled = 0.0f;
+static float g_snn_e_exc_mv  =   0.0f;
+static float g_snn_e_inh_mv  = -80.0f;
+static float g_snn_tau_exc_ms = 2.0f;
+static float g_snn_tau_inh_ms = 8.0f;
+
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
 void snn_tune_set_rstdp_baseline_alpha(float v)  { if (v > 0.0f && v <= 1.0f)    g_rstdp_baseline_alpha = v; }
@@ -186,6 +214,21 @@ void snn_tune_set_substrate_plasticity_mod_on(float v) { g_snn_substrate_plastic
  * factor is 1.0 (identity). */
 void snn_tune_set_ahp_pump_substrate_coupling(float v) { g_snn_ahp_pump_substrate_coupling = (v != 0.0f) ? 1.0f : 0.0f; }
 
+/* CB migration setters. Bool-style flags accept any nonzero as on.
+ * e_exc/e_inh validated: e_exc must be > e_inh and both finite.
+ * tau_exc/tau_inh validated: must be in [0.1, 1000] ms. */
+void snn_tune_set_conductance_enabled(float v) { g_snn_conductance_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_cb_weights_rescaled(float v) { g_snn_cb_weights_rescaled = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_e_exc_mv(float v) {
+    /* Reject if it would invert the polarity (e_exc must stay above e_inh). */
+    if (isfinite(v) && v > g_snn_e_inh_mv) g_snn_e_exc_mv = v;
+}
+void snn_tune_set_e_inh_mv(float v) {
+    if (isfinite(v) && v < g_snn_e_exc_mv) g_snn_e_inh_mv = v;
+}
+void snn_tune_set_tau_exc_ms(float v) { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_exc_ms = v; }
+void snn_tune_set_tau_inh_ms(float v) { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_inh_ms = v; }
+
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
 float snn_tune_get_rstdp_baseline_alpha(void)  { return g_rstdp_baseline_alpha; }
@@ -221,6 +264,14 @@ float snn_tune_get_substrate_update_period(void)     { return g_snn_substrate_up
 float snn_tune_get_substrate_spike_dropout_on(void)  { return g_snn_substrate_spike_dropout_on; }
 float snn_tune_get_substrate_plasticity_mod_on(void) { return g_snn_substrate_plasticity_mod_on; }
 float snn_tune_get_ahp_pump_substrate_coupling(void)  { return g_snn_ahp_pump_substrate_coupling; }
+
+/* CB migration getters. */
+float snn_tune_get_conductance_enabled(void)  { return g_snn_conductance_enabled; }
+float snn_tune_get_cb_weights_rescaled(void)  { return g_snn_cb_weights_rescaled; }
+float snn_tune_get_e_exc_mv(void)             { return g_snn_e_exc_mv; }
+float snn_tune_get_e_inh_mv(void)             { return g_snn_e_inh_mv; }
+float snn_tune_get_tau_exc_ms(void)           { return g_snn_tau_exc_ms; }
+float snn_tune_get_tau_inh_ms(void)           { return g_snn_tau_inh_ms; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"

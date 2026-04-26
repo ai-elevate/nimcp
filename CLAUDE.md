@@ -5,6 +5,13 @@
 **Path**: `/home/bbrelin/nimcp`
 
 **Recent release highlights** (see `CHANGELOG.md` for the full entry):
+- **Conductance-based SNN synapses (CB migration, unreleased)** — runtime
+  flag `conductance_enabled` (default OFF) routes synaptic input through
+  per-neuron `g_exc`/`g_inh` arrays with reversal-potential driving force,
+  saturating naturally at E_exc/E_inh and preventing the dead↔runaway
+  oscillation. New `snn_membrane.h` helpers + `snn_rescale_weights_for_conductance()`
+  admin command. CB mode forces CPU fallback (GPU port deferred).
+  Design: `docs/claude/cb-phase0-design.md`. Tests: 46 across unit/integration/regression/e2e.
 - Glial networks now created + wired into the forward-pass hot path
   (astrocyte modulation, oligodendrocyte myelin boost, microglia pruning).
 - Neural substrate + thalamic router created at brain init and attached to

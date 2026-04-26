@@ -373,6 +373,29 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_substrate_adapter.cpp)
 endif()
 
 # ============================================================================
+# Test 12: CB membrane helpers (conductance-based migration, header-only)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_membrane_unit.cpp)
+    add_executable(unit_snn_test_snn_membrane_unit
+        test_snn_membrane_unit.cpp
+    )
+    target_link_libraries(unit_snn_test_snn_membrane_unit
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+    target_include_directories(unit_snn_test_snn_membrane_unit
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+    target_compile_features(unit_snn_test_snn_membrane_unit PRIVATE cxx_std_17)
+    gtest_discover_tests(unit_snn_test_snn_membrane_unit
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;cb"
+            TIMEOUT 60
+    )
+    message(STATUS "  Added SNN unit test: test_snn_membrane_unit")
+endif()
+
+# ============================================================================
 # Future tests (uncomment as source files are added):
 # ============================================================================
 # - test_snn_population.cpp

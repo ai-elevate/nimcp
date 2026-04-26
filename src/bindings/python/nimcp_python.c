@@ -1873,6 +1873,13 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     extern void snn_tune_set_substrate_spike_dropout_on(float);
     extern void snn_tune_set_substrate_plasticity_mod_on(float);
     extern void snn_tune_set_ahp_pump_substrate_coupling(float);
+    /* CB migration tunables */
+    extern void snn_tune_set_conductance_enabled(float);
+    extern void snn_tune_set_cb_weights_rescaled(float);
+    extern void snn_tune_set_e_exc_mv(float);
+    extern void snn_tune_set_e_inh_mv(float);
+    extern void snn_tune_set_tau_exc_ms(float);
+    extern void snn_tune_set_tau_inh_ms(float);
 
     float v = (float)value;
     if      (strcmp(name, "rstdp_lr") == 0)             snn_tune_set_rstdp_lr(v);
@@ -1914,6 +1921,13 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     else if (strcmp(name, "substrate_spike_dropout_on") == 0)  snn_tune_set_substrate_spike_dropout_on(v);
     else if (strcmp(name, "substrate_plasticity_mod_on") == 0) snn_tune_set_substrate_plasticity_mod_on(v);
     else if (strcmp(name, "ahp_pump_substrate_coupling") == 0) snn_tune_set_ahp_pump_substrate_coupling(v);
+    /* CB migration */
+    else if (strcmp(name, "conductance_enabled") == 0)         snn_tune_set_conductance_enabled(v);
+    else if (strcmp(name, "cb_weights_rescaled") == 0)         snn_tune_set_cb_weights_rescaled(v);
+    else if (strcmp(name, "e_exc_mv") == 0)                    snn_tune_set_e_exc_mv(v);
+    else if (strcmp(name, "e_inh_mv") == 0)                    snn_tune_set_e_inh_mv(v);
+    else if (strcmp(name, "tau_exc_ms") == 0)                  snn_tune_set_tau_exc_ms(v);
+    else if (strcmp(name, "tau_inh_ms") == 0)                  snn_tune_set_tau_inh_ms(v);
     else {
         PyErr_Format(PyExc_ValueError, "unknown tunable: %s", name);
         return NULL;
@@ -1957,6 +1971,13 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     extern float snn_tune_get_substrate_spike_dropout_on(void);
     extern float snn_tune_get_substrate_plasticity_mod_on(void);
     extern float snn_tune_get_ahp_pump_substrate_coupling(void);
+    /* CB migration tunables */
+    extern float snn_tune_get_conductance_enabled(void);
+    extern float snn_tune_get_cb_weights_rescaled(void);
+    extern float snn_tune_get_e_exc_mv(void);
+    extern float snn_tune_get_e_inh_mv(void);
+    extern float snn_tune_get_tau_exc_ms(void);
+    extern float snn_tune_get_tau_inh_ms(void);
 
     PyObject* d = PyDict_New();
     if (!d) return NULL;
@@ -2002,6 +2023,13 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     F("substrate_spike_dropout_on",  snn_tune_get_substrate_spike_dropout_on());
     F("substrate_plasticity_mod_on", snn_tune_get_substrate_plasticity_mod_on());
     F("ahp_pump_substrate_coupling", snn_tune_get_ahp_pump_substrate_coupling());
+    /* CB migration */
+    F("conductance_enabled",         snn_tune_get_conductance_enabled());
+    F("cb_weights_rescaled",         snn_tune_get_cb_weights_rescaled());
+    F("e_exc_mv",                    snn_tune_get_e_exc_mv());
+    F("e_inh_mv",                    snn_tune_get_e_inh_mv());
+    F("tau_exc_ms",                  snn_tune_get_tau_exc_ms());
+    F("tau_inh_ms",                  snn_tune_get_tau_inh_ms());
 #undef F
     return d;
 }
@@ -2193,6 +2221,36 @@ static PyObject* Brain_snn_force_quench(BrainObject* self, PyObject* args) {
     return PyLong_FromUnsignedLong(scaled);
 }
 
+static PyObject* Brain_snn_rescale_for_conductance(BrainObject* self, PyObject* args) {
+    /* CB migration admin command: divide all CSR weights by ~50 so a CB
+     * run starts at the same effective post-synaptic kick as the
+     * current-based run did. Idempotent — sets cb_weights_rescaled=1
+     * sticky flag and refuses double-apply.
+     *
+     * Usage:  brain.snn_rescale_for_conductance()             # default 1/50
+     *         brain.snn_rescale_for_conductance(0.02)         # explicit factor
+     *         brain.snn_rescale_for_conductance(50.0)         # rollback (after
+     *                                                         # clearing the flag) */
+    extern int snn_rescale_weights_for_conductance(snn_network_t*, float);
+    double factor = (double)SNN_CB_DEFAULT_RESCALE_FACTOR;
+    if (!PyArg_ParseTuple(args, "|d", &factor)) return NULL;
+    if (!self->brain || !self->brain->internal_brain) Py_RETURN_NONE;
+    brain_t ib = self->brain->internal_brain;
+    if (!ib->snn_network) {
+        PyErr_SetString(PyExc_RuntimeError, "SNN network not initialized");
+        return NULL;
+    }
+    int rc = snn_rescale_weights_for_conductance(ib->snn_network, (float)factor);
+    if (rc != 0) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "snn_rescale_weights_for_conductance failed (rc=%d) "
+                     "— check cb_weights_rescaled flag or factor validity",
+                     rc);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
 static PyObject* Brain_get_population_history(BrainObject* self, PyObject* args) {
     /* Return a list of the last N spike counts for a population, time-ordered.
      * Used by Python temporal-dynamics analysis (FFT, cross-corr, autocorr). */
@@ -2232,6 +2290,53 @@ static PyObject* Brain_get_neuron_count(BrainObject* self, PyObject* args) {
     PyObject* result = PyLong_FromUnsignedLong(count);
     if (!result) return NULL;  /* OOM */
     return result;
+}
+
+/**
+ * Allocator accounting snapshot — see nimcp_get_alloc_stats() in
+ * src/api/nimcp_part_alloc_stats.c. Used to attribute RSS growth.
+ */
+#include "api/nimcp_alloc_stats.h"
+static PyObject* Brain_get_alloc_stats(BrainObject* self, PyObject* args) {
+    nimcp_alloc_stats_t s;
+    nimcp_status_t st;
+    Py_BEGIN_ALLOW_THREADS
+    st = nimcp_get_alloc_stats(self->brain, &s);
+    Py_END_ALLOW_THREADS
+    if (st != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "nimcp_get_alloc_stats failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+#define SETK(name, v) do { \
+        PyObject* o = PyLong_FromUnsignedLongLong((unsigned long long)(v)); \
+        if (!o) { Py_DECREF(d); return NULL; } \
+        PyDict_SetItemString(d, name, o); \
+        Py_DECREF(o); \
+    } while (0)
+    SETK("glibc_arena_bytes",     s.glibc_arena_bytes);
+    SETK("glibc_uordblks_bytes",  s.glibc_uordblks_bytes);
+    SETK("glibc_fordblks_bytes",  s.glibc_fordblks_bytes);
+    SETK("glibc_hblkhd_bytes",    s.glibc_hblkhd_bytes);
+    SETK("glibc_hblks",           s.glibc_hblks);
+    SETK("glibc_uordblks_count",  s.glibc_uordblks_count);
+    SETK("proc_vm_rss_bytes",     s.proc_vm_rss_bytes);
+    SETK("proc_vm_data_bytes",    s.proc_vm_data_bytes);
+    SETK("proc_vm_peak_bytes",    s.proc_vm_peak_bytes);
+    SETK("proc_vm_lib_bytes",     s.proc_vm_lib_bytes);
+    SETK("proc_rss_anon_bytes",   s.proc_rss_anon_bytes);
+    SETK("proc_rss_file_bytes",   s.proc_rss_file_bytes);
+    SETK("proc_rss_shmem_bytes",  s.proc_rss_shmem_bytes);
+    SETK("audit_entry_count",     s.audit_entry_count);
+    SETK("audit_estimated_bytes", s.audit_estimated_bytes);
+    SETK("kg_node_count",         s.kg_node_count);
+    SETK("kg_edge_count",         s.kg_edge_count);
+    SETK("kg_query_count",        s.kg_query_count);
+    SETK("kg_modification_count", s.kg_modification_count);
+    SETK("kg_estimated_bytes",    s.kg_estimated_bytes);
+#undef SETK
+    return d;
 }
 
 /**
@@ -10076,12 +10181,17 @@ static PyMethodDef Brain_methods[] = {
      "Auto-resize based on utilization: auto_resize() -> True if resized, False otherwise"},
     {"get_neuron_count", (PyCFunction)Brain_get_neuron_count, METH_NOARGS,
      "Get current neuron count: get_neuron_count() -> int"},
+    {"get_alloc_stats", (PyCFunction)Brain_get_alloc_stats, METH_NOARGS,
+     "Allocator accounting: get_alloc_stats() -> dict (mallinfo2, /proc, audit, KG)"},
     {"get_snn_stats", (PyCFunction)Brain_get_snn_stats, METH_NOARGS,
      "Get SNN stats: get_snn_stats() -> dict with spikes, firing_rate, sparsity etc."},
     {"get_population_history", (PyCFunction)Brain_get_population_history, METH_VARARGS,
      "Get last 256 steps of spike counts for a population: get_population_history(pop_id)"},
     {"snn_force_quench", (PyCFunction)Brain_snn_force_quench, METH_VARARGS,
      "Force N homeostatic applies in a row to rescue from saturation: snn_force_quench(n=20)"},
+    {"snn_rescale_for_conductance", (PyCFunction)Brain_snn_rescale_for_conductance, METH_VARARGS,
+     "CB migration: rescale all CSR weights for conductance-based mode. "
+     "Usage: snn_rescale_for_conductance(factor=1/50). Idempotent."},
     /* Runtime SNN parameter tuning + live per-pop diagnostics (no rebuild needed). */
     {"snn_tune", (PyCFunction)Brain_snn_tune, METH_VARARGS,
      "Set a runtime-tunable SNN parameter: snn_tune(name, value) -> True. "

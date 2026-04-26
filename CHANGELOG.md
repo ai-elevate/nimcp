@@ -5,6 +5,53 @@ All notable changes to the NIMCP (Neuromorphic Infant Machine Cognitive Platform
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Conductance-based SNN synapses (CB migration)**: behind a runtime flag
+  (`snn_tune("conductance_enabled", 1.0)`, default OFF). Solves the
+  dead↔runaway oscillation observed on the pod by giving the membrane
+  equation a saturating `(E_rev - V)` driving force instead of the
+  unbounded current-based summation. New header-only module
+  `include/snn/nimcp_snn_membrane.h` exposes three pure-function helpers
+  (`snn_membrane_compute_dv`, `snn_membrane_decay_one`,
+  `snn_membrane_deposit_synapse`) used by both the lightweight CSR and
+  legacy NEURON_T branches in the SNN hot loop. The CB hot path forces a
+  CPU fallback (the GPU kernel remains current-based; GPU port deferred).
+  See `docs/claude/cb-phase0-design.md` for the full migration design.
+- **CB tunables** exposed via `snn_tune` socket: `conductance_enabled`,
+  `cb_weights_rescaled` (sticky), `e_exc_mv` (default 0), `e_inh_mv`
+  (default −80), `tau_exc_ms` (default 2), `tau_inh_ms` (default 8). All
+  persist in `snn_tune.json` automatically.
+- **Weight rescaling admin command**:
+  `snn_rescale_weights_for_conductance(network, factor)` (Python:
+  `brain.snn_rescale_for_conductance()`) — one-shot scan over every CSR
+  population, multiplies entries[] and weights[] mirror, syncs to GPU if
+  resident, sets the `cb_weights_rescaled` sticky flag for idempotence.
+  Default factor is `1.0/50.0` to compensate for the average ~50 mV
+  driving force at rest.
+- **Per-neuron CB conductance state**: new `g_exc[]`, `g_inh[]` float
+  arrays in `snn_population_t`. Allocated in `snn_population_create_internal`,
+  freed in destroy. Allocation failure non-fatal — CB mode silently no-ops
+  if either array is NULL.
+- **Test suite — 46 new tests across 4 categories** (unit/integration/
+  regression/e2e under `test/{unit,integration,regression}/snn/` and
+  `test/e2e/test_snn_runaway_suppression_e2e.cpp`). Covers CB math,
+  saturation, decay, deposit routing, rescale idempotence, OFF-mode
+  bit-identity, and a 500-step recurrent E2E.
+
+### Changed
+- SNN GPU fast path is bypassed when `conductance_enabled = 1.0` (the
+  GPU kernel does not implement CB; CPU fallback handles all CB runs).
+  Zero effect when CB is OFF.
+
+### Notes
+- Hierarchical SNN tiers all use lightweight CSR populations; legacy
+  NEURON_T pops are not exercised in production. The rescale admin
+  command only touches CSR weights — mixed brains with legacy CB pops
+  would see un-rescaled legacy weights at ~50× too strong (out of scope
+  per design doc).
+
 ## [2.7.0] - 2026-04-23
 
 Large multi-day campaign activating previously-dormant biological subsystems

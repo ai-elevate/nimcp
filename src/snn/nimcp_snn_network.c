@@ -22,6 +22,7 @@
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_adaptation.h"
 #include "snn/nimcp_snn_basket.h"
+#include "snn/nimcp_snn_membrane.h"   /* CB migration: membrane integration helpers */
 #include "snn/nimcp_snn_training.h"  /* snn_tune_get_substrate_* */
 #include "core/substrate/nimcp_substrate_effects.h"  /* substrate_compute_effects, apply helpers */
 #include "gpu/snn/nimcp_snn_gpu.h"
@@ -219,6 +220,18 @@ static snn_population_t* snn_population_create_internal(
         }
     }
 
+    /* Conductance-based PSC state (CB migration). Allocation failure is
+     * non-fatal — CB mode evaluates (g_exc && g_inh && flag) so a NULL pair
+     * silently degrades to current-based behavior even if the flag is on. */
+    pop->g_exc = nimcp_calloc(n_neurons, sizeof(float));
+    pop->g_inh = nimcp_calloc(n_neurons, sizeof(float));
+    if (!pop->g_exc || !pop->g_inh) {
+        NIMCP_LOGGING_WARN(
+            "snn_population_create_internal: CB conductance buffers failed "
+            "to allocate for pop '%s' (%u neurons); CB mode will no-op",
+            name ? name : "unnamed", n_neurons);
+    }
+
     extern float snn_tune_get_ahp_enabled(void);
     extern float snn_tune_get_pump_enabled(void);
     extern float snn_tune_get_basket_enabled(void);
@@ -338,6 +351,10 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
     if (pop->threshold_offset) nimcp_free(pop->threshold_offset);
     if (pop->neuron_rate_ema) nimcp_free(pop->neuron_rate_ema);
     if (pop->depression) nimcp_free(pop->depression);
+
+    /* Conductance-based PSC state (CB migration). */
+    if (pop->g_exc) { nimcp_free(pop->g_exc); pop->g_exc = NULL; }
+    if (pop->g_inh) { nimcp_free(pop->g_inh); pop->g_inh = NULL; }
 
     /* Biophysical stability mechanisms. Destroyers tolerate NULL. */
     if (pop->ahp)    { snn_adaptation_destroy(pop->ahp);     pop->ahp = NULL; }
@@ -804,6 +821,10 @@ int snn_network_step(snn_network_t* network, float dt) {
     double _isyn_ms = 0, _lif_ms = 0, _readback_ms = 0;
     clock_gettime(CLOCK_MONOTONIC, &_step_t0);
 
+    /* CB migration: function-scope declaration so the GPU-skip gate
+     * below can call it before the lightweight branch redeclares it. */
+    extern float snn_tune_get_conductance_enabled(void);
+
     /* ===== Substrate adapter: refresh cache EVERY step, BOTH paths =====
      * Bug #2 fix: previously this lived inside `if (!gpu_executed)`, which
      * meant the production GPU path never refreshed the cache and every
@@ -835,7 +856,13 @@ int snn_network_step(snn_network_t* network, float dt) {
     }
 
     /* ===== GPU FAST PATH ===== */
-    if (network->gpu_lif_state && network->gpu_ctx) {
+    /* CB migration: when conductance mode is enabled, force the CPU
+     * fallback path. The GPU kernel is current-based-only (no g_exc/g_inh
+     * driving force). Per docs/claude/cb-phase0-design.md "OUT of scope:
+     * GPU port", we accept the perf regression — the live oscillation
+     * happens on the CPU-bound Hetzner box anyway. */
+    if (network->gpu_lif_state && network->gpu_ctx
+        && snn_tune_get_conductance_enabled() == 0.0f) {
         nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
         nimcp_lif_state_t* lif_state = (nimcp_lif_state_t*)network->gpu_lif_state;
 
@@ -1299,11 +1326,28 @@ int snn_network_step(snn_network_t* network, float dt) {
             extern float snn_tune_get_basket_enabled(void);
             extern float snn_tune_get_noise_ei_ratio(void);
             extern float snn_tune_get_ahp_pump_substrate_coupling(void);
+            extern float snn_tune_get_conductance_enabled(void);
+            extern float snn_tune_get_e_exc_mv(void);
+            extern float snn_tune_get_e_inh_mv(void);
+            extern float snn_tune_get_tau_exc_ms(void);
+            extern float snn_tune_get_tau_inh_ms(void);
             const int   ahp_on    = (pop->ahp  && snn_tune_get_ahp_enabled()  != 0.0f);
             const int   pump_on   = (pop->pump && snn_tune_get_pump_enabled() != 0.0f);
             const int   basket_on = (pop->basket && snn_tune_get_basket_enabled() != 0.0f);
             const float ei_ratio  = snn_tune_get_noise_ei_ratio();
             const int   noise_exc_only = (noise_factor >= 0.9f);  /* dead-pop exception */
+            /* CB mode capture — single check per pop (LICM-friendly).
+             * Requires both g_exc and g_inh allocated (silent degrade if alloc failed). */
+            const bool  cb_mode   = (snn_tune_get_conductance_enabled() != 0.0f
+                                     && pop->g_exc && pop->g_inh);
+            const float cb_e_exc  = snn_tune_get_e_exc_mv();
+            const float cb_e_inh  = snn_tune_get_e_inh_mv();
+            const float cb_decay_exc = cb_mode ? expf(-dt_ms / snn_tune_get_tau_exc_ms()) : 0.0f;
+            const float cb_decay_inh = cb_mode ? expf(-dt_ms / snn_tune_get_tau_inh_ms()) : 0.0f;
+            /* In CB mode, basket and noise inhibition deposit into g_inh as a
+             * conductance pulse; pulse_mv is reinterpreted as a unitless
+             * conductance bump (the rescale factor at Phase 3 puts both
+             * paths into the same effective ballpark). */
 
             /* F8: biological feedback — scale AHP/pump gains by substrate
              * pump_activity (ATP proxy). Real Na/K-ATPase is ATP-dependent:
@@ -1357,8 +1401,29 @@ int snn_network_step(snn_network_t* network, float dt) {
                     continue;
                 }
 
-                /* I_syn from external_current + CSR incoming synapses */
-                float I_syn = pop->external_current ? pop->external_current[n] : 0.0f;
+                /* CB mode: per-neuron g_exc/g_inh pointers captured once
+                 * (NULL in current mode so the deposit helper short-circuits).
+                 * Decay conductances by the precomputed pop-level factors
+                 * BEFORE accumulating this step's synaptic deposits. */
+                float* cb_g_exc_n = cb_mode ? &pop->g_exc[n] : NULL;
+                float* cb_g_inh_n = cb_mode ? &pop->g_inh[n] : NULL;
+                if (cb_mode) {
+                    snn_membrane_decay_one(cb_g_exc_n, cb_g_inh_n,
+                                           cb_decay_exc, cb_decay_inh);
+                }
+
+                /* Synaptic accumulator: in current mode this aggregates
+                 * everything into I_syn; in CB mode the deposit helper
+                 * routes positive weights to g_exc, negative to g_inh,
+                 * and I_syn stays at zero (unused). */
+                float I_syn = 0.0f;
+
+                /* External current (input drive). */
+                if (pop->external_current) {
+                    snn_membrane_deposit_synapse(
+                        &I_syn, cb_g_exc_n, cb_g_inh_n,
+                        pop->external_current[n], cb_mode);
+                }
 
                 uint32_t syn_count;
                 snn_csr_synapse_t* syns = snn_csr_get_incoming(
@@ -1375,12 +1440,18 @@ int snn_network_step(snn_network_t* network, float dt) {
                          * deliver less drive, preventing hot-pathway runaway. */
                         float dep = 0.0f;
                         if (src_pop->depression) dep = src_pop->depression[syns[s].src_neuron];
-                        I_syn += syns[s].weight * (1.0f - dep);
+                        snn_membrane_deposit_synapse(
+                            &I_syn, cb_g_exc_n, cb_g_inh_n,
+                            syns[s].weight * (1.0f - dep), cb_mode);
                     }
                 }
 
-                /* Basket feedforward inhibition — uniform across pop. */
-                I_syn += basket_contrib;
+                /* Basket feedforward inhibition — uniform across pop.
+                 * basket_contrib is negative (inhibitory) so in CB mode
+                 * it routes to g_inh via the deposit helper. */
+                snn_membrane_deposit_synapse(
+                    &I_syn, cb_g_exc_n, cb_g_inh_n,
+                    basket_contrib, cb_mode);
 
                 /* E/I-balanced Poisson background noise — structural fix
                  * for the absorbing-zero state. Dead pops (factor >= 0.9)
@@ -1391,34 +1462,47 @@ int snn_network_step(snn_network_t* network, float dt) {
                 if (noise_p > 0.0f) {
                     float r = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
                     if (r < noise_p) {
+                        float pulse = noise_pulse_mv;
                         if (!noise_exc_only) {
                             float sign_r = (float)rand_r(&_noise_seed)
                                          * (1.0f / (float)RAND_MAX);
-                            if (sign_r < ei_ratio) {
-                                I_syn -= noise_pulse_mv;
-                            } else {
-                                I_syn += noise_pulse_mv;
-                            }
-                        } else {
-                            I_syn += noise_pulse_mv;
+                            if (sign_r < ei_ratio) pulse = -noise_pulse_mv;
                         }
+                        snn_membrane_deposit_synapse(
+                            &I_syn, cb_g_exc_n, cb_g_inh_n,
+                            pulse, cb_mode);
                     }
                 }
 
-                /* AHP + pump hyperpolarization — subtract from drive.
-                 * Numerically equivalent to subtracting from dV since
-                 * dV = (v_rest - v + I_syn)/tau × dt. F8: the combined
-                 * gain is scaled by substrate_pump_factor so metabolic
-                 * state feeds back into spike-rate adaptation (weak pumps
-                 * → weak adaptation → membrane integrates longer). */
+                /* AHP + pump hyperpolarization — modeled as intrinsic K+
+                 * currents, not synaptic, so they remain current-style in
+                 * BOTH paths (subtracted from dv after the membrane call).
+                 * F8: the combined gain is scaled by substrate_pump_factor
+                 * so metabolic state feeds back into spike-rate adaptation
+                 * (weak pumps → weak adaptation → membrane integrates longer). */
                 float hyp = 0.0f;
                 if (ahp_hyp)  hyp += ahp_hyp[n];
                 if (pump_hyp) hyp += pump_hyp[n];
-                I_syn -= hyp * substrate_pump_factor;
+                hyp *= substrate_pump_factor;
 
-                /* LIF dynamics — use substrate-modulated tau (tau_eff
-                 * collapses to tau_mem when no substrate is attached). */
-                float dv = (v_rest - v_data[n] + I_syn) / tau_eff * dt_ms;
+                /* LIF dynamics. In current mode hyp is folded into I_syn
+                 * before the call (bit-identical to pre-CB behavior). In
+                 * CB mode I_syn is unused; hyp is subtracted from dv after
+                 * the conductance integration. */
+                float dv;
+                if (cb_mode) {
+                    dv = snn_membrane_compute_dv(
+                        v_data[n], v_rest, tau_eff, dt_ms,
+                        0.0f /* I_syn unused */,
+                        *cb_g_exc_n, *cb_g_inh_n,
+                        cb_e_exc, cb_e_inh, true);
+                    dv -= hyp * (dt_ms / tau_eff);
+                } else {
+                    I_syn -= hyp;
+                    dv = snn_membrane_compute_dv(
+                        v_data[n], v_rest, tau_eff, dt_ms,
+                        I_syn, 0.0f, 0.0f, 0.0f, 0.0f, false);
+                }
                 v_data[n] += dv;
 
                 /* Intrinsic plasticity: effective threshold = config + per-neuron offset.
@@ -1590,7 +1674,28 @@ int snn_network_step(snn_network_t* network, float dt) {
          * Bug #3 fix: mirror the lightweight path's substrate modulation.
          * Use tau_eff / tref_eff (already computed above in this pop's
          * loop iteration) instead of the raw config values so the
-         * biological substrate feedback also modulates legacy pops. */
+         * biological substrate feedback also modulates legacy pops.
+         *
+         * CB migration: same per-pop captures as the lightweight branch.
+         * Legacy pops typically lack the per-neuron g_exc/g_inh arrays
+         * (allocated in snn_population_create_internal — both paths get
+         * them, but legacy pops are sometimes built by older test
+         * harnesses); the (g_exc && g_inh) guard inside cb_mode handles
+         * the absent case. */
+        extern float snn_tune_get_conductance_enabled(void);
+        extern float snn_tune_get_e_exc_mv(void);
+        extern float snn_tune_get_e_inh_mv(void);
+        extern float snn_tune_get_tau_exc_ms(void);
+        extern float snn_tune_get_tau_inh_ms(void);
+        const bool  legacy_cb_mode = (snn_tune_get_conductance_enabled() != 0.0f
+                                      && pop->g_exc && pop->g_inh);
+        const float legacy_cb_e_exc = snn_tune_get_e_exc_mv();
+        const float legacy_cb_e_inh = snn_tune_get_e_inh_mv();
+        const float legacy_cb_decay_exc = legacy_cb_mode
+            ? expf(-dt_ms / snn_tune_get_tau_exc_ms()) : 0.0f;
+        const float legacy_cb_decay_inh = legacy_cb_mode
+            ? expf(-dt_ms / snn_tune_get_tau_inh_ms()) : 0.0f;
+
         for (uint32_t n = 0; n < pop->n_neurons; n++) {
             spike_data[n] = 0.0f;
 
@@ -1599,12 +1704,22 @@ int snn_network_step(snn_network_t* network, float dt) {
                 continue;
             }
 
+            /* CB per-neuron decay (matches lightweight). */
+            float* cb_g_exc_n = legacy_cb_mode ? &pop->g_exc[n] : NULL;
+            float* cb_g_inh_n = legacy_cb_mode ? &pop->g_inh[n] : NULL;
+            if (legacy_cb_mode) {
+                snn_membrane_decay_one(cb_g_exc_n, cb_g_inh_n,
+                                       legacy_cb_decay_exc, legacy_cb_decay_inh);
+            }
+
             float I_syn = 0.0f;
             if (network->neural_net && n < pop->n_neurons) {
                 neuron_t* neuron = neural_network_get_neuron(
                     network->neural_net, pop->neuron_ids[n]);
                 if (neuron) {
-                    I_syn = neuron->external_current;
+                    snn_membrane_deposit_synapse(
+                        &I_syn, cb_g_exc_n, cb_g_inh_n,
+                        neuron->external_current, legacy_cb_mode);
                     uint32_t in_count = neuron->incoming.embedded_count
                                       + neuron->incoming.overflow_count;
                     for (uint32_t s = 0; s < in_count; s++) {
@@ -1613,7 +1728,9 @@ int snn_network_step(snn_network_t* network, float dt) {
                         uint32_t pre_id = h->target_neuron_id;
                         neuron_t* pre = neural_network_get_neuron(network->neural_net, pre_id);
                         if (pre && pre->state > 0.5f) {
-                            I_syn += h->weight;
+                            snn_membrane_deposit_synapse(
+                                &I_syn, cb_g_exc_n, cb_g_inh_n,
+                                h->weight, legacy_cb_mode);
                         }
                     }
                 }
@@ -1621,7 +1738,18 @@ int snn_network_step(snn_network_t* network, float dt) {
 
             /* LIF dynamics — use substrate-modulated tau (tau_eff
              * collapses to tau_mem when no substrate is attached). */
-            float dv = (v_rest - v_data[n] + I_syn) / tau_eff * dt_ms;
+            float dv;
+            if (legacy_cb_mode) {
+                dv = snn_membrane_compute_dv(
+                    v_data[n], v_rest, tau_eff, dt_ms,
+                    0.0f,
+                    *cb_g_exc_n, *cb_g_inh_n,
+                    legacy_cb_e_exc, legacy_cb_e_inh, true);
+            } else {
+                dv = snn_membrane_compute_dv(
+                    v_data[n], v_rest, tau_eff, dt_ms,
+                    I_syn, 0.0f, 0.0f, 0.0f, 0.0f, false);
+            }
             v_data[n] += dv;
 
             if (v_data[n] >= v_thresh) {
@@ -1980,6 +2108,86 @@ void snn_network_update_stats(snn_network_t* network, int total_spikes, float du
         network->stats.hyperactive_neurons = hyperactive;
         network->stats.spikes_per_sample = (float)total_spikes / (float)total_neurons;
     }
+}
+
+/* ===========================================================================
+ * Conductance-Based Migration — Weight Rescaling
+ *
+ * One-shot multiplicative scan over every CSR entry in every population.
+ * Idempotent via the cb_weights_rescaled sticky knob. Mirrors weights to
+ * the GPU if the population's CSR is GPU-resident.
+ *
+ * Out-of-scope: legacy neuron_t synapse_handle_t weights are NOT rescaled.
+ * Legacy populations would need a separate sweep over neural_network_t;
+ * the pod brain and all hierarchical SNN tiers use lightweight CSR pops
+ * exclusively, so this is not a regression for the live runaway-fix path.
+ * (See docs/claude/cb-phase0-design.md "open questions" — heterogeneous
+ * mode out of scope for v1.)
+ * =========================================================================== */
+int snn_rescale_weights_for_conductance(snn_network_t* network, float factor) {
+    extern float snn_tune_get_cb_weights_rescaled(void);
+    extern void  snn_tune_set_cb_weights_rescaled(float);
+
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_rescale_weights_for_conductance: null network");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!isfinite(factor) || factor <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_rescale_weights_for_conductance: factor must be > 0 and finite");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    /* Idempotence: refuse a second apply unless caller cleared the flag.
+     * A no-op return is preferable to silent double-rescale (would shrink
+     * weights by factor² and likely silence the network). */
+    if (snn_tune_get_cb_weights_rescaled() != 0.0f) {
+        NIMCP_LOGGING_WARN(
+            "snn_rescale_weights_for_conductance: already rescaled "
+            "(cb_weights_rescaled=1.0); set knob to 0 first to re-apply");
+        return SNN_ERROR_INVALID_STATE;
+    }
+
+    uint64_t total_synapses = 0;
+    uint32_t pops_touched   = 0;
+    uint32_t gpu_pops       = 0;
+
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop || !pop->incoming_csr) continue;
+        snn_csr_storage_t* csr = pop->incoming_csr;
+        if (!csr->finalized || csr->n_synapses == 0) continue;
+
+        /* Apply to entries[] — the source of truth for CPU-side learning
+         * (R-STDP, Louvain, introspection) per the existing pattern at
+         * nimcp_snn_training.c:1200+. */
+        for (uint32_t e = 0; e < csr->n_synapses; e++) {
+            csr->entries[e].weight *= factor;
+        }
+        /* Mirror to flat weights[] (GPU-feeding array) if populated. */
+        if (csr->weights) {
+            for (uint32_t e = 0; e < csr->n_synapses; e++) {
+                csr->weights[e] *= factor;
+            }
+        }
+        /* Push to GPU if device copy exists. */
+        if (csr->gpu_resident) {
+            snn_csr_sync_weights_to_gpu(csr);
+            gpu_pops++;
+        }
+        total_synapses += csr->n_synapses;
+        pops_touched++;
+    }
+
+    /* Set sticky flag so a daemon restart that reloads snn_tune.json
+     * sees rescale-already-applied and skips. */
+    snn_tune_set_cb_weights_rescaled(1.0f);
+
+    NIMCP_LOGGING_INFO(
+        "snn_rescale_weights_for_conductance: rescaled %llu synapses across "
+        "%u populations (%u GPU-synced) by factor=%.6f",
+        (unsigned long long)total_synapses, pops_touched, gpu_pops, factor);
+    return 0;
 }
 
 int snn_network_run(snn_network_t* network, float duration_ms) {

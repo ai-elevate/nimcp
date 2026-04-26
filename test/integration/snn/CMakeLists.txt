@@ -13,6 +13,8 @@ if(NOT GTest_FOUND)
 endif()
 
 # Common link libraries for SNN integration tests
+# z needed because libnimcp_snn.a references gzseek (mirrors regression CMakeLists).
+find_package(ZLIB)
 set(SNN_INTEGRATION_TEST_LIBS
     nimcp_snn
     nimcp
@@ -21,6 +23,11 @@ set(SNN_INTEGRATION_TEST_LIBS
     Threads::Threads
     m
 )
+if(ZLIB_FOUND)
+    list(APPEND SNN_INTEGRATION_TEST_LIBS ZLIB::ZLIB)
+else()
+    list(APPEND SNN_INTEGRATION_TEST_LIBS z)
+endif()
 
 # Common include directories
 set(SNN_INTEGRATION_TEST_INCLUDES
@@ -293,6 +300,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_substrate_integration.cpp)
 
     message(STATUS "  Added SNN substrate integration test: "
                    "test_snn_substrate_integration")
+endif()
+
+# ============================================================================
+# CB conductance integration test (CB migration)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_conductance_integration.cpp)
+    add_executable(integration_snn_test_snn_conductance_integration
+        test_snn_conductance_integration.cpp
+    )
+    target_link_libraries(integration_snn_test_snn_conductance_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_LIBS}
+    )
+    target_include_directories(integration_snn_test_snn_conductance_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_INCLUDES}
+    )
+    target_compile_features(integration_snn_test_snn_conductance_integration
+        PRIVATE cxx_std_17)
+    gtest_discover_tests(integration_snn_test_snn_conductance_integration
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;cb"
+            TIMEOUT 120
+    )
+    message(STATUS "  Added SNN integration test: test_snn_conductance_integration")
 endif()
 
 # ============================================================================

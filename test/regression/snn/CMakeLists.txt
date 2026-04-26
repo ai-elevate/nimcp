@@ -180,6 +180,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_biophysical_regression.cpp)
 endif()
 
 # ============================================================================
+# CB conductance regression test (CB migration — bit-identity guarantee)
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_conductance_regression.cpp)
+    add_executable(regression_snn_test_snn_conductance_regression
+        test_snn_conductance_regression.cpp
+    )
+    target_link_libraries(regression_snn_test_snn_conductance_regression
+        PRIVATE ${SNN_REGRESSION_TEST_LIBS}
+    )
+    target_include_directories(regression_snn_test_snn_conductance_regression
+        PRIVATE ${SNN_REGRESSION_TEST_INCLUDES}
+    )
+    target_compile_features(regression_snn_test_snn_conductance_regression
+        PRIVATE cxx_std_17)
+    gtest_discover_tests(regression_snn_test_snn_conductance_regression
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;snn;cb"
+            TIMEOUT 120
+    )
+    message(STATUS "  Added SNN regression test: test_snn_conductance_regression")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)

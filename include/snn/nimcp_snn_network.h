@@ -158,6 +158,39 @@ int snn_network_run(snn_network_t* network, float duration_ms);
 void snn_network_update_stats(snn_network_t* network, int total_spikes, float duration_ms);
 
 //=============================================================================
+// Conductance-Based Migration — Weight Rescaling
+//=============================================================================
+
+/**
+ * @brief One-shot rescale of all CSR synapse weights for CB-mode operation.
+ *
+ * Current-based weights are calibrated for direct mV-equivalent summation
+ * into I_syn. Conductance-based weights act through a driving force
+ * (E_rev - V), which at typical resting potential is ~50 mV. Multiplying
+ * by 50× would over-drive the network; the canonical rescale divides each
+ * weight by SNN_CB_DEFAULT_RESCALE (1/50) so the average-case post-synaptic
+ * effect matches the current-based regime.
+ *
+ * Idempotent: checks the sticky `cb_weights_rescaled` knob and refuses to
+ * apply twice. Caller must persist the knob (snn_tune.json) so the flag
+ * survives daemon restart.
+ *
+ * @param network  SNN network to rescale.
+ * @param factor   Multiplicative scale (e.g., 1.0/50.0 = 0.02). Must be > 0
+ *                 and finite. Pass < 1 to compress (current → CB), > 1 to
+ *                 expand (CB → current rollback).
+ * @return 0 on success; SNN_ERROR_* on failure (already rescaled, NULL net,
+ *         invalid factor).
+ *
+ * Touches every CSR storage in the network (entries[] AND GPU mirror if
+ * resident). Wall time scales with total synapse count; for 1.8M neurons
+ * × ~20 fan-in = 36M synapses, expect ~0.5 s on CPU, dominated by GPU
+ * sync if GPU resident.
+ */
+#define SNN_CB_DEFAULT_RESCALE_FACTOR (1.0f / 50.0f)
+int snn_rescale_weights_for_conductance(snn_network_t* network, float factor);
+
+//=============================================================================
 // Performance-Optimized Stepping
 //=============================================================================
 
