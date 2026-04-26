@@ -392,6 +392,13 @@ pub fn lif_step_cpu_cb(state: &mut LifState, params: &LifParams, dt_ms: f32) {
 /// NVRTC-compiled kernel: one timestep of LIF dynamics, parallel over
 /// neurons. Matches [`lif_step_cpu`] exactly; the equivalence test in
 /// this file is the regression gate against drift.
+///
+/// Two entry points:
+///   - `lif_step` — base current-mode integrator (no v_prep).
+///   - `lif_step_with_prep` — Phase 9e variant that adds a per-neuron
+///     `v_prep` delta (Poisson noise + adaptation hyperpol from CPU)
+///     to v_mem before integration. Lifts the cpu_prep guard so
+///     stability-on populations can run on GPU.
 #[cfg(feature = "cuda")]
 const LIF_KERNEL_SRC: &str = r#"
 extern "C" __global__ void lif_step(
@@ -414,6 +421,40 @@ extern "C" __global__ void lif_step(
         return;
     }
     float v = v_mem[i] + dt_over_tau * (v_rest - v_mem[i] + i_syn[i]);
+    if (v >= v_thresh) {
+        v_mem[i] = v_reset;
+        refrac[i] = refrac_steps;
+        spike[i] = 1;
+    } else {
+        v_mem[i] = v;
+        spike[i] = 0;
+    }
+}
+
+extern "C" __global__ void lif_step_with_prep(
+    float* v_mem,
+    unsigned int* refrac,
+    unsigned char* spike,
+    const float* i_syn,
+    const float* v_prep,
+    int n,
+    float dt_over_tau,
+    float v_rest,
+    float v_thresh,
+    float v_reset,
+    unsigned int refrac_steps
+) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    if (refrac[i] > 0) {
+        refrac[i] -= 1;
+        spike[i] = 0;
+        return;
+    }
+    // Add Poisson/pink noise + AHP/pump hyperpol to v_mem first, then
+    // integrate. Mirrors the CPU sequence in network.rs step #1+#3.
+    float v_pre = v_mem[i] + v_prep[i];
+    float v = v_pre + dt_over_tau * (v_rest - v_pre + i_syn[i]);
     if (v >= v_thresh) {
         v_mem[i] = v_reset;
         refrac[i] = refrac_steps;
@@ -450,6 +491,9 @@ pub struct LifGpu {
     #[allow(dead_code)]
     module: Arc<CudaModule>,
     kernel: CudaFunction,
+    /// Phase 9e — `lif_step_with_prep` entry point. Loaded from the
+    /// same PTX as the base kernel.
+    kernel_with_prep: CudaFunction,
     // Mirror of the most recent spike count — updated on every `step` so
     // `spikes_this_step` is a cheap scalar accessor.
     last_spikes: u32,
@@ -505,6 +549,9 @@ impl LifGpu {
         let ptx = cudarc::nvrtc::compile_ptx(LIF_KERNEL_SRC).map_err(cuda_err)?;
         let module = ctx.load_module(ptx).map_err(cuda_err)?;
         let kernel = module.load_function("lif_step").map_err(cuda_err)?;
+        let kernel_with_prep = module
+            .load_function("lif_step_with_prep")
+            .map_err(cuda_err)?;
 
         let v_init: Vec<f32> = vec![params.v_rest; n];
         let v_mem = stream.memcpy_stod(&v_init).map_err(cuda_err)?;
@@ -527,6 +574,7 @@ impl LifGpu {
             stream,
             module,
             kernel,
+            kernel_with_prep,
             last_spikes: 0,
         })
     }
@@ -619,6 +667,82 @@ impl LifGpu {
         out_spikes.clear();
         out_spikes.extend_from_slice(&host_spikes);
 
+        Ok(())
+    }
+
+    /// Phase 9e — like [`Self::step`] but also adds a per-neuron
+    /// `v_prep` delta to v_mem before integration. The CPU side
+    /// computes `v_prep` from Poisson/pink noise + AHP/pump
+    /// hyperpolarisation; the kernel handles the in-place add so the
+    /// device-resident `v_mem` stays the source of truth across steps.
+    ///
+    /// `v_prep.len()` must equal `n_neurons` — same precondition as
+    /// `i_syn`.
+    ///
+    /// # Errors
+    ///
+    /// Propagates any [`GpuError::Cuda`] from upload / kernel launch /
+    /// download, plus a synthetic error on length mismatch.
+    pub fn step_with_prep(
+        &mut self,
+        i_syn: &[f32],
+        v_prep: &[f32],
+        out_spikes: &mut Vec<u8>,
+        params: &LifParams,
+        dt_ms: f32,
+    ) -> Result<(), GpuError> {
+        if i_syn.len() != self.n_neurons as usize {
+            return Err(GpuError::Cuda(format!(
+                "LifGpu::step_with_prep: i_syn.len()={} but n_neurons={}",
+                i_syn.len(),
+                self.n_neurons
+            )));
+        }
+        if v_prep.len() != self.n_neurons as usize {
+            return Err(GpuError::Cuda(format!(
+                "LifGpu::step_with_prep: v_prep.len()={} but n_neurons={}",
+                v_prep.len(),
+                self.n_neurons
+            )));
+        }
+
+        let i_syn_dev = self.stream.memcpy_stod(i_syn).map_err(cuda_err)?;
+        let v_prep_dev = self.stream.memcpy_stod(v_prep).map_err(cuda_err)?;
+
+        let n_i32 = self.n_neurons as i32;
+        let dt_over_tau = dt_ms / params.tau_ms;
+        let v_rest = params.v_rest;
+        let v_thresh = params.v_thresh;
+        let v_reset = params.v_reset;
+        let refrac_steps = params.refrac_steps;
+
+        let cfg = LaunchConfig::for_num_elems(self.n_neurons);
+        let mut builder = self.stream.launch_builder(&self.kernel_with_prep);
+        builder.arg(&mut self.v_mem);
+        builder.arg(&mut self.refrac);
+        builder.arg(&mut self.spike);
+        builder.arg(&i_syn_dev);
+        builder.arg(&v_prep_dev);
+        builder.arg(&n_i32);
+        builder.arg(&dt_over_tau);
+        builder.arg(&v_rest);
+        builder.arg(&v_thresh);
+        builder.arg(&v_reset);
+        builder.arg(&refrac_steps);
+        // SAFETY: kernel signature is
+        //   (float* v_mem, unsigned int* refrac, unsigned char* spike,
+        //    const float* i_syn, const float* v_prep, int n,
+        //    float dt_over_tau, float v_rest, float v_thresh,
+        //    float v_reset, unsigned int refrac_steps)
+        // matching the eleven args pushed above. The `if (i >= n)`
+        // guard inside keeps writes within bounds of all four
+        // n_neurons-sized device buffers.
+        unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+
+        let host_spikes = self.stream.memcpy_dtov(&self.spike).map_err(cuda_err)?;
+        self.last_spikes = host_spikes.iter().map(|&s| u32::from(s)).sum();
+        out_spikes.clear();
+        out_spikes.extend_from_slice(&host_spikes);
         Ok(())
     }
 

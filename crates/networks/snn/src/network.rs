@@ -384,6 +384,14 @@ struct Pop {
     hyperpol_scratch: Vec<f32>,
     /// Per-neuron `fired` buffer as f32, for adaptation + depression updates.
     fired_f32_scratch: Vec<f32>,
+    /// Phase 9e — per-neuron membrane-prep delta. Accumulates Poisson +
+    /// pink noise pulses (positive) and AHP/pump hyperpolarization
+    /// (negative) per step. Applied to `v_mem` immediately before the
+    /// LIF integration; on the GPU LIF path it's uploaded alongside
+    /// `i_syn` and added inside the kernel. Replaces the prior
+    /// in-place `v_mem` mutation pattern that forced a CPU fallback
+    /// when stability mechanisms were active.
+    v_prep_scratch: Vec<f32>,
     /// Per-pre-neuron depression scale = `1 - depression.d[i]`, clamped
     /// to `[1 - cap, 1]`. Recomputed each step from depression_state.
     depression_scale_scratch: Vec<f32>,
@@ -592,6 +600,7 @@ impl SnnNetwork {
                 None
             };
 
+            let v_prep_scratch = vec![0.0_f32; n];
             populations.push(Pop {
                 spec: spec.clone(),
                 state,
@@ -605,6 +614,7 @@ impl SnnNetwork {
                 basket,
                 hyperpol_scratch,
                 fired_f32_scratch,
+                v_prep_scratch,
                 depression_scale_scratch,
                 substrate_state,
                 substrate_effects,
@@ -1023,11 +1033,19 @@ impl SnnNetwork {
                 }
             }
 
-            // Adaptive-factor background noise into v_mem. Dead pops
+            // Phase 9e — accumulate every v_mem-direct prep contribution
+            // (noise + adaptation hyperpol) into `v_prep_scratch` instead
+            // of mutating `state.v_mem` in place. CPU LIF applies it
+            // before integration; GPU LIF uploads it as a kernel arg.
+            // This unblocks GPU LIF on stability-on populations.
+            for x in pop.v_prep_scratch.iter_mut() {
+                *x = 0.0;
+            }
+
+            // Adaptive-factor background noise into v_prep. Dead pops
             // get full injection; at-target pops get none. Branches on
             // the configured [`crate::noise::NoiseKind`]:
-            //   - Poisson → per-neuron Bernoulli pulses (pre-port path,
-            //     bit-identical to master).
+            //   - Poisson → per-neuron Bernoulli pulses
             //   - Pink    → one shared 1/f sample per step, also recorded
             //     into the population's ring buffer for DFA monitoring.
             let factor = crate::noise::noise_factor_for_pop(
@@ -1038,7 +1056,7 @@ impl SnnNetwork {
                 crate::noise::NoiseKind::Poisson => {
                     crate::noise::inject_poisson_noise(
                         &mut pop.noise_rng,
-                        &mut pop.state.v_mem,
+                        &mut pop.v_prep_scratch,
                         &pop.spec.noise,
                         dt_ms,
                         factor,
@@ -1048,7 +1066,7 @@ impl SnnNetwork {
                     if let Some(pink) = pop.pink_state.as_mut() {
                         crate::noise::inject_pink_noise(
                             pink,
-                            &mut pop.state.v_mem,
+                            &mut pop.v_prep_scratch,
                             pop.spec.noise.pulse_mv,
                             dt_ms,
                             factor,
@@ -1057,7 +1075,7 @@ impl SnnNetwork {
                 }
             }
 
-            // Adaptation hyperpol: subtract gain*adapt_var from v_mem.
+            // Adaptation hyperpol: subtract gain*adapt_var from v_prep.
             // AHP and pump share the scratch buffer to avoid an extra
             // allocation per step.
             let n = pop.state.v_mem.len();
@@ -1078,8 +1096,8 @@ impl SnnNetwork {
                         *h += t;
                     }
                 }
-                for (v, &h) in pop.state.v_mem.iter_mut().zip(pop.hyperpol_scratch.iter()) {
-                    *v -= h;
+                for (vp, &h) in pop.v_prep_scratch.iter_mut().zip(pop.hyperpol_scratch.iter()) {
+                    *vp -= h;
                 }
             }
 
@@ -1215,36 +1233,36 @@ impl SnnNetwork {
                 pop.substrate_effects.as_ref(),
             );
 
-            // Phase 9a — GPU LIF when LifGpu present AND no CPU-side
-            // v_mem prep this step (noise / adaptation / basket /
-            // substrate). LifGpu holds v_mem on-device and Phase 9a
-            // doesn't sync CPU prep to GPU — that's 9b/9c. The guard
-            // keeps correctness: we only use the GPU path when the
-            // CPU-side prep would have been a no-op anyway.
+            // Phase 9a/9e — GPU LIF when LifGpu present. Phase 9e folds
+            // the prior cpu_prep_modified_v_mem guard into a single
+            // `v_prep` arg the kernel adds to v_mem, so noise +
+            // adaptation populations can run on GPU. CB mode and
+            // substrate state-mutating prep still force CPU fallback.
             //
-            // CB mode forces CPU fallback (per V1 design lock —
-            // conductance integrator is CPU-only for now). The CB
-            // dispatch in `lif_step_cpu` routes to `lif_step_cpu_cb`
-            // when both params + state agree.
-            let cpu_prep_modified_v_mem = pop.spec.noise.rate_hz > 0.0
-                || pop.adaptation_ahp.is_some()
-                || pop.adaptation_pump.is_some()
-                || pop.basket.is_some()
-                || pop.spec.substrate.enabled
-                || pop.spec.lif.conductance.is_some();
+            // CB mode CPU-only contract: conductance integrator stays
+            // on CPU (per V1 design lock — `lif_step_cpu` dispatches
+            // to `lif_step_cpu_cb` automatically when params + state
+            // agree).
+            let cpu_only = pop.spec.lif.conductance.is_some() || pop.spec.substrate.enabled;
             #[cfg(feature = "cuda")]
-            let used_gpu = if !cpu_prep_modified_v_mem
+            let used_gpu = if !cpu_only
                 && let Some(lif_gpu) = pop.lif_gpu.as_mut()
             {
                 let mut spikes_buf: Vec<u8> = Vec::with_capacity(pop.state.spike.len());
-                match lif_gpu.step(&pop.i_syn_scratch, &mut spikes_buf, &effective, dt_ms) {
+                match lif_gpu.step_with_prep(
+                    &pop.i_syn_scratch,
+                    &pop.v_prep_scratch,
+                    &mut spikes_buf,
+                    &effective,
+                    dt_ms,
+                ) {
                     Ok(()) => {
                         let n = spikes_buf.len().min(pop.state.spike.len());
                         pop.state.spike[..n].copy_from_slice(&spikes_buf[..n]);
                         true
                     }
                     Err(e) => {
-                        tracing::warn!(?e, "LifGpu::step failed; falling back to CPU");
+                        tracing::warn!(?e, "LifGpu::step_with_prep failed; falling back to CPU");
                         false
                     }
                 }
@@ -1254,9 +1272,14 @@ impl SnnNetwork {
             #[cfg(not(feature = "cuda"))]
             let used_gpu = false;
             #[cfg(not(feature = "cuda"))]
-            let _ = cpu_prep_modified_v_mem; // silence unused warning
+            let _ = cpu_only; // silence unused warning
 
             if !used_gpu {
+                // Apply the v_prep delta to v_mem before the integrator
+                // sees it (mirrors the GPU kernel's inline add).
+                for (v, &p) in pop.state.v_mem.iter_mut().zip(pop.v_prep_scratch.iter()) {
+                    *v += p;
+                }
                 lif_step_cpu(&mut pop.state, &pop.i_syn_scratch, &effective, dt_ms);
             }
 
