@@ -248,6 +248,7 @@ set(NIMCP_CORE_SOURCES
 
     # Cortical columns - Tier 0.65: Cortical Columns Architecture (Phase CC-1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column.c       # Core minicolumn/hypercolumn structures
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column_ternary.c  # Ternary WTA wrapper for hypercolumns (cc-activation campaign)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_layers.c       # 6-layer laminar organization
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_columnar_connectivity.c # Canonical microcircuit connectivity
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_topographic_maps.c      # Retinotopic, tonotopic, somatotopic maps
