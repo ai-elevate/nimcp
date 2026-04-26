@@ -171,6 +171,7 @@ static void apply_minimal_profile(brain_config_t* config)
     config->enable_natural_explanations = false;
     config->enable_brain_regions = false;
     config->enable_cortical_columns = false;
+    config->enable_cortical_ternary = false;
     config->enable_multihead_attention = false;
     config->enable_parietal = false;
     config->enable_dragonfly = false;
@@ -356,6 +357,7 @@ static void apply_research_profile(brain_config_t* config)
 
     // Cortical columns
     config->enable_cortical_columns = true;
+    config->enable_cortical_ternary = false;  /* opt-in even on full profile */
     config->num_hypercolumns = 10;
     config->minicolumns_per_hypercolumn = 100;
     config->neurons_per_minicolumn = 80;
@@ -523,6 +525,7 @@ static void apply_embedded_profile(brain_config_t* config)
 
     // Disable heavy biological features
     config->enable_cortical_columns = false;
+    config->enable_cortical_ternary = false;
     config->enable_oscillations = false;
 }
 

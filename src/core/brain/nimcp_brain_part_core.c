@@ -1892,6 +1892,66 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
 
     uint32_t active_neurons = perform_forward_pass(brain, features, num_features, decision);
 
+    /* Cortical columns forward + ternary WTA + projection blend.
+     * Skipped when columns disabled or pool empty — zero behavior change.
+     * Each hypercolumn computes its softmax distribution over its minicolumns
+     * from the (truncated) feature vector. The per-HC distributions are
+     * concatenated into column_feature_buf (size = num_hypercolumns *
+     * minicolumns_per_hc). When ternary is on, cc_ternary_hypercolumn_wta()
+     * picks one winner per HC; the winner entry is multiplied by 1.5 and
+     * non-winner entries by 0.5 to sparsify the feature vector. The resulting
+     * feature buffer is projected to output_size via column_to_decision_proj
+     * (row-major matvec) and added with weight column_blend_alpha into
+     * decision->output_vector. The projection is zero-initialized so the
+     * blend is a no-op until brain_learn_vector teaches it. */
+    if (brain->enable_cortical_columns && brain->cortical_column_pool &&
+        brain->num_hypercolumns > 0 && brain->hypercolumns &&
+        brain->column_to_decision_proj && brain->column_feature_buf &&
+        decision && decision->output_vector && decision->output_size > 0) {
+        uint32_t out_sz       = decision->output_size;
+        uint32_t feature_dim  = brain->column_feature_dim;
+        uint32_t num_hcs      = brain->num_hypercolumns;
+        uint32_t mcs_per_hc   = (num_hcs > 0) ? (feature_dim / num_hcs) : 0;
+        if (mcs_per_hc > 0 && feature_dim > 0) {
+            /* Step 1: per-HC compute + distribution */
+            for (uint32_t h = 0; h < num_hcs; h++) {
+                hypercolumn_t* hc = brain->hypercolumns[h];
+                float* slot = &brain->column_feature_buf[(size_t)h * mcs_per_hc];
+                if (!hc) {
+                    for (uint32_t m = 0; m < mcs_per_hc; m++) slot[m] = 0.0F;
+                    continue;
+                }
+                hypercolumn_compute(hc, features, num_features);
+                hypercolumn_get_distribution(hc, slot, mcs_per_hc);
+
+                /* Step 2: optional ternary WTA — sparsify the slot. */
+                if (brain->enable_cortical_ternary && brain->ternary_hypercolumns) {
+                    cc_ternary_hypercolumn_t* thc =
+                        (cc_ternary_hypercolumn_t*)brain->ternary_hypercolumns[h];
+                    if (thc) {
+                        uint32_t winner = cc_ternary_hypercolumn_wta(thc);
+                        for (uint32_t m = 0; m < mcs_per_hc; m++) {
+                            slot[m] = (m == winner) ? slot[m] * 1.5F : slot[m] * 0.5F;
+                        }
+                    }
+                }
+            }
+
+            /* Step 3: projection matvec (row-major: proj[f * out_sz + i]) +
+             * additive blend into decision->output_vector. */
+            float alpha = brain->column_blend_alpha;
+            for (uint32_t f = 0; f < feature_dim; f++) {
+                float fv = brain->column_feature_buf[f];
+                if (fv == 0.0F) continue;
+                const float* row = &brain->column_to_decision_proj[(size_t)f * out_sz];
+                for (uint32_t i = 0; i < out_sz; i++) {
+                    decision->output_vector[i] += alpha * fv * row[i];
+                }
+            }
+            brain->cortical_decisions++;
+        }
+    }
+
     if (brain->recurrent_enabled && brain->recurrent_max_iterations > 1) {
         float alpha = brain->recurrent_blend_alpha;
         uint32_t out_sz = decision->output_size;

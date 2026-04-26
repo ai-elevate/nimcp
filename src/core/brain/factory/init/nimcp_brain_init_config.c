@@ -521,6 +521,9 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
     config->num_orientation_columns = large_enough_for_cortical ? 16 : 0;
     config->enable_feature_hypercolumns = large_enough_for_cortical;
 
+    // Ternary WTA wrapper — opt-in only (default OFF to preserve checkpoint compat).
+    config->enable_cortical_ternary = false;
+
     // Phase C2.1: Quantum Walk defaults
     config->enable_quantum_walk_diffusion = false;
     config->quantum_walk_steps = 50;

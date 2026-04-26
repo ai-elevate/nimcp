@@ -97,6 +97,8 @@
 #include "cognitive/wellbeing/nimcp_wellbeing.h"        // Phase 9.3: Self-preservation
 #include "cognitive/omni/bridges/nimcp_omni_wm_thousand_brains_bridge.h"  // Hawkins TB WM bridge
 #include "core/cortical_columns/nimcp_thousand_brains_integration.h"      // TB full-system integration hub
+#include "core/cortical_columns/nimcp_cortical_column.h"                  // Cortical columns base API
+#include "core/cortical_columns/nimcp_cortical_column_ternary.h"          // Ternary WTA wrapper
 #include "plasticity/neuromodulators/nimcp_neuromod_pink_noise.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"   // Full neuromodulator system
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"  // Phase C2.1: Spatial neuromodulator diffusion
