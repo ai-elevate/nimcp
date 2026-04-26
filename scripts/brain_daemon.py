@@ -1010,6 +1010,39 @@ class BrainService:
         """Return per-population live firing-rate snapshot."""
         return {"pops": self.brain.snn_pop_stats() or []}
 
+    def _cmd_snn_rescale_for_conductance(self, req):
+        """Rescale all CSR synapse weights for CB-mode operation. Idempotent
+        (refuses double-apply via the cb_weights_rescaled sticky flag).
+        Atomically: rescale weights, then optionally flip conductance_enabled
+        on. Both knobs persist to snn_tune.json.
+
+        Request: {"factor": 0.02, "enable_after": true}
+          factor       : weight multiplier (default 1/50 = 0.02)
+          enable_after : if true, flips conductance_enabled=1 after rescale.
+                         Default false — caller can verify rescale before flipping.
+        """
+        try:
+            factor = float(req.get("factor", 1.0 / 50.0))
+        except (TypeError, ValueError):
+            return {"error": "factor must be numeric"}
+        enable_after = bool(req.get("enable_after", False))
+        try:
+            self.brain.snn_rescale_for_conductance(factor)
+        except Exception as e:
+            return {"error": "rescale failed: " + str(e)}
+        # Persist the sticky flag so a daemon restart sees rescale-applied.
+        _save_persistent_snn_tune("cb_weights_rescaled", 1.0, logger)
+        result = {"ok": True, "factor": factor, "rescaled": True}
+        if enable_after:
+            try:
+                self.brain.snn_tune("conductance_enabled", 1.0)
+                _save_persistent_snn_tune("conductance_enabled", 1.0, logger)
+                result["conductance_enabled"] = 1.0
+            except Exception as e:
+                return {"error": "flag-flip failed after rescale: " + str(e),
+                        "rescaled": True}
+        return result
+
     def _cmd_get_transcript(self, _req):
         if True:  # RWLock in handle()
             return {"transcript": self.brain.get_transcript()}
