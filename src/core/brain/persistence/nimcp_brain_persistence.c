@@ -82,6 +82,8 @@
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/cortical_columns/nimcp_cortical_column.h"
+#include "core/cortical_columns/nimcp_cortical_column_ternary.h"
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* substrate + thalamic attach */
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
@@ -675,6 +677,199 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     return true;
 }
 
+//=============================================================================
+// CC6: Cortical columns sidecar — CORTICAL_COLUMNS_V1
+//=============================================================================
+/* Format (binary, little-endian; matches brain_t native packing):
+ *   Magic       : uint32_t = 0x43434C4D ("CCLM")
+ *   Version     : uint32_t = 1
+ *   num_hcs     : uint32_t
+ *   feature_dim : uint32_t
+ *   out_size    : uint32_t (== brain->config.num_outputs at save time)
+ *   blend_alpha : float
+ *   ternary_on  : uint8_t (0 or 1)
+ *   reserved    : uint8_t[3] = {0,0,0}
+ *   For each HC i in [0, num_hcs):
+ *     winner_idx          : uint32_t
+ *     hc_total_activation : float
+ *   proj_floats : float[feature_dim * out_size]   (row-major)
+ *
+ * No section "absent" → log a one-line warning and continue with the
+ * fresh init (matrix already zeroed by structural init). Old checkpoints
+ * round-trip identically when re-saved (the sidecar is unconditionally
+ * written when columns are on, but the loader handles missing files). */
+
+#define CC_SIDECAR_MAGIC   0x43434C4DU  /* "CCLM" */
+#define CC_SIDECAR_VERSION 1U
+
+static bool cortical_columns_sidecar_save(brain_t brain, const char* filepath)
+{
+    if (!brain || !filepath) return false;
+    if (!brain->enable_cortical_columns || !brain->hypercolumns ||
+        brain->num_hypercolumns == 0 || !brain->column_to_decision_proj) {
+        return true; /* Nothing to save; not an error. */
+    }
+
+    char sidecar_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(sidecar_path, sizeof(sidecar_path), "%s.cortical_columns", filepath);
+    char tmp_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", sidecar_path);
+
+    FILE* f = fopen(tmp_path, "wb");
+    if (!f) {
+        NIMCP_LOGGING_WARN("cortical_columns_sidecar_save: fopen %s failed", tmp_path);
+        return false;
+    }
+
+    uint32_t magic       = CC_SIDECAR_MAGIC;
+    uint32_t version     = CC_SIDECAR_VERSION;
+    uint32_t num_hcs     = brain->num_hypercolumns;
+    uint32_t feature_dim = brain->column_feature_dim;
+    uint32_t out_size    = brain->config.num_outputs;
+    float    blend_alpha = brain->column_blend_alpha;
+    uint8_t  ternary_on  = brain->enable_cortical_ternary ? 1 : 0;
+    uint8_t  reserved[3] = {0,0,0};
+
+    bool ok = true;
+    ok = ok && (fwrite(&magic,       sizeof(magic),       1, f) == 1);
+    ok = ok && (fwrite(&version,     sizeof(version),     1, f) == 1);
+    ok = ok && (fwrite(&num_hcs,     sizeof(num_hcs),     1, f) == 1);
+    ok = ok && (fwrite(&feature_dim, sizeof(feature_dim), 1, f) == 1);
+    ok = ok && (fwrite(&out_size,    sizeof(out_size),    1, f) == 1);
+    ok = ok && (fwrite(&blend_alpha, sizeof(blend_alpha), 1, f) == 1);
+    ok = ok && (fwrite(&ternary_on,  sizeof(ternary_on),  1, f) == 1);
+    ok = ok && (fwrite(reserved,     sizeof(reserved),    1, f) == 1);
+
+    /* Per-HC stats — winner index + total activation. */
+    for (uint32_t i = 0; i < num_hcs && ok; i++) {
+        uint32_t winner = UINT32_MAX;
+        float    total_act = 0.0F;
+        if (brain->hypercolumns[i]) {
+            cc_hypercolumn_stats_t st = {0};
+            hypercolumn_get_stats(brain->hypercolumns[i], &st);
+            winner = st.winner_index;
+            total_act = st.total_activation;
+        }
+        ok = ok && (fwrite(&winner,    sizeof(winner),    1, f) == 1);
+        ok = ok && (fwrite(&total_act, sizeof(total_act), 1, f) == 1);
+    }
+
+    /* Projection matrix raw floats. */
+    if (ok && feature_dim > 0 && out_size > 0) {
+        size_t n = (size_t)feature_dim * (size_t)out_size;
+        ok = ok && (fwrite(brain->column_to_decision_proj, sizeof(float), n, f) == n);
+    }
+
+    fclose(f);
+    if (!ok) {
+        NIMCP_LOGGING_WARN("cortical_columns_sidecar_save: fwrite failed for %s", tmp_path);
+        unlink(tmp_path);
+        return false;
+    }
+
+    if (rename(tmp_path, sidecar_path) != 0) {
+        NIMCP_LOGGING_WARN("cortical_columns_sidecar_save: rename %s -> %s failed",
+                           tmp_path, sidecar_path);
+        unlink(tmp_path);
+        return false;
+    }
+    NIMCP_LOGGING_INFO("CORTICAL_COLUMNS_V1 sidecar saved: %u HCs, %u-dim features, "
+                       "%u outputs, ternary=%u",
+                       num_hcs, feature_dim, out_size, (unsigned)ternary_on);
+    return true;
+}
+
+static bool cortical_columns_sidecar_load(brain_t brain, const char* filepath)
+{
+    if (!brain || !filepath) return false;
+
+    char sidecar_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(sidecar_path, sizeof(sidecar_path), "%s.cortical_columns", filepath);
+
+    FILE* f = fopen(sidecar_path, "rb");
+    if (!f) {
+        /* Old checkpoint — section absent. Init path already populated
+         * fresh state and zeroed the projection. Log a warning. */
+        NIMCP_LOGGING_WARN("CORTICAL_COLUMNS_V1 section absent at %s — using fresh init "
+                           "(old checkpoint, expected on first migration)", sidecar_path);
+        return true;
+    }
+
+    uint32_t magic = 0, version = 0, num_hcs = 0, feature_dim = 0, out_size = 0;
+    float    blend_alpha = 0.0F;
+    uint8_t  ternary_on  = 0;
+    uint8_t  reserved[3] = {0,0,0};
+
+    bool ok = true;
+    ok = ok && (fread(&magic,       sizeof(magic),       1, f) == 1);
+    ok = ok && (fread(&version,     sizeof(version),     1, f) == 1);
+    ok = ok && (fread(&num_hcs,     sizeof(num_hcs),     1, f) == 1);
+    ok = ok && (fread(&feature_dim, sizeof(feature_dim), 1, f) == 1);
+    ok = ok && (fread(&out_size,    sizeof(out_size),    1, f) == 1);
+    ok = ok && (fread(&blend_alpha, sizeof(blend_alpha), 1, f) == 1);
+    ok = ok && (fread(&ternary_on,  sizeof(ternary_on),  1, f) == 1);
+    ok = ok && (fread(reserved,     sizeof(reserved),    1, f) == 1);
+
+    if (!ok || magic != CC_SIDECAR_MAGIC) {
+        fclose(f);
+        NIMCP_LOGGING_WARN("CORTICAL_COLUMNS_V1: bad magic 0x%08x in %s — skipping",
+                           magic, sidecar_path);
+        return false;
+    }
+    if (version != CC_SIDECAR_VERSION) {
+        fclose(f);
+        NIMCP_LOGGING_WARN("CORTICAL_COLUMNS_V1: unsupported version %u in %s — skipping",
+                           version, sidecar_path);
+        return false;
+    }
+
+    /* Validate dims match what init produced. If they don't (e.g. config
+     * changed between save and load), refuse the section and let the fresh
+     * init stay in place. */
+    if (num_hcs != brain->num_hypercolumns ||
+        feature_dim != brain->column_feature_dim ||
+        out_size != brain->config.num_outputs) {
+        NIMCP_LOGGING_WARN("CORTICAL_COLUMNS_V1: dim mismatch (have hcs=%u feat=%u out=%u; "
+                           "file hcs=%u feat=%u out=%u) — skipping",
+                           brain->num_hypercolumns, brain->column_feature_dim,
+                           brain->config.num_outputs, num_hcs, feature_dim, out_size);
+        fclose(f);
+        return false;
+    }
+
+    /* Read per-HC stats — we don't restore winner_idx into hc state (it's
+     * recomputed on first decide), but we keep the read for forward compat. */
+    for (uint32_t i = 0; i < num_hcs && ok; i++) {
+        uint32_t winner = 0; float total_act = 0.0F;
+        ok = ok && (fread(&winner,    sizeof(winner),    1, f) == 1);
+        ok = ok && (fread(&total_act, sizeof(total_act), 1, f) == 1);
+        (void)winner; (void)total_act;
+    }
+
+    /* Read projection matrix into the already-allocated buffer. */
+    if (ok && feature_dim > 0 && out_size > 0 && brain->column_to_decision_proj) {
+        size_t n = (size_t)feature_dim * (size_t)out_size;
+        ok = ok && (fread(brain->column_to_decision_proj, sizeof(float), n, f) == n);
+    }
+
+    fclose(f);
+    if (!ok) {
+        NIMCP_LOGGING_WARN("CORTICAL_COLUMNS_V1: truncated read at %s — using partial state",
+                           sidecar_path);
+        return false;
+    }
+    brain->column_blend_alpha = blend_alpha;
+    /* Keep the existing enable_cortical_ternary value from config — the
+     * file's flag is informational only (we honor the loaded brain's
+     * runtime config, not the saved one, so ternary can be turned on/off
+     * independently). */
+    (void)ternary_on;
+    NIMCP_LOGGING_INFO("CORTICAL_COLUMNS_V1 sidecar loaded: %u HCs, %u-dim features, "
+                       "%u outputs (alpha=%.3f)",
+                       num_hcs, feature_dim, out_size, blend_alpha);
+    return true;
+}
+
 /**
  * @brief Save brain to file
  *
@@ -773,6 +968,9 @@ bool brain_save(brain_t brain, const char* filepath)
                 }
             }
         }
+
+        /* CC6: Save CORTICAL_COLUMNS_V1 sidecar (best-effort; non-fatal). */
+        cortical_columns_sidecar_save(brain, filepath);
     }
 
     // Health monitoring: save complete
@@ -1792,6 +1990,20 @@ brain_t brain_load(const char* filepath)
      * SNN/LNN/cortex CNNs. NULL-tolerant: if creation fails we keep going. */
     nimcp_brain_factory_init_substrate_thalamic_subsystem(brain);
     nimcp_brain_attach_substrate_thalamic(brain);
+
+    /* CC6: Restore cortical columns subsystem if the saved config had it.
+     * The structural init reads brain->config and populates the HC slots,
+     * allocates the projection matrix (zeroed), and the feature buffer.
+     * After init succeeds, attempt to load the CORTICAL_COLUMNS_V1 sidecar
+     * to overwrite the projection with learned weights. If the sidecar is
+     * absent (old checkpoint), the loader logs a warning and continues. */
+    if (brain->config.enable_cortical_columns && !brain->cortical_column_pool) {
+        extern bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain);
+        nimcp_brain_factory_init_cortical_columns_subsystem(brain);
+    }
+    if (brain->enable_cortical_columns) {
+        cortical_columns_sidecar_load(brain, filepath);
+    }
 
     brain_clear_error();
     return brain;
