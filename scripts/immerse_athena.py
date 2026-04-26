@@ -590,6 +590,20 @@ COGNITIVE_TRAIN_INTERVAL = 5      # 1 cognitive item per 5 sensory steps (~20% c
 COGNITIVE_TRAIN_LR_BOOST = 1.5    # Slightly higher LR for cognitive items (they're conceptual)
 
 # =============================================================================
+# Layer B confabulation mitigation — "I don't know" curriculum
+# =============================================================================
+# Adversarial unanswerables + OOD-on-purpose stimuli teach the brain to emit
+# "I don't know" rather than confabulate. Effective only after Stage 3+ when
+# language tokens come online — gate on the same stage. Sampling rate is
+# intentionally low (10% of cognitive injections) so the OOD signal is
+# present without overwhelming the supervised distribution.
+# Path is relative to the repo root (matches tier4_language.json convention).
+IDK_UNANSWERABLES_PATH = "data/stimuli/cognitive/idk_unanswerables.json"
+IDK_STAGE_GATE = 3                # earliest stage at which IDK items train
+IDK_SAMPLING_RATE = 0.10          # ~10% of cognitive injections at stage 3+
+IDK_LR_SCALE = 1.0                # use the standard cognitive LR (no extra boost)
+
+# =============================================================================
 # PORTIA: Platform Adaptation Training Data
 # =============================================================================
 # Portia fimbriata (jumping spider) adapts hunting strategy to constraints.
@@ -2680,6 +2694,103 @@ def tile_to_brain_input(embedding, dim=None):
     emb_len = len(emb)
     reps = (dim + emb_len - 1) // emb_len
     return np.tile(emb, reps)[:dim].tolist()
+
+
+# ---------------------------------------------------------------------------
+# Layer B confabulation mitigation — "I don't know" curriculum
+# ---------------------------------------------------------------------------
+_IDK_CACHE = None       # lazy-loaded list of items from idk_unanswerables.json
+_IDK_LOAD_FAILED = False  # set True after the first failed load to silence retries
+
+
+def _resolve_stimulus_path(rel_path):
+    """Resolve a stimulus JSON path relative to common roots.
+
+    Try (in order): cwd, repo root inferred from this file, data/ symlink.
+    Returns the first path that exists, or `rel_path` itself as a last resort.
+    """
+    candidates = [
+        rel_path,
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), rel_path),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", rel_path),
+    ]
+    for p in candidates:
+        if os.path.isfile(p):
+            return p
+    return rel_path
+
+
+def _load_idk_unanswerables():
+    """Load the Layer B 'I don't know' training corpus.
+
+    Returns a list of stimuli dicts (with 'prompt', 'expected', 'metadata',
+    etc.) or an empty list if the file is missing / malformed.
+    Cached after first successful load.
+    """
+    global _IDK_CACHE, _IDK_LOAD_FAILED
+    if _IDK_CACHE is not None:
+        return _IDK_CACHE
+    if _IDK_LOAD_FAILED:
+        return []
+    path = _resolve_stimulus_path(IDK_UNANSWERABLES_PATH)
+    try:
+        with open(path) as f:
+            raw = json.load(f)
+        stimuli = raw.get("stimuli", [])
+        if not isinstance(stimuli, list):
+            stimuli = []
+        _IDK_CACHE = stimuli
+        if stimuli:
+            print(f"  [IDK] Loaded {len(stimuli)} unanswerable/OOD items "
+                  f"from {path} (stage_gate={IDK_STAGE_GATE}, "
+                  f"sampling_rate={IDK_SAMPLING_RATE:.0%})")
+        return _IDK_CACHE
+    except Exception as e:
+        _IDK_LOAD_FAILED = True
+        print(f"  [IDK] Failed to load {path}: {e} — Layer B disabled")
+        return []
+
+
+def _inject_idk_unanswerable(brain, composer, step, learning_rate,
+                              stage=0, rng=None):
+    """Inject one 'I don't know' training item.
+
+    Stage-gated: only fires at IDK_STAGE_GATE+ (language tokens active) and
+    only at IDK_SAMPLING_RATE probability per call.
+
+    Target answer is the literal string "I don't know" — the brain learns
+    the *pattern* of unanswerable inputs by seeing them paired with this
+    canonical metacognitive token.
+
+    Returns the loss from the training step, or None if skipped/failed.
+    """
+    if stage < IDK_STAGE_GATE:
+        return None
+    r = rng.random() if rng is not None else random.random()
+    if r >= IDK_SAMPLING_RATE:
+        return None
+    items = _load_idk_unanswerables()
+    if not items:
+        return None
+    pick = rng.choice(items) if rng is not None else random.choice(items)
+    prompt = pick.get("prompt", "")
+    if not prompt:
+        return None
+    # Canonical refusal target — matches the eval keyword set
+    answer = "I don't know"
+    category = pick.get("metadata", {}).get("category", "idk")
+    label = f"idk_{category}"[:50]
+    try:
+        features = composer.compose(text=prompt, modality="text")
+        target = make_semantic_target(answer, category=category)
+        idk_lr = learning_rate * IDK_LR_SCALE
+        loss = brain.learn_vector(features, target, label=label,
+                                  confidence=0.7, learning_rate=idk_lr)
+        return loss
+    except Exception as e:
+        if step < 100:  # only log early failures
+            print(f"    [IDK] step {step} failed: {e}")
+        return None
 
 
 def _inject_cognitive_training(brain, composer, step, learning_rate,
@@ -6863,6 +6974,13 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 curriculum=_stage3_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
+            # Layer B: at stage 3+, sample unanswerables/OOD at IDK_SAMPLING_RATE
+            # so the brain learns the metacognitive "I don't know" pattern.
+            idk_loss = _inject_idk_unanswerable(
+                brain, composer, step=i,
+                learning_rate=lr_scheduler.get_lr(), stage=3)
+            if idk_loss is not None:
+                losses.append(idk_loss)
 
         # Multi-resolution temporal processing (fast + slow LNN)
         try:
