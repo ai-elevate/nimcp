@@ -61,11 +61,53 @@ pub struct LifParams {
     pub v_reset: f32,
     /// Absolute refractory period, in integration steps.
     pub refrac_steps: u32,
+    /// Conductance-based PSC config. `None` (default) = legacy
+    /// current-mode dynamics (bit-identical to pre-CB behavior).
+    /// `Some` enables CB synaptic input — `g_exc`/`g_inh` accumulate
+    /// per-receptor and drive the membrane via reversal-potential
+    /// terms. See [`crate::membrane`] for the equation.
+    ///
+    /// Migration note: when flipping `None → Some`, weights must be
+    /// rescaled (typically by [`crate::membrane::SNN_CB_WEIGHT_SCALE`])
+    /// to compensate for the ~50 mV avg driving force. Use
+    /// [`crate::SnnNetwork::rescale_for_conductance`] for the one-shot
+    /// rescale; the network tracks an `cb_weights_rescaled` sticky
+    /// flag so re-enabling on an already-rescaled checkpoint is a
+    /// no-op.
+    #[serde(default)]
+    pub conductance: Option<ConductanceParams>,
+}
+
+/// Conductance-based PSC parameters. Held inside [`LifParams::conductance`]
+/// when CB mode is enabled for a population.
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct ConductanceParams {
+    /// Excitatory reversal potential (mV). Cortical AMPA ≈ 0 mV.
+    pub e_exc_mv: f32,
+    /// Inhibitory reversal potential (mV). Cortical GABA-A ≈ -80 mV.
+    pub e_inh_mv: f32,
+    /// Excitatory conductance decay time constant (ms). Fast AMPA ≈ 2 ms.
+    pub tau_exc_ms: f32,
+    /// Inhibitory conductance decay time constant (ms). GABA-A ≈ 8 ms,
+    /// slower than AMPA so I has time to brake E.
+    pub tau_inh_ms: f32,
+}
+
+impl Default for ConductanceParams {
+    fn default() -> Self {
+        Self {
+            e_exc_mv: crate::membrane::SNN_E_EXC_MV,
+            e_inh_mv: crate::membrane::SNN_E_INH_MV,
+            tau_exc_ms: crate::membrane::SNN_TAU_EXC_MS,
+            tau_inh_ms: crate::membrane::SNN_TAU_INH_MS,
+        }
+    }
 }
 
 impl Default for LifParams {
     /// Cortical defaults: `tau=20ms`, `v_rest=-70mV`, `v_thresh=-50mV`,
-    /// `v_reset=-70mV`, `refrac=2` steps.
+    /// `v_reset=-70mV`, `refrac=2` steps. Conductance disabled.
     fn default() -> Self {
         Self {
             tau_ms: 20.0,
@@ -73,6 +115,7 @@ impl Default for LifParams {
             v_thresh: -50.0,
             v_reset: -70.0,
             refrac_steps: 2,
+            conductance: None,
         }
     }
 }
@@ -95,10 +138,50 @@ pub struct LifState {
     pub spike: Vec<u8>,
     /// Neuron count — fixed at construction.
     pub n_neurons: u32,
+    /// Conductance state. `Some` iff [`LifParams::conductance`] was
+    /// `Some` at construction. Disable path: `None`, no allocation,
+    /// no per-step work.
+    pub conductance: Option<ConductanceState>,
+}
+
+/// Per-neuron excitatory + inhibitory conductances. Allocated only when
+/// CB mode is enabled — otherwise [`LifState::conductance`] is `None`
+/// and no memory is paid.
+#[derive(Debug, Clone)]
+pub struct ConductanceState {
+    /// Excitatory conductance per neuron (dimensionless).
+    pub g_exc: Vec<f32>,
+    /// Inhibitory conductance per neuron (dimensionless).
+    pub g_inh: Vec<f32>,
+}
+
+impl ConductanceState {
+    /// Allocate at zero for every neuron.
+    #[must_use]
+    pub fn new(n_neurons: u32) -> Self {
+        let n = n_neurons as usize;
+        Self {
+            g_exc: vec![0.0; n],
+            g_inh: vec![0.0; n],
+        }
+    }
+
+    /// Reset all conductances to zero — call on network reset.
+    pub fn reset(&mut self) {
+        for g in &mut self.g_exc {
+            *g = 0.0;
+        }
+        for g in &mut self.g_inh {
+            *g = 0.0;
+        }
+    }
 }
 
 impl LifState {
     /// Allocate state for `n_neurons` at rest, no active refractories, no spikes.
+    ///
+    /// CB state (`g_exc`/`g_inh`) is allocated iff `params.conductance`
+    /// is `Some`. Disable path: zero allocation overhead.
     #[must_use]
     pub fn new(n_neurons: u32, params: &LifParams) -> Self {
         let n = n_neurons as usize;
@@ -107,10 +190,15 @@ impl LifState {
             refrac: vec![0u32; n],
             spike: vec![0u8; n],
             n_neurons,
+            conductance: params
+                .conductance
+                .as_ref()
+                .map(|_| ConductanceState::new(n_neurons)),
         }
     }
 
     /// Return every neuron to rest and clear spikes + refractory counters.
+    /// Also zeros conductance state if present.
     pub fn reset(&mut self, params: &LifParams) {
         for v in &mut self.v_mem {
             *v = params.v_rest;
@@ -121,6 +209,9 @@ impl LifState {
         for s in &mut self.spike {
             *s = 0;
         }
+        if let Some(cb) = self.conductance.as_mut() {
+            cb.reset();
+        }
     }
 
     /// Count neurons that fired on the most recent step.
@@ -129,6 +220,16 @@ impl LifState {
         // Spikes are 0/1 by construction; summing as u32 is safe because
         // n_neurons fits in u32 by definition.
         self.spike.iter().map(|&s| u32::from(s)).sum()
+    }
+
+    /// Enable CB mode in-place: allocate `ConductanceState` if not
+    /// already present. Idempotent. Used by
+    /// [`crate::SnnNetwork::rescale_for_conductance`] when an admin
+    /// flips the network into CB mode at runtime.
+    pub fn enable_conductance_in_place(&mut self) {
+        if self.conductance.is_none() {
+            self.conductance = Some(ConductanceState::new(self.n_neurons));
+        }
     }
 }
 
@@ -155,6 +256,13 @@ impl LifState {
 /// With `dt/tau` precomputed once per step for cache friendliness.
 // HOT PATH: called on every integration step; keep branch-light.
 pub fn lif_step_cpu(state: &mut LifState, i_syn: &[f32], params: &LifParams, dt_ms: f32) {
+    // CB dispatch: when both params and state agree on CB mode, route to
+    // the conductance integrator. Otherwise the legacy current-mode path
+    // runs unchanged — bit-identical to pre-CB behavior.
+    if params.conductance.is_some() && state.conductance.is_some() {
+        lif_step_cpu_cb(state, params, dt_ms);
+        return;
+    }
     assert_eq!(
         i_syn.len(),
         state.n_neurons as usize,
@@ -192,6 +300,88 @@ pub fn lif_step_cpu(state: &mut LifState, i_syn: &[f32], params: &LifParams, dt_
             *v_mem = v_new;
             *spike = 0;
         }
+    }
+}
+
+/// One LIF step in conductance mode.
+///
+/// Reads `state.conductance.{g_exc, g_inh}` (filled by the upstream
+/// CSR/basket/noise deposit pass) and computes
+/// `dv = ((v_rest - v) + g_exc·(E_exc - v) + g_inh·(E_inh - v)) / tau · dt`
+/// via [`crate::membrane::compute_dv`], then applies threshold + refractory.
+///
+/// After integration, conductances are decayed by
+/// `exp(-dt/tau_exc)` and `exp(-dt/tau_inh)` so the next step starts
+/// from the decayed value.
+///
+/// # Panics
+///
+/// Panics if `state.conductance` is `None` or if the conductance buffers
+/// have a different length than the membrane buffers — both are
+/// programming errors, not runtime conditions.
+pub fn lif_step_cpu_cb(state: &mut LifState, params: &LifParams, dt_ms: f32) {
+    let cb_params = params
+        .conductance
+        .as_ref()
+        .expect("lif_step_cpu_cb requires params.conductance to be Some");
+    let cb_state = state
+        .conductance
+        .as_mut()
+        .expect("lif_step_cpu_cb requires state.conductance to be Some");
+    assert_eq!(
+        cb_state.g_exc.len(),
+        state.v_mem.len(),
+        "g_exc length must match v_mem length"
+    );
+    assert_eq!(
+        cb_state.g_inh.len(),
+        state.v_mem.len(),
+        "g_inh length must match v_mem length"
+    );
+
+    let v_rest = params.v_rest;
+    let v_thresh = params.v_thresh;
+    let v_reset = params.v_reset;
+    let refrac_steps = params.refrac_steps;
+    let tau_ms = params.tau_ms;
+    let e_exc = cb_params.e_exc_mv;
+    let e_inh = cb_params.e_inh_mv;
+    // Decay factors computed once per step.
+    let decay_exc = (-dt_ms / cb_params.tau_exc_ms.max(1e-3)).exp();
+    let decay_inh = (-dt_ms / cb_params.tau_inh_ms.max(1e-3)).exp();
+
+    for ((((v_mem, refrac), spike), g_exc), g_inh) in state
+        .v_mem
+        .iter_mut()
+        .zip(state.refrac.iter_mut())
+        .zip(state.spike.iter_mut())
+        .zip(cb_state.g_exc.iter_mut())
+        .zip(cb_state.g_inh.iter_mut())
+    {
+        if *refrac > 0 {
+            *refrac -= 1;
+            *spike = 0;
+            // Still decay conductances during refractory — synapses
+            // continue to relax even if the soma can't fire.
+            crate::membrane::decay_one(g_exc, g_inh, decay_exc, decay_inh);
+            continue;
+        }
+        let dv = crate::membrane::compute_dv(
+            *v_mem, v_rest, tau_ms, dt_ms, 0.0, *g_exc, *g_inh, e_exc, e_inh, true,
+        );
+        let v_new = *v_mem + dv;
+        if v_new >= v_thresh {
+            *v_mem = v_reset;
+            *refrac = refrac_steps;
+            *spike = 1;
+        } else {
+            *v_mem = v_new;
+            *spike = 0;
+        }
+        // Decay conductances after integration so this step's deposits
+        // (already in g_exc/g_inh) drove the integration; next step
+        // sees the decayed values + whatever new spikes deposit.
+        crate::membrane::decay_one(g_exc, g_inh, decay_exc, decay_inh);
     }
 }
 

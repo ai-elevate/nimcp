@@ -424,6 +424,12 @@ struct Edge {
     /// re-uploaded after homeostatic scaling each step (hot sync).
     #[cfg(feature = "cuda")]
     csr_gpu: Option<crate::csr::CsrGpu>,
+    /// CB-mode scratch buffers: per-post-neuron g_exc / g_inh deltas
+    /// produced by [`CsrSynapses::i_syn_cpu_cb_with_pre_scale`].
+    /// Allocated lazily on the first CB step (kept across steps once
+    /// allocated to avoid repeated growth).
+    cb_g_exc_scratch: Vec<f32>,
+    cb_g_inh_scratch: Vec<f32>,
 }
 
 /// Spiking neural network — the Phase 3 composition.
@@ -439,6 +445,11 @@ pub struct SnnNetwork {
     /// Cached `submit_threshold` so hot path doesn't keep dereferencing
     /// the optional cfg.
     thalamic_submit_threshold: f32,
+    /// Sticky CB rescale flag — set to `true` once
+    /// [`Self::rescale_for_conductance`] has run. Idempotent guard
+    /// preventing the V1 double-rescale bomb (commit `f79764c9b` →
+    /// fix in `7e69a2a5f` + `312c9b323`).
+    cb_weights_rescaled: bool,
 }
 
 impl SnnNetwork {
@@ -665,6 +676,8 @@ impl SnnNetwork {
                 i_syn_scratch,
                 #[cfg(feature = "cuda")]
                 csr_gpu,
+                cb_g_exc_scratch: Vec::new(),
+                cb_g_inh_scratch: Vec::new(),
             });
         }
 
@@ -694,6 +707,7 @@ impl SnnNetwork {
             reward_coupled_homeostatic: config.reward_coupled_homeostatic,
             thalamic_channel,
             thalamic_submit_threshold,
+            cb_weights_rescaled: false,
         })
     }
 
@@ -812,6 +826,76 @@ impl SnnNetwork {
         self.t_ms
     }
 
+    /// Network-wide CB rescale flag — set to `true` after
+    /// [`Self::rescale_for_conductance`] runs successfully. Idempotent
+    /// re-runs become a no-op so callers can safely invoke at every
+    /// daemon startup.
+    #[must_use]
+    pub fn cb_weights_rescaled(&self) -> bool {
+        self.cb_weights_rescaled
+    }
+
+    /// Enable conductance-based PSC dynamics on every population.
+    ///
+    /// In-place — installs [`ConductanceParams`] (default values) on
+    /// each `LifParams` and allocates `g_exc`/`g_inh` state buffers.
+    /// Idempotent: re-running on a CB-enabled network is a no-op.
+    ///
+    /// **Important:** weights must be rescaled before CB dynamics
+    /// behave like the previous current-mode regime — call
+    /// [`Self::rescale_for_conductance`] once after this. The
+    /// network's `cb_weights_rescaled` sticky flag tracks whether
+    /// that's happened.
+    pub fn enable_conductance(&mut self) {
+        for pop in &mut self.populations {
+            if pop.spec.lif.conductance.is_none() {
+                pop.spec.lif.conductance = Some(crate::lif::ConductanceParams::default());
+            }
+            pop.state.enable_conductance_in_place();
+        }
+    }
+
+    /// Disable conductance-based dynamics on every population — flips
+    /// every [`LifParams::conductance`] back to `None`. Conductance
+    /// state buffers are dropped to reclaim memory. Idempotent.
+    ///
+    /// Note: does **not** rescale weights back; callers that need to
+    /// undo the CB-enable rescale should multiply the inverse factor.
+    /// `cb_weights_rescaled` is reset to `false`.
+    pub fn disable_conductance(&mut self) {
+        for pop in &mut self.populations {
+            pop.spec.lif.conductance = None;
+            pop.state.conductance = None;
+        }
+        self.cb_weights_rescaled = false;
+    }
+
+    /// One-shot rescale of every CSR edge's weights by `factor` (typically
+    /// [`crate::SNN_CB_WEIGHT_SCALE`] = `1/50`) to compensate for the
+    /// ~50 mV avg driving force introduced by switching to CB mode.
+    ///
+    /// **Idempotent**: if `cb_weights_rescaled` is already `true`,
+    /// returns without rescaling. This makes `_load_persistent_snn_tunes`
+    /// patterns safe — V1 commit `f79764c9b` learned this lesson the
+    /// hard way (the daemon force-rescaled on every startup, doubling
+    /// the rescale on every save+load cycle).
+    ///
+    /// Returns `true` if the rescale was applied this call, `false`
+    /// if it was a no-op (already rescaled).
+    pub fn rescale_for_conductance(&mut self, factor: f32) -> bool {
+        if self.cb_weights_rescaled {
+            return false;
+        }
+        for edge in &mut self.edges {
+            edge.csr.scale_all_weights(factor);
+            // GPU mirror, if present, will be re-uploaded on the next
+            // current-mode step. CB mode forces CPU fallback so the
+            // mirror going stale doesn't matter for CB pops.
+        }
+        self.cb_weights_rescaled = true;
+        true
+    }
+
     /// One integration step.
     ///
     /// `external_i_syn` is indexed by population. Pass an empty outer
@@ -845,24 +929,78 @@ impl SnnNetwork {
         //    depression scale. Adaptation hyperpol is subtracted from
         //    v_mem directly so the LIF step sees the post-adaptation
         //    membrane.
+        //
+        //    CB-mode pops use conductance state for synaptic input —
+        //    `i_syn_scratch` is still touched (for non-synaptic things
+        //    like adaptation/noise that V1 keeps current-style) but
+        //    edge weights deposit into `state.conductance.g_exc/g_inh`
+        //    via `i_syn_cpu_cb_with_pre_scale` in step #2 below.
+        //    External drive in CB mode routes through the CB deposit
+        //    helper just like a synaptic input — positive→g_exc,
+        //    negative→g_inh.
         for (pop_idx, pop) in self.populations.iter_mut().enumerate() {
-            // Zero I_syn scratch.
+            let cb_mode = pop.spec.lif.conductance.is_some()
+                && pop.state.conductance.is_some();
+
+            // Zero I_syn scratch (still used for non-synaptic terms in CB
+            // mode; for current mode it accumulates synaptic input).
             for v in pop.i_syn_scratch.iter_mut() {
                 *v = 0.0;
             }
-            // External drive.
+            // External drive — current mode writes to i_syn_scratch;
+            // CB mode routes by sign into the persistent g_exc/g_inh
+            // state (added to whatever residual the prior step left).
             if let Some(ext) = external_i_syn.get(pop_idx)
                 && ext.len() == pop.i_syn_scratch.len()
             {
-                for (dst, &src) in pop.i_syn_scratch.iter_mut().zip(ext.iter()) {
-                    *dst = src;
+                if cb_mode {
+                    let cb = pop
+                        .state
+                        .conductance
+                        .as_mut()
+                        .expect("cb_mode implies conductance state present");
+                    for ((g_exc, g_inh), &src) in cb
+                        .g_exc
+                        .iter_mut()
+                        .zip(cb.g_inh.iter_mut())
+                        .zip(ext.iter())
+                    {
+                        if src >= 0.0 {
+                            *g_exc += src;
+                        } else {
+                            *g_inh += -src;
+                        }
+                    }
+                } else {
+                    for (dst, &src) in pop.i_syn_scratch.iter_mut().zip(ext.iter()) {
+                        *dst = src;
+                    }
                 }
             }
 
             // Basket inhibition (uses PRIOR-step basket spike_output —
             // first step is a no-op because spike_output is all zeros).
+            // CB mode: basket emits into i_syn_scratch first then we
+            // route by sign into g_inh (basket is purely inhibitory so
+            // contributions are <= 0). Use a temporary write into
+            // i_syn_scratch then sweep into g_inh; this matches V1's
+            // pattern of reusing existing emission code via
+            // deposit_synapse.
             if let Some(bp) = &pop.basket {
                 bp.emit_inhibition(&mut pop.i_syn_scratch);
+                if cb_mode {
+                    let cb = pop
+                        .state
+                        .conductance
+                        .as_mut()
+                        .expect("cb_mode implies conductance state present");
+                    for (g_inh, src) in cb.g_inh.iter_mut().zip(pop.i_syn_scratch.iter_mut()) {
+                        if *src < 0.0 {
+                            *g_inh += -*src;
+                            *src = 0.0;
+                        }
+                    }
+                }
             }
 
             // Adaptive-factor background noise into v_mem. Dead pops
@@ -937,10 +1075,18 @@ impl SnnNetwork {
         }
 
         // 2. Forward every CSR edge, applying per-source depression scale.
+        //    Destination CB-mode pops receive sign-routed deltas into
+        //    `state.conductance.{g_exc, g_inh}`; current-mode pops keep
+        //    the legacy `i_syn_scratch` accumulation. The CSR forward
+        //    output target is decided per-edge based on the destination
+        //    population's mode.
         for edge in &mut self.edges {
             let src = edge.spec.src;
             let dst = edge.spec.dst;
             debug_assert_ne!(src, dst, "self-loops unsupported in Phase 3");
+
+            let dst_cb_mode = self.populations[dst].spec.lif.conductance.is_some()
+                && self.populations[dst].state.conductance.is_some();
 
             let src_spikes = &self.populations[src].state.spike;
             // Depression scale — only supply when STD actually in play,
@@ -952,6 +1098,24 @@ impl SnnNetwork {
                 Some(&self.populations[src].depression_scale_scratch)
             };
 
+            if dst_cb_mode {
+                // CB path: split per-post into g_exc / g_inh deltas.
+                // GPU CB is deferred (V1 design lock); always CPU.
+                let n_post = self.populations[dst].spec.n_neurons as usize;
+                if edge.cb_g_exc_scratch.len() != n_post {
+                    edge.cb_g_exc_scratch.resize(n_post, 0.0);
+                    edge.cb_g_inh_scratch.resize(n_post, 0.0);
+                }
+                edge.csr.i_syn_cpu_cb_with_pre_scale(
+                    src_spikes,
+                    pre_scale,
+                    &mut edge.cb_g_exc_scratch,
+                    &mut edge.cb_g_inh_scratch,
+                );
+                continue;
+            }
+
+            // Current-mode path (unchanged from pre-CB).
             // Phase 9a — GPU path when CsrGpu present. STD pre-scale
             // isn't wired on GPU yet (substrate/depression/basket stay
             // CPU); fall back to CPU when a scale vector is supplied.
@@ -995,12 +1159,31 @@ impl SnnNetwork {
         }
         for edge in &self.edges {
             let dst_pop = &mut self.populations[edge.spec.dst];
-            for (d, &s) in dst_pop
-                .i_syn_scratch
-                .iter_mut()
-                .zip(edge.i_syn_scratch.iter())
-            {
-                *d += s;
+            let dst_cb_mode = dst_pop.spec.lif.conductance.is_some()
+                && dst_pop.state.conductance.is_some();
+            if dst_cb_mode {
+                let cb = dst_pop
+                    .state
+                    .conductance
+                    .as_mut()
+                    .expect("dst_cb_mode implies conductance state present");
+                for ((g_exc, g_inh), (&de, &di)) in cb
+                    .g_exc
+                    .iter_mut()
+                    .zip(cb.g_inh.iter_mut())
+                    .zip(edge.cb_g_exc_scratch.iter().zip(edge.cb_g_inh_scratch.iter()))
+                {
+                    *g_exc += de;
+                    *g_inh += di;
+                }
+            } else {
+                for (d, &s) in dst_pop
+                    .i_syn_scratch
+                    .iter_mut()
+                    .zip(edge.i_syn_scratch.iter())
+                {
+                    *d += s;
+                }
             }
         }
 
@@ -1018,11 +1201,17 @@ impl SnnNetwork {
             // doesn't sync CPU prep to GPU — that's 9b/9c. The guard
             // keeps correctness: we only use the GPU path when the
             // CPU-side prep would have been a no-op anyway.
+            //
+            // CB mode forces CPU fallback (per V1 design lock —
+            // conductance integrator is CPU-only for now). The CB
+            // dispatch in `lif_step_cpu` routes to `lif_step_cpu_cb`
+            // when both params + state agree.
             let cpu_prep_modified_v_mem = pop.spec.noise.rate_hz > 0.0
                 || pop.adaptation_ahp.is_some()
                 || pop.adaptation_pump.is_some()
                 || pop.basket.is_some()
-                || pop.spec.substrate.enabled;
+                || pop.spec.substrate.enabled
+                || pop.spec.lif.conductance.is_some();
             #[cfg(feature = "cuda")]
             let used_gpu = if !cpu_prep_modified_v_mem
                 && let Some(lif_gpu) = pop.lif_gpu.as_mut()
@@ -1285,26 +1474,40 @@ impl SnnNetwork {
 // -------------------------------------------------------------------------
 
 /// Weight snapshot for checkpointing.
+///
+/// `cb_weights_rescaled` is persisted in the snapshot itself — V2's
+/// equivalent of V1's `<checkpoint>.cb_rescaled` JSON sidecar
+/// (commit `312c9b323`). When the daemon resumes from a checkpoint
+/// the load path reads this flag and skips the one-shot weight
+/// rescale if `true`, preventing the V1 double-rescale bomb.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeightSnapshot {
     /// Per-edge weight vectors.
     pub edge_weights: Vec<Vec<f32>>,
     /// Per-pop firing-rate EMAs.
     pub rate_emas: Vec<PopulationRateEma>,
+    /// CB rescale sticky flag — `true` iff the snapshotted network
+    /// had `cb_weights_rescaled = true`. Defaulting to `false` keeps
+    /// older checkpoints (without this field) safe under serde —
+    /// they'll trigger a fresh rescale on first CB enable, which is
+    /// the conservative behavior.
+    #[serde(default)]
+    pub cb_weights_rescaled: bool,
 }
 
 impl SnnNetwork {
-    /// Snapshot weights + rate EMAs.
+    /// Snapshot weights + rate EMAs + CB rescale flag.
     #[must_use]
     pub fn snapshot(&self) -> WeightSnapshot {
         WeightSnapshot {
             edge_weights: self.edges.iter().map(|e| e.csr.weights.clone()).collect(),
             rate_emas: self.populations.iter().map(|p| p.rate.clone()).collect(),
+            cb_weights_rescaled: self.cb_weights_rescaled,
         }
     }
 
-    /// Restore weights + rate EMAs. Shapes must match; returns `false`
-    /// on mismatch without modifying state.
+    /// Restore weights + rate EMAs + CB rescale flag. Shapes must match;
+    /// returns `false` on mismatch without modifying state.
     pub fn restore(&mut self, snap: &WeightSnapshot) -> bool {
         if snap.edge_weights.len() != self.edges.len()
             || snap.rate_emas.len() != self.populations.len()
@@ -1322,6 +1525,12 @@ impl SnnNetwork {
         for (pop, ema) in self.populations.iter_mut().zip(snap.rate_emas.iter()) {
             pop.rate = ema.clone();
         }
+        // Restore the CB sticky flag — if checkpoint says weights are
+        // already rescaled, subsequent rescale_for_conductance calls
+        // will be no-ops. Old checkpoints (no field) deserialize with
+        // `false` via #[serde(default)], which triggers a fresh
+        // rescale on first CB enable.
+        self.cb_weights_rescaled = snap.cb_weights_rescaled;
         true
     }
 }
@@ -1924,5 +2133,226 @@ mod tests {
             "disable path must leave every v_mem at v_rest"
         );
         assert!(net.spikes(0).iter().all(|&s| s == 0));
+    }
+
+    // -----------------------------------------------------------------
+    // V2 Phase 10 — conductance-based PSC migration tests.
+    // Port of V1 commit dec956ab9's 46-test matrix, condensed to V2's
+    // single-test-module layout. Each test exercises one CB invariant.
+    // -----------------------------------------------------------------
+
+    /// REGRESSION: with no pop opted in, every existing assertion must
+    /// hold bit-identically. Disable path must never allocate
+    /// conductance state (would waste memory in production).
+    #[test]
+    fn cb_disable_path_allocates_no_state() {
+        let net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.4)).unwrap();
+        for pop_idx in 0..net.n_populations() {
+            assert!(
+                net.populations[pop_idx].state.conductance.is_none(),
+                "pop {pop_idx} should have no CB state when LifParams.conductance is None"
+            );
+            assert!(
+                net.populations[pop_idx].spec.lif.conductance.is_none(),
+                "pop {pop_idx} LifParams.conductance should default None"
+            );
+        }
+        assert!(!net.cb_weights_rescaled());
+    }
+
+    /// REGRESSION: enabling CB allocates state on every pop and exposes
+    /// the rescale flag. Disabling drops state and resets the flag.
+    #[test]
+    fn cb_enable_disable_round_trip() {
+        let mut net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.4)).unwrap();
+        net.enable_conductance();
+        for pop_idx in 0..net.n_populations() {
+            assert!(net.populations[pop_idx].state.conductance.is_some());
+            assert!(net.populations[pop_idx].spec.lif.conductance.is_some());
+        }
+
+        let applied = net.rescale_for_conductance(crate::membrane::SNN_CB_WEIGHT_SCALE);
+        assert!(applied, "first rescale should apply");
+        assert!(net.cb_weights_rescaled());
+        // V1 double-rescale-bomb defense: second call no-op.
+        let second = net.rescale_for_conductance(crate::membrane::SNN_CB_WEIGHT_SCALE);
+        assert!(!second, "second rescale must be a no-op (idempotent)");
+
+        net.disable_conductance();
+        for pop_idx in 0..net.n_populations() {
+            assert!(net.populations[pop_idx].state.conductance.is_none());
+            assert!(net.populations[pop_idx].spec.lif.conductance.is_none());
+        }
+        assert!(!net.cb_weights_rescaled(), "disable resets the flag");
+    }
+
+    /// REGRESSION: rescale shrinks all weights uniformly by the factor.
+    #[test]
+    fn cb_rescale_multiplies_every_weight() {
+        let mut net = SnnNetwork::new(two_pop_config(7, 0, 0.1, 0.4)).unwrap();
+        let pre: Vec<f32> = net.edge_weights(0).to_vec();
+        net.enable_conductance();
+        let factor = 0.02; // 1/50
+        net.rescale_for_conductance(factor);
+        let post = net.edge_weights(0);
+        assert_eq!(pre.len(), post.len());
+        for (a, b) in pre.iter().zip(post.iter()) {
+            assert!((b - a * factor).abs() < 1e-6, "{b} != {a} * {factor}");
+        }
+    }
+
+    /// E2E: under unbounded current-mode drive an SNN can run away
+    /// (v overshoots threshold by huge amounts every step). CB mode
+    /// physically forbids this — `v` cannot exceed E_exc=0 mV ever.
+    #[test]
+    fn cb_v_mem_never_crosses_e_exc_under_runaway_drive() {
+        let mut net = SnnNetwork::new(two_pop_config(7, 0, 0.1, 1.8)).unwrap();
+        // Hand-saturate weights at w_max (=10) to manufacture a runaway
+        // condition that current-mode would fall into immediately.
+        for w in net.edge_weights_mut(0) {
+            *w = 10.0;
+        }
+        net.enable_conductance();
+        // V1 default: 1/50 rescale.
+        net.rescale_for_conductance(crate::membrane::SNN_CB_WEIGHT_SCALE);
+
+        // Suprathreshold external drive (route through CB sign-deposit).
+        let ext = vec![1_000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..200 {
+            net.step(&slices, 0.0, 1.0);
+            for pop_idx in 0..net.n_populations() {
+                for &v in net.v_mem(pop_idx) {
+                    assert!(
+                        v.is_finite() && v <= crate::membrane::SNN_E_EXC_MV + 1e-3,
+                        "pop {pop_idx} v={v} crossed E_exc={}",
+                        crate::membrane::SNN_E_EXC_MV
+                    );
+                }
+            }
+        }
+    }
+
+    /// E2E: CB mode keeps v above E_inh under purely inhibitory drive.
+    #[test]
+    fn cb_v_mem_never_crosses_e_inh_under_inhibition() {
+        let mut net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.4)).unwrap();
+        net.enable_conductance();
+        // Strong negative external drive routes to g_inh.
+        let ext = vec![-1_000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        for _ in 0..150 {
+            net.step(&slices, 0.0, 1.0);
+            for pop_idx in 0..net.n_populations() {
+                for &v in net.v_mem(pop_idx) {
+                    assert!(
+                        v.is_finite() && v >= crate::membrane::SNN_E_INH_MV - 1e-3,
+                        "pop {pop_idx} v={v} crossed E_inh={}",
+                        crate::membrane::SNN_E_INH_MV
+                    );
+                }
+            }
+        }
+    }
+
+    /// INTEGRATION: a CB-enabled network with finite excitatory drive
+    /// still emits spikes — the brake doesn't suppress all activity,
+    /// it just prevents runaway. Validates that CB integration is
+    /// alive end-to-end (deposit → decay → integrate → spike chain).
+    #[test]
+    fn cb_emits_spikes_under_moderate_drive() {
+        let mut net = SnnNetwork::new(two_pop_config(11, 0, 0.1, 0.6)).unwrap();
+        net.enable_conductance();
+        // Don't rescale weights — keep them at their current-mode
+        // magnitude so a single excitatory pre-spike has a strong
+        // enough g_exc impulse to cross threshold.
+        let ext = vec![1_000.0_f32; 128];
+        let slices: Vec<&[f32]> = vec![&ext, &[]];
+        let mut total_spikes = 0u64;
+        for _ in 0..100 {
+            total_spikes += u64::from(net.step(&slices, 0.0, 1.0));
+        }
+        assert!(
+            total_spikes > 0,
+            "CB-enabled network must emit some spikes under suprathreshold drive"
+        );
+    }
+
+    /// INTEGRATION: g_exc decays toward zero between spikes (not
+    /// stuck at peak). Disable external drive and let any residual
+    /// conductance from initial deposits relax.
+    #[test]
+    fn cb_g_exc_decays_to_near_zero_between_spikes() {
+        let mut net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.4)).unwrap();
+        net.enable_conductance();
+        // Deposit one spike's worth via external drive, then run many
+        // steps with no further drive — g_exc should decay.
+        let ext = vec![5.0_f32; 128];
+        let empty: &[f32] = &[];
+        net.step(&[&ext, empty], 0.0, 1.0); // single deposit
+        for _ in 0..100 {
+            net.step(&[empty, empty], 0.0, 1.0);
+        }
+        // tau_exc=2ms, after 100 ms of decay g_exc << 1e-10.
+        let cb = net.populations[0]
+            .state
+            .conductance
+            .as_ref()
+            .expect("CB enabled");
+        for &g in &cb.g_exc {
+            assert!(g.abs() < 1e-3, "g_exc {g} did not decay to near-zero");
+        }
+    }
+
+    /// CHECKPOINT: snapshot persists `cb_weights_rescaled`; restore
+    /// reads it back. Mirrors the V1 sidecar marker contract from
+    /// commit `312c9b323` so a daemon restart cannot double-rescale.
+    #[test]
+    fn cb_snapshot_round_trips_rescaled_flag() {
+        let mut net = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.4)).unwrap();
+        net.enable_conductance();
+        net.rescale_for_conductance(crate::membrane::SNN_CB_WEIGHT_SCALE);
+        assert!(net.cb_weights_rescaled());
+
+        let snap = net.snapshot();
+        assert!(snap.cb_weights_rescaled);
+
+        // Fresh network, restore the snapshot — flag should come back.
+        let mut net2 = SnnNetwork::new(two_pop_config(0, 0, 0.1, 0.4)).unwrap();
+        net2.enable_conductance();
+        assert!(!net2.cb_weights_rescaled(), "fresh net starts unrescaled");
+        assert!(net2.restore(&snap));
+        assert!(net2.cb_weights_rescaled(), "restore reinstates the flag");
+        // Subsequent rescale should be a no-op.
+        let applied = net2.rescale_for_conductance(crate::membrane::SNN_CB_WEIGHT_SCALE);
+        assert!(!applied, "double-rescale must be prevented after restore");
+    }
+
+    /// INTEGRATION: GPU path is bypassed when CB is enabled (per V1
+    /// design lock — CB CPU only). We verify by enabling CB on a
+    /// network whose config requested GPU forward; the call should
+    /// silently fall through to CPU and not panic.
+    #[test]
+    fn cb_forces_cpu_fallback_even_when_gpu_requested() {
+        // Build with use_gpu_forward = true but enable CB. On a
+        // CPU-only build (no `cuda` feature) GPU was never live; on a
+        // CUDA build the cpu_prep_modified_v_mem guard now includes
+        // CB → GPU is bypassed. Either way the step must not panic
+        // and v_mem stays bounded.
+        let mut cfg = two_pop_config(0, 0, 0.1, 0.4);
+        cfg.use_gpu_forward = true;
+        let mut net = match SnnNetwork::new(cfg) {
+            Ok(n) => n,
+            Err(_) => return, // GPU unavailable on this builder; nothing to verify
+        };
+        net.enable_conductance();
+        let ext = vec![100.0_f32; 128];
+        let empty: &[f32] = &[];
+        for _ in 0..30 {
+            net.step(&[&ext, empty], 0.0, 1.0);
+        }
+        for v in net.v_mem(0) {
+            assert!(v.is_finite() && *v <= crate::membrane::SNN_E_EXC_MV + 1e-3);
+        }
     }
 }

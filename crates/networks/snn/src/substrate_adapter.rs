@@ -52,6 +52,7 @@ pub fn effective_lif(
         v_thresh,
         v_reset: base.v_reset,
         refrac_steps,
+        conductance: base.conductance,
     }
 }
 

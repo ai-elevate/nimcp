@@ -352,6 +352,90 @@ impl CsrSynapses {
             *out_slot = s;
         }
     }
+
+    /// Conductance-based variant of [`Self::i_syn_cpu_with_pre_scale`].
+    /// Splits per-post-neuron weight contributions by sign:
+    /// positive weights accumulate into `g_exc_delta`, negative weights
+    /// (as `|w|`) accumulate into `g_inh_delta`. Both buffers are
+    /// **overwritten** (not added to) on each call — the network step
+    /// adds these deltas into the population's persistent `g_exc` /
+    /// `g_inh` state.
+    ///
+    /// # Panics
+    /// Same preconditions as [`Self::i_syn_cpu_with_pre_scale`], plus
+    /// `g_inh_delta.len() == n_post`.
+    // HOT PATH: called per edge per step when CB enabled.
+    pub fn i_syn_cpu_cb_with_pre_scale(
+        &self,
+        pre_spikes: &[u8],
+        pre_scale: Option<&[f32]>,
+        g_exc_delta: &mut [f32],
+        g_inh_delta: &mut [f32],
+    ) {
+        assert_eq!(
+            g_exc_delta.len(),
+            self.n_post as usize,
+            "i_syn_cpu_cb: g_exc_delta.len()={} but n_post={}",
+            g_exc_delta.len(),
+            self.n_post
+        );
+        assert_eq!(
+            g_inh_delta.len(),
+            self.n_post as usize,
+            "i_syn_cpu_cb: g_inh_delta.len()={} but n_post={}",
+            g_inh_delta.len(),
+            self.n_post
+        );
+        assert!(
+            pre_spikes.len() >= self.n_pre as usize,
+            "i_syn_cpu_cb: pre_spikes.len()={} but n_pre={}",
+            pre_spikes.len(),
+            self.n_pre
+        );
+        if let Some(ps) = pre_scale {
+            assert!(
+                ps.len() >= self.n_pre as usize,
+                "i_syn_cpu_cb: pre_scale.len()={} but n_pre={}",
+                ps.len(),
+                self.n_pre
+            );
+        }
+
+        let row_pairs = self.row_ptr.windows(2);
+        for ((g_e_slot, g_i_slot), row) in g_exc_delta
+            .iter_mut()
+            .zip(g_inh_delta.iter_mut())
+            .zip(row_pairs)
+        {
+            let row_start = row[0] as usize;
+            let row_end = row[1] as usize;
+            let mut g_e: f32 = 0.0;
+            let mut g_i: f32 = 0.0;
+            for k in row_start..row_end {
+                let pre = self.col_idx[k] as usize;
+                if pre_spikes[pre] != 0 {
+                    let scale = pre_scale.map_or(1.0, |ps| ps[pre]);
+                    let w = self.weights[k] * scale;
+                    if w >= 0.0 {
+                        g_e += w;
+                    } else {
+                        g_i += -w;
+                    }
+                }
+            }
+            *g_e_slot = g_e;
+            *g_i_slot = g_i;
+        }
+    }
+
+    /// Multiply every weight in this CSR by `factor` in place. Used by
+    /// [`crate::SnnNetwork::rescale_for_conductance`] to one-shot
+    /// convert current-mode weights to CB-scale.
+    pub fn scale_all_weights(&mut self, factor: f32) {
+        for w in &mut self.weights {
+            *w *= factor;
+        }
+    }
 }
 
 // --- Ternary-quantized weight mode (opt-in, caller-managed buffer) ---

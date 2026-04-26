@@ -46,6 +46,7 @@ pub mod depression;
 pub mod homeostatic;
 pub mod intrinsic_reward;
 pub mod lif;
+pub mod membrane;
 pub mod network;
 pub mod noise;
 pub mod rstdp;
@@ -66,6 +67,9 @@ pub use noise::{
 pub use tuning::{HealthyStreak, TunableState};
 pub use csr::{CsrSynapses, Population, PopulationId};
 pub use homeostatic::{PopulationRateEma, apply_quiet_start_transform, step_homeostatic};
-pub use lif::{LifParams, LifState, lif_step_cpu};
+pub use lif::{ConductanceParams, ConductanceState, LifParams, LifState, lif_step_cpu};
+pub use membrane::{
+    SNN_CB_WEIGHT_SCALE, SNN_E_EXC_MV, SNN_E_INH_MV, SNN_TAU_EXC_MS, SNN_TAU_INH_MS,
+};
 pub use network::{SnnConfig, SnnNetwork};
 pub use rstdp::{RstdpParams, RstdpState, step_rstdp};
