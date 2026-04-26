@@ -675,6 +675,131 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     return true;
 }
 
+//=============================================================================
+// Layer C: temperature scaling sidecar — TEMPERATURE_V1
+//=============================================================================
+/* Format (binary, little-endian):
+ *   Magic        : uint32_t = 0x54454D50 ("TEMP")
+ *   Version      : uint32_t = 1
+ *   T            : float   (decoder_temperature)
+ *   ECE          : float   (decoder_temperature_calibrated_ece, -1 = uncalibrated)
+ *   AT_US        : uint64_t (calibrated_at_us, 0 = never)
+ *
+ * Backward compat: if section absent on load, default to T=1.0, ece=-1.0,
+ * at_us=0 (the same defaults set by allocate_brain). Best-effort save —
+ * failure logs a warning but does not abort the larger checkpoint.
+ */
+#define TEMP_SIDECAR_MAGIC    0x54454D50U  /* "TEMP" */
+#define TEMP_SIDECAR_VERSION  1U
+
+static bool temperature_sidecar_save(brain_t brain, const char* filepath)
+{
+    if (!brain || !filepath) return false;
+
+    char sidecar_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(sidecar_path, sizeof(sidecar_path), "%s.temperature", filepath);
+    char tmp_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", sidecar_path);
+
+    FILE* f = fopen(tmp_path, "wb");
+    if (!f) {
+        NIMCP_LOGGING_WARN("temperature_sidecar_save: fopen %s failed", tmp_path);
+        return false;
+    }
+
+    const uint32_t magic   = TEMP_SIDECAR_MAGIC;
+    const uint32_t version = TEMP_SIDECAR_VERSION;
+    const float    T       = brain->decoder_temperature;
+    const float    ece     = brain->decoder_temperature_calibrated_ece;
+    const uint64_t at_us   = brain->decoder_temperature_calibrated_at_us;
+
+    bool ok = true;
+    ok = ok && (fwrite(&magic,   sizeof(magic),   1, f) == 1);
+    ok = ok && (fwrite(&version, sizeof(version), 1, f) == 1);
+    ok = ok && (fwrite(&T,       sizeof(T),       1, f) == 1);
+    ok = ok && (fwrite(&ece,     sizeof(ece),     1, f) == 1);
+    ok = ok && (fwrite(&at_us,   sizeof(at_us),   1, f) == 1);
+
+    fclose(f);
+    if (!ok) {
+        NIMCP_LOGGING_WARN("temperature_sidecar_save: fwrite failed for %s", tmp_path);
+        unlink(tmp_path);
+        return false;
+    }
+    if (rename(tmp_path, sidecar_path) != 0) {
+        NIMCP_LOGGING_WARN("temperature_sidecar_save: rename %s -> %s failed",
+                           tmp_path, sidecar_path);
+        unlink(tmp_path);
+        return false;
+    }
+    NIMCP_LOGGING_INFO("TEMPERATURE_V1 sidecar saved: T=%.4f ece=%.4f at_us=%llu",
+                       (double)T, (double)ece, (unsigned long long)at_us);
+    return true;
+}
+
+static bool temperature_sidecar_load(brain_t brain, const char* filepath)
+{
+    if (!brain || !filepath) return false;
+
+    char sidecar_path[NIMCP_METRICS_PATH_SIZE];
+    snprintf(sidecar_path, sizeof(sidecar_path), "%s.temperature", filepath);
+
+    FILE* f = fopen(sidecar_path, "rb");
+    if (!f) {
+        /* Section absent — old checkpoint. Defaults from allocate_brain
+         * (T=1.0, ece=-1.0, at_us=0) stay in place. */
+        NIMCP_LOGGING_WARN("TEMPERATURE_V1 section absent at %s — using defaults "
+                           "(T=1.0, ece=-1.0)", sidecar_path);
+        brain->decoder_temperature                  = 1.0F;
+        brain->decoder_temperature_calibrated_ece   = -1.0F;
+        brain->decoder_temperature_calibrated_at_us = 0;
+        return true;
+    }
+
+    uint32_t magic = 0, version = 0;
+    float    T = 1.0F, ece = -1.0F;
+    uint64_t at_us = 0;
+
+    bool ok = true;
+    ok = ok && (fread(&magic,   sizeof(magic),   1, f) == 1);
+    ok = ok && (fread(&version, sizeof(version), 1, f) == 1);
+    ok = ok && (fread(&T,       sizeof(T),       1, f) == 1);
+    ok = ok && (fread(&ece,     sizeof(ece),     1, f) == 1);
+    ok = ok && (fread(&at_us,   sizeof(at_us),   1, f) == 1);
+    fclose(f);
+
+    if (!ok || magic != TEMP_SIDECAR_MAGIC) {
+        NIMCP_LOGGING_WARN("TEMPERATURE_V1: bad magic 0x%08x in %s — using defaults",
+                           magic, sidecar_path);
+        brain->decoder_temperature                  = 1.0F;
+        brain->decoder_temperature_calibrated_ece   = -1.0F;
+        brain->decoder_temperature_calibrated_at_us = 0;
+        return false;
+    }
+    if (version != TEMP_SIDECAR_VERSION) {
+        NIMCP_LOGGING_WARN("TEMPERATURE_V1: unsupported version %u in %s — using defaults",
+                           version, sidecar_path);
+        brain->decoder_temperature                  = 1.0F;
+        brain->decoder_temperature_calibrated_ece   = -1.0F;
+        brain->decoder_temperature_calibrated_at_us = 0;
+        return false;
+    }
+
+    /* Sanity-clamp T to a sane range so a corrupt file can't
+     * brick the inference path with T=0 or T=NaN. */
+    if (!isfinite(T) || T < 1e-3F || T > 100.0F) {
+        NIMCP_LOGGING_WARN("TEMPERATURE_V1: T=%f out of range — using 1.0", (double)T);
+        T = 1.0F;
+    }
+
+    brain->decoder_temperature                  = T;
+    brain->decoder_temperature_calibrated_ece   = ece;
+    brain->decoder_temperature_calibrated_at_us = at_us;
+    NIMCP_LOGGING_INFO("TEMPERATURE_V1 sidecar loaded: T=%.4f ece=%.4f",
+                       (double)T, (double)ece);
+    return true;
+}
+
 /**
  * @brief Save brain to file
  *
@@ -773,6 +898,9 @@ bool brain_save(brain_t brain, const char* filepath)
                 }
             }
         }
+
+        /* Layer C: TEMPERATURE_V1 sidecar (best-effort; non-fatal). */
+        temperature_sidecar_save(brain, filepath);
     }
 
     // Health monitoring: save complete
@@ -1792,6 +1920,11 @@ brain_t brain_load(const char* filepath)
      * SNN/LNN/cortex CNNs. NULL-tolerant: if creation fails we keep going. */
     nimcp_brain_factory_init_substrate_thalamic_subsystem(brain);
     nimcp_brain_attach_substrate_thalamic(brain);
+
+    /* Layer C: TEMPERATURE_V1 sidecar — restores decoder_temperature +
+     * calibrated_ece + calibrated_at_us. Section absent → defaults stay
+     * (T=1.0, ece=-1.0, at_us=0). */
+    temperature_sidecar_load(brain, filepath);
 
     brain_clear_error();
     return brain;
