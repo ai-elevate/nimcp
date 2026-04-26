@@ -236,10 +236,11 @@ def test_athena_auto_unit_cb_marker_uses_ts_path_sentinel():
     """The CB marker mirror to athena_auto must use the ts_path sentinel,
     not the now-removed % 5 modulo."""
     src = (REPO_ROOT / "scripts" / "brain_daemon.py").read_text()
-    # Locate the CB marker block by anchoring on the cb_on conditional.
-    cb_start = src.find("if cb_on:")
-    assert cb_start != -1, "CB marker block must exist"
-    # Take the next ~600 chars — enough for the inner block.
+    # Anchor on the auto-checkpointer's ts_path mirror block specifically —
+    # the file has multiple `if cb_on:` blocks (manual _cmd_save also writes
+    # the marker), so just `src.find("if cb_on:")` is ambiguous.
+    cb_start = src.find("Mirror the marker onto the timestamped backup")
+    assert cb_start != -1, "auto-checkpointer ts_path mirror comment must exist"
     block = src[cb_start:cb_start + 600]
     assert "_save_count % 5" not in block, \
         "CB marker block must not gate on the old modulo"
@@ -283,6 +284,26 @@ def test_monitor_integration_explains_why():
 # =============================================================================
 # Section 4 — Imagination workspace release (jepa bridge)
 # =============================================================================
+
+def test_cmd_save_writes_cb_marker_when_conductance_enabled():
+    """The socket _cmd_save handler must mirror the auto-checkpointer:
+    when CB is on, write a cb_rescaled_marker sidecar after brain.save().
+    Without this, a manual save followed by --resume re-applies the
+    rescale factor (double-rescale → SNN silent)."""
+    src = (REPO_ROOT / "scripts" / "brain_daemon.py").read_text()
+    m = re.search(r"def _cmd_save\(self, req\):.*?return \{\"ok\": True",
+                  src, re.DOTALL)
+    assert m, "_cmd_save handler must exist"
+    body = m.group(0)
+    assert "self.brain.save(path)" in body, "still calls brain.save"
+    assert "conductance_enabled" in body, (
+        "_cmd_save must check CB flag before writing the marker"
+    )
+    assert "cb_rescaled_marker.write_marker(path" in body, (
+        "_cmd_save must write the CB sidecar after a successful save "
+        "(parity with the auto-checkpointer)"
+    )
+
 
 def test_imagination_unit_both_paths_release_scenario():
     """Both jepa_imagination_request_predicted_imagination AND

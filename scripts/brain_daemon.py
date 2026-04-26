@@ -938,6 +938,17 @@ class BrainService:
         path = req["path"]
         if True:  # RWLock in handle()
             self.brain.save(path)
+        # Mirror the auto-checkpointer: when CB is on, the in-memory weights
+        # are rescaled, so the file we just wrote is rescaled too. Pin a
+        # marker so a later --resume skips force-rescale (double-rescale → SNN silent).
+        try:
+            cb_on = float(self.brain.snn_tune_get().get(
+                'conductance_enabled', 0.0)) != 0.0
+            if cb_on:
+                cb_rescaled_marker.write_marker(path, CB_DEFAULT_RESCALE_FACTOR)
+        except Exception as _cbm_e:
+            logger.warning("CB marker write failed for manual save %s (save still good): %s",
+                           path, _cbm_e)
         return {"ok": True, "path": path}
 
     # -- Monitoring --
