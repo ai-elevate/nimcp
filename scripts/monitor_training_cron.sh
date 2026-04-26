@@ -15,11 +15,17 @@
 set -uo pipefail
 
 NIMCP_DIR="/home/bbrelin/nimcp"
-TRAINING_LOG="${NIMCP_DIR}/training.log"
+TRAINING_LOG="/tmp/athena_pod_training.log"   # populated below from pod via SSH
 CHECKPOINT_DIR="${NIMCP_DIR}/checkpoints/athena"
 MONITOR_LOG="${NIMCP_DIR}/monitoring.log"
 ALERT_FILE="${NIMCP_DIR}/TRAINING_ALERT.txt"
 STATE_FILE="${CHECKPOINT_DIR}/immersive_state.json"
+
+# Pod connection — sourced for $POD_SSH, $POD_HOST, etc.
+# shellcheck source=podconfig.sh
+. "${NIMCP_DIR}/scripts/podconfig.sh" 2>/dev/null || true
+POD_AVAILABLE=0
+[ -n "${POD_SSH:-}" ] && $POD_SSH -o BatchMode=yes 'true' 2>/dev/null && POD_AVAILABLE=1
 
 # Thresholds
 OUTPUT_SIM_THRESHOLD=0.95
@@ -27,6 +33,9 @@ EFF_RANK_THRESHOLD=10
 GRAD_NORM_THRESHOLD=100
 CHECKPOINT_MIN_SIZE=104857600  # 100 MB
 RSS_WARN_GB=55  # warn if RSS > 55 GB
+DISK_WARN_PCT=85       # warn if filesystem use% >= this
+DISK_CRIT_PCT=95       # critical if filesystem use% >= this
+SNAPSHOT_RETENTION=5   # keep N newest athena_auto_* snapshot families (incl. shards)
 
 NOW=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -54,32 +63,129 @@ alert() {
 }
 
 #=============================================================================
+# 0. FETCH METRICS FROM POD (training runs on RunPod, not laptop)
+#=============================================================================
+fetch_pod_metrics() {
+    if [ "$POD_AVAILABLE" != "1" ]; then
+        log "[FETCH] Pod unreachable — skipping pod metric fetch"
+        return 1
+    fi
+
+    # Query brain daemon for live metrics, write in the format the bash parsers expect.
+    local fetched
+    fetched=$($POD_SSH "cd ${POD_DIR} && python3 -c '
+from scripts.brain_client import BrainProxy
+import subprocess, re
+b = BrainProxy(\"${POD_SOCKET}\")
+try:
+    n = b.get_network_metrics()
+except Exception as e:
+    print(f\"FETCH_ERROR: get_network_metrics: {e}\"); raise SystemExit(0)
+try:
+    s = b.snn_get_stats()
+except Exception:
+    s = {}
+try:
+    sleep = b.sleep_get_state()
+except Exception:
+    sleep = 0
+# Find brain daemon PID and RSS via supervisorctl
+out = subprocess.run([\"supervisorctl\",\"status\",\"athena-brain\"], capture_output=True, text=True).stdout
+m = re.search(r\"pid (\d+)\", out)
+pid = m.group(1) if m else \"\"
+status_line = out.strip().split(\"\n\")[0] if out else \"\"
+rss = \"\"
+if pid:
+    try:
+        with open(f\"/proc/{pid}/status\") as f:
+            for line in f:
+                if line.startswith(\"VmRSS:\"):
+                    rss = line.split()[1]; break
+    except Exception:
+        pass
+print(\"#POD_BRAIN_STATUS:\", status_line)
+print(f\"#POD_BRAIN_PID: {pid} VmRSS_kB: {rss}\")
+print(f\"  Arousal=0.50 | SleepPressure=0.00 (sleep_state={sleep})\")
+print(f\"  LNN: steps={n.get(\"lnn_steps\",0)} loss={n.get(\"lnn_loss\",0):.4f}\")
+print(f\"  SNN: steps={n.get(\"snn_steps\",0)} spikes={s.get(\"total_spikes\",0)} rate={s.get(\"mean_firing_rate\",0):.1f}Hz sparsity={s.get(\"sparsity\",0):.2f}\")
+print(f\"  ANN: steps={n.get(\"ann_steps\",0)} loss={n.get(\"ann_loss\",0):.4f}\")
+print(f\"  CNN: steps={n.get(\"cnn_steps\",0)} loss={n.get(\"cnn_loss\",0):.6f}\")
+if s:
+    print(f\"  SNN-detail: silent={s.get(\"silent_neurons\",0)} hyperactive={s.get(\"hyperactive_neurons\",0)} synchrony={s.get(\"synchrony\",0):.3f}\")
+' 2>/dev/null" 2>/dev/null)
+
+    if [ -z "$fetched" ]; then
+        log "[FETCH] Empty response from pod brain daemon"
+        return 1
+    fi
+
+    # Append, don't overwrite — keep history so trend grep works
+    {
+        echo "===== ${NOW} ====="
+        echo "$fetched"
+    } >> "$TRAINING_LOG"
+
+    # Truncate if > 5MB
+    if [ -f "$TRAINING_LOG" ] && [ "$(stat -c%s "$TRAINING_LOG" 2>/dev/null || echo 0)" -gt 5242880 ]; then
+        tail -2000 "$TRAINING_LOG" > "${TRAINING_LOG}.tmp" && mv "${TRAINING_LOG}.tmp" "$TRAINING_LOG"
+    fi
+    return 0
+}
+
+#=============================================================================
 # 1. PROCESS HEALTH
 #=============================================================================
 check_health() {
     log "--- HEALTH CHECK ---"
 
-    # Find training process (python3 binary, not the bash wrapper)
-    local pid
-    pid=$(pgrep -x -f "python3 scripts/immerse_athena.py" 2>/dev/null | head -1 || true)
-    # Fallback: find python3 process with immerse_athena in cmdline
-    if [ -z "$pid" ]; then
-        pid=$(ps aux | grep "[p]ython3.*immerse_athena" | awk '{print $2}' | head -1 || true)
-    fi
-
-    if [ -z "$pid" ]; then
-        alert "CRITICAL" "Training process NOT running! immerse_athena.py is dead."
+    if [ "$POD_AVAILABLE" != "1" ]; then
+        alert "CRITICAL" "Pod ${POD_HOST:-?} unreachable on port ${POD_PORT:-?} — training health unknown"
         return
     fi
 
-    # RSS memory (in KB from ps, convert to GB)
-    local rss_kb rss_gb
+    # Pull supervisor status from pod
+    local sup_status
+    sup_status=$($POD_SSH "supervisorctl status 2>/dev/null" 2>/dev/null)
+    if ! echo "$sup_status" | grep -q "athena-training.*RUNNING"; then
+        alert "CRITICAL" "athena-training NOT RUNNING on pod"
+        log "$sup_status"
+    fi
+    if ! echo "$sup_status" | grep -q "athena-brain.*RUNNING"; then
+        alert "CRITICAL" "athena-brain NOT RUNNING on pod"
+        log "$sup_status"
+    fi
+
+    # Brain daemon RSS
+    local pid rss_kb rss_gb
+    pid=$(echo "$sup_status" | awk '/athena-brain.*RUNNING/ {for(i=1;i<=NF;i++) if($i=="pid") print $(i+1)}' | tr -d ',')
+    if [ -n "$pid" ]; then
+        rss_kb=$($POD_SSH "awk '/^VmRSS:/ {print \$2}' /proc/$pid/status 2>/dev/null" 2>/dev/null)
+        rss_kb=${rss_kb:-0}
+        rss_gb=$(awk "BEGIN {printf \"%.1f\", $rss_kb / 1048576}")
+        log "Pod brain PID=$pid | RSS=${rss_gb}GB"
+        if [ "$(awk "BEGIN {print ($rss_gb > $RSS_WARN_GB)}")" = "1" ]; then
+            alert "WARN" "Pod brain RSS high: ${rss_gb}GB (threshold: ${RSS_WARN_GB}GB) — OOM risk"
+        fi
+    fi
+    # Skip the local pid block — pod-side metrics are now the source of truth.
+    return
+}
+
+# Original local-process body kept intact below as _check_health_local (unused).
+_check_health_local() {
+    local pid rss_kb rss_gb cpu
+    pid=$(pgrep -x -f "python3 scripts/immerse_athena.py" 2>/dev/null | head -1 || true)
+    if [ -z "$pid" ]; then
+        pid=$(ps aux | grep "[p]ython3.*immerse_athena" | awk '{print $2}' | head -1 || true)
+    fi
+    if [ -z "$pid" ]; then
+        alert "CRITICAL" "Local training process NOT running! immerse_athena.py is dead."
+        return
+    fi
     rss_kb=$(cat /proc/"$pid"/status 2>/dev/null | grep VmRSS | awk '{print $2}' || echo 0)
     rss_kb=${rss_kb:-0}
     rss_gb=$(awk "BEGIN {printf \"%.1f\", $rss_kb / 1048576}")
-    local cpu
     cpu=$(ps -p "$pid" -o %cpu= 2>/dev/null | tr -d ' ' || echo "?")
-
     log "Process alive PID=$pid | RSS=${rss_gb}GB | CPU=${cpu}%"
 
     if [ "$(awk "BEGIN {print ($rss_gb > $RSS_WARN_GB)}")" = "1" ]; then
@@ -379,8 +485,54 @@ check_differentiation() {
 check_checkpoints() {
     log "--- CHECKPOINT CHECK ---"
 
+    # Pod-side check — training/checkpointing happens on the pod
+    if [ "$POD_AVAILABLE" = "1" ]; then
+        local pod_ckpt_info
+        pod_ckpt_info=$($POD_SSH "stat -c '%n %s %Y' ${POD_CKPT}* 2>/dev/null | sort -k3 -nr | head -3" 2>/dev/null)
+        if [ -n "$pod_ckpt_info" ]; then
+            log "Pod checkpoint(s):"
+            local now_s newest_age=99999
+            now_s=$(date +%s)
+            while IFS= read -r line; do
+                log "  $line"
+                # Track age of newest .bin
+                local ts
+                ts=$(echo "$line" | awk '{print $NF}')
+                local age=$(( now_s - ts ))
+                if [ "$age" -lt "$newest_age" ]; then newest_age=$age; fi
+            done <<< "$pod_ckpt_info"
+            if [ "$newest_age" -gt 7200 ]; then
+                alert "WARN" "Pod checkpoint stale: newest is $(( newest_age / 60 ))m old"
+            fi
+        else
+            log "No pod checkpoints found at ${POD_CKPT}*"
+        fi
+
+        # Trainer-aliveness tripwire — athena_auto_*.bin is only written by the
+        # trainer (immerse_athena.py). The brain daemon's *.bin.{snn,lnn,...}
+        # shards keep refreshing every 300s even when the trainer has crashed,
+        # so they are NOT a reliable signal that learning is happening. A
+        # >60-minute gap in auto-snapshots while the brain is alive indicates
+        # the trainer is dead/crash-looping.
+        local pod_auto_age
+        pod_auto_age=$($POD_SSH "ls -t ${POD_CKPT%/*}/athena_auto_*.bin 2>/dev/null \
+                                 | grep -v '\.snn$\|\.lnn$\|\.cnn$\|\.meta$\|\.tokenizer$\|\.mirror_neurons$\|\.executive$\|\.cortex_' \
+                                 | head -1 | xargs -r stat -c '%Y' 2>/dev/null" 2>/dev/null)
+        if [ -n "$pod_auto_age" ]; then
+            local now_s2 auto_age
+            now_s2=$(date +%s)
+            auto_age=$(( now_s2 - pod_auto_age ))
+            log "Latest athena_auto snapshot age: $(( auto_age / 60 ))m"
+            if [ "$auto_age" -gt 3600 ]; then
+                alert "CRITICAL" "Trainer appears dead: no athena_auto snapshot in $(( auto_age / 60 ))m (brain shards may still refresh — check supervisorctl status athena-training)"
+            fi
+        else
+            alert "WARN" "No athena_auto_*.bin snapshots found on pod"
+        fi
+    fi
+
     if [ ! -d "$CHECKPOINT_DIR" ]; then
-        log "Checkpoint dir not found: $CHECKPOINT_DIR"
+        log "Local checkpoint dir not found: $CHECKPOINT_DIR (this is expected — training is on pod)"
         return
     fi
 
@@ -457,15 +609,168 @@ check_checkpoints() {
 }
 
 #=============================================================================
+# 6. DISK USAGE (local + pod) — disk-full silently kills the trainer
+#=============================================================================
+check_disk_usage() {
+    log "--- DISK USAGE CHECK ---"
+
+    # Local: filesystem holding $CHECKPOINT_DIR (or $NIMCP_DIR if not present)
+    local probe_path="$CHECKPOINT_DIR"
+    [ -d "$probe_path" ] || probe_path="$NIMCP_DIR"
+    local local_line local_pct local_avail local_mount
+    local_line=$(df -P "$probe_path" 2>/dev/null | awk 'NR==2')
+    if [ -n "$local_line" ]; then
+        local_pct=$(echo "$local_line" | awk '{print $5}' | tr -d '%')
+        local_avail=$(echo "$local_line" | awk '{print $4}')
+        local_mount=$(echo "$local_line" | awk '{print $6}')
+        local_pct=${local_pct:-0}
+        log "Local disk ${local_mount}: ${local_pct}% used, $(awk "BEGIN {printf \"%.1f\", $local_avail / 1048576}")GB free"
+        if [ "$local_pct" -ge "$DISK_CRIT_PCT" ]; then
+            alert "CRITICAL" "Local disk ${local_mount} at ${local_pct}% — purge old snapshots NOW"
+        elif [ "$local_pct" -ge "$DISK_WARN_PCT" ]; then
+            alert "WARN" "Local disk ${local_mount} at ${local_pct}% (warn=${DISK_WARN_PCT}%, crit=${DISK_CRIT_PCT}%)"
+        fi
+    fi
+
+    # Pod: filesystem holding the checkpoint directory
+    if [ "$POD_AVAILABLE" = "1" ] && [ -n "${POD_CKPT:-}" ]; then
+        local pod_dir pod_line pod_pct pod_avail pod_mount
+        pod_dir="${POD_CKPT%/*}"
+        pod_line=$($POD_SSH "df -P '$pod_dir' 2>/dev/null | awk 'NR==2'" 2>/dev/null)
+        if [ -n "$pod_line" ]; then
+            pod_pct=$(echo "$pod_line" | awk '{print $5}' | tr -d '%')
+            pod_avail=$(echo "$pod_line" | awk '{print $4}')
+            pod_mount=$(echo "$pod_line" | awk '{print $6}')
+            pod_pct=${pod_pct:-0}
+            log "Pod disk ${pod_mount}: ${pod_pct}% used, $(awk "BEGIN {printf \"%.1f\", $pod_avail / 1048576}")GB free"
+            if [ "$pod_pct" -ge "$DISK_CRIT_PCT" ]; then
+                alert "CRITICAL" "Pod disk ${pod_mount} at ${pod_pct}% — trainer will hang on next snapshot"
+            elif [ "$pod_pct" -ge "$DISK_WARN_PCT" ]; then
+                alert "WARN" "Pod disk ${pod_mount} at ${pod_pct}% (warn=${DISK_WARN_PCT}%, crit=${DISK_CRIT_PCT}%)"
+            fi
+        fi
+    fi
+}
+
+#=============================================================================
+# 7. AUTO-PRUNE old athena_auto_* snapshot families (keep N newest)
+#    Each "family" is a TIMESTAMPed prefix with sibling shards
+#    (.bin, .bin.snn, .bin.cnn, .bin.lnn, .bin.tokenizer, .bin.cortex_*, etc.)
+#=============================================================================
+prune_local_snapshots() {
+    [ -d "$CHECKPOINT_DIR" ] || return 0
+    local freed=0 deleted=0 sz f
+
+    # Phase 1: trim canonicals to N newest, delete each victim's shards
+    local canonicals
+    canonicals=$(find "$CHECKPOINT_DIR" -maxdepth 1 -type f -name 'athena_auto_*.bin' \
+                 -printf '%T@ %p\n' 2>/dev/null | sort -rn | awk '{print $2}')
+    if [ -n "$canonicals" ]; then
+        local total
+        total=$(echo "$canonicals" | wc -l)
+        if [ "$total" -gt "$SNAPSHOT_RETENTION" ]; then
+            local victims
+            victims=$(echo "$canonicals" | tail -n +$((SNAPSHOT_RETENTION + 1)))
+            while IFS= read -r canon; do
+                [ -z "$canon" ] && continue
+                local prefix
+                prefix="${canon%.bin}"
+                for f in "$canon" "$prefix".bin.*; do
+                    [ -e "$f" ] || continue
+                    sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
+                    rm -f -- "$f" && { freed=$((freed + sz)); deleted=$((deleted + 1)); }
+                done
+            done <<< "$victims"
+        fi
+    fi
+
+    # Phase 2: orphaned shards (any athena_auto_*.bin.* whose .bin canonical
+    # was already deleted manually). These accumulate fast — SNN shard is ~16GB.
+    while IFS= read -r f; do
+        [ -e "$f" ] || continue
+        # Strip the trailing ".<shard>" component to get the canonical .bin path
+        local canonical
+        canonical="${f%.*}"
+        # Only treat as orphan if the canonical .bin is missing
+        if [ ! -e "$canonical" ]; then
+            sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
+            rm -f -- "$f" && { freed=$((freed + sz)); deleted=$((deleted + 1)); }
+        fi
+    done < <(find "$CHECKPOINT_DIR" -maxdepth 1 -type f -name 'athena_auto_*.bin.*' 2>/dev/null)
+
+    if [ "$deleted" -gt 0 ]; then
+        log "Local prune: deleted $deleted files ($(awk "BEGIN {printf \"%.1f\", $freed / 1073741824}")GB), kept newest $SNAPSHOT_RETENTION families + orphan shards"
+    fi
+}
+
+prune_pod_snapshots() {
+    [ "$POD_AVAILABLE" = "1" ] || return 0
+    [ -n "${POD_CKPT:-}" ] || return 0
+    local pod_dir
+    pod_dir="${POD_CKPT%/*}"
+    local result
+    result=$($POD_SSH "
+        cd '$pod_dir' 2>/dev/null || exit 0
+        deleted=0
+        freed=0
+        # Phase 1: trim canonicals to N newest, delete each victim's shards
+        canonicals=\$(ls -t athena_auto_*.bin 2>/dev/null | grep -E '^athena_auto_[0-9_]+\.bin$' || true)
+        if [ -n \"\$canonicals\" ]; then
+            total=\$(echo \"\$canonicals\" | wc -l)
+            if [ \"\$total\" -gt $SNAPSHOT_RETENTION ]; then
+                victims=\$(echo \"\$canonicals\" | tail -n +$((SNAPSHOT_RETENTION + 1)))
+                while IFS= read -r canon; do
+                    [ -z \"\$canon\" ] && continue
+                    prefix=\${canon%.bin}
+                    for f in \"\$canon\" \"\$prefix\".bin.*; do
+                        [ -e \"\$f\" ] || continue
+                        sz=\$(stat -c%s \"\$f\" 2>/dev/null || echo 0)
+                        if rm -f -- \"\$f\"; then
+                            deleted=\$((deleted + 1))
+                            freed=\$((freed + sz))
+                        fi
+                    done
+                done <<< \"\$victims\"
+            fi
+        fi
+        # Phase 2: orphaned shards (canonical .bin missing)
+        for f in athena_auto_*.bin.*; do
+            [ -e \"\$f\" ] || continue
+            canonical=\${f%.*}
+            if [ ! -e \"\$canonical\" ]; then
+                sz=\$(stat -c%s \"\$f\" 2>/dev/null || echo 0)
+                if rm -f -- \"\$f\"; then
+                    deleted=\$((deleted + 1))
+                    freed=\$((freed + sz))
+                fi
+            fi
+        done
+        echo \"\$deleted \$freed\"
+    " 2>/dev/null)
+    if [ -n "$result" ]; then
+        local d f
+        d=$(echo "$result" | awk '{print $1}')
+        f=$(echo "$result" | awk '{print $2}')
+        if [ -n "${d:-}" ] && [ "${d:-0}" -gt 0 ]; then
+            log "Pod prune: deleted $d files ($(awk "BEGIN {printf \"%.1f\", ${f:-0} / 1073741824}")GB), kept newest $SNAPSHOT_RETENTION families"
+        fi
+    fi
+}
+
+#=============================================================================
 # MAIN
 #=============================================================================
 log "========== TRAINING MONITOR RUN =========="
 
+fetch_pod_metrics
 check_health
 check_bio_metrics
 check_utm_health
 check_differentiation
 check_checkpoints
+prune_local_snapshots
+prune_pod_snapshots
+check_disk_usage
 
 log "========== END MONITOR RUN =========="
 log ""

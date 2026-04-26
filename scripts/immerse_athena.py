@@ -2924,6 +2924,8 @@ class ContrastiveRegularizer:
 
         corrections = 0
         sims_found = []
+        # Cap corrections per cycle to avoid multi-minute stalls
+        MAX_CORRECTIONS_PER_CYCLE = 4
 
         lr_kwargs = {"learning_rate": learning_rate} if learning_rate else {}
 
@@ -2969,8 +2971,6 @@ class ContrastiveRegularizer:
                     except Exception:
                         pass
 
-                    # Cap corrections per cycle to avoid multi-minute stalls
-                    MAX_CORRECTIONS_PER_CYCLE = 4
                     if corrections >= MAX_CORRECTIONS_PER_CYCLE:
                         break
             if corrections >= MAX_CORRECTIONS_PER_CYCLE:
