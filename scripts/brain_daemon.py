@@ -2156,6 +2156,32 @@ class AutoCheckpointer:
             logger.info("Auto-checkpoint DISABLED (interval=%ds)", self.interval)
             self._running = False
             return
+
+        # CB safety lock 2026-04-26: when conductance_enabled=1, the
+        # force-rescale-on-load path applies factor 1/50 to whatever
+        # weights are loaded. If we then auto-save the rescaled weights,
+        # a subsequent restart loads them and rescales AGAIN → ×1/2500
+        # effective drive → SNN silent. Until we have proper
+        # checkpoint-rescale-marker tracking (sidecar file or metadata
+        # field), DISABLE auto-checkpoint when CB is on. The trainer's
+        # own snapshot path (immerse_athena _save_checkpoint_sync) is
+        # unaffected — it goes through brain.save() but we trust the
+        # operator to manually re-rescale via _cmd_snn_rescale_for_conductance
+        # after any restart that loads from a trainer snapshot.
+        try:
+            import nimcp as _nimcp_mod  # noqa: F401
+            cb_on = float(self.brain.snn_tune_get().get('conductance_enabled', 0.0)) != 0.0
+        except Exception:
+            cb_on = False
+        if cb_on:
+            logger.warning("Auto-checkpoint DISABLED for safety: "
+                           "conductance_enabled=1 makes weight-rescale state "
+                           "volatile across restarts (saving rescaled weights "
+                           "would cause double-rescale on next load). Use "
+                           "_cmd_force_save_now manually after verifying state, "
+                           "OR clear conductance_enabled to re-enable auto-save.")
+            self._running = False
+            return
         self._running = True
         self._thread = threading.Thread(target=self._run, daemon=True,
                                          name="auto-checkpoint")
