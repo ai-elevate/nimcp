@@ -223,3 +223,4 @@ static tcb_action_t fire_training_callback( training_pipeline_state_t* state, tc
 #include "nimcp_part_stats.c"  // 2 functions: stats
 #include "nimcp_part_processing.c"  // 2 functions: processing
 #include "nimcp_part_bindings.c"  // 20 functions: binding-language public API wrappers
+#include "nimcp_part_alloc_stats.c"  // 1 function: nimcp_get_alloc_stats — leak attribution
