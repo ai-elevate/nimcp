@@ -395,6 +395,67 @@ impl PyBrain {
         Ok(py_out)
     }
 
+    /// One CNN training step (MSE) — Phase 11a-train.
+    ///
+    /// Args:
+    ///     input: nested list `[batch][channels][H][W]`.
+    ///     target: nested list `[batch][output_dim]`.
+    ///     lr: learning rate.
+    /// Returns:
+    ///     (loss, grad_norm)
+    fn cnn_train_step_mse(
+        &mut self,
+        input: Vec<Vec<Vec<Vec<f32>>>>,
+        target: Vec<Vec<f32>>,
+        lr: f32,
+    ) -> PyResult<(f32, f32)> {
+        let n = input.len();
+        if n == 0 {
+            return Err(shape_err("cnn_train_step_mse: empty batch"));
+        }
+        let c = input[0].len();
+        let h = input[0][0].len();
+        let w = input[0][0][0].len();
+
+        let mut flat: Vec<f32> = Vec::with_capacity(n * c * h * w);
+        for batch in &input {
+            if batch.len() != c {
+                return Err(shape_err("cnn_train: ragged channel count"));
+            }
+            for chan in batch {
+                if chan.len() != h {
+                    return Err(shape_err("cnn_train: ragged height"));
+                }
+                for row in chan {
+                    if row.len() != w {
+                        return Err(shape_err("cnn_train: ragged width"));
+                    }
+                    flat.extend_from_slice(row);
+                }
+            }
+        }
+        let arr = ndarray::Array4::from_shape_vec((n, c, h, w), flat)
+            .map_err(|e| shape_err(format!("cnn_train shape: {e}")))?;
+
+        if target.len() != n {
+            return Err(shape_err("cnn_train: target batch != input batch"));
+        }
+        let k = target[0].len();
+        let mut t_flat: Vec<f32> = Vec::with_capacity(n * k);
+        for row in &target {
+            if row.len() != k {
+                return Err(shape_err("cnn_train: ragged target"));
+            }
+            t_flat.extend_from_slice(row);
+        }
+        let tgt = ndarray::Array2::from_shape_vec((n, k), t_flat)
+            .map_err(|e| shape_err(format!("cnn_train target shape: {e}")))?;
+
+        self.inner
+            .cnn_train_step_mse(&arr, &tgt, lr)
+            .map_err(rt_err)
+    }
+
     /// FNO forward pass.
     ///
     /// Args:
@@ -443,6 +504,59 @@ impl PyBrain {
             py_out.push(chans);
         }
         Ok(py_out)
+    }
+
+    /// One FNO training step (MSE) — Phase 11b-train.
+    fn fno_train_step_mse(
+        &mut self,
+        input: Vec<Vec<Vec<f32>>>,
+        target: Vec<Vec<Vec<f32>>>,
+        lr: f32,
+    ) -> PyResult<(f32, f32)> {
+        let n = input.len();
+        if n == 0 {
+            return Err(shape_err("fno_train: empty batch"));
+        }
+        let c = input[0].len();
+        let l = input[0][0].len();
+        let mut flat: Vec<f32> = Vec::with_capacity(n * c * l);
+        for batch in &input {
+            if batch.len() != c {
+                return Err(shape_err("fno_train: ragged channel count"));
+            }
+            for chan in batch {
+                if chan.len() != l {
+                    return Err(shape_err("fno_train: ragged length"));
+                }
+                flat.extend_from_slice(chan);
+            }
+        }
+        let in_arr = ndarray::Array3::from_shape_vec((n, c, l), flat)
+            .map_err(|e| shape_err(format!("fno_train input shape: {e}")))?;
+
+        if target.len() != n {
+            return Err(shape_err("fno_train: target batch != input batch"));
+        }
+        let c_t = target[0].len();
+        let l_t = target[0][0].len();
+        let mut t_flat: Vec<f32> = Vec::with_capacity(n * c_t * l_t);
+        for batch in &target {
+            if batch.len() != c_t {
+                return Err(shape_err("fno_train: ragged target channel count"));
+            }
+            for chan in batch {
+                if chan.len() != l_t {
+                    return Err(shape_err("fno_train: ragged target length"));
+                }
+                t_flat.extend_from_slice(chan);
+            }
+        }
+        let tgt = ndarray::Array3::from_shape_vec((n, c_t, l_t), t_flat)
+            .map_err(|e| shape_err(format!("fno_train target shape: {e}")))?;
+
+        self.inner
+            .fno_train_step_mse(&in_arr, &tgt, lr)
+            .map_err(rt_err)
     }
 
     /// Set the HNN's `(q, p)` state.

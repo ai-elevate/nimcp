@@ -47,8 +47,10 @@ pub mod block;
 pub mod linear_mix;
 pub mod network;
 pub mod spectral;
+pub mod train;
 
 pub use block::FnoBlock;
 pub use linear_mix::LinearMixLayer;
 pub use network::{FnoConfig, FnoError, FnoNetwork};
 pub use spectral::SpectralConv1dLayer;
+pub use train::{FnoBlockGrads, FnoGradients, mse_loss, sgd_step, train_step_mse};

@@ -519,6 +519,20 @@ impl Brain {
         Ok(net.forward(input))
     }
 
+    /// One CNN training step (MSE) — `(loss, grad_norm)`. Phase 11a-train.
+    pub fn cnn_train_step_mse(
+        &mut self,
+        input: &Array4<f32>,
+        target: &ndarray::Array2<f32>,
+        lr: f32,
+    ) -> Result<(f32, f32)> {
+        let net = self
+            .cnn
+            .as_mut()
+            .ok_or_else(|| Error::Config("cnn not configured on this brain".into()))?;
+        Ok(nimcp_cnn::train_step_mse(net, input, target, lr))
+    }
+
     // -------------------------------------------------------------------------
     // Phase 11b — FNO access.
     // -------------------------------------------------------------------------
@@ -536,6 +550,20 @@ impl Brain {
             .as_ref()
             .ok_or_else(|| Error::Config("fno not configured on this brain".into()))?;
         Ok(net.forward(input))
+    }
+
+    /// One FNO training step (MSE) — `(loss, grad_norm)`. Phase 11b-train.
+    pub fn fno_train_step_mse(
+        &mut self,
+        input: &Array3<f32>,
+        target: &Array3<f32>,
+        lr: f32,
+    ) -> Result<(f32, f32)> {
+        let net = self
+            .fno
+            .as_mut()
+            .ok_or_else(|| Error::Config("fno not configured on this brain".into()))?;
+        Ok(nimcp_fno::train_step_mse(net, input, target, lr))
     }
 
     // -------------------------------------------------------------------------
