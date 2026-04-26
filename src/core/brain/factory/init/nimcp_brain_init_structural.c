@@ -98,6 +98,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_structural, MESH_ADAPTER_CATEGORY_SYSTEM
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
+#include "core/cortical_columns/nimcp_cortical_column_ternary.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
@@ -556,6 +557,90 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
             brain->num_hypercolumns = 0;
             brain->enable_cortical_columns = false;
             return true;
+        }
+    }
+
+    // Step 2c: Column-to-decision projection. Allocated whenever cortical
+    // columns are ON, regardless of ternary. Shape: [feature_dim × output_size]
+    // row-major. Initialized to zero so the additive blend is a no-op until
+    // brain_learn_vector teaches the projection. Output_size is the adaptive
+    // network's last layer; brain->config.num_outputs is reliable here.
+    {
+        uint32_t feature_dim = brain->num_hypercolumns * minicolumns_per_hc;
+        uint32_t out_sz      = brain->config.num_outputs;
+        if (feature_dim > 0 && out_sz > 0) {
+            brain->column_to_decision_proj =
+                (float*)nimcp_calloc((size_t)feature_dim * (size_t)out_sz, sizeof(float));
+            brain->column_feature_buf = (float*)nimcp_calloc(feature_dim, sizeof(float));
+            if (!brain->column_to_decision_proj || !brain->column_feature_buf) {
+                LOG_WARNING("Column projection alloc failed — disabling cortical columns");
+                if (brain->column_to_decision_proj) {
+                    nimcp_free(brain->column_to_decision_proj);
+                    brain->column_to_decision_proj = NULL;
+                }
+                if (brain->column_feature_buf) {
+                    nimcp_free(brain->column_feature_buf);
+                    brain->column_feature_buf = NULL;
+                }
+                /* Don't destroy hypercolumns — they're harmless without
+                 * projection; brain_decide null-checks the proj pointer. */
+            } else {
+                brain->column_feature_dim = feature_dim;
+                brain->column_blend_alpha = 0.1F;
+                LOG_INFO("Column→decision projection: %u features × %u outputs (alpha=0.1)",
+                         feature_dim, out_sz);
+            }
+        }
+    }
+
+    // Step 2d: Ternary WTA wrapper, gated by enable_cortical_ternary.
+    // Per-HC ternary state + a single shared lateral connectivity matrix
+    // (neighbor pattern, neighborhood=5). Failure path: tear down any partial
+    // ternary state and continue with non-ternary cortical columns.
+    if (brain->config.enable_cortical_ternary && brain->hypercolumns &&
+        brain->num_hypercolumns > 0) {
+        cc_ternary_wta_config_t wta_cfg;
+        cc_ternary_wta_config_default(&wta_cfg);
+        /* Defaults from cc_ternary_wta_config_default; override is fine but the
+         * defaults are already biologically reasonable. */
+
+        cc_ternary_connectivity_t* shared_lateral =
+            cc_ternary_connectivity_create_lateral(minicolumns_per_hc, /*pattern=neighbor*/1, /*nbhd=*/5);
+        if (!shared_lateral) {
+            LOG_WARNING("cc_ternary_connectivity_create_lateral failed — disabling ternary");
+            brain->config.enable_cortical_ternary = false;
+            brain->enable_cortical_ternary = false;
+        } else {
+            cc_ternary_hypercolumn_t** thcs =
+                (cc_ternary_hypercolumn_t**)nimcp_calloc(brain->num_hypercolumns,
+                                                         sizeof(cc_ternary_hypercolumn_t*));
+            if (!thcs) {
+                LOG_WARNING("ternary_hypercolumns array alloc failed — disabling ternary");
+                cc_ternary_connectivity_destroy(shared_lateral);
+                brain->config.enable_cortical_ternary = false;
+                brain->enable_cortical_ternary = false;
+            } else {
+                uint32_t thc_created = 0;
+                for (uint32_t i = 0; i < brain->num_hypercolumns; i++) {
+                    if (!brain->hypercolumns[i]) continue;
+                    thcs[i] = cc_ternary_hypercolumn_create(brain->hypercolumns[i], &wta_cfg);
+                    if (thcs[i]) thc_created++;
+                }
+                if (thc_created == 0) {
+                    LOG_WARNING("All cc_ternary_hypercolumn_create calls failed — disabling ternary");
+                    nimcp_free(thcs);
+                    cc_ternary_connectivity_destroy(shared_lateral);
+                    brain->config.enable_cortical_ternary = false;
+                    brain->enable_cortical_ternary = false;
+                } else {
+                    brain->ternary_hypercolumns       = (void**)thcs;
+                    brain->ternary_connectivity       = shared_lateral;
+                    brain->num_ternary_hypercolumns   = thc_created;
+                    brain->enable_cortical_ternary    = true;
+                    LOG_INFO("Ternary hypercolumns populated: %u/%u (neighbor lateral, nbhd=5)",
+                             thc_created, brain->num_hypercolumns);
+                }
+            }
         }
     }
 

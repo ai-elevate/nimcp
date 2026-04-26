@@ -702,6 +702,7 @@ typedef struct {
     bool enable_orientation_columns;  /**< Enable V1 orientation selectivity */
     uint32_t num_orientation_columns; /**< Orientation columns per hypercolumn (default: 16) */
     bool enable_feature_hypercolumns; /**< Enable multi-dimensional feature coverage */
+    bool enable_cortical_ternary;     /**< Enable ternary WTA wrapper around hypercolumns (default: false) */
 
     // === PHASE 8: UNIFIED MULTI-MODAL PROCESSING ===
     bool enable_multimodal_integration; /**< Enable multi-modal sensory integration */
