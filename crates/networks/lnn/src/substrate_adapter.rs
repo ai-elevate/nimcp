@@ -48,6 +48,12 @@ pub fn effective_tau(
     let Some((_axon, dend)) = effects else {
         return layer.tau_base.clone();
     };
+    // Sentinel guard (V1 commit 43785ee5e): zero-cache → return base
+    // tau unscaled. Otherwise we'd multiply learned tau values by 0
+    // and floor everything to LTC_TAU_MIN.
+    if dend.is_zero_cache() {
+        return layer.tau_base.clone();
+    }
     let mod_factor = dend.membrane_time_constant_mod;
     layer
         .tau_base
@@ -90,6 +96,10 @@ pub fn effective_lr(
     let Some((_axon, dend)) = effects else {
         return base_lr;
     };
+    // Sentinel guard: zero-cache → return base LR unscaled.
+    if dend.is_zero_cache() {
+        return base_lr;
+    }
     base_lr * dend.plasticity_mod.clamp(0.0, 1.0)
 }
 
@@ -111,6 +121,10 @@ pub fn ltp_ltd_gates(
     let Some((_axon, dend)) = effects else {
         return (1.0, 1.0);
     };
+    // Sentinel guard: zero-cache → identity gate.
+    if dend.is_zero_cache() {
+        return (1.0, 1.0);
+    }
     (
         dend.ltp_capacity.clamp(0.0, 1.0),
         dend.ltd_capacity.clamp(0.0, 1.0),
@@ -374,6 +388,48 @@ mod tests {
         assert_eq!(burst_tau_clamp_ms(Some(&ch_tonic)), None);
 
         assert_eq!(burst_tau_clamp_ms(None), None);
+    }
+
+    // V1 commit 43785ee5e — zero-cache sentinel for LNN adapter.
+    fn zero_cache_effects() -> (AxonSubstrateEffects, DendriteSubstrateEffects) {
+        let dend = DendriteSubstrateEffects {
+            membrane_time_constant_mod: 0.0,
+            space_constant_mod: 0.0,
+            integration_efficiency: 0.0,
+            attenuation_mod: 0.0,
+            nmda_mg_block_mod: 0.0,
+            spike_threshold_mod: 0.0,
+            na_channel_availability: 0.0,
+            ca_pump_efficiency: 0.0,
+            ca_buffer_capacity: 0.0,
+            ca_handling_mod: 0.0,
+            ltp_capacity: 0.0,
+            ltd_capacity: 0.0,
+            spine_growth_capacity: 0.0,
+            plasticity_mod: 0.0,
+            overall_capacity: 0.0,
+        };
+        (AxonSubstrateEffects::default(), dend)
+    }
+
+    #[test]
+    fn effective_tau_falls_back_on_zero_cache() {
+        let l = layer();
+        let eff = zero_cache_effects();
+        let t = effective_tau(&l, Some(&eff));
+        assert_eq!(t, l.tau_base);
+    }
+
+    #[test]
+    fn effective_lr_falls_back_on_zero_cache() {
+        let eff = zero_cache_effects();
+        assert_eq!(effective_lr(0.02, Some(&eff), true), 0.02);
+    }
+
+    #[test]
+    fn ltp_ltd_gates_fall_back_on_zero_cache() {
+        let eff = zero_cache_effects();
+        assert_eq!(ltp_ltd_gates(Some(&eff), true), (1.0, 1.0));
     }
 
     #[test]

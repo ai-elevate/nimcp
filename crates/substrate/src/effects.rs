@@ -245,6 +245,20 @@ impl DendriteSubstrateEffects {
             && self.plasticity_mod == d.plasticity_mod
             && self.overall_capacity == d.overall_capacity
     }
+
+    /// Zero-cache sentinel — true when both `plasticity_mod` AND
+    /// `overall_capacity` are exactly `0.0`. This is the signature of a
+    /// dendrite-effects struct that was zero-initialized but never
+    /// populated by a real `compute_effects()` call. Adapters consult
+    /// this before scaling learning rate / tau by `plasticity_mod` so
+    /// a stale-cache miss falls back to base values rather than
+    /// silently killing learning. Mirrors the V1 sentinel from
+    /// commit `43785ee5e`.
+    #[must_use]
+    #[allow(clippy::float_cmp)]
+    pub fn is_zero_cache(&self) -> bool {
+        self.plasticity_mod == 0.0 && self.overall_capacity == 0.0
+    }
 }
 
 #[cfg(test)]
@@ -298,5 +312,43 @@ mod tests {
             ..AxonSubstrateEffects::default()
         };
         assert!(!a.is_identity());
+    }
+
+    // V1 commit 43785ee5e — zero-cache sentinel.
+    #[test]
+    fn dendrite_zero_struct_is_zero_cache() {
+        let d = DendriteSubstrateEffects {
+            membrane_time_constant_mod: 0.0,
+            space_constant_mod: 0.0,
+            integration_efficiency: 0.0,
+            attenuation_mod: 0.0,
+            nmda_mg_block_mod: 0.0,
+            spike_threshold_mod: 0.0,
+            na_channel_availability: 0.0,
+            ca_pump_efficiency: 0.0,
+            ca_buffer_capacity: 0.0,
+            ca_handling_mod: 0.0,
+            ltp_capacity: 0.0,
+            ltd_capacity: 0.0,
+            spine_growth_capacity: 0.0,
+            plasticity_mod: 0.0,
+            overall_capacity: 0.0,
+        };
+        assert!(d.is_zero_cache());
+        // Identity is NOT zero-cache (full health is plasticity_mod=1.0).
+        assert!(!DendriteSubstrateEffects::default().is_zero_cache());
+    }
+
+    #[test]
+    fn dendrite_partial_zero_is_not_zero_cache() {
+        // Only the (plasticity_mod, overall_capacity) signature triggers
+        // — other zeros (e.g. ATP-depleted but pump/Ca still up) are
+        // legitimate states, not stale-cache.
+        let d = DendriteSubstrateEffects {
+            plasticity_mod: 0.0,
+            overall_capacity: 0.5, // not zero
+            ..DendriteSubstrateEffects::default()
+        };
+        assert!(!d.is_zero_cache());
     }
 }

@@ -34,6 +34,12 @@ pub fn effective_lif(
     let Some((axon, dend)) = effects else {
         return *base;
     };
+    // Sentinel guard (V1 commit 43785ee5e): if dendrite cache was never
+    // populated (zero-initialized) we'd silently scale tau_ms by 0 and
+    // kill the membrane integrator. Fall back to base.
+    if dend.is_zero_cache() {
+        return *base;
+    }
     let tau_ms = (base.tau_ms * dend.membrane_time_constant_mod).max(0.1);
     let v_gap = base.v_thresh - base.v_rest;
     let v_thresh = base.v_rest + v_gap * dend.spike_threshold_mod;
@@ -65,6 +71,10 @@ pub fn effective_rstdp(
     let Some((_axon, dend)) = effects else {
         return *base;
     };
+    // Sentinel guard: zero-cache → skip scaling (would kill LR).
+    if dend.is_zero_cache() {
+        return *base;
+    }
     let plast = dend.plasticity_mod.clamp(0.0, 1.0);
     RstdpParams {
         stdp: StdpParams {
@@ -92,6 +102,10 @@ pub fn effective_reward(
     let Some((_axon, dend)) = effects else {
         return reward;
     };
+    // Sentinel guard: zero-cache → return raw reward (don't zero it).
+    if dend.is_zero_cache() {
+        return reward;
+    }
     reward * dend.ca_handling_mod.clamp(0.0, 1.0)
 }
 
@@ -231,5 +245,54 @@ mod tests {
     #[test]
     fn emergency_silence_no_fire_when_effects_none() {
         assert!(!emergency_silence(None, 0.1));
+    }
+
+    // V1 commit 43785ee5e: zero-cache sentinel — adapter must fall back
+    // to base when the dendrite cache was never populated.
+    fn zero_cache_effects() -> (AxonSubstrateEffects, DendriteSubstrateEffects) {
+        let dend = DendriteSubstrateEffects {
+            membrane_time_constant_mod: 0.0,
+            space_constant_mod: 0.0,
+            integration_efficiency: 0.0,
+            attenuation_mod: 0.0,
+            nmda_mg_block_mod: 0.0,
+            spike_threshold_mod: 0.0,
+            na_channel_availability: 0.0,
+            ca_pump_efficiency: 0.0,
+            ca_buffer_capacity: 0.0,
+            ca_handling_mod: 0.0,
+            ltp_capacity: 0.0,
+            ltd_capacity: 0.0,
+            spine_growth_capacity: 0.0,
+            plasticity_mod: 0.0,
+            overall_capacity: 0.0,
+        };
+        (AxonSubstrateEffects::default(), dend)
+    }
+
+    #[test]
+    fn effective_lif_falls_back_on_zero_cache() {
+        let base = base_lif();
+        let effects = zero_cache_effects();
+        let eff = effective_lif(&base, Some(&effects));
+        assert_eq!(eff.tau_ms, base.tau_ms);
+        assert_eq!(eff.v_thresh, base.v_thresh);
+        assert_eq!(eff.refrac_steps, base.refrac_steps);
+    }
+
+    #[test]
+    fn effective_rstdp_falls_back_on_zero_cache() {
+        let base = base_rstdp();
+        let effects = zero_cache_effects();
+        let eff = effective_rstdp(&base, Some(&effects), true);
+        assert_eq!(eff.stdp.a_plus, base.stdp.a_plus);
+        assert_eq!(eff.stdp.a_minus, base.stdp.a_minus);
+    }
+
+    #[test]
+    fn effective_reward_falls_back_on_zero_cache() {
+        let effects = zero_cache_effects();
+        let r = effective_reward(0.8, Some(&effects), true);
+        assert_eq!(r, 0.8);
     }
 }
