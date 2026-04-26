@@ -114,6 +114,196 @@ _LOADED_CHECKPOINT_PATH = None
 CB_DEFAULT_RESCALE_FACTOR = 1.0 / 50.0
 
 
+# ---------------------------------------------------------------------------
+# Layer A confabulation mitigation: "I don't know" gate (added 2026-04-26).
+#
+# When the brain emits a low-confidence / high-entropy / OOD prediction we
+# substitute the response with an explicit "I don't know" payload so the
+# downstream battery (`run_metacognition_dk` in scripts/tests/batteries.py)
+# detects refusal via its keyword set and HIGH_CONFABULATION drops.
+#
+# Three independent signals (any one trips the gate):
+#   1. Top-1 confidence < IDK_CONFIDENCE_THRESHOLD
+#   2. Output Shannon entropy > IDK_ENTROPY_RATIO * log(n_classes)
+#   3. OOD score > IDK_OOD_THRESHOLD (only when the brain exposes one)
+#
+# Disable globally by setting NIMCP_IDK_GATE=0 in the daemon's environment.
+# ---------------------------------------------------------------------------
+def _env_float(name, default):
+    try:
+        v = os.environ.get(name)
+        return float(v) if v is not None and v != "" else float(default)
+    except Exception:
+        return float(default)
+
+
+def _env_bool(name, default):
+    v = os.environ.get(name)
+    if v is None:
+        return bool(default)
+    return v.strip().lower() not in ("0", "false", "no", "off", "")
+
+
+IDK_CONFIDENCE_THRESHOLD = _env_float("NIMCP_IDK_CONFIDENCE", 0.30)
+IDK_ENTROPY_RATIO = _env_float("NIMCP_IDK_ENTROPY_RATIO", 0.70)
+IDK_OOD_THRESHOLD = _env_float("NIMCP_IDK_OOD", 1.0)
+IDK_GATE_ENABLED = _env_bool("NIMCP_IDK_GATE", True)
+
+
+def _idk_extract_confidence(result):
+    """Best-effort confidence extraction from a predict-style result.
+
+    Handles three shapes:
+      - dict with 'confidence' (or 'adjusted_confidence', 'top_confidence')
+      - tuple/list with confidence at position [1]
+      - anything else → returns None (signal unavailable)
+    """
+    if isinstance(result, dict):
+        for k in ("confidence", "adjusted_confidence", "top_confidence"):
+            if k in result:
+                try:
+                    return float(result[k])
+                except Exception:
+                    return None
+        return None
+    if isinstance(result, (tuple, list)) and len(result) >= 2:
+        try:
+            return float(result[1])
+        except Exception:
+            return None
+    return None
+
+
+def _idk_extract_distribution(result):
+    """Pull a probability/logit vector out of the result if present.
+
+    Looks at common dict keys; returns a list[float] or None if unavailable.
+    Does NOT add a new C getter — purely opportunistic.
+    """
+    if not isinstance(result, dict):
+        return None
+    for k in ("probabilities", "probs", "distribution",
+              "output", "output_vector", "logits"):
+        v = result.get(k)
+        if isinstance(v, (list, tuple)) and len(v) > 1:
+            try:
+                return [float(x) for x in v]
+            except Exception:
+                continue
+    return None
+
+
+def _idk_compute_entropy_ratio(dist):
+    """Shannon entropy / log(n) for a probability vector. Returns None if
+    the vector is degenerate (single class or all-zero / negative)."""
+    if not dist or len(dist) < 2:
+        return None
+    import math
+    # If the vector looks like logits (negatives or sum != ~1), softmax it.
+    s = sum(dist)
+    if any(x < 0.0 for x in dist) or s <= 0.0 or abs(s - 1.0) > 0.05:
+        # Softmax with numerical-stability shift.
+        m = max(dist)
+        try:
+            exps = [math.exp(x - m) for x in dist]
+        except OverflowError:
+            return None
+        z = sum(exps)
+        if z <= 0.0:
+            return None
+        probs = [e / z for e in exps]
+    else:
+        probs = list(dist)
+    h = 0.0
+    for p in probs:
+        if p > 1e-12:
+            h -= p * math.log(p)
+    h_max = math.log(len(probs))
+    if h_max <= 0.0:
+        return None
+    return h / h_max
+
+
+def _idk_extract_ood_score(brain, result):
+    """Look for an OOD-related signal. Checks the result dict first, then
+    falls back to brain.get_internal_state() (best-effort, no-op on error)."""
+    if isinstance(result, dict):
+        for k in ("ood_score", "ood_distance", "ood"):
+            if k in result:
+                try:
+                    return float(result[k])
+                except Exception:
+                    pass
+        # Boolean ood_flag is treated as max-OOD when True.
+        if result.get("ood_flag") or result.get("is_ood"):
+            return float("inf")
+    if brain is None:
+        return None
+    if not hasattr(brain, "get_internal_state"):
+        return None
+    try:
+        state = brain.get_internal_state(strategy=1)
+    except Exception:
+        return None
+    if not isinstance(state, dict):
+        return None
+    for k in ("ood_score", "ood_distance", "ood"):
+        if k in state:
+            try:
+                return float(state[k])
+            except Exception:
+                pass
+    if state.get("ood_flag"):
+        return float("inf")
+    return None
+
+
+def _apply_idk_gate(result, brain, stats=None):
+    """Wrap a predict-style result with an "I don't know" override when
+    uncertainty signals fire. Returns the (possibly substituted) result.
+
+    Signals (any one trips):
+      - confidence < IDK_CONFIDENCE_THRESHOLD            → "low_confidence"
+      - entropy / log(n) > IDK_ENTROPY_RATIO             → "high_entropy"
+      - ood_score > IDK_OOD_THRESHOLD                    → "ood"
+
+    When the gate is bypassed via NIMCP_IDK_GATE=0, the result is returned
+    unchanged. The optional `stats` dict (BrainService._stats) gets its
+    `idk_gate_trips` counter bumped exactly once per trip.
+    """
+    if not IDK_GATE_ENABLED:
+        return result
+    if result is None:
+        return result
+
+    conf = _idk_extract_confidence(result)
+    dist = _idk_extract_distribution(result)
+    ent_ratio = _idk_compute_entropy_ratio(dist) if dist is not None else None
+    ood = _idk_extract_ood_score(brain, result)
+
+    reasons = []
+    if conf is not None and conf < IDK_CONFIDENCE_THRESHOLD:
+        reasons.append("low_confidence")
+    if ent_ratio is not None and ent_ratio > IDK_ENTROPY_RATIO:
+        reasons.append("high_entropy")
+    if ood is not None and ood > IDK_OOD_THRESHOLD:
+        reasons.append("ood")
+
+    if not reasons:
+        return result
+
+    if isinstance(stats, dict):
+        stats["idk_gate_trips"] = stats.get("idk_gate_trips", 0) + 1
+
+    return {
+        "answer": "I don't know",
+        "label": "I don't know",
+        "confidence": conf if conf is not None else 0.0,
+        "reason": ",".join(reasons),
+        "idk_gate": True,
+    }
+
+
 def _load_persistent_snn_tunes(brain, logger):
     """Reapply all knob overrides saved from previous sessions. Best-effort:
     a malformed file or unknown name should never block daemon startup.
@@ -612,6 +802,9 @@ class BrainService:
             "learn_calls": 0,
             "infer_calls": 0,
             "errors": 0,
+            # Layer A confabulation gate (2026-04-26): bumped each time
+            # _apply_idk_gate substitutes the response with "I don't know".
+            "idk_gate_trips": 0,
         }
         # Cache the brain's actual input/output dims so training never
         # mis-sizes targets. Reads from probe() (ground truth — post-checkpoint).
@@ -899,6 +1092,8 @@ class BrainService:
         if True:  # RWLock in handle()
             result = self.brain.predict(features)
         self._stats["infer_calls"] += 1
+        # Layer A confabulation gate (2026-04-26).
+        result = _apply_idk_gate(result, self.brain, self._stats)
         return {"result": result}
 
     def _cmd_speak(self, req):
@@ -1765,13 +1960,18 @@ class BrainService:
         if hasattr(self.brain, 'predict_with_confidence'):
             try:
                 r = self.brain.predict_with_confidence(features)
+                # Layer A confabulation gate (2026-04-26).
+                r = _apply_idk_gate(r if r else {}, self.brain, self._stats)
                 return {"result": r if r else {}}
             except Exception as e:
                 return {"result": {}, "error": str(e)}
         # Fallback: use basic predict
         try:
             label, conf = self.brain.predict(features)
-            return {"result": {"label": label, "confidence": conf}}
+            r = {"label": label, "confidence": conf}
+            # Layer A confabulation gate (2026-04-26).
+            r = _apply_idk_gate(r, self.brain, self._stats)
+            return {"result": r}
         except Exception as e:
             return {"result": {}, "error": str(e)}
 
@@ -1781,6 +1981,8 @@ class BrainService:
         if hasattr(self.brain, 'predict_with_deadline'):
             try:
                 r = self.brain.predict_with_deadline(features, deadline_ms)
+                # Layer A confabulation gate (2026-04-26).
+                r = _apply_idk_gate(r if r else {}, self.brain, self._stats)
                 return {"result": r if r else {}}
             except Exception as e:
                 return {"result": {}, "error": str(e)}
