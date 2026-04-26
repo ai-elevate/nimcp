@@ -711,6 +711,14 @@ struct brain_struct {
     cortical_sparse_coding_system_t* sparse_coding_system;
     bool enable_sparse_coding;                        // Enable output sparsity enforcement
 
+    // Temperature scaling for post-hoc confidence calibration (Guo et al. 2017).
+    // Multiplies pre-softmax logits by 1/T before softmax — T=1.0 is identity.
+    // Calibrated by minimizing NLL on a held-out validation set; ship infra
+    // now, calibration runs later when language stage is online.
+    float    decoder_temperature;          // default 1.0 (identity)
+    float    decoder_temperature_calibrated_ece;  // set by calibrate_temperature, -1 = uncalibrated
+    uint64_t decoder_temperature_calibrated_at_us;
+
     // === PHASE 1.5: MEMORY POOLS FOR HOT-PATH ALLOCATIONS ===
 
     // Decision structure pool - used for internal cached_decision allocation
