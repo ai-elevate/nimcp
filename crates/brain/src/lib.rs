@@ -30,9 +30,12 @@ pub mod stats;
 
 use std::path::Path;
 
-use ndarray::Array1;
+use ndarray::{Array1, Array3, Array4};
 use nimcp_adaptive::{AdaptiveConfig, AdaptiveError, AdaptiveNet};
+use nimcp_cnn::{CnnConfig, CnnNetwork};
 use nimcp_core::{Error, Result};
+use nimcp_fno::{FnoConfig, FnoNetwork};
+use nimcp_hnn::{HnnConfig, HnnNetwork};
 use nimcp_lnn::{LnnConfig, LnnNetwork, LtcState, TrainParams};
 use nimcp_memory::{MemoryNode, QueryHit, ZLadder, ZLadderConfig};
 use nimcp_scheduler::{Scheduler, SchedulerConfig};
@@ -79,6 +82,16 @@ pub struct BrainConfig {
     /// Optional LNN config. Same semantics as `snn`.
     #[serde(default)]
     pub lnn: Option<LnnConfig>,
+    /// Optional CNN config (Phase 11a). `None` → brain has no CNN;
+    /// `cnn_*` methods return `Error::Config`.
+    #[serde(default)]
+    pub cnn: Option<CnnConfig>,
+    /// Optional FNO config (Phase 11b). Same semantics as `cnn`.
+    #[serde(default)]
+    pub fno: Option<FnoConfig>,
+    /// Optional HNN config (Phase 11c). Same semantics as `cnn`.
+    #[serde(default)]
+    pub hnn: Option<HnnConfig>,
     /// Z-Ladder config. `None` → no memory subsystem (Phase 1-4
     /// brains remain valid).
     #[serde(default)]
@@ -100,6 +113,9 @@ impl Default for BrainConfig {
             adaptive: AdaptiveConfig::default(),
             snn: None,
             lnn: None,
+            cnn: None,
+            fno: None,
+            hnn: None,
             memory: None,
             backend: Backend::Cpu,
         }
@@ -117,6 +133,14 @@ pub struct Brain {
     /// Transient LNN runtime state — mirrors `lnn.new_state()`, reset on
     /// `lnn_reset` or fresh brain.
     lnn_state: Option<Vec<LtcState>>,
+    /// Phase 11a — convolutional network. Stateless inference (no
+    /// transient state needed alongside it).
+    cnn: Option<CnnNetwork>,
+    /// Phase 11b — Fourier Neural Operator. Stateless inference.
+    fno: Option<FnoNetwork>,
+    /// Phase 11c — Hamiltonian Neural Network. State is held inside
+    /// the network itself (`q`, `p`).
+    hnn: Option<HnnNetwork>,
     memory: Option<ZLadder>,
     /// Phase 6c — training-loss tracker for the adaptive network. Always
     /// present; `count == 0` before the first `learn()`.
@@ -208,6 +232,25 @@ impl Brain {
             (None, None)
         };
 
+        // Phase 11a/b/c — these networks are CPU-only on V2 today;
+        // `Backend::Gpu` is honored as a no-op (the plan deferred GPU
+        // ports to per-network `11x-gpu` follow-up phases).
+        let cnn = if let Some(cfg) = config.cnn.clone() {
+            Some(CnnNetwork::new(cfg).map_err(|e| Error::Config(format!("cnn: {e}")))?)
+        } else {
+            None
+        };
+        let fno = if let Some(cfg) = config.fno.clone() {
+            Some(FnoNetwork::new(cfg).map_err(|e| Error::Config(format!("fno: {e}")))?)
+        } else {
+            None
+        };
+        let hnn = if let Some(cfg) = config.hnn.clone() {
+            Some(HnnNetwork::new(cfg).map_err(|e| Error::Config(format!("hnn: {e}")))?)
+        } else {
+            None
+        };
+
         let memory = if let Some(cfg) = config.memory.clone() {
             Some(ZLadder::new(cfg).map_err(|e| Error::Config(format!("memory: {e}")))?)
         } else {
@@ -219,6 +262,9 @@ impl Brain {
             seed = config.rng_seed,
             has_snn = snn.is_some(),
             has_lnn = lnn.is_some(),
+            has_cnn = cnn.is_some(),
+            has_fno = fno.is_some(),
+            has_hnn = hnn.is_some(),
             has_memory = memory.is_some(),
             "brain created"
         );
@@ -271,6 +317,9 @@ impl Brain {
             snn,
             lnn,
             lnn_state,
+            cnn,
+            fno,
+            hnn,
             memory,
             adaptive_loss: stats::LossTracker::default(),
             lnn_loss,
@@ -452,6 +501,87 @@ impl Brain {
     }
 
     // -------------------------------------------------------------------------
+    // Phase 11a — CNN access.
+    // -------------------------------------------------------------------------
+
+    /// Immutable handle to the CNN, if present.
+    pub fn cnn(&self) -> Option<&CnnNetwork> {
+        self.cnn.as_ref()
+    }
+
+    /// CNN forward over a 4-D `[batch, in_channels, H, W]` input.
+    /// Returns `[batch, output_dim]` (the network's last linear width).
+    pub fn cnn_predict(&self, input: &Array4<f32>) -> Result<ndarray::Array2<f32>> {
+        let net = self
+            .cnn
+            .as_ref()
+            .ok_or_else(|| Error::Config("cnn not configured on this brain".into()))?;
+        Ok(net.forward(input))
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 11b — FNO access.
+    // -------------------------------------------------------------------------
+
+    /// Immutable handle to the FNO, if present.
+    pub fn fno(&self) -> Option<&FnoNetwork> {
+        self.fno.as_ref()
+    }
+
+    /// FNO forward over a 3-D `[batch, in_channels, length]` input.
+    /// Returns `[batch, out_channels, length]`.
+    pub fn fno_predict(&self, input: &Array3<f32>) -> Result<Array3<f32>> {
+        let net = self
+            .fno
+            .as_ref()
+            .ok_or_else(|| Error::Config("fno not configured on this brain".into()))?;
+        Ok(net.forward(input))
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 11c — HNN access.
+    // -------------------------------------------------------------------------
+
+    /// Immutable handle to the HNN, if present.
+    pub fn hnn(&self) -> Option<&HnnNetwork> {
+        self.hnn.as_ref()
+    }
+
+    /// Mutable handle to the HNN, if present.
+    pub fn hnn_mut(&mut self) -> Option<&mut HnnNetwork> {
+        self.hnn.as_mut()
+    }
+
+    /// Set the HNN's `(q, p)` state. Lengths must equal `dof`.
+    pub fn hnn_set_state(&mut self, q: Array1<f32>, p: Array1<f32>) -> Result<()> {
+        let net = self
+            .hnn
+            .as_mut()
+            .ok_or_else(|| Error::Config("hnn not configured on this brain".into()))?;
+        net.set_state(q, p);
+        Ok(())
+    }
+
+    /// Advance the HNN one symplectic Euler step. Returns the
+    /// Hamiltonian value at the *start* of the step.
+    pub fn hnn_step(&mut self) -> Result<f32> {
+        let net = self
+            .hnn
+            .as_mut()
+            .ok_or_else(|| Error::Config("hnn not configured on this brain".into()))?;
+        Ok(net.step())
+    }
+
+    /// Current HNN Hamiltonian value (pure forward, no state mutation).
+    pub fn hnn_energy(&self) -> Result<f32> {
+        let net = self
+            .hnn
+            .as_ref()
+            .ok_or_else(|| Error::Config("hnn not configured on this brain".into()))?;
+        Ok(net.energy())
+    }
+
+    // -------------------------------------------------------------------------
     // Memory (Z-Ladder) access.
     // -------------------------------------------------------------------------
 
@@ -597,6 +727,26 @@ impl Brain {
             manifest.files.push("lnn.json".into());
         }
 
+        // CNN / FNO / HNN — same pattern (full network round-trip).
+        if let Some(cnn) = &self.cnn {
+            let bytes = serde_json::to_vec(cnn)
+                .map_err(|e| Error::Serialization(format!("cnn serialize: {e}")))?;
+            std::fs::write(tmp_dir.join("cnn.json"), bytes).map_err(Error::from)?;
+            manifest.files.push("cnn.json".into());
+        }
+        if let Some(fno) = &self.fno {
+            let bytes = serde_json::to_vec(fno)
+                .map_err(|e| Error::Serialization(format!("fno serialize: {e}")))?;
+            std::fs::write(tmp_dir.join("fno.json"), bytes).map_err(Error::from)?;
+            manifest.files.push("fno.json".into());
+        }
+        if let Some(hnn) = &self.hnn {
+            let bytes = serde_json::to_vec(hnn)
+                .map_err(|e| Error::Serialization(format!("hnn serialize: {e}")))?;
+            std::fs::write(tmp_dir.join("hnn.json"), bytes).map_err(Error::from)?;
+            manifest.files.push("hnn.json".into());
+        }
+
         // Memory — full ZLadder snapshot (tiers + features + landmarks +
         // clock + stats). V1 E6's "restore preserves features" rule is
         // enforced by `MemoryNode` carrying `Vec<f32>` through serde.
@@ -688,6 +838,62 @@ impl Brain {
             if let Some(state) = self.lnn_state.as_mut() {
                 *state = lnn_slot.new_state();
             }
+        }
+
+        // CNN — replace whole network. Verify shape against current.
+        if manifest.files.iter().any(|f| f == "cnn.json") {
+            let slot = self.cnn.as_mut().ok_or_else(|| {
+                Error::Config("snapshot has cnn.json but brain was built without cnn".into())
+            })?;
+            let bytes = std::fs::read(dir.join("cnn.json")).map_err(Error::from)?;
+            let restored: CnnNetwork = serde_json::from_slice(&bytes)
+                .map_err(|e| Error::Serialization(format!("cnn decode: {e}")))?;
+            if restored.input_shape != slot.input_shape
+                || restored.output_dim != slot.output_dim
+                || restored.layers.len() != slot.layers.len()
+            {
+                return Err(Error::Config(
+                    "cnn snapshot shape does not match current brain".into(),
+                ));
+            }
+            *slot = restored;
+        }
+        // FNO — same pattern.
+        if manifest.files.iter().any(|f| f == "fno.json") {
+            let slot = self.fno.as_mut().ok_or_else(|| {
+                Error::Config("snapshot has fno.json but brain was built without fno".into())
+            })?;
+            let bytes = std::fs::read(dir.join("fno.json")).map_err(Error::from)?;
+            let restored: FnoNetwork = serde_json::from_slice(&bytes)
+                .map_err(|e| Error::Serialization(format!("fno decode: {e}")))?;
+            if restored.in_channels != slot.in_channels
+                || restored.out_channels != slot.out_channels
+                || restored.hidden_channels != slot.hidden_channels
+                || restored.modes != slot.modes
+                || restored.blocks.len() != slot.blocks.len()
+            {
+                return Err(Error::Config(
+                    "fno snapshot shape does not match current brain".into(),
+                ));
+            }
+            *slot = restored;
+        }
+        // HNN — replace whole network including (q, p) state.
+        if manifest.files.iter().any(|f| f == "hnn.json") {
+            let slot = self.hnn.as_mut().ok_or_else(|| {
+                Error::Config("snapshot has hnn.json but brain was built without hnn".into())
+            })?;
+            let bytes = std::fs::read(dir.join("hnn.json")).map_err(Error::from)?;
+            let restored: HnnNetwork = serde_json::from_slice(&bytes)
+                .map_err(|e| Error::Serialization(format!("hnn decode: {e}")))?;
+            if restored.config.dof != slot.config.dof
+                || restored.mlp.weights.len() != slot.mlp.weights.len()
+            {
+                return Err(Error::Config(
+                    "hnn snapshot shape does not match current brain".into(),
+                ));
+            }
+            *slot = restored;
         }
 
         // Memory — full ZLadder replace (including tiers, landmarks,
@@ -1100,6 +1306,115 @@ mod tests {
             snn_weights_a, snn_weights_b,
             "snn weights differ after load"
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 11 tests — CNN / FNO / HNN integration.
+    // -------------------------------------------------------------------------
+
+    fn phase11_config(seed: u64) -> BrainConfig {
+        use nimcp_cnn::{CnnConfig, CnnLayerSpec};
+        use nimcp_fno::FnoConfig;
+        use nimcp_hnn::HnnConfig;
+
+        let cnn = Some(CnnConfig {
+            input_shape: (1, 8, 8),
+            layers: vec![
+                CnnLayerSpec::Conv2d {
+                    out_channels: 4,
+                    kh: 3,
+                    kw: 3,
+                    stride: 1,
+                    padding: 1,
+                },
+                CnnLayerSpec::Relu,
+                CnnLayerSpec::MaxPool2d { kernel: 2, stride: 2 },
+                CnnLayerSpec::Flatten,
+                CnnLayerSpec::Linear { out_features: 6 },
+            ],
+            rng_seed: seed.wrapping_add(11),
+        });
+        let fno = Some(FnoConfig {
+            in_channels: 1,
+            out_channels: 1,
+            hidden_channels: 4,
+            n_blocks: 1,
+            modes: 3,
+            rng_seed: seed.wrapping_add(12),
+        });
+        let hnn = Some(HnnConfig {
+            dof: 2,
+            hidden_layers: vec![8],
+            dt: 0.01,
+            rng_seed: seed.wrapping_add(13),
+        });
+
+        BrainConfig {
+            rng_seed: seed,
+            deterministic: true,
+            cnn,
+            fno,
+            hnn,
+            ..Default::default()
+        }
+    }
+
+    /// Phase 11 SHIP criterion: a single brain config can declare all
+    /// of {snn, lnn, cnn, fno, hnn} simultaneously and boot. Here we
+    /// boot with cnn+fno+hnn (the new networks) and verify each is
+    /// callable end-to-end.
+    #[tokio::test]
+    async fn phase11_brain_boots_all_three_new_networks() {
+        let mut brain = Brain::new(phase11_config(0xB101)).unwrap();
+        assert!(brain.cnn().is_some());
+        assert!(brain.fno().is_some());
+        assert!(brain.hnn().is_some());
+
+        // CNN forward.
+        let cnn_input = ndarray::Array4::<f32>::zeros((1, 1, 8, 8));
+        let cnn_out = brain.cnn_predict(&cnn_input).unwrap();
+        assert_eq!(cnn_out.dim(), (1, 6));
+
+        // FNO forward.
+        let fno_input = ndarray::Array3::<f32>::zeros((1, 1, 16));
+        let fno_out = brain.fno_predict(&fno_input).unwrap();
+        assert_eq!(fno_out.dim(), (1, 1, 16));
+
+        // HNN — set state, step, energy.
+        brain
+            .hnn_set_state(
+                Array1::from_vec(vec![1.0, 0.0]),
+                Array1::from_vec(vec![0.0, 0.5]),
+            )
+            .unwrap();
+        let _e0 = brain.hnn_energy().unwrap();
+        brain.hnn_step().unwrap();
+        let _e1 = brain.hnn_energy().unwrap();
+    }
+
+    /// Save+load round-trip including the three new networks.
+    #[tokio::test]
+    async fn phase11_save_load_round_trip() {
+        let cfg = phase11_config(0xB102);
+        let a = Brain::new(cfg.clone()).unwrap();
+        let cnn_input = ndarray::Array4::from_shape_fn((1, 1, 8, 8), |(_, _, h, w)| {
+            ((h * 8 + w) as f32 * 0.01).sin()
+        });
+        let cnn_a = a.cnn_predict(&cnn_input).unwrap();
+
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("brain");
+        a.save_ensemble(&dir).unwrap();
+        assert!(dir.join("cnn.json").exists());
+        assert!(dir.join("fno.json").exists());
+        assert!(dir.join("hnn.json").exists());
+
+        let mut b = Brain::new(cfg).unwrap();
+        b.load_ensemble(&dir).unwrap();
+        let cnn_b = b.cnn_predict(&cnn_input).unwrap();
+        for (x, y) in cnn_a.iter().zip(cnn_b.iter()) {
+            assert!((x - y).abs() < 1e-6, "cnn drift after load: {x} vs {y}");
+        }
     }
 
     #[tokio::test]

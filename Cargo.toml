@@ -8,6 +8,9 @@ members = [
     "crates/networks/adaptive",
     "crates/networks/snn",
     "crates/networks/lnn",
+    "crates/networks/cnn",
+    "crates/networks/fno",
+    "crates/networks/hnn",
     "crates/plasticity",
     "crates/memory",
     "crates/substrate",
@@ -63,6 +66,10 @@ rand_chacha = "0.9"
 # Linear algebra
 ndarray = { version = "0.16", features = ["serde"] }
 
+# FFT + complex numbers (used by nimcp-fno spectral convolution)
+rustfft = "6"
+num-complex = { version = "0.4", features = ["serde"] }
+
 # Testing
 proptest = "1"
 criterion = { version = "0.7", features = ["html_reports"] }
@@ -85,6 +92,9 @@ nimcp-gpu = { path = "crates/gpu" }
 nimcp-adaptive = { path = "crates/networks/adaptive" }
 nimcp-snn = { path = "crates/networks/snn" }
 nimcp-lnn = { path = "crates/networks/lnn" }
+nimcp-cnn = { path = "crates/networks/cnn" }
+nimcp-fno = { path = "crates/networks/fno" }
+nimcp-hnn = { path = "crates/networks/hnn" }
 nimcp-plasticity = { path = "crates/plasticity" }
 nimcp-memory = { path = "crates/memory" }
 nimcp-substrate = { path = "crates/substrate" }

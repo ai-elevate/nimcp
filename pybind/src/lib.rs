@@ -330,6 +330,155 @@ impl PyBrain {
             .map_err(rt_err)
     }
 
+    // -------------------------------------------------------------------------
+    // Phase 11 — CNN / FNO / HNN.
+    //
+    // CNN forward expects a 4-D `[batch, channels, H, W]` input passed
+    // as a nested list. The output is `[batch, output_dim]`. FNO is the
+    // 3-D analogue (`[batch, channels, length]`). HNN exposes set-state
+    // / step / energy.
+    // -------------------------------------------------------------------------
+
+    /// CNN forward pass.
+    ///
+    /// Args:
+    ///     input: nested list shaped `[batch][channels][H][W]`.
+    /// Returns:
+    ///     list[list[float]]: `[batch][output_dim]`.
+    fn cnn_predict(&self, input: Vec<Vec<Vec<Vec<f32>>>>) -> PyResult<Vec<Vec<f32>>> {
+        let n = input.len();
+        if n == 0 {
+            return Err(shape_err("cnn_predict: empty batch"));
+        }
+        let c = input[0].len();
+        if c == 0 {
+            return Err(shape_err("cnn_predict: zero channels"));
+        }
+        let h = input[0][0].len();
+        if h == 0 {
+            return Err(shape_err("cnn_predict: zero height"));
+        }
+        let w = input[0][0][0].len();
+        if w == 0 {
+            return Err(shape_err("cnn_predict: zero width"));
+        }
+
+        let mut flat: Vec<f32> = Vec::with_capacity(n * c * h * w);
+        for batch in &input {
+            if batch.len() != c {
+                return Err(shape_err("cnn_predict: ragged channel count"));
+            }
+            for chan in batch {
+                if chan.len() != h {
+                    return Err(shape_err("cnn_predict: ragged height"));
+                }
+                for row in chan {
+                    if row.len() != w {
+                        return Err(shape_err("cnn_predict: ragged width"));
+                    }
+                    flat.extend_from_slice(row);
+                }
+            }
+        }
+        let arr = ndarray::Array4::from_shape_vec((n, c, h, w), flat)
+            .map_err(|e| shape_err(format!("cnn_predict shape: {e}")))?;
+        let out = self.inner.cnn_predict(&arr).map_err(rt_err)?;
+        let (rows, cols) = out.dim();
+        let mut py_out: Vec<Vec<f32>> = Vec::with_capacity(rows);
+        for r in 0..rows {
+            let mut row = Vec::with_capacity(cols);
+            for c in 0..cols {
+                row.push(out[[r, c]]);
+            }
+            py_out.push(row);
+        }
+        Ok(py_out)
+    }
+
+    /// FNO forward pass.
+    ///
+    /// Args:
+    ///     input: nested list shaped `[batch][channels][length]`.
+    /// Returns:
+    ///     list[list[list[float]]]: `[batch][out_channels][length]`.
+    fn fno_predict(&self, input: Vec<Vec<Vec<f32>>>) -> PyResult<Vec<Vec<Vec<f32>>>> {
+        let n = input.len();
+        if n == 0 {
+            return Err(shape_err("fno_predict: empty batch"));
+        }
+        let c = input[0].len();
+        if c == 0 {
+            return Err(shape_err("fno_predict: zero channels"));
+        }
+        let l = input[0][0].len();
+        if l == 0 {
+            return Err(shape_err("fno_predict: zero length"));
+        }
+        let mut flat: Vec<f32> = Vec::with_capacity(n * c * l);
+        for batch in &input {
+            if batch.len() != c {
+                return Err(shape_err("fno_predict: ragged channel count"));
+            }
+            for chan in batch {
+                if chan.len() != l {
+                    return Err(shape_err("fno_predict: ragged length"));
+                }
+                flat.extend_from_slice(chan);
+            }
+        }
+        let arr = ndarray::Array3::from_shape_vec((n, c, l), flat)
+            .map_err(|e| shape_err(format!("fno_predict shape: {e}")))?;
+        let out = self.inner.fno_predict(&arr).map_err(rt_err)?;
+        let (n_o, c_o, l_o) = out.dim();
+        let mut py_out: Vec<Vec<Vec<f32>>> = Vec::with_capacity(n_o);
+        for ni in 0..n_o {
+            let mut chans: Vec<Vec<f32>> = Vec::with_capacity(c_o);
+            for ci in 0..c_o {
+                let mut row = Vec::with_capacity(l_o);
+                for li in 0..l_o {
+                    row.push(out[[ni, ci, li]]);
+                }
+                chans.push(row);
+            }
+            py_out.push(chans);
+        }
+        Ok(py_out)
+    }
+
+    /// Set the HNN's `(q, p)` state.
+    fn hnn_set_state(&mut self, q: Vec<f32>, p: Vec<f32>) -> PyResult<()> {
+        let qa = Array1::from_vec(q);
+        let pa = Array1::from_vec(p);
+        self.inner.hnn_set_state(qa, pa).map_err(rt_err)
+    }
+
+    /// Advance the HNN one symplectic Euler step.
+    /// Returns the Hamiltonian value at the start of the step.
+    fn hnn_step(&mut self) -> PyResult<f32> {
+        self.inner.hnn_step().map_err(rt_err)
+    }
+
+    /// Current HNN Hamiltonian value.
+    fn hnn_energy(&self) -> PyResult<f32> {
+        self.inner.hnn_energy().map_err(rt_err)
+    }
+
+    /// CNN configured?
+    #[getter]
+    fn has_cnn(&self) -> bool {
+        self.inner.cnn().is_some()
+    }
+    /// FNO configured?
+    #[getter]
+    fn has_fno(&self) -> bool {
+        self.inner.fno().is_some()
+    }
+    /// HNN configured?
+    #[getter]
+    fn has_hnn(&self) -> bool {
+        self.inner.hnn().is_some()
+    }
+
     /// Insert a new memory node into the Z-Ladder.
     ///
     /// Args:

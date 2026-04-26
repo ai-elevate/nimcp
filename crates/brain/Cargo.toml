@@ -26,6 +26,9 @@ nimcp-gpu = { workspace = true }
 nimcp-adaptive = { workspace = true }
 nimcp-snn = { workspace = true }
 nimcp-lnn = { workspace = true }
+nimcp-cnn = { workspace = true }
+nimcp-fno = { workspace = true }
+nimcp-hnn = { workspace = true }
 nimcp-plasticity = { workspace = true }
 nimcp-memory = { workspace = true }
 nimcp-substrate = { workspace = true }
