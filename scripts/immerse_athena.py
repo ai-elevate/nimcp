@@ -38,6 +38,13 @@ import sys
 import threading
 import time
 import random
+
+# CB rescale checkpoint marker — write the sidecar after every save while
+# CB is enabled so daemon restarts loading from this snapshot don't
+# double-rescale. See scripts/cb_rescaled_marker.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cb_rescaled_marker
+CB_DEFAULT_RESCALE_FACTOR = 1.0 / 50.0
 import json
 import signal
 import numpy as np
@@ -7779,7 +7786,8 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
                 '.snn', '.cnn', '.lnn',
                 '.cortex_visual', '.cortex_audio',
                 '.cortex_speech', '.cortex_somato',
-                '.knowledge', '.pink_noise']  # finding #5: were missing
+                '.knowledge', '.pink_noise',  # finding #5: were missing
+                '.cb_rescaled']  # CB marker — clean up so we don't leak orphan markers
     pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
     all_files = glob_mod.glob(pattern + "*")
 
@@ -8007,6 +8015,27 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
 
         logger.info("Checkpoint snapshot: %s (stage=%d, step=%d, size=%.1f MB)",
                      snapshot_name, stage, step, tmp_size / 1e6)
+
+        # CB rescale marker: if conductance is on, the brain.save() above
+        # captured rescaled weights. Pin a marker to BOTH the snapshot
+        # file AND the canonical symlink target so a daemon restart
+        # loading from either path skips force-rescale-on-load. See
+        # cb_rescaled_marker.py.
+        try:
+            cb_on = float(brain.snn_tune_get().get(
+                'conductance_enabled', 0.0)) != 0.0
+            if cb_on:
+                cb_rescaled_marker.write_marker(snapshot_path,
+                                                CB_DEFAULT_RESCALE_FACTOR)
+                # canonical (athena_immersive.bin) symlinks to the same
+                # underlying file via realpath, so writing once via
+                # snapshot_path covers both. But explicitly write through
+                # canonical too in case a future change splits the files.
+                cb_rescaled_marker.write_marker(canonical,
+                                                CB_DEFAULT_RESCALE_FACTOR)
+        except Exception as _cbm_e:
+            logger.warning("CB marker write failed (snapshot still good): %s",
+                           _cbm_e)
 
         # Update state file AFTER checkpoint is verified on disk
         state = {"stage": stage, "step": step,

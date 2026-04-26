@@ -66,6 +66,7 @@ case "$mode" in
         scripts/test_harness scripts/tests \
         scripts/run_full_battery.py \
         scripts/brain_daemon.py scripts/brain_client.py \
+        scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py \
         data/stimuli/
     ;;
@@ -74,6 +75,7 @@ case "$mode" in
         scripts/test_harness scripts/tests \
         scripts/run_full_battery.py \
         scripts/brain_daemon.py scripts/brain_client.py \
+        scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py
     ;;
   stimuli)
@@ -219,6 +221,7 @@ cp -r /tmp/scripts/tests        "$POD_DIR/scripts/"
 cp    /tmp/scripts/run_full_battery.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
+cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
 
 # Stimuli.
@@ -289,6 +292,7 @@ cp -r /tmp/scripts/tests        "$POD_DIR/scripts/"
 cp    /tmp/scripts/run_full_battery.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
+cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
 echo "=== Scripts updated. Daemon handlers need a restart to take effect. ==="
 REMOTE_SCRIPTS
