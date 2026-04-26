@@ -285,6 +285,32 @@ def test_monitor_integration_explains_why():
 # Section 4 — Imagination workspace release (jepa bridge)
 # =============================================================================
 
+def test_ro_socket_uses_separate_pool():
+    """The read-only socket must NOT share the main worker pool. The whole
+    point of brain_ro.sock (line 1894) is that eval/monitoring is never
+    blocked by training; sharing one ThreadPoolExecutor defeats that —
+    trainer's submit_sensory writes saturate the 4 worker slots and even
+    a `ping` over the RO socket queues behind them."""
+    src = (REPO_ROOT / "scripts" / "brain_daemon.py").read_text()
+    # __init__ creates a dedicated _ro_pool.
+    assert "self._ro_pool = ThreadPoolExecutor" in src, (
+        "BrainDaemon must create a dedicated _ro_pool ThreadPoolExecutor "
+        "for the read-only socket"
+    )
+    # serve_forever routes RO accepts to it.
+    assert "target_pool = self._ro_pool if is_readonly else self._pool" in src, (
+        "serve_forever must route RO connections to _ro_pool"
+    )
+    # The old single-pool dispatch must be gone.
+    assert "self._pool.submit(self._handle_conn, conn, readonly=is_readonly)" \
+        not in src, ("the old shared-pool dispatch must be removed — it "
+                     "queued RO behind trainer writes")
+    # Graceful shutdown drains _ro_pool too.
+    assert "daemon._ro_pool.shutdown(wait=True)" in src, (
+        "shutdown must drain _ro_pool before the main pool"
+    )
+
+
 def test_cmd_save_writes_cb_marker_when_conductance_enabled():
     """The socket _cmd_save handler must mirror the auto-checkpointer:
     when CB is on, write a cb_rescaled_marker sidecar after brain.save().

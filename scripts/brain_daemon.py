@@ -1930,6 +1930,14 @@ class BrainDaemon:
         #  growing VmData ~30 MB/min and OOM-killing the brain every 4 h).
         self._pool = ThreadPoolExecutor(max_workers=max_workers,
                                         thread_name_prefix="brainsvc")
+        # The RO socket gets its own pool. The trainer can saturate the main
+        # pool with submit_sensory/submit_multimodal writes; if the RO socket
+        # shared that pool, eval/monitoring requests would queue behind the
+        # writes — defeating the whole point of the RO socket (line 1894:
+        # "never blocked by training"). Sized smaller than the main pool —
+        # readers are short and fast, mainly stats/predict/probe paths.
+        self._ro_pool = ThreadPoolExecutor(max_workers=max(2, max_workers // 2),
+                                           thread_name_prefix="brainsvc-ro")
 
     def _acquire_socket_lock(self):
         """Acquire exclusive flock on the socket lock file.
@@ -2021,11 +2029,12 @@ class BrainDaemon:
                     continue
 
                 is_readonly = (self._ro_server_sock and sock is self._ro_server_sock)
-                # Pool bounds concurrency to max_workers and reuses threads.
-                # If the pool is saturated, submit() returns immediately and the
-                # task waits in the pool's internal queue — same back-pressure
-                # behavior as the prior semaphore.acquire().
-                self._pool.submit(self._handle_conn, conn, readonly=is_readonly)
+                # Route to the RO pool when this came in on the read-only
+                # listener so eval/monitoring requests aren't queued behind
+                # trainer writes. Both pools bound concurrency and reuse
+                # threads (back-pressure via the pool's internal queue).
+                target_pool = self._ro_pool if is_readonly else self._pool
+                target_pool.submit(self._handle_conn, conn, readonly=is_readonly)
 
     # Heartbeat constants
     HEARTBEAT_WARN_SECONDS = 60
@@ -3593,7 +3602,14 @@ def main():
     # Wait for any in-flight requests to finish (workers hold the brain lock).
     # Pool.shutdown(wait=True) blocks until all submitted tasks have completed,
     # then joins worker threads. Replaces the prior semaphore-based drain.
+    # Drain the RO pool first — its tasks are short and don't hold the brain
+    # lock, so they finish quickly and freeing those threads helps if any
+    # main-pool task happens to call back into the daemon.
     logger.info("Shutdown: waiting for in-flight requests to complete...")
+    try:
+        daemon._ro_pool.shutdown(wait=True)
+    except Exception as e:
+        logger.warning("Shutdown: RO pool shutdown raised %s", e)
     try:
         daemon._pool.shutdown(wait=True)
     except Exception as e:
