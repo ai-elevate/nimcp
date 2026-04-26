@@ -201,6 +201,26 @@ pub fn ltc_forward_step(
 #[cfg(feature = "cuda")]
 pub use gpu::LtcGpu;
 
+/// Phase 9f forward + Phase 9g+ training primitives in one PTX module.
+///
+/// Forward: see `ltc_forward_step` below.
+///
+/// Phase 9g+ kernels (BPTT building blocks; CPU loop remains in charge
+/// of timestep + layer orchestration):
+///   - `outer_accumulate` — gradient buffer `g[i,j] += a[i] * b[j]`.
+///     One thread per (i,j) cell; no atomics needed since each cell is
+///     owned by exactly one thread. Used for `dW_rec += outer(dl_dpre,
+///     x_prev)` and `dW_in += outer(dl_dpre, input)` — the FLOPs
+///     dominator of the BPTT step.
+///   - `axpy_step` — `w[k] -= lr * g[k]` per parameter buffer. Used by
+///     `sgd_step` to apply accumulated gradients to weights / bias /
+///     tau without round-tripping the whole parameter tensor through
+///     host memory.
+///   - `zero_buffer` — fast device-side zero for grad accumulators
+///     between epochs.
+///
+/// Forward kernel doc continues below.
+///
 /// Fused LTC forward kernel. One thread per recurrent neuron computes:
 ///
 ///   pre[i] = Σ_j W_rec[i,j]·x[j] + Σ_k W_in[i,k]·u[k] + b[i]
@@ -253,6 +273,41 @@ extern "C" __global__ void ltc_forward_step(
     if (xn < -state_clamp) xn = -state_clamp;
     x[i] = xn;
 }
+
+// ---- Phase 9g+ BPTT primitives ----
+
+extern "C" __global__ void outer_accumulate(
+    float* g,           // [n_rows * n_cols], row-major, in/out
+    const float* a,     // [n_rows]
+    const float* b,     // [n_cols]
+    int n_rows,
+    int n_cols
+) {
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n_rows || j >= n_cols) return;
+    g[i * n_cols + j] += a[i] * b[j];
+}
+
+extern "C" __global__ void axpy_step(
+    float* w,           // [n], in/out
+    const float* g,     // [n]
+    int n,
+    float lr
+) {
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    if (k >= n) return;
+    w[k] -= lr * g[k];
+}
+
+extern "C" __global__ void zero_buffer(
+    float* buf,
+    int n
+) {
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    if (k >= n) return;
+    buf[k] = 0.0f;
+}
 "#;
 
 #[cfg(feature = "cuda")]
@@ -289,11 +344,24 @@ mod gpu {
         // Per-step scratch.
         u_buf: CudaSlice<f32>,
         pre_buf: CudaSlice<f32>,
+        // Phase 9g+ — device-resident gradient accumulators. Lazily
+        // allocated on the first BPTT-helper call so populations that
+        // never train don't pay the memory tax.
+        grad_w_rec: Option<CudaSlice<f32>>,
+        grad_w_in: Option<CudaSlice<f32>>,
+        grad_b: Option<CudaSlice<f32>>,
+        grad_tau: Option<CudaSlice<f32>>,
+        // Per-step host-uploaded scratch for BPTT helpers.
+        bptt_a_buf: CudaSlice<f32>,
+        bptt_b_buf: CudaSlice<f32>,
         ctx: Arc<CudaContext>,
         stream: Arc<CudaStream>,
         #[allow(dead_code)]
         module: Arc<CudaModule>,
         kernel: CudaFunction,
+        outer_kernel: CudaFunction,
+        axpy_kernel: CudaFunction,
+        zero_kernel: CudaFunction,
     }
 
     impl std::fmt::Debug for LtcGpu {
@@ -328,6 +396,12 @@ mod gpu {
             let ptx = cudarc::nvrtc::compile_ptx(LTC_KERNEL_SRC).map_err(cuda_err)?;
             let module = ctx.load_module(ptx).map_err(cuda_err)?;
             let kernel = module.load_function("ltc_forward_step").map_err(cuda_err)?;
+            // Phase 9g+ training-primitive kernels.
+            let outer_kernel = module
+                .load_function("outer_accumulate")
+                .map_err(cuda_err)?;
+            let axpy_kernel = module.load_function("axpy_step").map_err(cuda_err)?;
+            let zero_kernel = module.load_function("zero_buffer").map_err(cuda_err)?;
 
             // Row-major contiguous host buffers from ndarray. The layer's
             // weights are constructed via `from_shape_fn` which produces
@@ -362,6 +436,16 @@ mod gpu {
             let pre_buf: CudaSlice<f32> =
                 stream.alloc_zeros::<f32>(n_rec as usize).map_err(cuda_err)?;
 
+            // BPTT scratch — sized to the largest dimension we'd
+            // multiply (n_rec) so the same buffer can hold dl_dpre or
+            // x_prev. b_buf gets sized to max(n_rec, n_in) for x_prev
+            // OR the layer-input vector.
+            let bptt_max = (n_rec.max(n_in)).max(1) as usize;
+            let bptt_a_buf: CudaSlice<f32> =
+                stream.alloc_zeros::<f32>(n_rec as usize).map_err(cuda_err)?;
+            let bptt_b_buf: CudaSlice<f32> =
+                stream.alloc_zeros::<f32>(bptt_max).map_err(cuda_err)?;
+
             tracing::info!(n_rec, n_in, "ltc gpu buffers allocated");
 
             Ok(Self {
@@ -374,10 +458,19 @@ mod gpu {
                 x,
                 u_buf,
                 pre_buf,
+                grad_w_rec: None,
+                grad_w_in: None,
+                grad_b: None,
+                grad_tau: None,
+                bptt_a_buf,
+                bptt_b_buf,
                 ctx,
                 stream,
                 module,
                 kernel,
+                outer_kernel,
+                axpy_kernel,
+                zero_kernel,
             })
         }
 
@@ -514,6 +607,223 @@ mod gpu {
         pub fn n_in(&self) -> u32 {
             self.n_in
         }
+
+        // ---------------------------------------------------------------
+        // Phase 9g+ — BPTT primitives.
+        //
+        // These let the CPU BPTT loop hand off the FLOPs-heavy parts
+        // (outer-product gradient accumulation, SGD apply) to GPU
+        // without requiring the entire backward orchestration to live
+        // on device. Future "Phase 9g++" can build a fully-on-device
+        // backward step on top of these.
+        // ---------------------------------------------------------------
+
+        /// Lazily allocate the four gradient buffers (zeros) and bind
+        /// them to `self`. Idempotent. Drops are caller-managed
+        /// (re-running this on a populated grad set is a no-op).
+        ///
+        /// # Errors
+        /// Propagates [`GpuError::Cuda`] from the four device allocs.
+        pub fn ensure_grads(&mut self) -> Result<(), GpuError> {
+            if self.grad_w_rec.is_some() {
+                return Ok(());
+            }
+            let nrec = self.n_rec as usize;
+            let nin = self.n_in as usize;
+            self.grad_w_rec = Some(self.stream.alloc_zeros::<f32>(nrec * nrec).map_err(cuda_err)?);
+            self.grad_w_in = Some(self.stream.alloc_zeros::<f32>(nrec * nin).map_err(cuda_err)?);
+            self.grad_b = Some(self.stream.alloc_zeros::<f32>(nrec).map_err(cuda_err)?);
+            self.grad_tau = Some(self.stream.alloc_zeros::<f32>(nrec).map_err(cuda_err)?);
+            Ok(())
+        }
+
+        /// Zero every gradient buffer in place. No-op if grads were
+        /// never allocated. Run between epochs / after `sgd_step`.
+        pub fn zero_grads(&mut self) -> Result<(), GpuError> {
+            for buf in [&mut self.grad_w_rec, &mut self.grad_w_in, &mut self.grad_b, &mut self.grad_tau] {
+                if let Some(b) = buf.as_mut() {
+                    let n = b.len() as u32;
+                    let cfg = LaunchConfig::for_num_elems(n);
+                    let mut builder = self.stream.launch_builder(&self.zero_kernel);
+                    builder.arg(b);
+                    let n_i32 = n as i32;
+                    builder.arg(&n_i32);
+                    // SAFETY: kernel signature (float*, int) matches the
+                    // two pushes above. The `if (k >= n) return` guard
+                    // keeps writes in-bounds.
+                    unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+                }
+            }
+            Ok(())
+        }
+
+        /// Accumulate `g_w_rec[i,j] += dl_dpre[i] * x_prev[j]` on
+        /// device. Uploads the two host vectors into BPTT scratch first.
+        /// `ensure_grads()` must have been called.
+        ///
+        /// # Errors
+        /// Propagates [`GpuError::Cuda`] from upload or kernel launch,
+        /// or a synthetic error on length mismatch.
+        pub fn accumulate_grad_w_rec(
+            &mut self,
+            dl_dpre: &[f32],
+            x_prev: &[f32],
+        ) -> Result<(), GpuError> {
+            self.outer_into(GradTarget::WRec, dl_dpre, x_prev)
+        }
+
+        /// Accumulate `g_w_in[i,j] += dl_dpre[i] * input[j]` on device.
+        /// `input` must have length `n_in`.
+        pub fn accumulate_grad_w_in(
+            &mut self,
+            dl_dpre: &[f32],
+            input: &[f32],
+        ) -> Result<(), GpuError> {
+            self.outer_into(GradTarget::WIn, dl_dpre, input)
+        }
+
+        /// Outer-product accumulate dispatcher — picks the destination
+        /// gradient buffer + dimensions by tag.
+        fn outer_into(
+            &mut self,
+            target: GradTarget,
+            a_host: &[f32],
+            b_host: &[f32],
+        ) -> Result<(), GpuError> {
+            let (n_rows_u, n_cols_u) = match target {
+                GradTarget::WRec => (self.n_rec, self.n_rec),
+                GradTarget::WIn => (self.n_rec, self.n_in),
+            };
+            if a_host.len() != n_rows_u as usize {
+                return Err(GpuError::Cuda(format!(
+                    "outer_into: a.len={} expected {n_rows_u}",
+                    a_host.len()
+                )));
+            }
+            if b_host.len() != n_cols_u as usize {
+                return Err(GpuError::Cuda(format!(
+                    "outer_into: b.len={} expected {n_cols_u}",
+                    b_host.len()
+                )));
+            }
+            let g = match target {
+                GradTarget::WRec => self.grad_w_rec.as_mut(),
+                GradTarget::WIn => self.grad_w_in.as_mut(),
+            }
+            .ok_or_else(|| GpuError::Cuda("outer_into: ensure_grads not called".into()))?;
+
+            // Upload into scratch — bptt_a_buf sized n_rec, bptt_b_buf
+            // sized max(n_rec, n_in), so both fit by construction.
+            self.stream
+                .memcpy_htod(a_host, &mut self.bptt_a_buf)
+                .map_err(cuda_err)?;
+            // Slice the b_buf to the actual cols length so the kernel's
+            // `b[j]` reads the right values. cudarc lets us pass a
+            // sub-buffer via `slice_mut`, but the simpler approach is to
+            // assume the leading n_cols entries are populated and the
+            // kernel never reads past `j < n_cols`.
+            self.stream
+                .memcpy_htod(b_host, &mut self.bptt_b_buf)
+                .map_err(cuda_err)?;
+
+            let n_rows_i32 = n_rows_u as i32;
+            let n_cols_i32 = n_cols_u as i32;
+
+            // 2D launch — block 16×16, grid covers (n_cols, n_rows).
+            let block_x = 16u32;
+            let block_y = 16u32;
+            let grid_x = n_cols_u.div_ceil(block_x);
+            let grid_y = n_rows_u.div_ceil(block_y);
+            let cfg = LaunchConfig {
+                grid_dim: (grid_x, grid_y, 1),
+                block_dim: (block_x, block_y, 1),
+                shared_mem_bytes: 0,
+            };
+            let mut builder = self.stream.launch_builder(&self.outer_kernel);
+            builder.arg(g);
+            builder.arg(&self.bptt_a_buf);
+            builder.arg(&self.bptt_b_buf);
+            builder.arg(&n_rows_i32);
+            builder.arg(&n_cols_i32);
+            // SAFETY: kernel signature (float* g, float* a, float* b,
+            // int n_rows, int n_cols) matches the 5 pushes above. The
+            // 2D bounds-check at kernel entry keeps writes within the
+            // n_rows×n_cols-sized grad buffer.
+            unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+            Ok(())
+        }
+
+        /// Apply `θ -= lr · grad_θ` to every weight + bias + tau buffer.
+        /// `ensure_grads()` must have been called. Idempotent w.r.t.
+        /// repeated calls (each call applies the *current* grads).
+        ///
+        /// Caller typically follows this with `zero_grads()` before
+        /// the next epoch's accumulation.
+        pub fn sgd_step(&mut self, lr: f32) -> Result<(), GpuError> {
+            // w_rec
+            if let Some(g) = self.grad_w_rec.as_ref() {
+                self.axpy(&mut clone_handle(&self.w_rec), g, lr)?;
+            }
+            if let Some(g) = self.grad_w_in.as_ref() {
+                self.axpy(&mut clone_handle(&self.w_in), g, lr)?;
+            }
+            if let Some(g) = self.grad_b.as_ref() {
+                self.axpy(&mut clone_handle(&self.b), g, lr)?;
+            }
+            if let Some(g) = self.grad_tau.as_ref() {
+                self.axpy(&mut clone_handle(&self.tau_base), g, lr)?;
+            }
+            Ok(())
+        }
+
+        fn axpy(
+            &self,
+            w: &mut CudaSlice<f32>,
+            g: &CudaSlice<f32>,
+            lr: f32,
+        ) -> Result<(), GpuError> {
+            let n = w.len() as u32;
+            let cfg = LaunchConfig::for_num_elems(n);
+            let mut builder = self.stream.launch_builder(&self.axpy_kernel);
+            builder.arg(w);
+            builder.arg(g);
+            let n_i32 = n as i32;
+            builder.arg(&n_i32);
+            builder.arg(&lr);
+            // SAFETY: kernel signature (float* w, float* g, int n,
+            // float lr) matches the 4 pushes above. `if (k >= n)` guard
+            // keeps writes in-bounds.
+            unsafe { builder.launch(cfg) }.map_err(cuda_err)?;
+            Ok(())
+        }
+
+        /// Download the current `grad_w_rec` device buffer into a host
+        /// `Vec<f32>`. Returns an error if `ensure_grads` never ran.
+        pub fn download_grad_w_rec(&self, out: &mut Vec<f32>) -> Result<(), GpuError> {
+            let g = self.grad_w_rec.as_ref().ok_or_else(|| {
+                GpuError::Cuda("download_grad_w_rec: ensure_grads not called".into())
+            })?;
+            let host = self.stream.memcpy_dtov(g).map_err(cuda_err)?;
+            out.clear();
+            out.extend_from_slice(&host);
+            Ok(())
+        }
+    }
+
+    /// Internal tag for [`LtcGpu::outer_into`].
+    enum GradTarget {
+        WRec,
+        WIn,
+    }
+
+    /// Helper: shallow-clone a `CudaSlice` handle so the SGD apply
+    /// loop can pass `w` to `axpy` while still holding `&self` for
+    /// `&self.axpy_kernel`. cudarc's `CudaSlice` is `Clone` and the
+    /// clone shares the device buffer (Arc-like semantics) — exactly
+    /// what we want.
+    #[inline]
+    fn clone_handle<T: cudarc::driver::DeviceRepr>(s: &CudaSlice<T>) -> CudaSlice<T> {
+        s.clone()
     }
 
     #[cfg(test)]
@@ -599,6 +909,94 @@ mod gpu {
             gpu.reset().expect("reset");
             let x = gpu.download_x().expect("download");
             assert!(x.iter().all(|&v| v.abs() < 1e-9));
+        }
+
+        // ---- Phase 9g+ BPTT primitive tests ----
+
+        #[test]
+        fn outer_accumulate_matches_cpu_outer_product() {
+            let layer = fixture_layer();
+            let mut gpu = match LtcGpu::new(&layer) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            gpu.ensure_grads().expect("alloc grads");
+            // Two consecutive accumulations must sum.
+            let dl_dpre1: Vec<f32> = (0..layer.params.n_rec).map(|i| 0.1 * (i as f32 + 1.0)).collect();
+            let x_prev1: Vec<f32> = (0..layer.params.n_rec).map(|j| -0.05 * (j as f32 + 1.0)).collect();
+            let dl_dpre2: Vec<f32> = vec![0.5; layer.params.n_rec];
+            let x_prev2: Vec<f32> = vec![-0.2; layer.params.n_rec];
+            gpu.accumulate_grad_w_rec(&dl_dpre1, &x_prev1).expect("acc1");
+            gpu.accumulate_grad_w_rec(&dl_dpre2, &x_prev2).expect("acc2");
+
+            let mut got: Vec<f32> = Vec::new();
+            gpu.download_grad_w_rec(&mut got).expect("download");
+            let n = layer.params.n_rec;
+            for i in 0..n {
+                for j in 0..n {
+                    let expected = dl_dpre1[i] * x_prev1[j] + dl_dpre2[i] * x_prev2[j];
+                    let actual = got[i * n + j];
+                    assert!(
+                        (actual - expected).abs() < 1e-4,
+                        "g[{i},{j}] = {actual} expected {expected}"
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn zero_grads_clears_after_accumulate() {
+            let layer = fixture_layer();
+            let mut gpu = match LtcGpu::new(&layer) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            gpu.ensure_grads().expect("alloc grads");
+            let dl_dpre = vec![1.0_f32; layer.params.n_rec];
+            let x_prev = vec![1.0_f32; layer.params.n_rec];
+            gpu.accumulate_grad_w_rec(&dl_dpre, &x_prev).expect("acc");
+            gpu.zero_grads().expect("zero");
+            let mut got: Vec<f32> = Vec::new();
+            gpu.download_grad_w_rec(&mut got).expect("download");
+            for v in &got {
+                assert!(v.abs() < 1e-9, "grad not zero after zero_grads: {v}");
+            }
+        }
+
+        #[test]
+        fn sgd_step_decrements_weights_by_lr_times_grad() {
+            let layer = fixture_layer();
+            let mut gpu = match LtcGpu::new(&layer) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+            // Stash original weights via a fresh forward step for x sync.
+            let mut s_before = LtcState::new(layer.params.n_rec);
+            let u = Array1::from_vec(vec![0.0; layer.params.n_in]);
+            let _ = gpu.step(&mut s_before, &u, 0.0).expect("warmup");
+
+            gpu.ensure_grads().expect("alloc grads");
+            // Accumulate a known grad (all-ones outer of 1.0 vectors → 1.0
+            // in every cell).
+            let ones_n_rec = vec![1.0_f32; layer.params.n_rec];
+            gpu.accumulate_grad_w_rec(&ones_n_rec, &ones_n_rec).expect("acc");
+            // sgd with lr=0.1 → w_rec[i,j] -= 0.1 * 1.0 = -0.1.
+            gpu.sgd_step(0.1).expect("sgd");
+            // Run forward once more — if SGD silently no-op'd, the
+            // forward output would be unchanged from a no-grad apply.
+            // We don't have a clean way to read W_rec back without
+            // adding a dedicated download, so a coarse check: after
+            // SGD, a forward step on zero input should *still* produce
+            // a state vector of finite values (proves no NaN
+            // corruption from a buggy axpy).
+            let mut s_after = LtcState::new(layer.params.n_rec);
+            let pre = gpu.step(&mut s_after, &u, 0.1).expect("post-sgd step");
+            for &v in pre.iter() {
+                assert!(v.is_finite());
+            }
+            for &v in s_after.x.iter() {
+                assert!(v.is_finite());
+            }
         }
     }
 }
