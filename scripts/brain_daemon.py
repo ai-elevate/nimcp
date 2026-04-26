@@ -2152,6 +2152,14 @@ class AutoCheckpointer:
         self._running = False
         self._lock = threading.Lock()
         self._save_count = 0
+        self._last_athena_auto_time = 0.0
+        # Snapshot of _save_count at the last athena_auto write. The
+        # athena_auto cadence gate requires _save_count to have INCREASED
+        # since this snapshot — so the daemon's own 5-min save loop
+        # cannot keep emitting athena_auto files when the trainer is dead
+        # and notify_training_step has stopped firing. Preserves the
+        # local monitor's trainer-aliveness tripwire.
+        self._save_count_at_last_athena_auto = 0
         self._loaded_from_checkpoint = False
         # Tracks the size of the most recent successful save from THIS
         # session, so the shrink check compares like-for-like. Prior to
@@ -2343,9 +2351,30 @@ class AutoCheckpointer:
                 except Exception:
                     pass
 
-            # STEP 5: Timestamped backup every 5th save (~2.5 hours)
-            if self._save_count % 5 == 0:
-                import time as _time
+            # STEP 5: Timestamped backup with two gates:
+            #   (a) at least 25 min of monotonic elapsed time since last
+            #       backup (cadence predictability — Fix replacing the old
+            #       irregular `_save_count % 5 == 0` gate).
+            #   (b) _save_count must have increased since the last backup
+            #       (trainer-aliveness — the daemon's own 5-min save loop
+            #       runs even when the trainer is dead; without (b) this
+            #       loop would emit fresh athena_auto files indefinitely
+            #       and the local monitor's trainer-dead tripwire would
+            #       never fire).
+            # Wall clock would be sufficient here (the gate is robust to
+            # NTP forward jumps because larger _now just fires the gate
+            # earlier — never blocks). But monotonic is robust to
+            # backwards corrections that would freeze the gate, so prefer
+            # it. Initialized to 0.0 so the first save always emits a
+            # backup, which is the right behaviour for fresh startups.
+            import time as _time
+            _now = _time.monotonic()
+            _athena_auto_interval_s = 25 * 60
+            ts_path = None
+            if (_now - self._last_athena_auto_time) >= _athena_auto_interval_s \
+               and self._save_count > self._save_count_at_last_athena_auto:
+                self._last_athena_auto_time = _now
+                self._save_count_at_last_athena_auto = self._save_count
                 ts = _time.strftime("%Y%m%d_%H%M%S")
                 ts_path = os.path.join(self.checkpoint_dir, f"athena_auto_{ts}.bin")
                 try:
@@ -2357,7 +2386,8 @@ class AutoCheckpointer:
                 except Exception as e:
                     logger.warning("Timestamped backup failed: %s", e)
 
-                # Keep last 5 timestamped backups (increased from 3)
+                # Keep last 5 timestamped backups (loop kept only 1 prior to
+                # 2026-04-26 — comment said 5 but threshold was > 1).
                 auto_files = sorted(_glob.glob(
                     os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
                 # Filter to only core files (not sidecars like .bin.snn)
@@ -2366,7 +2396,7 @@ class AutoCheckpointer:
                     ['snn','lnn','cnn','meta','tokenizer','mirror_neurons',
                      'executive','cortex_visual','cortex_audio',
                      'cortex_speech','cortex_somato'])]
-                while len(auto_files) > 1:
+                while len(auto_files) > 5:
                     old = auto_files.pop(0)
                     try:
                         os.remove(old)
@@ -2391,12 +2421,11 @@ class AutoCheckpointer:
                     'conductance_enabled', 0.0)) != 0.0
                 if cb_on:
                     cb_rescaled_marker.write_marker(canonical, CB_DEFAULT_RESCALE_FACTOR)
-                    if self._save_count % 5 == 0:
-                        # Timestamped backup path was set above as ts_path
-                        try:
-                            cb_rescaled_marker.write_marker(ts_path, CB_DEFAULT_RESCALE_FACTOR)
-                        except NameError:
-                            pass  # ts_path not set this iteration
+                    # Mirror the marker onto the timestamped backup if one
+                    # was written this iteration (ts_path stays None when
+                    # the time-based gate didn't fire).
+                    if ts_path is not None:
+                        cb_rescaled_marker.write_marker(ts_path, CB_DEFAULT_RESCALE_FACTOR)
             except Exception as _cbm_e:
                 logger.warning("CB marker write failed (save still good): %s", _cbm_e)
 

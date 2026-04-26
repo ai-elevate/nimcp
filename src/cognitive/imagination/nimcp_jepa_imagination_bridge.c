@@ -601,6 +601,13 @@ uint32_t jepa_imagination_request_predicted_imagination(
             }
 
             bridge->stats.predictions_used++;
+
+            /* Release the workspace slot — we've consumed everything we
+             * need from the scenario. Without this end_scenario call the
+             * slot stays allocated forever and IMAGINATION_MAX_SCENARIOS
+             * fills within minutes (~13:41 daemon stderr: workspace full
+             * looping every few seconds, 2026-04-26). */
+            imagination_end_scenario(bridge->imagination, scenario);
         }
     }
 
@@ -656,6 +663,9 @@ uint32_t jepa_imagination_request_counterfactual(
                     lat_data[i] = ctx_val + 0.5f * act_val;
                 }
             }
+
+            /* Release the workspace slot (see request_prediction above). */
+            imagination_end_scenario(bridge->imagination, scenario);
         }
     }
 

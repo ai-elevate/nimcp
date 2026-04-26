@@ -1873,6 +1873,56 @@ int snn_network_step(snn_network_t* network, float dt) {
         network->stats.cpu_fallback_steps++;
     }
 
+    /* Refresh per-pop and network-level firing-rate / sparsity from running
+     * totals so monitoring (get_snn_stats → mean_firing_rate_hz / sparsity)
+     * reflects every per-tick caller of snn_network_step — not just the
+     * _for_duration wrappers. ~12 cognitive bridges + training dispatch
+     * call snn_network_step() directly per tick; before this hoist they
+     * left pop->mean_rate / stats.{mean_firing_rate, sparsity} stale at
+     * the value last set by a *_for_duration call (often zero post-load
+     * since CB mode took the CPU path that doesn't fan out to update_stats
+     * unless step_for_duration wraps it). 2026-04-26 SNN-quiet metric
+     * paradox: total_spikes climbed past 2300 while mean_firing_rate_hz
+     * stayed pinned at 0. */
+    {
+        double sim_s = (double)network->sim->current_time_us / 1.0e6;
+        if (sim_s > 0.0) {
+            uint32_t total_neurons_acc = 0;
+            uint64_t total_spikes_acc  = 0;
+            uint32_t silent_acc        = 0;
+            float    max_pop_rate      = 0.0f;
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                snn_population_t* pop = network->populations[p];
+                if (!pop || pop->n_neurons == 0) continue;
+                pop->mean_rate = (float)((double)pop->total_spikes
+                                         / (double)pop->n_neurons / sim_s);
+                if (pop->mean_rate > max_pop_rate) {
+                    max_pop_rate = pop->mean_rate;
+                }
+                /* "Silent" approximation: any pop with mean rate below 0.1 Hz
+                 * over the whole run contributes its neurons to the silent
+                 * count. Cheap; sparsity recomputed exactly by
+                 * snn_network_update_stats when a _for_duration wrapper runs. */
+                if (pop->mean_rate < 0.1f) {
+                    silent_acc += pop->n_neurons;
+                }
+                total_neurons_acc += pop->n_neurons;
+                total_spikes_acc  += pop->total_spikes;
+            }
+            if (total_neurons_acc > 0) {
+                network->stats.mean_firing_rate =
+                    (float)((double)total_spikes_acc
+                            / (double)total_neurons_acc / sim_s);
+                network->stats.max_firing_rate = max_pop_rate;
+                network->stats.sparsity =
+                    (float)silent_acc / (float)total_neurons_acc;
+                network->stats.silent_neurons    = silent_acc;
+                network->stats.spikes_per_sample =
+                    (float)total_spikes_acc / (float)total_neurons_acc;
+            }
+        }
+    }
+
     /* W5 KG anomaly emit — compute an approximate per-step spike rate and
      * emit only when it crosses the quiescent/hyperactive boundaries.
      * Normal operation never writes to the KG. Rate estimate uses

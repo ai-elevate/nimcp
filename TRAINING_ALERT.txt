@@ -21950,3 +21950,330 @@ Wed Apr 22 05:02:21 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 Wed Apr 22 05:02:43 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
 Wed Apr 22 05:02:43 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-22 17:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 20:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 21:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 22:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-24 23:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Fri Apr 24 11:47:55 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Apr 24 11:47:55 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Apr 24 11:48:06 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Apr 24 11:48:06 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Apr 24 11:48:09 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Apr 24 11:48:09 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-24 23:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+Fri Apr 24 11:54:07 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Apr 24 11:54:07 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Apr 24 11:54:17 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Apr 24 11:54:17 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Fri Apr 24 11:54:21 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Fri Apr 24 11:54:21 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-24 23:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:20:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:30:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 00:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:35:00] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:50:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 01:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 02:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:10:02] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 03:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:40:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:45:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:50:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 04:55:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:00:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:05:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:10:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:15:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:20:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:25:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:30:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:35:01] [CRITICAL] Training process NOT running! immerse_athena.py is dead.
+[2026-04-25 05:45:01] [WARN] SNN firing rate very high: 877.3Hz (possible runaway excitation)
+[2026-04-25 05:50:01] [WARN] SNN firing rate very high: 850.3Hz (possible runaway excitation)
+[2026-04-25 05:55:01] [WARN] SNN firing rate very high: 818.9Hz (possible runaway excitation)
+[2026-04-25 06:00:02] [WARN] SNN firing rate very high: 712.2Hz (possible runaway excitation)
+[2026-04-25 06:05:02] [WARN] SNN firing rate very high: 571.9Hz (possible runaway excitation)
+[2026-04-25 06:50:02] [WARN] SNN firing rate very high: 898.0Hz (possible runaway excitation)
+[2026-04-25 06:55:01] [WARN] SNN firing rate very high: 871.2Hz (possible runaway excitation)
+[2026-04-25 07:00:02] [WARN] SNN firing rate very high: 841.1Hz (possible runaway excitation)
+[2026-04-25 07:05:02] [WARN] SNN firing rate very high: 732.6Hz (possible runaway excitation)
+[2026-04-25 07:10:01] [CRITICAL] athena-brain NOT RUNNING on pod
+[2026-04-25 07:10:01] [WARN] SNN firing rate very high: 732.6Hz (possible runaway excitation)
+[2026-04-25 07:15:01] [CRITICAL] athena-brain NOT RUNNING on pod
+[2026-04-25 07:15:01] [WARN] SNN firing rate very high: 732.6Hz (possible runaway excitation)
+[2026-04-25 07:20:01] [CRITICAL] athena-brain NOT RUNNING on pod
+[2026-04-25 07:20:01] [WARN] SNN firing rate very high: 732.6Hz (possible runaway excitation)
+[2026-04-25 07:30:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 08:10:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 08:40:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 09:10:01] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 09:20:01] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 09:40:01] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 09:55:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 10:00:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 10:15:01] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 10:35:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 10:50:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 11:00:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 11:50:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 12:10:01] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 12:35:01] [CRITICAL] athena-training NOT RUNNING on pod
+Sat Apr 25 12:59:45 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Apr 25 12:59:45 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Apr 25 12:59:55 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Apr 25 12:59:55 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sat Apr 25 12:59:58 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Apr 25 12:59:58 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-25 13:10:01] [WARN] SNN firing rate very high: 831.5Hz (possible runaway excitation)
+[2026-04-25 13:15:01] [WARN] SNN firing rate very high: 640.9Hz (possible runaway excitation)
+[2026-04-25 13:40:02] [WARN] SNN firing rate very high: 812.8Hz (possible runaway excitation)
+[2026-04-25 13:45:02] [WARN] SNN firing rate very high: 650.4Hz (possible runaway excitation)
+[2026-04-25 14:15:02] [WARN] SNN firing rate very high: 825.9Hz (possible runaway excitation)
+[2026-04-25 14:20:01] [WARN] SNN firing rate very high: 692.8Hz (possible runaway excitation)
+[2026-04-25 14:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 60m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 14:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 14:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 70m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 14:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 75m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 14:45:01] [WARN] SNN firing rate very high: 803.7Hz (possible runaway excitation)
+[2026-04-25 14:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 80m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 14:50:02] [WARN] SNN firing rate very high: 798.7Hz (possible runaway excitation)
+[2026-04-25 14:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 85m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 14:55:01] [WARN] SNN firing rate very high: 664.0Hz (possible runaway excitation)
+[2026-04-25 14:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 90m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 97m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 100m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 105m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 110m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:20:02] [WARN] SNN firing rate very high: 779.9Hz (possible runaway excitation)
+[2026-04-25 15:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 115m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:25:02] [WARN] SNN firing rate very high: 544.9Hz (possible runaway excitation)
+[2026-04-25 15:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 120m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 125m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 130m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 15:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 135m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 16:00:02] [WARN] SNN firing rate very high: 332.1Hz (possible runaway excitation)
+[2026-04-25 16:30:02] [WARN] SNN firing rate very high: 794.3Hz (possible runaway excitation)
+[2026-04-25 16:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 61m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 16:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 66m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 17:10:02] [WARN] SNN firing rate very high: 649.3Hz (possible runaway excitation)
+[2026-04-25 17:50:02] [WARN] SNN firing rate very high: 650.8Hz (possible runaway excitation)
+[2026-04-25 17:55:01] [WARN] SNN firing rate very high: 651.5Hz (possible runaway excitation)
+[2026-04-25 18:00:02] [WARN] SNN firing rate very high: 651.5Hz (possible runaway excitation)
+[2026-04-25 18:05:01] [WARN] SNN firing rate very high: 548.4Hz (possible runaway excitation)
+[2026-04-25 18:50:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 19:05:01] [WARN] SNN firing rate very high: 816.9Hz (possible runaway excitation)
+[2026-04-25 19:10:01] [WARN] SNN firing rate very high: 792.2Hz (possible runaway excitation)
+[2026-04-25 19:15:02] [WARN] SNN firing rate very high: 759.7Hz (possible runaway excitation)
+[2026-04-25 19:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 60m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:20:01] [WARN] SNN firing rate very high: 637.5Hz (possible runaway excitation)
+[2026-04-25 19:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 71m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 75m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 80m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 85m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 91m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 19:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 95m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-25 20:10:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 20:25:02] [WARN] SNN firing rate very high: 822.5Hz (possible runaway excitation)
+[2026-04-25 20:30:02] [WARN] SNN firing rate very high: 775.2Hz (possible runaway excitation)
+[2026-04-25 20:35:01] [WARN] SNN firing rate very high: 693.8Hz (possible runaway excitation)
+[2026-04-25 20:40:01] [WARN] SNN firing rate very high: 677.5Hz (possible runaway excitation)
+[2026-04-25 20:41:16] [WARN] SNN firing rate very high: 642.4Hz (possible runaway excitation)
+[2026-04-25 20:41:16] [CRITICAL] Local disk / at 100% — purge old snapshots NOW
+[2026-04-25 20:45:02] [CRITICAL] Local disk / at 100% — purge old snapshots NOW
+[2026-04-25 20:50:02] [CRITICAL] Local disk / at 100% — purge old snapshots NOW
+[2026-04-25 21:40:02] [WARN] SNN firing rate very high: 827.7Hz (possible runaway excitation)
+[2026-04-25 21:45:02] [WARN] SNN firing rate very high: 780.0Hz (possible runaway excitation)
+[2026-04-25 21:50:01] [WARN] SNN firing rate very high: 695.3Hz (possible runaway excitation)
+[2026-04-25 21:55:01] [WARN] SNN firing rate very high: 647.8Hz (possible runaway excitation)
+[2026-04-25 22:00:02] [WARN] SNN firing rate very high: 275.5Hz (possible runaway excitation)
+[2026-04-25 22:15:02] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-25 22:55:01] [WARN] SNN firing rate very high: 864.7Hz (possible runaway excitation)
+[2026-04-25 23:00:02] [WARN] SNN firing rate very high: 796.6Hz (possible runaway excitation)
+[2026-04-25 23:05:02] [WARN] SNN firing rate very high: 690.3Hz (possible runaway excitation)
+[2026-04-25 23:10:02] [WARN] SNN firing rate very high: 580.6Hz (possible runaway excitation)
+Sat Apr 25 11:24:28 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sat Apr 25 11:24:28 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-25 23:45:02] [WARN] SNN firing rate very high: 852.3Hz (possible runaway excitation)
+[2026-04-25 23:50:02] [WARN] SNN firing rate very high: 712.7Hz (possible runaway excitation)
+[2026-04-25 23:55:02] [WARN] SNN firing rate very high: 629.0Hz (possible runaway excitation)
+[2026-04-26 00:35:02] [WARN] SNN firing rate very high: 843.5Hz (possible runaway excitation)
+[2026-04-26 00:40:01] [WARN] SNN firing rate very high: 803.4Hz (possible runaway excitation)
+[2026-04-26 00:45:02] [WARN] SNN firing rate very high: 408.4Hz (possible runaway excitation)
+[2026-04-26 01:10:02] [WARN] SNN firing rate very high: 727.3Hz (possible runaway excitation)
+[2026-04-26 01:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 61m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 01:15:02] [WARN] SNN firing rate very high: 694.0Hz (possible runaway excitation)
+[2026-04-26 01:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 66m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 01:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 71m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 01:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 76m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 01:45:02] [WARN] SNN firing rate very high: 844.6Hz (possible runaway excitation)
+[2026-04-26 01:50:01] [WARN] SNN firing rate very high: 712.1Hz (possible runaway excitation)
+[2026-04-26 01:55:02] [WARN] SNN firing rate very high: 278.1Hz (possible runaway excitation)
+[2026-04-26 02:20:01] [WARN] SNN firing rate very high: 829.1Hz (possible runaway excitation)
+[2026-04-26 02:25:01] [WARN] SNN firing rate very high: 677.0Hz (possible runaway excitation)
+[2026-04-26 02:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 60m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 02:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:00:02] [WARN] SNN firing rate very high: 726.6Hz (possible runaway excitation)
+[2026-04-26 03:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 70m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:05:01] [WARN] SNN firing rate very high: 448.4Hz (possible runaway excitation)
+[2026-04-26 03:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 75m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 80m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 90m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 95m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 100m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 105m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 110m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 115m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 120m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 125m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 03:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 130m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 135m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 140m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 145m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 150m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 155m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 158m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 160m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 165m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 170m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 175m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 180m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 04:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 185m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 05:20:02] [WARN] SNN firing rate very high: 745.7Hz (possible runaway excitation)
+[2026-04-26 05:25:02] [WARN] SNN firing rate very high: 585.6Hz (possible runaway excitation)
+[2026-04-26 06:10:01] [WARN] SNN firing rate very high: 736.8Hz (possible runaway excitation)
+[2026-04-26 06:15:01] [WARN] SNN firing rate very high: 558.1Hz (possible runaway excitation)
+[2026-04-26 06:40:01] [WARN] SNN firing rate very high: 708.5Hz (possible runaway excitation)
+[2026-04-26 06:45:01] [WARN] SNN firing rate very high: 708.2Hz (possible runaway excitation)
+[2026-04-26 07:20:02] [WARN] SNN firing rate very high: 642.6Hz (possible runaway excitation)
+[2026-04-26 07:35:02] [WARN] SNN firing rate very high: 282.2Hz (possible runaway excitation)
+[2026-04-26 07:50:01] [WARN] SNN firing rate very high: 646.3Hz (possible runaway excitation)
+[2026-04-26 08:05:01] [WARN] SNN firing rate very high: 389.4Hz (possible runaway excitation)
+[2026-04-26 08:10:02] [WARN] SNN firing rate very high: 389.4Hz (possible runaway excitation)
+[2026-04-26 08:25:01] [WARN] SNN firing rate very high: 232.2Hz (possible runaway excitation)
+[2026-04-26 08:40:02] [WARN] SNN firing rate very high: 720.0Hz (possible runaway excitation)
+[2026-04-26 08:45:01] [WARN] SNN firing rate very high: 493.2Hz (possible runaway excitation)
+[2026-04-26 09:15:01] [WARN] SNN firing rate very high: 388.3Hz (possible runaway excitation)
+[2026-04-26 09:30:02] [WARN] SNN firing rate very high: 398.9Hz (possible runaway excitation)
+[2026-04-26 09:50:01] [WARN] SNN firing rate very high: 709.6Hz (possible runaway excitation)
+[2026-04-26 10:20:02] [WARN] SNN firing rate very high: 718.5Hz (possible runaway excitation)
+[2026-04-26 10:25:01] [WARN] SNN firing rate very high: 137.2Hz (possible runaway excitation)
+[2026-04-26 10:55:01] [WARN] SNN firing rate very high: 713.8Hz (possible runaway excitation)
+[2026-04-26 11:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 72m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 78m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 83m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 88m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 93m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 11:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 98m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 12:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 102m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 12:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 117m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 12:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 117m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 12:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 117m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 12:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 122m (brain shards may still refresh — check supervisorctl status athena-training)
+Sun Apr 26 12:31:45 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 26 12:31:45 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 26 12:31:59 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 26 12:31:59 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+Sun Apr 26 12:32:06 PM CEST 2026 MODE COLLAPSE: json.decoder.JSONDecodeError: Expecting value: line 1 column 4 (char 3)
+Sun Apr 26 12:32:06 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
+[2026-04-26 13:15:02] [CRITICAL] athena-brain NOT RUNNING on pod
+[2026-04-26 13:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 13:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 65m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 13:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 70m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 13:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 74m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 13:40:02] [WARN] Pod checkpoint stale: newest is 124m old
+[2026-04-26 13:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 79m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 13:45:01] [WARN] Pod checkpoint stale: newest is 129m old
+[2026-04-26 13:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 84m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 13:50:02] [WARN] Pod checkpoint stale: newest is 134m old
+[2026-04-26 13:55:01] [WARN] Pod checkpoint stale: newest is 138m old
+[2026-04-26 14:00:01] [WARN] Pod checkpoint stale: newest is 143m old
+[2026-04-26 14:05:01] [WARN] Pod checkpoint stale: newest is 148m old
+[2026-04-26 14:10:01] [WARN] Pod checkpoint stale: newest is 153m old
+[2026-04-26 14:15:01] [WARN] Pod checkpoint stale: newest is 157m old
+[2026-04-26 14:20:02] [WARN] Pod checkpoint stale: newest is 162m old
+[2026-04-26 14:25:02] [WARN] Pod checkpoint stale: newest is 171m old
+[2026-04-26 14:30:01] [WARN] Pod checkpoint stale: newest is 175m old
+[2026-04-26 14:35:01] [WARN] Pod checkpoint stale: newest is 179m old
+[2026-04-26 14:40:01] [WARN] Pod checkpoint stale: newest is 184m old
+[2026-04-26 14:45:02] [WARN] Pod checkpoint stale: newest is 187m old

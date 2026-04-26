@@ -508,12 +508,17 @@ check_checkpoints() {
             log "No pod checkpoints found at ${POD_CKPT}*"
         fi
 
-        # Trainer-aliveness tripwire — athena_auto_*.bin is only written by the
-        # trainer (immerse_athena.py). The brain daemon's *.bin.{snn,lnn,...}
-        # shards keep refreshing every 300s even when the trainer has crashed,
-        # so they are NOT a reliable signal that learning is happening. A
-        # >60-minute gap in auto-snapshots while the brain is alive indicates
-        # the trainer is dead/crash-looping.
+        # Trainer-aliveness tripwire (2026-04-26 walkthrough revision):
+        # athena_auto_*.bin is only written when the daemon's
+        # notify_training_step counter has *increased*
+        # since the last athena_auto write (gated in brain_daemon.py:save_now
+        # by _save_count > _save_count_at_last_athena_auto). The daemon's
+        # own 5-min auto-save loop runs even when the trainer is dead, so
+        # we cannot key on athena_immersive.bin / athena_s*_step*.bin
+        # mtime — those tick regardless. Combined with the wall-clock
+        # 25-min cadence gate, this means a missing athena_auto for >60 min
+        # reliably indicates a dead trainer. The *.bin.{snn,lnn,...}
+        # sidecars are excluded because they trail the canonical save.
         local pod_auto_age
         pod_auto_age=$($POD_SSH "ls -t ${POD_CKPT%/*}/athena_auto_*.bin 2>/dev/null \
                                  | grep -v '\.snn$\|\.lnn$\|\.cnn$\|\.meta$\|\.tokenizer$\|\.mirror_neurons$\|\.executive$\|\.cortex_' \

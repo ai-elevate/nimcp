@@ -1945,8 +1945,24 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 extern float fno_audio_get_last_loss(const void*);
                 extern uint64_t fno_audio_get_steps(const void*);
                 extern uint32_t fno_audio_get_param_count(const void*);
-                brain->network_metrics.fno_audio_loss = fno_audio_get_last_loss(fno);
-                brain->network_metrics.fno_audio_ema_loss = fno_audio_get_ema_loss(fno);
+                /* Cortex audio FNO is currently inference-only —
+                 * fno_audio_processor_t::ema_loss / last_loss are never
+                 * written by nimcp_fno_layer.c (fno_audio_forward only
+                 * increments forward_steps). Reading them returns 0.0,
+                 * which used to clobber whatever brain_part_core wrote
+                 * from the SNN-FNO populations into the same metric
+                 * field. Only update steps/params here; gate ema_loss /
+                 * last_loss writes on a non-zero value so the SNN-FNO
+                 * source-of-truth survives. 2026-04-26 fno_loss=0/1282-step
+                 * paradox. */
+                float _cortex_fno_ema  = fno_audio_get_ema_loss(fno);
+                float _cortex_fno_last = fno_audio_get_last_loss(fno);
+                if (_cortex_fno_ema > 0.0f) {
+                    brain->network_metrics.fno_audio_ema_loss = _cortex_fno_ema;
+                }
+                if (_cortex_fno_last > 0.0f) {
+                    brain->network_metrics.fno_audio_loss = _cortex_fno_last;
+                }
                 brain->network_metrics.fno_audio_steps = fno_audio_get_steps(fno);
                 brain->network_metrics.fno_audio_params = fno_audio_get_param_count(fno);
             }
