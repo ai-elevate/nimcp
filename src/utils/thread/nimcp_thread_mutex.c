@@ -24,6 +24,12 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(thread_mutex)
 // External declarations for error handling (defined in nimcp_thread.c)
 extern void set_thread_error(int error_code, const char* format, ...);
 
+/* Predicate from nimcp_exception.c — returns false during teardown after
+ * nimcp_exception_system_shutdown() runs. Used to gate exception throws
+ * from mutex destroy/lock so we don't re-enter a tearing-down exception
+ * system (which itself uses mutexes — recursion → cascading failures). */
+extern bool nimcp_exception_system_is_initialized(void);
+
 //=============================================================================
 // Mutex Operations
 //=============================================================================
@@ -138,7 +144,18 @@ nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
     int result = nimcp_platform_mutex_destroy(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex destruction failed: %s", strerror(result));
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
+        /* During teardown the exception system is itself shutting down (or already
+         * shut down) — and the dispatcher uses mutexes internally. Re-entering it
+         * from a failed mutex destroy produces cascading "system error" diagnostics
+         * (and sometimes worse, e.g. SIGFPE in handler dispatch). Gate the throw
+         * on exception-system liveness; otherwise just log + return. */
+        if (nimcp_exception_system_is_initialized()) {
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
+        } else {
+            LOG_WARN("nimcp_mutex_destroy: pthread_mutex_destroy errno=%d (%s) "
+                     "during teardown — suppressed", result, strerror(result));
+            return NIMCP_ERROR_SYSTEM;
+        }
     }
 
     /* NOTE: Do NOT free mutex here - it may be embedded in another struct.
@@ -194,7 +211,14 @@ nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
     int result = nimcp_platform_mutex_lock(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex lock failed: %s", strerror(result));
-        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
+        /* See nimcp_mutex_destroy comment. Suppress the throw during teardown. */
+        if (nimcp_exception_system_is_initialized()) {
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
+        } else {
+            LOG_WARN("nimcp_mutex_lock: pthread_mutex_lock errno=%d (%s) "
+                     "during teardown — suppressed", result, strerror(result));
+            return NIMCP_ERROR_SYSTEM;
+        }
     }
 
     return NIMCP_SUCCESS;

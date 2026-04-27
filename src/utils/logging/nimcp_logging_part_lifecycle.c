@@ -43,8 +43,17 @@ static bool ring_buffer_init(log_ring_buffer_t* rb, size_t capacity, nimcp_logge
 
 /**
  * WHAT: Destroy ring buffer
+ *
+ * Safety: zero capacity BEFORE freeing entries. ring_buffer_pop's
+ * teardown guard checks (entries == NULL || capacity == 0) — clearing
+ * capacity first means any concurrent pop sees an empty buffer rather
+ * than racing with the free. The async writer is joined before this is
+ * called under normal lifecycle, but crash-driven shutdown paths can
+ * land here while the writer is still draining.
  */
 static void ring_buffer_destroy(log_ring_buffer_t* rb) {
+    if (!rb) return;
+    rb->capacity = 0;  /* fence: pop now treats buffer as empty */
     if (rb->entries) {
         log_free(rb->entries);
         rb->entries = NULL;

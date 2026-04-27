@@ -10,6 +10,7 @@
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"  /* Phase 3c: amygdala destroy */
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* glial destroy helper */
+#include "core/cortical_columns/nimcp_cortical_column_ternary.h"  /* CC4 ternary destroy */
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
 #include "generation/nimcp_language_generator.h"
@@ -615,7 +616,41 @@ void brain_destroy(brain_t brain)
         brain->cortical_column_pool = NULL;
     }
 
+    /* CC4 ternary teardown — paired with allocations in
+     * nimcp_brain_init_structural.c. Each per-hypercolumn cc_ternary
+     * object owns its own state; the shared cc_ternary_connectivity
+     * object outlives them and is freed last. */
+    if (brain->ternary_hypercolumns) {
+        for (uint32_t i = 0; i < brain->num_ternary_hypercolumns; i++) {
+            if (brain->ternary_hypercolumns[i]) {
+                cc_ternary_hypercolumn_destroy(
+                    (cc_ternary_hypercolumn_t*)brain->ternary_hypercolumns[i]);
+            }
+        }
+        nimcp_free(brain->ternary_hypercolumns);
+        brain->ternary_hypercolumns = NULL;
+        brain->num_ternary_hypercolumns = 0;
+    }
+    if (brain->ternary_connectivity) {
+        cc_ternary_connectivity_destroy(
+            (cc_ternary_connectivity_t*)brain->ternary_connectivity);
+        brain->ternary_connectivity = NULL;
+    }
+
+    /* CC2/CC3 column→decision projection scratch + matrix.
+     * Both allocated together in init; free both, NULL both. */
+    if (brain->column_feature_buf) {
+        nimcp_free(brain->column_feature_buf);
+        brain->column_feature_buf = NULL;
+    }
+    if (brain->column_to_decision_proj) {
+        nimcp_free(brain->column_to_decision_proj);
+        brain->column_to_decision_proj = NULL;
+    }
+    brain->column_feature_dim = 0;
+
     brain->enable_cortical_columns = false;
+    brain->enable_cortical_ternary = false;
 
 
     // Phase 9.0: Cleanup neural logic network

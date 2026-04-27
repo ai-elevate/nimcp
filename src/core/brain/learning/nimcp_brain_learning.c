@@ -94,6 +94,7 @@
 
 // Phase 1-4 substrate + thalamic router attach helpers
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
+#include "core/brain/factory/init/nimcp_brain_init_language_pops.h"
 #include "lnn/nimcp_lnn.h"
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
@@ -1986,6 +1987,22 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                         else
                             brain->network_metrics.ema_snn_loss =
                                 (1.0f - a) * brain->network_metrics.ema_snn_loss + a * nloss;
+                        /* P3.1 monitor: sample TRN pop firing rate. Best-effort —
+                         * a non-hierarchical SNN won't have this pop and we leave
+                         * the metric at its prior value. */
+                        if (brain->snn_network) {
+                            int trn_idx = snn_network_find_pop_by_name(
+                                brain->snn_network, "thalamus_reticular");
+                            if (trn_idx >= 0 &&
+                                (uint32_t)trn_idx < brain->snn_network->n_populations) {
+                                snn_population_t* trn_pop =
+                                    brain->snn_network->populations[trn_idx];
+                                if (trn_pop && isfinite(trn_pop->mean_rate)) {
+                                    brain->network_metrics.trn_mean_rate_hz =
+                                        trn_pop->mean_rate;
+                                }
+                            }
+                        }
                         break;
                     case NIMCP_TRAINABLE_LNN:
                         brain->network_metrics.last_lnn_loss = nloss;
@@ -5188,6 +5205,32 @@ int brain_enable_multi_network_training(brain_t brain)
         } else {
             brain->snn_network = snn;
             brain->owns_specialized_network = true;
+
+            /* Substrate-correctness post-check: confirm the reticular thalamic
+             * nucleus pop is present after hierarchical wiring. P3.1 added it
+             * as a non-tier pop, and a silent absence (e.g. add_population
+             * returning -1 under memory pressure) would leave attention/gain
+             * consumers operating on a dead handle. Loud warn here so the
+             * regression is visible in startup logs rather than discovered
+             * later via runtime null deref. Feedforward-fallback SNNs don't
+             * have TRN by design — only check on hierarchical paths. */
+            if (snn_target > 0) {
+                int trn_idx = snn_network_find_pop_by_name(snn, "thalamus_reticular");
+                if (trn_idx < 0) {
+                    NIMCP_LOGGING_WARN("SNN substrate post-check: 'thalamus_reticular' "
+                                       "pop not found — TRN gating will be inert "
+                                       "(downstream consumers should branch on this)");
+                } else {
+                    NIMCP_LOGGING_INFO("SNN substrate post-check: TRN at pop %d", trn_idx);
+                }
+            }
+
+            /* Cold-init language + sensorymotor SNN pops (Stage 1).
+             * Adds 4 lightweight CSR pops on top of the hierarchical layout:
+             * broca/wernicke (32K each), arcuate (16K), sensorymotor (20K).
+             * Pops are unconnected; Stage 2 wires Broca/Wernicke adapters
+             * + sensor_hub + cerebellum/basal_ganglia consumers. */
+            (void)nimcp_brain_factory_init_language_pops(brain);
 
             /* Create per-population FNO models for spectral dynamics prediction.
              * FNO models population-level spectral dynamics — it does NOT need

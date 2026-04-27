@@ -3236,6 +3236,150 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_full_brain_lifecycle_e2e.c)
 endif()
 
 # ---------------------------------------------------------------------------
+# E2E: SNN Per-Receptor Smoke @ 1.8M neurons (C + libcheck)
+# ---------------------------------------------------------------------------
+# WHAT: Boots a full ~1.8M-neuron SNN brain with conductance-based PSCs and the
+#       per-receptor (g_ampa / g_nmda / g_gaba_a / g_gaba_b) split, runs 100
+#       forward steps under deterministic stim, and pins smoke-level invariants
+#       (no NaN/Inf, no dead-pop, no runaway, bounded g_*).
+# WHY:  Pod-scale regressions in the per-receptor deposit/decay kernels only
+#       surface at production wiring density. Unit tests pin shape; this pins
+#       behavior. Slow by construction — gate via NIMCP_E2E_QUICK to skip.
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_per_receptor_e2e.c)
+    add_executable(e2e_test_snn_per_receptor
+        test_snn_per_receptor_e2e.c
+    )
+    target_include_directories(e2e_test_snn_per_receptor PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_snn_per_receptor PRIVATE c_std_11)
+    target_link_libraries(e2e_test_snn_per_receptor PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME e2e_test_snn_per_receptor
+             COMMAND e2e_test_snn_per_receptor
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_snn_per_receptor
+        PROPERTIES
+            LABELS "e2e;snn;cb;per_receptor;heavy;slow"
+            TIMEOUT 1800   # 30 min — full 1.8M brain init + 100 steps
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# ---------------------------------------------------------------------------
+# E2E: Language pops (broca/wernicke/arcuate/sensorymotor) + adapter binding
+# ---------------------------------------------------------------------------
+# WHAT: Boots a small brain via brain_create_custom(), runs a few learn ticks
+#       to trigger the lazy SNN init + init_language_pops, then asserts the
+#       four substrate pops exist and broca/wernicke adapters are bound.
+# WHY:  End-to-end smoke test for the whole language-substrate wiring chain.
+#       Catches regressions where any link between adapter creation and
+#       attach_snn_pop wiring silently drifts.
+# HOW:  C99 + nimcp public API. No libcheck framework — uses fail/pass
+#       sentinels + return codes (matches test_snn_per_receptor_e2e.c).
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lang_pops_e2e.c)
+    add_executable(e2e_test_lang_pops
+        test_lang_pops_e2e.c
+    )
+    target_include_directories(e2e_test_lang_pops PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_lang_pops PRIVATE c_std_11)
+    target_link_libraries(e2e_test_lang_pops PRIVATE
+        nimcp_middleware nimcp Threads::Threads m
+    )
+    add_test(NAME e2e_test_lang_pops
+             COMMAND e2e_test_lang_pops
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_lang_pops
+        PROPERTIES
+            LABELS "e2e;snn;language;adapter"
+            TIMEOUT 600
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# ---------------------------------------------------------------------------
+# E2E: SNN Layer-Specific Pyramidal Subtypes (P4.1)
+# ---------------------------------------------------------------------------
+# WHAT: Boots a full ~1.8M-neuron SNN brain via the production
+#       brain_create_custom() path (same path as the daemon) and verifies
+#       that the layer-specific subclass distribution (PYRAMIDAL_L23 /
+#       PYRAMIDAL_L4_STELLATE / PYRAMIDAL_L5_BETZ) is preserved end-to-end.
+# WHY:  Hierarchical-builder unit/integration tests pin the construction
+#       primitives in isolation. This pins the contract through the full
+#       brain build path — a future refactor that reconstructs SNN pops
+#       post-hierarchy-build could silently drop the subclass tags.
+# HOW:  C + libcheck (matches test_snn_per_receptor_e2e.c). C++ would trip
+#       a cublas redeclaration warning when src/ headers transitively pull
+#       cuda — same reason the per-receptor e2e is C, not C++.
+# RUNTIME: 5-15 min. Gated by NIMCP_E2E_QUICK to keep `make test` fast.
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_layer_subtypes_e2e.c)
+    add_executable(e2e_test_snn_layer_subtypes
+        test_snn_layer_subtypes_e2e.c
+    )
+    target_include_directories(e2e_test_snn_layer_subtypes PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_snn_layer_subtypes PRIVATE c_std_11)
+    target_link_libraries(e2e_test_snn_layer_subtypes PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME e2e_test_snn_layer_subtypes
+             COMMAND e2e_test_snn_layer_subtypes
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_snn_layer_subtypes
+        PROPERTIES
+            LABELS "e2e;snn;layer_subtypes;p4.1;heavy;slow"
+            TIMEOUT 1800
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# ---------------------------------------------------------------------------
+# E2E: SNN Wave H Dendritic Compartments (full hierarchical brain)
+# ---------------------------------------------------------------------------
+# WHAT: Boots a full ~1.8M-neuron SNN brain with dendritic_enabled = 1 on
+#       tier-pyramidal pops, runs 50 forward steps + 200 ms quiet taper,
+#       and pins:
+#         - no NaN/Inf in membrane_v / v_basal / v_apical
+#         - all dendritic-tagged pops are tier-pyr (interneurons stay
+#           single-compartment)
+#         - no infinite plateau: plateau_active count returns to 0 within
+#           200 ms of input withdrawal
+# WHY:  Pod-scale regressions in the two-compartment integration only
+#       surface at production wiring density. Skip via NIMCP_E2E_QUICK.
+# HOW:  GoogleTest. C++ links nimcp_middleware (header bundle for brain_t
+#       / brain_create_custom). Skip-aware SetUp.
+# RUNTIME: 5-15 min. Gated by NIMCP_E2E_QUICK to keep `make test` fast.
+# ---------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_dendritic_e2e.c)
+    add_executable(e2e_test_snn_dendritic
+        test_snn_dendritic_e2e.c
+    )
+    target_include_directories(e2e_test_snn_dendritic PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+    )
+    target_compile_features(e2e_test_snn_dendritic PRIVATE c_std_11)
+    target_link_libraries(e2e_test_snn_dendritic PRIVATE
+        nimcp_middleware nimcp Threads::Threads check_pic subunit rt m
+    )
+    add_test(NAME e2e_test_snn_dendritic
+             COMMAND e2e_test_snn_dendritic
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(e2e_test_snn_dendritic
+        PROPERTIES
+            LABELS "e2e;snn;dendritic;wave_h;heavy;slow"
+            TIMEOUT 1800
+            RESOURCE_LOCK "brain_heavy")
+endif()
+
+# ---------------------------------------------------------------------------
 # E2E: Sleep-Wake Cycle (C + libcheck)
 # ---------------------------------------------------------------------------
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_sleep_wake_cycle_e2e.c)

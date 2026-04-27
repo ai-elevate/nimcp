@@ -225,6 +225,290 @@ if(CHECK_LIB_FOUND)
         TIMEOUT 600
     )
 
+    # 10. SNN Per-Receptor Integration (P0 — AMPA/NMDA/GABA_A/GABA_B routing)
+    # Lives in snn/ subdir but uses Check framework + nimcp_snn, so registered
+    # here where the Check infrastructure is set up. nimcp_snn is required
+    # because synapse_type_per_src and the per-receptor deposit kernel live
+    # in libnimcp_snn.a.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_snn_per_receptor_integration.c)
+        add_executable(integration_snn_per_receptor
+            snn/test_snn_per_receptor_integration.c
+        )
+        target_include_directories(integration_snn_per_receptor PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_per_receptor
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_per_receptor
+                 COMMAND integration_snn_per_receptor)
+        set_tests_properties(integration_snn_per_receptor PROPERTIES
+            LABELS "integration;snn;per_receptor;cb"
+            TIMEOUT 180
+        )
+        message(STATUS "  Added SNN per-receptor integration test")
+    endif()
+
+    # P1.1 — top-down NMDA feedback projections (descending L5→L3, L6→L2).
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_top_down_feedback.c)
+        add_executable(integration_snn_top_down
+            snn/test_top_down_feedback.c
+        )
+        target_include_directories(integration_snn_top_down PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_top_down
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_top_down
+                 COMMAND integration_snn_top_down)
+        set_tests_properties(integration_snn_top_down PROPERTIES
+            LABELS "integration;snn;top_down;p1.1"
+            TIMEOUT 900
+        )
+        message(STATUS "  Added SNN top-down feedback (P1.1) integration test")
+    endif()
+
+    # P3.1 — reticular thalamic nucleus (TRN gating).
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_trn_gating.c)
+        add_executable(integration_snn_trn
+            snn/test_trn_gating.c
+        )
+        target_include_directories(integration_snn_trn PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_trn
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_trn
+                 COMMAND integration_snn_trn)
+        set_tests_properties(integration_snn_trn PROPERTIES
+            LABELS "integration;snn;trn;p3.1"
+            TIMEOUT 900
+        )
+        message(STATUS "  Added SNN reticular thalamic nucleus (P3.1) integration test")
+    endif()
+
+    # P2.2 — PV/SOM/VIP interneuron disinhibition chain.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_pv_som_vip_disinhibition.c)
+        add_executable(integration_snn_pv_som_vip
+            snn/test_pv_som_vip_disinhibition.c
+        )
+        target_include_directories(integration_snn_pv_som_vip PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_pv_som_vip
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_pv_som_vip
+                 COMMAND integration_snn_pv_som_vip)
+        set_tests_properties(integration_snn_pv_som_vip PROPERTIES
+            LABELS "integration;snn;disinhibition;p2.2"
+            TIMEOUT 900
+        )
+        message(STATUS "  Added SNN PV/SOM/VIP disinhibition (P2.2) integration test")
+    endif()
+
+    # Wave F task #263 — substrate skip-path extension (3 new SKIP_DEFS).
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_snn_skip_topology.c)
+        add_executable(integration_snn_skip_topology
+            snn/test_snn_skip_topology.c
+        )
+        target_include_directories(integration_snn_skip_topology PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_skip_topology
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_skip_topology
+                 COMMAND integration_snn_skip_topology)
+        set_tests_properties(integration_snn_skip_topology PROPERTIES
+            LABELS "integration;snn;skip;wave_f"
+            TIMEOUT 900
+        )
+        message(STATUS "  Added SNN cortico-cortical skip topology (Wave F) integration test")
+    endif()
+
+    # Wave C task #260 — Dale's principle audit for full hierarchical SNN.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_snn_dale_integration.c)
+        add_executable(integration_snn_dale
+            snn/test_snn_dale_integration.c
+        )
+        target_include_directories(integration_snn_dale PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_dale
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_dale
+                 COMMAND integration_snn_dale)
+        set_tests_properties(integration_snn_dale PROPERTIES
+            LABELS "integration;snn;dale;wave_c"
+            TIMEOUT 900
+        )
+        message(STATUS "  Added SNN Dale's principle (Wave C) integration test")
+    endif()
+
+    # P4.1 — layer-specific pyramidal subtypes (L23 / L4_STELLATE / L5_BETZ).
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_layer_subtypes_wiring.c)
+        add_executable(integration_snn_layer_subtypes
+            snn/test_layer_subtypes_wiring.c
+        )
+        target_include_directories(integration_snn_layer_subtypes PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_layer_subtypes
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_layer_subtypes
+                 COMMAND integration_snn_layer_subtypes)
+        set_tests_properties(integration_snn_layer_subtypes PROPERTIES
+            LABELS "integration;snn;layer_subtypes;p4.1"
+            TIMEOUT 900
+        )
+        message(STATUS "  Added SNN layer-specific subtypes (P4.1) integration test")
+    endif()
+
+    # Wave D — PV gap-junction (Connexin-36) electrical coupling.
+    # Verifies the per-pop gap-junction term in the SNN hot loop propagates
+    # voltage from one driven neuron to the rest of the syncytium under CB
+    # mode. Uses libcheck for parity with the other PV/SOM/VIP tests.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_snn_gap_junction_integration.c)
+        add_executable(integration_snn_gap_junction
+            snn/test_snn_gap_junction_integration.c
+        )
+        target_include_directories(integration_snn_gap_junction PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_gap_junction
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_gap_junction
+                 COMMAND integration_snn_gap_junction)
+        set_tests_properties(integration_snn_gap_junction PROPERTIES
+            LABELS "integration;snn;gap_junction;cb;wave_d"
+            TIMEOUT 180
+        )
+        message(STATUS "  Added SNN gap-junction (Wave D) integration test")
+    endif()
+
+    # Wave E FFI fix — per-pop conduction delay (spike-history ring buffer).
+    # Verifies the deposit kernel's delayed-spike read produces measurable
+    # timing offsets in the SNN hot loop. Uses libcheck for parity with
+    # the gap-junction integration test.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_snn_conduction_delay_integration.c)
+        add_executable(integration_snn_conduction_delay
+            snn/test_snn_conduction_delay_integration.c
+        )
+        target_include_directories(integration_snn_conduction_delay PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_conduction_delay
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_conduction_delay
+                 COMMAND integration_snn_conduction_delay)
+        set_tests_properties(integration_snn_conduction_delay PROPERTIES
+            LABELS "integration;snn;conduction_delay;ffi;wave_e"
+            TIMEOUT 180
+        )
+        message(STATUS "  Added SNN conduction-delay (Wave E) integration test")
+    endif()
+
+    # Wave G — per-neuron LIF heterogeneity.
+    # Verifies σ=0.2 produces measurably higher first-spike-time variance
+    # than σ=0 under matched drive — i.e. heterogeneity desynchronises
+    # firing instead of merely allocating buffers. Uses libcheck for parity
+    # with the other SNN biophysical integration tests.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/test_snn_heterogeneity_integration.c)
+        add_executable(integration_snn_heterogeneity
+            snn/test_snn_heterogeneity_integration.c
+        )
+        target_include_directories(integration_snn_heterogeneity PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CHECK_LIB_INCLUDE_DIRS}
+        )
+        target_link_libraries(integration_snn_heterogeneity
+            nimcp_snn
+            nimcp
+            ${CHECK_LIB_LIBRARIES}
+            pthread
+            m
+            z
+        )
+        add_test(NAME integration_snn_heterogeneity
+                 COMMAND integration_snn_heterogeneity)
+        set_tests_properties(integration_snn_heterogeneity PROPERTIES
+            LABELS "integration;snn;heterogeneity;wave_g"
+            TIMEOUT 180
+        )
+        message(STATUS "  Added SNN heterogeneity (Wave G) integration test")
+    endif()
+
 else()
     message(STATUS "  [SKIP] Brain subsystem integration tests - Check library not found")
 endif()

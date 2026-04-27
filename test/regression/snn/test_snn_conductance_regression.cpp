@@ -119,24 +119,33 @@ protected:
 // OFF-mode invariants
 //=============================================================================
 
+// NOTE on snn_network_step return semantics: returns total_spikes on success
+// (>= 0) and a negative SNN_ERROR_* code on failure. The original test used
+// ASSERT_EQ(step, 0) which only passed when LIF decay happened to leave V
+// just below threshold, producing flaky suite-level failures whenever timing
+// or noise rate let one input neuron spike. All call sites now use ASSERT_GE
+// (step, 0) — assert "no error", not "no spikes".
+
 TEST_F(CbRegressionTest, OffMode_ConductanceArraysRemainAllZero) {
     // Even with full noise + basket + AHP + depression active, no g_exc
     // or g_inh should ever become nonzero in OFF mode.
     for (int s = 0; s < 50; s++) {
         drive_all();
-        ASSERT_EQ(snn_network_step(net, 1.0f), 0);
+        ASSERT_GE(snn_network_step(net, 1.0f), 0);
     }
     snn_population_t* out = net->populations[output_id];
     for (uint32_t i = 0; i < N_OUT; i++) {
-        EXPECT_FLOAT_EQ(out->g_exc[i], 0.0f);
-        EXPECT_FLOAT_EQ(out->g_inh[i], 0.0f);
+        EXPECT_FLOAT_EQ(out->g_ampa[i],   0.0f);
+        EXPECT_FLOAT_EQ(out->g_nmda[i],   0.0f);
+        EXPECT_FLOAT_EQ(out->g_gaba_a[i], 0.0f);
+        EXPECT_FLOAT_EQ(out->g_gaba_b[i], 0.0f);
     }
 }
 
 TEST_F(CbRegressionTest, OffMode_StepReturnsSuccessAndProducesFiniteV) {
     for (int s = 0; s < 50; s++) {
         drive_all();
-        ASSERT_EQ(snn_network_step(net, 1.0f), 0);
+        ASSERT_GE(snn_network_step(net, 1.0f), 0);
     }
     snn_population_t* out = net->populations[output_id];
     const float* v = (const float*)nimcp_tensor_data(out->membrane_v);
@@ -153,7 +162,7 @@ TEST_F(CbRegressionTest, OffMode_DepressionBufferAllocatedAndFinite) {
     // existing SNN test suite.)
     for (int s = 0; s < 30; s++) {
         drive_all();
-        ASSERT_EQ(snn_network_step(net, 1.0f), 0);
+        ASSERT_GE(snn_network_step(net, 1.0f), 0);
     }
     snn_population_t* in = net->populations[input_id];
     EXPECT_NE(in->depression, nullptr);
@@ -171,7 +180,7 @@ TEST_F(CbRegressionTest, OffMode_BasketStillEmitsInhibition) {
     // Drive heavily so output spikes, which will recruit basket activity.
     for (int s = 0; s < 30; s++) {
         drive_all();
-        ASSERT_EQ(snn_network_step(net, 1.0f), 0);
+        ASSERT_GE(snn_network_step(net, 1.0f), 0);
     }
     SUCCEED();  // not crashing under full feature set with CB OFF is the
                 // regression signal. The integration test covers behavior.
@@ -207,7 +216,7 @@ TEST_F(CbRegressionTest, RescaleAppliedThenOffMode_StillProducesFiniteV) {
     EXPECT_FLOAT_EQ(snn_tune_get_conductance_enabled(), 0.0f);  // still off
     for (int s = 0; s < 30; s++) {
         drive_all();
-        ASSERT_EQ(snn_network_step(net, 1.0f), 0);
+        ASSERT_GE(snn_network_step(net, 1.0f), 0);
     }
     snn_population_t* out = net->populations[output_id];
     const float* v = (const float*)nimcp_tensor_data(out->membrane_v);

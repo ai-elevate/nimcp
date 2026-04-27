@@ -269,8 +269,10 @@ TEST_F(CbRunawaySuppressionE2E, CbMode_AllStateFiniteAcross500Steps) {
     const float* v = (const float*)nimcp_tensor_data(hid->membrane_v);
     for (uint32_t i = 0; i < N_HIDDEN; i++) {
         ASSERT_TRUE(std::isfinite(v[i])) << "neuron " << i << " V=" << v[i];
-        ASSERT_TRUE(std::isfinite(hid->g_exc[i])) << "g_exc[" << i << "]=" << hid->g_exc[i];
-        ASSERT_TRUE(std::isfinite(hid->g_inh[i])) << "g_inh[" << i << "]=" << hid->g_inh[i];
+        if (hid->g_ampa)   { ASSERT_TRUE(std::isfinite(hid->g_ampa[i]))   << "g_ampa["   << i << "]=" << hid->g_ampa[i]; }
+        if (hid->g_nmda)   { ASSERT_TRUE(std::isfinite(hid->g_nmda[i]))   << "g_nmda["   << i << "]=" << hid->g_nmda[i]; }
+        if (hid->g_gaba_a) { ASSERT_TRUE(std::isfinite(hid->g_gaba_a[i])) << "g_gaba_a[" << i << "]=" << hid->g_gaba_a[i]; }
+        if (hid->g_gaba_b) { ASSERT_TRUE(std::isfinite(hid->g_gaba_b[i])) << "g_gaba_b[" << i << "]=" << hid->g_gaba_b[i]; }
     }
     h.teardown();
 }

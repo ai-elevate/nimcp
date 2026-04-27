@@ -112,6 +112,56 @@ void net_snn_kg_trigger_event(brain_t brain, const char* kind,
 /* Forward declarations */
 static void snn_population_destroy_internal(snn_population_t* pop);
 
+/* =========================================================================
+ * Wave E FFI fix — per-pop spike-history ring buffer helpers (DRY).
+ *
+ * The ring has SNN_SPIKE_HISTORY_SLOTS rows of n_neurons floats. The write
+ * head points at the slot that will be written NEXT (i.e. the freshest
+ * snapshot is at (head - 1) mod SLOTS). A read with conduction_delay = D
+ * returns the slot D entries older than the freshest snapshot:
+ *     slot = (head - 1 - D) mod SLOTS
+ * Both reader and writer use these helpers so the modular arithmetic lives
+ * in one place. See docs/claude/ffi-timing-audit-2026-04-27.md.
+ * ========================================================================= */
+
+/* Compute the row index in the spike-history ring corresponding to a spike
+ * emitted `delay_steps` ago, given the current write head. Pure: no I/O,
+ * no side effects — safe to inline at every read site.
+ *
+ * delay_steps must be < SNN_SPIKE_HISTORY_SLOTS (caller pre-clamps via the
+ * setter); the modular arithmetic still works for any uint8_t input but
+ * SNN_MAX_CONDUCTION_DELAY_STEPS keeps the "freshest at head-1" invariant
+ * intact. */
+static inline uint8_t snn_spike_history_read_slot(uint8_t head, uint8_t delay_steps) {
+    /* head points at NEXT write slot ⇒ freshest is at (head - 1).
+     * Add SLOTS once to keep the subtract-from-uint8_t expression
+     * positive before the modulo. */
+    return (uint8_t)((head + SNN_SPIKE_HISTORY_SLOTS - 1u - delay_steps)
+                     % SNN_SPIKE_HISTORY_SLOTS);
+}
+
+/* Read pointer to the row of spike_history corresponding to `delay_steps`
+ * ago. Returns NULL in three cases (the caller falls back to reading the
+ * pop's live spike_output buffer):
+ *   1. Pop has no ring buffer (alloc failure or non-lightweight pop).
+ *   2. conduction_delay_steps == 0 — bit-identity contract: a delay of
+ *      zero MUST be indistinguishable from pre-Wave-E same-tick deposit
+ *      semantics. Reading the freshest ring slot would deliver an
+ *      end-of-PREVIOUS-step snapshot, which is one step late vs the
+ *      live spike_output. Returning NULL here makes the caller read
+ *      spike_output (same-tick), preserving legacy behavior bit-for-bit.
+ *   3. (none — only the two above; documented for clarity).
+ * docs/claude/ffi-timing-audit-2026-04-27.md. */
+static inline const float* snn_pop_get_delayed_spike_row(
+    const snn_population_t* pop)
+{
+    if (!pop || !pop->spike_history) return NULL;
+    if (pop->conduction_delay_steps == 0) return NULL;  /* legacy same-tick */
+    uint8_t slot = snn_spike_history_read_slot(pop->spike_history_head,
+                                               pop->conduction_delay_steps);
+    return pop->spike_history + (size_t)slot * (size_t)pop->n_neurons;
+}
+
 /**
  * @brief Allocate and initialize a population structure
  */
@@ -220,15 +270,20 @@ static snn_population_t* snn_population_create_internal(
         }
     }
 
-    /* Conductance-based PSC state (CB migration). Allocation failure is
-     * non-fatal — CB mode evaluates (g_exc && g_inh && flag) so a NULL pair
-     * silently degrades to current-based behavior even if the flag is on. */
-    pop->g_exc = nimcp_calloc(n_neurons, sizeof(float));
-    pop->g_inh = nimcp_calloc(n_neurons, sizeof(float));
-    if (!pop->g_exc || !pop->g_inh) {
+    /* Conductance-based PSC state (CB migration + P0 per-receptor split).
+     * Four conductance buckets — AMPA / NMDA / GABA_A / GABA_B — with
+     * receptor-specific decay τ and reversal potentials. Allocation
+     * failure on any of these is non-fatal: the deposit and integrate
+     * kernels treat NULL pointers as a no-op (silent degrade), so CB
+     * mode just behaves as if that receptor type produces no current. */
+    pop->g_ampa   = nimcp_calloc(n_neurons, sizeof(float));
+    pop->g_nmda   = nimcp_calloc(n_neurons, sizeof(float));
+    pop->g_gaba_a = nimcp_calloc(n_neurons, sizeof(float));
+    pop->g_gaba_b = nimcp_calloc(n_neurons, sizeof(float));
+    if (!pop->g_ampa || !pop->g_nmda || !pop->g_gaba_a || !pop->g_gaba_b) {
         NIMCP_LOGGING_WARN(
-            "snn_population_create_internal: CB conductance buffers failed "
-            "to allocate for pop '%s' (%u neurons); CB mode will no-op",
+            "snn_population_create_internal: per-receptor CB buffers failed "
+            "to allocate for pop '%s' (%u neurons); affected receptors no-op",
             name ? name : "unnamed", n_neurons);
     }
 
@@ -318,6 +373,26 @@ static snn_population_t* snn_population_create_lightweight(
         return NULL;
     }
 
+    /* Wave E FFI fix — per-pop spike-history ring buffer.
+     * SNN_SPIKE_HISTORY_SLOTS × n_neurons floats. Best-effort allocation:
+     * if it fails the deposit kernel falls back to reading spike_output
+     * (zero-delay legacy semantics) so the network still runs.
+     * Default conduction_delay_steps = 0 ⇒ behavior is bit-identical to
+     * pre-Wave-E (read the freshest slot which equals the current
+     * spike_output snapshot after end-of-step write).
+     * See docs/claude/ffi-timing-audit-2026-04-27.md. */
+    pop->conduction_delay_steps = 0;
+    pop->spike_history_head     = 0;
+    pop->spike_history          = nimcp_calloc(
+        (size_t)SNN_SPIKE_HISTORY_SLOTS * (size_t)n_neurons, sizeof(float));
+    if (!pop->spike_history) {
+        NIMCP_LOGGING_WARN(
+            "snn_population_create_lightweight: spike_history alloc failed "
+            "for pop '%s' (%u neurons × %u slots); conduction-delay falls "
+            "back to zero-delay legacy semantics",
+            name ? name : "unnamed", n_neurons, SNN_SPIKE_HISTORY_SLOTS);
+    }
+
     /* Initialize membrane potential to resting potential */
     float* v = (float*)nimcp_tensor_data(pop->membrane_v);
     if (v) {
@@ -347,14 +422,44 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
         snn_csr_destroy(pop->incoming_csr);
     }
 
+    /* Wave E FFI fix — per-pop spike-history ring buffer. NULL-safe:
+     * non-lightweight pops never allocate this; lightweight pops with a
+     * failed allocation also leave it NULL. */
+    if (pop->spike_history) { nimcp_free(pop->spike_history); pop->spike_history = NULL; }
+
     /* Intrinsic plasticity + short-term depression state */
     if (pop->threshold_offset) nimcp_free(pop->threshold_offset);
     if (pop->neuron_rate_ema) nimcp_free(pop->neuron_rate_ema);
     if (pop->depression) nimcp_free(pop->depression);
 
+    /* Per-neuron heterogeneity (Wave G). NULL-safe — only allocated when
+     * snn_network_set_pop_heterogeneity() was called with sigma > 0. */
+    if (pop->tau_mem_per_neuron) {
+        nimcp_free(pop->tau_mem_per_neuron);
+        pop->tau_mem_per_neuron = NULL;
+    }
+    if (pop->v_thresh_per_neuron) {
+        nimcp_free(pop->v_thresh_per_neuron);
+        pop->v_thresh_per_neuron = NULL;
+    }
+
     /* Conductance-based PSC state (CB migration). */
-    if (pop->g_exc) { nimcp_free(pop->g_exc); pop->g_exc = NULL; }
-    if (pop->g_inh) { nimcp_free(pop->g_inh); pop->g_inh = NULL; }
+    if (pop->g_ampa)   { nimcp_free(pop->g_ampa);   pop->g_ampa   = NULL; }
+    if (pop->g_nmda)   { nimcp_free(pop->g_nmda);   pop->g_nmda   = NULL; }
+    if (pop->g_gaba_a) { nimcp_free(pop->g_gaba_a); pop->g_gaba_a = NULL; }
+    if (pop->g_gaba_b) { nimcp_free(pop->g_gaba_b); pop->g_gaba_b = NULL; }
+
+    /* Wave H — dendritic compartment state. NULL-safe: only allocated
+     * when snn_network_enable_dendritic() succeeded for this pop. */
+    if (pop->v_basal)         { nimcp_free(pop->v_basal);         pop->v_basal         = NULL; }
+    if (pop->v_apical)        { nimcp_free(pop->v_apical);        pop->v_apical        = NULL; }
+    if (pop->g_ampa_basal)    { nimcp_free(pop->g_ampa_basal);    pop->g_ampa_basal    = NULL; }
+    if (pop->g_gaba_a_basal)  { nimcp_free(pop->g_gaba_a_basal);  pop->g_gaba_a_basal  = NULL; }
+    if (pop->g_nmda_apical)   { nimcp_free(pop->g_nmda_apical);   pop->g_nmda_apical   = NULL; }
+    if (pop->g_gaba_b_apical) { nimcp_free(pop->g_gaba_b_apical); pop->g_gaba_b_apical = NULL; }
+    if (pop->plateau_active)  { nimcp_free(pop->plateau_active);  pop->plateau_active  = NULL; }
+    if (pop->plateau_t0)      { nimcp_free(pop->plateau_t0);      pop->plateau_t0      = NULL; }
+    pop->dendritic_enabled = false;
 
     /* Biophysical stability mechanisms. Destroyers tolerate NULL. */
     if (pop->ahp)    { snn_adaptation_destroy(pop->ahp);     pop->ahp = NULL; }
@@ -857,10 +962,11 @@ int snn_network_step(snn_network_t* network, float dt) {
 
     /* ===== GPU FAST PATH ===== */
     /* CB migration: when conductance mode is enabled, force the CPU
-     * fallback path. The GPU kernel is current-based-only (no g_exc/g_inh
-     * driving force). Per docs/claude/cb-phase0-design.md "OUT of scope:
-     * GPU port", we accept the perf regression — the live oscillation
-     * happens on the CPU-bound Hetzner box anyway. */
+     * fallback path. The GPU kernel is current-based-only (no per-receptor
+     * g_* fallback path — no g_ampa/g_nmda/g_gaba_a/g_gaba_b driving force).
+     * Per docs/claude/cb-phase0-design.md "OUT of scope: GPU port", we
+     * accept the perf regression — the live oscillation happens on the
+     * CPU-bound Hetzner box anyway. */
     if (network->gpu_lif_state && network->gpu_ctx
         && snn_tune_get_conductance_enabled() == 0.0f) {
         nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
@@ -872,6 +978,62 @@ int snn_network_step(snn_network_t* network, float dt) {
             if (network->populations[p]) {
                 total_neurons += network->populations[p]->n_neurons;
             }
+        }
+
+        /* Wave G GPU sync (schema v17, 2026-04-27): when the per-neuron
+         * params are dirty, walk every population and resolve each neuron's
+         * τ_mem / v_thresh via snn_pop_neuron_lif_params() — that helper
+         * composes BOTH subclass deltas (PV/SOM/VIP/TRN/L23/L4_STELLATE/
+         * L5_BETZ) AND per-neuron heterogeneity σ noise. Upload the flat
+         * total_neurons-sized arrays to the GPU lif_state. After this
+         * upload the LIF kernels read the per-neuron values directly so
+         * every tier-pyr pop fires asynchronously on GPU exactly as on CPU.
+         *
+         * Bit-identity contract: when no pop has subclass deltas AND
+         * no pop has heterogeneity arrays we still upload the per-neuron
+         * arrays — but every entry equals the network-wide config value,
+         * so the kernel produces identical output to the scalar-fallback
+         * path. The cost is one extra global-memory load per neuron per
+         * step (negligible — already memory-bound on i_syn/v).
+         *
+         * The flag is set on lif_state create AND by
+         * snn_network_set_pop_heterogeneity. Re-upload happens at most once
+         * per dirty event (cleared on success). */
+        if (lif_state->per_neuron_params_dirty && total_neurons > 0) {
+            float* h_tau  = (float*)nimcp_calloc(total_neurons, sizeof(float));
+            float* h_vthr = (float*)nimcp_calloc(total_neurons, sizeof(float));
+            if (h_tau && h_vthr) {
+                size_t neuron_idx = 0;
+                for (uint32_t p = 0; p < network->n_populations; p++) {
+                    snn_population_t* pop = network->populations[p];
+                    if (!pop) continue;
+                    for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                        snn_lif_params_t lp = snn_pop_neuron_lif_params(
+                            pop, n, &network->config);
+                        h_tau[neuron_idx]  = lp.tau_mem;
+                        h_vthr[neuron_idx] = lp.v_thresh;
+                        neuron_idx++;
+                    }
+                }
+                bool ok = nimcp_gpu_lif_state_upload_per_neuron_params(
+                    gpu, lif_state, h_tau, h_vthr, total_neurons);
+                if (ok) {
+                    lif_state->per_neuron_params_dirty = false;
+                    NIMCP_LOGGING_DEBUG(
+                        "snn_network_step: GPU per-neuron LIF params synced "
+                        "for %zu neurons", total_neurons);
+                } else {
+                    NIMCP_LOGGING_WARN(
+                        "snn_network_step: GPU per-neuron LIF params upload "
+                        "failed — kernel falls back to scalar params");
+                }
+            } else {
+                NIMCP_LOGGING_WARN(
+                    "snn_network_step: per-neuron LIF host buffer alloc "
+                    "failed — leaving GPU on scalar params");
+            }
+            if (h_tau)  nimcp_free(h_tau);
+            if (h_vthr) nimcp_free(h_vthr);
         }
 
         /* Build input current vector for LIF kernel.
@@ -1260,17 +1422,27 @@ int snn_network_step(snn_network_t* network, float dt) {
         float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
         float* ref_data = (float*)nimcp_tensor_data(pop->refractory);
 
-        float v_thresh = network->config.v_thresh;
-        float v_reset = network->config.v_reset;
-        float v_rest = network->config.v_rest;
-        float tau_mem = network->config.tau_mem;
+        snn_lif_params_t lif = snn_pop_lif_params(pop, &network->config);
+        float v_thresh = lif.v_thresh;
+        float v_reset  = lif.v_reset;
+        float v_rest   = lif.v_rest;
+        float tau_mem  = lif.tau_mem;
+
+        /* Wave G — heterogeneity capture. Branch hoisted out of inner
+         * per-neuron loop. When the per-neuron arrays are NULL (default
+         * heterogeneity_sigma=0) `het_active` stays false and the
+         * inner loop reads pop-wide values — bit-identical to pre-Wave-G. */
+        const bool   het_active_tau     = (pop->tau_mem_per_neuron  != NULL);
+        const bool   het_active_thresh  = (pop->v_thresh_per_neuron != NULL);
+        const float* tau_per_neuron     = pop->tau_mem_per_neuron;
+        const float* vthr_per_neuron    = pop->v_thresh_per_neuron;
 
         /* Substrate-modulated tau (dendritic membrane time constant) and
          * refractory period (axonal Na+/K+ pump recovery). When no
          * substrate is attached these collapse to the config values. */
         float tau_eff  = se_dend ? substrate_apply_tau(tau_mem, se_dend) : tau_mem;
-        float tref_eff = se_axon ? substrate_apply_tref(network->config.t_ref, se_axon)
-                                 : network->config.t_ref;
+        float tref_eff = se_axon ? substrate_apply_tref(lif.t_ref, se_axon)
+                                 : lif.t_ref;
         /* Emergency silence: when axonal capacity collapses (ATP or ion
          * gradient critically low), the neuron cannot propagate an AP.
          * We skip the entire LIF update for this step on that pop. */
@@ -1327,27 +1499,56 @@ int snn_network_step(snn_network_t* network, float dt) {
             extern float snn_tune_get_noise_ei_ratio(void);
             extern float snn_tune_get_ahp_pump_substrate_coupling(void);
             extern float snn_tune_get_conductance_enabled(void);
-            extern float snn_tune_get_e_exc_mv(void);
-            extern float snn_tune_get_e_inh_mv(void);
-            extern float snn_tune_get_tau_exc_ms(void);
-            extern float snn_tune_get_tau_inh_ms(void);
+            extern float snn_tune_get_e_ampa_mv(void);
+            extern float snn_tune_get_e_nmda_mv(void);
+            extern float snn_tune_get_e_gaba_a_mv(void);
+            extern float snn_tune_get_e_gaba_b_mv(void);
+            extern float snn_tune_get_tau_ampa_ms(void);
+            extern float snn_tune_get_tau_nmda_ms(void);
+            extern float snn_tune_get_tau_gaba_a_ms(void);
+            extern float snn_tune_get_tau_gaba_b_ms(void);
+            extern float snn_tune_get_nmda_mg_mm(void);
             const int   ahp_on    = (pop->ahp  && snn_tune_get_ahp_enabled()  != 0.0f);
             const int   pump_on   = (pop->pump && snn_tune_get_pump_enabled() != 0.0f);
             const int   basket_on = (pop->basket && snn_tune_get_basket_enabled() != 0.0f);
             const float ei_ratio  = snn_tune_get_noise_ei_ratio();
             const int   noise_exc_only = (noise_factor >= 0.9f);  /* dead-pop exception */
             /* CB mode capture — single check per pop (LICM-friendly).
-             * Requires both g_exc and g_inh allocated (silent degrade if alloc failed). */
-            const bool  cb_mode   = (snn_tune_get_conductance_enabled() != 0.0f
-                                     && pop->g_exc && pop->g_inh);
-            const float cb_e_exc  = snn_tune_get_e_exc_mv();
-            const float cb_e_inh  = snn_tune_get_e_inh_mv();
-            const float cb_decay_exc = cb_mode ? expf(-dt_ms / snn_tune_get_tau_exc_ms()) : 0.0f;
-            const float cb_decay_inh = cb_mode ? expf(-dt_ms / snn_tune_get_tau_inh_ms()) : 0.0f;
-            /* In CB mode, basket and noise inhibition deposit into g_inh as a
-             * conductance pulse; pulse_mv is reinterpreted as a unitless
-             * conductance bump (the rescale factor at Phase 3 puts both
-             * paths into the same effective ballpark). */
+             *
+             * Per-receptor silent-degrade contract: CB mode runs as long as
+             * the conductance flag is on AND at least one receptor array
+             * is allocated. Any individually-NULL receptor array is
+             * treated as that receptor having zero conductance for this
+             * pop (the per-neuron pointer captures and compute_dv args
+             * below skip it). This matches snn_population_t's documented
+             * "Any NULL pointer makes that receptor a no-op" guarantee
+             * and lets a partial alloc failure (e.g. NMDA fails but
+             * AMPA+GABA succeed) still run sensibly instead of forcing
+             * the whole pop back to legacy current mode.
+             *
+             * Thread safety: the tune-knob snapshots below are best-effort
+             * — Python tune_set RPCs racing this hot loop can produce
+             * mixed-version snapshots across pops within a single step.
+             * Each individual capture is a 4-byte aligned float (atomic on
+             * x86_64) so no torn reads inside a pop. */
+            const bool  cb_mode      = (snn_tune_get_conductance_enabled() != 0.0f
+                                        && (pop->g_ampa || pop->g_nmda
+                                            || pop->g_gaba_a || pop->g_gaba_b));
+            const float cb_e_ampa    = snn_tune_get_e_ampa_mv();
+            const float cb_e_nmda    = snn_tune_get_e_nmda_mv();
+            const float cb_e_gaba_a  = snn_tune_get_e_gaba_a_mv();
+            const float cb_e_gaba_b  = snn_tune_get_e_gaba_b_mv();
+            const float cb_mg        = snn_tune_get_nmda_mg_mm();
+            const float cb_decay_ampa   = cb_mode ? expf(-dt_ms / snn_tune_get_tau_ampa_ms())   : 0.0f;
+            const float cb_decay_nmda   = cb_mode ? expf(-dt_ms / snn_tune_get_tau_nmda_ms())   : 0.0f;
+            const float cb_decay_gaba_a = cb_mode ? expf(-dt_ms / snn_tune_get_tau_gaba_a_ms()) : 0.0f;
+            const float cb_decay_gaba_b = cb_mode ? expf(-dt_ms / snn_tune_get_tau_gaba_b_ms()) : 0.0f;
+            /* In CB mode, basket and noise inhibition + non-CSR deposits use
+             * SYNAPSE_GENERIC so the deposit kernel's sign-routing fallback
+             * picks the correct receptor (positive→AMPA, negative→GABA_A).
+             * pulse_mv is reinterpreted as a unitless conductance bump (the
+             * Phase 3 rescale factor puts both paths into the same
+             * effective ballpark). */
 
             /* F8: biological feedback — scale AHP/pump gains by substrate
              * pump_activity (ATP proxy). Real Na/K-ATPase is ATP-dependent:
@@ -1383,8 +1584,120 @@ int snn_network_step(snn_network_t* network, float dt) {
                                * snn_basket_pool_mean_rate(pop->basket);
             }
 
+            /* Wave D — gap-junction (electrical synapse) coupling.
+             *
+             * Biology: Connexin-36 gap junctions among PV basket cells form
+             * a fast electrical syncytium that synchronizes membrane voltage
+             * and is the primary substrate for cortical gamma rhythm
+             * (30-80 Hz). Without it, PV pops fire asynchronously.
+             *
+             * Implementation: compute V_mean ONCE per pop step (LICM —
+             * scalar across the inner loop, not per-neuron), then in the
+             * per-neuron loop add (V_mean - V_n) × gap_coupling to each
+             * neuron's V. Gated on cb_mode to match the CB hot-loop
+             * convention (gap junctions are part of the conductance-based
+             * biophysical model). Default gap_coupling=0 ⇒ skip entirely.
+             *
+             * The instruction is to compute V_mean ONCE; we read v_data
+             * BEFORE membrane integration and use the same scalar for all
+             * neurons, which is the standard explicit-Euler treatment of
+             * coupled compartments and avoids creating an order-dependent
+             * inner loop. */
+            const float gap_coupling = pop->gap_coupling;
+            const bool  gap_active   = (cb_mode && gap_coupling > 0.0f
+                                        && pop->n_neurons > 1);
+            float gap_v_mean = 0.0f;
+            if (gap_active) {
+                double v_sum = 0.0;
+                for (uint32_t n = 0; n < pop->n_neurons; n++) v_sum += v_data[n];
+                gap_v_mean = (float)(v_sum / (double)pop->n_neurons);
+            }
+
+            /* Wave H — dendritic compartment mode. Hoisted ONCE per pop
+             * (LICM-friendly) so the inner loop has no branch on the
+             * pop-level flag. Silent-degrade contract: dendritic mode
+             * only activates if the gate is set AND v_basal/v_apical are
+             * both allocated. Any allocation failure on the 8 arrays
+             * leaves the pop in single-compartment mode with no further
+             * action. Only meaningful in CB mode (the dendritic helpers
+             * use conductance buckets); current-mode pops use legacy. */
+            const bool dend_mode = (cb_mode
+                                    && pop->dendritic_enabled
+                                    && pop->v_basal && pop->v_apical
+                                    && pop->g_ampa_basal && pop->g_gaba_a_basal
+                                    && pop->g_nmda_apical && pop->g_gaba_b_apical
+                                    && pop->plateau_active && pop->plateau_t0);
+            /* Dendritic decay factors — share τ with the legacy CB path:
+             * basal AMPA/GABA_A and apical NMDA/GABA_B are biologically
+             * the same channel families, just on different compartments. */
+            const float cb_decay_ampa_b   = dend_mode ? cb_decay_ampa   : 0.0f;
+            const float cb_decay_gaba_a_b = dend_mode ? cb_decay_gaba_a : 0.0f;
+            const float cb_decay_nmda_a   = dend_mode ? cb_decay_nmda   : 0.0f;
+            const float cb_decay_gaba_b_a = dend_mode ? cb_decay_gaba_b : 0.0f;
+            /* Plateau parameters — for now use the doc defaults; future
+             * Wave H+ may make these tunable per-pop. */
+            const float dend_plateau_thr = SNN_DEND_V_PLATEAU_THRESHOLD_MV;
+            const float dend_plateau_g   = SNN_DEND_PLATEAU_GAIN;
+            const float dend_plateau_tau = SNN_DEND_PLATEAU_TAU_MS;
+            const float dend_g_coup      = SNN_DEND_G_COUP_DEFAULT;
+            const uint64_t dend_now_tick = network->sim
+                                           ? network->sim->step_count : 0;
+
             for (uint32_t n = 0; n < pop->n_neurons; n++) {
                 spike_data[n] = 0.0f;
+
+                /* CB mode: per-neuron 4-receptor conductance pointers
+                 * captured once (NULL in current mode so the deposit helper
+                 * short-circuits). Each pointer is independently NULL-safe:
+                 * if a particular receptor's pop array failed to alloc, its
+                 * pointer stays NULL even though cb_mode is true (only
+                 * receptor missing → that receptor no-ops, others run).
+                 *
+                 * Captures + decay happen BEFORE the refractory / substrate
+                 * early-outs because passive conductance decay is a
+                 * receptor-level property (independent of postsyn spike
+                 * state) — biologically, an open AMPA/NMDA/GABA channel
+                 * keeps decaying whether the postsyn neuron is in its
+                 * absolute refractory period or not. Skipping decay during
+                 * refractory was a pre-P0 bug that left g_X stuck at full
+                 * strength for the duration of refractory. */
+                float* cb_g_ampa_n   = (cb_mode && pop->g_ampa)   ? &pop->g_ampa[n]   : NULL;
+                float* cb_g_nmda_n   = (cb_mode && pop->g_nmda)   ? &pop->g_nmda[n]   : NULL;
+                float* cb_g_gaba_a_n = (cb_mode && pop->g_gaba_a) ? &pop->g_gaba_a[n] : NULL;
+                float* cb_g_gaba_b_n = (cb_mode && pop->g_gaba_b) ? &pop->g_gaba_b[n] : NULL;
+                /* Wave H — per-neuron compartment pointers. Captured
+                 * unconditionally so the compartmental deposit helper
+                 * can route directly. NULL-safe at the helper boundary. */
+                float* dend_g_ampa_b_n   = dend_mode ? &pop->g_ampa_basal[n]    : NULL;
+                float* dend_g_gaba_a_b_n = dend_mode ? &pop->g_gaba_a_basal[n]  : NULL;
+                float* dend_g_nmda_a_n   = dend_mode ? &pop->g_nmda_apical[n]   : NULL;
+                float* dend_g_gaba_b_a_n = dend_mode ? &pop->g_gaba_b_apical[n] : NULL;
+                if (cb_mode) {
+                    snn_membrane_decay_one(
+                        cb_g_ampa_n, cb_g_nmda_n,
+                        cb_g_gaba_a_n, cb_g_gaba_b_n,
+                        cb_decay_ampa, cb_decay_nmda,
+                        cb_decay_gaba_a, cb_decay_gaba_b);
+                }
+                if (dend_mode) {
+                    /* Dendritic-side decay — same form, separate buckets. */
+                    snn_membrane_decay_one(
+                        dend_g_ampa_b_n, dend_g_nmda_a_n,
+                        dend_g_gaba_a_b_n, dend_g_gaba_b_a_n,
+                        cb_decay_ampa_b, cb_decay_nmda_a,
+                        cb_decay_gaba_a_b, cb_decay_gaba_b_a);
+                }
+
+                /* Wave D — apply gap-junction coupling BEFORE refractory
+                 * check. Gap junctions are passive ohmic conductances; they
+                 * do not gate on the postsyn neuron's spike state, so a
+                 * refractory neuron's V is still pulled toward the pop
+                 * mean. Mathematically this is a post-integration
+                 * adjustment (kept OUTSIDE compute_dv per the constraint to
+                 * leave the membrane API unchanged). */
+                if (gap_active) {
+                    v_data[n] += gap_coupling * (gap_v_mean - v_data[n]);
+                }
 
                 /* Substrate emergency silence: overall axon capacity has
                  * collapsed (ATP/ion critical). The neuron cannot
@@ -1401,28 +1714,28 @@ int snn_network_step(snn_network_t* network, float dt) {
                     continue;
                 }
 
-                /* CB mode: per-neuron g_exc/g_inh pointers captured once
-                 * (NULL in current mode so the deposit helper short-circuits).
-                 * Decay conductances by the precomputed pop-level factors
-                 * BEFORE accumulating this step's synaptic deposits. */
-                float* cb_g_exc_n = cb_mode ? &pop->g_exc[n] : NULL;
-                float* cb_g_inh_n = cb_mode ? &pop->g_inh[n] : NULL;
-                if (cb_mode) {
-                    snn_membrane_decay_one(cb_g_exc_n, cb_g_inh_n,
-                                           cb_decay_exc, cb_decay_inh);
-                }
-
                 /* Synaptic accumulator: in current mode this aggregates
                  * everything into I_syn; in CB mode the deposit helper
-                 * routes positive weights to g_exc, negative to g_inh,
-                 * and I_syn stays at zero (unused). */
+                 * routes synapses to the correct receptor bucket based on
+                 * synapse_type_per_src (CSR pathway) or sign-fallback
+                 * (non-CSR deposits), and I_syn stays at zero (unused). */
                 float I_syn = 0.0f;
 
-                /* External current (input drive). */
+                /* External current (input drive). Non-CSR deposit → use
+                 * SYNAPSE_GENERIC so the kernel's sign-fallback routes it.
+                 * Wave H: when dend_mode is true, the compartmental helper
+                 * routes via the AMPA-basal / GABA_A-basal sign fallback;
+                 * else it forwards to the legacy single-compartment
+                 * deposit. dend_mode is hoisted once per pop, so only the
+                 * compartment-decision branch is per-deposit (predictable). */
                 if (pop->external_current) {
-                    snn_membrane_deposit_synapse(
-                        &I_syn, cb_g_exc_n, cb_g_inh_n,
-                        pop->external_current[n], cb_mode);
+                    snn_membrane_deposit_synapse_compartmental(
+                        &I_syn,
+                        cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                        dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                        dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                        pop->external_current[n],
+                        SYNAPSE_GENERIC, cb_mode, dend_mode);
                 }
 
                 uint32_t syn_count;
@@ -1432,7 +1745,17 @@ int snn_network_step(snn_network_t* network, float dt) {
                     if (syns[s].src_pop >= network->n_populations) continue;
                     snn_population_t* src_pop = network->populations[syns[s].src_pop];
                     if (!src_pop || !src_pop->spike_output) continue;
-                    float* src_spikes = (float*)nimcp_tensor_data(src_pop->spike_output);
+                    /* Wave E FFI fix — read from per-pop spike-history ring
+                     * if available (delivers `conduction_delay_steps`-step
+                     * delayed spikes). Falls back to spike_output for pops
+                     * with no ring (alloc failure / non-lightweight) so
+                     * legacy zero-delay behavior is preserved. The helper
+                     * is the single source of truth for the index math. */
+                    const float* src_spikes_delayed =
+                        snn_pop_get_delayed_spike_row(src_pop);
+                    const float* src_spikes = src_spikes_delayed
+                        ? src_spikes_delayed
+                        : (const float*)nimcp_tensor_data(src_pop->spike_output);
                     if (src_spikes && syns[s].src_neuron < src_pop->n_neurons
                         && src_spikes[syns[s].src_neuron] > 0.5f) {
                         /* Short-term synaptic depression: scale contribution by
@@ -1440,25 +1763,35 @@ int snn_network_step(snn_network_t* network, float dt) {
                          * deliver less drive, preventing hot-pathway runaway. */
                         float dep = 0.0f;
                         if (src_pop->depression) dep = src_pop->depression[syns[s].src_neuron];
-                        snn_membrane_deposit_synapse(
-                            &I_syn, cb_g_exc_n, cb_g_inh_n,
-                            syns[s].weight * (1.0f - dep), cb_mode);
+                        /* Per-pop-pair receptor type set up at wiring time. */
+                        const int syn_type = (int)pop->synapse_type_per_src[syns[s].src_pop];
+                        snn_membrane_deposit_synapse_compartmental(
+                            &I_syn,
+                            cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                            dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                            dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                            syns[s].weight * (1.0f - dep),
+                            syn_type, cb_mode, dend_mode);
                     }
                 }
 
                 /* Basket feedforward inhibition — uniform across pop.
-                 * basket_contrib is negative (inhibitory) so in CB mode
-                 * it routes to g_inh via the deposit helper. */
-                snn_membrane_deposit_synapse(
-                    &I_syn, cb_g_exc_n, cb_g_inh_n,
-                    basket_contrib, cb_mode);
+                 * basket_contrib is negative (inhibitory) so in CB mode the
+                 * sign-fallback (SYNAPSE_GENERIC) routes it to GABA_A. */
+                snn_membrane_deposit_synapse_compartmental(
+                    &I_syn,
+                    cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                    dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                    dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                    basket_contrib,
+                    SYNAPSE_GENERIC, cb_mode, dend_mode);
 
                 /* E/I-balanced Poisson background noise — structural fix
                  * for the absorbing-zero state. Dead pops (factor >= 0.9)
                  * receive only excitatory pulses to escape; balanced pops
                  * receive ei_ratio fraction as inhibitory so mean drive
                  * stays near zero and neurons sit fluctuation-driven
-                 * instead of ramping up. */
+                 * instead of ramping up. Non-CSR deposit → SYNAPSE_GENERIC. */
                 if (noise_p > 0.0f) {
                     float r = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
                     if (r < noise_p) {
@@ -1468,9 +1801,13 @@ int snn_network_step(snn_network_t* network, float dt) {
                                          * (1.0f / (float)RAND_MAX);
                             if (sign_r < ei_ratio) pulse = -noise_pulse_mv;
                         }
-                        snn_membrane_deposit_synapse(
-                            &I_syn, cb_g_exc_n, cb_g_inh_n,
-                            pulse, cb_mode);
+                        snn_membrane_deposit_synapse_compartmental(
+                            &I_syn,
+                            cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                            dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                            dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                            pulse,
+                            SYNAPSE_GENERIC, cb_mode, dend_mode);
                     }
                 }
 
@@ -1488,26 +1825,125 @@ int snn_network_step(snn_network_t* network, float dt) {
                 /* LIF dynamics. In current mode hyp is folded into I_syn
                  * before the call (bit-identical to pre-CB behavior). In
                  * CB mode I_syn is unused; hyp is subtracted from dv after
-                 * the conductance integration. */
+                 * the conductance integration.
+                 *
+                 * Wave G — per-neuron τ_mem rides on top of subclass +
+                 * substrate. Substrate is a per-pop multiplicative factor;
+                 * applying it to the per-neuron base preserves the
+                 * substrate semantics while letting each neuron carry its
+                 * own intrinsic time constant. When het_active_tau is
+                 * false the per-neuron value collapses to the pop-wide
+                 * `tau_eff` already computed above. */
+                float tau_eff_n = tau_eff;
+                if (het_active_tau) {
+                    float tau_n = tau_per_neuron[n];
+                    tau_eff_n = se_dend ? substrate_apply_tau(tau_n, se_dend)
+                                        : tau_n;
+                }
                 float dv;
-                if (cb_mode) {
+                if (dend_mode) {
+                    /* Wave H — two-compartment integration.
+                     *
+                     * Plateau bookkeeping: detect onset (apical V crosses
+                     * threshold AND not already active) and decay-clear
+                     * (active AND drive below 0.05 of peak). One Heaviside
+                     * per neuron per step (the `plateau_active` flag IS
+                     * the latched Heaviside).
+                     *
+                     * t_since_onset is the number of dt steps since the
+                     * onset tick; converted to ms via dt_ms here so the
+                     * helper sees a uniform millisecond clock. */
+                    bool active = pop->plateau_active[n] != 0;
+                    if (!active &&
+                        snn_membrane_check_plateau_onset(
+                            pop->v_apical[n], dend_plateau_thr)) {
+                        pop->plateau_active[n] = 1;
+                        pop->plateau_t0[n]     = dend_now_tick;
+                        active = true;
+                    }
+                    float t_since_ms = 0.0f;
+                    if (active) {
+                        uint64_t dticks = (dend_now_tick >= pop->plateau_t0[n])
+                                        ? (dend_now_tick - pop->plateau_t0[n])
+                                        : 0;
+                        t_since_ms = (float)dticks * dt_ms;
+                        /* Deactivate when drive below 0.05 × peak. Peak
+                         * is plateau_gain at t=0; threshold ≈ 3·τ. */
+                        if (t_since_ms > 3.0f * dend_plateau_tau) {
+                            pop->plateau_active[n] = 0;
+                            active = false;
+                        }
+                    }
+
+                    float dv_b = 0.0f, dv_a = 0.0f;
+                    /* One-shot two-compartment integration using the
+                     * actual compartment conductance reads. Plateau drive
+                     * is applied exactly once per neuron per step (the
+                     * helper consumes the latched `active` flag — no
+                     * double-application). */
+                    snn_membrane_compute_dv_two_compartment(
+                        pop->v_basal[n], pop->v_apical[n],
+                        v_rest, tau_eff_n, tau_eff_n, dt_ms,
+                        dend_g_ampa_b_n   ? *dend_g_ampa_b_n   : 0.0f,
+                        dend_g_gaba_a_b_n ? *dend_g_gaba_a_b_n : 0.0f,
+                        dend_g_nmda_a_n   ? *dend_g_nmda_a_n   : 0.0f,
+                        dend_g_gaba_b_a_n ? *dend_g_gaba_b_a_n : 0.0f,
+                        dend_g_coup,
+                        cb_e_ampa, cb_e_nmda,
+                        cb_e_gaba_a, cb_e_gaba_b,
+                        cb_mg,
+                        active, t_since_ms,
+                        dend_plateau_g, dend_plateau_tau,
+                        &dv_b, &dv_a);
+
+                    /* AHP / pump hyperpolarization is intrinsic and acts
+                     * on the basal compartment (peri-somatic K+ currents),
+                     * matching the legacy CB path's "subtract from dv"
+                     * pattern. */
+                    pop->v_basal[n]  += dv_b - hyp * (dt_ms / tau_eff_n);
+                    pop->v_apical[n] += dv_a;
+
+                    /* Soma threshold check is on basal V only. The legacy
+                     * `v_data` (= membrane_v tensor) is kept in lock-step
+                     * with v_basal so downstream consumers (gap-junction
+                     * pre-loop, intrinsic plasticity, GPU mirrors) see a
+                     * consistent value. */
+                    v_data[n] = pop->v_basal[n];
+                    /* dv left zero — v_data was directly assigned. */
+                    dv = 0.0f;
+                } else if (cb_mode) {
+                    /* NULL-safe per-receptor reads: a missing receptor
+                     * contributes 0 conductance (silent-degrade contract). */
                     dv = snn_membrane_compute_dv(
-                        v_data[n], v_rest, tau_eff, dt_ms,
+                        v_data[n], v_rest, tau_eff_n, dt_ms,
                         0.0f /* I_syn unused */,
-                        *cb_g_exc_n, *cb_g_inh_n,
-                        cb_e_exc, cb_e_inh, true);
-                    dv -= hyp * (dt_ms / tau_eff);
+                        cb_g_ampa_n   ? *cb_g_ampa_n   : 0.0f,
+                        cb_g_nmda_n   ? *cb_g_nmda_n   : 0.0f,
+                        cb_g_gaba_a_n ? *cb_g_gaba_a_n : 0.0f,
+                        cb_g_gaba_b_n ? *cb_g_gaba_b_n : 0.0f,
+                        cb_e_ampa, cb_e_nmda,
+                        cb_e_gaba_a, cb_e_gaba_b,
+                        cb_mg, true);
+                    dv -= hyp * (dt_ms / tau_eff_n);
+                    v_data[n] += dv;
                 } else {
                     I_syn -= hyp;
                     dv = snn_membrane_compute_dv(
-                        v_data[n], v_rest, tau_eff, dt_ms,
-                        I_syn, 0.0f, 0.0f, 0.0f, 0.0f, false);
+                        v_data[n], v_rest, tau_eff_n, dt_ms,
+                        I_syn,
+                        0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f, false);
+                    v_data[n] += dv;
                 }
-                v_data[n] += dv;
+                /* (legacy paths above already advanced v_data; dend path
+                 * advanced v_basal/v_apical and synced v_data.) */
 
-                /* Intrinsic plasticity: effective threshold = config + per-neuron offset.
+                /* Intrinsic plasticity: effective threshold = base + per-neuron offset.
+                 * Base is per-neuron (Wave G) when het_active_thresh, else pop-wide.
                  * offset is adjusted below based on firing vs target rate. */
-                float v_thresh_n = v_thresh;
+                float v_thresh_n = het_active_thresh ? vthr_per_neuron[n]
+                                                     : v_thresh;
                 if (pop->threshold_offset) v_thresh_n += pop->threshold_offset[n];
 
                 if (v_data[n] >= v_thresh_n) {
@@ -1677,39 +2113,91 @@ int snn_network_step(snn_network_t* network, float dt) {
          * biological substrate feedback also modulates legacy pops.
          *
          * CB migration: same per-pop captures as the lightweight branch.
-         * Legacy pops typically lack the per-neuron g_exc/g_inh arrays
-         * (allocated in snn_population_create_internal — both paths get
-         * them, but legacy pops are sometimes built by older test
-         * harnesses); the (g_exc && g_inh) guard inside cb_mode handles
-         * the absent case. */
+         * Legacy pops typically lack the per-neuron 4-receptor conductance
+         * arrays (allocated in snn_population_create_internal — both paths
+         * get them, but legacy pops are sometimes built by older test
+         * harnesses); the (g_ampa && g_nmda && g_gaba_a && g_gaba_b) guard
+         * inside legacy_cb_mode handles the absent case. */
         extern float snn_tune_get_conductance_enabled(void);
-        extern float snn_tune_get_e_exc_mv(void);
-        extern float snn_tune_get_e_inh_mv(void);
-        extern float snn_tune_get_tau_exc_ms(void);
-        extern float snn_tune_get_tau_inh_ms(void);
+        extern float snn_tune_get_e_ampa_mv(void);
+        extern float snn_tune_get_e_nmda_mv(void);
+        extern float snn_tune_get_e_gaba_a_mv(void);
+        extern float snn_tune_get_e_gaba_b_mv(void);
+        extern float snn_tune_get_tau_ampa_ms(void);
+        extern float snn_tune_get_tau_nmda_ms(void);
+        extern float snn_tune_get_tau_gaba_a_ms(void);
+        extern float snn_tune_get_tau_gaba_b_ms(void);
+        extern float snn_tune_get_nmda_mg_mm(void);
+        /* Per-receptor silent-degrade contract (matches lightweight branch):
+         * CB mode runs as long as ANY receptor array is allocated; missing
+         * ones no-op individually via the NULL-safe per-neuron pointer
+         * captures and conditional reads at compute_dv. */
         const bool  legacy_cb_mode = (snn_tune_get_conductance_enabled() != 0.0f
-                                      && pop->g_exc && pop->g_inh);
-        const float legacy_cb_e_exc = snn_tune_get_e_exc_mv();
-        const float legacy_cb_e_inh = snn_tune_get_e_inh_mv();
-        const float legacy_cb_decay_exc = legacy_cb_mode
-            ? expf(-dt_ms / snn_tune_get_tau_exc_ms()) : 0.0f;
-        const float legacy_cb_decay_inh = legacy_cb_mode
-            ? expf(-dt_ms / snn_tune_get_tau_inh_ms()) : 0.0f;
+                                      && (pop->g_ampa || pop->g_nmda
+                                          || pop->g_gaba_a || pop->g_gaba_b));
+        const float legacy_cb_e_ampa   = snn_tune_get_e_ampa_mv();
+        const float legacy_cb_e_nmda   = snn_tune_get_e_nmda_mv();
+        const float legacy_cb_e_gaba_a = snn_tune_get_e_gaba_a_mv();
+        const float legacy_cb_e_gaba_b = snn_tune_get_e_gaba_b_mv();
+        const float legacy_cb_mg       = snn_tune_get_nmda_mg_mm();
+        const float legacy_cb_decay_ampa   = legacy_cb_mode
+            ? expf(-dt_ms / snn_tune_get_tau_ampa_ms())   : 0.0f;
+        const float legacy_cb_decay_nmda   = legacy_cb_mode
+            ? expf(-dt_ms / snn_tune_get_tau_nmda_ms())   : 0.0f;
+        const float legacy_cb_decay_gaba_a = legacy_cb_mode
+            ? expf(-dt_ms / snn_tune_get_tau_gaba_a_ms()) : 0.0f;
+        const float legacy_cb_decay_gaba_b = legacy_cb_mode
+            ? expf(-dt_ms / snn_tune_get_tau_gaba_b_ms()) : 0.0f;
+
+        /* Wave D — gap-junction (electrical synapse) coupling. Mirror of
+         * the lightweight branch's pre-loop V_mean computation, gated on
+         * legacy_cb_mode. See lightweight branch comment for biology. */
+        const float legacy_gap_coupling = pop->gap_coupling;
+        const bool  legacy_gap_active   = (legacy_cb_mode
+                                           && legacy_gap_coupling > 0.0f
+                                           && pop->n_neurons > 1);
+        float legacy_gap_v_mean = 0.0f;
+        if (legacy_gap_active) {
+            double v_sum = 0.0;
+            for (uint32_t n = 0; n < pop->n_neurons; n++) v_sum += v_data[n];
+            legacy_gap_v_mean = (float)(v_sum / (double)pop->n_neurons);
+        }
 
         for (uint32_t n = 0; n < pop->n_neurons; n++) {
             spike_data[n] = 0.0f;
 
+            /* CB per-neuron decay (matches lightweight). NULL-safe:
+             * any individually-missing receptor array stays NULL even
+             * though legacy_cb_mode is true (per-receptor silent-degrade).
+             *
+             * Decay BEFORE the refractory continue — passive conductance
+             * decay is independent of postsyn spike state (an open ion
+             * channel keeps decaying whether the neuron is in absolute
+             * refractory or not). Pre-P0 code skipped decay during ref,
+             * which left g_X stuck at full strength for the duration of
+             * refractory. */
+            float* cb_g_ampa_n   = (legacy_cb_mode && pop->g_ampa)   ? &pop->g_ampa[n]   : NULL;
+            float* cb_g_nmda_n   = (legacy_cb_mode && pop->g_nmda)   ? &pop->g_nmda[n]   : NULL;
+            float* cb_g_gaba_a_n = (legacy_cb_mode && pop->g_gaba_a) ? &pop->g_gaba_a[n] : NULL;
+            float* cb_g_gaba_b_n = (legacy_cb_mode && pop->g_gaba_b) ? &pop->g_gaba_b[n] : NULL;
+            if (legacy_cb_mode) {
+                snn_membrane_decay_one(
+                    cb_g_ampa_n, cb_g_nmda_n,
+                    cb_g_gaba_a_n, cb_g_gaba_b_n,
+                    legacy_cb_decay_ampa, legacy_cb_decay_nmda,
+                    legacy_cb_decay_gaba_a, legacy_cb_decay_gaba_b);
+            }
+
+            /* Wave D — apply gap-junction coupling BEFORE refractory
+             * check (gap junctions are passive, don't gate on postsyn
+             * spike state). */
+            if (legacy_gap_active) {
+                v_data[n] += legacy_gap_coupling * (legacy_gap_v_mean - v_data[n]);
+            }
+
             if (ref_data[n] > 0.0f) {
                 ref_data[n] -= dt_ms;
                 continue;
-            }
-
-            /* CB per-neuron decay (matches lightweight). */
-            float* cb_g_exc_n = legacy_cb_mode ? &pop->g_exc[n] : NULL;
-            float* cb_g_inh_n = legacy_cb_mode ? &pop->g_inh[n] : NULL;
-            if (legacy_cb_mode) {
-                snn_membrane_decay_one(cb_g_exc_n, cb_g_inh_n,
-                                       legacy_cb_decay_exc, legacy_cb_decay_inh);
             }
 
             float I_syn = 0.0f;
@@ -1717,9 +2205,15 @@ int snn_network_step(snn_network_t* network, float dt) {
                 neuron_t* neuron = neural_network_get_neuron(
                     network->neural_net, pop->neuron_ids[n]);
                 if (neuron) {
+                    /* Non-CSR deposit (legacy neuron_t external current /
+                     * sparse synapse handles): use SYNAPSE_GENERIC so the
+                     * deposit kernel's sign-fallback routes the weight. */
                     snn_membrane_deposit_synapse(
-                        &I_syn, cb_g_exc_n, cb_g_inh_n,
-                        neuron->external_current, legacy_cb_mode);
+                        &I_syn,
+                        cb_g_ampa_n, cb_g_nmda_n,
+                        cb_g_gaba_a_n, cb_g_gaba_b_n,
+                        neuron->external_current,
+                        SYNAPSE_GENERIC, legacy_cb_mode);
                     uint32_t in_count = neuron->incoming.embedded_count
                                       + neuron->incoming.overflow_count;
                     for (uint32_t s = 0; s < in_count; s++) {
@@ -1729,30 +2223,58 @@ int snn_network_step(snn_network_t* network, float dt) {
                         neuron_t* pre = neural_network_get_neuron(network->neural_net, pre_id);
                         if (pre && pre->state > 0.5f) {
                             snn_membrane_deposit_synapse(
-                                &I_syn, cb_g_exc_n, cb_g_inh_n,
-                                h->weight, legacy_cb_mode);
+                                &I_syn,
+                                cb_g_ampa_n, cb_g_nmda_n,
+                                cb_g_gaba_a_n, cb_g_gaba_b_n,
+                                h->weight,
+                                SYNAPSE_GENERIC, legacy_cb_mode);
                         }
                     }
                 }
             }
 
             /* LIF dynamics — use substrate-modulated tau (tau_eff
-             * collapses to tau_mem when no substrate is attached). */
+             * collapses to tau_mem when no substrate is attached).
+             *
+             * Wave G — per-neuron τ_mem rides on top of substrate. Same
+             * pattern as the lightweight branch: re-apply the substrate
+             * factor to the per-neuron base. */
+            float tau_eff_n = tau_eff;
+            if (het_active_tau) {
+                float tau_n = tau_per_neuron[n];
+                tau_eff_n = se_dend ? substrate_apply_tau(tau_n, se_dend)
+                                    : tau_n;
+            }
             float dv;
             if (legacy_cb_mode) {
+                /* NULL-safe per-receptor reads: a missing receptor
+                 * contributes 0 conductance (silent-degrade contract). */
                 dv = snn_membrane_compute_dv(
-                    v_data[n], v_rest, tau_eff, dt_ms,
+                    v_data[n], v_rest, tau_eff_n, dt_ms,
                     0.0f,
-                    *cb_g_exc_n, *cb_g_inh_n,
-                    legacy_cb_e_exc, legacy_cb_e_inh, true);
+                    cb_g_ampa_n   ? *cb_g_ampa_n   : 0.0f,
+                    cb_g_nmda_n   ? *cb_g_nmda_n   : 0.0f,
+                    cb_g_gaba_a_n ? *cb_g_gaba_a_n : 0.0f,
+                    cb_g_gaba_b_n ? *cb_g_gaba_b_n : 0.0f,
+                    legacy_cb_e_ampa, legacy_cb_e_nmda,
+                    legacy_cb_e_gaba_a, legacy_cb_e_gaba_b,
+                    legacy_cb_mg, true);
             } else {
                 dv = snn_membrane_compute_dv(
-                    v_data[n], v_rest, tau_eff, dt_ms,
-                    I_syn, 0.0f, 0.0f, 0.0f, 0.0f, false);
+                    v_data[n], v_rest, tau_eff_n, dt_ms,
+                    I_syn,
+                    0.0f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 0.0f, 0.0f,
+                    0.0f, false);
             }
             v_data[n] += dv;
 
-            if (v_data[n] >= v_thresh) {
+            /* Wave G — per-neuron threshold (rides on top of subclass /
+             * pop-wide v_thresh). When het_active_thresh is false the
+             * lookup collapses to the pop-wide value bit-identically. */
+            float v_thresh_n_legacy = het_active_thresh
+                ? vthr_per_neuron[n] : v_thresh;
+            if (v_data[n] >= v_thresh_n_legacy) {
                 spike_data[n] = 1.0f;
                 v_data[n] = v_reset;
                 /* Refractory uses substrate-modulated tref_eff
@@ -1853,6 +2375,26 @@ int snn_network_step(snn_network_t* network, float dt) {
         pop->spike_count_history[pop->history_write_idx] = n_spk;
         pop->history_write_idx = (pop->history_write_idx + 1) % SNN_POP_HISTORY_LEN;
         pop->history_total_steps++;
+
+        /* Wave E FFI fix — write THIS step's spike snapshot into the
+         * per-pop spike-history ring AFTER the deposit kernel has read
+         * its delayed view (the kernel ran above; we are now at end of
+         * step). Head advances ONCE per step (not per neuron). NULL-safe:
+         * when alloc failed at create time, the deposit kernel falls
+         * back to spike_output for legacy behavior — and we skip this
+         * write block entirely.
+         * Order matters: the deposit pass for the NEXT step must see
+         * "head - 1 - delay = this step's snapshot for delay=0", so
+         * write FIRST then advance. See
+         * docs/claude/ffi-timing-audit-2026-04-27.md. */
+        if (pop->spike_history) {
+            const size_t row_off = (size_t)pop->spike_history_head
+                                 * (size_t)pop->n_neurons;
+            memcpy(pop->spike_history + row_off, sp,
+                   (size_t)pop->n_neurons * sizeof(float));
+            pop->spike_history_head = (uint8_t)(
+                (pop->spike_history_head + 1u) % SNN_SPIKE_HISTORY_SLOTS);
+        }
     }
 
     /* Update statistics */
@@ -2309,15 +2851,25 @@ int snn_network_step_sparse(snn_network_t* network, float dt,
     uint32_t neurons_skipped = 0;
     uint32_t neurons_refractory = 0;
 
-    float v_thresh = network->config.v_thresh;
-    float v_reset = network->config.v_reset;
-    float v_rest = network->config.v_rest;
-    float tau_mem = network->config.tau_mem;
-    float active_threshold = v_thresh - margin;
-
+    /* LIF params resolve per-pop (P2.0 always returns config defaults;
+     * P2.1+ may diverge for PV/SOM/VIP-tagged pops). Hoist active_threshold
+     * inside the loop too — it depends on v_thresh which may differ per pop. */
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
         if (!pop) continue;
+
+        snn_lif_params_t lif = snn_pop_lif_params(pop, &network->config);
+        float v_thresh = lif.v_thresh;
+        float v_reset  = lif.v_reset;
+        float v_rest   = lif.v_rest;
+        float tau_mem  = lif.tau_mem;
+        float active_threshold = v_thresh - margin;
+
+        /* Wave G — per-neuron heterogeneity capture (hoisted). */
+        const bool   het_active_tau    = (pop->tau_mem_per_neuron  != NULL);
+        const bool   het_active_thresh = (pop->v_thresh_per_neuron != NULL);
+        const float* tau_per_neuron    = pop->tau_mem_per_neuron;
+        const float* vthr_per_neuron   = pop->v_thresh_per_neuron;
 
         float* v_data = (float*)nimcp_tensor_data(pop->membrane_v);
         float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
@@ -2352,6 +2904,12 @@ int snn_network_step_sparse(snn_network_t* network, float dt,
                 }
             }
 
+            /* Wave G — per-neuron LIF lookup. NULL fallback collapses to
+             * pop-wide values bit-identically. */
+            float tau_n    = het_active_tau    ? tau_per_neuron[n]  : tau_mem;
+            float v_thr_n  = het_active_thresh ? vthr_per_neuron[n] : v_thresh;
+            float active_thr_n = v_thr_n - margin;
+
             /* Sparse optimization: skip neuron if quiescent
              * - No synaptic input AND
              * - Membrane potential far below threshold (passive decay only)
@@ -2359,9 +2917,9 @@ int snn_network_step_sparse(snn_network_t* network, float dt,
              * For passive decay: dV = (v_rest - V) / tau * dt
              * If V < active_threshold and I_syn == 0, the neuron is decaying
              * toward rest and won't spike. Apply the decay analytically. */
-            if (I_syn == 0.0f && v_data[n] < active_threshold) {
+            if (I_syn == 0.0f && v_data[n] < active_thr_n) {
                 /* Analytical exponential decay: V → v_rest + (V-v_rest)*exp(-dt/tau) */
-                float alpha = expf(-dt_ms / tau_mem);
+                float alpha = expf(-dt_ms / tau_n);
                 v_data[n] = v_rest + (v_data[n] - v_rest) * alpha;
                 neurons_skipped++;
                 continue;
@@ -2369,14 +2927,14 @@ int snn_network_step_sparse(snn_network_t* network, float dt,
 
             /* Full LIF update for active neurons */
             neurons_updated++;
-            float dv = (v_rest - v_data[n] + I_syn) / tau_mem * dt_ms;
+            float dv = (v_rest - v_data[n] + I_syn) / tau_n * dt_ms;
             v_data[n] += dv;
 
             /* Spike generation */
-            if (v_data[n] >= v_thresh) {
+            if (v_data[n] >= v_thr_n) {
                 spike_data[n] = 1.0f;
                 v_data[n] = v_reset;
-                ref_data[n] = network->config.t_ref;
+                ref_data[n] = lif.t_ref;
 
                 record_spike(&pop->spike_trains[n], network->sim->current_time_us);
                 total_spikes++;
@@ -2433,6 +2991,12 @@ static void snn_pop_step_worker(snn_pop_step_ctx_t* ctx) {
     float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
     float* ref_data = (float*)nimcp_tensor_data(pop->refractory);
 
+    /* Wave G — per-neuron heterogeneity capture (hoisted). */
+    const bool   het_active_tau    = (pop->tau_mem_per_neuron  != NULL);
+    const bool   het_active_thresh = (pop->v_thresh_per_neuron != NULL);
+    const float* tau_per_neuron    = pop->tau_mem_per_neuron;
+    const float* vthr_per_neuron   = pop->v_thresh_per_neuron;
+
     int spikes = 0;
 
     for (uint32_t n = 0; n < pop->n_neurons; n++) {
@@ -2452,10 +3016,15 @@ static void snn_pop_step_worker(snn_pop_step_ctx_t* ctx) {
             }
         }
 
-        float dv = (ctx->v_rest - v_data[n] + I_syn) / ctx->tau_mem * ctx->dt_ms;
+        /* Wave G — per-neuron LIF lookup. NULL fallback collapses to
+         * pop-wide values bit-identically. */
+        float tau_n   = het_active_tau    ? tau_per_neuron[n]  : ctx->tau_mem;
+        float v_thr_n = het_active_thresh ? vthr_per_neuron[n] : ctx->v_thresh;
+
+        float dv = (ctx->v_rest - v_data[n] + I_syn) / tau_n * ctx->dt_ms;
         v_data[n] += dv;
 
-        if (v_data[n] >= ctx->v_thresh) {
+        if (v_data[n] >= v_thr_n) {
             spike_data[n] = 1.0f;
             v_data[n] = ctx->v_reset;
             ref_data[n] = ctx->t_ref;
@@ -2515,11 +3084,12 @@ int snn_network_step_parallel(snn_network_t* network, float dt,
         ctxs[p].pop = network->populations[p];
         ctxs[p].neural_net = network->neural_net;
         ctxs[p].dt_ms = dt_ms;
-        ctxs[p].v_thresh = network->config.v_thresh;
-        ctxs[p].v_reset = network->config.v_reset;
-        ctxs[p].v_rest = network->config.v_rest;
-        ctxs[p].tau_mem = network->config.tau_mem;
-        ctxs[p].t_ref = network->config.t_ref;
+        snn_lif_params_t lif = snn_pop_lif_params(ctxs[p].pop, &network->config);
+        ctxs[p].v_thresh = lif.v_thresh;
+        ctxs[p].v_reset  = lif.v_reset;
+        ctxs[p].v_rest   = lif.v_rest;
+        ctxs[p].tau_mem  = lif.tau_mem;
+        ctxs[p].t_ref    = lif.t_ref;
         ctxs[p].current_time_us = network->sim->current_time_us;
         ctxs[p].spikes = 0;
     }
@@ -3089,6 +3659,17 @@ int snn_network_connect_populations(snn_network_t* network,
         return SNN_ERROR_INVALID_POPULATION;
     }
 
+    /* P0: record receptor type for this (src → dst) pop pair.
+     * Looked up by the hot-loop deposit kernel to route weights into the
+     * correct g_ampa / g_nmda / g_gaba_a / g_gaba_b conductance bucket.
+     * Bounded by the table size (declared at SNN_MAX_POPULATIONS).
+     * Multiple connect_populations calls on the same pair update the type
+     * to the most recent caller's choice — by convention pathways are
+     * receptor-uniform so this should not happen in practice. */
+    if (src_pop < SNN_MAX_POPULATIONS) {
+        dst->synapse_type_per_src[src_pop] = (uint8_t)synapse_type;
+    }
+
     int n_connections = 0;
 
     /* Helper: generate Gaussian random weight */
@@ -3284,6 +3865,236 @@ snn_population_t* snn_network_get_population(snn_network_t* network,
         return NULL;
     }
     return network->populations[pop_id];
+}
+
+int snn_network_find_pop_by_name(const snn_network_t* network, const char* name) {
+    if (!network || !name) return -1;
+    for (uint32_t i = 0; i < network->n_populations; i++) {
+        const snn_population_t* p = network->populations[i];
+        if (!p) continue;
+        if (strncmp(p->name, name, sizeof(p->name)) == 0) return (int)i;
+    }
+    return -1;
+}
+
+int snn_network_set_pop_subclass(snn_network_t* network,
+                                 uint32_t pop_id,
+                                 neuron_subclass_t subclass) {
+    if (!network) return -1;
+    if (pop_id >= network->n_populations) return -1;
+    snn_population_t* p = network->populations[pop_id];
+    if (!p) return -1;
+    if ((int)subclass < 0 || subclass >= SNN_NSC_COUNT) return -1;
+    p->subclass = subclass;
+    return 0;
+}
+
+int snn_network_set_pop_gap_coupling(snn_network_t* network,
+                                     uint32_t pop_id,
+                                     float weight) {
+    /* Single-responsibility setter: assigns the float, nothing else.
+     * Negative coupling has no biological meaning (gap junctions are
+     * symmetric ohmic conductances); clamp to 0 to keep downstream
+     * arithmetic well-defined. NaN/Inf are also rejected since the hot
+     * loop reads this value into a multiplier that would propagate. */
+    if (!network) return -1;
+    if (pop_id >= network->n_populations) return -1;
+    snn_population_t* p = network->populations[pop_id];
+    if (!p) return -1;
+    if (!isfinite(weight)) return -1;
+    if (weight < 0.0f) weight = 0.0f;
+    p->gap_coupling = weight;
+    return 0;
+}
+
+int snn_network_set_pop_conduction_delay(snn_network_t* network,
+                                         uint32_t pop_id,
+                                         uint32_t steps) {
+    /* Single-responsibility setter (Wave E FFI fix): clamps `steps` to
+     * SNN_MAX_CONDUCTION_DELAY_STEPS and writes it to the pop. The ring
+     * buffer is allocated at population creation time and is not touched
+     * here — this setter is pure metadata. See
+     * docs/claude/ffi-timing-audit-2026-04-27.md. */
+    if (!network) return -1;
+    if (pop_id >= network->n_populations) return -1;
+    snn_population_t* p = network->populations[pop_id];
+    if (!p) return -1;
+    if (steps > SNN_MAX_CONDUCTION_DELAY_STEPS) {
+        steps = SNN_MAX_CONDUCTION_DELAY_STEPS;
+    }
+    p->conduction_delay_steps = (uint8_t)steps;
+    return 0;
+}
+
+/* Wave G — per-neuron heterogeneity (τ_mem + v_thresh).
+ *
+ * Single-responsibility setter: clamps σ to [0, 0.5], allocates the two
+ * per-neuron arrays on first non-zero call, and populates each neuron's
+ * value as `pop_wide × (1 + σ × N(0,1))`. Box-Muller transforms two
+ * uniforms from nimcp_tl_rand() into one Gaussian sample; we draw fresh
+ * uniforms for every neuron+field so τ and v_thresh are independent (as
+ * they are biophysically).
+ *
+ * Bit-identity contract: σ == 0 leaves the per-neuron arrays NULL so the
+ * LIF lookup helper (snn_pop_neuron_lif_params) collapses to pop-wide
+ * values exactly. A second call with σ == 0 frees the arrays so callers
+ * can dial heterogeneity off symmetrically.
+ *
+ * Box-Muller seeding: nimcp_tl_rand() is thread-local — no shared seed
+ * state leaks between pops, so calling this setter on multiple pops
+ * back-to-back from the wiring thread gives independent draws per pop. */
+int snn_network_set_pop_heterogeneity(snn_network_t* network,
+                                      uint32_t pop_id,
+                                      float sigma) {
+    if (!network) return -1;
+    if (pop_id >= network->n_populations) return -1;
+    snn_population_t* p = network->populations[pop_id];
+    if (!p) return -1;
+    if (!isfinite(sigma)) return -1;
+
+    /* Clamp σ to [0, 0.5]. Negative σ has no biological meaning; values
+     * above 0.5 produce > 50 % CV which would routinely generate
+     * non-positive τ_mem under the (1 + σ N(0,1)) parameterization. */
+    if (sigma < 0.0f) sigma = 0.0f;
+    if (sigma > 0.5f) sigma = 0.5f;
+
+    p->heterogeneity_sigma = sigma;
+
+    /* Wave G GPU sync (v17): mark the GPU lif_state dirty so the next step
+     * re-uploads the (now-updated) per-neuron arrays. Safe even when the
+     * GPU path is not engaged (no-op on lif_state==NULL). */
+    if (network->gpu_lif_state) {
+        ((nimcp_lif_state_t*)network->gpu_lif_state)->per_neuron_params_dirty = true;
+    }
+
+    /* σ == 0 → free arrays (symmetric off-switch) and bail. */
+    if (sigma == 0.0f) {
+        if (p->tau_mem_per_neuron)  { nimcp_free(p->tau_mem_per_neuron);  p->tau_mem_per_neuron  = NULL; }
+        if (p->v_thresh_per_neuron) { nimcp_free(p->v_thresh_per_neuron); p->v_thresh_per_neuron = NULL; }
+        return 0;
+    }
+
+    /* Lazy allocate. Best-effort — partial alloc failure is non-fatal:
+     * a NULL field falls back to pop-wide via snn_pop_neuron_lif_params. */
+    if (!p->tau_mem_per_neuron) {
+        p->tau_mem_per_neuron = (float*)nimcp_calloc(p->n_neurons, sizeof(float));
+    }
+    if (!p->v_thresh_per_neuron) {
+        p->v_thresh_per_neuron = (float*)nimcp_calloc(p->n_neurons, sizeof(float));
+    }
+
+    /* Resolve pop-wide params (subclass deltas applied). Per-neuron
+     * heterogeneity rides ON TOP — this is the LAST stage of LIF param
+     * resolution. */
+    snn_lif_params_t base = snn_pop_lif_params(p, &network->config);
+
+    /* Box-Muller: two uniforms → one Gaussian. */
+    for (uint32_t n = 0; n < p->n_neurons; n++) {
+        if (p->tau_mem_per_neuron) {
+            float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+            float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+            if (u1 < 1e-9f) u1 = 1e-9f;  /* avoid log(0) */
+            float g = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)NIMCP_PI * u2);
+            float tau_n = base.tau_mem * (1.0f + sigma * g);
+            /* Clamp to a positive floor so the LIF (1/τ) never blows up. */
+            if (tau_n < 0.5f) tau_n = 0.5f;
+            p->tau_mem_per_neuron[n] = tau_n;
+        }
+        if (p->v_thresh_per_neuron) {
+            float u1 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+            float u2 = (float)nimcp_tl_rand() / (float)RAND_MAX;
+            if (u1 < 1e-9f) u1 = 1e-9f;
+            float g = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)NIMCP_PI * u2);
+            p->v_thresh_per_neuron[n] = base.v_thresh * (1.0f + sigma * g);
+        }
+    }
+    return 0;
+}
+
+/*=============================================================================
+ * Wave H — snn_network_enable_dendritic
+ *=============================================================================
+ * Allocates the 8 per-neuron arrays (v_basal, v_apical, g_ampa_basal,
+ * g_gaba_a_basal, g_nmda_apical, g_gaba_b_apical, plateau_active,
+ * plateau_t0) and sets pop->dendritic_enabled = true. Initializes both
+ * compartment voltages to v_rest so a fresh dendritic pop starts at
+ * resting potential.
+ *
+ * Idempotent: a second call when arrays are already allocated is a no-op
+ * (returns SNN_SUCCESS without re-allocating). On allocation failure,
+ * frees what was acquired and returns SNN_ERROR_OUT_OF_MEMORY (leaves
+ * dendritic_enabled = false so the hot loop's silent-degrade contract
+ * routes the pop through the single-compartment path).
+ *
+ * See docs/claude/wave-h-dendritic-design-2026-04-27.md.
+ */
+int snn_network_enable_dendritic(snn_network_t* network, uint32_t pop_id) {
+    if (!network) return SNN_ERROR_NULL_POINTER;
+    if (pop_id >= network->n_populations) return SNN_ERROR_INVALID_POPULATION;
+    snn_population_t* p = network->populations[pop_id];
+    if (!p) return SNN_ERROR_INVALID_POPULATION;
+
+    /* Idempotent: if already enabled with all arrays present, no-op. */
+    if (p->dendritic_enabled
+        && p->v_basal && p->v_apical
+        && p->g_ampa_basal && p->g_gaba_a_basal
+        && p->g_nmda_apical && p->g_gaba_b_apical
+        && p->plateau_active && p->plateau_t0) {
+        return SNN_SUCCESS;
+    }
+
+    const uint32_t n = p->n_neurons;
+    /* Allocate all 8 arrays. Best-effort: track per-array NULLs and unwind
+     * on any failure so a partial allocation never leaves the pop in a
+     * half-dendritic state (which would cross-contaminate the hot loop). */
+    float*    v_basal_a        = (float*)   nimcp_calloc(n, sizeof(float));
+    float*    v_apical_a       = (float*)   nimcp_calloc(n, sizeof(float));
+    float*    g_ampa_basal_a   = (float*)   nimcp_calloc(n, sizeof(float));
+    float*    g_gaba_a_basal_a = (float*)   nimcp_calloc(n, sizeof(float));
+    float*    g_nmda_apical_a  = (float*)   nimcp_calloc(n, sizeof(float));
+    float*    g_gaba_b_apical_a= (float*)   nimcp_calloc(n, sizeof(float));
+    uint8_t*  plateau_active_a = (uint8_t*) nimcp_calloc(n, sizeof(uint8_t));
+    uint64_t* plateau_t0_a     = (uint64_t*)nimcp_calloc(n, sizeof(uint64_t));
+
+    if (!v_basal_a || !v_apical_a
+        || !g_ampa_basal_a || !g_gaba_a_basal_a
+        || !g_nmda_apical_a || !g_gaba_b_apical_a
+        || !plateau_active_a || !plateau_t0_a) {
+        if (v_basal_a)         nimcp_free(v_basal_a);
+        if (v_apical_a)        nimcp_free(v_apical_a);
+        if (g_ampa_basal_a)    nimcp_free(g_ampa_basal_a);
+        if (g_gaba_a_basal_a)  nimcp_free(g_gaba_a_basal_a);
+        if (g_nmda_apical_a)   nimcp_free(g_nmda_apical_a);
+        if (g_gaba_b_apical_a) nimcp_free(g_gaba_b_apical_a);
+        if (plateau_active_a)  nimcp_free(plateau_active_a);
+        if (plateau_t0_a)      nimcp_free(plateau_t0_a);
+        NIMCP_LOGGING_WARN(
+            "snn_network_enable_dendritic: alloc failure for pop '%s' "
+            "(%u neurons) — staying single-compartment", p->name, n);
+        return SNN_ERROR_OUT_OF_MEMORY;
+    }
+
+    /* Seed v_basal / v_apical to v_rest (effective per-pop value). The
+     * subclass-modulated rest potential is fetched here once. */
+    snn_lif_params_t lif = snn_pop_lif_params(p, &network->config);
+    for (uint32_t i = 0; i < n; i++) {
+        v_basal_a[i]  = lif.v_rest;
+        v_apical_a[i] = lif.v_rest;
+    }
+    /* g_* and plateau_* are zero from calloc — physiological initial state. */
+
+    /* Assign in one shot — atomic from the hot loop's perspective in
+     * single-threaded init paths. */
+    p->v_basal         = v_basal_a;
+    p->v_apical        = v_apical_a;
+    p->g_ampa_basal    = g_ampa_basal_a;
+    p->g_gaba_a_basal  = g_gaba_a_basal_a;
+    p->g_nmda_apical   = g_nmda_apical_a;
+    p->g_gaba_b_apical = g_gaba_b_apical_a;
+    p->plateau_active  = plateau_active_a;
+    p->plateau_t0      = plateau_t0_a;
+    p->dendritic_enabled = true;
+    return SNN_SUCCESS;
 }
 
 //=============================================================================
@@ -3551,6 +4362,66 @@ int snn_network_validate(const snn_network_t* network) {
     return SNN_SUCCESS;
 }
 
+/*-----------------------------------------------------------------------------
+ * Dale's Principle Validator (Wave C, task #260, 2026-04-27)
+ *
+ * Dale's principle: a single neuron releases the same neurotransmitter at
+ * all of its synaptic terminals. In our population model that translates to:
+ * for every source population, every outgoing synapse (across all dst pops)
+ * must share the same broad receptor class — either excitatory (AMPA/NMDA)
+ * or inhibitory (GABA_A/GABA_B). Modulatory / electrical / generic synapses
+ * are ignored (they coexist with classical transmission in real biology).
+ *
+ * Algorithm: walk every dst pop's synapse_type_per_src[] table, build a
+ * reverse map src_pop -> bitset {emits_excitatory, emits_inhibitory}, then
+ * flag any src that has both bits set. Pure read; no wiring side effects.
+ *
+ * Returns 0 if Dale holds (or the network is empty), non-zero on violation.
+ *---------------------------------------------------------------------------*/
+int snn_network_validate_dale(const snn_network_t* net,
+                              char* err_buf,
+                              size_t err_buf_sz)
+{
+    if (err_buf && err_buf_sz > 0) err_buf[0] = '\0';
+    if (!net || !net->populations) return 0;  /* nothing to violate */
+
+    /* Per-src bitset: bit 0 = emits excitatory, bit 1 = emits inhibitory. */
+    uint8_t emits[SNN_MAX_POPULATIONS];
+    memset(emits, 0, sizeof(emits));
+
+    const uint32_t n_pops = net->n_populations;
+    for (uint32_t dp = 0; dp < n_pops; dp++) {
+        const snn_population_t* dst = net->populations[dp];
+        if (!dst) continue;
+        for (uint32_t sp = 0; sp < SNN_MAX_POPULATIONS; sp++) {
+            synapse_type_t st = (synapse_type_t)dst->synapse_type_per_src[sp];
+            if (st == SYNAPSE_GENERIC) continue;       /* unconnected slot */
+            if (synapse_type_is_excitatory(st))      emits[sp] |= 0x01u;
+            else if (synapse_type_is_inhibitory(st)) emits[sp] |= 0x02u;
+            /* Modulatory / electrical: don't constrain Dale class. */
+        }
+    }
+
+    int violations = 0;
+    for (uint32_t sp = 0; sp < SNN_MAX_POPULATIONS && sp < n_pops; sp++) {
+        if (emits[sp] == 0x03u) {
+            violations++;
+            if (err_buf && err_buf_sz > 0) {
+                const snn_population_t* src = net->populations[sp];
+                const char* nm = (src && src->name[0]) ? src->name : "?";
+                size_t used = strlen(err_buf);
+                if (used + 1 < err_buf_sz) {
+                    int wrote = snprintf(err_buf + used, err_buf_sz - used,
+                        "%spop %u (%s): emits both excitatory and inhibitory",
+                        used ? "; " : "", sp, nm);
+                    if (wrote < 0) break;
+                }
+            }
+        }
+    }
+    return violations;
+}
+
 //=============================================================================
 // Persistence (save/load)
 //=============================================================================
@@ -3587,8 +4458,132 @@ int snn_network_validate(const snn_network_t* network) {
  *   v7: persist per-neuron homeostatic state across restarts —
  *       threshold_offset, neuron_rate_ema, depression (2026-04-19)
  *       Without this, every restart wiped hours of homeostatic settling.
+ *   v8: substrate-correctness pass (2026-04-27).
+ *       - P0: per-receptor conductance — population_t now carries four
+ *         per-neuron g_ampa/g_nmda/g_gaba_a/g_gaba_b arrays + a
+ *         per-pop-pair synapse_type_per_src[128] receptor lookup table.
+ *         The lumped g_exc/g_inh format from v7 is gone; on-disk reads
+ *         of v7 files cannot be migrated 1:1 (no way to know how a v7
+ *         lumped weight should split across the 4 receptor buckets), so
+ *         this is a HARD format break — caller must rebuild.
+ *       - P1.1: top-down NMDA feedback (L5→L3, L6→L2) added.
+ *       - P3.1: reticular thalamic nucleus pop ("thalamus_reticular",
+ *         10K LIF) wired tier0+L6→TRN NMDA + TRN→tier0 GABA_A.
+ *       Bumping SNN_MIN_COMPATIBLE_SCHEMA to 8 forces rebuild of any
+ *       sidecar saved before today; otherwise old caches would load
+ *       silently with the lumped-CB layout and crash on first step.
+ *   v9: substrate-correctness pass cont'd (2026-04-27).
+ *       - P2.0: snn_lif_params_t + snn_pop_lif_params() helper; LIF
+ *         params resolve per-pop instead of per-network.
+ *       - P2.1: neuron_subclass_t enum + subclass field on
+ *         snn_population_s; resolves to subclass-specific τ_mem/t_ref.
+ *       - P2.2: PV/SOM/VIP sub-pops added to tiers 2-6 (15 new pops),
+ *         tagged with subclass, wired with the canonical disinhibition
+ *         microcircuit (pyr→PV/SOM AMPA, prev-tier→VIP AMPA, PV→pyr
+ *         + SOM→pyr GABA_A, VIP→SOM GABA_A).
+ *       Pop count grows from ~47 to ~62. Schema bump forces rebuild
+ *       so old caches don't load with mismatched pop indices; the v8
+ *       per-receptor on-disk format is otherwise unchanged.
+ *  v10: P4.1 layer-specific pyramidal subtypes (2026-04-27).
+ *       - Extended neuron_subclass_t with PYRAMIDAL_L23 / L4_STELLATE /
+ *         L5_BETZ; tier-pyr pops now tagged at hierarchical wiring time.
+ *       - LIF profile deltas: L23 τ=18, L4 τ=14 + threshold +2 (selective),
+ *         L5 τ=25 + threshold -2 (excitable, output projection).
+ *       Format-compatible with v9 — only adds subclass tag values that
+ *       were already in v9 (file format already serializes subclass).
+ *       Schema still bumped to force rebuild so old caches that were
+ *       built before P4.1 don't load with incorrect tier-pyr params.
+ *  v11: Wave C — Dale's principle fix (2026-04-27).
+ *       - Within-tier recurrent loop now pure E→E AMPA. The previous
+ *         mod-5 dual-class branch made pyramidal pops emit BOTH AMPA
+ *         and GABA_A which violated Dale; inhibitory tone is now solely
+ *         from PV/SOM/VIP sub-pops (P2.2). docs/claude/dale-audit-2026-04-27.md.
+ *       - File format unchanged; schema bump forces rebuild so caches
+ *         built with the Dale-violating recurrent CSR are rejected.
+ *  v12: Wave E (partial) — direct input_pop → PV thalamic afferent
+ *       (2026-04-27). Restores the canonical thalamus → {pyr, PV}
+ *       parallel projection. PV's faster τ_mem (10 ms) lets it spike
+ *       under thalamic drive WITHOUT first waiting for a pyr→PV
+ *       collateral, restoring the FFI temporal-precision arm.
+ *       Conduction-delay model fix (per-pop ring buffer) is a separate
+ *       follow-up; this commit fixes the structural part of the
+ *       FFI audit. docs/claude/ffi-timing-audit-2026-04-27.md.
+ *  v13: Wave E (full) — per-pop conduction delay ring buffer
+ *       (2026-04-27). Adds snn_population_t::conduction_delay_steps
+ *       (uint8_t, default 0, max 8) and a per-pop spike_history ring
+ *       (SNN_SPIKE_HISTORY_SLOTS rows × n_neurons floats). The deposit
+ *       kernel now reads delayed spikes via snn_pop_get_delayed_spike_row;
+ *       the end-of-step pass copies spike_output into the ring and
+ *       advances the head. Hierarchical wiring sets PV pops to 0 steps
+ *       (fast/myelinated) and tier pyramidal pops to 1 step (≈1 ms),
+ *       restoring the canonical 1-3 ms FFI window. With all pops at
+ *       delay 0 (default) the deposit kernel reads the freshest slot
+ *       which equals the current spike_output snapshot — bit-identical
+ *       to v12 behavior. Format-compatible with v12 (no new on-disk
+ *       fields); schema bump forces rebuild so old caches built before
+ *       Wave E full don't load with un-tagged delays.
+ *       See docs/claude/ffi-timing-audit-2026-04-27.md.
+ *  v14: Wave G — per-neuron LIF heterogeneity (2026-04-27).
+ *       Adds snn_population_t::tau_mem_per_neuron,
+ *       snn_population_t::v_thresh_per_neuron (each [n_neurons] floats,
+ *       NULL by default → fall back to pop-wide), and the relative-σ
+ *       knob heterogeneity_sigma (default 0). Setter
+ *       snn_network_set_pop_heterogeneity() draws per-neuron values via
+ *       Box-Muller around the pop-wide-resolved LIF params; clamps σ to
+ *       [0, 0.5]. Hierarchical wiring tags every tier-pyramidal pop with
+ *       σ=0.10 (10 % relative); PV/SOM/VIP/TRN stay at σ=0.
+ *       LIF resolution helper snn_pop_neuron_lif_params() rides on top
+ *       of snn_pop_lif_params(): subclass deltas first, then per-neuron
+ *       σ noise, then substrate. With all pops at default σ=0 the LIF
+ *       lookup collapses to pop-wide bit-identically — v13 behaviour
+ *       preserved. Format-compatible with v13 (the new fields are
+ *       runtime-allocated and rebuilt on load). Schema bump forces
+ *       rebuild so old caches don't load with surprise homogeneous
+ *       tier pops.
+ *
+ * v15 (Wave H — dendritic compartments + NMDA plateau, 2026-04-27): adds
+ *       8 per-neuron arrays on snn_population_t (v_basal, v_apical,
+ *       g_ampa_basal, g_gaba_a_basal, g_nmda_apical, g_gaba_b_apical,
+ *       plateau_active, plateau_t0) plus the bool dendritic_enabled gate.
+ *       All 8 default to NULL / false; allocated only when
+ *       snn_network_enable_dendritic() is called. Hierarchical wiring
+ *       opts in tier-pyramidal pops only (PYRAMIDAL{,_L23,_L4_STELLATE,
+ *       _L5_BETZ}); interneurons stay single-compartment.
+ *       Hot loop checks `pop->dendritic_enabled && pop->v_basal != NULL`
+ *       before running the two-compartment branch (silent-degrade per
+ *       doc). With dendritic OFF on every pop the LIF lookup collapses
+ *       to v14 bit-identically. Format-compatible with v14 (the new
+ *       fields are runtime-allocated and rebuilt on load); schema bump
+ *       forces rebuild so old caches don't load assuming dendritic
+ *       state.
+ *       See docs/claude/wave-h-dendritic-design-2026-04-27.md.
+ *
+ * v16 (Wave F — substrate skip-path extension, 2026-04-27): no struct or
+ *       on-disk format changes. Hierarchical wiring's SKIP_DEFS table grows
+ *       from 2 to 5 entries: adds {input→L4, L3→L6, L5→L2}. Topology only;
+ *       schema bump forces rebuild so old caches don't load missing the
+ *       new skip connections. Region-aware (Option A) and cortex-bridge
+ *       (Option B) variants of Wave F remain deferred-pending-design per
+ *       docs/claude/wave-f-cortico-cortical-design-2026-04-27.md.
+ *
+ * v17 (Wave G GPU sync — per-neuron LIF heterogeneity on GPU, 2026-04-27):
+ *       NO on-disk format changes. Adds two device-resident tensors to
+ *       nimcp_lif_state_t (tau_mem_per_neuron, v_thresh_per_neuron) plus
+ *       a dirty flag. snn_network_step uploads the per-neuron arrays to
+ *       GPU using snn_pop_neuron_lif_params() — composing subclass deltas
+ *       (PV/SOM/VIP/TRN/L23/L4_STELLATE/L5_BETZ) AND per-neuron
+ *       heterogeneity σ noise — so the GPU LIF kernel matches CPU
+ *       semantics. Pre-v17 binaries running the GPU path silently dropped
+ *       BOTH subclass deltas and heterogeneity (kernel used network-wide
+ *       config defaults). v16 saves load fine — runtime-only fields are
+ *       rebuilt on snn_network_create / CSR-finalize, and the per-neuron
+ *       upload happens on the very first GPU step after load. SCHEMA
+ *       BUMP IS INFORMATIONAL: SNN_MIN_COMPATIBLE_SCHEMA stays at 16
+ *       because no on-disk semantics changed. Out-of-scope: GPU path is
+ *       still skipped when CB-mode is ON (CB requires per-receptor
+ *       reversal-potential math the kernel doesn't model — same as v16).
  */
-#define SNN_WIRING_SCHEMA_VERSION  7
+#define SNN_WIRING_SCHEMA_VERSION  17
 
 /* Checked fwrite helper — returns -1 on failure.
  * Saves raw (uncompressed) — compression happens at rsync transit time
@@ -3798,7 +4793,27 @@ snn_network_t* snn_network_load(const char* path) {
      *     preserves learned synaptic patterns across schema bumps.
      *   - For format-incompatible bumps in future, bump SNN_MIN_COMPATIBLE
      *     and force a rebuild. */
-    #define SNN_MIN_COMPATIBLE_SCHEMA 5
+    /* Bumped 5 → 8 (2026-04-27): the substrate-correctness pass changed
+     * snn_population_t's per-neuron conductance layout (g_exc/g_inh →
+     * g_ampa/g_nmda/g_gaba_a/g_gaba_b) and added the per-pop-pair
+     * synapse_type_per_src table. There is no safe migration path from
+     * v5/v6/v7 lumped-CB saves to v8 per-receptor — reject and rebuild.
+     * Bumped 8 → 9 (2026-04-27): P2 added 15 PV/SOM/VIP sub-pops to
+     * tiers 2-6 plus the per-pop subclass field. Pop indices in v8
+     * caches won't match the v9 layout — force rebuild.
+     * Bumped 9 → 10 (2026-04-27): P4.1 added layer-specific pyramidal
+     * subtypes (L23/L4_STELLATE/L5_BETZ) and tier-pyr pops now carry
+     * the corresponding LIF profile (τ_mem and threshold offsets).
+     * v9 caches load with default-pyramidal LIF profile, missing the
+     * layer-specific tuning — force rebuild for correctness.
+     * Bumped 10 → 16 (Wave F, 2026-04-27): SKIP_DEFS grew from 2 to 5
+     * entries (input→L4, L3→L6, L5→L2). v11..v15 saves persist the
+     * 2-entry skip topology; the new skip CSR rows would be silently
+     * absent on load. v11..v15 are STRUCTURE-correct otherwise, but
+     * topologically incomplete — force rebuild rather than default-init
+     * a stub topology. (Future schema bumps that only add new in-memory
+     * struct fields can safely keep the min lower.) */
+    #define SNN_MIN_COMPATIBLE_SCHEMA 16
     if (wiring_schema > SNN_WIRING_SCHEMA_VERSION) {
         NIMCP_LOGGING_WARN("snn_network_load: file schema v%u is NEWER than "
                            "binary v%u — rejecting (can't load future format)",

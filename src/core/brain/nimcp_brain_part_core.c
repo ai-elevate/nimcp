@@ -18,6 +18,12 @@ static const float DIALOGUE_BOOST_FACTOR     = 1.1F;   /* Confidence multiplier 
 static const float DIALOGUE_REDUCE_FACTOR    = 0.8F;   /* Confidence multiplier on low agreement */
 static const float IMAGINATION_FAIL_PENALTY  = 0.95F;  /* Confidence multiplier when simulation fails */
 static const float RCOG_CONFIDENCE_FLOOR     = 0.1F;   /* Min confidence to invoke recursive cognition */
+
+/* CC4 ternary WTA sparsifier multipliers (winner gets boost, losers get suppressed).
+ * 1.5/0.5 was the original literal in the brain_decide hot path; named here so
+ * the contract is explicit and tunable without grepping. */
+static const float CC_WTA_WINNER_GAIN        = 1.5F;
+static const float CC_WTA_LOSER_GAIN         = 0.5F;
 static const int   IMAGINATION_SIM_STEPS     = 3;      /* Number of prospective simulation steps */
 
 /* W5 KG-integration — main ANN network-level aggregator event emitter.
@@ -1915,11 +1921,29 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         brain->num_hypercolumns > 0 && brain->hypercolumns &&
         brain->column_to_decision_proj && brain->column_feature_buf &&
         decision && decision->output_vector && decision->output_size > 0) {
+        /* CC-FIX heap-safety: column_to_decision_proj was sized
+         * [feature_dim × brain->config.num_outputs] at init. The hot path
+         * walks the proj with decision->output_size as the column stride,
+         * which would OOB-read when caller passes a decision with
+         * output_size != alloc-time num_outputs. Clamp to the alloc-time
+         * size (and skip the blend entirely if the row stride mismatches —
+         * row-major indexing is wrong if out_sz differs from alloc_out_sz). */
+        const uint32_t alloc_out_sz = brain->config.num_outputs;
         uint32_t out_sz       = decision->output_size;
+        if (out_sz > alloc_out_sz) {
+            /* Strict: any out_sz larger than the alloc would OOB-read row.
+             * Accept smaller out_sz (shorter vector — still in-range). */
+            out_sz = alloc_out_sz;
+        }
         uint32_t feature_dim  = brain->column_feature_dim;
         uint32_t num_hcs      = brain->num_hypercolumns;
         uint32_t mcs_per_hc   = (num_hcs > 0) ? (feature_dim / num_hcs) : 0;
-        if (mcs_per_hc > 0 && feature_dim > 0) {
+        /* CC-FIX gating: ternary_hypercolumns[h] access must be bounded by
+         * num_ternary_hypercolumns. If init ran into trouble it can be < num_hcs. */
+        const bool ternary_on = brain->enable_cortical_ternary &&
+                                brain->ternary_hypercolumns &&
+                                brain->num_ternary_hypercolumns > 0;
+        if (mcs_per_hc > 0 && feature_dim > 0 && out_sz == alloc_out_sz) {
             /* Step 1: per-HC compute + distribution */
             for (uint32_t h = 0; h < num_hcs; h++) {
                 hypercolumn_t* hc = brain->hypercolumns[h];
@@ -1932,13 +1956,19 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                 hypercolumn_get_distribution(hc, slot, mcs_per_hc);
 
                 /* Step 2: optional ternary WTA — sparsify the slot. */
-                if (brain->enable_cortical_ternary && brain->ternary_hypercolumns) {
+                if (ternary_on && h < brain->num_ternary_hypercolumns) {
                     cc_ternary_hypercolumn_t* thc =
                         (cc_ternary_hypercolumn_t*)brain->ternary_hypercolumns[h];
                     if (thc) {
                         uint32_t winner = cc_ternary_hypercolumn_wta(thc);
-                        for (uint32_t m = 0; m < mcs_per_hc; m++) {
-                            slot[m] = (m == winner) ? slot[m] * 1.5F : slot[m] * 0.5F;
+                        /* If wta returns out-of-range index, skip the
+                         * sparsify (slot stays as raw distribution) rather
+                         * than misclassify a non-winner as winner. */
+                        if (winner < mcs_per_hc) {
+                            for (uint32_t m = 0; m < mcs_per_hc; m++) {
+                                slot[m] = (m == winner) ? slot[m] * CC_WTA_WINNER_GAIN
+                                                        : slot[m] * CC_WTA_LOSER_GAIN;
+                            }
                         }
                     }
                 }

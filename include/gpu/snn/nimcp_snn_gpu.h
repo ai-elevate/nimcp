@@ -199,12 +199,29 @@ typedef struct nimcp_stdp_dao {
 
 /**
  * @brief LIF neuron state
+ *
+ * Per-neuron LIF heterogeneity (Wave G GPU sync, schema v17 — 2026-04-27):
+ *   The optional `tau_mem_per_neuron` and `v_thresh_per_neuron` tensors
+ *   carry one float per neuron (sized to match `v->numel`). When non-NULL
+ *   the LIF kernels load the per-neuron value instead of `params.tau_mem`
+ *   / `params.v_thresh`. NULL → kernel falls back to the scalar in
+ *   `params` (bit-identical to pre-Wave-G GPU behavior). Populate via
+ *   `nimcp_gpu_lif_state_upload_per_neuron_params()`. The arrays also
+ *   carry per-population subclass deltas (PV τ=10 ms, SOM τ=30 ms, L5 Betz
+ *   v_thresh −2 mV, etc.) — the GPU kernel reads each neuron's resolved
+ *   value directly so subclass + heterogeneity compose on GPU same as CPU.
  */
 typedef struct {
     nimcp_gpu_tensor_t* v;          /**< Membrane potential */
     nimcp_gpu_tensor_t* i_syn;      /**< Synaptic current */
     nimcp_gpu_tensor_t* spikes;     /**< Output spikes (binary) */
-    nimcp_lif_params_t params;      /**< Neuron parameters */
+    nimcp_lif_params_t params;      /**< Neuron parameters (scalar fallback) */
+    nimcp_gpu_tensor_t* tau_mem_per_neuron;  /**< Optional [n] τ_mem per neuron; NULL = use params.tau_mem */
+    nimcp_gpu_tensor_t* v_thresh_per_neuron; /**< Optional [n] v_thresh per neuron; NULL = use params.v_thresh */
+    /* Wave G GPU sync (v17): set to true to request a per-neuron-params re-upload
+     * from CPU pops on the next GPU step. Owned by the caller (e.g.
+     * snn_network_step); the kernel launcher does not read or clear this flag. */
+    bool per_neuron_params_dirty;
 } nimcp_lif_state_t;
 
 /**
@@ -244,6 +261,38 @@ NIMCP_EXPORT nimcp_lif_state_t* nimcp_lif_state_create(
  * @brief Destroy LIF neuron state
  */
 NIMCP_EXPORT void nimcp_lif_state_destroy(nimcp_lif_state_t* state);
+
+/**
+ * @brief Upload optional per-neuron τ_mem and v_thresh arrays to the
+ *        GPU LIF state (Wave G GPU sync, schema v17).
+ *
+ * Either argument may be NULL — that array stays unallocated on the device
+ * (kernel falls back to the scalar in `state->params`). Pass non-NULL to
+ * allocate / overwrite the device buffer with the host data. To clear a
+ * previously-uploaded array, call this function again with NULL for that
+ * field — the device buffer is freed and the kernel falls back to scalar.
+ *
+ * Bit-identity contract: with both arguments NULL (or never called) the
+ * GPU LIF kernel runs exactly as pre-Wave-G — so existing callers that
+ * have not opted into heterogeneity see no behavior change.
+ *
+ * Thread safety: caller must hold the network's mutex (or otherwise
+ * serialize against the step loop) — the function does not lock.
+ *
+ * @param ctx              GPU context (NOT NULL).
+ * @param state            LIF state to update (NOT NULL).
+ * @param tau_mem_host     Host array [n_neurons] of τ_mem values, or NULL.
+ * @param v_thresh_host    Host array [n_neurons] of v_thresh values, or NULL.
+ * @param n_neurons        Must match `state->v->numel`.
+ * @return true on success, false on context/state mismatch or alloc failure.
+ */
+NIMCP_EXPORT bool nimcp_gpu_lif_state_upload_per_neuron_params(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    const float* tau_mem_host,
+    const float* v_thresh_host,
+    size_t n_neurons
+);
 
 /**
  * @brief LIF forward pass

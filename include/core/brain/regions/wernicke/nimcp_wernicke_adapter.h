@@ -70,14 +70,27 @@ typedef struct lexical_access lexical_access_t;
 typedef struct semantic_integrator semantic_integrator_t;
 typedef struct syntactic_comprehension syntactic_comprehension_t;
 
-/* External module forward declarations */
+/* External module forward declarations.
+ * Note on semantic_memory_t: the canonical typedef lives in
+ * cognitive/parietal/nimcp_intuition_integrations.h as
+ * `typedef struct semantic_memory_system semantic_memory_t;`. The local
+ * forward decl MUST use the same struct tag or any TU that includes both
+ * sees a conflicting-types error. */
 typedef struct broca_adapter broca_adapter_t;
 typedef struct speech_cortex speech_cortex_t;
-typedef struct semantic_memory semantic_memory_t;
+typedef struct semantic_memory_system semantic_memory_t;
 typedef struct brain_kg brain_kg_t;
 
 /* Forward declaration for opaque adapter type */
 typedef struct wernicke_adapter wernicke_adapter_t;
+
+/* Forward decl for SNN substrate binding (kept opaque so adapter callers
+ * don't need to pull in the full snn_network header). Struct tag matches
+ * the canonical typedef in snn/nimcp_snn_types.h. */
+#ifndef NIMCP_SNN_NETWORK_T_FWD
+#define NIMCP_SNN_NETWORK_T_FWD
+typedef struct snn_network_s snn_network_t;
+#endif
 
 /*=============================================================================
  * CONFIGURATION
@@ -1100,6 +1113,49 @@ bool wernicke_connect_semantic_memory(
     wernicke_adapter_t* adapter,
     semantic_memory_t* semantic
 );
+
+/*=============================================================================
+ * SNN SUBSTRATE BINDING (wernicke_substrate population)
+ *===========================================================================*/
+
+/**
+ * @brief Attach the SNN substrate population that backs Wernicke's area.
+ *
+ * WHAT: Stores a reference to the SNN network + the population id of the
+ *       wernicke_substrate pop (created by nimcp_brain_factory_init_language_pops).
+ * WHY:  Comprehension ticks need to read spike rates from the substrate pop
+ *       (driven by L3_concept / L4_integr taps) so phonological / lexical
+ *       processing can gate on actual cortical drive instead of running blind.
+ *       Without this binding the 64K-neuron pop is floating — it spikes from
+ *       hierarchy taps but the adapter logic can't observe it.
+ * HOW:  Adapter caches (snn, pop_id). pop_id < 0 = unbound (no-op). Idempotent.
+ *
+ * @param adapter Wernicke adapter instance
+ * @param snn     SNN network owning the substrate pop (may be NULL → unbind)
+ * @param pop_id  Pop id from snn_network_add_population_lightweight (< 0 = unbind)
+ * @return true on success, false if adapter is NULL
+ */
+bool wernicke_attach_snn_pop(
+    wernicke_adapter_t* adapter,
+    snn_network_t* snn,
+    int pop_id
+);
+
+/**
+ * @brief Get the bound SNN population id.
+ *
+ * @param adapter Wernicke adapter instance
+ * @return Pop id (>= 0) if bound, -1 if unbound or adapter is NULL
+ */
+int wernicke_get_snn_pop_id(const wernicke_adapter_t* adapter);
+
+/**
+ * @brief Get the bound SNN network handle.
+ *
+ * @param adapter Wernicke adapter instance
+ * @return SNN network pointer if bound, NULL otherwise
+ */
+snn_network_t* wernicke_get_snn_network(const wernicke_adapter_t* adapter);
 
 #ifdef __cplusplus
 }

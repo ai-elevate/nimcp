@@ -151,6 +151,14 @@ static const char* get_basename(const char* path) {
 static bool ring_buffer_push(log_ring_buffer_t* rb, const nimcp_log_entry_t* entry) {
     uint64_t write_pos, read_pos, next_pos;
 
+    /* Teardown safety — symmetric with ring_buffer_pop. ring_buffer_destroy
+     * zeroes capacity before freeing entries, so any push that arrives
+     * mid-shutdown takes the "buffer full" branch and falls back to sync
+     * writes (handled by the caller). */
+    if (!rb || !rb->entries || rb->capacity == 0) {
+        return false;
+    }
+
     // Try to reserve a slot
     for (int retry = 0; retry < 3; retry++) {
         write_pos = nimcp_atomic_load_u64(&rb->write_pos, NIMCP_MEMORY_ORDER_ACQUIRE);
@@ -188,6 +196,16 @@ static bool ring_buffer_push(log_ring_buffer_t* rb, const nimcp_log_entry_t* ent
  * WHY:  Single consumer, no CAS needed
  */
 static bool ring_buffer_pop(log_ring_buffer_t* rb, nimcp_log_entry_t* entry) {
+    /* Teardown safety: ring_buffer_destroy() sets rb->entries=NULL after
+     * freeing the entry array. If the async writer thread is mid-pop when
+     * destroy fires (which it shouldn't be under normal lifecycle, but a
+     * crash-handler-driven shutdown can land here), we'd memcpy from a
+     * NULL pointer and SIGSEGV. The pointer + capacity check is a cheap
+     * fence — both must be valid OR we treat the buffer as empty. */
+    if (!rb || !rb->entries || rb->capacity == 0) {
+        return false;
+    }
+
     uint64_t read_pos = nimcp_atomic_load_u64(&rb->read_pos, NIMCP_MEMORY_ORDER_ACQUIRE);
     uint64_t write_pos = nimcp_atomic_load_u64(&rb->write_pos, NIMCP_MEMORY_ORDER_ACQUIRE);
 

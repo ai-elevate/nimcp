@@ -327,6 +327,73 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_conductance_integration.cpp)
 endif()
 
 # ============================================================================
+# SNN Dendritic Integration Test (Wave H — BAC firing)
+# ============================================================================
+# WHAT: 3-pop integration circuit that pins the BAC-firing phenotype:
+#       bottom-up alone fires, top-down alone is silent, coincident
+#       drives a burst.
+# WHY:  The two-compartment integration is the substrate for dendritic
+#       computation. BAC firing is the canonical biological phenotype.
+# HOW:  C + libcheck (matches test_snn_per_receptor_integration.c style).
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_dendritic_integration.c)
+    add_executable(integration_snn_test_snn_dendritic_integration
+        test_snn_dendritic_integration.c
+    )
+    target_include_directories(integration_snn_test_snn_dendritic_integration
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+    )
+    target_compile_features(integration_snn_test_snn_dendritic_integration
+        PRIVATE c_std_11)
+    target_link_libraries(integration_snn_test_snn_dendritic_integration
+        PRIVATE
+            nimcp_snn
+            nimcp
+            Threads::Threads
+            check_pic subunit rt m z
+    )
+    add_test(NAME integration_snn_test_snn_dendritic_integration
+             COMMAND integration_snn_test_snn_dendritic_integration
+             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(integration_snn_test_snn_dendritic_integration
+        PROPERTIES
+            LABELS "integration;snn;dendritic;wave_h"
+            TIMEOUT 60)
+    message(STATUS "  Added SNN integration test: test_snn_dendritic_integration")
+endif()
+
+# ============================================================================
+# Language adapter ↔ SNN substrate integration
+# ============================================================================
+# WHAT: Brings up a tiny SNN with broca_substrate / wernicke_substrate pops
+#       and verifies broca/wernicke_attach_snn_pop binds cleanly + survives
+#       SNN ticks.
+# WHY:  Catches drift between init code's pop-name constants and adapter
+#       expectations. Real SNN exercise (vs unit test which uses sentinel).
+# HOW:  GoogleTest. Bypasses brain init for speed.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_lang_attach_integration.cpp)
+    add_executable(integration_snn_test_lang_attach_integration
+        test_lang_attach_integration.cpp
+    )
+    target_link_libraries(integration_snn_test_lang_attach_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_LIBS}
+    )
+    target_include_directories(integration_snn_test_lang_attach_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_INCLUDES}
+    )
+    target_compile_features(integration_snn_test_lang_attach_integration
+        PRIVATE cxx_std_17)
+    gtest_discover_tests(integration_snn_test_lang_attach_integration
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;language;adapter"
+            TIMEOUT 120
+    )
+    message(STATUS "  Added SNN integration test: test_lang_attach_integration")
+endif()
+
+# ============================================================================
 # Include Subdirectories
 # ============================================================================
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)

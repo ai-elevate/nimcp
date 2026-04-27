@@ -289,6 +289,9 @@ struct brain_struct {
         uint64_t cnn_steps;      /**< Total CNN training steps */
         uint64_t snn_steps;      /**< Total SNN training steps */
         uint64_t lnn_steps;      /**< Total LNN training steps */
+        /* P3.1 monitor: spike rate of the TRN gating pop. Updated on
+         * each SNN step when present; stays 0 for non-hierarchical SNNs. */
+        float trn_mean_rate_hz;  /**< Last sampled TRN firing rate (Hz) */
 
         /* Hamiltonian Neural Network metrics */
         float hnn_energy;        /**< Current Hamiltonian H(q,p) value */
@@ -708,10 +711,8 @@ struct brain_struct {
     // Ternary WTA wrapper around the base hypercolumns. Drives sparse winner-
     // take-all selection and feeds (via column_to_decision_proj) into the
     // brain's decision output. Population gated by enable_cortical_ternary.
-    // Forward-decl typedefs — the ternary header is included from .c files
-    // that need full struct access; here we only need pointer-sized fields.
-    struct cc_ternary_connectivity_fd;
-    struct cc_ternary_hypercolumn_fd;
+    // Stored as void* — .c files that need full struct access include
+    // core/cortical_columns/nimcp_cortical_column_ternary.h directly.
     void* ternary_connectivity;            // cc_ternary_connectivity_t* — shared lateral connectivity
     void** ternary_hypercolumns;           // cc_ternary_hypercolumn_t** — one per base hypercolumn
     uint32_t num_ternary_hypercolumns;     // == num_hypercolumns when ON

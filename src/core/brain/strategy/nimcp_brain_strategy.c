@@ -481,6 +481,7 @@ bool brain_get_network_metrics(brain_t brain, brain_network_metrics_t* metrics) 
     metrics->cnn_steps     = brain->network_metrics.cnn_steps;
     metrics->snn_steps     = brain->network_metrics.snn_steps;
     metrics->lnn_steps     = brain->network_metrics.lnn_steps;
+    metrics->trn_mean_rate_hz = brain->network_metrics.trn_mean_rate_hz;
     return true;
 }
 

@@ -1991,8 +1991,16 @@ typedef struct {
     uint32_t lnn_target_neurons;            /**< Target LNN neuron count (0 = default) */
 } brain_config_t;
 
-/* SNN-primary architecture defaults */
-#define NIMCP_DEFAULT_SNN_NEURONS       1800000  /**< 1.8M hierarchical SNN */
+/* SNN-primary architecture defaults.
+ *
+ * The 1.8M → 1.9M bump (2026-04-27) accounts for the new language /
+ * sensorymotor substrate pops created by nimcp_brain_factory_init_language_pops
+ * (broca 64K + wernicke 64K + arcuate 32K + sensorymotor_ring 40K = 200K).
+ * Those pops sit on top of the hierarchical SNN, so total SNN at run time is
+ * ~2.1M neurons. The default knob here controls the hierarchical sub-network
+ * only — bumping to 1.9M gives the hierarchy slightly more capacity (extra
+ * width per tier) so the new substrate doesn't crowd cortex-side activity. */
+#define NIMCP_DEFAULT_SNN_NEURONS       1900000  /**< 1.9M hierarchical SNN (+200K language/sensorymotor on top) */
 #define NIMCP_DEFAULT_LNN_NEURONS       512      /**< LNN cap (O(n²) adjoint, sweet spot for temporal richness) */
 #define NIMCP_DEFAULT_ANN_NEURONS       150000   /**< ANN teacher (SNN is primary) */
 
@@ -3553,6 +3561,12 @@ typedef struct brain_network_metrics {
     uint64_t cnn_steps;      /**< Total CNN training steps */
     uint64_t snn_steps;      /**< Total SNN training steps */
     uint64_t lnn_steps;      /**< Total LNN training steps */
+    /* SNN per-pop monitoring — TRN gating health.
+     * trn_mean_rate_hz is the spike rate of the "thalamus_reticular" pop,
+     * sampled at the most recent SNN step. 0 if the pop is absent (e.g.
+     * non-hierarchical SNN config). Useful for detecting runaway/death of
+     * the reticular gate (see P3.1). */
+    float trn_mean_rate_hz;  /**< Last sampled TRN pop firing rate (Hz) */
 } brain_network_metrics_t;
 
 /**

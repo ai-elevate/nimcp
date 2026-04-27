@@ -55,6 +55,13 @@ nimcp_lif_state_t* nimcp_lif_state_create(
     state->v = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
     state->i_syn = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
     state->spikes = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+    // Wave G GPU sync (v17): per-neuron arrays default NULL — bit-identical
+    // pre-Wave-G behavior until nimcp_gpu_lif_state_upload_per_neuron_params
+    // is called. dirty=true on first creation so the SNN step layer pushes
+    // composed (subclass + heterogeneity) per-neuron values on the next step.
+    state->tau_mem_per_neuron      = NULL;
+    state->v_thresh_per_neuron     = NULL;
+    state->per_neuron_params_dirty = true;
 
     if (!state->v || !state->i_syn || !state->spikes) {
         nimcp_lif_state_destroy(state);
@@ -79,7 +86,77 @@ void nimcp_lif_state_destroy(nimcp_lif_state_t* state)
     if (state->v) nimcp_gpu_tensor_destroy(state->v);
     if (state->i_syn) nimcp_gpu_tensor_destroy(state->i_syn);
     if (state->spikes) nimcp_gpu_tensor_destroy(state->spikes);
+    // Wave G GPU sync (v17): optional per-neuron arrays.
+    if (state->tau_mem_per_neuron)  nimcp_gpu_tensor_destroy(state->tau_mem_per_neuron);
+    if (state->v_thresh_per_neuron) nimcp_gpu_tensor_destroy(state->v_thresh_per_neuron);
     nimcp_free(state);
+}
+
+bool nimcp_gpu_lif_state_upload_per_neuron_params(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    const float* tau_mem_host,
+    const float* v_thresh_host,
+    size_t n_neurons)
+{
+    if (!ctx || !state || !state->v) {
+        LOG_ERROR("nimcp_gpu_lif_state_upload_per_neuron_params: invalid args");
+        return false;
+    }
+    // Size sanity — must match the existing membrane buffer.
+    if (state->v->numel != n_neurons) {
+        LOG_ERROR("nimcp_gpu_lif_state_upload_per_neuron_params: n_neurons "
+                  "(%zu) does not match state->v->numel (%zu)",
+                  n_neurons, (size_t)state->v->numel);
+        return false;
+    }
+
+    size_t dims[1] = { n_neurons };
+
+    // τ_mem: NULL → free the device buffer (revert to scalar).
+    //        non-NULL → allocate-if-needed then upload.
+    if (tau_mem_host == NULL) {
+        if (state->tau_mem_per_neuron) {
+            nimcp_gpu_tensor_destroy(state->tau_mem_per_neuron);
+            state->tau_mem_per_neuron = NULL;
+        }
+    } else {
+        if (!state->tau_mem_per_neuron) {
+            state->tau_mem_per_neuron = nimcp_gpu_tensor_create(
+                ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!state->tau_mem_per_neuron) {
+                LOG_ERROR("upload_per_neuron_params: τ_mem tensor create failed");
+                return false;
+            }
+        }
+        if (!nimcp_gpu_tensor_upload(state->tau_mem_per_neuron, tau_mem_host)) {
+            LOG_ERROR("upload_per_neuron_params: τ_mem upload failed");
+            return false;
+        }
+    }
+
+    // v_thresh: same pattern.
+    if (v_thresh_host == NULL) {
+        if (state->v_thresh_per_neuron) {
+            nimcp_gpu_tensor_destroy(state->v_thresh_per_neuron);
+            state->v_thresh_per_neuron = NULL;
+        }
+    } else {
+        if (!state->v_thresh_per_neuron) {
+            state->v_thresh_per_neuron = nimcp_gpu_tensor_create(
+                ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+            if (!state->v_thresh_per_neuron) {
+                LOG_ERROR("upload_per_neuron_params: v_thresh tensor create failed");
+                return false;
+            }
+        }
+        if (!nimcp_gpu_tensor_upload(state->v_thresh_per_neuron, v_thresh_host)) {
+            LOG_ERROR("upload_per_neuron_params: v_thresh upload failed");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 //=============================================================================
@@ -162,16 +239,32 @@ bool nimcp_gpu_snn_isyn_csr(
 // LIF Forward Kernel
 //=============================================================================
 
+/* Wave G GPU sync (v17): kernel accepts optional per-neuron τ_mem / v_thresh
+ * arrays. NULL → use the scalar argument (bit-identical pre-Wave-G path).
+ * non-NULL → load tau_mem[idx] / v_thresh[idx] for each thread.
+ *
+ * The per-neuron arrays carry the LIF profile that already includes
+ * subclass deltas (PV τ=10 ms, SOM τ=30 ms, L5 Betz v_thresh −2 mV, etc.)
+ * AND per-neuron heterogeneity σ noise — both stages composed host-side
+ * via snn_pop_neuron_lif_params() and uploaded once per (re)build or
+ * heterogeneity-change event. */
 __global__ void kernel_lif_forward(
     float* v, float* i_syn, float* spikes, const float* input,
     float tau_mem, float tau_syn, float v_thresh, float v_reset, float v_rest,
-    float dt, bool hard_reset, size_t n)
+    float dt, bool hard_reset, size_t n,
+    const float* __restrict__ tau_mem_per_neuron,
+    const float* __restrict__ v_thresh_per_neuron)
 {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
+    // Per-neuron resolution — NULL pointer collapses to scalar (no extra
+    // global memory traffic in the homogeneous case).
+    const float tau_mem_n  = tau_mem_per_neuron  ? tau_mem_per_neuron[idx]  : tau_mem;
+    const float v_thresh_n = v_thresh_per_neuron ? v_thresh_per_neuron[idx] : v_thresh;
+
     // Decay factors
-    float alpha_mem = expf(-dt / tau_mem);
+    float alpha_mem = expf(-dt / tau_mem_n);
     float alpha_syn = expf(-dt / tau_syn);
 
     // Update synaptic current
@@ -184,12 +277,12 @@ __global__ void kernel_lif_forward(
 
     // Check for spike
     float spike = 0.0f;
-    if (membrane >= v_thresh) {
+    if (membrane >= v_thresh_n) {
         spike = 1.0f;
         if (hard_reset) {
             membrane = v_reset;
         } else {
-            membrane = membrane - (v_thresh - v_reset);
+            membrane = membrane - (v_thresh_n - v_reset);
         }
     }
 
@@ -206,13 +299,19 @@ __global__ void kernel_lif_forward_simple(
     float* __restrict__ spikes,
     const float* __restrict__ input,
     float tau_mem, float v_thresh, float v_reset, float v_rest,
-    float dt, bool hard_reset, size_t n)
+    float dt, bool hard_reset, size_t n,
+    const float* __restrict__ tau_mem_per_neuron,
+    const float* __restrict__ v_thresh_per_neuron)
 {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
+    // Per-neuron resolution — see kernel_lif_forward for rationale.
+    const float tau_mem_n  = tau_mem_per_neuron  ? tau_mem_per_neuron[idx]  : tau_mem;
+    const float v_thresh_n = v_thresh_per_neuron ? v_thresh_per_neuron[idx] : v_thresh;
+
     // Decay factor for membrane
-    float alpha_mem = expf(-dt / tau_mem);
+    float alpha_mem = expf(-dt / tau_mem_n);
 
     // Update membrane potential (input used directly as current)
     float membrane = v[idx];
@@ -220,12 +319,12 @@ __global__ void kernel_lif_forward_simple(
 
     // Check for spike
     float spike = 0.0f;
-    if (membrane >= v_thresh) {
+    if (membrane >= v_thresh_n) {
         spike = 1.0f;
         if (hard_reset) {
             membrane = v_reset;
         } else {
-            membrane = membrane - (v_thresh - v_reset);
+            membrane = membrane - (v_thresh_n - v_reset);
         }
     }
 
@@ -248,20 +347,33 @@ bool nimcp_gpu_lif_forward(
     size_t n = state->v->numel;
     const nimcp_lif_params_t* p = &state->params;
 
+    // Wave G GPU sync (v17): pass optional per-neuron arrays (NULL = scalar
+    // fallback, pre-Wave-G bit-identical).
+    const float* d_tau_per_neuron =
+        state->tau_mem_per_neuron
+            ? (const float*)state->tau_mem_per_neuron->data
+            : NULL;
+    const float* d_vthr_per_neuron =
+        state->v_thresh_per_neuron
+            ? (const float*)state->v_thresh_per_neuron->data
+            : NULL;
+
     if (state->i_syn != NULL) {
         // Full LIF with synaptic current integration
         kernel_lif_forward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (float*)state->v->data, (float*)state->i_syn->data,
             (float*)state->spikes->data, (const float*)input->data,
             p->tau_mem, p->tau_syn, p->v_thresh, p->v_reset, p->v_rest,
-            p->dt, p->hard_reset, n);
+            p->dt, p->hard_reset, n,
+            d_tau_per_neuron, d_vthr_per_neuron);
     } else {
         // Simplified LIF without synaptic current (input used directly)
         kernel_lif_forward_simple<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (float*)state->v->data, (float*)state->spikes->data,
             (const float*)input->data,
             p->tau_mem, p->v_thresh, p->v_reset, p->v_rest,
-            p->dt, p->hard_reset, n);
+            p->dt, p->hard_reset, n,
+            d_tau_per_neuron, d_vthr_per_neuron);
     }
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);

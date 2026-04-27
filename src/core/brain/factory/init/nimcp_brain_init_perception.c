@@ -21,6 +21,7 @@
 //=============================================================================
 
 #include "core/brain/factory/init/nimcp_brain_init_perception.h"
+#include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* nimcp_brain_attach_glial */
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/logging/nimcp_logging.h"

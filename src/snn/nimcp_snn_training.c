@@ -161,10 +161,43 @@ static float g_snn_ahp_pump_substrate_coupling = 1.0f;
  * See docs/claude/cb-phase0-design.md. */
 static float g_snn_conductance_enabled = 0.0f;
 static float g_snn_cb_weights_rescaled = 0.0f;
-static float g_snn_e_exc_mv  =   0.0f;
-static float g_snn_e_inh_mv  = -80.0f;
-static float g_snn_tau_exc_ms = 2.0f;
-static float g_snn_tau_inh_ms = 8.0f;
+/* P0 per-receptor reversal potentials (mV).
+ * AMPA / NMDA share E_rev ≈ 0 mV (Na+/Ca2+ permeable, depolarizing).
+ * GABA_A / GABA_B share E_rev ≈ -75 mV (Cl-/K+ permeable, hyperpolarizing).
+ * The legacy g_snn_e_exc_mv / g_snn_e_inh_mv globals are KEPT as aliases
+ * — getters return the AMPA/GABA_A value so Python `snn_tune_get_e_exc_mv`
+ * still works. Setters update both AMPA and NMDA simultaneously (and both
+ * GABA-A / GABA-B for the inh setter) for sane defaults. */
+static float g_snn_e_ampa_mv   =   0.0f;
+static float g_snn_e_nmda_mv   =   0.0f;
+static float g_snn_e_gaba_a_mv = -75.0f;
+static float g_snn_e_gaba_b_mv = -75.0f;
+/* P0 per-receptor decay τ (ms). Standard cortical kinetics:
+ *   AMPA   ≈   2 ms (fast excitatory)
+ *   NMDA   ≈ 100 ms (slow excitatory, Mg²⁺-blocked)
+ *   GABA_A ≈  10 ms (fast inhibitory)
+ *   GABA_B ≈ 150 ms (slow inhibitory, GIRK-coupled K+ current) */
+static float g_snn_tau_ampa_ms   =   2.0f;
+static float g_snn_tau_nmda_ms   = 100.0f;
+static float g_snn_tau_gaba_a_ms =  10.0f;
+static float g_snn_tau_gaba_b_ms = 150.0f;
+/* NMDA Mg²⁺ block: g_nmda_eff = g_nmda / (1 + [Mg]·exp(-V/16.13)/3.57)
+ * Standard physiological [Mg²⁺] is ~1 mM extracellular. Tunable so
+ * experiments can scale or zero it (zero → no V-gating, NMDA acts like
+ * slow AMPA, useful for ablation tests). */
+static float g_snn_nmda_mg_mm = 1.0f;
+
+/* Wave H — dendritic compartment runtime flag (default OFF).
+ *
+ * When non-zero AT THE TIME OF POPULATION CREATION (in the hierarchical
+ * wiring path), tier-pyramidal pops get pop->dendritic_enabled = true and
+ * the 8 Wave H arrays allocated via snn_network_enable_dendritic().
+ * Interneurons (PV/SOM/VIP/TRN) stay single-compartment regardless of
+ * this flag.
+ *
+ * Like conductance_enabled, this must be set BEFORE brain init for the
+ * default-OFF regression contract to flip at production scale. */
+static float g_snn_dendritic_enabled = 0.0f;
 
 /* Public setters — called from Python binding via tune_snn RPC. */
 void snn_tune_set_rstdp_lr(float v)              { if (v > 0.0f && v < 1.0f)     g_rstdp_lr = v; }
@@ -219,15 +252,32 @@ void snn_tune_set_ahp_pump_substrate_coupling(float v) { g_snn_ahp_pump_substrat
  * tau_exc/tau_inh validated: must be in [0.1, 1000] ms. */
 void snn_tune_set_conductance_enabled(float v) { g_snn_conductance_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
 void snn_tune_set_cb_weights_rescaled(float v) { g_snn_cb_weights_rescaled = (v != 0.0f) ? 1.0f : 0.0f; }
-void snn_tune_set_e_exc_mv(float v) {
-    /* Reject if it would invert the polarity (e_exc must stay above e_inh). */
-    if (isfinite(v) && v > g_snn_e_inh_mv) g_snn_e_exc_mv = v;
-}
-void snn_tune_set_e_inh_mv(float v) {
-    if (isfinite(v) && v < g_snn_e_exc_mv) g_snn_e_inh_mv = v;
-}
-void snn_tune_set_tau_exc_ms(float v) { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_exc_ms = v; }
-void snn_tune_set_tau_inh_ms(float v) { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_inh_ms = v; }
+/* P0 per-receptor setters — write the new per-receptor globals.
+ * Each guards a sane validation range. NMDA inherits AMPA's E_rev by default
+ * but can diverge if a future user wants to tune them separately. */
+void snn_tune_set_e_ampa_mv(float v)   { if (isfinite(v) && v > g_snn_e_gaba_a_mv) g_snn_e_ampa_mv = v; }
+void snn_tune_set_e_nmda_mv(float v)   { if (isfinite(v) && v > g_snn_e_gaba_a_mv) g_snn_e_nmda_mv = v; }
+void snn_tune_set_e_gaba_a_mv(float v) { if (isfinite(v) && v < g_snn_e_ampa_mv)   g_snn_e_gaba_a_mv = v; }
+void snn_tune_set_e_gaba_b_mv(float v) { if (isfinite(v) && v < g_snn_e_ampa_mv)   g_snn_e_gaba_b_mv = v; }
+void snn_tune_set_tau_ampa_ms(float v)   { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_ampa_ms = v; }
+void snn_tune_set_tau_nmda_ms(float v)   { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_nmda_ms = v; }
+void snn_tune_set_tau_gaba_a_ms(float v) { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_gaba_a_ms = v; }
+void snn_tune_set_tau_gaba_b_ms(float v) { if (v >= 0.1f && v <= 1000.0f) g_snn_tau_gaba_b_ms = v; }
+void snn_tune_set_nmda_mg_mm(float v)    { if (v >= 0.0f && v <= 10.0f)   g_snn_nmda_mg_mm = v; }
+
+/* Wave H — dendritic compartment flag. Bool-style: any nonzero is on. */
+void snn_tune_set_dendritic_enabled(float v) { g_snn_dendritic_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
+
+/* Legacy aliases — keep Python bindings working by routing the old
+ * "exc/inh" names to AMPA / GABA_A (the dominant receptors). Setting
+ * tau_exc_ms updates only AMPA; users who want NMDA must use the new
+ * setter. Same for tau_inh_ms → GABA_A. This means existing tune RPCs
+ * keep working but lose access to the slow NMDA / GABA_B knobs unless
+ * upgraded. */
+void snn_tune_set_e_exc_mv(float v)   { snn_tune_set_e_ampa_mv(v); snn_tune_set_e_nmda_mv(v); }
+void snn_tune_set_e_inh_mv(float v)   { snn_tune_set_e_gaba_a_mv(v); snn_tune_set_e_gaba_b_mv(v); }
+void snn_tune_set_tau_exc_ms(float v) { snn_tune_set_tau_ampa_ms(v); }
+void snn_tune_set_tau_inh_ms(float v) { snn_tune_set_tau_gaba_a_ms(v); }
 
 /* Public getters — expose current values for diagnostic queries. */
 float snn_tune_get_rstdp_lr(void)              { return g_rstdp_lr; }
@@ -268,10 +318,23 @@ float snn_tune_get_ahp_pump_substrate_coupling(void)  { return g_snn_ahp_pump_su
 /* CB migration getters. */
 float snn_tune_get_conductance_enabled(void)  { return g_snn_conductance_enabled; }
 float snn_tune_get_cb_weights_rescaled(void)  { return g_snn_cb_weights_rescaled; }
-float snn_tune_get_e_exc_mv(void)             { return g_snn_e_exc_mv; }
-float snn_tune_get_e_inh_mv(void)             { return g_snn_e_inh_mv; }
-float snn_tune_get_tau_exc_ms(void)           { return g_snn_tau_exc_ms; }
-float snn_tune_get_tau_inh_ms(void)           { return g_snn_tau_inh_ms; }
+/* P0 per-receptor getters. */
+float snn_tune_get_e_ampa_mv(void)            { return g_snn_e_ampa_mv; }
+float snn_tune_get_e_nmda_mv(void)            { return g_snn_e_nmda_mv; }
+float snn_tune_get_e_gaba_a_mv(void)          { return g_snn_e_gaba_a_mv; }
+float snn_tune_get_e_gaba_b_mv(void)          { return g_snn_e_gaba_b_mv; }
+float snn_tune_get_tau_ampa_ms(void)          { return g_snn_tau_ampa_ms; }
+float snn_tune_get_tau_nmda_ms(void)          { return g_snn_tau_nmda_ms; }
+float snn_tune_get_tau_gaba_a_ms(void)        { return g_snn_tau_gaba_a_ms; }
+float snn_tune_get_tau_gaba_b_ms(void)        { return g_snn_tau_gaba_b_ms; }
+float snn_tune_get_nmda_mg_mm(void)           { return g_snn_nmda_mg_mm; }
+/* Wave H getter. */
+float snn_tune_get_dendritic_enabled(void)    { return g_snn_dendritic_enabled; }
+/* Legacy aliases — return the AMPA/GABA_A value for backward compat. */
+float snn_tune_get_e_exc_mv(void)             { return g_snn_e_ampa_mv; }
+float snn_tune_get_e_inh_mv(void)             { return g_snn_e_gaba_a_mv; }
+float snn_tune_get_tau_exc_ms(void)           { return g_snn_tau_ampa_ms; }
+float snn_tune_get_tau_inh_ms(void)           { return g_snn_tau_gaba_a_ms; }
 
 /*============================================================================
  * Pop-class target rate selector. Pops with names starting with "input"

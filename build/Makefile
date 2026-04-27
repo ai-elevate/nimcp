@@ -9974,6 +9974,58 @@ e2e_test_full_brain_lifecycle/fast:
 .PHONY : e2e_test_full_brain_lifecycle/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_snn_per_receptor
+
+# Build rule for target.
+e2e_test_snn_per_receptor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_per_receptor
+.PHONY : e2e_test_snn_per_receptor
+
+# fast build rule for target.
+e2e_test_snn_per_receptor/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_per_receptor.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_per_receptor.dir/build
+.PHONY : e2e_test_snn_per_receptor/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_lang_pops
+
+# Build rule for target.
+e2e_test_lang_pops: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_lang_pops
+.PHONY : e2e_test_lang_pops
+
+# fast build rule for target.
+e2e_test_lang_pops/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_lang_pops.dir/build.make test/e2e/CMakeFiles/e2e_test_lang_pops.dir/build
+.PHONY : e2e_test_lang_pops/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_snn_layer_subtypes
+
+# Build rule for target.
+e2e_test_snn_layer_subtypes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_layer_subtypes
+.PHONY : e2e_test_snn_layer_subtypes
+
+# fast build rule for target.
+e2e_test_snn_layer_subtypes/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_layer_subtypes.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_layer_subtypes.dir/build
+.PHONY : e2e_test_snn_layer_subtypes/fast
+
+#=============================================================================
+# Target rules for targets named e2e_test_snn_dendritic
+
+# Build rule for target.
+e2e_test_snn_dendritic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_dendritic
+.PHONY : e2e_test_snn_dendritic
+
+# fast build rule for target.
+e2e_test_snn_dendritic/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_dendritic.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_dendritic.dir/build
+.PHONY : e2e_test_snn_dendritic/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_sleep_wake_cycle
 
 # Build rule for target.
@@ -38990,6 +39042,136 @@ integration_bridge_base_lifecycle/fast:
 .PHONY : integration_bridge_base_lifecycle/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_per_receptor
+
+# Build rule for target.
+integration_snn_per_receptor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_per_receptor
+.PHONY : integration_snn_per_receptor
+
+# fast build rule for target.
+integration_snn_per_receptor/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_per_receptor.dir/build.make test/integration/CMakeFiles/integration_snn_per_receptor.dir/build
+.PHONY : integration_snn_per_receptor/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_top_down
+
+# Build rule for target.
+integration_snn_top_down: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_top_down
+.PHONY : integration_snn_top_down
+
+# fast build rule for target.
+integration_snn_top_down/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_top_down.dir/build.make test/integration/CMakeFiles/integration_snn_top_down.dir/build
+.PHONY : integration_snn_top_down/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_trn
+
+# Build rule for target.
+integration_snn_trn: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_trn
+.PHONY : integration_snn_trn
+
+# fast build rule for target.
+integration_snn_trn/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_trn.dir/build.make test/integration/CMakeFiles/integration_snn_trn.dir/build
+.PHONY : integration_snn_trn/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_pv_som_vip
+
+# Build rule for target.
+integration_snn_pv_som_vip: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_pv_som_vip
+.PHONY : integration_snn_pv_som_vip
+
+# fast build rule for target.
+integration_snn_pv_som_vip/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_pv_som_vip.dir/build.make test/integration/CMakeFiles/integration_snn_pv_som_vip.dir/build
+.PHONY : integration_snn_pv_som_vip/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_skip_topology
+
+# Build rule for target.
+integration_snn_skip_topology: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_skip_topology
+.PHONY : integration_snn_skip_topology
+
+# fast build rule for target.
+integration_snn_skip_topology/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_skip_topology.dir/build.make test/integration/CMakeFiles/integration_snn_skip_topology.dir/build
+.PHONY : integration_snn_skip_topology/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_dale
+
+# Build rule for target.
+integration_snn_dale: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_dale
+.PHONY : integration_snn_dale
+
+# fast build rule for target.
+integration_snn_dale/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_dale.dir/build.make test/integration/CMakeFiles/integration_snn_dale.dir/build
+.PHONY : integration_snn_dale/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_layer_subtypes
+
+# Build rule for target.
+integration_snn_layer_subtypes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_layer_subtypes
+.PHONY : integration_snn_layer_subtypes
+
+# fast build rule for target.
+integration_snn_layer_subtypes/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_layer_subtypes.dir/build.make test/integration/CMakeFiles/integration_snn_layer_subtypes.dir/build
+.PHONY : integration_snn_layer_subtypes/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_gap_junction
+
+# Build rule for target.
+integration_snn_gap_junction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_gap_junction
+.PHONY : integration_snn_gap_junction
+
+# fast build rule for target.
+integration_snn_gap_junction/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_gap_junction.dir/build.make test/integration/CMakeFiles/integration_snn_gap_junction.dir/build
+.PHONY : integration_snn_gap_junction/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_conduction_delay
+
+# Build rule for target.
+integration_snn_conduction_delay: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_conduction_delay
+.PHONY : integration_snn_conduction_delay
+
+# fast build rule for target.
+integration_snn_conduction_delay/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_conduction_delay.dir/build.make test/integration/CMakeFiles/integration_snn_conduction_delay.dir/build
+.PHONY : integration_snn_conduction_delay/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_heterogeneity
+
+# Build rule for target.
+integration_snn_heterogeneity: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_heterogeneity
+.PHONY : integration_snn_heterogeneity
+
+# fast build rule for target.
+integration_snn_heterogeneity/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/CMakeFiles/integration_snn_heterogeneity.dir/build.make test/integration/CMakeFiles/integration_snn_heterogeneity.dir/build
+.PHONY : integration_snn_heterogeneity/fast
+
+#=============================================================================
 # Target rules for targets named integration_test_kg_module_wiring
 
 # Build rule for target.
@@ -40303,6 +40485,123 @@ unit_snn_test_snn_membrane_unit/fast:
 .PHONY : unit_snn_test_snn_membrane_unit/fast
 
 #=============================================================================
+# Target rules for targets named test_snn_per_receptor
+
+# Build rule for target.
+test_snn_per_receptor: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_per_receptor
+.PHONY : test_snn_per_receptor
+
+# fast build rule for target.
+test_snn_per_receptor/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/test_snn_per_receptor.dir/build.make test/unit/snn/CMakeFiles/test_snn_per_receptor.dir/build
+.PHONY : test_snn_per_receptor/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_layer_subtypes_unit
+
+# Build rule for target.
+unit_snn_test_snn_layer_subtypes_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_layer_subtypes_unit
+.PHONY : unit_snn_test_snn_layer_subtypes_unit
+
+# fast build rule for target.
+unit_snn_test_snn_layer_subtypes_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_layer_subtypes_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_layer_subtypes_unit.dir/build
+.PHONY : unit_snn_test_snn_layer_subtypes_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_dale_unit
+
+# Build rule for target.
+unit_snn_test_snn_dale_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_dale_unit
+.PHONY : unit_snn_test_snn_dale_unit
+
+# fast build rule for target.
+unit_snn_test_snn_dale_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_dale_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_dale_unit.dir/build
+.PHONY : unit_snn_test_snn_dale_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_gap_junction_unit
+
+# Build rule for target.
+unit_snn_test_snn_gap_junction_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_gap_junction_unit
+.PHONY : unit_snn_test_snn_gap_junction_unit
+
+# fast build rule for target.
+unit_snn_test_snn_gap_junction_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_gap_junction_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_gap_junction_unit.dir/build
+.PHONY : unit_snn_test_snn_gap_junction_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_conduction_delay_unit
+
+# Build rule for target.
+unit_snn_test_snn_conduction_delay_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_conduction_delay_unit
+.PHONY : unit_snn_test_snn_conduction_delay_unit
+
+# fast build rule for target.
+unit_snn_test_snn_conduction_delay_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_conduction_delay_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_conduction_delay_unit.dir/build
+.PHONY : unit_snn_test_snn_conduction_delay_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_heterogeneity_unit
+
+# Build rule for target.
+unit_snn_test_snn_heterogeneity_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_heterogeneity_unit
+.PHONY : unit_snn_test_snn_heterogeneity_unit
+
+# fast build rule for target.
+unit_snn_test_snn_heterogeneity_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_heterogeneity_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_heterogeneity_unit.dir/build
+.PHONY : unit_snn_test_snn_heterogeneity_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_gpu_per_neuron_lif_unit
+
+# Build rule for target.
+unit_snn_test_snn_gpu_per_neuron_lif_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_gpu_per_neuron_lif_unit
+.PHONY : unit_snn_test_snn_gpu_per_neuron_lif_unit
+
+# fast build rule for target.
+unit_snn_test_snn_gpu_per_neuron_lif_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_gpu_per_neuron_lif_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_gpu_per_neuron_lif_unit.dir/build
+.PHONY : unit_snn_test_snn_gpu_per_neuron_lif_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_snn_dendritic_unit
+
+# Build rule for target.
+unit_snn_test_snn_dendritic_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_dendritic_unit
+.PHONY : unit_snn_test_snn_dendritic_unit
+
+# fast build rule for target.
+unit_snn_test_snn_dendritic_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_dendritic_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_dendritic_unit.dir/build
+.PHONY : unit_snn_test_snn_dendritic_unit/fast
+
+#=============================================================================
+# Target rules for targets named unit_snn_test_lang_attach_unit
+
+# Build rule for target.
+unit_snn_test_lang_attach_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_lang_attach_unit
+.PHONY : unit_snn_test_lang_attach_unit
+
+# fast build rule for target.
+unit_snn_test_lang_attach_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_lang_attach_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_lang_attach_unit.dir/build
+.PHONY : unit_snn_test_lang_attach_unit/fast
+
+#=============================================================================
 # Target rules for targets named test_snn_visual_bridge
 
 # Build rule for target.
@@ -40953,6 +41252,32 @@ integration_snn_test_snn_conductance_integration/fast:
 .PHONY : integration_snn_test_snn_conductance_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_test_snn_dendritic_integration
+
+# Build rule for target.
+integration_snn_test_snn_dendritic_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_test_snn_dendritic_integration
+.PHONY : integration_snn_test_snn_dendritic_integration
+
+# fast build rule for target.
+integration_snn_test_snn_dendritic_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_test_snn_dendritic_integration.dir/build.make test/integration/snn/CMakeFiles/integration_snn_test_snn_dendritic_integration.dir/build
+.PHONY : integration_snn_test_snn_dendritic_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_snn_test_lang_attach_integration
+
+# Build rule for target.
+integration_snn_test_lang_attach_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_test_lang_attach_integration
+.PHONY : integration_snn_test_lang_attach_integration
+
+# fast build rule for target.
+integration_snn_test_lang_attach_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_test_lang_attach_integration.dir/build.make test/integration/snn/CMakeFiles/integration_snn_test_lang_attach_integration.dir/build
+.PHONY : integration_snn_test_lang_attach_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_snn_bridge_exception
 
 # Build rule for target.
@@ -41042,6 +41367,110 @@ regression_snn_test_snn_conductance_regression: cmake_check_build_system
 regression_snn_test_snn_conductance_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir/build
 .PHONY : regression_snn_test_snn_conductance_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_per_receptor_regression
+
+# Build rule for target.
+regression_snn_test_per_receptor_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_per_receptor_regression
+.PHONY : regression_snn_test_per_receptor_regression
+
+# fast build rule for target.
+regression_snn_test_per_receptor_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_per_receptor_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_per_receptor_regression.dir/build
+.PHONY : regression_snn_test_per_receptor_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_dale_regression
+
+# Build rule for target.
+regression_snn_test_snn_dale_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_dale_regression
+.PHONY : regression_snn_test_snn_dale_regression
+
+# fast build rule for target.
+regression_snn_test_snn_dale_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_dale_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_dale_regression.dir/build
+.PHONY : regression_snn_test_snn_dale_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_gap_junction_regression
+
+# Build rule for target.
+regression_snn_test_snn_gap_junction_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_gap_junction_regression
+.PHONY : regression_snn_test_snn_gap_junction_regression
+
+# fast build rule for target.
+regression_snn_test_snn_gap_junction_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_gap_junction_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_gap_junction_regression.dir/build
+.PHONY : regression_snn_test_snn_gap_junction_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_conduction_delay_regression
+
+# Build rule for target.
+regression_snn_test_snn_conduction_delay_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_conduction_delay_regression
+.PHONY : regression_snn_test_snn_conduction_delay_regression
+
+# fast build rule for target.
+regression_snn_test_snn_conduction_delay_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_conduction_delay_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_conduction_delay_regression.dir/build
+.PHONY : regression_snn_test_snn_conduction_delay_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_layer_subtypes_regression
+
+# Build rule for target.
+regression_snn_test_layer_subtypes_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_layer_subtypes_regression
+.PHONY : regression_snn_test_layer_subtypes_regression
+
+# fast build rule for target.
+regression_snn_test_layer_subtypes_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_layer_subtypes_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_layer_subtypes_regression.dir/build
+.PHONY : regression_snn_test_layer_subtypes_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_heterogeneity_regression
+
+# Build rule for target.
+regression_snn_test_snn_heterogeneity_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_heterogeneity_regression
+.PHONY : regression_snn_test_snn_heterogeneity_regression
+
+# fast build rule for target.
+regression_snn_test_snn_heterogeneity_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_heterogeneity_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_heterogeneity_regression.dir/build
+.PHONY : regression_snn_test_snn_heterogeneity_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_dendritic_regression
+
+# Build rule for target.
+regression_snn_test_snn_dendritic_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_dendritic_regression
+.PHONY : regression_snn_test_snn_dendritic_regression
+
+# fast build rule for target.
+regression_snn_test_snn_dendritic_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_dendritic_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_dendritic_regression.dir/build
+.PHONY : regression_snn_test_snn_dendritic_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_lang_synfire_ring_regression
+
+# Build rule for target.
+regression_snn_test_lang_synfire_ring_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_lang_synfire_ring_regression
+.PHONY : regression_snn_test_lang_synfire_ring_regression
+
+# fast build rule for target.
+regression_snn_test_lang_synfire_ring_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_lang_synfire_ring_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_lang_synfire_ring_regression.dir/build
+.PHONY : regression_snn_test_lang_synfire_ring_regression/fast
 
 #=============================================================================
 # Target rules for targets named regression_snn_bridge_exception
@@ -45355,6 +45784,7 @@ help:
 	@echo "... e2e_test_kg_hierarchy_graph_algorithms_pipeline"
 	@echo "... e2e_test_kg_module_wiring"
 	@echo "... e2e_test_kg_wiring"
+	@echo "... e2e_test_lang_pops"
 	@echo "... e2e_test_language_lateralization"
 	@echo "... e2e_test_language_layer_pipeline"
 	@echo "... e2e_test_limbic_pipeline"
@@ -45445,6 +45875,9 @@ help:
 	@echo "... e2e_test_sleep_wake_cycle"
 	@echo "... e2e_test_snn_backprop"
 	@echo "... e2e_test_snn_bridge_pipeline"
+	@echo "... e2e_test_snn_dendritic"
+	@echo "... e2e_test_snn_layer_subtypes"
+	@echo "... e2e_test_snn_per_receptor"
 	@echo "... e2e_test_snn_pipeline"
 	@echo "... e2e_test_snn_runaway_suppression"
 	@echo "... e2e_test_somatosensory_pipeline"
@@ -46013,14 +46446,26 @@ help:
 	@echo "... integration_self_repair"
 	@echo "... integration_self_repair_bio_async"
 	@echo "... integration_snn_bridge_exception"
+	@echo "... integration_snn_conduction_delay"
+	@echo "... integration_snn_dale"
+	@echo "... integration_snn_gap_junction"
+	@echo "... integration_snn_heterogeneity"
 	@echo "... integration_snn_language_bridge"
+	@echo "... integration_snn_layer_subtypes"
+	@echo "... integration_snn_per_receptor"
 	@echo "... integration_snn_plasticity"
+	@echo "... integration_snn_pv_som_vip"
+	@echo "... integration_snn_skip_topology"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
+	@echo "... integration_snn_test_lang_attach_integration"
 	@echo "... integration_snn_test_snn_biophysical_integration"
 	@echo "... integration_snn_test_snn_conductance_integration"
+	@echo "... integration_snn_test_snn_dendritic_integration"
 	@echo "... integration_snn_test_snn_substrate_integration"
 	@echo "... integration_snn_test_snn_thalamic_substrate_compose"
+	@echo "... integration_snn_top_down"
+	@echo "... integration_snn_trn"
 	@echo "... integration_social_fep"
 	@echo "... integration_spinal_motor"
 	@echo "... integration_srp_split_test_srp_split_internal_integration"
@@ -46599,10 +47044,18 @@ help:
 	@echo "... regression_snn_bridge_exception"
 	@echo "... regression_snn_language_bridge"
 	@echo "... regression_snn_test_bridge_regression"
+	@echo "... regression_snn_test_lang_synfire_ring_regression"
+	@echo "... regression_snn_test_layer_subtypes_regression"
 	@echo "... regression_snn_test_numerical_regression"
+	@echo "... regression_snn_test_per_receptor_regression"
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_snn_test_snn_biophysical_regression"
 	@echo "... regression_snn_test_snn_conductance_regression"
+	@echo "... regression_snn_test_snn_conduction_delay_regression"
+	@echo "... regression_snn_test_snn_dale_regression"
+	@echo "... regression_snn_test_snn_dendritic_regression"
+	@echo "... regression_snn_test_snn_gap_junction_regression"
+	@echo "... regression_snn_test_snn_heterogeneity_regression"
 	@echo "... regression_social_fep"
 	@echo "... regression_srp_split_test_srp_split_api_regression"
 	@echo "... regression_srp_split_test_srp_split_cross_module_regression"
@@ -46956,6 +47409,7 @@ help:
 	@echo "... test_snn_memory_bridge"
 	@echo "... test_snn_mental_health_bridge"
 	@echo "... test_snn_meta_learning_bridge"
+	@echo "... test_snn_per_receptor"
 	@echo "... test_snn_population_bridge"
 	@echo "... test_snn_prefrontal_bridge"
 	@echo "... test_snn_reasoning_bridge"
@@ -48294,14 +48748,22 @@ help:
 	@echo "... unit_shannon_monitor_bio_async"
 	@echo "... unit_snn_bridge_exception"
 	@echo "... unit_snn_exception_handling"
+	@echo "... unit_snn_test_lang_attach_unit"
 	@echo "... unit_snn_test_snn_adaptation"
 	@echo "... unit_snn_test_snn_anti_reward"
 	@echo "... unit_snn_test_snn_basket"
 	@echo "... unit_snn_test_snn_bio_async"
+	@echo "... unit_snn_test_snn_conduction_delay_unit"
 	@echo "... unit_snn_test_snn_config"
+	@echo "... unit_snn_test_snn_dale_unit"
+	@echo "... unit_snn_test_snn_dendritic_unit"
 	@echo "... unit_snn_test_snn_depression_tuning"
 	@echo "... unit_snn_test_snn_encoding"
+	@echo "... unit_snn_test_snn_gap_junction_unit"
+	@echo "... unit_snn_test_snn_gpu_per_neuron_lif_unit"
+	@echo "... unit_snn_test_snn_heterogeneity_unit"
 	@echo "... unit_snn_test_snn_immune"
+	@echo "... unit_snn_test_snn_layer_subtypes_unit"
 	@echo "... unit_snn_test_snn_membrane_unit"
 	@echo "... unit_snn_test_snn_network"
 	@echo "... unit_snn_test_snn_numerical_stability"

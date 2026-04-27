@@ -20,6 +20,7 @@ set(SNN_EXCEPTION_INTEGRATION_LIBS
     GTest::gtest_main
     Threads::Threads
     m
+    z
 )
 
 # Common include directories

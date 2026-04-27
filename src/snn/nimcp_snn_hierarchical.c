@@ -71,9 +71,34 @@ typedef struct {
     float connectivity;
 } snn_skip_def_t;
 
+/* Skip ("cortico-cortical-like") topology.
+ *
+ * Real cortex has long-range bypass projections that connect non-adjacent
+ * areas with task-specific topography (V1→MT, V1→V2, A1→Broca-region,
+ * frontal→occipital top-down). The 8-tier substrate has no concept of
+ * "region," so we approximate by hand-picking tier pairs whose role
+ * mismatch best resembles those projections.
+ *
+ * Wave F (deferred-by-design partial): true region-to-region routing
+ * needs either Option A (per-pop region tags + region-aware SKIP_DEFS)
+ * or Option B (cortex-module bridges). Both are scoped in
+ * docs/claude/wave-f-cortico-cortical-design-2026-04-27.md but require
+ * an architectural decision and ~4-8 hrs of work each.
+ *
+ * The substrate-level finish for Wave F: extend this table from 2 to
+ * 5 entries. The added entries provide the topological diversity that
+ * lets fast bottom-up sensory hits, slow concept→output projection,
+ * and executive-bias top-down all coexist without going through the
+ * full tier chain. Connectivity values are set lower than the original
+ * 0.0005 because the ADDITIONAL paths fan a constant V_GAP/8 budget
+ * across more synapses — keeping per-synapse drive comparable. */
 static const snn_skip_def_t SKIP_DEFS[] = {
     { 1, 5, 0.0005f },  /* L1 → L5: fast sensory-to-executive shortcut */
     { 2, 6, 0.0005f },  /* L2 → L6: pattern-to-output projection */
+    /* --- Wave F substrate extension (2026-04-27) --- */
+    { 0, 4, 0.0003f },  /* input → L4_integr: thalamic-bypass to integration tier */
+    { 3, 6, 0.0008f },  /* L3 → L6: concept → output direct projection */
+    { 5, 2, 0.0002f },  /* L5 → L2: long-range top-down (executive bias) */
 };
 #define NUM_SKIPS (sizeof(SKIP_DEFS) / sizeof(SKIP_DEFS[0]))
 
@@ -254,6 +279,27 @@ snn_network_t* snn_create_hierarchical_network(
     /* Pop 0 = input, Pop 1 = hidden, Pop 2 = output from default create */
     /* We'll re-use pop 0 as tier 0 pop 0, and add the rest */
 
+    /* P4.1: layer-specific pyramidal subtype per tier.
+     *   tiers 2,3 (L2_pattern, L3_concept) → SNN_NSC_PYRAMIDAL_L23
+     *   tier 4   (L4_integr)               → SNN_NSC_PYRAMIDAL_L4_STELLATE
+     *   tier 5   (L5_exec)                 → SNN_NSC_PYRAMIDAL_L5_BETZ
+     *   tier 6   (L6_project)              → SNN_NSC_PYRAMIDAL (corticothalamic;
+     *                                        no special LIF profile measured
+     *                                        for L6 modular intratelencephalic)
+     * Tiers 0,1,7 (input / L1_feature / output) keep PYRAMIDAL — these are
+     * stubs / sensory-relay / output-aggregation, not classical cortical
+     * pyramidal layers, so a layer-specific tag would be misleading. */
+    static const neuron_subclass_t TIER_SUBCLASS[] = {
+        SNN_NSC_PYRAMIDAL,                  /* 0: input */
+        SNN_NSC_PYRAMIDAL,                  /* 1: L1_feature */
+        SNN_NSC_PYRAMIDAL_L23,              /* 2: L2_pattern */
+        SNN_NSC_PYRAMIDAL_L23,              /* 3: L3_concept */
+        SNN_NSC_PYRAMIDAL_L4_STELLATE,      /* 4: L4_integr */
+        SNN_NSC_PYRAMIDAL_L5_BETZ,          /* 5: L5_exec */
+        SNN_NSC_PYRAMIDAL,                  /* 6: L6_project */
+        SNN_NSC_PYRAMIDAL,                  /* 7: output */
+    };
+
     /* For simplicity: add ALL tier populations as new hidden populations,
      * ignoring the default 3. The default input/output pops are tiny stubs
      * that we can leave unused. The real work happens in our tier pops. */
@@ -276,6 +322,44 @@ snn_network_t* snn_create_hierarchical_network(
                 goto wire_connections;
             }
             pop_map[flat_idx] = (uint32_t)rc;  /* rc is the population index */
+            (void)snn_network_set_pop_subclass(net, (uint32_t)rc,
+                                               TIER_SUBCLASS[t]);
+            /* Wave E FFI fix — tier pyramidal pops get a 1-step axonal
+             * conduction delay (≈1 ms at default dt). Combined with PV's
+             * 0-step (fast/myelinated soma) this restores the 1-3 ms
+             * thalamus→pyr-AMPA vs PV→pyr-GABA window required for
+             * canonical feed-forward inhibition.
+             * See docs/claude/ffi-timing-audit-2026-04-27.md. */
+            (void)snn_network_set_pop_conduction_delay(net, (uint32_t)rc, 1);
+            /* Wave G — per-neuron LIF heterogeneity. Tier pyramidal pops
+             * get σ = 0.10 (10 % relative σ on τ_mem and v_thresh) which
+             * matches the cortical principal-cell distribution width.
+             * PV/SOM/VIP/TRN interneurons are tighter and stay at σ = 0
+             * for now (intrinsic uniformity is part of their fast-spiking
+             * synchrony role). 2026-04-27. */
+            (void)snn_network_set_pop_heterogeneity(net, (uint32_t)rc, 0.10f);
+            /* Wave H — dendritic compartments. Tier-pyramidal pops with
+             * any PYRAMIDAL_* subclass get the two-compartment treatment
+             * IFF the runtime flag is non-zero at creation time.
+             * Interneurons (PV/SOM/VIP/TRN) stay single-compartment by
+             * design (no apical arbour worth modelling) and are wired
+             * elsewhere in this file with their own subclass tag.
+             * See docs/claude/wave-h-dendritic-design-2026-04-27.md. */
+            if (snn_tune_get_dendritic_enabled() != 0.0f) {
+                neuron_subclass_t sc = TIER_SUBCLASS[t];
+                if (sc == SNN_NSC_PYRAMIDAL
+                    || sc == SNN_NSC_PYRAMIDAL_L23
+                    || sc == SNN_NSC_PYRAMIDAL_L4_STELLATE
+                    || sc == SNN_NSC_PYRAMIDAL_L5_BETZ) {
+                    int dend_rc = snn_network_enable_dendritic(
+                        net, (uint32_t)rc);
+                    if (dend_rc != 0) {
+                        LOG_WARN("Dendritic enable failed for pop %u tier %s "
+                                 "(rc=%d) — staying single-compartment",
+                                 (uint32_t)rc, TIER_DEFS[t].name, dend_rc);
+                    }
+                }
+            }
             flat_idx++;
         }
     }
@@ -329,21 +413,31 @@ wire_connections:
                                        TIER_DEFS[t].neurons_per_pop,
                                        rec_conn,
                                        SNN_PRESYN_RATE_DEFAULT);
-        LOG_INFO("Tier %s recurrent: w_exc=%.3f w_inh=%.3f (k_src=%u, 80E/20I)",
-                 TIER_DEFS[t].name, w_exc, -4.0f * w_exc, k_src_rec);
+        LOG_INFO("Tier %s recurrent: w_exc=%.3f (pure E→E AMPA, Dale-correct; "
+                 "I balance from PV/SOM/VIP)",
+                 TIER_DEFS[t].name, w_exc);
 
+        /* Dale's principle (Wave C, 2026-04-27): pyramidal neurons in real
+         * cortex are uniformly glutamatergic — they cannot emit GABA at any
+         * subset of their terminals. Inhibitory tone for the recurrent loop
+         * is supplied by the dedicated PV/SOM/VIP sub-pops wired below
+         * (P2.2). Earlier mod-5 dual-class wiring (AMPA + GABA_A from the
+         * same pyr source) was a pre-P2.2 placeholder that became redundant
+         * AND biophysically incorrect once interneurons were in place.
+         * See docs/claude/dale-audit-2026-04-27.md.
+         *
+         * E/I balance note: removing the 20% GABA branch means net per-spike
+         * recurrent drive becomes +0.8·w_exc (was 0). The PV→pyr / SOM→pyr
+         * GABA_A pathways must compensate; rate-controlled homeostasis
+         * (existing brake rules) handles the rest. */
         for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1]; sp++) {
             for (uint32_t dp = tier_start_pop[t]; dp < tier_start_pop[t + 1]; dp++) {
                 if (sp == dp) continue;  /* no self-connections */
                 if (sp >= flat_idx || dp >= flat_idx) continue;
-                /* 20% GABA / 80% AMPA via mod-5 threshold; 4× inhibitory magnitude */
-                synapse_type_t type = ((sp + dp) % 5 == 0) ?
-                    SYNAPSE_GABA_A : SYNAPSE_AMPA;
-                float w_mean = (type == SYNAPSE_GABA_A) ? -4.0f * w_exc : w_exc;
                 int nc = snn_network_connect_populations(net,
                     pop_map[sp], pop_map[dp],
                     SNN_TOPO_RANDOM, rec_conn,
-                    type, w_mean, 0.05f);
+                    SYNAPSE_AMPA, w_exc, 0.05f);
                 if (nc > 0) {
                     recurrent_connections += (uint32_t)nc;
                 } else if (nc < 0) {
@@ -361,6 +455,220 @@ wire_connections:
         }
     }
     LOG_INFO("Recurrent: %u connections", recurrent_connections);
+
+    /* P2.2: PV/SOM/VIP interneuron sub-pops with disinhibition chain.
+     *
+     * Real cortex has 3 main GABAergic types in roughly fixed proportions
+     * (Tremblay et al. 2016, Pfeffer et al. 2013):
+     *   PV  (parvalbumin, fast-spiking basket): ~40% of GABA, soma-targeting,
+     *        gamma-rhythm sustainer.
+     *   SOM (somatostatin, Martinotti):          ~30%, apical-dendrite-targeting,
+     *        gates top-down NMDA on pyramidal apicals.
+     *   VIP (vasoactive intestinal peptide):     ~10-15%, targets SOM with
+     *        GABA — the disinhibition arm of the canonical attention circuit
+     *        (Lee et al. 2013, Karnani et al. 2016).
+     *
+     * Canonical microcircuit for attentional gain:
+     *   ACh / top-down → VIP → ⊣SOM → ⊣pyramidal apical → top-down NMDA
+     *   gets through (without VIP active, SOM keeps the apical clamped and
+     *   top-down NMDA cannot drive coincidence detection).
+     *
+     * We add 3 sub-pops per recurrent tier (T2..T6), tagged with subclass
+     * so snn_pop_lif_params() applies fast-spiking τ for PV, slow τ for SOM,
+     * and the network default for VIP. Wiring per tier:
+     *   pyramidal → PV   AMPA, sparse (PV needs FF drive to track tier rate)
+     *   pyramidal → SOM  AMPA, sparse (SOM tracks tier activity)
+     *   prev-tier-pyr → VIP AMPA, very sparse (long-range drive proxy for ACh)
+     *   PV  → pyramidal  GABA_A, fast somatic gate
+     *   SOM → pyramidal  GABA_A, slow gate (in CB substrate, GABA_A targeting
+     *                    the same neurons that get top-down NMDA — gating
+     *                    happens via shared g_gaba_a hyperpolarising the
+     *                    apical-equivalent compartment).
+     *   VIP → SOM        GABA_A, the disinhibition arm.
+     *
+     * Sizes follow the design report: PV ~12% / SOM ~5% / VIP ~3% of one
+     * tier-pyr pop's neuron count (kept per-pop here, not per-tier-total,
+     * to keep the new pop count modest at +15 across 5 tiers). Weights
+     * are intentionally low-gain at first deployment — the existing
+     * mod-5 recurrent inhibition continues to provide the primary E-I
+     * balance; the new pops add the BIOLOGICAL TOPOLOGY hooks. P2.2-tune
+     * will rebalance once we observe steady-state firing rates. */
+    static const uint32_t INH_TIERS[] = { 2, 3, 4, 5, 6 };
+    #define NUM_INH_TIERS ((uint32_t)(sizeof(INH_TIERS)/sizeof(INH_TIERS[0])))
+    #define INH_PV_FRAC      0.12f   /* of one tier-pyr pop's neurons */
+    #define INH_SOM_FRAC     0.05f
+    #define INH_VIP_FRAC     0.03f
+    #define INH_DRIVE_FRAC   0.15f   /* fraction of SNN_I_SYN_BUDGET on inh wiring */
+    #define INH_PYR_TO_INH_CONN  0.005f
+    #define INH_INH_TO_PYR_CONN  0.005f
+    #define INH_VIP_TO_SOM_CONN  0.010f
+    #define INH_LONG_FF_CONN     0.002f
+
+    uint32_t inh_pop_pv [NUM_INH_TIERS];
+    uint32_t inh_pop_som[NUM_INH_TIERS];
+    uint32_t inh_pop_vip[NUM_INH_TIERS];
+    bool     inh_ok    [NUM_INH_TIERS];
+    for (uint32_t i = 0; i < NUM_INH_TIERS; i++) {
+        inh_ok[i] = false;
+        uint32_t t = INH_TIERS[i];
+        if (t >= NUM_TIERS) continue;
+        uint32_t pyr_n = TIER_DEFS[t].neurons_per_pop;
+        uint32_t pv_n  = (uint32_t)(pyr_n * INH_PV_FRAC);
+        uint32_t som_n = (uint32_t)(pyr_n * INH_SOM_FRAC);
+        uint32_t vip_n = (uint32_t)(pyr_n * INH_VIP_FRAC);
+        if (pv_n < 256) pv_n = 256;
+        if (som_n < 128) som_n = 128;
+        if (vip_n < 64) vip_n = 64;
+
+        char nm[64];
+        snprintf(nm, sizeof(nm), "%s_PV", TIER_DEFS[t].name);
+        int rc_pv = snn_network_add_population_lightweight(net, pv_n, NEURON_GENERIC_LIF, nm);
+        snprintf(nm, sizeof(nm), "%s_SOM", TIER_DEFS[t].name);
+        int rc_som = snn_network_add_population_lightweight(net, som_n, NEURON_GENERIC_LIF, nm);
+        snprintf(nm, sizeof(nm), "%s_VIP", TIER_DEFS[t].name);
+        int rc_vip = snn_network_add_population_lightweight(net, vip_n, NEURON_GENERIC_LIF, nm);
+
+        if (rc_pv < 0 || rc_som < 0 || rc_vip < 0) {
+            LOG_WARN("Inh sub-pops for tier %s incomplete (rc_pv=%d rc_som=%d rc_vip=%d) — "
+                     "skipping disinhibition wiring for this tier",
+                     TIER_DEFS[t].name, rc_pv, rc_som, rc_vip);
+            continue;
+        }
+        inh_pop_pv [i] = (uint32_t)rc_pv;
+        inh_pop_som[i] = (uint32_t)rc_som;
+        inh_pop_vip[i] = (uint32_t)rc_vip;
+        inh_ok[i] = true;
+
+        (void)snn_network_set_pop_subclass(net, inh_pop_pv [i], SNN_NSC_PV);
+        (void)snn_network_set_pop_subclass(net, inh_pop_som[i], SNN_NSC_SOM);
+        (void)snn_network_set_pop_subclass(net, inh_pop_vip[i], SNN_NSC_VIP);
+
+        /* Wave D — gap-junction (Connexin-36) coupling between PV basket
+         * cells. Sized so PV synchrony emerges at ~40 Hz under typical
+         * drive; only set on PV pops (SOM/VIP have no significant gap
+         * coupling in cortex). The hot loop only applies this when
+         * conductance_mode is ON, so a current-mode network is unaffected. */
+        (void)snn_network_set_pop_gap_coupling(net, inh_pop_pv[i], 0.05f);
+
+        /* Wave E FFI fix — PV interneurons get 0-step conduction delay
+         * (fast-spiking, locally myelinated; the canonical PV pathway
+         * is the FAST arm of feed-forward inhibition). SOM/VIP get 1
+         * step (matching pyramidal default — they project across longer
+         * distances). This delay differential is what makes PV's GABA
+         * arrive within 1-3 ms of pyramidal AMPA: pyr→PV chain takes
+         * 1 step (pyr conduct) + integration + 0 step (PV conduct),
+         * vs the bypassed direct thalamic→pyr arm at 0 step (input_pop
+         * is the source — input_pop default delay is 0).
+         * See docs/claude/ffi-timing-audit-2026-04-27.md. */
+        (void)snn_network_set_pop_conduction_delay(net, inh_pop_pv[i],  0);
+        (void)snn_network_set_pop_conduction_delay(net, inh_pop_som[i], 1);
+        (void)snn_network_set_pop_conduction_delay(net, inh_pop_vip[i], 1);
+    }
+
+    uint32_t inh_connections = 0;
+    for (uint32_t i = 0; i < NUM_INH_TIERS; i++) {
+        if (!inh_ok[i]) continue;
+        uint32_t t = INH_TIERS[i];
+        uint32_t pyr_n = TIER_DEFS[t].neurons_per_pop;
+
+        float w_pyr_to_inh = snn_fluct_weight(
+            SNN_I_SYN_BUDGET * INH_DRIVE_FRAC,
+            pyr_n, INH_PYR_TO_INH_CONN, SNN_PRESYN_RATE_DEFAULT);
+        float w_pv_to_pyr = snn_fluct_weight(
+            SNN_I_SYN_BUDGET * INH_DRIVE_FRAC,
+            (uint32_t)(pyr_n * INH_PV_FRAC), INH_INH_TO_PYR_CONN, SNN_PRESYN_RATE_DEFAULT);
+        float w_som_to_pyr = snn_fluct_weight(
+            SNN_I_SYN_BUDGET * INH_DRIVE_FRAC * 0.6f,  /* slower, weaker than PV */
+            (uint32_t)(pyr_n * INH_SOM_FRAC), INH_INH_TO_PYR_CONN, SNN_PRESYN_RATE_DEFAULT);
+        float w_vip_to_som = snn_fluct_weight(
+            SNN_I_SYN_BUDGET * INH_DRIVE_FRAC,
+            (uint32_t)(pyr_n * INH_VIP_FRAC), INH_VIP_TO_SOM_CONN, SNN_PRESYN_RATE_DEFAULT);
+
+        /* Pyr → PV / SOM (each tier-pyr pop fans out to the single PV/SOM pop) */
+        for (uint32_t sp = tier_start_pop[t]; sp < tier_start_pop[t + 1] && sp < flat_idx; sp++) {
+            int nc;
+            nc = snn_network_connect_populations(net,
+                pop_map[sp], inh_pop_pv[i],
+                SNN_TOPO_RANDOM, INH_PYR_TO_INH_CONN,
+                SYNAPSE_AMPA, w_pyr_to_inh, w_pyr_to_inh * 0.3f);
+            if (nc > 0) inh_connections += (uint32_t)nc;
+            nc = snn_network_connect_populations(net,
+                pop_map[sp], inh_pop_som[i],
+                SNN_TOPO_RANDOM, INH_PYR_TO_INH_CONN,
+                SYNAPSE_AMPA, w_pyr_to_inh, w_pyr_to_inh * 0.3f);
+            if (nc > 0) inh_connections += (uint32_t)nc;
+        }
+
+        /* Wave E (FFI fix, 2026-04-27): direct input_pop → PV thalamic
+         * afferent. Real thalamocortical projections fan out to BOTH
+         * pyramidal cells AND PV interneurons in parallel. Without this,
+         * PV can only spike after a pyramidal in its tier has already
+         * fired (intra-tier pyr → PV collateral above), making the
+         * "feed-forward" inhibition arm structurally feedback. With this
+         * direct afferent, PV's faster τ_mem (10 ms vs pyr 18-25 ms)
+         * lets it spike sooner under matched thalamic drive — restoring
+         * the canonical FFI temporal precision window.
+         * See docs/claude/ffi-timing-audit-2026-04-27.md. */
+        if (net->input_pop) {
+            float w_thal_pv = snn_fluct_weight(
+                SNN_I_SYN_BUDGET_INPUT,
+                net->input_pop->n_neurons,
+                SNN_INPUT_FANOUT_CONNECTIVITY,
+                SNN_PRESYN_RATE_INPUT_POP);
+            int nc = snn_network_connect_populations(net,
+                0,  /* pop 0 = input_pop */
+                inh_pop_pv[i],
+                SNN_TOPO_RANDOM, SNN_INPUT_FANOUT_CONNECTIVITY,
+                SYNAPSE_AMPA, w_thal_pv, w_thal_pv * 0.3f);
+            if (nc > 0) inh_connections += (uint32_t)nc;
+        }
+
+        /* prev-tier-pyr → VIP (long-range FF drive proxy for ACh / top-down) */
+        if (t > 0) {
+            uint32_t pt = t - 1;
+            float w_long = snn_fluct_weight(
+                SNN_I_SYN_BUDGET * INH_DRIVE_FRAC,
+                TIER_DEFS[pt].neurons_per_pop, INH_LONG_FF_CONN, SNN_PRESYN_RATE_DEFAULT);
+            for (uint32_t sp = tier_start_pop[pt]; sp < tier_start_pop[pt + 1] && sp < flat_idx; sp++) {
+                int nc = snn_network_connect_populations(net,
+                    pop_map[sp], inh_pop_vip[i],
+                    SNN_TOPO_RANDOM, INH_LONG_FF_CONN,
+                    SYNAPSE_AMPA, w_long, w_long * 0.3f);
+                if (nc > 0) inh_connections += (uint32_t)nc;
+            }
+        }
+
+        /* PV → pyr  (fast somatic gate)
+         * SOM → pyr (slow gate; co-located with top-down NMDA on same pop) */
+        for (uint32_t dp = tier_start_pop[t]; dp < tier_start_pop[t + 1] && dp < flat_idx; dp++) {
+            int nc;
+            nc = snn_network_connect_populations(net,
+                inh_pop_pv[i], pop_map[dp],
+                SNN_TOPO_RANDOM, INH_INH_TO_PYR_CONN,
+                SYNAPSE_GABA_A, -w_pv_to_pyr, w_pv_to_pyr * 0.05f);
+            if (nc > 0) inh_connections += (uint32_t)nc;
+            nc = snn_network_connect_populations(net,
+                inh_pop_som[i], pop_map[dp],
+                SNN_TOPO_RANDOM, INH_INH_TO_PYR_CONN,
+                SYNAPSE_GABA_A, -w_som_to_pyr, w_som_to_pyr * 0.05f);
+            if (nc > 0) inh_connections += (uint32_t)nc;
+        }
+
+        /* VIP → SOM (GABA_A — the disinhibition arm: silencing SOM releases pyr) */
+        {
+            int nc = snn_network_connect_populations(net,
+                inh_pop_vip[i], inh_pop_som[i],
+                SNN_TOPO_RANDOM, INH_VIP_TO_SOM_CONN,
+                SYNAPSE_GABA_A, -w_vip_to_som, w_vip_to_som * 0.05f);
+            if (nc > 0) inh_connections += (uint32_t)nc;
+        }
+
+        LOG_INFO("Inh tier %s: PV=%u SOM=%u VIP=%u (subclass-tagged)",
+                 TIER_DEFS[t].name,
+                 inh_pop_pv[i], inh_pop_som[i], inh_pop_vip[i]);
+    }
+    LOG_INFO("Disinhibition: %u connections across %u tiers",
+             inh_connections, NUM_INH_TIERS);
 
     /* Wire skip connections */
     uint32_t skip_connections = 0;
@@ -388,6 +696,87 @@ wire_connections:
         }
     }
     LOG_INFO("Skip: %u connections", skip_connections);
+
+    /* P1.1: Top-down feedback (descending NMDA projections).
+     *
+     * Real cortex has massive descending projections L5/L6 → L4 → L2/3 → L1
+     * that carry top-down predictions and modulate sensory processing
+     * (Larkum 2013, Bastos et al. 2012, Friston's predictive coding).
+     * Without these, every theory of cortical inference (predictive
+     * coding, active inference, Bayesian brain) cannot operate at the
+     * substrate level — the substrate can only do bottom-up sensory
+     * accumulation.
+     *
+     * Topology — two pathways mirroring biology:
+     *   L5_exec    → L3_concept   (frontal → posterior, action-context bias)
+     *   L6_project → L2_pattern   (output expectation → mid-level features)
+     *
+     * Receptor: SYNAPSE_NMDA. Top-down terminates onto apical dendrites
+     * of pyramidal neurons. NMDA's slow τ (≈ 100 ms) and Mg²⁺ block
+     * make it a coincidence detector + slow modulator: at rest the Mg
+     * block keeps it nearly silent, so top-down alone cannot drive
+     * spiking. When the postsyn neuron is already depolarized by
+     * bottom-up AMPA, the block opens and NMDA contributes — the
+     * mechanism that lets top-down BIAS what feedforward already
+     * delivers, without overriding it.
+     *
+     * Budget: 0.2 × FF (Larkum measured top-down PSPs at ~20% of
+     * feedforward). Connectivity: 0.001 (0.1% — sparse, like real
+     * descending projections; the L5 pop sends one synapse per ~1000
+     * dst neurons rather than dense coverage). Per-synapse weight is
+     * computed by snn_fluct_weight against an NMDA-specific scaling
+     * factor 2.0 (which compensates for partial Mg block at depolarized
+     * potentials, NOT at rest):
+     *   v_rest -65 mV: m ≈ 0.06 → eff drive ≈ 2.0 × 0.06 = 0.12 of FF
+     *     target ≈ 0.45 mV — well below threshold, behaves as quiet
+     *     modulator ("not driver") in agreement with Larkum/Bastos.
+     *   v_post -50 mV (depolarized by AMPA): m ≈ 0.78 → eff drive ≈
+     *     1.56 of FF — full modulatory contribution exactly when the
+     *     postsyn cell is already engaged. This is the coincidence-
+     *     detection regime.
+     *   v_post  +0 mV (peak): m ≈ 0.78, but driving force (E_nmda - V)
+     *     collapses, so contribution self-limits.
+     * Earlier (6.0× at rest) over-compensated Mg block: at -50 mV the
+     * scaled drive reached ~5× FF — top-down would have been a driver,
+     * not a modulator (P1.1 walkthrough finding). 2.0× is the value
+     * Spruston 2008 / Larkum 2013 measurements support. */
+    static const struct {
+        uint32_t src_tier;  /* descending source */
+        uint32_t dst_tier;  /* superficial target */
+        float    connectivity;
+    } TOP_DOWN_DEFS[] = {
+        { 5, 3, 0.001f },  /* L5_exec   → L3_concept */
+        { 6, 2, 0.001f },  /* L6_project → L2_pattern */
+    };
+    #define NUM_TOP_DOWN ((uint32_t)(sizeof(TOP_DOWN_DEFS)/sizeof(TOP_DOWN_DEFS[0])))
+    #define TOP_DOWN_BUDGET_FRAC  0.2f   /* Larkum: top-down PSP ≈ 20% of FF */
+    #define TOP_DOWN_NMDA_SCALE   2.0f   /* compensate Mg block at depol V, NOT at rest (see header comment) */
+
+    uint32_t top_down_connections = 0;
+    for (uint32_t i = 0; i < NUM_TOP_DOWN; i++) {
+        uint32_t st = TOP_DOWN_DEFS[i].src_tier;
+        uint32_t dt = TOP_DOWN_DEFS[i].dst_tier;
+        float    tc = TOP_DOWN_DEFS[i].connectivity;
+        if (st >= NUM_TIERS || dt >= NUM_TIERS) continue;
+        float td_w = snn_fluct_weight(
+            SNN_I_SYN_BUDGET * TOP_DOWN_BUDGET_FRAC * TOP_DOWN_NMDA_SCALE,
+            TIER_DEFS[st].neurons_per_pop,
+            tc, SNN_PRESYN_RATE_DEFAULT);
+        LOG_INFO("Top-down NMDA %s→%s: w=%.3f (conn=%.4f)",
+                 TIER_DEFS[st].name, TIER_DEFS[dt].name, td_w, tc);
+
+        for (uint32_t sp = tier_start_pop[st]; sp < tier_start_pop[st + 1]; sp++) {
+            for (uint32_t dp = tier_start_pop[dt]; dp < tier_start_pop[dt + 1]; dp++) {
+                if (sp >= flat_idx || dp >= flat_idx) continue;
+                int nc = snn_network_connect_populations(net,
+                    pop_map[sp], pop_map[dp],
+                    SNN_TOPO_RANDOM, tc,
+                    SYNAPSE_NMDA, td_w, td_w * 0.3f);
+                if (nc > 0) top_down_connections += (uint32_t)nc;
+            }
+        }
+    }
+    LOG_INFO("Top-down NMDA: %u connections (L5→L3, L6→L2)", top_down_connections);
 
     /* Wire input_pop (pop 0) → tier 0 populations.
      * The base network's input_pop has n_inputs neurons (e.g. 1024).
@@ -453,19 +842,116 @@ wire_connections:
     LOG_INFO("Output convergence: tier 7 → output_pop: %u connections",
              output_converge_conn);
 
+    /* P3.1: Reticular thalamic nucleus (TRN).
+     *
+     * TRN is a thin GABAergic shell wrapping the dorsal thalamus. It receives
+     * collaterals from BOTH ascending sensory thalamic relay axons and
+     * descending corticothalamic (L6) axons, and projects GABA_A inhibition
+     * back onto the thalamic relay. This loop implements stimulus-specific
+     * gain control: when L6 expects a feature, the matching TRN sector
+     * fires and gates the corresponding sensory channel in or out. Without
+     * this, the substrate has no biological mechanism for attentional gain
+     * on sensory input — flagged in the substrate-correctness audit.
+     *
+     * Tier 0 here plays the dorsal-thalamic-relay role (ff_conn=0.005, no
+     * recurrence — matches LGN/MGN/VPL anatomy). We add a single TRN pop
+     * (~10K neurons, ~12% of tier 0 size, biologically realistic) wired:
+     *   tier 0  → TRN     NMDA, sparse 0.001 (relay collaterals)
+     *   L6      → TRN     NMDA, sparse 0.001 (corticothalamic feedback)
+     *   TRN     → tier 0  GABA_A, denser 0.005 (gating inhibition)
+     *
+     * NMDA on the inputs: TRN integrates slowly and L6→TRN PSPs are
+     * NMDA-dominated in vivo. GABA_A on the output: TRN→relay inhibition
+     * is fast/phasic. Note this is NEURON_GENERIC_LIF for now; the
+     * proper PV-style GABAergic neuron type lands in P2.1. */
+    #define TRN_NEURONS              10000u
+    #define TRN_INPUT_CONNECTIVITY   0.001f
+    #define TRN_OUTPUT_CONNECTIVITY  0.005f
+    #define TRN_INPUT_BUDGET_FRAC    0.3f
+
+    uint32_t trn_input_conn = 0, trn_output_conn = 0;
+    int trn_pop_rc = snn_network_add_population_lightweight(
+        net, TRN_NEURONS, NEURON_GENERIC_LIF, "thalamus_reticular");
+    if (trn_pop_rc >= 0) {
+        uint32_t trn_pop_idx = (uint32_t)trn_pop_rc;
+        /* Tag with TRN subclass — picks up bursting τ_mem (12 ms) and
+         * longer t_ref (3 ms) profile via snn_pop_lif_params(). */
+        (void)snn_network_set_pop_subclass(net, trn_pop_idx, SNN_NSC_TRN);
+
+        /* Tier 0 (sensory thalamic relay) → TRN: NMDA modulatory */
+        if (NUM_TIERS > 0 && tier_start_pop[0] < flat_idx) {
+            float w_in_t0 = snn_fluct_weight(
+                SNN_I_SYN_BUDGET * TRN_INPUT_BUDGET_FRAC * TOP_DOWN_NMDA_SCALE,
+                TIER_DEFS[0].neurons_per_pop,
+                TRN_INPUT_CONNECTIVITY, SNN_PRESYN_RATE_DEFAULT);
+            for (uint32_t sp = tier_start_pop[0];
+                 sp < tier_start_pop[1] && sp < flat_idx; sp++) {
+                int nc = snn_network_connect_populations(net,
+                    pop_map[sp], trn_pop_idx,
+                    SNN_TOPO_RANDOM, TRN_INPUT_CONNECTIVITY,
+                    SYNAPSE_NMDA, w_in_t0, w_in_t0 * 0.3f);
+                if (nc > 0) trn_input_conn += (uint32_t)nc;
+            }
+        }
+
+        /* L6_project (tier 6) → TRN: NMDA corticothalamic feedback */
+        if (NUM_TIERS > 6 && tier_start_pop[6] < flat_idx) {
+            float w_in_l6 = snn_fluct_weight(
+                SNN_I_SYN_BUDGET * TRN_INPUT_BUDGET_FRAC * TOP_DOWN_NMDA_SCALE,
+                TIER_DEFS[6].neurons_per_pop,
+                TRN_INPUT_CONNECTIVITY, SNN_PRESYN_RATE_DEFAULT);
+            for (uint32_t sp = tier_start_pop[6];
+                 sp < tier_start_pop[7] && sp < flat_idx; sp++) {
+                int nc = snn_network_connect_populations(net,
+                    pop_map[sp], trn_pop_idx,
+                    SNN_TOPO_RANDOM, TRN_INPUT_CONNECTIVITY,
+                    SYNAPSE_NMDA, w_in_l6, w_in_l6 * 0.3f);
+                if (nc > 0) trn_input_conn += (uint32_t)nc;
+            }
+        }
+
+        /* TRN → tier 0: GABA_A gating inhibition. Full I_syn budget so a
+         * coordinated TRN ensemble can substantially reduce relay firing.
+         * Negative weight follows the codebase convention (the per-receptor
+         * deposit absolute-values into g_gaba_a regardless of sign). */
+        if (NUM_TIERS > 0 && tier_start_pop[0] < flat_idx) {
+            float w_out = snn_fluct_weight(
+                SNN_I_SYN_BUDGET,
+                TRN_NEURONS,
+                TRN_OUTPUT_CONNECTIVITY, SNN_PRESYN_RATE_DEFAULT);
+            for (uint32_t dp = tier_start_pop[0];
+                 dp < tier_start_pop[1] && dp < flat_idx; dp++) {
+                int nc = snn_network_connect_populations(net,
+                    trn_pop_idx, pop_map[dp],
+                    SNN_TOPO_RANDOM, TRN_OUTPUT_CONNECTIVITY,
+                    SYNAPSE_GABA_A, -w_out, w_out * 0.05f);
+                if (nc > 0) trn_output_conn += (uint32_t)nc;
+            }
+        }
+
+        LOG_INFO("Reticular thalamus: pop %u (%u neurons), "
+                 "%u input syns (tier0+L6→TRN, NMDA), "
+                 "%u output syns (TRN→tier0, GABA_A)",
+                 trn_pop_idx, TRN_NEURONS, trn_input_conn, trn_output_conn);
+    } else {
+        LOG_WARN("Failed to add reticular thalamus population: rc=%d", trn_pop_rc);
+    }
+
     /* Finalize CSR storage on all lightweight populations.
      * This sorts the COO entries by destination neuron and builds
      * the row_ptr index for O(1) per-neuron lookup during stepping. */
-    extern int snn_network_finalize_connections(snn_network_t* network);
     snn_network_finalize_connections(net);
 
     LOG_INFO("Hierarchical SNN complete: %u neurons, %u connections "
-             "(ff=%u, rec=%u, skip=%u, in_fan=%u, out_conv=%u)",
-             actual_total,
+             "(ff=%u, rec=%u, skip=%u, td=%u, in_fan=%u, out_conv=%u, "
+             "trn_in=%u, trn_out=%u)",
+             actual_total + TRN_NEURONS,
              total_connections + recurrent_connections + skip_connections
-                 + input_fanout_conn + output_converge_conn,
+                 + top_down_connections + input_fanout_conn
+                 + output_converge_conn + trn_input_conn + trn_output_conn,
              total_connections, recurrent_connections, skip_connections,
-             input_fanout_conn, output_converge_conn);
+             top_down_connections, input_fanout_conn, output_converge_conn,
+             trn_input_conn, trn_output_conn);
 
     /* Save initial CSR to sidecar path so the first checkpoint has it.
      * Subsequent saves happen during brain.save() checkpoint cycle.

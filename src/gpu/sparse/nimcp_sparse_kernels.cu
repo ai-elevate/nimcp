@@ -936,6 +936,15 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
         int mb = (rows + block_dim - 1) / block_dim;  /* block rows */
         int nb = (cols + block_dim - 1) / block_dim;  /* block cols */
 
+        /* cuSPARSE legacy CSR↔BSR conversion (cusparseXcsr2bsrNnz +
+         * cusparseScsr2bsr) is deprecated in CUDA 12+, but the replacement
+         * generic-API path requires significant rewriting and isn't part of
+         * this task. Silence the deprecation locally so the build stays
+         * warning-clean — the calls still work and will be migrated when
+         * the CUDA version is bumped past their removal. */
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
         /* Create CSR matrix descriptor for conversion */
         cusparseMatDescr_t csr_desc;
         cusparseCreateMatDescr(&csr_desc);
@@ -1027,6 +1036,8 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
             cudaFree(d_bsr_row_ptrs);
             nimcp_free(sparse); return NULL;
         }
+
+        #pragma GCC diagnostic pop  /* end deprecated cusparse suppression */
 
         /* Populate sparse tensor */
         sparse->format = SPARSE_FORMAT_BSR;

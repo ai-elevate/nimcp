@@ -111,6 +111,13 @@ struct broca_adapter {
     bio_module_context_t bio_ctx;
     nimcp_bio_channel_type_t default_channel;
 
+    /* SNN substrate binding (broca_substrate population — 64K neurons,
+     * created by nimcp_brain_factory_init_language_pops). pop_id < 0 = unbound.
+     * Adapter logic uses (snn, snn_pop_id) to read spike rates / write bias.
+     * Lifetime: SNN owns its pops; adapter does NOT free them. */
+    snn_network_t* snn;
+    int snn_pop_id;
+
     /* Statistics */
     broca_stats_t stats;
 };
@@ -410,6 +417,11 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     /* Initialize bio-async communication */
     adapter->bio_ctx = NULL;
     adapter->default_channel = adapter->config.default_channel;
+
+    /* Initialize SNN substrate binding to "unbound" — calloc gives 0, but 0
+     * is a valid SNN pop id, so we MUST explicitly set -1 here. */
+    adapter->snn = NULL;
+    adapter->snn_pop_id = -1;
 
     if (adapter->config.enable_bio_async && bio_router_is_initialized()) {
         LOG_DEBUG("[%s] Registering with bio-async router", BROCA_LOG_MODULE);
@@ -1693,4 +1705,40 @@ static nimcp_error_t handle_utterance_production_request(
     }
 
     return NIMCP_SUCCESS;
+}
+
+/*=============================================================================
+ * SNN SUBSTRATE BINDING (broca_substrate population)
+ *===========================================================================*/
+
+bool broca_attach_snn_pop(broca_adapter_t* adapter,
+                          snn_network_t* snn,
+                          int pop_id) {
+    if (!adapter) {
+        LOG_WARN("[%s] broca_attach_snn_pop: adapter is NULL", BROCA_LOG_MODULE);
+        return false;
+    }
+    /* Negative pop id or NULL snn = unbind (idempotent reset path). Both
+     * legs MUST clear together so callers never see (snn != NULL, id < 0). */
+    if (!snn || pop_id < 0) {
+        adapter->snn = NULL;
+        adapter->snn_pop_id = -1;
+        LOG_DEBUG("[%s] SNN substrate binding cleared", BROCA_LOG_MODULE);
+        return true;
+    }
+    adapter->snn = snn;
+    adapter->snn_pop_id = pop_id;
+    LOG_INFO("[%s] attached to SNN pop id=%d (broca_substrate)",
+             BROCA_LOG_MODULE, pop_id);
+    return true;
+}
+
+int broca_get_snn_pop_id(const broca_adapter_t* adapter) {
+    if (!adapter) return -1;
+    return adapter->snn_pop_id;
+}
+
+snn_network_t* broca_get_snn_network(const broca_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->snn;
 }

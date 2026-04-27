@@ -67,6 +67,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_pr_memory.c          # Prime Resonant memory subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_world_model.c        # World Model subsystem (omni + multimodal)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_lnn.c               # LNN liquid neural network temporal processor
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_language_pops.c     # Language + sensorymotor SNN pops (Stage 1: cold-init + hierarchy taps)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_brain_pr_memory.c                   # Brain-PR memory integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/internal/nimcp_pr_memory_quantum_bridge.c          # PR memory-quantum integration (search, consolidation, entanglement)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_plasticity.c          # Plasticity subsystems (553 lines)
@@ -3355,8 +3356,17 @@ target_compile_definitions(nimcp PRIVATE NIMCP_TESTING)
 # DISABLED: Enable separate learning module - guards duplicate functions in nimcp_neuralnet.c
 # target_compile_definitions(nimcp PRIVATE NEURALNET_LEARNING_SEPARATE)
 
-# Explicitly add -fPIC for shared library with thread-local storage
-target_compile_options(nimcp PRIVATE -fPIC)
+# Explicitly add -fPIC for shared library with thread-local storage.
+#
+# -Wno-format-truncation: silence GCC's snprintf-may-truncate warnings.
+# These trigger throughout the codebase whenever we call snprintf into a
+# bounded buffer (log lines, error messages, file paths). Truncation is the
+# *intended* safe outcome — better than buffer overflow. The warning has no
+# false-negative we'd care about: any real bug here would either truncate
+# a path silently (still safe) or be caught by the explicit length checks
+# we already do. Re-enabling this flag would require widening every log
+# buffer, which adds zero correctness value.
+target_compile_options(nimcp PRIVATE -fPIC -Wno-format-truncation)
 
 # Enable AVX2 SIMD instructions for complex math optimization
 # Note: This is safe because we have runtime CPU detection fallback

@@ -111,6 +111,14 @@ struct wernicke_adapter {
     bio_module_context_t bio_ctx;
     bool bio_async_enabled;
     nimcp_bio_channel_type_t default_channel;
+
+    /* SNN substrate binding (wernicke_substrate population — 64K neurons,
+     * created by nimcp_brain_factory_init_language_pops). pop_id < 0 = unbound.
+     * Adapter logic uses (snn, snn_pop_id) to read spike rates for gating
+     * comprehension on actual cortical drive. Lifetime: SNN owns its pops;
+     * adapter does NOT free them. */
+    snn_network_t* snn;
+    int snn_pop_id;
 };
 
 /*=============================================================================
@@ -248,6 +256,11 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     adapter->bio_async_enabled = cfg.enable_bio_async;
     adapter->default_channel = cfg.default_channel;
     adapter->bio_ctx = NULL;  /* Will be registered via wernicke_register_kg */
+
+    /* Initialize SNN substrate binding to "unbound" — calloc gave 0, but 0
+     * is a valid SNN pop id, so we MUST explicitly set -1 here. */
+    adapter->snn = NULL;
+    adapter->snn_pop_id = -1;
 
     /* Initialize statistics */
     memset(&adapter->stats, 0, sizeof(wernicke_stats_t));
@@ -1226,4 +1239,42 @@ bool wernicke_connect_semantic_memory(
     adapter->semantic_memory = semantic;
     NIMCP_LOG_INFO("wernicke", "Connected to semantic memory");
     return true;
+}
+
+/*=============================================================================
+ * SNN SUBSTRATE BINDING (wernicke_substrate population)
+ *===========================================================================*/
+
+bool wernicke_attach_snn_pop(wernicke_adapter_t* adapter,
+                             snn_network_t* snn,
+                             int pop_id)
+{
+    if (!adapter) {
+        NIMCP_LOG_WARN("wernicke", "wernicke_attach_snn_pop: adapter is NULL");
+        return false;
+    }
+    /* Negative pop id or NULL snn = unbind. Both legs MUST clear together so
+     * callers never see (snn != NULL, id < 0). */
+    if (!snn || pop_id < 0) {
+        adapter->snn = NULL;
+        adapter->snn_pop_id = -1;
+        NIMCP_LOG_DEBUG("wernicke", "SNN substrate binding cleared");
+        return true;
+    }
+    adapter->snn = snn;
+    adapter->snn_pop_id = pop_id;
+    NIMCP_LOG_INFO("wernicke", "Attached to SNN pop id=%d (wernicke_substrate)", pop_id);
+    return true;
+}
+
+int wernicke_get_snn_pop_id(const wernicke_adapter_t* adapter)
+{
+    if (!adapter) return -1;
+    return adapter->snn_pop_id;
+}
+
+snn_network_t* wernicke_get_snn_network(const wernicke_adapter_t* adapter)
+{
+    if (!adapter) return NULL;
+    return adapter->snn;
 }

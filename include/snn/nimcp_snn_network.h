@@ -531,6 +531,25 @@ int snn_network_connect_populations(snn_network_t* network,
                                     float weight_std);
 
 /**
+ * @brief Finalize CSR storage on all lightweight populations
+ *
+ * WHAT: Sort COO entries by destination neuron, build per-row index for
+ *       O(1) per-neuron lookup during stepping.
+ * WHY:  Calls to snn_network_connect_populations() append unsorted COO
+ *       entries; the lightweight stepping path requires CSR. This must
+ *       be called once after all wiring is complete and before the first
+ *       network step or save.
+ * HOW:  For each lightweight population, sort its inbound CSR scratch
+ *       and build row_ptr/col_idx/weights into the live arrays.
+ *
+ * @param network SNN network
+ * @return 0 on success, negative on error
+ *
+ * COMPLEXITY: O(N_synapses × log N_synapses) per population
+ */
+int snn_network_finalize_connections(snn_network_t* network);
+
+/**
  * @brief Get population by ID
  *
  * WHAT: Access population structure
@@ -545,6 +564,173 @@ int snn_network_connect_populations(snn_network_t* network,
  */
 snn_population_t* snn_network_get_population(snn_network_t* network,
                                              uint32_t pop_id);
+
+/**
+ * @brief Find population index by exact name match
+ *
+ * WHAT: Linear scan of network->populations[] for pop with matching name.
+ * WHY:  Substrate consumers (TRN gain control, language adapters, etc.)
+ *       attach by named pop rather than by raw ID, since IDs shift as
+ *       populations are added across versions of the wiring schema.
+ *
+ * @param network SNN network
+ * @param name    Exact pop name to match (max 63 chars; uses strncmp on full buffer)
+ * @return Population index in [0, n_populations), or -1 if not found
+ *
+ * COMPLEXITY: O(n_populations)
+ */
+int snn_network_find_pop_by_name(const snn_network_t* network, const char* name);
+
+/**
+ * @brief Tag a population with its biological subclass.
+ *
+ * WHAT: Set pop->subclass; LIF parameter resolution (snn_pop_lif_params)
+ *       picks subclass-specific τ_mem / t_ref overrides on subsequent calls.
+ * WHY:  Hierarchical wiring (TRN, PV/SOM/VIP sub-pops) needs to mark which
+ *       biological neuron-type each pop represents so the membrane
+ *       dynamics match. Default after pop creation is SNN_NSC_PYRAMIDAL.
+ *
+ * @param network SNN network
+ * @param pop_id  Population index
+ * @param subclass Biological subclass tag
+ * @return 0 on success, negative on error
+ *
+ * COMPLEXITY: O(1)
+ */
+int snn_network_set_pop_subclass(snn_network_t* network,
+                                 uint32_t pop_id,
+                                 neuron_subclass_t subclass);
+
+/**
+ * @brief Set per-population gap-junction (electrical synapse) coupling weight.
+ *
+ * WHAT: Sets pop->gap_coupling. When > 0, the SNN hot loop adds
+ *       dv += gap_coupling * (V_mean - V_n) to every neuron of the
+ *       population each step (after membrane integration, before refractory),
+ *       blending each neuron's voltage toward the population mean.
+ * WHY:  Models Connexin-36 gap junctions between PV basket cells in cortex,
+ *       which form a fast electrical syncytium and are the primary substrate
+ *       for cortical gamma rhythm (30-80 Hz). Without gap coupling, PV pops
+ *       fire asynchronously and gamma never emerges.
+ * HOW:  Single ONE-thing setter — assigns the float; no side effects.
+ *       Coupling is gated on conductance_mode in the hot loop (matches CB
+ *       hot-loop convention), so it is only applied when the conductance
+ *       runtime flag is on.
+ *
+ * @param network SNN network
+ * @param pop_id  Population index in [0, n_populations)
+ * @param weight  Gap-junction coupling weight (typical 0.05). Pass 0 to
+ *                disable. Negative values are clamped to 0.
+ * @return 0 on success, negative on error
+ *
+ * COMPLEXITY: O(1)
+ */
+int snn_network_set_pop_gap_coupling(snn_network_t* network,
+                                     uint32_t pop_id,
+                                     float weight);
+
+/**
+ * @brief Set per-population axonal conduction delay (Wave E FFI fix).
+ *
+ * WHAT: Sets pop->conduction_delay_steps. Clamps to
+ *       [0, SNN_MAX_CONDUCTION_DELAY_STEPS]. When > 0, downstream pops
+ *       reading this pop's spike output via the per-pop spike-history
+ *       ring buffer see spikes delayed by `steps` simulation steps.
+ * WHY:  Restores the canonical feed-forward inhibition timing window
+ *       (PV GABA arriving 1-3 ms after thalamic AMPA on shared pyr
+ *       targets). Pre-Wave-E the deposit kernel read src->spike_output
+ *       for the SAME tick the spike was emitted, collapsing effective
+ *       conduction delay to 0 — making the FFI arm structurally
+ *       feedback. See docs/claude/ffi-timing-audit-2026-04-27.md.
+ * HOW:  Single ONE-thing setter — assigns the clamped value; no side
+ *       effects. The hot loop's read-from-history path is gated on
+ *       spike_history != NULL, so this setter does not allocate or
+ *       free the ring buffer (it's allocated at population creation).
+ *
+ * @param network SNN network
+ * @param pop_id  Population index in [0, n_populations)
+ * @param steps   Conduction delay in simulation steps. Values above
+ *                SNN_MAX_CONDUCTION_DELAY_STEPS are clamped down.
+ * @return 0 on success, negative on error
+ *
+ * COMPLEXITY: O(1)
+ */
+int snn_network_set_pop_conduction_delay(snn_network_t* network,
+                                         uint32_t pop_id,
+                                         uint32_t steps);
+
+/**
+ * @brief Set per-population LIF heterogeneity (Wave G, 2026-04-27).
+ *
+ * WHAT: Sets pop->heterogeneity_sigma. When sigma > 0, allocates and
+ *       populates pop->tau_mem_per_neuron and pop->v_thresh_per_neuron
+ *       with values drawn from a Gaussian centered on the pop-wide
+ *       resolved params:
+ *           tau_mem_per_neuron[n]  = lif.tau_mem  × (1 + sigma × N(0,1))
+ *           v_thresh_per_neuron[n] = lif.v_thresh × (1 + sigma × N(0,1))
+ *       Independent draws per neuron and per field. Box-Muller using
+ *       nimcp_tl_rand() for the underlying uniform.
+ * WHY:  Real cortical pops have τ_mem and threshold distributions.
+ *       Homogeneous pops are a degenerate failure mode that produces
+ *       lock-step firing instead of asynchronous-irregular dynamics.
+ * HOW:  Single ONE-thing setter — clamps σ to [0, 0.5], allocates arrays
+ *       if needed, populates them. No side effects beyond pop->* fields.
+ *       sigma == 0 leaves arrays NULL (the LIF lookup helper falls back
+ *       to pop-wide values in that case).
+ *
+ * @param network SNN network
+ * @param pop_id  Population index in [0, n_populations)
+ * @param sigma   Relative σ. Clamped to [0, 0.5]. NaN/Inf rejected.
+ *                A typical biological value for tier pyramidal pops is 0.10.
+ * @return 0 on success, negative on error.
+ *
+ * COMPLEXITY: O(n_neurons) on first non-zero call, O(1) thereafter.
+ */
+int snn_network_set_pop_heterogeneity(snn_network_t* network,
+                                      uint32_t pop_id,
+                                      float sigma);
+
+/**
+ * @brief Enable two-compartment dendritic mode on a population (Wave H).
+ *
+ * WHAT: Allocates the 8 per-neuron arrays used by the two-compartment
+ *       integration path:
+ *         v_basal, v_apical              — compartment voltages
+ *         g_ampa_basal, g_gaba_a_basal   — basal-side conductance buckets
+ *         g_nmda_apical, g_gaba_b_apical — apical-side conductance buckets
+ *         plateau_active, plateau_t0     — NMDA plateau onset state
+ *       and sets pop->dendritic_enabled = true. v_basal and v_apical are
+ *       both initialized to v_rest so a fresh dendritic pop starts at
+ *       resting potential.
+ * WHY:  Apical NMDA plateau spikes drive Larkum BAC firing. Real
+ *       cortical pyramidal cells need two compartments; lightweight pops
+ *       default to single-compartment to keep memory + perf overhead off
+ *       for production runs. This setter opts a pop in.
+ * HOW:  Single ONE-thing setter — allocates the 8 arrays. On any alloc
+ *       failure, frees what was acquired and returns SNN_ERROR_OUT_OF_MEMORY.
+ *       Idempotent: a second call when arrays are already allocated is a
+ *       no-op.
+ *
+ * @param network SNN network
+ * @param pop_id  Population index in [0, n_populations)
+ * @return SNN_SUCCESS on success, SNN_ERROR_* on error.
+ *
+ * COMPLEXITY: O(n_neurons) on first non-failing call.
+ *
+ * See docs/claude/wave-h-dendritic-design-2026-04-27.md.
+ */
+int snn_network_enable_dendritic(snn_network_t* network, uint32_t pop_id);
+
+/*============================================================================
+ * Wave H — global runtime flag for dendritic compartment mode.
+ *
+ * Default 0.0 (OFF). Hierarchical wiring sets pop->dendritic_enabled on
+ * tier-pyramidal pops only when this flag is non-zero at the time of
+ * pop creation. Like the conductance flag, the gate must be set BEFORE
+ * brain init for it to apply across the production hierarchy.
+ *==========================================================================*/
+extern void  snn_tune_set_dendritic_enabled(float v);
+extern float snn_tune_get_dendritic_enabled(void);
 
 //=============================================================================
 // Statistics and Monitoring
@@ -750,6 +936,36 @@ neural_network_t snn_network_get_neural_net(snn_network_t* network);
  * @return SNN_SUCCESS if valid
  */
 int snn_network_validate(const snn_network_t* network);
+
+/**
+ * @brief Validate Dale's principle across the network's wiring.
+ *
+ * WHAT: Walk every dst population's synapse_type_per_src table, build a
+ *       reverse map src_pop -> {emits-excitatory, emits-inhibitory}, and
+ *       flag any source population that emits BOTH classes. Excitatory =
+ *       AMPA or NMDA; inhibitory = GABA_A or GABA_B. Modulatory /
+ *       electrical / generic synapses are ignored (Dale governs classical
+ *       fast neurotransmitters; co-released neuromodulators do not violate
+ *       it).
+ * WHY:  Dale's principle is a fundamental biological constraint. The
+ *       per-receptor migration (g_ampa/g_nmda/g_gaba_a/g_gaba_b) makes the
+ *       constraint observable for the first time — a pop emitting both
+ *       AMPA and GABA_A would be biophysically impossible.
+ * HOW:  Pure read. No wiring is mutated. Caller-provided err_buf collects
+ *       a human-readable description of every violation (truncated if the
+ *       buffer is too small).
+ *
+ * @param net          SNN network (may be NULL → returns 0)
+ * @param err_buf      Caller buffer for violation messages (may be NULL)
+ * @param err_buf_sz   Size of err_buf in bytes (ignored if err_buf NULL)
+ * @return 0 if Dale holds for every src pop; non-zero violation count
+ *         otherwise (one count per offending source population).
+ *
+ * COMPLEXITY: O(n_populations × SNN_MAX_POPULATIONS) bit ops, negligible.
+ */
+int snn_network_validate_dale(const snn_network_t* net,
+                              char* err_buf,
+                              size_t err_buf_sz);
 
 /**
  * @brief Save SNN network (config + neuron weights) to file

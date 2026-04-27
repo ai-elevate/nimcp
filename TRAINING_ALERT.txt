@@ -22302,3 +22302,546 @@ Sun Apr 26 12:32:06 PM CEST 2026 — *** MODE COLLAPSE DETECTED ***
 [2026-04-26 18:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 136m (brain shards may still refresh — check supervisorctl status athena-training)
 [2026-04-26 19:00:01] [WARN] Pod checkpoint stale: newest is 151m old
 [2026-04-26 19:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 141m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:05:01] [WARN] Pod checkpoint stale: newest is 156m old
+[2026-04-26 19:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 146m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:10:02] [WARN] Pod checkpoint stale: newest is 161m old
+[2026-04-26 19:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 151m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:15:01] [WARN] Pod checkpoint stale: newest is 166m old
+[2026-04-26 19:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 156m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:20:02] [WARN] Pod checkpoint stale: newest is 171m old
+[2026-04-26 19:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 161m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:25:01] [WARN] Pod checkpoint stale: newest is 176m old
+[2026-04-26 19:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 166m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:30:02] [WARN] Pod checkpoint stale: newest is 181m old
+[2026-04-26 19:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 171m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:35:02] [WARN] Pod checkpoint stale: newest is 186m old
+[2026-04-26 19:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 176m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:40:01] [WARN] Pod checkpoint stale: newest is 191m old
+[2026-04-26 19:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 181m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:45:02] [WARN] Pod checkpoint stale: newest is 196m old
+[2026-04-26 19:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 186m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:50:02] [WARN] Pod checkpoint stale: newest is 201m old
+[2026-04-26 19:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 191m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 19:55:02] [WARN] Pod checkpoint stale: newest is 206m old
+[2026-04-26 19:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 196m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:00:01] [WARN] Pod checkpoint stale: newest is 211m old
+[2026-04-26 20:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 201m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:05:02] [WARN] Pod checkpoint stale: newest is 216m old
+[2026-04-26 20:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 206m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:10:01] [WARN] Pod checkpoint stale: newest is 221m old
+[2026-04-26 20:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 211m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:15:01] [WARN] Pod checkpoint stale: newest is 226m old
+[2026-04-26 20:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 216m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:20:01] [WARN] Pod checkpoint stale: newest is 231m old
+[2026-04-26 20:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 221m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:25:02] [WARN] Pod checkpoint stale: newest is 236m old
+[2026-04-26 20:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 226m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:30:01] [WARN] Pod checkpoint stale: newest is 241m old
+[2026-04-26 20:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 231m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:35:02] [WARN] Pod checkpoint stale: newest is 246m old
+[2026-04-26 20:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 236m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:40:02] [WARN] Pod checkpoint stale: newest is 251m old
+[2026-04-26 20:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 241m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:45:02] [WARN] Pod checkpoint stale: newest is 256m old
+[2026-04-26 20:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 246m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:50:01] [WARN] Pod checkpoint stale: newest is 261m old
+[2026-04-26 20:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 251m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 20:55:01] [WARN] Pod checkpoint stale: newest is 266m old
+[2026-04-26 20:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 256m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:00:02] [WARN] Pod checkpoint stale: newest is 271m old
+[2026-04-26 21:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 261m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:05:01] [WARN] Pod checkpoint stale: newest is 276m old
+[2026-04-26 21:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 266m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:10:01] [WARN] Pod checkpoint stale: newest is 281m old
+[2026-04-26 21:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 271m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:15:02] [WARN] Pod checkpoint stale: newest is 286m old
+[2026-04-26 21:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 276m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:20:02] [WARN] Pod checkpoint stale: newest is 291m old
+[2026-04-26 21:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 281m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:25:02] [WARN] Pod checkpoint stale: newest is 296m old
+[2026-04-26 21:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 286m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:30:02] [WARN] Pod checkpoint stale: newest is 301m old
+[2026-04-26 21:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 291m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:35:02] [WARN] Pod checkpoint stale: newest is 306m old
+[2026-04-26 21:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 296m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:40:01] [WARN] Pod checkpoint stale: newest is 311m old
+[2026-04-26 21:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 301m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:45:01] [WARN] Pod checkpoint stale: newest is 316m old
+[2026-04-26 21:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 306m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:50:02] [WARN] Pod checkpoint stale: newest is 321m old
+[2026-04-26 21:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 311m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 21:55:02] [WARN] Pod checkpoint stale: newest is 326m old
+[2026-04-26 21:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 316m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:00:02] [WARN] Pod checkpoint stale: newest is 331m old
+[2026-04-26 22:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 321m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:05:02] [WARN] Pod checkpoint stale: newest is 336m old
+[2026-04-26 22:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 326m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:10:02] [WARN] Pod checkpoint stale: newest is 341m old
+[2026-04-26 22:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 331m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:15:01] [WARN] Pod checkpoint stale: newest is 346m old
+[2026-04-26 22:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 336m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:20:02] [WARN] Pod checkpoint stale: newest is 351m old
+[2026-04-26 22:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 341m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:25:01] [WARN] Pod checkpoint stale: newest is 356m old
+[2026-04-26 22:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 346m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:30:02] [WARN] Pod checkpoint stale: newest is 361m old
+[2026-04-26 22:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 351m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:35:02] [WARN] Pod checkpoint stale: newest is 366m old
+[2026-04-26 22:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 356m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:40:01] [WARN] Pod checkpoint stale: newest is 371m old
+[2026-04-26 22:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 361m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:45:02] [WARN] Pod checkpoint stale: newest is 376m old
+[2026-04-26 22:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 366m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:50:01] [WARN] Pod checkpoint stale: newest is 381m old
+[2026-04-26 22:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 371m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 22:55:02] [WARN] Pod checkpoint stale: newest is 386m old
+[2026-04-26 22:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 376m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:00:01] [WARN] Pod checkpoint stale: newest is 391m old
+[2026-04-26 23:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 381m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:05:02] [WARN] Pod checkpoint stale: newest is 396m old
+[2026-04-26 23:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 386m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:10:01] [WARN] Pod checkpoint stale: newest is 401m old
+[2026-04-26 23:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 391m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:15:02] [WARN] Pod checkpoint stale: newest is 406m old
+[2026-04-26 23:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 396m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:20:02] [WARN] Pod checkpoint stale: newest is 411m old
+[2026-04-26 23:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 401m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:25:01] [WARN] Pod checkpoint stale: newest is 416m old
+[2026-04-26 23:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 406m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:30:02] [WARN] Pod checkpoint stale: newest is 421m old
+[2026-04-26 23:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 411m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-26 23:35:01] [WARN] Pod checkpoint stale: newest is 426m old
+[2026-04-26 23:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 416m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 00:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 61m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 00:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 66m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 00:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 71m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 00:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 76m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 81m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 86m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 91m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 96m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 101m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 106m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 111m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 116m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 121m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:45:02] [WARN] Pod checkpoint stale: newest is 122m old
+[2026-04-27 01:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 126m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:50:01] [WARN] Pod checkpoint stale: newest is 127m old
+[2026-04-27 01:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 131m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 01:55:01] [WARN] Pod checkpoint stale: newest is 132m old
+[2026-04-27 01:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 136m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:00:02] [WARN] Pod checkpoint stale: newest is 137m old
+[2026-04-27 02:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 141m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:05:01] [WARN] Pod checkpoint stale: newest is 142m old
+[2026-04-27 02:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 146m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:10:01] [WARN] Pod checkpoint stale: newest is 147m old
+[2026-04-27 02:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 151m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:15:02] [WARN] Pod checkpoint stale: newest is 152m old
+[2026-04-27 02:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 156m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:20:01] [WARN] Pod checkpoint stale: newest is 157m old
+[2026-04-27 02:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 161m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:25:02] [WARN] Pod checkpoint stale: newest is 162m old
+[2026-04-27 02:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 166m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:30:02] [WARN] Pod checkpoint stale: newest is 167m old
+[2026-04-27 02:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 171m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:35:01] [WARN] Pod checkpoint stale: newest is 172m old
+[2026-04-27 02:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 176m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:40:02] [WARN] Pod checkpoint stale: newest is 177m old
+[2026-04-27 02:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 181m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:45:01] [WARN] Pod checkpoint stale: newest is 182m old
+[2026-04-27 02:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 186m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:50:01] [WARN] Pod checkpoint stale: newest is 187m old
+[2026-04-27 02:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 191m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 02:55:02] [WARN] Pod checkpoint stale: newest is 192m old
+[2026-04-27 02:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 196m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:00:01] [WARN] Pod checkpoint stale: newest is 197m old
+[2026-04-27 03:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 201m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:05:01] [WARN] Pod checkpoint stale: newest is 202m old
+[2026-04-27 03:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 206m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:10:02] [WARN] Pod checkpoint stale: newest is 207m old
+[2026-04-27 03:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 211m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:15:02] [WARN] Pod checkpoint stale: newest is 212m old
+[2026-04-27 03:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 216m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:20:02] [WARN] Pod checkpoint stale: newest is 217m old
+[2026-04-27 03:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 221m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:25:01] [WARN] Pod checkpoint stale: newest is 222m old
+[2026-04-27 03:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 226m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:30:02] [WARN] Pod checkpoint stale: newest is 227m old
+[2026-04-27 03:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 231m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:35:02] [WARN] Pod checkpoint stale: newest is 232m old
+[2026-04-27 03:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 236m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:40:02] [WARN] Pod checkpoint stale: newest is 237m old
+[2026-04-27 03:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 241m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:45:02] [WARN] Pod checkpoint stale: newest is 242m old
+[2026-04-27 03:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 246m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:50:01] [WARN] Pod checkpoint stale: newest is 247m old
+[2026-04-27 03:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 251m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 03:55:02] [WARN] Pod checkpoint stale: newest is 252m old
+[2026-04-27 03:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 256m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:00:01] [WARN] Pod checkpoint stale: newest is 257m old
+[2026-04-27 04:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 261m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:05:02] [WARN] Pod checkpoint stale: newest is 262m old
+[2026-04-27 04:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 266m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:10:02] [WARN] Pod checkpoint stale: newest is 267m old
+[2026-04-27 04:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 271m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:15:01] [WARN] Pod checkpoint stale: newest is 272m old
+[2026-04-27 04:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 276m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:20:02] [WARN] Pod checkpoint stale: newest is 277m old
+[2026-04-27 04:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 281m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:25:01] [WARN] Pod checkpoint stale: newest is 282m old
+[2026-04-27 04:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 286m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:30:01] [WARN] Pod checkpoint stale: newest is 287m old
+[2026-04-27 04:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 291m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:35:02] [WARN] Pod checkpoint stale: newest is 292m old
+[2026-04-27 04:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 296m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:40:01] [WARN] Pod checkpoint stale: newest is 297m old
+[2026-04-27 04:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 301m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:45:01] [WARN] Pod checkpoint stale: newest is 302m old
+[2026-04-27 04:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 306m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:50:02] [WARN] Pod checkpoint stale: newest is 307m old
+[2026-04-27 04:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 311m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 04:55:01] [WARN] Pod checkpoint stale: newest is 312m old
+[2026-04-27 04:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 316m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:00:02] [WARN] Pod checkpoint stale: newest is 317m old
+[2026-04-27 05:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 321m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:05:01] [WARN] Pod checkpoint stale: newest is 322m old
+[2026-04-27 05:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 326m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:10:02] [WARN] Pod checkpoint stale: newest is 327m old
+[2026-04-27 05:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 331m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:15:02] [WARN] Pod checkpoint stale: newest is 332m old
+[2026-04-27 05:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 336m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:20:01] [WARN] Pod checkpoint stale: newest is 337m old
+[2026-04-27 05:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 341m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:25:01] [WARN] Pod checkpoint stale: newest is 342m old
+[2026-04-27 05:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 346m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:30:01] [WARN] Pod checkpoint stale: newest is 347m old
+[2026-04-27 05:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 351m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:35:01] [WARN] Pod checkpoint stale: newest is 352m old
+[2026-04-27 05:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 356m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:40:01] [WARN] Pod checkpoint stale: newest is 357m old
+[2026-04-27 05:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 361m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:45:02] [WARN] Pod checkpoint stale: newest is 362m old
+[2026-04-27 05:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 366m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:50:01] [WARN] Pod checkpoint stale: newest is 367m old
+[2026-04-27 05:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 371m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 05:55:01] [WARN] Pod checkpoint stale: newest is 372m old
+[2026-04-27 05:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 376m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:00:02] [WARN] Pod checkpoint stale: newest is 377m old
+[2026-04-27 06:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 381m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:05:01] [WARN] Pod checkpoint stale: newest is 382m old
+[2026-04-27 06:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 386m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:10:02] [WARN] Pod checkpoint stale: newest is 387m old
+[2026-04-27 06:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 391m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:15:01] [WARN] Pod checkpoint stale: newest is 392m old
+[2026-04-27 06:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 396m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:20:02] [WARN] Pod checkpoint stale: newest is 397m old
+[2026-04-27 06:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 401m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:25:02] [WARN] Pod checkpoint stale: newest is 402m old
+[2026-04-27 06:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 406m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:30:01] [WARN] Pod checkpoint stale: newest is 407m old
+[2026-04-27 06:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 411m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:35:02] [WARN] Pod checkpoint stale: newest is 412m old
+[2026-04-27 06:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 416m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:40:02] [WARN] Pod checkpoint stale: newest is 417m old
+[2026-04-27 06:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 421m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:45:01] [WARN] Pod checkpoint stale: newest is 422m old
+[2026-04-27 06:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 426m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:50:01] [WARN] Pod checkpoint stale: newest is 427m old
+[2026-04-27 06:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 431m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 06:55:02] [WARN] Pod checkpoint stale: newest is 432m old
+[2026-04-27 06:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 436m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:00:02] [WARN] Pod checkpoint stale: newest is 437m old
+[2026-04-27 07:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 441m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:05:01] [WARN] Pod checkpoint stale: newest is 442m old
+[2026-04-27 07:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 446m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:10:01] [WARN] Pod checkpoint stale: newest is 447m old
+[2026-04-27 07:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 451m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:15:02] [WARN] Pod checkpoint stale: newest is 452m old
+[2026-04-27 07:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 456m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:20:02] [WARN] Pod checkpoint stale: newest is 457m old
+[2026-04-27 07:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 461m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:25:01] [WARN] Pod checkpoint stale: newest is 462m old
+[2026-04-27 07:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 466m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:30:01] [WARN] Pod checkpoint stale: newest is 467m old
+[2026-04-27 07:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 471m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:35:02] [WARN] Pod checkpoint stale: newest is 472m old
+[2026-04-27 07:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 476m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:40:01] [WARN] Pod checkpoint stale: newest is 477m old
+[2026-04-27 07:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 481m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:45:01] [WARN] Pod checkpoint stale: newest is 482m old
+[2026-04-27 07:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 486m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:50:01] [WARN] Pod checkpoint stale: newest is 487m old
+[2026-04-27 07:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 491m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 07:55:02] [WARN] Pod checkpoint stale: newest is 492m old
+[2026-04-27 07:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 496m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:00:01] [WARN] Pod checkpoint stale: newest is 497m old
+[2026-04-27 08:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 501m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:05:02] [WARN] Pod checkpoint stale: newest is 502m old
+[2026-04-27 08:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 506m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:10:01] [WARN] Pod checkpoint stale: newest is 507m old
+[2026-04-27 08:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 511m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:15:02] [WARN] Pod checkpoint stale: newest is 512m old
+[2026-04-27 08:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 516m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:20:02] [WARN] Pod checkpoint stale: newest is 517m old
+[2026-04-27 08:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 521m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:25:02] [WARN] Pod checkpoint stale: newest is 522m old
+[2026-04-27 08:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 526m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:30:02] [WARN] Pod checkpoint stale: newest is 527m old
+[2026-04-27 08:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 531m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:35:01] [WARN] Pod checkpoint stale: newest is 532m old
+[2026-04-27 08:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 536m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:40:01] [WARN] Pod checkpoint stale: newest is 537m old
+[2026-04-27 08:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 541m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:45:01] [WARN] Pod checkpoint stale: newest is 542m old
+[2026-04-27 08:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 546m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:50:02] [WARN] Pod checkpoint stale: newest is 547m old
+[2026-04-27 08:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 551m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 08:55:01] [WARN] Pod checkpoint stale: newest is 552m old
+[2026-04-27 08:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 556m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:00:01] [WARN] Pod checkpoint stale: newest is 557m old
+[2026-04-27 09:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 561m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:05:02] [WARN] Pod checkpoint stale: newest is 562m old
+[2026-04-27 09:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 566m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:10:02] [WARN] Pod checkpoint stale: newest is 567m old
+[2026-04-27 09:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 571m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:15:01] [WARN] Pod checkpoint stale: newest is 572m old
+[2026-04-27 09:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 576m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:20:02] [WARN] Pod checkpoint stale: newest is 577m old
+[2026-04-27 09:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 581m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:25:02] [WARN] Pod checkpoint stale: newest is 582m old
+[2026-04-27 09:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 586m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:30:02] [WARN] Pod checkpoint stale: newest is 587m old
+[2026-04-27 09:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 591m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:35:01] [WARN] Pod checkpoint stale: newest is 592m old
+[2026-04-27 09:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 596m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:40:02] [WARN] Pod checkpoint stale: newest is 597m old
+[2026-04-27 09:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 601m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:45:01] [WARN] Pod checkpoint stale: newest is 602m old
+[2026-04-27 09:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 606m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:50:02] [WARN] Pod checkpoint stale: newest is 607m old
+[2026-04-27 09:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 611m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 09:55:01] [WARN] Pod checkpoint stale: newest is 612m old
+[2026-04-27 09:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 616m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:00:01] [WARN] Pod checkpoint stale: newest is 617m old
+[2026-04-27 10:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 621m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:05:01] [WARN] Pod checkpoint stale: newest is 622m old
+[2026-04-27 10:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 626m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:10:02] [WARN] Pod checkpoint stale: newest is 627m old
+[2026-04-27 10:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 631m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:15:01] [WARN] Pod checkpoint stale: newest is 632m old
+[2026-04-27 10:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 636m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:20:01] [WARN] Pod checkpoint stale: newest is 637m old
+[2026-04-27 10:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 641m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:25:02] [WARN] Pod checkpoint stale: newest is 643m old
+[2026-04-27 10:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 647m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:30:02] [WARN] SNN firing rate very high: 166.2Hz (possible runaway excitation)
+[2026-04-27 10:30:02] [WARN] Pod checkpoint stale: newest is 648m old
+[2026-04-27 10:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 651m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:35:02] [WARN] Pod checkpoint stale: newest is 652m old
+[2026-04-27 10:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 656m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:40:01] [WARN] Pod checkpoint stale: newest is 657m old
+[2026-04-27 10:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 661m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:45:01] [WARN] Pod checkpoint stale: newest is 663m old
+[2026-04-27 10:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 666m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:50:01] [WARN] Pod checkpoint stale: newest is 668m old
+[2026-04-27 10:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 672m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 10:55:02] [WARN] Pod checkpoint stale: newest is 673m old
+[2026-04-27 10:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 677m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:00:01] [WARN] Pod checkpoint stale: newest is 678m old
+[2026-04-27 11:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 682m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:05:02] [WARN] Pod checkpoint stale: newest is 682m old
+[2026-04-27 11:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 686m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:10:02] [WARN] Pod checkpoint stale: newest is 690m old
+[2026-04-27 11:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 694m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:15:01] [WARN] Pod checkpoint stale: newest is 693m old
+[2026-04-27 11:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 697m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:20:01] [WARN] Pod checkpoint stale: newest is 697m old
+[2026-04-27 11:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 701m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:25:01] [WARN] Pod checkpoint stale: newest is 702m old
+[2026-04-27 11:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 706m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:30:01] [WARN] Pod checkpoint stale: newest is 707m old
+[2026-04-27 11:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 711m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:35:01] [WARN] Pod checkpoint stale: newest is 712m old
+[2026-04-27 11:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 716m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:40:01] [WARN] Pod checkpoint stale: newest is 717m old
+[2026-04-27 11:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 721m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:45:02] [WARN] Pod checkpoint stale: newest is 722m old
+[2026-04-27 11:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 726m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:50:01] [WARN] Pod checkpoint stale: newest is 727m old
+[2026-04-27 11:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 731m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 11:55:01] [WARN] Pod checkpoint stale: newest is 732m old
+[2026-04-27 11:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 736m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:00:01] [WARN] Pod checkpoint stale: newest is 737m old
+[2026-04-27 12:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 741m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:05:02] [WARN] Pod checkpoint stale: newest is 742m old
+[2026-04-27 12:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 746m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:10:02] [WARN] Pod checkpoint stale: newest is 747m old
+[2026-04-27 12:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 751m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:15:02] [WARN] Pod checkpoint stale: newest is 752m old
+[2026-04-27 12:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 756m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:20:01] [WARN] Pod checkpoint stale: newest is 757m old
+[2026-04-27 12:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 761m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:25:02] [WARN] Pod checkpoint stale: newest is 762m old
+[2026-04-27 12:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 766m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:30:02] [WARN] Pod checkpoint stale: newest is 767m old
+[2026-04-27 12:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 771m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:35:02] [WARN] Pod checkpoint stale: newest is 772m old
+[2026-04-27 12:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 776m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:40:02] [WARN] Pod checkpoint stale: newest is 777m old
+[2026-04-27 12:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 781m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:45:02] [WARN] Pod checkpoint stale: newest is 782m old
+[2026-04-27 12:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 786m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:50:02] [WARN] Pod checkpoint stale: newest is 787m old
+[2026-04-27 12:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 791m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 12:55:02] [WARN] Pod checkpoint stale: newest is 792m old
+[2026-04-27 12:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 796m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:00:02] [WARN] Pod checkpoint stale: newest is 797m old
+[2026-04-27 13:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 801m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:05:01] [WARN] Pod checkpoint stale: newest is 802m old
+[2026-04-27 13:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 806m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:10:02] [WARN] Pod checkpoint stale: newest is 807m old
+[2026-04-27 13:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 811m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:15:02] [WARN] Pod checkpoint stale: newest is 812m old
+[2026-04-27 13:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 816m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:20:01] [WARN] Pod checkpoint stale: newest is 817m old
+[2026-04-27 13:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 821m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:25:02] [WARN] Pod checkpoint stale: newest is 822m old
+[2026-04-27 13:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 826m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:30:01] [WARN] Pod checkpoint stale: newest is 827m old
+[2026-04-27 13:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 831m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:35:01] [WARN] Pod checkpoint stale: newest is 832m old
+[2026-04-27 13:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 836m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:40:02] [WARN] Pod checkpoint stale: newest is 837m old
+[2026-04-27 13:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 841m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:45:01] [WARN] Pod checkpoint stale: newest is 842m old
+[2026-04-27 13:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 846m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:50:01] [WARN] Pod checkpoint stale: newest is 847m old
+[2026-04-27 13:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 851m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 13:55:01] [WARN] Pod checkpoint stale: newest is 852m old
+[2026-04-27 13:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 856m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:00:01] [WARN] Pod checkpoint stale: newest is 857m old
+[2026-04-27 14:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 861m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:05:02] [WARN] Pod checkpoint stale: newest is 862m old
+[2026-04-27 14:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 866m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:10:02] [WARN] Pod checkpoint stale: newest is 867m old
+[2026-04-27 14:10:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 871m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:15:01] [WARN] Pod checkpoint stale: newest is 872m old
+[2026-04-27 14:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 876m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:20:01] [WARN] Pod checkpoint stale: newest is 877m old
+[2026-04-27 14:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 881m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:25:02] [WARN] Pod checkpoint stale: newest is 882m old
+[2026-04-27 14:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 886m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:30:01] [WARN] Pod checkpoint stale: newest is 887m old
+[2026-04-27 14:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 891m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:35:01] [WARN] Pod checkpoint stale: newest is 892m old
+[2026-04-27 14:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 896m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:40:02] [WARN] Pod checkpoint stale: newest is 897m old
+[2026-04-27 14:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 901m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:45:01] [WARN] Pod checkpoint stale: newest is 902m old
+[2026-04-27 14:45:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 906m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:50:02] [WARN] Pod checkpoint stale: newest is 907m old
+[2026-04-27 14:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 911m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 14:55:01] [WARN] Pod checkpoint stale: newest is 912m old
+[2026-04-27 14:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 916m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:00:01] [WARN] Pod checkpoint stale: newest is 917m old
+[2026-04-27 15:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 921m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:05:01] [WARN] Pod checkpoint stale: newest is 922m old
+[2026-04-27 15:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 926m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:10:01] [WARN] Pod checkpoint stale: newest is 927m old
+[2026-04-27 15:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 931m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:15:01] [WARN] Pod checkpoint stale: newest is 932m old
+[2026-04-27 15:15:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 936m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:20:01] [WARN] Pod checkpoint stale: newest is 937m old
+[2026-04-27 15:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 941m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:25:01] [WARN] Pod checkpoint stale: newest is 942m old
+[2026-04-27 15:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 946m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:30:02] [WARN] Pod checkpoint stale: newest is 947m old
+[2026-04-27 15:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 951m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:35:02] [WARN] Pod checkpoint stale: newest is 952m old
+[2026-04-27 15:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 956m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:40:02] [WARN] Pod checkpoint stale: newest is 957m old
+[2026-04-27 15:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 961m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:45:02] [WARN] Pod checkpoint stale: newest is 962m old
+[2026-04-27 15:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 966m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:50:01] [WARN] Pod checkpoint stale: newest is 967m old
+[2026-04-27 15:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 971m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 15:55:02] [WARN] Pod checkpoint stale: newest is 972m old
+[2026-04-27 15:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 976m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:00:01] [WARN] Pod checkpoint stale: newest is 977m old
+[2026-04-27 16:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 981m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:05:01] [WARN] Pod checkpoint stale: newest is 982m old
+[2026-04-27 16:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 986m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:10:01] [WARN] Pod checkpoint stale: newest is 987m old
+[2026-04-27 16:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 991m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:15:02] [WARN] Pod checkpoint stale: newest is 992m old
+[2026-04-27 16:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 996m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:20:02] [WARN] Pod checkpoint stale: newest is 997m old
+[2026-04-27 16:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1001m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:25:02] [WARN] Pod checkpoint stale: newest is 1002m old
+[2026-04-27 16:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1006m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:30:02] [WARN] Pod checkpoint stale: newest is 1007m old
+[2026-04-27 16:30:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1011m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:35:01] [WARN] Pod checkpoint stale: newest is 1012m old
+[2026-04-27 16:35:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1016m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:40:02] [WARN] Pod checkpoint stale: newest is 1017m old
+[2026-04-27 16:40:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1021m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:45:02] [WARN] Pod checkpoint stale: newest is 1022m old
+[2026-04-27 16:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1026m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:50:02] [WARN] Pod checkpoint stale: newest is 1027m old
+[2026-04-27 16:50:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1031m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 16:55:01] [WARN] Pod checkpoint stale: newest is 1032m old
+[2026-04-27 16:55:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1036m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:00:02] [WARN] Pod checkpoint stale: newest is 1037m old
+[2026-04-27 17:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1041m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:05:01] [WARN] Pod checkpoint stale: newest is 1042m old
+[2026-04-27 17:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1046m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:10:01] [CRITICAL] athena-training NOT RUNNING on pod
+[2026-04-27 17:10:01] [WARN] Pod checkpoint stale: newest is 1047m old
+[2026-04-27 17:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1051m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:15:02] [WARN] Pod checkpoint stale: newest is 1052m old
+[2026-04-27 17:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1056m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:20:01] [WARN] Pod checkpoint stale: newest is 1057m old
+[2026-04-27 17:20:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1061m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:25:01] [WARN] Pod checkpoint stale: newest is 1062m old
+[2026-04-27 17:25:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1066m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:30:01] [WARN] Pod checkpoint stale: newest is 1067m old
+[2026-04-27 17:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1071m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:35:02] [WARN] Pod checkpoint stale: newest is 1072m old
+[2026-04-27 17:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1076m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:40:01] [WARN] Pod checkpoint stale: newest is 1077m old
+[2026-04-27 17:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1081m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:45:02] [WARN] Pod checkpoint stale: newest is 1082m old
+[2026-04-27 17:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1086m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:50:01] [WARN] Pod checkpoint stale: newest is 1087m old
+[2026-04-27 17:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1091m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 17:55:02] [WARN] Pod checkpoint stale: newest is 1092m old
+[2026-04-27 17:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1096m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:00:01] [WARN] Pod checkpoint stale: newest is 1097m old
+[2026-04-27 18:00:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1101m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:05:01] [WARN] Pod checkpoint stale: newest is 1102m old
+[2026-04-27 18:05:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1106m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:10:01] [WARN] Pod checkpoint stale: newest is 1107m old
+[2026-04-27 18:10:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1111m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:15:02] [WARN] Pod checkpoint stale: newest is 1112m old
+[2026-04-27 18:15:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1116m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:20:02] [WARN] Pod checkpoint stale: newest is 1117m old
+[2026-04-27 18:20:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1121m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:25:02] [WARN] Pod checkpoint stale: newest is 1122m old
+[2026-04-27 18:25:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1126m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:30:01] [WARN] Pod checkpoint stale: newest is 1127m old
+[2026-04-27 18:30:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1131m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:35:02] [WARN] Pod checkpoint stale: newest is 1132m old
+[2026-04-27 18:35:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1136m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:40:01] [WARN] Pod checkpoint stale: newest is 1137m old
+[2026-04-27 18:40:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1141m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:45:02] [WARN] Pod checkpoint stale: newest is 1142m old
+[2026-04-27 18:45:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1146m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:50:01] [WARN] Pod checkpoint stale: newest is 1147m old
+[2026-04-27 18:50:01] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1151m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 18:55:02] [WARN] Pod checkpoint stale: newest is 1152m old
+[2026-04-27 18:55:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1156m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 19:00:02] [WARN] Pod checkpoint stale: newest is 1157m old
+[2026-04-27 19:00:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1161m (brain shards may still refresh — check supervisorctl status athena-training)
+[2026-04-27 19:05:02] [WARN] Pod checkpoint stale: newest is 1162m old
+[2026-04-27 19:05:02] [CRITICAL] Trainer appears dead: no athena_auto snapshot in 1166m (brain shards may still refresh — check supervisorctl status athena-training)

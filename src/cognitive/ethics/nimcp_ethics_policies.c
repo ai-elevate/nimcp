@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "security/nimcp_w11_safety_kg_events.h"  /* w11_emit_ethics_policy_change */
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>

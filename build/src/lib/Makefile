@@ -21473,6 +21473,30 @@ __/core/brain/factory/init/nimcp_brain_init_language.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_language.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_language_pops.o: __/core/brain/factory/init/nimcp_brain_init_language_pops.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language_pops.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_language_pops.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language_pops.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language_pops.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_language_pops.i: __/core/brain/factory/init/nimcp_brain_init_language_pops.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language_pops.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_language_pops.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language_pops.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language_pops.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_language_pops.s: __/core/brain/factory/init/nimcp_brain_init_language_pops.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language_pops.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_language_pops.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_language_pops.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_language_pops.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_lnn.o: __/core/brain/factory/init/nimcp_brain_init_lnn.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_lnn.o
 
@@ -59740,6 +59764,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_language.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_language.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_language.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_language_pops.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_language_pops.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_language_pops.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_lnn.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_lnn.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_lnn.s"

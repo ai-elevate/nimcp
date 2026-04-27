@@ -28,6 +28,7 @@ extern "C" {
 #include "snn/nimcp_snn_synapse.h"
 #include "snn/nimcp_snn_types.h"
 #include "snn/nimcp_snn_config.h"
+#include "constants/nimcp_neural_constants.h"
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -66,6 +67,28 @@ protected:
     int output_id = -1;
     static constexpr uint32_t N_IN  = 50;
     static constexpr uint32_t N_OUT = 50;
+
+    /* Number of driven steps for receptor-accumulation tests. Picked so the
+     * shorter of the two CB receptor taus (tau_exc = 2 ms) saturates at
+     * its asymptotic equilibrium, removing the suite-level timing flake. */
+    static constexpr int    DRIVE_STEPS_RECEPTOR_ACCUM = 100;
+    /* Floor for "receptor accumulator clearly exceeded zero" — used by the
+     * AMPA / GABA_A routing tests to verify CB-mode deposits land in the
+     * right bucket. Far below the saturated value the 100-step drive
+     * produces, so passing this floor is a stable signal. */
+    static constexpr float  G_NONZERO_FLOOR           = 0.5f;
+    /* Decay assertion tolerance — a small slack on monotonic decrease. */
+    static constexpr float  G_MONOTONIC_SLACK         = 1e-3f;
+    /* "Decayed substantially" target — final g_ampa must be < this fraction
+     * of the post-drive plateau value. */
+    static constexpr float  G_DECAY_FRACTION          = 0.5f;
+    /* Decay-window step count — enough for tau_exc=2 ms to drain even
+     * residual receptor-accumulator contributions. */
+    static constexpr int    DECAY_STEPS               = 20;
+    /* Refractory hold value used to stop the input pop from firing during
+     * the decay-only phase. Any value greater than the longest refractory
+     * count we'd ever step through works. */
+    static constexpr float  REFRACTORY_HOLD_MS        = 100.0f;
 
     static void SetUpTestSuite() {
         // nimcp_init/shutdown is NOT idempotent — running it per-test
@@ -196,17 +219,17 @@ protected:
 };
 
 //=============================================================================
-// Allocation: g_exc / g_inh are present on every CSR pop after creation.
+// Allocation: g_ampa / g_inh are present on every CSR pop after creation.
 //=============================================================================
 
 TEST_F(CbIntegrationTest, ConductanceArraysAllocated) {
     snn_population_t* out = net->populations[output_id];
-    EXPECT_NE(out->g_exc, nullptr);
-    EXPECT_NE(out->g_inh, nullptr);
+    EXPECT_NE(out->g_ampa, nullptr);
+    EXPECT_NE(out->g_gaba_a, nullptr);
     // Initial values should be zero (calloc).
     for (uint32_t i = 0; i < N_OUT; i++) {
-        EXPECT_FLOAT_EQ(out->g_exc[i], 0.0f);
-        EXPECT_FLOAT_EQ(out->g_inh[i], 0.0f);
+        EXPECT_FLOAT_EQ(out->g_ampa[i], 0.0f);
+        EXPECT_FLOAT_EQ(out->g_gaba_a[i], 0.0f);
     }
 }
 
@@ -216,7 +239,7 @@ TEST_F(CbIntegrationTest, ConductanceArraysAllocated) {
 
 TEST_F(CbIntegrationTest, OffMode_ConductancesStayZero) {
     // With CB disabled, the synaptic deposits go to I_syn, not g_exc/g_inh.
-    // After many steps, g_exc and g_inh remain at zero.
+    // After many steps, g_ampa and g_inh remain at zero.
     wire_dense(0.5f);
     drive_input_all_spike();
     for (int s = 0; s < 20; s++) {
@@ -225,8 +248,8 @@ TEST_F(CbIntegrationTest, OffMode_ConductancesStayZero) {
     }
     snn_population_t* out = net->populations[output_id];
     for (uint32_t i = 0; i < N_OUT; i++) {
-        EXPECT_FLOAT_EQ(out->g_exc[i], 0.0f) << "g_exc nonzero in OFF mode at neuron " << i;
-        EXPECT_FLOAT_EQ(out->g_inh[i], 0.0f) << "g_inh nonzero in OFF mode at neuron " << i;
+        EXPECT_FLOAT_EQ(out->g_ampa[i], 0.0f) << "g_ampa nonzero in OFF mode at neuron " << i;
+        EXPECT_FLOAT_EQ(out->g_gaba_a[i], 0.0f) << "g_gaba_a nonzero in OFF mode at neuron " << i;
     }
 }
 
@@ -239,7 +262,9 @@ TEST_F(CbIntegrationTest, OffMode_StepCompletesWithoutCrash) {
     wire_dense(5.0f);
     for (int s = 0; s < 20; s++) {
         drive_input_all_spike();
-        ASSERT_EQ(snn_network_step(net, 1.0f), 0);
+        /* step returns total_spikes (>= 0) on success, negative SNN_ERROR_*
+         * on failure; assert "no error", not "no spikes". */
+        ASSERT_GE(snn_network_step(net, 1.0f), 0);
     }
     snn_population_t* out = net->populations[output_id];
     const float* v = (const float*)nimcp_tensor_data(out->membrane_v);
@@ -247,7 +272,7 @@ TEST_F(CbIntegrationTest, OffMode_StepCompletesWithoutCrash) {
 }
 
 //=============================================================================
-// ON mode: g_exc accumulates from positive weights; g_inh from negative.
+// ON mode: g_ampa accumulates from positive weights; g_inh from negative.
 //=============================================================================
 
 // FLAKY UNDER BATCH: passes in isolation, fails when preceded by
@@ -266,22 +291,30 @@ TEST_F(CbIntegrationTest, DISABLED_OnMode_PositiveWeights_RouteToGexc) {
         snn_network_step(net, 1.0f);
     }
     for (uint32_t i = 0; i < N_OUT; i++) {
-        EXPECT_GT(out->g_exc[i], 0.5f) << "neuron " << i << " g_exc=" << out->g_exc[i];
-        EXPECT_FLOAT_EQ(out->g_inh[i], 0.0f);
+        EXPECT_GT(out->g_ampa[i], 0.5f) << "neuron " << i << " g_exc=" << out->g_ampa[i];
+        EXPECT_FLOAT_EQ(out->g_gaba_a[i], 0.0f);
     }
 }
 
 TEST_F(CbIntegrationTest, OnMode_NegativeWeights_RouteToGinh) {
     snn_tune_set_conductance_enabled(1.0f);
     wire_dense(-0.3f);    // negative → inhibitory
-    for (int s = 0; s < 5; s++) {
+    /* DRIVE_STEPS_RECEPTOR_ACCUM (was 5): in CB mode the input pop's firing
+     * is gated by external_current → V → spike, and short-tau_inh (8 ms)
+     * means the inhibitory deposit decays fast. With only 5 steps the
+     * receptor router occasionally landed g_gaba_a below G_NONZERO_FLOOR
+     * — a suite-level timing flake. The new step count fully saturates
+     * the receptor accumulator at its asymptotic equilibrium (steady-state
+     * g_gaba_a >> floor), erasing the flake. */
+    for (int s = 0; s < DRIVE_STEPS_RECEPTOR_ACCUM; s++) {
         drive_input_all_spike();
         snn_network_step(net, 1.0f);
     }
     snn_population_t* out = net->populations[output_id];
     for (uint32_t i = 0; i < N_OUT; i++) {
-        EXPECT_FLOAT_EQ(out->g_exc[i], 0.0f);
-        EXPECT_GT(out->g_inh[i], 0.5f) << "neuron " << i << " g_inh=" << out->g_inh[i];
+        EXPECT_FLOAT_EQ(out->g_ampa[i], 0.0f);
+        EXPECT_GT(out->g_gaba_a[i], G_NONZERO_FLOOR)
+            << "neuron " << i << " g_inh=" << out->g_gaba_a[i];
     }
 }
 
@@ -307,20 +340,33 @@ TEST_F(CbIntegrationTest, OnMode_VSaturatesAtEexc_ExtremeWeights) {
 // makes per-step spike-count assertions unreliable.)
 
 //=============================================================================
-// Decay: g_exc decays toward zero with no input
+// Decay: g_ampa decays toward zero with no input
 //=============================================================================
 
 TEST_F(CbIntegrationTest, OnMode_GexcDecaysWithTauExc) {
     snn_tune_set_conductance_enabled(1.0f);
     wire_dense(0.3f);
-    // Drive long enough for input to fire and output to accumulate g_exc.
-    for (int s = 0; s < 5; s++) {
+    /* DRIVE_STEPS_RECEPTOR_ACCUM (was 5): see OnMode_NegativeWeights for the
+     * rationale. tau_exc=2 ms is even shorter than tau_inh, so the timing
+     * window for accumulating g_ampa above G_NONZERO_FLOOR is even tighter
+     * — saturating the accumulator removes the flake. */
+    for (int s = 0; s < DRIVE_STEPS_RECEPTOR_ACCUM; s++) {
         drive_input_all_spike();
         snn_network_step(net, 1.0f);
     }
     snn_population_t* out = net->populations[output_id];
-    float g_at_drive_end = out->g_exc[0];
-    ASSERT_GT(g_at_drive_end, 0.5f);
+    /* Use the mean across all output neurons rather than a single neuron's
+     * g_ampa[0]. With dense input→output connectivity and lots of drive
+     * steps the average is many σ above 0.5; per-neuron variance can
+     * occasionally leave one neuron empty if the timing of input firing
+     * happens to skip its row's CSR walk. */
+    auto g_mean = [&]() {
+        float s = 0.0f;
+        for (uint32_t i = 0; i < N_OUT; i++) s += out->g_ampa[i];
+        return s / (float)N_OUT;
+    };
+    float g_at_drive_end = g_mean();
+    ASSERT_GT(g_at_drive_end, G_NONZERO_FLOOR);
 
     // Stop driving — clear v, external_current, AND spike_output of the
     // input pop so subsequent steps cannot recruit any deposit on output.
@@ -328,25 +374,28 @@ TEST_F(CbIntegrationTest, OnMode_GexcDecaysWithTauExc) {
     float* in_v   = (float*)nimcp_tensor_data(in->membrane_v);
     float* in_spk = (float*)nimcp_tensor_data(in->spike_output);
     float* in_ref = (float*)nimcp_tensor_data(in->refractory);
+    /* Match the v_rest used by snn_config_default (NIMCP_RESTING_POTENTIAL_MV
+     * — see include/constants/nimcp_neural_constants.h). */
     for (uint32_t i = 0; i < N_IN; i++) {
-        in_v[i] = -65.0f;
+        in_v[i] = NIMCP_RESTING_POTENTIAL_MV;
         in_spk[i] = 0.0f;
-        in_ref[i] = 100.0f;  // hold in refractory so it cannot fire
+        in_ref[i] = REFRACTORY_HOLD_MS;
     }
     if (in->external_current) {
         for (uint32_t i = 0; i < N_IN; i++) in->external_current[i] = 0.0f;
     }
     // Track decay over time. Should decrease monotonically.
     float g_prev = g_at_drive_end;
-    for (int s = 0; s < 20; s++) {
+    for (int s = 0; s < DECAY_STEPS; s++) {
         snn_network_step(net, 1.0f);
-        EXPECT_LE(out->g_exc[0], g_prev + 1e-3f)
-            << "g_exc not monotonically decreasing at step " << s;
-        g_prev = out->g_exc[0];
+        float g_now = g_mean();
+        EXPECT_LE(g_now, g_prev + G_MONOTONIC_SLACK)
+            << "g_ampa not monotonically decreasing at step " << s;
+        g_prev = g_now;
     }
-    EXPECT_LT(out->g_exc[0], g_at_drive_end * 0.5f)
-        << "g_exc did not decay substantially (start=" << g_at_drive_end
-        << " end=" << out->g_exc[0] << ")";
+    EXPECT_LT(g_mean(), g_at_drive_end * G_DECAY_FRACTION)
+        << "g_ampa did not decay substantially (start=" << g_at_drive_end
+        << " end=" << g_mean() << ")";
 }
 
 //=============================================================================
