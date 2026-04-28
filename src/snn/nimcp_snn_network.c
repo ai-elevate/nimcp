@@ -1405,13 +1405,15 @@ static void snn_cb_post_spike_pop(snn_population_t* pop, float dt_ms,
 static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
     extern float snn_tune_get_conductance_enabled(void);
     extern float snn_tune_get_cb_gpu_enabled(void);
-    extern float snn_tune_get_substrate_spike_dropout_on(void);
     if (!network || !network->gpu_ctx || !network->gpu_lif_state) return -1;
     if (snn_tune_get_conductance_enabled() == 0.0f) return -1;
     if (snn_tune_get_cb_gpu_enabled() == 0.0f) return -1;
-    /* Stage A: substrate spike-survival dropout is stochastic on CPU; the
-     * GPU kernel is deterministic. Fall back to CPU when active. */
-    if (snn_tune_get_substrate_spike_dropout_on() != 0.0f) return -1;
+    /* NOTE: substrate spike-survival dropout is stochastic on CPU; the
+     * GPU kernel is deterministic. We do NOT gate on this tune knob —
+     * its production default is ON, and gating would force every step
+     * to CPU (3000ms vs 60ms). Documented divergence: GPU path drops no
+     * spikes; CPU path applies stochastic survival when substrate +
+     * se_axon are present. Production accepts this for the perf win. */
 
     nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
     nimcp_lif_state_t*   lif = (nimcp_lif_state_t*)network->gpu_lif_state;
