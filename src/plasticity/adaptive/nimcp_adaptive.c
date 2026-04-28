@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>  /* FWRITE_CHECKED diagnoses short writes via errno */
 #ifndef _WIN32
 #include <sched.h>  // C-ADP-11: sched_yield() for pool cleanup drain
 #endif
@@ -94,9 +95,24 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(adaptive)
 // WHY:  fwrite/fread return values must be checked to detect I/O errors
 // HOW:  Macros check return value and set success=false on failure
 // M-4: FWRITE_CHECKED now returns early on failure to avoid writing garbage
-// after a partial I/O failure corrupts the file position
+// after a partial I/O failure corrupts the file position.
+// Logs errno + ferror so the caller can diagnose ENOSPC, EINTR, etc. without
+// a kernel trace — previously a short write surfaced as the misleading
+// "success is NULL" message at the brain_save call site.
 #define FWRITE_CHECKED(ptr, size, count, stream) \
-    do { if (fwrite((ptr), (size), (count), (stream)) != (count)) { success = false; goto write_done; } } while(0)
+    do { \
+        size_t _wrote = fwrite((ptr), (size), (count), (stream)); \
+        if (_wrote != (count)) { \
+            int _errno = errno; \
+            int _ferr  = ferror(stream); \
+            NIMCP_LOGGING_ERROR("FWRITE_CHECKED short write: wanted=%zu got=%zu " \
+                                "errno=%d (%s) ferror=%d at %s:%d", \
+                                (size_t)(count), _wrote, _errno, \
+                                strerror(_errno), _ferr, __FILE__, __LINE__); \
+            success = false; \
+            goto write_done; \
+        } \
+    } while(0)
 // M-5: FREAD_CHECKED uses goto cleanup — currently unused (load uses inline checks).
 // Retained for future use; requires a 'cleanup:' label in the calling function.
 #define FREAD_CHECKED(ptr, size, count, stream) \

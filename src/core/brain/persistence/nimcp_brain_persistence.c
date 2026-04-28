@@ -1040,8 +1040,16 @@ bool brain_save(brain_t brain, const char* filepath)
     bool success = adaptive_network_save(brain->network, filepath, SERIALIZE_FORMAT_BINARY);
 
     if (!success) {
-        set_error("Failed to save adaptive network to %s", filepath);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save: success is NULL");
+        /* adaptive_network_save returned false — almost always a short fwrite
+         * (FWRITE_CHECKED triggered). The macro now logs errno + ferror at
+         * the actual call site, so the kernel-level cause (ENOSPC, EINTR,
+         * etc.) is in the daemon log. The thrown exception below is the
+         * *bubble-up* signal; the diagnostic detail is upstream. */
+        set_error("adaptive_network_save returned false for %s — see "
+                  "FWRITE_CHECKED log entries above for errno", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO,
+            "brain_save: adaptive_network_save failed (short fwrite — "
+            "check daemon log for errno/ferror)");
         return false;
     }
 
