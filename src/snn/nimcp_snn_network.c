@@ -905,6 +905,130 @@ int snn_network_reset(snn_network_t* network) {
 //=============================================================================
 
 /**
+ * @brief Per-pop CB deposit context. Captures the constants the inline CB
+ *        hot loop hoists per-pop so the per-neuron deposit helper takes a
+ *        reasonable arg count instead of 14+ scalars.
+ */
+typedef struct {
+    bool          cb_mode;
+    bool          dend_mode;
+    float         basket_contrib;     /* applied uniformly across the pop */
+    float         noise_p;            /* per-step Poisson probability */
+    float         noise_pulse_mv;     /* magnitude */
+    float         ei_ratio;           /* fraction of pulses that are inhibitory */
+    bool          noise_exc_only;     /* true → all noise pulses excitatory (dead-pop rescue) */
+    unsigned int* noise_seed;         /* thread-local rand_r state pointer */
+} snn_cb_deposit_ctx_t;
+
+/**
+ * @brief Per-neuron synaptic deposit pass: external current + CSR walk +
+ *        basket inhibition + Poisson noise. Routes via per-pop-pair
+ *        synapse_type_per_src in CB mode; sign-fallback (SYNAPSE_GENERIC)
+ *        in current mode.
+ *
+ * WHAT: Mirrors the inline-deposit block of the CB CPU hot loop. Reads
+ *       network->populations + spike-history ring (or spike_output
+ *       fallback) for source spikes; writes into the four per-receptor
+ *       conductance pointers (cb_g_*_n) when in CB mode, into I_syn_out
+ *       when in current mode.
+ * WHY:  Extracted so the CB+GPU step path can reuse the exact same
+ *       deposit logic the CPU path runs — no parallel mirror to drift.
+ *       Behavior is bit-identical; locked by test_snn_cb_loop_baseline.
+ * HOW:  All NULL-safe at the receptor pointer boundary (a missing
+ *       receptor is a no-op via snn_membrane_deposit_synapse_*). Runs
+ *       once per neuron per step.
+ */
+static void snn_cb_deposit_neuron(
+    snn_network_t* network,
+    snn_population_t* pop,
+    uint32_t n,
+    const snn_cb_deposit_ctx_t* ctx,
+    float* cb_g_ampa_n,   float* cb_g_nmda_n,
+    float* cb_g_gaba_a_n, float* cb_g_gaba_b_n,
+    float* dend_g_ampa_b_n,   float* dend_g_gaba_a_b_n,
+    float* dend_g_nmda_a_n,   float* dend_g_gaba_b_a_n,
+    /* out */ float* I_syn_out)
+{
+    float I_syn = 0.0f;
+
+    /* External current (input drive). Non-CSR deposit → SYNAPSE_GENERIC
+     * so the kernel's sign-fallback routes it. Wave H compartmental
+     * helper routes via AMPA-basal / GABA_A-basal sign fallback when
+     * dend_mode is true. */
+    if (pop->external_current) {
+        snn_membrane_deposit_synapse_compartmental(
+            &I_syn,
+            cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+            dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+            dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+            pop->external_current[n],
+            SYNAPSE_GENERIC, ctx->cb_mode, ctx->dend_mode);
+    }
+
+    /* CSR walk: per-incoming synapse, deposit if source neuron spiked
+     * (delayed via spike-history ring when available — Wave E FFI fix). */
+    uint32_t syn_count;
+    snn_csr_synapse_t* syns = snn_csr_get_incoming(
+        pop->incoming_csr, n, &syn_count);
+    for (uint32_t s = 0; s < syn_count; s++) {
+        if (syns[s].src_pop >= network->n_populations) continue;
+        snn_population_t* src_pop = network->populations[syns[s].src_pop];
+        if (!src_pop || !src_pop->spike_output) continue;
+        const float* src_spikes_delayed =
+            snn_pop_get_delayed_spike_row(src_pop);
+        const float* src_spikes = src_spikes_delayed
+            ? src_spikes_delayed
+            : (const float*)nimcp_tensor_data(src_pop->spike_output);
+        if (src_spikes && syns[s].src_neuron < src_pop->n_neurons
+            && src_spikes[syns[s].src_neuron] > 0.5f) {
+            float dep = 0.0f;
+            if (src_pop->depression) dep = src_pop->depression[syns[s].src_neuron];
+            const int syn_type = (int)pop->synapse_type_per_src[syns[s].src_pop];
+            snn_membrane_deposit_synapse_compartmental(
+                &I_syn,
+                cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                syns[s].weight * (1.0f - dep),
+                syn_type, ctx->cb_mode, ctx->dend_mode);
+        }
+    }
+
+    /* Basket feedforward inhibition — uniform across pop. negative-signed
+     * so SYNAPSE_GENERIC sign-fallback routes to GABA_A in CB mode. */
+    snn_membrane_deposit_synapse_compartmental(
+        &I_syn,
+        cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+        dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+        dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+        ctx->basket_contrib,
+        SYNAPSE_GENERIC, ctx->cb_mode, ctx->dend_mode);
+
+    /* E/I-balanced Poisson background noise — structural fix for the
+     * absorbing-zero state (dead-pop rescue uses noise_exc_only). */
+    if (ctx->noise_p > 0.0f) {
+        float r = (float)rand_r(ctx->noise_seed) * (1.0f / (float)RAND_MAX);
+        if (r < ctx->noise_p) {
+            float pulse = ctx->noise_pulse_mv;
+            if (!ctx->noise_exc_only) {
+                float sign_r = (float)rand_r(ctx->noise_seed)
+                             * (1.0f / (float)RAND_MAX);
+                if (sign_r < ctx->ei_ratio) pulse = -ctx->noise_pulse_mv;
+            }
+            snn_membrane_deposit_synapse_compartmental(
+                &I_syn,
+                cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                pulse,
+                SYNAPSE_GENERIC, ctx->cb_mode, ctx->dend_mode);
+        }
+    }
+
+    *I_syn_out = I_syn;
+}
+
+/**
  * @brief Pop-level post-spike adaptation: AHP / pump update, basket step,
  *        intrinsic plasticity + short-term depression.
  *
@@ -1843,102 +1967,28 @@ int snn_network_step(snn_network_t* network, float dt) {
                     continue;
                 }
 
-                /* Synaptic accumulator: in current mode this aggregates
-                 * everything into I_syn; in CB mode the deposit helper
-                 * routes synapses to the correct receptor bucket based on
-                 * synapse_type_per_src (CSR pathway) or sign-fallback
-                 * (non-CSR deposits), and I_syn stays at zero (unused). */
-                float I_syn = 0.0f;
-
-                /* External current (input drive). Non-CSR deposit → use
-                 * SYNAPSE_GENERIC so the kernel's sign-fallback routes it.
-                 * Wave H: when dend_mode is true, the compartmental helper
-                 * routes via the AMPA-basal / GABA_A-basal sign fallback;
-                 * else it forwards to the legacy single-compartment
-                 * deposit. dend_mode is hoisted once per pop, so only the
-                 * compartment-decision branch is per-deposit (predictable). */
-                if (pop->external_current) {
-                    snn_membrane_deposit_synapse_compartmental(
-                        &I_syn,
-                        cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
-                        dend_g_ampa_b_n, dend_g_gaba_a_b_n,
-                        dend_g_nmda_a_n, dend_g_gaba_b_a_n,
-                        pop->external_current[n],
-                        SYNAPSE_GENERIC, cb_mode, dend_mode);
-                }
-
-                uint32_t syn_count;
-                snn_csr_synapse_t* syns = snn_csr_get_incoming(
-                    pop->incoming_csr, n, &syn_count);
-                for (uint32_t s = 0; s < syn_count; s++) {
-                    if (syns[s].src_pop >= network->n_populations) continue;
-                    snn_population_t* src_pop = network->populations[syns[s].src_pop];
-                    if (!src_pop || !src_pop->spike_output) continue;
-                    /* Wave E FFI fix — read from per-pop spike-history ring
-                     * if available (delivers `conduction_delay_steps`-step
-                     * delayed spikes). Falls back to spike_output for pops
-                     * with no ring (alloc failure / non-lightweight) so
-                     * legacy zero-delay behavior is preserved. The helper
-                     * is the single source of truth for the index math. */
-                    const float* src_spikes_delayed =
-                        snn_pop_get_delayed_spike_row(src_pop);
-                    const float* src_spikes = src_spikes_delayed
-                        ? src_spikes_delayed
-                        : (const float*)nimcp_tensor_data(src_pop->spike_output);
-                    if (src_spikes && syns[s].src_neuron < src_pop->n_neurons
-                        && src_spikes[syns[s].src_neuron] > 0.5f) {
-                        /* Short-term synaptic depression: scale contribution by
-                         * (1 - depression[src_neuron]). Recently-firing sources
-                         * deliver less drive, preventing hot-pathway runaway. */
-                        float dep = 0.0f;
-                        if (src_pop->depression) dep = src_pop->depression[syns[s].src_neuron];
-                        /* Per-pop-pair receptor type set up at wiring time. */
-                        const int syn_type = (int)pop->synapse_type_per_src[syns[s].src_pop];
-                        snn_membrane_deposit_synapse_compartmental(
-                            &I_syn,
-                            cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
-                            dend_g_ampa_b_n, dend_g_gaba_a_b_n,
-                            dend_g_nmda_a_n, dend_g_gaba_b_a_n,
-                            syns[s].weight * (1.0f - dep),
-                            syn_type, cb_mode, dend_mode);
-                    }
-                }
-
-                /* Basket feedforward inhibition — uniform across pop.
-                 * basket_contrib is negative (inhibitory) so in CB mode the
-                 * sign-fallback (SYNAPSE_GENERIC) routes it to GABA_A. */
-                snn_membrane_deposit_synapse_compartmental(
-                    &I_syn,
+                /* CB-GPU-5 Phase A.2: per-neuron synaptic deposit
+                 * extracted to snn_cb_deposit_neuron(). external_current
+                 * + CSR walk + basket + Poisson noise. In CB mode I_syn
+                 * stays at zero (unused); in current mode it accumulates
+                 * the post-deposit drive that compute_dv consumes. */
+                snn_cb_deposit_ctx_t _dep_ctx = {
+                    .cb_mode        = cb_mode,
+                    .dend_mode      = dend_mode,
+                    .basket_contrib = basket_contrib,
+                    .noise_p        = noise_p,
+                    .noise_pulse_mv = noise_pulse_mv,
+                    .ei_ratio       = ei_ratio,
+                    .noise_exc_only = (bool)noise_exc_only,
+                    .noise_seed     = &_noise_seed,
+                };
+                float I_syn;
+                snn_cb_deposit_neuron(
+                    network, pop, n, &_dep_ctx,
                     cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
                     dend_g_ampa_b_n, dend_g_gaba_a_b_n,
                     dend_g_nmda_a_n, dend_g_gaba_b_a_n,
-                    basket_contrib,
-                    SYNAPSE_GENERIC, cb_mode, dend_mode);
-
-                /* E/I-balanced Poisson background noise — structural fix
-                 * for the absorbing-zero state. Dead pops (factor >= 0.9)
-                 * receive only excitatory pulses to escape; balanced pops
-                 * receive ei_ratio fraction as inhibitory so mean drive
-                 * stays near zero and neurons sit fluctuation-driven
-                 * instead of ramping up. Non-CSR deposit → SYNAPSE_GENERIC. */
-                if (noise_p > 0.0f) {
-                    float r = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
-                    if (r < noise_p) {
-                        float pulse = noise_pulse_mv;
-                        if (!noise_exc_only) {
-                            float sign_r = (float)rand_r(&_noise_seed)
-                                         * (1.0f / (float)RAND_MAX);
-                            if (sign_r < ei_ratio) pulse = -noise_pulse_mv;
-                        }
-                        snn_membrane_deposit_synapse_compartmental(
-                            &I_syn,
-                            cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
-                            dend_g_ampa_b_n, dend_g_gaba_a_b_n,
-                            dend_g_nmda_a_n, dend_g_gaba_b_a_n,
-                            pulse,
-                            SYNAPSE_GENERIC, cb_mode, dend_mode);
-                    }
-                }
+                    &I_syn);
 
                 /* AHP + pump hyperpolarization — modeled as intrinsic K+
                  * currents, not synaptic, so they remain current-style in
