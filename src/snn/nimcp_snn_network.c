@@ -1029,6 +1029,185 @@ static void snn_cb_deposit_neuron(
 }
 
 /**
+ * @brief Per-pop CB integration context. Captures pop-level constants
+ *        the inline CB hot loop hoists once per-pop, plus per-neuron
+ *        het/hyp arrays. The per-neuron integrate helper takes this
+ *        instead of a 25-arg parameter list.
+ */
+typedef struct {
+    bool          cb_mode;
+    bool          dend_mode;
+    bool          het_active_tau;
+    bool          het_active_thresh;
+    float         tau_eff;
+    float         v_thresh;
+    float         v_reset;
+    float         v_rest;
+    float         tref_eff;
+    float         cb_e_ampa, cb_e_nmda, cb_e_gaba_a, cb_e_gaba_b;
+    float         cb_mg;
+    /* Dendritic compartment (Wave H) */
+    float         dend_plateau_thr;
+    float         dend_plateau_g;
+    float         dend_plateau_tau;
+    float         dend_g_coup;
+    uint64_t      dend_now_tick;
+    /* Substrate */
+    float         substrate_pump_factor;
+    bool          substrate_spike_dropout_on;
+    const axon_substrate_effects_t*     se_axon;
+    const dendrite_substrate_effects_t* se_dend;
+    /* Per-neuron arrays (caller-owned, NULL if unused) */
+    const float*  tau_per_neuron;
+    const float*  vthr_per_neuron;
+    const float*  ahp_hyp;
+    const float*  pump_hyp;
+    /* Per-step rand_r state for substrate spike-survival */
+    unsigned int* noise_seed;
+    /* Per-step dt */
+    float         dt_ms;
+} snn_cb_integrate_ctx_t;
+
+/**
+ * @brief Per-neuron membrane integration + spike emission. Runs after
+ *        synaptic deposit has populated pop->g_* (CB mode) or I_syn
+ *        (current mode); writes v_data, spike_data, ref_data, and
+ *        records spikes to spike_trains.
+ *
+ * WHAT: Computes dv via CB / dendritic-two-compartment / current-mode
+ *       branches, applies AHP/pump hyp adjustment, checks against
+ *       intrinsic-plasticity-adjusted threshold, runs substrate spike
+ *       survival, resets V on spike, sets refractory.
+ * WHY:  Extracted so the CB+GPU step path can REPLACE this whole call
+ *       with nimcp_gpu_lif_forward_cb on the gathered host state. CPU
+ *       behavior is bit-identical; locked by test_snn_cb_loop_baseline.
+ * RETURN: 1 if neuron spiked (caller increments total_spikes counters),
+ *         0 otherwise.
+ */
+static int snn_cb_integrate_neuron(
+    snn_network_t* network,
+    snn_population_t* pop,
+    uint32_t n,
+    const snn_cb_integrate_ctx_t* ctx,
+    float* v_data, float* spike_data, float* ref_data,
+    float* cb_g_ampa_n,   float* cb_g_nmda_n,
+    float* cb_g_gaba_a_n, float* cb_g_gaba_b_n,
+    float* dend_g_ampa_b_n,   float* dend_g_gaba_a_b_n,
+    float* dend_g_nmda_a_n,   float* dend_g_gaba_b_a_n,
+    float I_syn)
+{
+    /* AHP + pump hyperpolarization (intrinsic K+ currents). Folded into
+     * I_syn before compute_dv in current mode; subtracted from dv after
+     * compute_dv in CB / dendritic mode. */
+    float hyp = 0.0f;
+    if (ctx->ahp_hyp)  hyp += ctx->ahp_hyp[n];
+    if (ctx->pump_hyp) hyp += ctx->pump_hyp[n];
+    hyp *= ctx->substrate_pump_factor;
+
+    /* Per-neuron τ_mem from heterogeneity arrays (Wave G) modulated by
+     * substrate axon-cache (when both are active). Falls back to the
+     * pop-wide tau_eff scalar when no heterogeneity. */
+    float tau_eff_n = ctx->tau_eff;
+    if (ctx->het_active_tau && ctx->tau_per_neuron) {
+        float tau_n = ctx->tau_per_neuron[n];
+        tau_eff_n = ctx->se_dend ? substrate_apply_tau(tau_n, ctx->se_dend)
+                                 : tau_n;
+    }
+    float dv;
+
+    if (ctx->dend_mode) {
+        /* Wave H — two-compartment integration with apical NMDA plateau. */
+        bool active = pop->plateau_active[n] != 0;
+        if (!active &&
+            snn_membrane_check_plateau_onset(
+                pop->v_apical[n], ctx->dend_plateau_thr)) {
+            pop->plateau_active[n] = 1;
+            pop->plateau_t0[n]     = ctx->dend_now_tick;
+            active = true;
+        }
+        float t_since_ms = 0.0f;
+        if (active) {
+            uint64_t dticks = (ctx->dend_now_tick >= pop->plateau_t0[n])
+                            ? (ctx->dend_now_tick - pop->plateau_t0[n])
+                            : 0;
+            t_since_ms = (float)dticks * ctx->dt_ms;
+            if (t_since_ms > 3.0f * ctx->dend_plateau_tau) {
+                pop->plateau_active[n] = 0;
+                active = false;
+            }
+        }
+
+        float dv_b = 0.0f, dv_a = 0.0f;
+        snn_membrane_compute_dv_two_compartment(
+            pop->v_basal[n], pop->v_apical[n],
+            ctx->v_rest, tau_eff_n, tau_eff_n, ctx->dt_ms,
+            dend_g_ampa_b_n   ? *dend_g_ampa_b_n   : 0.0f,
+            dend_g_gaba_a_b_n ? *dend_g_gaba_a_b_n : 0.0f,
+            dend_g_nmda_a_n   ? *dend_g_nmda_a_n   : 0.0f,
+            dend_g_gaba_b_a_n ? *dend_g_gaba_b_a_n : 0.0f,
+            ctx->dend_g_coup,
+            ctx->cb_e_ampa, ctx->cb_e_nmda,
+            ctx->cb_e_gaba_a, ctx->cb_e_gaba_b,
+            ctx->cb_mg,
+            active, t_since_ms,
+            ctx->dend_plateau_g, ctx->dend_plateau_tau,
+            &dv_b, &dv_a);
+
+        pop->v_basal[n]  += dv_b - hyp * (ctx->dt_ms / tau_eff_n);
+        pop->v_apical[n] += dv_a;
+        v_data[n] = pop->v_basal[n];
+        dv = 0.0f;  /* v_data already advanced */
+    } else if (ctx->cb_mode) {
+        dv = snn_membrane_compute_dv(
+            v_data[n], ctx->v_rest, tau_eff_n, ctx->dt_ms,
+            0.0f /* I_syn unused in CB */,
+            cb_g_ampa_n   ? *cb_g_ampa_n   : 0.0f,
+            cb_g_nmda_n   ? *cb_g_nmda_n   : 0.0f,
+            cb_g_gaba_a_n ? *cb_g_gaba_a_n : 0.0f,
+            cb_g_gaba_b_n ? *cb_g_gaba_b_n : 0.0f,
+            ctx->cb_e_ampa, ctx->cb_e_nmda,
+            ctx->cb_e_gaba_a, ctx->cb_e_gaba_b,
+            ctx->cb_mg, true);
+        dv -= hyp * (ctx->dt_ms / tau_eff_n);
+        v_data[n] += dv;
+    } else {
+        I_syn -= hyp;
+        dv = snn_membrane_compute_dv(
+            v_data[n], ctx->v_rest, tau_eff_n, ctx->dt_ms,
+            I_syn,
+            0.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, false);
+        v_data[n] += dv;
+    }
+
+    /* Intrinsic plasticity threshold. */
+    float v_thresh_n = (ctx->het_active_thresh && ctx->vthr_per_neuron)
+                       ? ctx->vthr_per_neuron[n]
+                       : ctx->v_thresh;
+    if (pop->threshold_offset) v_thresh_n += pop->threshold_offset[n];
+
+    if (v_data[n] >= v_thresh_n) {
+        int spike_ok = 1;
+        if (ctx->substrate_spike_dropout_on && ctx->se_axon) {
+            float rand01 = (float)rand_r(ctx->noise_seed) * (1.0f / (float)RAND_MAX);
+            if (!substrate_spike_survives(ctx->se_axon, rand01)) {
+                spike_ok = 0;
+            }
+        }
+        if (spike_ok) {
+            spike_data[n] = 1.0f;
+            v_data[n] = ctx->v_reset;
+            ref_data[n] = ctx->tref_eff;
+            record_spike(&pop->spike_trains[n], network->sim->current_time_us);
+            pop->total_spikes++;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
  * @brief Pop-level post-spike adaptation: AHP / pump update, basket step,
  *        intrinsic plasticity + short-term depression.
  *
@@ -1990,169 +2169,50 @@ int snn_network_step(snn_network_t* network, float dt) {
                     dend_g_nmda_a_n, dend_g_gaba_b_a_n,
                     &I_syn);
 
-                /* AHP + pump hyperpolarization — modeled as intrinsic K+
-                 * currents, not synaptic, so they remain current-style in
-                 * BOTH paths (subtracted from dv after the membrane call).
-                 * F8: the combined gain is scaled by substrate_pump_factor
-                 * so metabolic state feeds back into spike-rate adaptation
-                 * (weak pumps → weak adaptation → membrane integrates longer). */
-                float hyp = 0.0f;
-                if (ahp_hyp)  hyp += ahp_hyp[n];
-                if (pump_hyp) hyp += pump_hyp[n];
-                hyp *= substrate_pump_factor;
-
-                /* LIF dynamics. In current mode hyp is folded into I_syn
-                 * before the call (bit-identical to pre-CB behavior). In
-                 * CB mode I_syn is unused; hyp is subtracted from dv after
-                 * the conductance integration.
-                 *
-                 * Wave G — per-neuron τ_mem rides on top of subclass +
-                 * substrate. Substrate is a per-pop multiplicative factor;
-                 * applying it to the per-neuron base preserves the
-                 * substrate semantics while letting each neuron carry its
-                 * own intrinsic time constant. When het_active_tau is
-                 * false the per-neuron value collapses to the pop-wide
-                 * `tau_eff` already computed above. */
-                float tau_eff_n = tau_eff;
-                if (het_active_tau) {
-                    float tau_n = tau_per_neuron[n];
-                    tau_eff_n = se_dend ? substrate_apply_tau(tau_n, se_dend)
-                                        : tau_n;
-                }
-                float dv;
-                if (dend_mode) {
-                    /* Wave H — two-compartment integration.
-                     *
-                     * Plateau bookkeeping: detect onset (apical V crosses
-                     * threshold AND not already active) and decay-clear
-                     * (active AND drive below 0.05 of peak). One Heaviside
-                     * per neuron per step (the `plateau_active` flag IS
-                     * the latched Heaviside).
-                     *
-                     * t_since_onset is the number of dt steps since the
-                     * onset tick; converted to ms via dt_ms here so the
-                     * helper sees a uniform millisecond clock. */
-                    bool active = pop->plateau_active[n] != 0;
-                    if (!active &&
-                        snn_membrane_check_plateau_onset(
-                            pop->v_apical[n], dend_plateau_thr)) {
-                        pop->plateau_active[n] = 1;
-                        pop->plateau_t0[n]     = dend_now_tick;
-                        active = true;
-                    }
-                    float t_since_ms = 0.0f;
-                    if (active) {
-                        uint64_t dticks = (dend_now_tick >= pop->plateau_t0[n])
-                                        ? (dend_now_tick - pop->plateau_t0[n])
-                                        : 0;
-                        t_since_ms = (float)dticks * dt_ms;
-                        /* Deactivate when drive below 0.05 × peak. Peak
-                         * is plateau_gain at t=0; threshold ≈ 3·τ. */
-                        if (t_since_ms > 3.0f * dend_plateau_tau) {
-                            pop->plateau_active[n] = 0;
-                            active = false;
-                        }
-                    }
-
-                    float dv_b = 0.0f, dv_a = 0.0f;
-                    /* One-shot two-compartment integration using the
-                     * actual compartment conductance reads. Plateau drive
-                     * is applied exactly once per neuron per step (the
-                     * helper consumes the latched `active` flag — no
-                     * double-application). */
-                    snn_membrane_compute_dv_two_compartment(
-                        pop->v_basal[n], pop->v_apical[n],
-                        v_rest, tau_eff_n, tau_eff_n, dt_ms,
-                        dend_g_ampa_b_n   ? *dend_g_ampa_b_n   : 0.0f,
-                        dend_g_gaba_a_b_n ? *dend_g_gaba_a_b_n : 0.0f,
-                        dend_g_nmda_a_n   ? *dend_g_nmda_a_n   : 0.0f,
-                        dend_g_gaba_b_a_n ? *dend_g_gaba_b_a_n : 0.0f,
-                        dend_g_coup,
-                        cb_e_ampa, cb_e_nmda,
-                        cb_e_gaba_a, cb_e_gaba_b,
-                        cb_mg,
-                        active, t_since_ms,
-                        dend_plateau_g, dend_plateau_tau,
-                        &dv_b, &dv_a);
-
-                    /* AHP / pump hyperpolarization is intrinsic and acts
-                     * on the basal compartment (peri-somatic K+ currents),
-                     * matching the legacy CB path's "subtract from dv"
-                     * pattern. */
-                    pop->v_basal[n]  += dv_b - hyp * (dt_ms / tau_eff_n);
-                    pop->v_apical[n] += dv_a;
-
-                    /* Soma threshold check is on basal V only. The legacy
-                     * `v_data` (= membrane_v tensor) is kept in lock-step
-                     * with v_basal so downstream consumers (gap-junction
-                     * pre-loop, intrinsic plasticity, GPU mirrors) see a
-                     * consistent value. */
-                    v_data[n] = pop->v_basal[n];
-                    /* dv left zero — v_data was directly assigned. */
-                    dv = 0.0f;
-                } else if (cb_mode) {
-                    /* NULL-safe per-receptor reads: a missing receptor
-                     * contributes 0 conductance (silent-degrade contract). */
-                    dv = snn_membrane_compute_dv(
-                        v_data[n], v_rest, tau_eff_n, dt_ms,
-                        0.0f /* I_syn unused */,
-                        cb_g_ampa_n   ? *cb_g_ampa_n   : 0.0f,
-                        cb_g_nmda_n   ? *cb_g_nmda_n   : 0.0f,
-                        cb_g_gaba_a_n ? *cb_g_gaba_a_n : 0.0f,
-                        cb_g_gaba_b_n ? *cb_g_gaba_b_n : 0.0f,
-                        cb_e_ampa, cb_e_nmda,
-                        cb_e_gaba_a, cb_e_gaba_b,
-                        cb_mg, true);
-                    dv -= hyp * (dt_ms / tau_eff_n);
-                    v_data[n] += dv;
-                } else {
-                    I_syn -= hyp;
-                    dv = snn_membrane_compute_dv(
-                        v_data[n], v_rest, tau_eff_n, dt_ms,
-                        I_syn,
-                        0.0f, 0.0f, 0.0f, 0.0f,
-                        0.0f, 0.0f, 0.0f, 0.0f,
-                        0.0f, false);
-                    v_data[n] += dv;
-                }
-                /* (legacy paths above already advanced v_data; dend path
-                 * advanced v_basal/v_apical and synced v_data.) */
-
-                /* Intrinsic plasticity: effective threshold = base + per-neuron offset.
-                 * Base is per-neuron (Wave G) when het_active_thresh, else pop-wide.
-                 * offset is adjusted below based on firing vs target rate. */
-                float v_thresh_n = het_active_thresh ? vthr_per_neuron[n]
-                                                     : v_thresh;
-                if (pop->threshold_offset) v_thresh_n += pop->threshold_offset[n];
-
-                if (v_data[n] >= v_thresh_n) {
-                    /* Substrate spike-survival gate: a fraction of spikes
-                     * drop at the axon hillock when reliability is low
-                     * (weak AP amplitude, low ion gradient). When the
-                     * substrate is absent or the knob is off, every
-                     * threshold-crossing spike survives. When a spike
-                     * fails to survive we do NOT set spike_data, do NOT
-                     * reset v, and do NOT enter refractory — the
-                     * membrane simply sits above threshold and the
-                     * neuron will try again next step. */
-                    int spike_ok = 1;
-                    if (substrate_spike_dropout_on && se_axon) {
-                        float rand01 = (float)rand_r(&_noise_seed) * (1.0f / (float)RAND_MAX);
-                        if (!substrate_spike_survives(se_axon, rand01)) {
-                            spike_ok = 0;
-                        }
-                    }
-                    if (spike_ok) {
-                        spike_data[n] = 1.0f;
-                        v_data[n] = v_reset;
-                        /* Substrate-modulated refractory period (tref_eff
-                         * collapses to config.t_ref when no substrate). */
-                        ref_data[n] = tref_eff;
-                        record_spike(&pop->spike_trains[n], network->sim->current_time_us);
-                        total_spikes++;
-                        pop->total_spikes++;
-                    }
-                }
+                /* CB-GPU-5 Phase A.3: per-neuron integration extracted to
+                 * snn_cb_integrate_neuron(). Computes dv via CB / dendritic
+                 * / current branch, applies threshold + spike survival,
+                 * resets V on spike, sets refractory, records spike. The
+                 * helper increments pop->total_spikes internally; we add
+                 * the return value to the function-local total_spikes. */
+                snn_cb_integrate_ctx_t _int_ctx = {
+                    .cb_mode           = cb_mode,
+                    .dend_mode         = dend_mode,
+                    .het_active_tau    = het_active_tau,
+                    .het_active_thresh = het_active_thresh,
+                    .tau_eff           = tau_eff,
+                    .v_thresh          = v_thresh,
+                    .v_reset           = v_reset,
+                    .v_rest            = v_rest,
+                    .tref_eff          = tref_eff,
+                    .cb_e_ampa         = cb_e_ampa,
+                    .cb_e_nmda         = cb_e_nmda,
+                    .cb_e_gaba_a       = cb_e_gaba_a,
+                    .cb_e_gaba_b       = cb_e_gaba_b,
+                    .cb_mg             = cb_mg,
+                    .dend_plateau_thr  = dend_plateau_thr,
+                    .dend_plateau_g    = dend_plateau_g,
+                    .dend_plateau_tau  = dend_plateau_tau,
+                    .dend_g_coup       = dend_g_coup,
+                    .dend_now_tick     = dend_now_tick,
+                    .substrate_pump_factor      = substrate_pump_factor,
+                    .substrate_spike_dropout_on = (bool)substrate_spike_dropout_on,
+                    .se_axon           = se_axon,
+                    .se_dend           = se_dend,
+                    .tau_per_neuron    = tau_per_neuron,
+                    .vthr_per_neuron   = vthr_per_neuron,
+                    .ahp_hyp           = ahp_hyp,
+                    .pump_hyp          = pump_hyp,
+                    .noise_seed        = &_noise_seed,
+                    .dt_ms             = dt_ms,
+                };
+                total_spikes += snn_cb_integrate_neuron(
+                    network, pop, n, &_int_ctx,
+                    v_data, spike_data, ref_data,
+                    cb_g_ampa_n, cb_g_nmda_n, cb_g_gaba_a_n, cb_g_gaba_b_n,
+                    dend_g_ampa_b_n, dend_g_gaba_a_b_n,
+                    dend_g_nmda_a_n, dend_g_gaba_b_a_n,
+                    I_syn);
             }
 
             /* CB-GPU-5 Phase A: post-spike adaptation extracted to
