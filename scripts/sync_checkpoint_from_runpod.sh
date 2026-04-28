@@ -18,8 +18,8 @@
 set -u
 
 RKEY="$HOME/.ssh/id_ed25519_runpod"
-RHOST="root@213.173.103.195"
-RPORT=29770
+RHOST="root@213.173.103.76"
+RPORT=31527
 REMOTE_DIR="/workspace/nimcp/checkpoints/athena"
 LOCAL_DIR="$HOME/nimcp/checkpoints/athena"
 LOG="$HOME/nimcp/sync_checkpoint.log"

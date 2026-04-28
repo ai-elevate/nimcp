@@ -2000,7 +2000,7 @@ typedef struct {
  * ~2.1M neurons. The default knob here controls the hierarchical sub-network
  * only — bumping to 1.9M gives the hierarchy slightly more capacity (extra
  * width per tier) so the new substrate doesn't crowd cortex-side activity. */
-#define NIMCP_DEFAULT_SNN_NEURONS       1900000  /**< 1.9M hierarchical SNN (+200K language/sensorymotor on top) */
+#define NIMCP_DEFAULT_SNN_NEURONS       1800000  /**< 1.8M hierarchical SNN (+200K language/sensorymotor on top) — matches TIER_DEFS, leaves headroom under 86GB cgroup */
 #define NIMCP_DEFAULT_LNN_NEURONS       512      /**< LNN cap (O(n²) adjoint, sweet spot for temporal richness) */
 #define NIMCP_DEFAULT_ANN_NEURONS       150000   /**< ANN teacher (SNN is primary) */
 

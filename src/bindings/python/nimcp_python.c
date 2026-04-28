@@ -7499,8 +7499,14 @@ static PyObject* Brain_snn_get_stats(BrainObject* self, PyObject* Py_UNUSED(args
     PyDict_SetItemString(d, "total_spikes", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(stats.mean_firing_rate);
     PyDict_SetItemString(d, "mean_firing_rate", tmp); Py_DECREF(tmp);
+    /* _hz alias — the value is already in Hz; readers (immerse_athena.py
+     * trainer line, hyperparameter_auto_tuner.py regex) expect this key. */
+    tmp = PyFloat_FromDouble(stats.mean_firing_rate);
+    PyDict_SetItemString(d, "mean_firing_rate_hz", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(stats.max_firing_rate);
     PyDict_SetItemString(d, "max_firing_rate", tmp); Py_DECREF(tmp);
+    tmp = PyFloat_FromDouble(stats.max_firing_rate);
+    PyDict_SetItemString(d, "max_firing_rate_hz", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(stats.sparsity);
     PyDict_SetItemString(d, "sparsity", tmp); Py_DECREF(tmp);
     tmp = PyFloat_FromDouble(stats.synchrony);

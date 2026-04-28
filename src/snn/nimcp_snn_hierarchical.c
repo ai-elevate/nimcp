@@ -43,7 +43,7 @@ typedef struct {
 
 static const snn_tier_def_t TIER_DEFS[] = {
     /* Tier 0: Input — sensory encoding
-     * Connectivity scaled for 125 GB RAM budget (~1B synapse cap).
+     * 1.8M total — keeps 5+ GiB headroom under new pod 86 GiB cgroup.
      * Each inter-tier connection creates n_src × n_dst × connectivity synapses
      * PER population pair, summed across all src×dst pop combinations. */
     { 4, 20000, "input",      0.005f, 0.0f    },
