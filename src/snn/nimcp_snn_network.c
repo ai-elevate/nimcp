@@ -1321,6 +1321,333 @@ static void snn_cb_post_spike_pop(snn_population_t* pop, float dt_ms,
     }
 }
 
+/**
+ * @brief Phase B: GPU CB integration step. Runs the synaptic deposit on
+ *        host (so the same logic as CPU CB is used — single source of
+ *        truth via snn_cb_deposit_neuron) into pop->g_*, then gathers V +
+ *        g_* into flat host buffers, uploads to lif_state, runs
+ *        nimcp_gpu_lif_forward_cb, downloads V + spikes + post-decay g_*,
+ *        scatters back to per-pop arrays, then runs the post-spike
+ *        adaptation on each pop.
+ *
+ * WHY:  Lifts CB integration off the CPU's per-neuron compute_dv onto the
+ *       GPU's batched kernel. With the deposit-pass extraction (Phase A),
+ *       this is the surgical cutover — same deposit semantics on host,
+ *       same post-spike adaptation on host, only the membrane-update step
+ *       is now massively parallel on GPU.
+ *
+ * RETURN: total spike count across the network on success, or -1 on
+ *         a hard failure (caller should fall back to CPU).
+ *
+ * Stage A (this commit) limitations:
+ *   - Wave H dendritic two-compartment integration is NOT supported on
+ *     this path — pops with dend_mode=true skip the GPU and continue on
+ *     CPU.  Verified in the gate by checking pop->dendritic_enabled.
+ *   - Substrate spike-survival dropout runs on CPU (the GPU kernel is
+ *     deterministic). Pops with substrate_spike_dropout_on stay on CPU.
+ *   - Refractory + threshold-offset are NOT honored by the kernel
+ *     (uses scalar v_thresh from params + per-neuron arrays). For the
+ *     baseline this matches because both are 0 by default; production
+ *     networks that rely on either should keep cb_gpu_enabled=0.
+ *   These will be lifted in CB-GPU-7.
+ */
+static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
+    extern float snn_tune_get_conductance_enabled(void);
+    extern float snn_tune_get_cb_gpu_enabled(void);
+    if (!network || !network->gpu_ctx || !network->gpu_lif_state) return -1;
+    if (snn_tune_get_conductance_enabled() == 0.0f) return -1;
+    if (snn_tune_get_cb_gpu_enabled() == 0.0f) return -1;
+
+    nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
+    nimcp_lif_state_t*   lif = (nimcp_lif_state_t*)network->gpu_lif_state;
+
+    /* Total neurons + Stage A eligibility check. Bail to CPU if any pop
+     * has dendritic mode or substrate spike dropout active. */
+    size_t total_neurons = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+        total_neurons += pop->n_neurons;
+        if (pop->dendritic_enabled) return -1;
+    }
+    if (total_neurons == 0) return -1;
+    if (lif->v && lif->v->numel != total_neurons) return -1;
+
+    /* Lazy-alloc CB tensors on the lif_state on first hit. */
+    if (!lif->g_ampa) {
+        if (!nimcp_gpu_lif_state_alloc_cb_arrays(gpu, lif, total_neurons)) {
+            return -1;
+        }
+    }
+
+    /* CB tune snapshots (single read per step — best-effort against
+     * concurrent tune_set RPCs; no cross-step torn reads). */
+    extern float snn_tune_get_e_ampa_mv(void);
+    extern float snn_tune_get_e_nmda_mv(void);
+    extern float snn_tune_get_e_gaba_a_mv(void);
+    extern float snn_tune_get_e_gaba_b_mv(void);
+    extern float snn_tune_get_tau_ampa_ms(void);
+    extern float snn_tune_get_tau_nmda_ms(void);
+    extern float snn_tune_get_tau_gaba_a_ms(void);
+    extern float snn_tune_get_tau_gaba_b_ms(void);
+    extern float snn_tune_get_nmda_mg_mm(void);
+    extern float snn_tune_get_basket_enabled(void);
+    extern float snn_tune_get_ahp_enabled(void);
+    extern float snn_tune_get_pump_enabled(void);
+    extern float snn_tune_get_noise_rate_hz(void);
+    extern float snn_tune_get_noise_pulse_mv(void);
+    extern float snn_tune_get_noise_ei_ratio(void);
+    extern float snn_noise_factor_for_pop(const snn_population_t*);
+
+    const float e_ampa     = snn_tune_get_e_ampa_mv();
+    const float e_nmda     = snn_tune_get_e_nmda_mv();
+    const float e_gaba_a   = snn_tune_get_e_gaba_a_mv();
+    const float e_gaba_b   = snn_tune_get_e_gaba_b_mv();
+    const float tau_ampa   = snn_tune_get_tau_ampa_ms();
+    const float tau_nmda   = snn_tune_get_tau_nmda_ms();
+    const float tau_gaba_a = snn_tune_get_tau_gaba_a_ms();
+    const float tau_gaba_b = snn_tune_get_tau_gaba_b_ms();
+    const float mg_mm      = snn_tune_get_nmda_mg_mm();
+    const float noise_rate = snn_tune_get_noise_rate_hz();
+    const float noise_pulse_mv = snn_tune_get_noise_pulse_mv();
+    const float ei_ratio       = snn_tune_get_noise_ei_ratio();
+
+    /* Per-step rand_r seed mirrors the CPU path (thread-local + lazy init). */
+    static __thread unsigned int _cb_gpu_noise_seed = 0;
+    if (_cb_gpu_noise_seed == 0) {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        _cb_gpu_noise_seed = (unsigned int)(ts.tv_nsec
+            ^ ((uintptr_t)&_cb_gpu_noise_seed >> 4));
+        if (_cb_gpu_noise_seed == 0) _cb_gpu_noise_seed = 0xCAFEBABEu;
+    }
+
+    /* Per-pop scratch for AHP/pump hyp arrays. Indexed by population
+     * slot in network->populations; passed to snn_cb_post_spike_pop in
+     * the post-spike pass. */
+    float** ahp_hyp_per_pop  = (float**)nimcp_calloc(network->n_populations, sizeof(float*));
+    float** pump_hyp_per_pop = (float**)nimcp_calloc(network->n_populations, sizeof(float*));
+    if (!ahp_hyp_per_pop || !pump_hyp_per_pop) {
+        if (ahp_hyp_per_pop)  nimcp_free(ahp_hyp_per_pop);
+        if (pump_hyp_per_pop) nimcp_free(pump_hyp_per_pop);
+        return -1;
+    }
+
+    /* ===== Per-pop deposit pass (host) =====
+     * Decay g_*, apply gap-junction V, refractory tick + early-out, run
+     * the per-neuron deposit helper. Mirrors the inline CPU loop minus
+     * the integrate + spike block (which the GPU kernel handles). */
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+        const float decay_ampa   = expf(-dt_ms / tau_ampa);
+        const float decay_nmda   = expf(-dt_ms / tau_nmda);
+        const float decay_gaba_a = expf(-dt_ms / tau_gaba_a);
+        const float decay_gaba_b = expf(-dt_ms / tau_gaba_b);
+
+        /* Per-pop CB constants (Stage A: cb_mode is implied by being on
+         * this code path; dend_mode is excluded by the eligibility gate). */
+        const bool   ahp_on    = (pop->ahp  && snn_tune_get_ahp_enabled()  != 0.0f);
+        const bool   pump_on   = (pop->pump && snn_tune_get_pump_enabled() != 0.0f);
+        const bool   basket_on = (pop->basket && snn_tune_get_basket_enabled() != 0.0f);
+        float basket_contrib = 0.0f;
+        if (basket_on) {
+            basket_contrib = pop->basket->gain_inhib_to_parent
+                           * snn_basket_pool_mean_rate(pop->basket);
+        }
+        const float noise_factor = snn_noise_factor_for_pop(pop);
+        const float p_base    = noise_rate * dt_ms * 0.001f;
+        const float noise_p   = p_base * noise_factor;
+        const bool  noise_exc_only = (noise_factor >= 0.9f);
+
+        snn_cb_deposit_ctx_t dep_ctx = {
+            .cb_mode        = true,
+            .dend_mode      = false,
+            .basket_contrib = basket_contrib,
+            .noise_p        = noise_p,
+            .noise_pulse_mv = noise_pulse_mv,
+            .ei_ratio       = ei_ratio,
+            .noise_exc_only = noise_exc_only,
+            .noise_seed     = &_cb_gpu_noise_seed,
+        };
+
+        /* AHP/pump hyp arrays — kernel does not use them (Stage A
+         * limitation), but compute and pass to post_spike for adaptation
+         * update. */
+        float* ahp_hyp  = ahp_on  ? (float*)nimcp_calloc(pop->n_neurons, sizeof(float)) : NULL;
+        float* pump_hyp = pump_on ? (float*)nimcp_calloc(pop->n_neurons, sizeof(float)) : NULL;
+        if (ahp_hyp)  snn_adaptation_compute_hyperpol(pop->ahp,  ahp_hyp,  dt_ms);
+        if (pump_hyp) snn_adaptation_compute_hyperpol(pop->pump, pump_hyp, dt_ms);
+
+        float* ref_data = (float*)nimcp_tensor_data(pop->refractory);
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            /* Per-neuron CB receptor pointers (NULL-safe at deposit
+             * boundary). */
+            float* g_ampa_n   = pop->g_ampa   ? &pop->g_ampa[n]   : NULL;
+            float* g_nmda_n   = pop->g_nmda   ? &pop->g_nmda[n]   : NULL;
+            float* g_gaba_a_n = pop->g_gaba_a ? &pop->g_gaba_a[n] : NULL;
+            float* g_gaba_b_n = pop->g_gaba_b ? &pop->g_gaba_b[n] : NULL;
+
+            /* Decay BEFORE deposit (matches CPU CB ordering). */
+            snn_membrane_decay_one(g_ampa_n, g_nmda_n, g_gaba_a_n, g_gaba_b_n,
+                                   decay_ampa, decay_nmda,
+                                   decay_gaba_a, decay_gaba_b);
+
+            /* Refractory tick (kernel doesn't honor refractory in Stage
+             * A; see limitation note above). */
+            if (ref_data && ref_data[n] > 0.0f) {
+                ref_data[n] -= dt_ms;
+                continue;
+            }
+
+            float I_syn_unused;
+            snn_cb_deposit_neuron(
+                network, pop, n, &dep_ctx,
+                g_ampa_n, g_nmda_n, g_gaba_a_n, g_gaba_b_n,
+                NULL, NULL, NULL, NULL,  /* dend disabled in Stage A */
+                &I_syn_unused);
+        }
+
+        /* Stash hyp arrays for post-spike pass. */
+        ahp_hyp_per_pop[p]  = ahp_hyp;
+        pump_hyp_per_pop[p] = pump_hyp;
+    }
+
+    /* ===== Gather + upload =====
+     * Flat per-receptor host buffers, one float per neuron, in pop order.
+     * Same flatten order as nimcp_gpu_lif_state_upload_per_neuron_params. */
+    float* h_v       = (float*)nimcp_calloc(total_neurons, sizeof(float));
+    float* h_g_ampa  = (float*)nimcp_calloc(total_neurons, sizeof(float));
+    float* h_g_nmda  = (float*)nimcp_calloc(total_neurons, sizeof(float));
+    float* h_g_ga_a  = (float*)nimcp_calloc(total_neurons, sizeof(float));
+    float* h_g_ga_b  = (float*)nimcp_calloc(total_neurons, sizeof(float));
+    if (!h_v || !h_g_ampa || !h_g_nmda || !h_g_ga_a || !h_g_ga_b) {
+        if (h_v) nimcp_free(h_v);
+        if (h_g_ampa) nimcp_free(h_g_ampa);
+        if (h_g_nmda) nimcp_free(h_g_nmda);
+        if (h_g_ga_a) nimcp_free(h_g_ga_a);
+        if (h_g_ga_b) nimcp_free(h_g_ga_b);
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            if (ahp_hyp_per_pop[p])  nimcp_free(ahp_hyp_per_pop[p]);
+            if (pump_hyp_per_pop[p]) nimcp_free(pump_hyp_per_pop[p]);
+        }
+        nimcp_free(ahp_hyp_per_pop);
+        nimcp_free(pump_hyp_per_pop);
+        return -1;
+    }
+    size_t off = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+        const float* v = (const float*)nimcp_tensor_data(pop->membrane_v);
+        if (v) memcpy(h_v + off, v, pop->n_neurons * sizeof(float));
+        if (pop->g_ampa)   memcpy(h_g_ampa + off, pop->g_ampa,   pop->n_neurons * sizeof(float));
+        if (pop->g_nmda)   memcpy(h_g_nmda + off, pop->g_nmda,   pop->n_neurons * sizeof(float));
+        if (pop->g_gaba_a) memcpy(h_g_ga_a + off, pop->g_gaba_a, pop->n_neurons * sizeof(float));
+        if (pop->g_gaba_b) memcpy(h_g_ga_b + off, pop->g_gaba_b, pop->n_neurons * sizeof(float));
+        off += pop->n_neurons;
+    }
+
+    /* Upload V into the lif_state's V tensor (mutated in place by the
+     * kernel) + g_* into the lif_state's CB arrays. */
+    bool ok = nimcp_gpu_tensor_upload(lif->v, h_v);
+    ok = ok && nimcp_gpu_lif_state_upload_g(
+        gpu, lif, h_g_ampa, h_g_nmda, h_g_ga_a, h_g_ga_b, total_neurons);
+
+    /* ===== GPU forward_cb =====
+     * Integrates V, writes spikes, applies per-receptor decay AFTER
+     * membrane update (matches kernel contract). */
+    if (ok) {
+        ok = nimcp_gpu_lif_forward_cb(
+            gpu, lif,
+            e_ampa, e_nmda, e_gaba_a, e_gaba_b,
+            tau_ampa, tau_nmda, tau_gaba_a, tau_gaba_b,
+            mg_mm);
+    }
+    if (!ok) {
+        nimcp_free(h_v);
+        nimcp_free(h_g_ampa); nimcp_free(h_g_nmda);
+        nimcp_free(h_g_ga_a); nimcp_free(h_g_ga_b);
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            if (ahp_hyp_per_pop[p])  nimcp_free(ahp_hyp_per_pop[p]);
+            if (pump_hyp_per_pop[p]) nimcp_free(pump_hyp_per_pop[p]);
+        }
+        nimcp_free(ahp_hyp_per_pop);
+        nimcp_free(pump_hyp_per_pop);
+        return -1;
+    }
+
+    /* ===== Download + scatter =====
+     * V + spikes + post-decay g_*. Reuse the upload buffers. */
+    float* h_spikes = (float*)nimcp_calloc(total_neurons, sizeof(float));
+    if (!h_spikes ||
+        !nimcp_gpu_tensor_to_host(lif->v, h_v) ||
+        !nimcp_gpu_tensor_to_host(lif->spikes, h_spikes) ||
+        !nimcp_gpu_lif_state_download_g(
+            gpu, lif, h_g_ampa, h_g_nmda, h_g_ga_a, h_g_ga_b, total_neurons)) {
+        if (h_spikes) nimcp_free(h_spikes);
+        nimcp_free(h_v);
+        nimcp_free(h_g_ampa); nimcp_free(h_g_nmda);
+        nimcp_free(h_g_ga_a); nimcp_free(h_g_ga_b);
+        for (uint32_t p = 0; p < network->n_populations; p++) {
+            if (ahp_hyp_per_pop[p])  nimcp_free(ahp_hyp_per_pop[p]);
+            if (pump_hyp_per_pop[p]) nimcp_free(pump_hyp_per_pop[p]);
+        }
+        nimcp_free(ahp_hyp_per_pop);
+        nimcp_free(pump_hyp_per_pop);
+        return -1;
+    }
+
+    int total_spikes = 0;
+    off = 0;
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+        float* v_data     = (float*)nimcp_tensor_data(pop->membrane_v);
+        float* spike_data = (float*)nimcp_tensor_data(pop->spike_output);
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            if (v_data)     v_data[n]     = h_v[off + n];
+            float spk = h_spikes[off + n];
+            if (spike_data) spike_data[n] = spk;
+            if (spk > 0.5f) {
+                record_spike(&pop->spike_trains[n], network->sim->current_time_us);
+                pop->total_spikes++;
+                total_spikes++;
+            }
+        }
+        if (pop->g_ampa)   memcpy(pop->g_ampa,   h_g_ampa + off, pop->n_neurons * sizeof(float));
+        if (pop->g_nmda)   memcpy(pop->g_nmda,   h_g_nmda + off, pop->n_neurons * sizeof(float));
+        if (pop->g_gaba_a) memcpy(pop->g_gaba_a, h_g_ga_a + off, pop->n_neurons * sizeof(float));
+        if (pop->g_gaba_b) memcpy(pop->g_gaba_b, h_g_ga_b + off, pop->n_neurons * sizeof(float));
+        off += pop->n_neurons;
+    }
+
+    nimcp_free(h_v);
+    nimcp_free(h_g_ampa); nimcp_free(h_g_nmda);
+    nimcp_free(h_g_ga_a); nimcp_free(h_g_ga_b);
+    nimcp_free(h_spikes);
+
+    /* ===== Per-pop post-spike adaptation =====
+     * AHP/pump update (reads spike_data the GPU just wrote), basket step,
+     * IP + depression. Same helper the CPU CB path uses. */
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop) continue;
+        const bool ahp_on    = (pop->ahp  && snn_tune_get_ahp_enabled()  != 0.0f);
+        const bool pump_on   = (pop->pump && snn_tune_get_pump_enabled() != 0.0f);
+        const bool basket_on = (pop->basket && snn_tune_get_basket_enabled() != 0.0f);
+        snn_cb_post_spike_pop(pop, dt_ms, ahp_on, pump_on, basket_on,
+                              ahp_hyp_per_pop[p], pump_hyp_per_pop[p]);
+        if (pop->external_current) {
+            memset(pop->external_current, 0, pop->n_neurons * sizeof(float));
+        }
+    }
+
+    nimcp_free(ahp_hyp_per_pop);
+    nimcp_free(pump_hyp_per_pop);
+    return total_spikes;
+}
+
 //=============================================================================
 // Simulation
 //=============================================================================
@@ -1381,25 +1708,27 @@ int snn_network_step(snn_network_t* network, float dt) {
         }
     }
 
-    /* ===== GPU FAST PATH ===== */
-    /* CB migration gate:
-     *   - Pure current-based mode (CB OFF): always run on GPU when available.
-     *   - CB ON: stay on CPU until the CB-GPU-4 deposit-pass refactor +
-     *     CB-GPU-5 bit-identity verification land. The kernel itself
-     *     (nimcp_gpu_lif_forward_cb) is built and unit-tested as of commit
-     *     1b3ae0b40, but its full snn_network_step wiring requires
-     *     extracting the CPU deposit-pass logic into a reusable helper
-     *     (snn_cb_deposit_pass_pop) so both CPU and GPU paths share the
-     *     receptor-routing walk over pop->synapse_type_per_src[]. The
-     *     `cb_gpu_enabled` tune knob is plumbed end-to-end (snn_tune_get/
-     *     set_cb_gpu_enabled, exposed to the daemon RPC), reserved for
-     *     CB-GPU-5 cutover — for now it is documentary.
-     *
-     * See docs/claude/cb-phase0-design.md and project_cb_migration_2026-04-26
-     * for the staged rollout plan. */
+    /* ===== CB GPU FAST PATH (Phase B cutover) =====
+     * When CB is on AND cb_gpu_enabled is on AND a GPU is attached, run
+     * CB integration on GPU via snn_network_step_cb_gpu. Returns spike
+     * count on success, -1 on hard failure (then fall through to either
+     * the legacy current-based GPU path or the CPU CB loop below). */
     extern float snn_tune_get_cb_gpu_enabled(void);
-    (void)snn_tune_get_cb_gpu_enabled;  /* reserved for CB-GPU-5 cutover */
     if (network->gpu_lif_state && network->gpu_ctx
+        && snn_tune_get_conductance_enabled() != 0.0f
+        && snn_tune_get_cb_gpu_enabled()      != 0.0f) {
+        int cb_gpu_spikes = snn_network_step_cb_gpu(network, dt_ms);
+        if (cb_gpu_spikes >= 0) {
+            total_spikes += cb_gpu_spikes;
+            gpu_executed = true;
+        }
+        /* If cb_gpu_spikes < 0, eligibility gate excluded the network
+         * (e.g. dendritic mode active). Fall through to CPU CB. */
+    }
+
+    /* ===== GPU FAST PATH (current-based, CB OFF) ===== */
+    if (!gpu_executed
+        && network->gpu_lif_state && network->gpu_ctx
         && snn_tune_get_conductance_enabled() == 0.0f) {
         nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
         nimcp_lif_state_t* lif_state = (nimcp_lif_state_t*)network->gpu_lif_state;
