@@ -901,6 +901,124 @@ int snn_network_reset(snn_network_t* network) {
 }
 
 //=============================================================================
+// CB hot-loop helpers (CB-GPU-5 Phase A — extracted from inline CPU CB loop)
+//=============================================================================
+
+/**
+ * @brief Pop-level post-spike adaptation: AHP / pump update, basket step,
+ *        intrinsic plasticity + short-term depression.
+ *
+ * WHAT: Runs after the per-neuron integrate + spike check has populated
+ *       pop->spike_output. Decays AHP/pump adapt vars and bumps them on
+ *       fresh spikes; advances the basket pool with the parent's mean
+ *       fire rate; updates per-neuron threshold offsets via rate-EMA
+ *       intrinsic plasticity; updates short-term depression.
+ * WHY:  Extracted from the inline CB hot loop so the CB+GPU step path
+ *       (which replaces the CPU integrate with nimcp_gpu_lif_forward_cb)
+ *       can call exactly the same adaptation logic instead of duplicating
+ *       it. Behavior is bit-identical to the inline version — locked by
+ *       test_snn_cb_loop_baseline.cpp (golden hash 0xd3d9d3d3e5cd5d25).
+ * HOW:  Reads pop->spike_output via tensor_data; writes pop->ahp/pump
+ *       state, pop->basket, pop->threshold_offset, pop->depression,
+ *       pop->neuron_rate_ema. Frees ahp_hyp/pump_hyp arrays (caller's
+ *       allocation, see deposit pass).
+ *
+ * Thread safety: caller must hold the network mutex (or otherwise
+ * serialize against trainer/inference RPC).
+ */
+static void snn_cb_post_spike_pop(snn_population_t* pop, float dt_ms,
+                                  bool ahp_on, bool pump_on, bool basket_on,
+                                  float* ahp_hyp, float* pump_hyp) {
+    if (!pop) return;
+    const float* spike_data = (const float*)nimcp_tensor_data(pop->spike_output);
+
+    /* AHP + pump state advance: decay adapt_var by exp(-dt/tau), then
+     * bump on fresh spikes. Must run AFTER the fire decisions, since
+     * spike_data was just populated. */
+    if (ahp_on)  snn_adaptation_update(pop->ahp,  spike_data, dt_ms);
+    if (pump_on) snn_adaptation_update(pop->pump, spike_data, dt_ms);
+    if (ahp_hyp)  nimcp_free(ahp_hyp);
+    if (pump_hyp) nimcp_free(pump_hyp);
+
+    /* Basket pool: advance with this step's parent mean fire rate. The
+     * next step's emit_inhibition will see the spikes this basket step
+     * just produced. */
+    if (basket_on) {
+        uint32_t spike_count = 0;
+        for (uint32_t n = 0; n < pop->n_neurons; n++) {
+            if (spike_data[n] > 0.5f) spike_count++;
+        }
+        float mean_rate = (pop->n_neurons > 0)
+            ? (float)spike_count / (float)pop->n_neurons : 0.0f;
+        snn_basket_pool_step(pop->basket, mean_rate, dt_ms);
+    }
+
+    /* Intrinsic plasticity + short-term depression. Per-neuron threshold
+     * offset drifts toward whatever value would make this neuron fire at
+     * target_neuron_rate; depression factor exponentially decays to 0
+     * with tau ~50 ms and jumps by dep_inc on firing. */
+    if (pop->threshold_offset && pop->neuron_rate_ema && pop->depression) {
+        const float target_neuron_rate = 0.03f;
+        const float ip_alpha = 0.01f;
+        const float ip_gain  = 0.5f;
+        const float ip_cap   = 10.0f;
+        extern float snn_tune_get_depression_inc(void);
+        extern float snn_tune_get_depression_tau_ms(void);
+        extern float snn_tune_get_depression_cap(void);
+        const float dep_inc   = snn_tune_get_depression_inc();
+        const float dep_tau   = snn_tune_get_depression_tau_ms();
+        const float dep_cap   = snn_tune_get_depression_cap();
+        const float dep_decay = expf(-dt_ms / dep_tau);
+
+        extern bool nimcp_snn_batch_safe_is_enabled(void);
+        extern int nimcp_snn_scaling_apply_batch(float*, const float*, uint32_t, uint32_t, float);
+        extern int nimcp_snn_depression_apply_batch(float*, const float*, uint32_t, uint32_t, float, float, float);
+        extern int nimcp_snn_ip_apply_batch(float*, const float*, const float*, uint32_t, uint32_t, float, float, float);
+
+        if (nimcp_snn_batch_safe_is_enabled()) {
+            float fired_buf[1024];
+            float* fired_vec = fired_buf;
+            bool heap_alloc = false;
+            if (pop->n_neurons > 1024) {
+                fired_vec = (float*)malloc(pop->n_neurons * sizeof(float));
+                heap_alloc = true;
+            }
+            if (fired_vec) {
+                for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                    fired_vec[n] = spike_data[n] > 0.5f ? 1.0f : 0.0f;
+                }
+                nimcp_snn_scaling_apply_batch(
+                    pop->neuron_rate_ema, fired_vec, 1, pop->n_neurons,
+                    1.0f - ip_alpha);
+                nimcp_snn_ip_apply_batch(
+                    pop->threshold_offset, fired_vec,
+                    pop->neuron_rate_ema, 1, pop->n_neurons,
+                    ip_gain, target_neuron_rate, ip_cap);
+                nimcp_snn_depression_apply_batch(
+                    pop->depression, fired_vec, 1, pop->n_neurons,
+                    dep_decay, dep_inc, dep_cap);
+                if (heap_alloc) free(fired_vec);
+            }
+        } else {
+            for (uint32_t n = 0; n < pop->n_neurons; n++) {
+                float fired = spike_data[n] > 0.5f ? 1.0f : 0.0f;
+                pop->neuron_rate_ema[n] = (1.0f - ip_alpha) * pop->neuron_rate_ema[n]
+                                        + ip_alpha * fired;
+                float err = pop->neuron_rate_ema[n] - target_neuron_rate;
+                pop->threshold_offset[n] += ip_gain * err;
+                if (pop->threshold_offset[n] > ip_cap) pop->threshold_offset[n] = ip_cap;
+                if (pop->threshold_offset[n] < -ip_cap) pop->threshold_offset[n] = -ip_cap;
+                pop->depression[n] *= dep_decay;
+                if (fired > 0.5f) {
+                    pop->depression[n] += dep_inc;
+                    if (pop->depression[n] > dep_cap) pop->depression[n] = dep_cap;
+                }
+            }
+        }
+    }
+}
+
+//=============================================================================
 // Simulation
 //=============================================================================
 
@@ -1987,114 +2105,16 @@ int snn_network_step(snn_network_t* network, float dt) {
                 }
             }
 
-            /* Advance AHP + pump state: decay adapt_var by exp(-dt/tau),
-             * then bump on fresh spikes. Must run AFTER the fire decisions
-             * above, since spike_data was just populated. */
-            if (ahp_on)  snn_adaptation_update(pop->ahp,  spike_data, dt_ms);
-            if (pump_on) snn_adaptation_update(pop->pump, spike_data, dt_ms);
-            if (ahp_hyp)  nimcp_free(ahp_hyp);
-            if (pump_hyp) nimcp_free(pump_hyp);
-
-            /* Advance basket pool with this step's parent mean fire rate.
-             * The next step's emit_inhibition will see the spikes this
-             * basket step just produced. */
-            if (basket_on) {
-                uint32_t spike_count = 0;
-                for (uint32_t n = 0; n < pop->n_neurons; n++) {
-                    if (spike_data[n] > 0.5f) spike_count++;
-                }
-                float mean_rate = (pop->n_neurons > 0)
-                    ? (float)spike_count / (float)pop->n_neurons : 0.0f;
-                snn_basket_pool_step(pop->basket, mean_rate, dt_ms);
-            }
-
-            /* Intrinsic plasticity update: per-neuron threshold adaptation.
-             * Each neuron's threshold drifts toward a value that would make
-             * it fire at target_neuron_rate. Fast timescale (alpha=0.01)
-             * catches runaway fast; slow drift (alpha=0.001 used elsewhere
-             * for homeostasis) would take too long.
-             * Short-term depression update: depressing factor exponentially
-             * decays to 0 with tau ~50ms. On firing, depression jumps by
-             * 0.2 (capped at 0.5) — effective weight is (1 - depression). */
-            if (pop->threshold_offset && pop->neuron_rate_ema && pop->depression) {
-                const float target_neuron_rate = 0.03f;   /* per step */
-                const float ip_alpha = 0.01f;             /* rate EMA smoothing */
-                const float ip_gain  = 0.5f;              /* mV per unit rate error */
-                const float ip_cap   = 10.0f;             /* clamp offset ± */
-                /* Short-term depression dynamics — runtime-tunable via
-                 * snn_tune_set_depression_*. Fetch ONCE per pop step
-                 * (not per neuron) to avoid extern-call overhead in the
-                 * hot loop. dep_decay = exp(-dt_ms / tau) so tuning tau
-                 * directly controls recovery timescale in ms. */
-                extern float snn_tune_get_depression_inc(void);
-                extern float snn_tune_get_depression_tau_ms(void);
-                extern float snn_tune_get_depression_cap(void);
-                const float dep_inc   = snn_tune_get_depression_inc();
-                const float dep_tau   = snn_tune_get_depression_tau_ms();
-                const float dep_cap   = snn_tune_get_depression_cap();
-                const float dep_decay = expf(-dt_ms / dep_tau);
-
-                /* === Phase 4.1 wiring: when the batch-safe flag is set,
-                 * route through the batch-safe C functions (B=1 here).
-                 * Behavior is identity-equivalent to the legacy inline loop,
-                 * which lets us validate that the wiring produces identical
-                 * trainning dynamics before enabling larger batches. */
-                extern bool nimcp_snn_batch_safe_is_enabled(void);
-                extern int nimcp_snn_scaling_apply_batch(float*, const float*, uint32_t, uint32_t, float);
-                extern int nimcp_snn_depression_apply_batch(float*, const float*, uint32_t, uint32_t, float, float, float);
-                extern int nimcp_snn_ip_apply_batch(float*, const float*, const float*, uint32_t, uint32_t, float, float, float);
-
-                if (nimcp_snn_batch_safe_is_enabled()) {
-                    /* Build a fire-vector for this step (B=1, N=n_neurons).
-                     * Allocated on stack via VLA. */
-                    float fired_buf[1024];  /* most pops fit; fallback to malloc if larger */
-                    float* fired_vec = fired_buf;
-                    bool heap_alloc = false;
-                    if (pop->n_neurons > 1024) {
-                        fired_vec = (float*)malloc(pop->n_neurons * sizeof(float));
-                        heap_alloc = true;
-                    }
-                    if (fired_vec) {
-                        for (uint32_t n = 0; n < pop->n_neurons; n++) {
-                            fired_vec[n] = spike_data[n] > 0.5f ? 1.0f : 0.0f;
-                        }
-                        /* Scaling: rate EMA update */
-                        nimcp_snn_scaling_apply_batch(
-                            pop->neuron_rate_ema, fired_vec, 1, pop->n_neurons,
-                            1.0f - ip_alpha);
-                        /* IP: threshold adaptation (uses updated rate_ema) */
-                        nimcp_snn_ip_apply_batch(
-                            pop->threshold_offset, fired_vec,
-                            pop->neuron_rate_ema, 1, pop->n_neurons,
-                            ip_gain, target_neuron_rate, ip_cap);
-                        /* Depression */
-                        nimcp_snn_depression_apply_batch(
-                            pop->depression, fired_vec, 1, pop->n_neurons,
-                            dep_decay, dep_inc, dep_cap);
-                        if (heap_alloc) free(fired_vec);
-                    }
-                } else {
-                    /* Legacy sequential path (DEFAULT) */
-                    for (uint32_t n = 0; n < pop->n_neurons; n++) {
-                        /* Update per-neuron rate EMA */
-                        float fired = spike_data[n] > 0.5f ? 1.0f : 0.0f;
-                        pop->neuron_rate_ema[n] = (1.0f - ip_alpha) * pop->neuron_rate_ema[n]
-                                                + ip_alpha * fired;
-                        /* If rate > target, raise threshold (harder to fire).
-                         * If rate < target, lower threshold (easier to fire). */
-                        float err = pop->neuron_rate_ema[n] - target_neuron_rate;
-                        pop->threshold_offset[n] += ip_gain * err;
-                        if (pop->threshold_offset[n] > ip_cap) pop->threshold_offset[n] = ip_cap;
-                        if (pop->threshold_offset[n] < -ip_cap) pop->threshold_offset[n] = -ip_cap;
-                        /* Short-term depression decay + jump on firing */
-                        pop->depression[n] *= dep_decay;
-                        if (fired > 0.5f) {
-                            pop->depression[n] += dep_inc;
-                            if (pop->depression[n] > dep_cap) pop->depression[n] = dep_cap;
-                        }
-                    }
-                }
-            }
+            /* CB-GPU-5 Phase A: post-spike adaptation extracted to
+             * snn_cb_post_spike_pop() so the GPU CB step path can call
+             * the same logic. Behavior is bit-identical (locked by
+             * test_snn_cb_loop_baseline.cpp). The helper takes ownership
+             * of ahp_hyp / pump_hyp and frees them. */
+            snn_cb_post_spike_pop(pop, dt_ms,
+                                  ahp_on != 0, pump_on != 0, basket_on != 0,
+                                  ahp_hyp, pump_hyp);
+            ahp_hyp = NULL;
+            pump_hyp = NULL;
 
             /* Clear external_current for next step (input is per-step) */
             if (pop->external_current) {
