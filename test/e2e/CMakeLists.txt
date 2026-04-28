@@ -163,6 +163,12 @@ add_e2e_test(e2e_test_snn_runaway_suppression
     ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_runaway_suppression_e2e.cpp
 )
 
+# CB GPU port (Phase 5): long-run smoke test on the GPU LIF CB kernel —
+# 1024 neurons × 200 ms with mixed E/I drive, no NaN, no runaway.
+add_e2e_test(e2e_test_snn_cb_gpu
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_cb_gpu_e2e.cpp
+)
+
 add_e2e_test(e2e_test_reasoning_abduction
     ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_reasoning_abduction_e2e.cpp

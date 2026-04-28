@@ -327,6 +327,30 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_conductance_integration.cpp)
 endif()
 
 # ============================================================================
+# CB GPU integration test — GPU CB kernel matches CPU CB membrane reference
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_cb_gpu_integration.cpp)
+    add_executable(integration_snn_test_snn_cb_gpu_integration
+        test_snn_cb_gpu_integration.cpp
+    )
+    target_link_libraries(integration_snn_test_snn_cb_gpu_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_LIBS}
+    )
+    target_include_directories(integration_snn_test_snn_cb_gpu_integration
+        PRIVATE ${SNN_INTEGRATION_TEST_INCLUDES}
+    )
+    target_compile_features(integration_snn_test_snn_cb_gpu_integration
+        PRIVATE cxx_std_17)
+    gtest_discover_tests(integration_snn_test_snn_cb_gpu_integration
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "integration;snn;cb;gpu"
+            TIMEOUT 120
+    )
+    message(STATUS "  Added SNN integration test: test_snn_cb_gpu_integration")
+endif()
+
+# ============================================================================
 # SNN Dendritic Integration Test (Wave H — BAC firing)
 # ============================================================================
 # WHAT: 3-pop integration circuit that pins the BAC-firing phenotype:

@@ -635,6 +635,38 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_gpu_per_neuron_lif_unit.cpp)
 endif()
 
 # ============================================================================
+# SNN CB GPU unit test — alloc/free/upload/download + forward_cb dynamics
+# ============================================================================
+# WHAT: Unit-level pinning of the CB GPU port (CB-GPU-2 + CB-GPU-3):
+#       lif_state CB tensor lifecycle, host↔device round-trip for the four
+#       receptor conductance arrays, excitatory saturation toward E_ampa,
+#       inhibitory clamp toward E_gaba_a, and NMDA Mg²⁺ block.
+# WHY:  CB-GPU-4 will swap snn_network_step over to nimcp_gpu_lif_forward_cb.
+#       The per-function contract has to be locked first or any subsequent
+#       wiring bug looks like a kernel bug.
+# HOW:  Google Test. Skips on no-GPU build hosts.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_cb_gpu_unit.cpp)
+    add_executable(unit_snn_test_snn_cb_gpu_unit
+        test_snn_cb_gpu_unit.cpp
+    )
+    target_link_libraries(unit_snn_test_snn_cb_gpu_unit
+        PRIVATE ${SNN_TEST_LIBS}
+    )
+    target_include_directories(unit_snn_test_snn_cb_gpu_unit
+        PRIVATE ${SNN_TEST_INCLUDES}
+    )
+    target_compile_features(unit_snn_test_snn_cb_gpu_unit
+        PRIVATE cxx_std_17)
+    gtest_discover_tests(unit_snn_test_snn_cb_gpu_unit
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;snn;cb;gpu"
+            TIMEOUT 60
+    )
+    message(STATUS "  Added SNN unit test: test_snn_cb_gpu_unit")
+endif()
+
+# ============================================================================
 # SNN Dendritic Unit Test (Wave H — basal+apical compartments + NMDA plateau)
 # ============================================================================
 # WHAT: Unit tests for snn_membrane_compute_dv_two_compartment, the plateau
