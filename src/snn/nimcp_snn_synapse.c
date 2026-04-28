@@ -64,6 +64,7 @@ void snn_csr_destroy(snn_csr_storage_t* csr)
     nimcp_free(csr->entries);
     nimcp_free(csr->weights);
     nimcp_free(csr->flat_col_idx);
+    nimcp_free(csr->src_pop_idx);
     nimcp_free(csr);
 }
 
@@ -179,11 +180,14 @@ int snn_csr_prepare_gpu(snn_csr_storage_t* csr,
 
     csr->weights = nimcp_malloc(nnz * sizeof(float));
     csr->flat_col_idx = nimcp_malloc(nnz * sizeof(uint32_t));
-    if (!csr->weights || !csr->flat_col_idx) {
+    csr->src_pop_idx = nimcp_malloc(nnz * sizeof(uint32_t));
+    if (!csr->weights || !csr->flat_col_idx || !csr->src_pop_idx) {
         nimcp_free(csr->weights);
         nimcp_free(csr->flat_col_idx);
+        nimcp_free(csr->src_pop_idx);
         csr->weights = NULL;
         csr->flat_col_idx = NULL;
+        csr->src_pop_idx = NULL;
         return -1;
     }
 
@@ -191,8 +195,18 @@ int snn_csr_prepare_gpu(snn_csr_storage_t* csr,
         csr->weights[i] = csr->entries[i].weight;
         uint32_t sp = csr->entries[i].src_pop;
         uint32_t sn = csr->entries[i].src_neuron;
-        csr->flat_col_idx[i] = (sp < n_populations) ?
-            pop_offsets[sp] + sn : 0;
+        /* Both arrays must clamp invalid src_pop to 0 — the CB-GPU-7
+         * deposit kernel uses src_pop_idx[i] as a direct index into the
+         * synapse_type table (size = n_populations). An out-of-range
+         * value would OOB-read in the kernel. The flat_col_idx clamp
+         * already handles the spike vector side; mirror it here. */
+        if (sp < n_populations) {
+            csr->flat_col_idx[i] = pop_offsets[sp] + sn;
+            csr->src_pop_idx[i]  = sp;
+        } else {
+            csr->flat_col_idx[i] = 0;
+            csr->src_pop_idx[i]  = 0;
+        }
     }
 
     csr->gpu_ready = true;
@@ -228,6 +242,7 @@ int snn_csr_upload_to_gpu(snn_csr_storage_t* csr, void* gpu_ctx_void)
 
     size_t w_bytes  = (size_t)csr->n_synapses * sizeof(float);
     size_t ci_bytes = (size_t)csr->n_synapses * sizeof(uint32_t);
+    size_t sp_bytes = (size_t)csr->n_synapses * sizeof(uint32_t);
     size_t rp_bytes = (size_t)(csr->n_neurons + 1) * sizeof(uint32_t);
 
     /* Allocate first; only store the ctx if all allocations succeed.
@@ -236,19 +251,23 @@ int snn_csr_upload_to_gpu(snn_csr_storage_t* csr, void* gpu_ctx_void)
     void* dw = nimcp_gpu_malloc(gpu_ctx, w_bytes);
     void* dc = nimcp_gpu_malloc(gpu_ctx, ci_bytes);
     void* dr = nimcp_gpu_malloc(gpu_ctx, rp_bytes);
+    void* dsp = csr->src_pop_idx ? nimcp_gpu_malloc(gpu_ctx, sp_bytes) : NULL;
 
-    if (!dw || !dc || !dr) {
+    if (!dw || !dc || !dr || (csr->src_pop_idx && !dsp)) {
         LOG_ERROR("snn_csr_upload_to_gpu: GPU allocation failed "
-                  "(weights=%p, col=%p, row=%p)", dw, dc, dr);
-        if (dw) nimcp_gpu_free(gpu_ctx, dw);
-        if (dc) nimcp_gpu_free(gpu_ctx, dc);
-        if (dr) nimcp_gpu_free(gpu_ctx, dr);
+                  "(weights=%p, col=%p, row=%p, src_pop=%p)",
+                  dw, dc, dr, dsp);
+        if (dw)  nimcp_gpu_free(gpu_ctx, dw);
+        if (dc)  nimcp_gpu_free(gpu_ctx, dc);
+        if (dr)  nimcp_gpu_free(gpu_ctx, dr);
+        if (dsp) nimcp_gpu_free(gpu_ctx, dsp);
         return -1;
     }
 
     csr->d_weights      = dw;
     csr->d_flat_col_idx = dc;
     csr->d_row_ptr      = dr;
+    csr->d_src_pop_idx  = dsp;
     csr->d_gpu_ctx      = gpu_ctx;
 
     if (nimcp_gpu_memcpy(gpu_ctx, csr->d_weights, csr->weights,
@@ -257,10 +276,15 @@ int snn_csr_upload_to_gpu(snn_csr_storage_t* csr, void* gpu_ctx_void)
                           ci_bytes, GPU_MEMCPY_HOST_TO_DEVICE) != 0) goto fail;
     if (nimcp_gpu_memcpy(gpu_ctx, csr->d_row_ptr, csr->row_ptr,
                           rp_bytes, GPU_MEMCPY_HOST_TO_DEVICE) != 0) goto fail;
+    if (csr->src_pop_idx && csr->d_src_pop_idx &&
+        nimcp_gpu_memcpy(gpu_ctx, csr->d_src_pop_idx, csr->src_pop_idx,
+                          sp_bytes, GPU_MEMCPY_HOST_TO_DEVICE) != 0) goto fail;
 
     csr->gpu_resident = true;
     LOG_INFO("CSR uploaded to GPU: %u synapses (%.1f MB), resident",
-             csr->n_synapses, (w_bytes + ci_bytes + rp_bytes) / (1024.0 * 1024.0));
+             csr->n_synapses,
+             (w_bytes + ci_bytes + rp_bytes + (dsp ? sp_bytes : 0))
+             / (1024.0 * 1024.0));
     return 0;
 
 fail:
@@ -295,9 +319,13 @@ void snn_csr_release_gpu(snn_csr_storage_t* csr)
     if (csr->d_row_ptr && ctx) {
         nimcp_gpu_free(ctx, csr->d_row_ptr);
     }
+    if (csr->d_src_pop_idx && ctx) {
+        nimcp_gpu_free(ctx, csr->d_src_pop_idx);
+    }
     csr->d_weights = NULL;
     csr->d_flat_col_idx = NULL;
     csr->d_row_ptr = NULL;
+    csr->d_src_pop_idx = NULL;
     csr->d_gpu_ctx = NULL;
     csr->gpu_resident = false;
 }

@@ -52,6 +52,7 @@ typedef struct snn_csr_storage_s {
     /* GPU-ready flat arrays (populated by snn_csr_prepare_gpu) */
     float*             weights;         /**< [n_synapses] synapse weights (flat) */
     uint32_t*          flat_col_idx;    /**< [n_synapses] flat global neuron index */
+    uint32_t*          src_pop_idx;     /**< [n_synapses] source pop index (CB-GPU-7) */
     bool               gpu_ready;       /**< true after snn_csr_prepare_gpu() */
 
     /* === V2: Persistent GPU-resident copies of CSR data ===
@@ -72,6 +73,7 @@ typedef struct snn_csr_storage_s {
     void*              d_weights;       /**< Device pointer for weights[] (float*) */
     void*              d_flat_col_idx;  /**< Device pointer for flat_col_idx[] (uint32_t*) */
     void*              d_row_ptr;       /**< Device pointer for row_ptr[] (uint32_t*) */
+    void*              d_src_pop_idx;   /**< Device pointer for src_pop_idx[] (uint32_t*); CB-GPU-7 deposit kernel routing */
     void*              d_gpu_ctx;       /**< nimcp_gpu_context_t* used for upload */
     bool               gpu_resident;    /**< true after snn_csr_upload_to_gpu() */
 } snn_csr_storage_t;

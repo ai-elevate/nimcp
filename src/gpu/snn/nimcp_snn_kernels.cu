@@ -372,6 +372,205 @@ bool nimcp_gpu_snn_isyn_csr(
 }
 
 //=============================================================================
+// CB-GPU-7 — Conductance-based deposit kernel
+//
+// Replaces the per-neuron host CSR walk in snn_cb_deposit_neuron (which the
+// CB-GPU-6 sub-phase timer pinned at dep_ms=3971/total=4007ms — 99% of step
+// time). One thread per destination neuron walks its incoming CSR row,
+// gathers presynaptic spikes from a flat all-pops spike vector, applies
+// per-source short-term depression, and routes the weighted contribution to
+// AMPA / NMDA / GABA_A / GABA_B based on a per-pop synapse_type table.
+//
+// Match the host helper's behavior at src/snn/nimcp_snn_network.c:941
+// (snn_cb_deposit_neuron):
+//   - SYNAPSE_GENERIC: sign-fallback. positive weight → AMPA, negative → GABA_A.
+//   - SYNAPSE_AMPA / NMDA / GABA_A / GABA_B: deposit |weight| into named receptor.
+//   - depression dampener: weight × (1 - depression[src_neuron])
+//
+// External current + basket inhibition + Poisson noise are NOT done here.
+// They stay on the host (cheap: O(n_neurons) per pop, no CSR walk) and are
+// folded into the resident d_g_* via a separate "host delta" upload step.
+//=============================================================================
+
+/**
+ * @brief Spike-driven CB deposit for one destination population.
+ *
+ * @param d_spike_vector  [total_neurons] flat all-pops spike output this step
+ * @param d_depression    [total_neurons] per-source depression (1 - dep applied)
+ * @param d_weights       [nnz] CSR synapse weights for this dst pop
+ * @param d_flat_col_idx  [nnz] flat global neuron index per synapse
+ * @param d_src_pop_idx   [nnz] source population index per synapse (for routing)
+ * @param d_row_ptr       [n_neurons_pop+1] CSR row offsets for this dst pop
+ * @param d_synapse_type  [n_pops] synapse_type for each (src_pop → this dst_pop)
+ * @param d_g_ampa        [total_neurons] flat AMPA conductance (additive write)
+ * @param d_g_nmda        [total_neurons] flat NMDA conductance (additive write)
+ * @param d_g_gaba_a      [total_neurons] flat GABA-A conductance (additive write)
+ * @param d_g_gaba_b      [total_neurons] flat GABA-B conductance (additive write)
+ * @param dst_pop_offset  flat offset where this dst pop's neurons start
+ * @param n_neurons_pop   number of neurons in this dst pop
+ *
+ * @note The g_* writes use the dst_pop_offset to land in the correct slice
+ *       of the shared lif_state arrays. NULL g_* pointers are skipped (the
+ *       receptor doesn't exist for this network; matches the host helper's
+ *       NULL-safety contract).
+ */
+__global__ void kernel_snn_cb_deposit_csr(
+    const float*    __restrict__ d_spike_vector,
+    const float*    __restrict__ d_depression,
+    const float*    __restrict__ d_weights,
+    const uint32_t* __restrict__ d_flat_col_idx,
+    const uint32_t* __restrict__ d_src_pop_idx,
+    const uint32_t* __restrict__ d_row_ptr,
+    const uint8_t*  __restrict__ d_synapse_type,
+    float*          __restrict__ d_g_ampa,
+    float*          __restrict__ d_g_nmda,
+    float*          __restrict__ d_g_gaba_a,
+    float*          __restrict__ d_g_gaba_b,
+    uint32_t dst_pop_offset,
+    uint32_t n_neurons_pop)
+{
+    const uint32_t n = blockIdx.x * blockDim.x + threadIdx.x;
+    if (n >= n_neurons_pop) return;
+
+    /* Per-neuron deposit accumulators — written once at end so we hit the
+     * shared d_g_* arrays four times max (not once per synapse). */
+    float dep_ampa = 0.0f, dep_nmda = 0.0f, dep_gaba_a = 0.0f, dep_gaba_b = 0.0f;
+
+    const uint32_t row_start = d_row_ptr[n];
+    const uint32_t row_end   = d_row_ptr[n + 1];
+
+    for (uint32_t s = row_start; s < row_end; s++) {
+        const uint32_t src_idx = d_flat_col_idx[s];
+        if (d_spike_vector[src_idx] <= 0.5f) continue;  // pre didn't spike
+
+        // Effective weight: synaptic weight × (1 - short-term depression).
+        // d_depression is per-source-neuron; flat-indexed.
+        const float dep_factor = (d_depression != nullptr)
+                               ? (1.0f - d_depression[src_idx]) : 1.0f;
+        const float w_eff = d_weights[s] * dep_factor;
+
+        // Route by per-(src_pop → this dst_pop) type table.
+        const uint32_t src_pop = d_src_pop_idx[s];
+        const uint8_t  st      = d_synapse_type[src_pop];
+
+        /* Match host snn_membrane_deposit_synapse exactly: AMPA/NMDA take the
+         * SIGNED weight (negative-weight excitatory edges are legal during
+         * CB rescale); GABA_A/GABA_B are rectified (synaptic conductance must
+         * be ≥ 0; the inhibitory effect comes from the reversal potential).
+         * GENERIC + neuromodulators (DA/5HT/ACh) + ELECTRICAL fall through to
+         * sign-routing — positive→AMPA, negative→GABA_A. */
+        switch (st) {
+            case 1: /* SYNAPSE_AMPA */
+                dep_ampa   += w_eff;
+                break;
+            case 2: /* SYNAPSE_NMDA */
+                dep_nmda   += w_eff;
+                break;
+            case 3: /* SYNAPSE_GABA_A */
+                dep_gaba_a += (w_eff < 0.0f) ? -w_eff : w_eff;
+                break;
+            case 4: /* SYNAPSE_GABA_B */
+                dep_gaba_b += (w_eff < 0.0f) ? -w_eff : w_eff;
+                break;
+            default:  /* SYNAPSE_GENERIC = 0, neuromodulators, ELECTRICAL */
+                if (w_eff >= 0.0f) dep_ampa   += w_eff;
+                else               dep_gaba_a += -w_eff;
+                break;
+        }
+    }
+
+    // Single coalesced write per receptor — additive (kernel runs ON TOP of
+    // the resident post-decay g_* state from the previous forward_cb call).
+    const uint32_t out_idx = dst_pop_offset + n;
+    if (d_g_ampa   && dep_ampa   != 0.0f) d_g_ampa  [out_idx] += dep_ampa;
+    if (d_g_nmda   && dep_nmda   != 0.0f) d_g_nmda  [out_idx] += dep_nmda;
+    if (d_g_gaba_a && dep_gaba_a != 0.0f) d_g_gaba_a[out_idx] += dep_gaba_a;
+    if (d_g_gaba_b && dep_gaba_b != 0.0f) d_g_gaba_b[out_idx] += dep_gaba_b;
+}
+
+/**
+ * @brief C wrapper: launch the CB deposit kernel for one destination pop.
+ *
+ * Caller must ensure all device pointers are valid for the duration of the
+ * launch. d_g_* may be NULL (receptor not allocated). NULL-safe at the
+ * pop-level pointer boundary (returns false on null required arg).
+ *
+ * **Caller contracts (load-bearing):**
+ *
+ *  1. **Delayed spike ring (Wave E FFI).** The host helper
+ *     snn_cb_deposit_neuron reads `snn_pop_get_delayed_spike_row(src_pop)`
+ *     when present, falling back to `src_pop->spike_output` only when the
+ *     delayed row is NULL. The kernel only sees `d_spike_vector` — the
+ *     caller MUST pre-mux per-pop slices using the same delayed-row
+ *     selection rule, otherwise synaptic delay is silently lost.
+ *
+ *  2. **Dendritic mode is not supported on this kernel.** When the dst
+ *     pop runs the Wave H two-compartment integrator (basal/apical), the
+ *     host helper writes to `g_*_basal` / `g_*_apical` instead of the
+ *     legacy single-compartment `g_*`. The kernel only writes the legacy
+ *     receptors. The dispatcher MUST exclude dendritic-mode pops from the
+ *     CB-GPU path — already enforced in snn_network_step_cb_gpu via the
+ *     `pop->dendritic_enabled` early-out at line ~1371.
+ *
+ *  3. **No pre-zeroing.** The kernel is purely additive on top of the
+ *     resident post-decay g_* state. Caller must NOT call
+ *     `cudaMemsetAsync(d_g_*, 0, ...)` before this kernel — that would
+ *     wipe the carry-over state from the previous step's forward_cb decay.
+ *
+ *  4. **NULL g_* policy.** If all four d_g_* are NULL, the launch is a
+ *     no-op — wasted work but not a correctness bug. Returns false to
+ *     signal the no-op (so callers can detect mis-configured networks).
+ */
+extern "C" bool nimcp_gpu_snn_cb_deposit_csr(
+    nimcp_gpu_context_t* ctx,
+    const float*    d_spike_vector,
+    const float*    d_depression,
+    const float*    d_weights,
+    const uint32_t* d_flat_col_idx,
+    const uint32_t* d_src_pop_idx,
+    const uint32_t* d_row_ptr,
+    const uint8_t*  d_synapse_type,
+    float*          d_g_ampa,
+    float*          d_g_nmda,
+    float*          d_g_gaba_a,
+    float*          d_g_gaba_b,
+    uint32_t dst_pop_offset,
+    uint32_t n_neurons_pop)
+{
+    if (!ctx || !d_spike_vector || !d_weights || !d_flat_col_idx ||
+        !d_src_pop_idx || !d_row_ptr || !d_synapse_type ||
+        n_neurons_pop == 0) {
+        return false;
+    }
+    /* uint32 overflow guard: out_idx = dst_pop_offset + n where n is in
+     * [0, n_neurons_pop). Reject configurations that would wrap. The
+     * production network maxes out around 2M neurons total — far below
+     * the limit — so this catches mis-passed offsets, not size pressure. */
+    if ((uint64_t)dst_pop_offset + (uint64_t)n_neurons_pop > 0xFFFFFFFFu) {
+        return false;
+    }
+    /* All-NULL receptor pointers means the network has no CB conductance
+     * arrays allocated — caller should be on the current-based path. Reject
+     * the launch (paralleling nimcp_gpu_lif_forward_cb's check at the same
+     * file's CB-forward wrapper). */
+    if (!d_g_ampa && !d_g_nmda && !d_g_gaba_a && !d_g_gaba_b) {
+        return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    kernel_snn_cb_deposit_csr<<<GRID_SIZE(n_neurons_pop), BLOCK_SIZE>>>(
+        d_spike_vector, d_depression, d_weights, d_flat_col_idx,
+        d_src_pop_idx, d_row_ptr, d_synapse_type,
+        d_g_ampa, d_g_nmda, d_g_gaba_a, d_g_gaba_b,
+        dst_pop_offset, n_neurons_pop);
+
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
+}
+
+//=============================================================================
 // LIF Forward Kernel
 //=============================================================================
 

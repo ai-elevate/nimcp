@@ -483,6 +483,57 @@ NIMCP_EXPORT bool nimcp_gpu_snn_isyn_csr(
     size_t n_neurons);
 
 /**
+ * @brief CB-GPU-7: Conductance-based deposit kernel for one destination pop.
+ *
+ * Replaces the per-neuron host CSR walk in snn_cb_deposit_neuron. One thread
+ * per dst neuron walks its incoming CSR, gathers presynaptic spikes from the
+ * flat all-pops spike vector, applies short-term depression, and routes the
+ * weighted contribution into AMPA / NMDA / GABA_A / GABA_B based on a
+ * per-(src_pop → this dst_pop) synapse_type table.
+ *
+ * Behavior matches the host helper at src/snn/nimcp_snn_network.c
+ * snn_cb_deposit_neuron() for the spike-driven CSR portion. External
+ * current, basket inhibition, and Poisson noise are NOT done here — they
+ * stay on the host (cheap, no CSR walk) and are folded into d_g_* via a
+ * separate "host delta" upload step before the deposit kernel runs.
+ *
+ * The d_g_* arrays are GPU-resident across steps (kernel_lif_forward_cb
+ * decays at end of step). This kernel writes ADDITIVELY on top of that
+ * post-decay state.
+ *
+ * @param ctx GPU context
+ * @param d_spike_vector  Device: [total_neurons] flat all-pops spike output
+ * @param d_depression    Device: [total_neurons] per-source depression (or NULL)
+ * @param d_weights       Device: [nnz] CSR synapse weights for this dst pop
+ * @param d_flat_col_idx  Device: [nnz] flat global neuron index per synapse
+ * @param d_src_pop_idx   Device: [nnz] source pop index per synapse (routing key)
+ * @param d_row_ptr       Device: [n_neurons_pop+1] CSR row offsets
+ * @param d_synapse_type  Device: [n_pops] synapse_type for each (src_pop → this dst)
+ * @param d_g_ampa        Device: [total_neurons] flat AMPA conductance (NULL ok)
+ * @param d_g_nmda        Device: [total_neurons] flat NMDA conductance (NULL ok)
+ * @param d_g_gaba_a      Device: [total_neurons] flat GABA-A conductance (NULL ok)
+ * @param d_g_gaba_b      Device: [total_neurons] flat GABA-B conductance (NULL ok)
+ * @param dst_pop_offset  Flat offset where this dst pop begins in d_g_*
+ * @param n_neurons_pop   Number of neurons in this dst pop
+ * @return true on launch success
+ */
+NIMCP_EXPORT bool nimcp_gpu_snn_cb_deposit_csr(
+    nimcp_gpu_context_t* ctx,
+    const float*    d_spike_vector,
+    const float*    d_depression,
+    const float*    d_weights,
+    const uint32_t* d_flat_col_idx,
+    const uint32_t* d_src_pop_idx,
+    const uint32_t* d_row_ptr,
+    const uint8_t*  d_synapse_type,
+    float*          d_g_ampa,
+    float*          d_g_nmda,
+    float*          d_g_gaba_a,
+    float*          d_g_gaba_b,
+    uint32_t dst_pop_offset,
+    uint32_t n_neurons_pop);
+
+/**
  * @brief LIF backward pass with surrogate gradient
  *
  * @param ctx GPU context
