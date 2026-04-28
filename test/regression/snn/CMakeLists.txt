@@ -228,6 +228,31 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_cb_gpu_regression.cpp)
 endif()
 
 # ============================================================================
+# CB CPU hot loop baseline — regression hash-locks the inline loop's
+# behavior so the CB-GPU-5 Phase A helper extraction can't drift.
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_cb_loop_baseline.cpp)
+    add_executable(regression_snn_test_snn_cb_loop_baseline
+        test_snn_cb_loop_baseline.cpp
+    )
+    target_link_libraries(regression_snn_test_snn_cb_loop_baseline
+        PRIVATE ${SNN_REGRESSION_TEST_LIBS}
+    )
+    target_include_directories(regression_snn_test_snn_cb_loop_baseline
+        PRIVATE ${SNN_REGRESSION_TEST_INCLUDES}
+    )
+    target_compile_features(regression_snn_test_snn_cb_loop_baseline
+        PRIVATE cxx_std_17)
+    gtest_discover_tests(regression_snn_test_snn_cb_loop_baseline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "regression;snn;cb;baseline"
+            TIMEOUT 60
+    )
+    message(STATUS "  Added SNN regression test: test_snn_cb_loop_baseline")
+endif()
+
+# ============================================================================
 # SNN per-receptor (P0) regression test — plain C, no GTest.
 # Verifies that the four-bucket conductance model matches the old lumped
 # (g_exc / g_inh) CB behavior when wired with a single receptor type per
