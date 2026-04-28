@@ -89,7 +89,143 @@ void nimcp_lif_state_destroy(nimcp_lif_state_t* state)
     // Wave G GPU sync (v17): optional per-neuron arrays.
     if (state->tau_mem_per_neuron)  nimcp_gpu_tensor_destroy(state->tau_mem_per_neuron);
     if (state->v_thresh_per_neuron) nimcp_gpu_tensor_destroy(state->v_thresh_per_neuron);
+    // CB Phase 5 (GPU port): per-receptor conductance arrays.
+    if (state->g_ampa)   nimcp_gpu_tensor_destroy(state->g_ampa);
+    if (state->g_nmda)   nimcp_gpu_tensor_destroy(state->g_nmda);
+    if (state->g_gaba_a) nimcp_gpu_tensor_destroy(state->g_gaba_a);
+    if (state->g_gaba_b) nimcp_gpu_tensor_destroy(state->g_gaba_b);
     nimcp_free(state);
+}
+
+/* ---------------------------------------------------------------------------
+ * CB Phase 5 — GPU conductance arrays: alloc / free / upload / download
+ *
+ * Stage A wiring: synaptic deposit still runs on CPU; per step the SNN layer
+ * uploads the four host g_* buffers, runs the CB kernel (which reads the four
+ * g, applies driving force to V, then decays each g by exp(-dt/tau_r)), then
+ * downloads g back so the next CPU deposit sees the decayed values.
+ * ------------------------------------------------------------------------- */
+
+bool nimcp_gpu_lif_state_alloc_cb_arrays(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    size_t n_neurons)
+{
+    if (!ctx || !state || n_neurons == 0) {
+        LOG_ERROR("alloc_cb_arrays: invalid args (ctx=%p state=%p n=%zu)",
+                  (void*)ctx, (void*)state, n_neurons);
+        return false;
+    }
+    if (state->v && state->v->numel != n_neurons) {
+        LOG_ERROR("alloc_cb_arrays: n_neurons (%zu) does not match state->v->numel (%zu)",
+                  n_neurons, (size_t)state->v->numel);
+        return false;
+    }
+    size_t dims[1] = { n_neurons };
+    nimcp_gpu_tensor_t** slots[4] = {
+        &state->g_ampa, &state->g_nmda, &state->g_gaba_a, &state->g_gaba_b
+    };
+    const char* names[4] = { "g_ampa", "g_nmda", "g_gaba_a", "g_gaba_b" };
+    for (int i = 0; i < 4; i++) {
+        if (*slots[i] && (*slots[i])->numel == n_neurons) continue;
+        if (*slots[i]) {
+            nimcp_gpu_tensor_destroy(*slots[i]);
+            *slots[i] = NULL;
+        }
+        *slots[i] = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
+        if (!*slots[i]) {
+            LOG_ERROR("alloc_cb_arrays: %s tensor create failed (n=%zu)",
+                      names[i], n_neurons);
+            // Best-effort rollback to avoid partial allocation.
+            for (int j = 0; j < i; j++) {
+                if (*slots[j]) {
+                    nimcp_gpu_tensor_destroy(*slots[j]);
+                    *slots[j] = NULL;
+                }
+            }
+            return false;
+        }
+    }
+    state->cb_arrays_dirty = true;
+    return true;
+}
+
+void nimcp_gpu_lif_state_free_cb_arrays(nimcp_lif_state_t* state)
+{
+    if (!state) return;
+    if (state->g_ampa)   { nimcp_gpu_tensor_destroy(state->g_ampa);   state->g_ampa   = NULL; }
+    if (state->g_nmda)   { nimcp_gpu_tensor_destroy(state->g_nmda);   state->g_nmda   = NULL; }
+    if (state->g_gaba_a) { nimcp_gpu_tensor_destroy(state->g_gaba_a); state->g_gaba_a = NULL; }
+    if (state->g_gaba_b) { nimcp_gpu_tensor_destroy(state->g_gaba_b); state->g_gaba_b = NULL; }
+    state->cb_arrays_dirty = false;
+}
+
+bool nimcp_gpu_lif_state_upload_g(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    const float* g_ampa_h,
+    const float* g_nmda_h,
+    const float* g_gaba_a_h,
+    const float* g_gaba_b_h,
+    size_t n_neurons)
+{
+    if (!ctx || !state) return false;
+    struct { nimcp_gpu_tensor_t* t; const float* h; const char* name; } pairs[4] = {
+        { state->g_ampa,   g_ampa_h,   "g_ampa"   },
+        { state->g_nmda,   g_nmda_h,   "g_nmda"   },
+        { state->g_gaba_a, g_gaba_a_h, "g_gaba_a" },
+        { state->g_gaba_b, g_gaba_b_h, "g_gaba_b" },
+    };
+    for (int i = 0; i < 4; i++) {
+        if (!pairs[i].h) continue;          // skip — caller doesn't have this receptor
+        if (!pairs[i].t) {
+            LOG_ERROR("upload_g: %s tensor not allocated (call alloc_cb_arrays first)",
+                      pairs[i].name);
+            return false;
+        }
+        if (pairs[i].t->numel != n_neurons) {
+            LOG_ERROR("upload_g: %s size mismatch (tensor=%zu host=%zu)",
+                      pairs[i].name, (size_t)pairs[i].t->numel, n_neurons);
+            return false;
+        }
+        if (!nimcp_gpu_tensor_upload(pairs[i].t, pairs[i].h)) {
+            LOG_ERROR("upload_g: %s upload failed", pairs[i].name);
+            return false;
+        }
+    }
+    state->cb_arrays_dirty = false;
+    return true;
+}
+
+bool nimcp_gpu_lif_state_download_g(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_lif_state_t* state,
+    float* g_ampa_h,
+    float* g_nmda_h,
+    float* g_gaba_a_h,
+    float* g_gaba_b_h,
+    size_t n_neurons)
+{
+    if (!ctx || !state) return false;
+    struct { const nimcp_gpu_tensor_t* t; float* h; const char* name; } pairs[4] = {
+        { state->g_ampa,   g_ampa_h,   "g_ampa"   },
+        { state->g_nmda,   g_nmda_h,   "g_nmda"   },
+        { state->g_gaba_a, g_gaba_a_h, "g_gaba_a" },
+        { state->g_gaba_b, g_gaba_b_h, "g_gaba_b" },
+    };
+    for (int i = 0; i < 4; i++) {
+        if (!pairs[i].h || !pairs[i].t) continue;
+        if (pairs[i].t->numel != n_neurons) {
+            LOG_ERROR("download_g: %s size mismatch (tensor=%zu host=%zu)",
+                      pairs[i].name, (size_t)pairs[i].t->numel, n_neurons);
+            return false;
+        }
+        if (!nimcp_gpu_tensor_to_host(pairs[i].t, pairs[i].h)) {
+            LOG_ERROR("download_g: %s download failed", pairs[i].name);
+            return false;
+        }
+    }
+    return true;
 }
 
 bool nimcp_gpu_lif_state_upload_per_neuron_params(
@@ -375,6 +511,168 @@ bool nimcp_gpu_lif_forward(
             p->dt, p->hard_reset, n,
             d_tau_per_neuron, d_vthr_per_neuron);
     }
+
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
+}
+
+//=============================================================================
+// CB Phase 5 — Conductance-based LIF kernel
+//
+// Mirrors snn_membrane_compute_dv() (CPU, conductance_mode=true) bit-for-bit:
+//   nmda_block = 1 / (1 + Mg/3.57 * exp(-V/16.13))
+//   drive      = (V_rest - V)
+//              + g_ampa             * (E_ampa  - V)
+//              + g_nmda * nmda_block * (E_nmda - V)
+//              + g_gaba_a           * (E_gaba_a - V)
+//              + g_gaba_b           * (E_gaba_b - V)
+//   dv         = clamp(drive * dt / tau_eff, ±100 mV)
+//   dv         = bound(V+dv ∈ [E_min, E_max])
+//   V         += dv
+//   spike if V >= V_thresh; reset
+//   g_r       *= decay_r          (after membrane update; matches CPU ordering)
+//
+// The decay factors are precomputed once per step on the host and passed in,
+// matching the CPU per-pop loop's optimization (avoid expf() per neuron).
+//=============================================================================
+
+__device__ inline float cb_nmda_mg_block(float v_mv, float mg_mm) {
+    // Standard Jahr-Stevens formula: 1 / (1 + [Mg]/3.57 * exp(-V/16.13))
+    return 1.0f / (1.0f + (mg_mm / 3.57f) * expf(-v_mv / 16.13f));
+}
+
+__global__ void kernel_lif_forward_cb(
+    float* __restrict__ v,
+    float* __restrict__ spikes,
+    float* __restrict__ g_ampa,
+    float* __restrict__ g_nmda,
+    float* __restrict__ g_gaba_a,
+    float* __restrict__ g_gaba_b,
+    float v_rest, float v_thresh, float v_reset,
+    float tau_mem, float dt,
+    bool hard_reset,
+    float e_ampa, float e_nmda, float e_gaba_a, float e_gaba_b,
+    float mg_mm,
+    float decay_ampa, float decay_nmda, float decay_gaba_a, float decay_gaba_b,
+    size_t n,
+    const float* __restrict__ tau_mem_per_neuron,
+    const float* __restrict__ v_thresh_per_neuron)
+{
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+
+    const float tau_n  = tau_mem_per_neuron  ? tau_mem_per_neuron[idx]  : tau_mem;
+    const float vthr_n = v_thresh_per_neuron ? v_thresh_per_neuron[idx] : v_thresh;
+    const float tau_eff = (tau_n < 1e-3f) ? 1e-3f : tau_n;
+
+    // Per-neuron g — NULL pointer means "this receptor not allocated", treat as 0.
+    const float ga = g_ampa   ? g_ampa[idx]   : 0.0f;
+    const float gn = g_nmda   ? g_nmda[idx]   : 0.0f;
+    const float ga_a = g_gaba_a ? g_gaba_a[idx] : 0.0f;
+    const float ga_b = g_gaba_b ? g_gaba_b[idx] : 0.0f;
+
+    float V = v[idx];
+    const float nmda_b = cb_nmda_mg_block(V, mg_mm);
+
+    const float leak = (v_rest - V);
+    const float drive = leak
+                      + ga              * (e_ampa   - V)
+                      + gn  * nmda_b    * (e_nmda   - V)
+                      + ga_a            * (e_gaba_a - V)
+                      + ga_b            * (e_gaba_b - V);
+
+    float dv = drive * (dt / tau_eff);
+
+    // Biophysical clamp: |dv| <= 100 mV per step.
+    if (dv >  100.0f) dv =  100.0f;
+    if (dv < -100.0f) dv = -100.0f;
+
+    // Reversal-potential bound: V + dv must stay within [E_min, E_max].
+    {
+        const float v_after = V + dv;
+        const float e_max = (e_ampa  > e_nmda)  ? e_ampa  : e_nmda;
+        const float e_min = (e_gaba_a < e_gaba_b) ? e_gaba_a : e_gaba_b;
+        if (v_after > e_max) dv = e_max - V;
+        if (v_after < e_min) dv = e_min - V;
+    }
+
+    V += dv;
+
+    float spike = 0.0f;
+    if (V >= vthr_n) {
+        spike = 1.0f;
+        if (hard_reset) {
+            V = v_reset;
+        } else {
+            V = V - (vthr_n - v_reset);
+        }
+    }
+    v[idx] = V;
+    spikes[idx] = spike;
+
+    // Per-receptor exponential decay — matches CPU snn_membrane_decay_one.
+    if (g_ampa)   g_ampa[idx]   = ga   * decay_ampa;
+    if (g_nmda)   g_nmda[idx]   = gn   * decay_nmda;
+    if (g_gaba_a) g_gaba_a[idx] = ga_a * decay_gaba_a;
+    if (g_gaba_b) g_gaba_b[idx] = ga_b * decay_gaba_b;
+}
+
+bool nimcp_gpu_lif_forward_cb(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    float e_ampa_mv,   float e_nmda_mv,
+    float e_gaba_a_mv, float e_gaba_b_mv,
+    float tau_ampa_ms,   float tau_nmda_ms,
+    float tau_gaba_a_ms, float tau_gaba_b_ms,
+    float mg_mm)
+{
+    if (!ctx || !state || !state->v || !state->spikes) {
+        LOG_ERROR("nimcp_gpu_lif_forward_cb: invalid args");
+        return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    size_t n = state->v->numel;
+    const nimcp_lif_params_t* p = &state->params;
+
+    // At least one receptor must be allocated, else the caller should be
+    // using nimcp_gpu_lif_forward (current-based path).
+    if (!state->g_ampa && !state->g_nmda && !state->g_gaba_a && !state->g_gaba_b) {
+        LOG_ERROR("nimcp_gpu_lif_forward_cb: no g_* arrays allocated — call "
+                  "nimcp_gpu_lif_state_alloc_cb_arrays first");
+        return false;
+    }
+
+    const float* d_tau  = state->tau_mem_per_neuron
+                            ? (const float*)state->tau_mem_per_neuron->data : NULL;
+    const float* d_vthr = state->v_thresh_per_neuron
+                            ? (const float*)state->v_thresh_per_neuron->data : NULL;
+
+    // Decay factors precomputed host-side: matches CPU snn_membrane_decay_one
+    // contract (exp(-dt/tau) per receptor, computed once per step).
+    auto safe_decay = [](float dt, float tau_ms) -> float {
+        const float t = (tau_ms < 1e-3f) ? 1e-3f : tau_ms;
+        return expf(-dt / t);
+    };
+    const float decay_ampa   = safe_decay(p->dt, tau_ampa_ms);
+    const float decay_nmda   = safe_decay(p->dt, tau_nmda_ms);
+    const float decay_gaba_a = safe_decay(p->dt, tau_gaba_a_ms);
+    const float decay_gaba_b = safe_decay(p->dt, tau_gaba_b_ms);
+
+    kernel_lif_forward_cb<<<GRID_SIZE(n), BLOCK_SIZE>>>(
+        (float*)state->v->data,
+        (float*)state->spikes->data,
+        state->g_ampa   ? (float*)state->g_ampa->data   : NULL,
+        state->g_nmda   ? (float*)state->g_nmda->data   : NULL,
+        state->g_gaba_a ? (float*)state->g_gaba_a->data : NULL,
+        state->g_gaba_b ? (float*)state->g_gaba_b->data : NULL,
+        p->v_rest, p->v_thresh, p->v_reset,
+        p->tau_mem, p->dt, p->hard_reset,
+        e_ampa_mv, e_nmda_mv, e_gaba_a_mv, e_gaba_b_mv, mg_mm,
+        decay_ampa, decay_nmda, decay_gaba_a, decay_gaba_b,
+        n, d_tau, d_vthr);
 
     NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;

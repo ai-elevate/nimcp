@@ -222,6 +222,24 @@ typedef struct {
      * from CPU pops on the next GPU step. Owned by the caller (e.g.
      * snn_network_step); the kernel launcher does not read or clear this flag. */
     bool per_neuron_params_dirty;
+
+    /* CB Phase 5 (GPU port). Per-receptor conductance arrays — one float per
+     * neuron each, allocated lazily by nimcp_gpu_lif_state_alloc_cb_arrays()
+     * when conductance mode is activated. NULL when CB is OFF (kernel falls
+     * back to current-based via i_syn). The four arrays mirror the CPU
+     * snn_population_t::g_ampa / g_nmda / g_gaba_a / g_gaba_b host buffers.
+     *
+     * Stage A contract: synaptic deposit still runs on CPU; this struct
+     * carries the per-step-uploaded snapshot the GPU LIF kernel reads. The
+     * dirty flag is set true by the host after each deposit pass so the
+     * SNN step layer knows to re-upload before the kernel launch. Kernel
+     * does not clear; caller (nimcp_gpu_lif_forward_cb) downloads g back
+     * after the kernel updates them via the per-step decay step. */
+    nimcp_gpu_tensor_t* g_ampa;     /**< Optional [n] AMPA conductance, NULL when CB OFF */
+    nimcp_gpu_tensor_t* g_nmda;     /**< Optional [n] NMDA conductance, NULL when CB OFF */
+    nimcp_gpu_tensor_t* g_gaba_a;   /**< Optional [n] GABA_A conductance, NULL when CB OFF */
+    nimcp_gpu_tensor_t* g_gaba_b;   /**< Optional [n] GABA_B conductance, NULL when CB OFF */
+    bool cb_arrays_dirty;           /**< Host-side dirty flag — re-upload g_* before next step */
 } nimcp_lif_state_t;
 
 /**
@@ -309,6 +327,132 @@ NIMCP_EXPORT bool nimcp_gpu_lif_forward(
     nimcp_gpu_context_t* ctx,
     nimcp_lif_state_t* state,
     const nimcp_gpu_tensor_t* input
+);
+
+/* ===========================================================================
+ * CB Phase 5 — GPU conductance-based LIF
+ * ========================================================================= */
+
+/**
+ * @brief Allocate the four per-receptor conductance tensors on the GPU.
+ *
+ * Idempotent: if all four are already allocated and sized to n_neurons,
+ * returns true without re-allocating. Re-allocates if sizes mismatch.
+ *
+ * Must be called once after CB is activated (typically by snn_network_step
+ * the first time it sees conductance_enabled+cb_gpu_enabled). Pairs with
+ * nimcp_gpu_lif_state_free_cb_arrays() during shutdown.
+ *
+ * @param ctx       GPU context (NOT NULL)
+ * @param state     LIF state (NOT NULL); state->v->numel must equal n_neurons
+ * @param n_neurons Total neurons across all populations (matches v size)
+ * @return true on success, false on alloc failure / size mismatch
+ */
+NIMCP_EXPORT bool nimcp_gpu_lif_state_alloc_cb_arrays(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    size_t n_neurons
+);
+
+/**
+ * @brief Free the four per-receptor conductance tensors. Idempotent.
+ */
+NIMCP_EXPORT void nimcp_gpu_lif_state_free_cb_arrays(
+    nimcp_lif_state_t* state
+);
+
+/**
+ * @brief Upload host conductance buffers into the GPU tensors.
+ *
+ * Called by the SNN step layer after the CPU synaptic-deposit pass populates
+ * the host g_* arrays. Any host pointer may be NULL — that receptor's
+ * device buffer is left unchanged (use this to skip uploading receptors
+ * the network doesn't have allocated).
+ *
+ * @param ctx        GPU context
+ * @param state      LIF state with cb arrays allocated
+ * @param g_ampa_h   Host [n] AMPA conductance (or NULL)
+ * @param g_nmda_h   Host [n] NMDA (or NULL)
+ * @param g_gaba_a_h Host [n] GABA_A (or NULL)
+ * @param g_gaba_b_h Host [n] GABA_B (or NULL)
+ * @param n_neurons  Length of each non-NULL host buffer
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_lif_state_upload_g(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    const float* g_ampa_h,
+    const float* g_nmda_h,
+    const float* g_gaba_a_h,
+    const float* g_gaba_b_h,
+    size_t n_neurons
+);
+
+/**
+ * @brief Download GPU conductance state back to host buffers.
+ *
+ * After the GPU LIF kernel runs the per-step decay (g *= exp(-dt/τ_r)),
+ * the SNN step layer needs the decayed values back on the host so the
+ * next CPU synaptic-deposit pass starts from the right baseline. Any
+ * host pointer may be NULL to skip that receptor.
+ *
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_lif_state_download_g(
+    nimcp_gpu_context_t* ctx,
+    const nimcp_lif_state_t* state,
+    float* g_ampa_h,
+    float* g_nmda_h,
+    float* g_gaba_a_h,
+    float* g_gaba_b_h,
+    size_t n_neurons
+);
+
+/**
+ * @brief Conductance-based LIF forward pass.
+ *
+ * Implements the same dynamics as snn_membrane_compute_dv() with
+ * conductance_mode=true:
+ *   drive   = (v_rest - v)
+ *           + g_ampa             * (E_ampa   - v)
+ *           + g_nmda * mg_block  * (E_nmda   - v)
+ *           + g_gaba_a           * (E_gaba_a - v)
+ *           + g_gaba_b           * (E_gaba_b - v)
+ *   dv      = clamp(drive * dt / tau_eff, ±100 mV)
+ *   dv      = bound by reversal potentials (V cannot cross any E_r)
+ *   v      += dv
+ *   spike   = (v >= v_thresh) ? 1 : 0
+ *   if spike: v = v_reset (or v -= (v_thresh - v_reset) for soft reset)
+ *   g_r    *= decay_r          (decay applied AFTER membrane update,
+ *                               matching CPU per-step ordering)
+ *
+ * NMDA Mg²⁺ block: nmda_block = 1 / (1 + Mg/3.57 * exp(-V/16.13))
+ *
+ * Per-neuron heterogeneity: like nimcp_gpu_lif_forward, when the optional
+ * tau_mem_per_neuron / v_thresh_per_neuron arrays are populated the kernel
+ * uses them; otherwise the scalars in state->params.
+ *
+ * @param ctx           GPU context
+ * @param state         LIF state with cb arrays allocated + uploaded
+ * @param e_ampa_mv     AMPA reversal (mV)  — typically  0
+ * @param e_nmda_mv     NMDA reversal (mV)  — typically  0
+ * @param e_gaba_a_mv   GABA_A reversal (mV) — typically -75
+ * @param e_gaba_b_mv   GABA_B reversal (mV) — typically -75
+ * @param tau_ampa_ms   AMPA decay τ (ms)   — typically  2
+ * @param tau_nmda_ms   NMDA decay τ (ms)   — typically 100
+ * @param tau_gaba_a_ms GABA_A decay τ (ms) — typically 10
+ * @param tau_gaba_b_ms GABA_B decay τ (ms) — typically 150
+ * @param mg_mm         Extracellular [Mg²⁺] (mM) — typically 1.0
+ * @return true on success
+ */
+NIMCP_EXPORT bool nimcp_gpu_lif_forward_cb(
+    nimcp_gpu_context_t* ctx,
+    nimcp_lif_state_t* state,
+    float e_ampa_mv,   float e_nmda_mv,
+    float e_gaba_a_mv, float e_gaba_b_mv,
+    float tau_ampa_ms,   float tau_nmda_ms,
+    float tau_gaba_a_ms, float tau_gaba_b_ms,
+    float mg_mm
 );
 
 /**
