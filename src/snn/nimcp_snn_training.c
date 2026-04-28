@@ -161,6 +161,19 @@ static float g_snn_ahp_pump_substrate_coupling = 1.0f;
  * See docs/claude/cb-phase0-design.md. */
 static float g_snn_conductance_enabled = 0.0f;
 static float g_snn_cb_weights_rescaled = 0.0f;
+/* CB Phase 5 — GPU port runtime gate. Default ON.
+ * When BOTH conductance_enabled AND cb_gpu_enabled are nonzero AND a GPU
+ * is attached, the SNN step layer routes through the GPU CB hot path
+ * (nimcp_gpu_lif_forward_cb). Default ON so when the deposit-pass refactor
+ * + bit-identity test (CB-GPU-5) lands, no production config flip is
+ * required — the daemon already has the desired routing baked in. Until
+ * the GPU CB integration cutover ships, this knob is documentary at the
+ * step layer (the gate at line ~970 still falls through to CPU when CB
+ * is ON to preserve Phase 0-4 correctness).
+ *
+ * Set to 0 explicitly only to disable the future cutover, e.g. for
+ * debugging or if a GPU regression forces a temporary CPU-only fallback. */
+static float g_snn_cb_gpu_enabled = 1.0f;
 /* P0 per-receptor reversal potentials (mV).
  * AMPA / NMDA share E_rev ≈ 0 mV (Na+/Ca2+ permeable, depolarizing).
  * GABA_A / GABA_B share E_rev ≈ -75 mV (Cl-/K+ permeable, hyperpolarizing).
@@ -252,6 +265,7 @@ void snn_tune_set_ahp_pump_substrate_coupling(float v) { g_snn_ahp_pump_substrat
  * tau_exc/tau_inh validated: must be in [0.1, 1000] ms. */
 void snn_tune_set_conductance_enabled(float v) { g_snn_conductance_enabled = (v != 0.0f) ? 1.0f : 0.0f; }
 void snn_tune_set_cb_weights_rescaled(float v) { g_snn_cb_weights_rescaled = (v != 0.0f) ? 1.0f : 0.0f; }
+void snn_tune_set_cb_gpu_enabled(float v)      { g_snn_cb_gpu_enabled      = (v != 0.0f) ? 1.0f : 0.0f; }
 /* P0 per-receptor setters — write the new per-receptor globals.
  * Each guards a sane validation range. NMDA inherits AMPA's E_rev by default
  * but can diverge if a future user wants to tune them separately. */
@@ -318,6 +332,7 @@ float snn_tune_get_ahp_pump_substrate_coupling(void)  { return g_snn_ahp_pump_su
 /* CB migration getters. */
 float snn_tune_get_conductance_enabled(void)  { return g_snn_conductance_enabled; }
 float snn_tune_get_cb_weights_rescaled(void)  { return g_snn_cb_weights_rescaled; }
+float snn_tune_get_cb_gpu_enabled(void)       { return g_snn_cb_gpu_enabled; }
 /* P0 per-receptor getters. */
 float snn_tune_get_e_ampa_mv(void)            { return g_snn_e_ampa_mv; }
 float snn_tune_get_e_nmda_mv(void)            { return g_snn_e_nmda_mv; }

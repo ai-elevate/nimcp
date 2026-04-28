@@ -1876,6 +1876,7 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     /* CB migration tunables */
     extern void snn_tune_set_conductance_enabled(float);
     extern void snn_tune_set_cb_weights_rescaled(float);
+    extern void snn_tune_set_cb_gpu_enabled(float);
     extern void snn_tune_set_e_exc_mv(float);
     extern void snn_tune_set_e_inh_mv(float);
     extern void snn_tune_set_tau_exc_ms(float);
@@ -1924,6 +1925,7 @@ static PyObject* Brain_snn_tune(BrainObject* self, PyObject* args) {
     /* CB migration */
     else if (strcmp(name, "conductance_enabled") == 0)         snn_tune_set_conductance_enabled(v);
     else if (strcmp(name, "cb_weights_rescaled") == 0)         snn_tune_set_cb_weights_rescaled(v);
+    else if (strcmp(name, "cb_gpu_enabled") == 0)              snn_tune_set_cb_gpu_enabled(v);
     else if (strcmp(name, "e_exc_mv") == 0)                    snn_tune_set_e_exc_mv(v);
     else if (strcmp(name, "e_inh_mv") == 0)                    snn_tune_set_e_inh_mv(v);
     else if (strcmp(name, "tau_exc_ms") == 0)                  snn_tune_set_tau_exc_ms(v);
@@ -1974,6 +1976,7 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     /* CB migration tunables */
     extern float snn_tune_get_conductance_enabled(void);
     extern float snn_tune_get_cb_weights_rescaled(void);
+    extern float snn_tune_get_cb_gpu_enabled(void);
     extern float snn_tune_get_e_exc_mv(void);
     extern float snn_tune_get_e_inh_mv(void);
     extern float snn_tune_get_tau_exc_ms(void);
@@ -2026,6 +2029,7 @@ static PyObject* Brain_snn_tune_get(BrainObject* self, PyObject* Py_UNUSED(a)) {
     /* CB migration */
     F("conductance_enabled",         snn_tune_get_conductance_enabled());
     F("cb_weights_rescaled",         snn_tune_get_cb_weights_rescaled());
+    F("cb_gpu_enabled",              snn_tune_get_cb_gpu_enabled());
     F("e_exc_mv",                    snn_tune_get_e_exc_mv());
     F("e_inh_mv",                    snn_tune_get_e_inh_mv());
     F("tau_exc_ms",                  snn_tune_get_tau_exc_ms());

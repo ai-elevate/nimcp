@@ -961,12 +961,23 @@ int snn_network_step(snn_network_t* network, float dt) {
     }
 
     /* ===== GPU FAST PATH ===== */
-    /* CB migration: when conductance mode is enabled, force the CPU
-     * fallback path. The GPU kernel is current-based-only (no per-receptor
-     * g_* fallback path — no g_ampa/g_nmda/g_gaba_a/g_gaba_b driving force).
-     * Per docs/claude/cb-phase0-design.md "OUT of scope: GPU port", we
-     * accept the perf regression — the live oscillation happens on the
-     * CPU-bound Hetzner box anyway. */
+    /* CB migration gate:
+     *   - Pure current-based mode (CB OFF): always run on GPU when available.
+     *   - CB ON: stay on CPU until the CB-GPU-4 deposit-pass refactor +
+     *     CB-GPU-5 bit-identity verification land. The kernel itself
+     *     (nimcp_gpu_lif_forward_cb) is built and unit-tested as of commit
+     *     1b3ae0b40, but its full snn_network_step wiring requires
+     *     extracting the CPU deposit-pass logic into a reusable helper
+     *     (snn_cb_deposit_pass_pop) so both CPU and GPU paths share the
+     *     receptor-routing walk over pop->synapse_type_per_src[]. The
+     *     `cb_gpu_enabled` tune knob is plumbed end-to-end (snn_tune_get/
+     *     set_cb_gpu_enabled, exposed to the daemon RPC), reserved for
+     *     CB-GPU-5 cutover — for now it is documentary.
+     *
+     * See docs/claude/cb-phase0-design.md and project_cb_migration_2026-04-26
+     * for the staged rollout plan. */
+    extern float snn_tune_get_cb_gpu_enabled(void);
+    (void)snn_tune_get_cb_gpu_enabled;  /* reserved for CB-GPU-5 cutover */
     if (network->gpu_lif_state && network->gpu_ctx
         && snn_tune_get_conductance_enabled() == 0.0f) {
         nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
