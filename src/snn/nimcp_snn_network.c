@@ -1433,6 +1433,14 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
         return -1;
     }
 
+    /* CB-GPU-7 sub-phase instrumentation. Total cbgpu_ms includes all
+     * of these; breakdown tells us whether to optimize deposit / I/O /
+     * kernel / post-spike. Logged as a NIMCP_DEBUG_SNN line every step. */
+    struct timespec _ph0, _ph1;
+    double dep_ms = 0, gather_ms = 0, upload_ms = 0, kernel_ms = 0,
+           dl_ms = 0, scatter_ms = 0, postspike_ms = 0;
+    clock_gettime(CLOCK_MONOTONIC, &_ph0);
+
     /* ===== Per-pop deposit pass (host) =====
      * Decay g_*, apply gap-junction V, refractory tick + early-out, run
      * the per-neuron deposit helper. Mirrors the inline CPU loop minus
@@ -1512,6 +1520,10 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
         ahp_hyp_per_pop[p]  = ahp_hyp;
         pump_hyp_per_pop[p] = pump_hyp;
     }
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    dep_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+           + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+    _ph0 = _ph1;
 
     /* ===== Gather + upload =====
      * Flat per-receptor host buffers, one float per neuron, in pop order.
@@ -1548,11 +1560,20 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
         off += pop->n_neurons;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    gather_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+              + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+    _ph0 = _ph1;
+
     /* Upload V into the lif_state's V tensor (mutated in place by the
      * kernel) + g_* into the lif_state's CB arrays. */
     bool ok = nimcp_gpu_tensor_upload(lif->v, h_v);
     ok = ok && nimcp_gpu_lif_state_upload_g(
         gpu, lif, h_g_ampa, h_g_nmda, h_g_ga_a, h_g_ga_b, total_neurons);
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    upload_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+              + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+    _ph0 = _ph1;
 
     /* ===== GPU forward_cb =====
      * Integrates V, writes spikes, applies per-receptor decay AFTER
@@ -1564,6 +1585,10 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
             tau_ampa, tau_nmda, tau_gaba_a, tau_gaba_b,
             mg_mm);
     }
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    kernel_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+              + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+    _ph0 = _ph1;
     if (!ok) {
         nimcp_free(h_v);
         nimcp_free(h_g_ampa); nimcp_free(h_g_nmda);
@@ -1598,6 +1623,11 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
         return -1;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    dl_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+          + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+    _ph0 = _ph1;
+
     int total_spikes = 0;
     off = 0;
     for (uint32_t p = 0; p < network->n_populations; p++) {
@@ -1621,6 +1651,10 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
         if (pop->g_gaba_b) memcpy(pop->g_gaba_b, h_g_ga_b + off, pop->n_neurons * sizeof(float));
         off += pop->n_neurons;
     }
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    scatter_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+               + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+    _ph0 = _ph1;
 
     nimcp_free(h_v);
     nimcp_free(h_g_ampa); nimcp_free(h_g_nmda);
@@ -1645,6 +1679,16 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
 
     nimcp_free(ahp_hyp_per_pop);
     nimcp_free(pump_hyp_per_pop);
+
+    clock_gettime(CLOCK_MONOTONIC, &_ph1);
+    postspike_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
+                 + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
+
+    NIMCP_LOGGING_INFO(
+        "CB-GPU sub: dep=%.1f gather=%.1f upload=%.1f kernel=%.1f "
+        "dl=%.1f scatter=%.1f postspike=%.1f",
+        dep_ms, gather_ms, upload_ms, kernel_ms,
+        dl_ms, scatter_ms, postspike_ms);
     return total_spikes;
 }
 
