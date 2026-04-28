@@ -415,6 +415,15 @@ struct snn_population_s {
      * Memory: SNN_MAX_POPULATIONS × 1 byte = 128 B per pop. */
     uint8_t synapse_type_per_src[SNN_MAX_POPULATIONS];  /**< synapse_type_t cast to byte */
 
+    /* CB-GPU-7: device-resident copy of synapse_type_per_src[] used by
+     * the GPU deposit kernel (kernel_snn_cb_deposit_csr) to route each
+     * synapse's weight into the correct receptor. NULL until the first
+     * CB-GPU step uploads it; freed by snn_population_destroy. The
+     * gpu_ctx pointer is stashed so the free path works even if the CSR
+     * (which also tracks gpu_ctx) was released first. */
+    void* d_synapse_type_per_src;
+    void* d_synapse_type_gpu_ctx;   /**< nimcp_gpu_context_t* used to free the above */
+
     /* Homeostatic plasticity state (Turrigiano-style synaptic scaling).
      * Tracked per-population, updated every SNN step, applied every N
      * training steps by snn_homeostatic_apply() to keep firing rate near
@@ -817,6 +826,15 @@ struct snn_network_s {
     void** gpu_ext_current;         /**< nimcp_gpu_tensor_t*[n_populations]: external current per pop */
     void** gpu_isyn_output;         /**< nimcp_gpu_tensor_t*[n_populations]: I_syn output per pop */
     uint32_t gpu_n_persistent_pops; /**< Number of populations with persistent GPU tensors */
+
+    /* CB-GPU-7: per-step flat all-pops spike + depression vectors uploaded
+     * to GPU before launching the deposit kernel. Lazy-allocated at first
+     * CB-GPU step; if the network grows (add_population), the CB-GPU step
+     * compares total_neurons against gpu_cb_flat_capacity and reallocates
+     * to avoid OOB device writes. Freed in destroy. */
+    void* gpu_cb_spike_flat;        /**< float* [capacity] device spike vector */
+    void* gpu_cb_depr_flat;         /**< float* [capacity] device depression vector */
+    size_t gpu_cb_flat_capacity;    /**< current allocated size in elements */
 
     /* Statistics */
     snn_stats_t stats;              /**< Network statistics */

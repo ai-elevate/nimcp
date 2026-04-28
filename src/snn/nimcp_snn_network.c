@@ -418,6 +418,25 @@ static void snn_population_destroy_internal(snn_population_t* pop) {
 
     /* Lightweight mode cleanup */
     if (pop->external_current) nimcp_free(pop->external_current);
+
+    /* CB-GPU-7: free device-side synapse_type. We stash gpu_ctx in
+     * d_synapse_type_gpu_ctx at upload time so the free works even if
+     * the CSR (which separately tracks gpu_ctx) was released earlier
+     * via snn_csr_release_gpu (it clears d_gpu_ctx → NULL). Fall back
+     * to the CSR's gpu_ctx for entries from before the stash existed. */
+    if (pop->d_synapse_type_per_src) {
+        nimcp_gpu_context_t* st_gpu =
+            (nimcp_gpu_context_t*)pop->d_synapse_type_gpu_ctx;
+        if (!st_gpu && pop->incoming_csr) {
+            st_gpu = (nimcp_gpu_context_t*)pop->incoming_csr->d_gpu_ctx;
+        }
+        if (st_gpu) {
+            nimcp_gpu_free(st_gpu, pop->d_synapse_type_per_src);
+        }
+        pop->d_synapse_type_per_src = NULL;
+        pop->d_synapse_type_gpu_ctx = NULL;
+    }
+
     if (pop->incoming_csr) {
         snn_csr_destroy(pop->incoming_csr);
     }
@@ -796,6 +815,20 @@ void snn_network_destroy(snn_network_t* network) {
         neural_network_destroy(network->neural_net);
     }
 
+    /* CB-GPU-7: free network-level scratch tensors BEFORE destroying
+     * gpu_ctx — they were allocated against this context. */
+    if (network->gpu_ctx) {
+        nimcp_gpu_context_t* g = (nimcp_gpu_context_t*)network->gpu_ctx;
+        if (network->gpu_cb_spike_flat) {
+            nimcp_gpu_free(g, network->gpu_cb_spike_flat);
+            network->gpu_cb_spike_flat = NULL;
+        }
+        if (network->gpu_cb_depr_flat) {
+            nimcp_gpu_free(g, network->gpu_cb_depr_flat);
+            network->gpu_cb_depr_flat = NULL;
+        }
+    }
+
     /* Destroy GPU LIF state */
     if (network->gpu_lif_state) {
         nimcp_lif_state_destroy((nimcp_lif_state_t*)network->gpu_lif_state);
@@ -918,6 +951,12 @@ typedef struct {
     float         ei_ratio;           /* fraction of pulses that are inhibitory */
     bool          noise_exc_only;     /* true → all noise pulses excitatory (dead-pop rescue) */
     unsigned int* noise_seed;         /* thread-local rand_r state pointer */
+    /* CB-GPU-7: when true, host helper skips the CSR walk — the kernel
+     * `nimcp_gpu_snn_cb_deposit_csr` will do that work on GPU. External
+     * current, basket, and Poisson noise still run on host (cheap; no CSR
+     * walk involved). When false (CPU CB path), the CSR walk runs on host
+     * as before — the dep_ctx is identical to pre-CB-GPU-7 behavior. */
+    bool          cb_gpu_csr_path;
 } snn_cb_deposit_ctx_t;
 
 /**
@@ -965,6 +1004,14 @@ static void snn_cb_deposit_neuron(
             SYNAPSE_GENERIC, ctx->cb_mode, ctx->dend_mode);
     }
 
+    /* CB-GPU-7: when running on the GPU CB path, the CSR walk happens
+     * on GPU via kernel_snn_cb_deposit_csr — skip the host walk to avoid
+     * double-deposit. External current + basket + Poisson noise still
+     * run host-side because they're cheap and don't involve CSR. */
+    if (ctx->cb_gpu_csr_path) {
+        goto skip_csr_walk;
+    }
+
     /* CSR walk: per-incoming synapse, deposit if source neuron spiked
      * (delayed via spike-history ring when available — Wave E FFI fix). */
     uint32_t syn_count;
@@ -993,6 +1040,8 @@ static void snn_cb_deposit_neuron(
                 syn_type, ctx->cb_mode, ctx->dend_mode);
         }
     }
+
+skip_csr_walk: ;
 
     /* Basket feedforward inhibition — uniform across pop. negative-signed
      * so SYNAPSE_GENERIC sign-fallback routes to GABA_A in CB mode. */
@@ -1339,7 +1388,7 @@ static void snn_cb_post_spike_pop(snn_population_t* pop, float dt_ms,
  * RETURN: total spike count across the network on success, or -1 on
  *         a hard failure (caller should fall back to CPU).
  *
- * Stage A (this commit) limitations:
+ * Stage A/CB-GPU-7 limitations:
  *   - Wave H dendritic two-compartment integration is NOT supported on
  *     this path — pops with dend_mode=true skip the GPU and continue on
  *     CPU.  Verified in the gate by checking pop->dendritic_enabled.
@@ -1347,16 +1396,22 @@ static void snn_cb_post_spike_pop(snn_population_t* pop, float dt_ms,
  *     deterministic). Pops with substrate_spike_dropout_on stay on CPU.
  *   - Refractory + threshold-offset are NOT honored by the kernel
  *     (uses scalar v_thresh from params + per-neuron arrays). For the
- *     baseline this matches because both are 0 by default; production
- *     networks that rely on either should keep cb_gpu_enabled=0.
- *   These will be lifted in CB-GPU-7.
+ *     baseline this matches because both are 0 by default. Production
+ *     networks that rely on per-neuron refractory periods or dynamic
+ *     threshold offsets MUST keep cb_gpu_enabled=0 — CB-GPU-7 ports the
+ *     deposit pass to GPU but does NOT lift this constraint. A future
+ *     stage will honor refractory + v_thresh_offset per-neuron arrays.
  */
 static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
     extern float snn_tune_get_conductance_enabled(void);
     extern float snn_tune_get_cb_gpu_enabled(void);
+    extern float snn_tune_get_substrate_spike_dropout_on(void);
     if (!network || !network->gpu_ctx || !network->gpu_lif_state) return -1;
     if (snn_tune_get_conductance_enabled() == 0.0f) return -1;
     if (snn_tune_get_cb_gpu_enabled() == 0.0f) return -1;
+    /* Stage A: substrate spike-survival dropout is stochastic on CPU; the
+     * GPU kernel is deterministic. Fall back to CPU when active. */
+    if (snn_tune_get_substrate_spike_dropout_on() != 0.0f) return -1;
 
     nimcp_gpu_context_t* gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
     nimcp_lif_state_t*   lif = (nimcp_lif_state_t*)network->gpu_lif_state;
@@ -1439,6 +1494,43 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
     struct timespec _ph0, _ph1;
     double dep_ms = 0, gather_ms = 0, upload_ms = 0, kernel_ms = 0,
            dl_ms = 0, scatter_ms = 0, postspike_ms = 0;
+
+    /* ===== CB-GPU-7: pre-step lazy upload (one-time per pop) =====
+     * MUST run BEFORE the host deposit loop — the loop's `cb_gpu_csr_path`
+     * gate reads `pop->incoming_csr->gpu_resident`, and that flag needs to
+     * be settled NOW (not after the host already walked CSR into pop->g_*).
+     * Failure to hoist this caused the BLOCKER double-deposit on step 1
+     * found in walkthrough #1: host wrote CSR contribs into pop->g_*, then
+     * the kernel added them again. */
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop || !pop->incoming_csr) continue;
+        if (!pop->incoming_csr->gpu_ready) continue;  /* non-lightweight */
+        if (pop->incoming_csr->n_synapses == 0)        continue;
+        if (!pop->incoming_csr->gpu_resident) {
+            /* One-time CSR upload (~3 GB/sec PCIe at 380M synapses ≈ 2 s
+             * for the largest pops; only happens at first CB-GPU step). */
+            (void)snn_csr_upload_to_gpu(pop->incoming_csr, gpu);
+        }
+        if (pop->incoming_csr->gpu_resident && !pop->d_synapse_type_per_src) {
+            size_t st_bytes = SNN_MAX_POPULATIONS * sizeof(uint8_t);
+            pop->d_synapse_type_per_src = nimcp_gpu_malloc(gpu, st_bytes);
+            if (pop->d_synapse_type_per_src) {
+                if (nimcp_gpu_memcpy(
+                        gpu, pop->d_synapse_type_per_src,
+                        &pop->synapse_type_per_src[0], st_bytes,
+                        GPU_MEMCPY_HOST_TO_DEVICE) != 0) {
+                    nimcp_gpu_free(gpu, pop->d_synapse_type_per_src);
+                    pop->d_synapse_type_per_src = NULL;
+                } else {
+                    /* Stash gpu_ctx so destroy can free even if CSR was
+                     * released first (its d_gpu_ctx would be NULL). */
+                    pop->d_synapse_type_gpu_ctx = gpu;
+                }
+            }
+        }
+    }
+
     clock_gettime(CLOCK_MONOTONIC, &_ph0);
 
     /* ===== Per-pop deposit pass (host) =====
@@ -1477,6 +1569,13 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
             .ei_ratio       = ei_ratio,
             .noise_exc_only = noise_exc_only,
             .noise_seed     = &_cb_gpu_noise_seed,
+            /* CB-GPU-7: skip the host CSR walk only when BOTH the CSR is
+             * GPU-resident AND the per-pop synapse_type table is uploaded.
+             * The pre-step lazy-upload block above settles both flags
+             * BEFORE this loop runs, so this gate is reliable. */
+            .cb_gpu_csr_path = (pop->incoming_csr &&
+                                pop->incoming_csr->gpu_resident &&
+                                pop->d_synapse_type_per_src != NULL),
         };
 
         /* AHP/pump hyp arrays — kernel does not use them (Stage A
@@ -1574,6 +1673,140 @@ static int snn_network_step_cb_gpu(snn_network_t* network, float dt_ms) {
     upload_ms = (_ph1.tv_sec - _ph0.tv_sec) * 1000.0
               + (_ph1.tv_nsec - _ph0.tv_nsec) / 1e6;
     _ph0 = _ph1;
+
+    /* ===== CB-GPU-7: Per-pop deposit kernel (CSR walk on GPU) =====
+     * For each pop with GPU-resident incoming CSR + uploaded synapse_type,
+     * launch the deposit kernel that walks the CSR row-by-row and adds
+     * spike-driven contributions on top of the just-uploaded g_*. Pops
+     * that fail the eligibility gate (no GPU-resident CSR or no synapse
+     * type uploaded yet) had cb_gpu_csr_path=false in the host loop, so
+     * their CSR contributions are already in pop->g_* and were uploaded
+     * with the rest. The kernel is a no-op for those pops.
+     *
+     * One-time per-step buffers built here:
+     *   h_spike_flat[total_neurons]: gather of pop->spike_output (or
+     *     delayed row from spike_history ring) into one flat vector
+     *   h_depr_flat [total_neurons]: gather of pop->depression
+     * These are uploaded ONCE and reused across all pops' deposit launches
+     * within this step (each pop's CSR uses global flat indices). */
+    if (ok) {
+        float* h_spike_flat = (float*)nimcp_calloc(total_neurons, sizeof(float));
+        float* h_depr_flat  = (float*)nimcp_calloc(total_neurons, sizeof(float));
+        if (h_spike_flat && h_depr_flat) {
+            size_t off2 = 0;
+            for (uint32_t p = 0; p < network->n_populations; p++) {
+                snn_population_t* pop = network->populations[p];
+                if (!pop) continue;
+                /* Prefer the delayed-row view (Wave E FFI) so the GPU
+                 * deposit sees the same axonal-delay'd spikes the host
+                 * helper would have seen. */
+                const float* spk = snn_pop_get_delayed_spike_row(pop);
+                if (!spk && pop->spike_output) {
+                    spk = (const float*)nimcp_tensor_data(pop->spike_output);
+                }
+                if (spk) memcpy(h_spike_flat + off2, spk,
+                                pop->n_neurons * sizeof(float));
+                if (pop->depression)
+                    memcpy(h_depr_flat + off2, pop->depression,
+                           pop->n_neurons * sizeof(float));
+                off2 += pop->n_neurons;
+            }
+
+            /* Lazy-alloc network-level scratch tensors. Reallocate when the
+             * network grew (add_population mid-run): the OLD buffer is sized
+             * for the prior total_neurons, but the upload below would write
+             * total_neurons floats — OOB device write. Track capacity to
+             * detect growth. */
+            if (network->gpu_cb_flat_capacity < total_neurons) {
+                if (network->gpu_cb_spike_flat) {
+                    nimcp_gpu_free(gpu, network->gpu_cb_spike_flat);
+                    network->gpu_cb_spike_flat = NULL;
+                }
+                if (network->gpu_cb_depr_flat) {
+                    nimcp_gpu_free(gpu, network->gpu_cb_depr_flat);
+                    network->gpu_cb_depr_flat = NULL;
+                }
+                network->gpu_cb_flat_capacity = 0;
+            }
+            if (!network->gpu_cb_spike_flat) {
+                network->gpu_cb_spike_flat =
+                    nimcp_gpu_malloc(gpu, total_neurons * sizeof(float));
+            }
+            if (!network->gpu_cb_depr_flat) {
+                network->gpu_cb_depr_flat =
+                    nimcp_gpu_malloc(gpu, total_neurons * sizeof(float));
+            }
+            if (network->gpu_cb_spike_flat && network->gpu_cb_depr_flat) {
+                network->gpu_cb_flat_capacity = total_neurons;
+            }
+
+            /* Upload this step's flat vectors; if either upload fails,
+             * skip the kernel-launch loop entirely. Host already walked
+             * CSR for any pop whose `cb_gpu_csr_path` was false (gate at
+             * the host loop), but for pops where the gate was TRUE the
+             * CSR contributions would be silently lost on a failed
+             * upload. Conservative: refuse to launch and let the next
+             * step retry. */
+            bool spike_uploaded = false, depr_uploaded = false;
+            if (network->gpu_cb_spike_flat && network->gpu_cb_depr_flat) {
+                spike_uploaded = (nimcp_gpu_memcpy(
+                    gpu, network->gpu_cb_spike_flat, h_spike_flat,
+                    total_neurons * sizeof(float),
+                    GPU_MEMCPY_HOST_TO_DEVICE) == 0);
+                depr_uploaded  = (nimcp_gpu_memcpy(
+                    gpu, network->gpu_cb_depr_flat, h_depr_flat,
+                    total_neurons * sizeof(float),
+                    GPU_MEMCPY_HOST_TO_DEVICE) == 0);
+            }
+
+            if (spike_uploaded && depr_uploaded) {
+                /* Launch the kernel per pop. Lazy-upload synapse_type table
+                 * + CSR if needed; if any prereq fails, skip this pop (its
+                 * CSR contributions are still on host pop->g_*, already
+                 * uploaded above). */
+                size_t off3 = 0;
+                for (uint32_t p = 0; p < network->n_populations; p++) {
+                    snn_population_t* pop = network->populations[p];
+                    if (!pop) {
+                        continue;
+                    }
+                    const uint32_t pop_neurons = pop->n_neurons;
+                    /* Skip pops that didn't pass the pre-step upload gate.
+                     * Their cb_gpu_csr_path was set to false in the host
+                     * loop, so their CSR contributions are already in the
+                     * resident lif d_g_* (host walked + uploaded). The
+                     * kernel must be a no-op for these pops. */
+                    if (!pop->incoming_csr ||
+                        pop->incoming_csr->n_synapses == 0 ||
+                        !pop->incoming_csr->gpu_resident ||
+                        !pop->d_synapse_type_per_src) {
+                        off3 += pop_neurons;
+                        continue;
+                    }
+                    /* Launch. Kernel reads lif_state's d_g_* directly so
+                     * we pass them; offset is the pop's flat start. */
+                    nimcp_gpu_snn_cb_deposit_csr(
+                        gpu,
+                        (const float*)network->gpu_cb_spike_flat,
+                        (const float*)network->gpu_cb_depr_flat,
+                        (const float*)pop->incoming_csr->d_weights,
+                        (const uint32_t*)pop->incoming_csr->d_flat_col_idx,
+                        (const uint32_t*)pop->incoming_csr->d_src_pop_idx,
+                        (const uint32_t*)pop->incoming_csr->d_row_ptr,
+                        (const uint8_t*)pop->d_synapse_type_per_src,
+                        lif->g_ampa   ? (float*)lif->g_ampa->data   : NULL,
+                        lif->g_nmda   ? (float*)lif->g_nmda->data   : NULL,
+                        lif->g_gaba_a ? (float*)lif->g_gaba_a->data : NULL,
+                        lif->g_gaba_b ? (float*)lif->g_gaba_b->data : NULL,
+                        (uint32_t)off3,
+                        pop_neurons);
+                    off3 += pop_neurons;
+                }
+            }
+        }
+        if (h_spike_flat) nimcp_free(h_spike_flat);
+        if (h_depr_flat)  nimcp_free(h_depr_flat);
+    }
 
     /* ===== GPU forward_cb =====
      * Integrates V, writes spikes, applies per-receptor decay AFTER
@@ -4165,6 +4398,19 @@ int snn_network_add_population_lightweight(snn_network_t* network,
     return (int)pop_id;
 }
 
+/* CB-GPU-7 invariant: this function frees + NULLs the device-side mirror
+ * dst->d_synapse_type_per_src so the next CB-GPU step re-uploads the
+ * receptor-routing table. The free is NOT lock-protected. All current
+ * callers run at brain init (src/core/brain/init/* and snn_hierarchical),
+ * so the GPU step is never in flight and the race is unreachable today.
+ *
+ * If you ever call this from training/sleep/runtime-RPC paths, you MUST
+ * first add synchronization (network->step_mutex or an atomic
+ * step_in_flight flag), or refactor to defer device-side invalidation
+ * onto the next GPU step (stash a "dirty src_pop" set on the pop and
+ * have snn_network_step_cb_gpu's lazy-upload block honor it). See
+ * memory note "project_runtime_pop_wiring_upgrades.md" for the four
+ * candidate features and the recommended defer pattern. */
 int snn_network_connect_populations(snn_network_t* network,
                                     uint32_t src_pop,
                                     uint32_t dst_pop,
@@ -4200,6 +4446,19 @@ int snn_network_connect_populations(snn_network_t* network,
      * receptor-uniform so this should not happen in practice. */
     if (src_pop < SNN_MAX_POPULATIONS) {
         dst->synapse_type_per_src[src_pop] = (uint8_t)synapse_type;
+        /* CB-GPU-7: invalidate device-side mirror so the next CB GPU step
+         * re-uploads the table. Without this, the deposit kernel routes
+         * via stale receptor types after runtime re-wiring. */
+        if (dst->d_synapse_type_per_src) {
+            nimcp_gpu_context_t* st_gpu =
+                (nimcp_gpu_context_t*)dst->d_synapse_type_gpu_ctx;
+            if (!st_gpu) st_gpu = (nimcp_gpu_context_t*)network->gpu_ctx;
+            if (st_gpu) {
+                nimcp_gpu_free(st_gpu, dst->d_synapse_type_per_src);
+            }
+            dst->d_synapse_type_per_src = NULL;
+            dst->d_synapse_type_gpu_ctx = NULL;
+        }
     }
 
     int n_connections = 0;
