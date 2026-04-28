@@ -1672,6 +1672,10 @@ int snn_network_step(snn_network_t* network, float dt) {
     bool gpu_executed = false;
     struct timespec _step_t0, _step_t1, _phase_t0, _phase_t1;
     double _isyn_ms = 0, _lif_ms = 0, _readback_ms = 0;
+    /* CB-GPU-7 instrumentation: time the post-step GPU-path phases so we
+     * can see where the 2.7s/step is actually spent (deposit pass and
+     * kernel both report 0ms — the cost is somewhere in post-step work). */
+    double _cbgpu_ms = 0, _substrate_debit_ms = 0, _ema_ring_ms = 0;
     clock_gettime(CLOCK_MONOTONIC, &_step_t0);
 
     /* CB migration: function-scope declaration so the GPU-skip gate
@@ -1717,7 +1721,11 @@ int snn_network_step(snn_network_t* network, float dt) {
     if (network->gpu_lif_state && network->gpu_ctx
         && snn_tune_get_conductance_enabled() != 0.0f
         && snn_tune_get_cb_gpu_enabled()      != 0.0f) {
+        clock_gettime(CLOCK_MONOTONIC, &_phase_t0);
         int cb_gpu_spikes = snn_network_step_cb_gpu(network, dt_ms);
+        clock_gettime(CLOCK_MONOTONIC, &_phase_t1);
+        _cbgpu_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
+                  + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
         if (cb_gpu_spikes >= 0) {
             total_spikes += cb_gpu_spikes;
             gpu_executed = true;
@@ -2797,6 +2805,7 @@ int snn_network_step(snn_network_t* network, float dt) {
      * per pop. */
     if (gpu_executed && network->substrate &&
         snn_tune_get_substrate_enabled() != 0.0f) {
+        clock_gettime(CLOCK_MONOTONIC, &_phase_t0);
         for (uint32_t p = 0; p < network->n_populations; p++) {
             snn_population_t* pop = network->populations[p];
             if (!pop || !pop->spike_output) continue;
@@ -2812,6 +2821,9 @@ int snn_network_step(snn_network_t* network, float dt) {
                                      pop_spikes_this_step,
                                      0 /* n_plasticity */);
         }
+        clock_gettime(CLOCK_MONOTONIC, &_phase_t1);
+        _substrate_debit_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
+                            + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
     }
 
     /* Update simulation time */
@@ -2822,6 +2834,7 @@ int snn_network_step(snn_network_t* network, float dt) {
      * Counts fresh spike_output from this step and folds into an EMA
      * with alpha=0.01 (≈100-step time constant). The EMA is consumed
      * by snn_homeostatic_apply() which runs every N training steps. */
+    clock_gettime(CLOCK_MONOTONIC, &_phase_t0);
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
         if (!pop || !pop->lightweight || !pop->spike_output) continue;
@@ -2866,6 +2879,9 @@ int snn_network_step(snn_network_t* network, float dt) {
                 (pop->spike_history_head + 1u) % SNN_SPIKE_HISTORY_SLOTS);
         }
     }
+    clock_gettime(CLOCK_MONOTONIC, &_phase_t1);
+    _ema_ring_ms = (_phase_t1.tv_sec - _phase_t0.tv_sec) * 1000.0
+                 + (_phase_t1.tv_nsec - _phase_t0.tv_nsec) / 1e6;
 
     /* Update statistics */
     clock_gettime(CLOCK_MONOTONIC, &_step_t1);
@@ -2961,10 +2977,12 @@ int snn_network_step(snn_network_t* network, float dt) {
 
     /* Log timing breakdown every step for profiling */
     {
-        NIMCP_LOGGING_INFO("SNN step %llu: total=%.1fms (isyn=%.1fms lif+readback=%.1fms) "
+        NIMCP_LOGGING_INFO("SNN step %llu: total=%.1fms (isyn=%.1fms lif+readback=%.1fms "
+                           "cbgpu=%.1fms substrate_debit=%.1fms ema_ring=%.1fms) "
                            "spikes=%d gpu=%s avg=%.1fms",
                            (unsigned long long)network->stats.total_steps,
                            step_ms, _isyn_ms, _lif_ms,
+                           _cbgpu_ms, _substrate_debit_ms, _ema_ring_ms,
                            total_spikes, gpu_executed ? "yes" : "no",
                            network->stats.avg_step_time_ms);
     }
