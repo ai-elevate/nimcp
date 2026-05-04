@@ -806,3 +806,13 @@ uint32_t fno_audio_param_count(const fno_audio_processor_t* proc) {
     count += proc->embed_dim * proc->hidden_channels + proc->embed_dim; /* proj W + b */
     return count;
 }
+
+void fno_audio_record_loss(fno_audio_processor_t* proc, float loss) {
+    if (!proc) return;
+    proc->last_loss = loss;
+    if (proc->ema_loss == 0.0f && proc->forward_steps <= 1) {
+        proc->ema_loss = loss;
+    } else {
+        proc->ema_loss = 0.99f * proc->ema_loss + 0.01f * loss;
+    }
+}

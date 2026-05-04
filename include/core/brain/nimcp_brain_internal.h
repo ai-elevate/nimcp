@@ -305,6 +305,22 @@ struct brain_struct {
         uint64_t fno_audio_steps;/**< FNO audio forward steps */
         uint32_t fno_audio_params;/**< FNO audio parameter count */
 
+        /* Per-cortex FNO metrics (visual/speech/somato — audio above) */
+        float fno_visual_loss;    /**< Last FNO visual cortex distill loss */
+        float fno_visual_ema_loss;/**< EMA of FNO visual loss */
+        uint64_t fno_visual_steps;/**< FNO visual forward steps */
+        uint32_t fno_visual_params;/**< FNO visual parameter count */
+
+        float fno_speech_loss;
+        float fno_speech_ema_loss;
+        uint64_t fno_speech_steps;
+        uint32_t fno_speech_params;
+
+        float fno_somato_loss;
+        float fno_somato_ema_loss;
+        uint64_t fno_somato_steps;
+        uint32_t fno_somato_params;
+
         float fno_pop_train_mse; /**< SNN FNO population training MSE */
         float fno_pop_val_mse;   /**< SNN FNO population validation MSE */
         bool fno_pop_ready;      /**< SNN FNO ready to replace LIF */

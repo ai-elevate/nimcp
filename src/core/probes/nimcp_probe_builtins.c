@@ -107,9 +107,22 @@ static void sample_network_metrics(
     EMIT_F("hnn.energy",     brain->network_metrics.hnn_energy);
     EMIT_F("hnn.deviation",  brain->network_metrics.hnn_energy_deviation);
     EMIT_I("hnn.active",     brain->network_metrics.hnn_active ? 1 : 0);
-    EMIT_F("fno.ema_loss",   brain->network_metrics.fno_audio_ema_loss);
-    EMIT_I("fno.steps",      (int64_t)brain->network_metrics.fno_audio_steps);
-    EMIT_I("fno.params",     (int64_t)brain->network_metrics.fno_audio_params);
+    EMIT_F("fno.audio.ema_loss",  brain->network_metrics.fno_audio_ema_loss);
+    EMIT_F("fno.audio.last_loss", brain->network_metrics.fno_audio_loss);
+    EMIT_I("fno.audio.steps",     (int64_t)brain->network_metrics.fno_audio_steps);
+    EMIT_I("fno.audio.params",    (int64_t)brain->network_metrics.fno_audio_params);
+    EMIT_F("fno.visual.ema_loss",  brain->network_metrics.fno_visual_ema_loss);
+    EMIT_F("fno.visual.last_loss", brain->network_metrics.fno_visual_loss);
+    EMIT_I("fno.visual.steps",     (int64_t)brain->network_metrics.fno_visual_steps);
+    EMIT_I("fno.visual.params",    (int64_t)brain->network_metrics.fno_visual_params);
+    EMIT_F("fno.speech.ema_loss",  brain->network_metrics.fno_speech_ema_loss);
+    EMIT_F("fno.speech.last_loss", brain->network_metrics.fno_speech_loss);
+    EMIT_I("fno.speech.steps",     (int64_t)brain->network_metrics.fno_speech_steps);
+    EMIT_I("fno.speech.params",    (int64_t)brain->network_metrics.fno_speech_params);
+    EMIT_F("fno.somato.ema_loss",  brain->network_metrics.fno_somato_ema_loss);
+    EMIT_F("fno.somato.last_loss", brain->network_metrics.fno_somato_loss);
+    EMIT_I("fno.somato.steps",     (int64_t)brain->network_metrics.fno_somato_steps);
+    EMIT_I("fno.somato.params",    (int64_t)brain->network_metrics.fno_somato_params);
 
     #undef EMIT_F
     #undef EMIT_I

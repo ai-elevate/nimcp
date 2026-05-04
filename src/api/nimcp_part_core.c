@@ -240,6 +240,7 @@ float nimcp_brain_learn_vector_batch(
         extern void cortex_cnn_set_fno_audio(cortex_cnn_processor_t*, void*);
         extern void cortex_cnn_set_fno_visual(cortex_cnn_processor_t*, void*);
         extern void cortex_cnn_set_fno_speech(cortex_cnn_processor_t*, void*);
+        extern void cortex_cnn_set_fno_somato(cortex_cnn_processor_t*, void*);
         if (ib->staged_sensory.visual_frame && !ib->cortex_cnns[0]) {
             ib->cortex_cnns[0] = cortex_cnn_create(0, 0);
             if (ib->cortex_cnns[0]) {
@@ -261,8 +262,21 @@ float nimcp_brain_learn_vector_batch(
                 if (fno) cortex_cnn_set_fno_speech(ib->cortex_cnns[2], fno);
             }
         }
-        if (ib->staged_sensory.somato_data && !ib->cortex_cnns[3])
+        if (ib->staged_sensory.somato_data && !ib->cortex_cnns[3]) {
             ib->cortex_cnns[3] = cortex_cnn_create(3, 0);
+            if (ib->cortex_cnns[3]) {
+                extern void* cortex_cnn_get_fno_somato(const cortex_cnn_processor_t*);
+                /* Somato FNO: spectral analysis of multi-scale wavelet body schema.
+                 * Input size 256 covers wavelet decomposition of typical 128-segment
+                 * body schema (128+64+32+ pad ≈ 256). Resampled at runtime.
+                 * Guarded by get-check so re-entry on already-created cortex
+                 * doesn't leak FNO instances. */
+                if (!cortex_cnn_get_fno_somato(ib->cortex_cnns[3])) {
+                    void* fno = fno_audio_create(256, 64, 16, 32, 2);
+                    if (fno) cortex_cnn_set_fno_somato(ib->cortex_cnns[3], fno);
+                }
+            }
+        }
     }
 
     // GPU gradient accumulation handles the batch internally

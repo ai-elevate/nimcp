@@ -8381,6 +8381,45 @@ static PyObject* Brain_get_network_metrics_py(BrainObject* self, PyObject* Py_UN
         PyDict_SetItemString(d, "fno_audio_params", v); Py_DECREF(v);
     }
 
+    /* Add FNO visual metrics if available */
+    if (ib->network_metrics.fno_visual_steps > 0) {
+        PyObject* v;
+        v = PyFloat_FromDouble(ib->network_metrics.fno_visual_loss);
+        PyDict_SetItemString(d, "fno_visual_loss", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.fno_visual_ema_loss);
+        PyDict_SetItemString(d, "fno_visual_ema_loss", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLongLong(ib->network_metrics.fno_visual_steps);
+        PyDict_SetItemString(d, "fno_visual_steps", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLong(ib->network_metrics.fno_visual_params);
+        PyDict_SetItemString(d, "fno_visual_params", v); Py_DECREF(v);
+    }
+
+    /* Add FNO speech metrics if available */
+    if (ib->network_metrics.fno_speech_steps > 0) {
+        PyObject* v;
+        v = PyFloat_FromDouble(ib->network_metrics.fno_speech_loss);
+        PyDict_SetItemString(d, "fno_speech_loss", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.fno_speech_ema_loss);
+        PyDict_SetItemString(d, "fno_speech_ema_loss", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLongLong(ib->network_metrics.fno_speech_steps);
+        PyDict_SetItemString(d, "fno_speech_steps", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLong(ib->network_metrics.fno_speech_params);
+        PyDict_SetItemString(d, "fno_speech_params", v); Py_DECREF(v);
+    }
+
+    /* Add FNO somato metrics if available */
+    if (ib->network_metrics.fno_somato_steps > 0) {
+        PyObject* v;
+        v = PyFloat_FromDouble(ib->network_metrics.fno_somato_loss);
+        PyDict_SetItemString(d, "fno_somato_loss", v); Py_DECREF(v);
+        v = PyFloat_FromDouble(ib->network_metrics.fno_somato_ema_loss);
+        PyDict_SetItemString(d, "fno_somato_ema_loss", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLongLong(ib->network_metrics.fno_somato_steps);
+        PyDict_SetItemString(d, "fno_somato_steps", v); Py_DECREF(v);
+        v = PyLong_FromUnsignedLong(ib->network_metrics.fno_somato_params);
+        PyDict_SetItemString(d, "fno_somato_params", v); Py_DECREF(v);
+    }
+
     /* Add FNO population metrics if available */
     if (ib->network_metrics.fno_pop_train_steps > 0) {
         PyObject* v;

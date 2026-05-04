@@ -216,6 +216,16 @@ cortex_cnn_type_t cortex_cnn_get_type(const cortex_cnn_processor_t* proc);
  */
 const char* cortex_cnn_type_name(cortex_cnn_type_t type);
 
+/* FNO sub-processor attachment (per-modality spectral path) */
+void  cortex_cnn_set_fno_audio (cortex_cnn_processor_t* proc, void* fno);
+void  cortex_cnn_set_fno_visual(cortex_cnn_processor_t* proc, void* fno);
+void  cortex_cnn_set_fno_speech(cortex_cnn_processor_t* proc, void* fno);
+void  cortex_cnn_set_fno_somato(cortex_cnn_processor_t* proc, void* fno);
+void* cortex_cnn_get_fno_audio (const cortex_cnn_processor_t* proc);
+void* cortex_cnn_get_fno_visual(const cortex_cnn_processor_t* proc);
+void* cortex_cnn_get_fno_speech(const cortex_cnn_processor_t* proc);
+void* cortex_cnn_get_fno_somato(const cortex_cnn_processor_t* proc);
+
 /* ========================================================================= */
 /* UTM Integration                                                            */
 /* ========================================================================= */

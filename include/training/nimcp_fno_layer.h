@@ -146,6 +146,10 @@ void fno_audio_zero_grad(fno_audio_processor_t* proc);
 /** Get total parameter count */
 uint32_t fno_audio_param_count(const fno_audio_processor_t* proc);
 
+/** Record loss for metrics tracking (called by cortex_cnn_backward).
+ *  Updates last_loss + ema_loss (alpha=0.01). */
+void fno_audio_record_loss(fno_audio_processor_t* proc, float loss);
+
 #ifdef __cplusplus
 }
 #endif

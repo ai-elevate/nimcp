@@ -149,10 +149,31 @@ struct cortex_cnn_processor {
     float confidence;                 /* Softmax max from last forward */
     uint32_t num_params;              /* Approximate param count */
 
-    /* FNO spectral processor (alternative/supplement to CNN for any modality) */
-    void* fno_audio;                  /* fno_audio_processor_t* for audio */
-    void* fno_visual;                 /* fno_audio_processor_t* for visual spatial frequencies */
-    void* fno_speech;                 /* fno_audio_processor_t* for speech spectral patterns */
+    /* FNO spectral processors (per-modality). Each is fno_audio_processor_t*. */
+    void* fno_audio;
+    void* fno_visual;
+    void* fno_speech;
+    void* fno_somato;
+
+    /* Phase 3 self-distillation training: per-FNO target (pre-FNO embedding[:64])
+     * and last fno output. has_*_target=true means cortex_cnn_backward should
+     * train the FNO on this step. Audio's FNO is the embedding (no pre-FNO
+     * target available) — its has_target stays false. */
+    float fno_visual_target[64];
+    float fno_visual_emb[64];
+    bool  fno_visual_has_target;
+    float fno_speech_target[64];
+    float fno_speech_emb[64];
+    bool  fno_speech_has_target;
+    float fno_somato_target[64];
+    float fno_somato_emb[64];
+    bool  fno_somato_has_target;
+
+    /* FNO mix-in ramp: fno contribution scales as min(1.0, fno_distill_calls/RAMP_STEPS).
+     * Counter is per-cortex, zero-initialized at create — NOT persisted in checkpoints
+     * — so each daemon restart re-ramps. Gives the main net time to adapt as FNOs
+     * transition from random-noise output to CNN-distilled output. */
+    uint64_t fno_distill_calls;
 
     /* Substrate integration (Phase 3). Pointer borrowed. region_id is
      * per-modality so each cortex can have different local chemistry. */
@@ -1014,6 +1035,10 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
     if (proc->fno_visual && proc->embedding) {
         fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_visual;
         uint32_t fno_in = fno->input_size;
+        /* Store target BEFORE adding FNO contribution (pre-FNO embedding[:64]). */
+        uint32_t tn = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
+        for (uint32_t i = 0; i < tn; i++) proc->fno_visual_target[i] = proc->embedding[i];
+        for (uint32_t i = tn; i < 64; i++) proc->fno_visual_target[i] = 0.0f;
         float* scanline = (float*)nimcp_calloc(fno_in, sizeof(float));
         if (scanline) {
             /* Downsample grayscale to FNO input size */
@@ -1025,8 +1050,14 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
             float fno_emb[64];
             if (fno_audio_forward(fno, scanline, fno_in, fno_emb) == 0) {
                 uint32_t n = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
-                for (uint32_t i = 0; i < n; i++)
-                    proc->embedding[i] += 0.2f * fno_emb[i];
+                float ramp = (float)proc->fno_distill_calls / 1000.0f;
+                if (ramp > 1.0f) ramp = 1.0f;
+                float mix = 0.2f * ramp;
+                for (uint32_t i = 0; i < n; i++) {
+                    proc->fno_visual_emb[i] = fno_emb[i];
+                    proc->embedding[i] += mix * fno_emb[i];
+                }
+                proc->fno_visual_has_target = true;
             }
             nimcp_free(scanline);
         }
@@ -1130,12 +1161,22 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
     if (proc->fno_speech && proc->embedding) {
         fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_speech;
         uint32_t fno_in = fno->input_size;
+        /* Store target BEFORE adding FNO contribution. */
+        uint32_t tn = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
+        for (uint32_t i = 0; i < tn; i++) proc->fno_speech_target[i] = proc->embedding[i];
+        for (uint32_t i = tn; i < 64; i++) proc->fno_speech_target[i] = 0.0f;
         float fno_emb[64];
+        float ramp = (float)proc->fno_distill_calls / 1000.0f;
+        if (ramp > 1.0f) ramp = 1.0f;
+        float mix = 0.2f * ramp;
         if (size == fno_in) {
             if (fno_audio_forward(fno, phonemes, fno_in, fno_emb) == 0) {
                 uint32_t n = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
-                for (uint32_t i = 0; i < n; i++)
-                    proc->embedding[i] += 0.2f * fno_emb[i];
+                for (uint32_t i = 0; i < n; i++) {
+                    proc->fno_speech_emb[i] = fno_emb[i];
+                    proc->embedding[i] += mix * fno_emb[i];
+                }
+                proc->fno_speech_has_target = true;
             }
         } else if (fno_in > 0) {
             /* Resample to FNO input size */
@@ -1147,8 +1188,11 @@ const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
                 }
                 if (fno_audio_forward(fno, resampled, fno_in, fno_emb) == 0) {
                     uint32_t n = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
-                    for (uint32_t i = 0; i < n; i++)
-                        proc->embedding[i] += 0.2f * fno_emb[i];
+                    for (uint32_t i = 0; i < n; i++) {
+                        proc->fno_speech_emb[i] = fno_emb[i];
+                        proc->embedding[i] += mix * fno_emb[i];
+                    }
+                    proc->fno_speech_has_target = true;
                 }
                 nimcp_free(resampled);
             }
@@ -1268,6 +1312,46 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
      * the design invariant. Moving both hooks out of cortex_forward_1d and
      * into this explicit sequence makes the ordering uniform. */
     const float* result = cortex_forward_1d(proc, wavelet_buf, total_wavelet);
+    /* FNO somato: spectral analysis on wavelet-decomposed body schema.
+     * Pacinian corpuscles (vibration receptors) tune to specific frequencies
+     * — FNO captures the Fourier modes of multi-scale touch input. */
+    if (result && proc->fno_somato && proc->embedding) {
+        fno_audio_processor_t* fno = (fno_audio_processor_t*)proc->fno_somato;
+        uint32_t fno_in = fno->input_size;
+        /* Store target BEFORE adding FNO contribution. */
+        uint32_t tn = (proc->embedding_dim < 64) ? proc->embedding_dim : 64;
+        for (uint32_t i = 0; i < tn; i++) proc->fno_somato_target[i] = proc->embedding[i];
+        for (uint32_t i = tn; i < 64; i++) proc->fno_somato_target[i] = 0.0f;
+        float fno_emb[64];
+        float ramp = (float)proc->fno_distill_calls / 1000.0f;
+        if (ramp > 1.0f) ramp = 1.0f;
+        float mix = 0.2f * ramp;
+        if (total_wavelet == fno_in) {
+            if (fno_audio_forward(fno, wavelet_buf, fno_in, fno_emb) == 0) {
+                for (uint32_t i = 0; i < tn; i++) {
+                    proc->fno_somato_emb[i] = fno_emb[i];
+                    proc->embedding[i] += mix * fno_emb[i];
+                }
+                proc->fno_somato_has_target = true;
+            }
+        } else if (fno_in > 0) {
+            float* resampled = (float*)nimcp_calloc(fno_in, sizeof(float));
+            if (resampled) {
+                for (uint32_t i = 0; i < fno_in; i++) {
+                    uint32_t src = (i * total_wavelet) / fno_in;
+                    if (src < total_wavelet) resampled[i] = wavelet_buf[src];
+                }
+                if (fno_audio_forward(fno, resampled, fno_in, fno_emb) == 0) {
+                    for (uint32_t i = 0; i < tn; i++) {
+                        proc->fno_somato_emb[i] = fno_emb[i];
+                        proc->embedding[i] += mix * fno_emb[i];
+                    }
+                    proc->fno_somato_has_target = true;
+                }
+                nimcp_free(resampled);
+            }
+        }
+    }
     nimcp_free(wavelet_buf);
 
     if (result) {
@@ -1357,6 +1441,40 @@ float cortex_cnn_backward(cortex_cnn_processor_t* proc,
     /* Restore LR after the step. */
     if (lr_scale != 1.0f && opt) {
         nimcp_optimizer_set_lr(opt, original_lr);
+    }
+
+    /* Phase 3: Self-distillation training for cortex FNOs.
+     * For visual/speech/somato (where FNO supplements CNN), train FNO to
+     * predict the pre-FNO CNN embedding. Loss = MSE(fno_emb, target).
+     * Audio's FNO IS the embedding (no pre-FNO target) — skip. */
+    {
+        const float fno_lr = 0.001f;
+        struct { void* fno; float* target; float* emb; bool* has; uint32_t metric_slot; } feeds[3] = {
+            { proc->fno_visual, proc->fno_visual_target, proc->fno_visual_emb, &proc->fno_visual_has_target, 0 },
+            { proc->fno_speech, proc->fno_speech_target, proc->fno_speech_emb, &proc->fno_speech_has_target, 1 },
+            { proc->fno_somato, proc->fno_somato_target, proc->fno_somato_emb, &proc->fno_somato_has_target, 2 },
+        };
+        bool any_trained = false;
+        for (int fi = 0; fi < 3; fi++) {
+            if (!feeds[fi].fno || !*feeds[fi].has) continue;
+            fno_audio_processor_t* fno = (fno_audio_processor_t*)feeds[fi].fno;
+            uint32_t ed = (fno->embed_dim < 64) ? fno->embed_dim : 64;
+            float loss = 0.0f;
+            float grad[64];
+            for (uint32_t i = 0; i < ed; i++) {
+                float diff = feeds[fi].emb[i] - feeds[fi].target[i];
+                loss += diff * diff;
+                grad[i] = 2.0f * diff / (float)ed;
+            }
+            loss /= (float)ed;
+            fno_audio_zero_grad(fno);
+            fno_audio_backward(fno, grad, NULL);
+            fno_audio_step(fno, fno_lr);
+            fno_audio_record_loss(fno, loss);
+            *feeds[fi].has = false;  /* one training step per backward call */
+            any_trained = true;
+        }
+        if (any_trained) proc->fno_distill_calls++;
     }
 
     /* Substrate backward debit — plasticity updates are the expensive metabolic
@@ -1465,21 +1583,14 @@ uint32_t cortex_cnn_fuse(cortex_cnn_processor_t* procs[], uint32_t count,
 /* Public API: Metrics                                                        */
 /* ========================================================================= */
 
-void cortex_cnn_set_fno_audio(cortex_cnn_processor_t* proc, void* fno) {
-    if (proc) proc->fno_audio = fno;
-}
-
-void* cortex_cnn_get_fno_audio(const cortex_cnn_processor_t* proc) {
-    return proc ? proc->fno_audio : NULL;
-}
-
-void cortex_cnn_set_fno_visual(cortex_cnn_processor_t* proc, void* fno) {
-    if (proc) proc->fno_visual = fno;
-}
-
-void cortex_cnn_set_fno_speech(cortex_cnn_processor_t* proc, void* fno) {
-    if (proc) proc->fno_speech = fno;
-}
+void cortex_cnn_set_fno_audio (cortex_cnn_processor_t* proc, void* fno) { if (proc) proc->fno_audio  = fno; }
+void cortex_cnn_set_fno_visual(cortex_cnn_processor_t* proc, void* fno) { if (proc) proc->fno_visual = fno; }
+void cortex_cnn_set_fno_speech(cortex_cnn_processor_t* proc, void* fno) { if (proc) proc->fno_speech = fno; }
+void cortex_cnn_set_fno_somato(cortex_cnn_processor_t* proc, void* fno) { if (proc) proc->fno_somato = fno; }
+void* cortex_cnn_get_fno_audio (const cortex_cnn_processor_t* proc) { return proc ? proc->fno_audio  : NULL; }
+void* cortex_cnn_get_fno_visual(const cortex_cnn_processor_t* proc) { return proc ? proc->fno_visual : NULL; }
+void* cortex_cnn_get_fno_speech(const cortex_cnn_processor_t* proc) { return proc ? proc->fno_speech : NULL; }
+void* cortex_cnn_get_fno_somato(const cortex_cnn_processor_t* proc) { return proc ? proc->fno_somato : NULL; }
 
 int cortex_cnn_get_metrics(const cortex_cnn_processor_t* proc, cortex_cnn_metrics_t* out) {
     if (!proc || !out) return -1;

@@ -55,6 +55,15 @@ class CuriositySelector:
         """Pass-through for sensory queries — curiosity does not bias these."""
         return self.source.get_sensory()
 
+    def get_codebase_snippet(self):
+        return self.source.get_codebase_snippet()
+
+    def get_advanced(self, domain=None):
+        return self.source.get_advanced(domain)
+
+    def get_question(self):
+        return self.source.get_question()
+
     def pick_object(self) -> tuple[str, str]:
         """Return (name, description) for an object-type stimulus."""
         if random.random() < self.bias:

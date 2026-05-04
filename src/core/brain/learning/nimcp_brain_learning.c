@@ -1481,7 +1481,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             brain->cortex_cnns[3] = cortex_cnn_create(3, 0);
             _lazy_cortex_created |= (brain->cortex_cnns[3] != NULL);
         }
-        /* Somato doesn't use FNO — touch/pressure data is spatial, not spectral */
+        /* Somato FNO attached below — spectral analysis of multi-scale wavelet output. */
         /* Wire substrate + thalamic router into any cortex CNN that was just
          * created. Idempotent and NULL-tolerant. */
         if (_lazy_cortex_created) {
@@ -1512,6 +1512,15 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 if (fno) {
                     cortex_cnn_set_fno_speech(brain->cortex_cnns[2], fno);
                     NIMCP_LOGGING_INFO("FNO attached to speech cortex (128 samples, 64 modes)");
+                }
+            }
+            /* Somato: spectral analysis of wavelet-decomposed body schema */
+            if (brain->cortex_cnns[3]) {
+                extern void cortex_cnn_set_fno_somato(struct cortex_cnn_processor*, void*);
+                void* fno = fno_audio_create(256, 64, 16, 32, 2);
+                if (fno) {
+                    cortex_cnn_set_fno_somato(brain->cortex_cnns[3], fno);
+                    NIMCP_LOGGING_INFO("FNO attached to somato cortex (256 wavelet samples, 64 modes)");
                 }
             }
         }
@@ -2132,36 +2141,50 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             }
         }
 
-        /* Update FNO audio metrics from cortex CNN audio processor */
-        if (brain->cortex_cnns[1]) {
-            extern void* cortex_cnn_get_fno_audio(const struct cortex_cnn_processor*);
-            void* fno = cortex_cnn_get_fno_audio(brain->cortex_cnns[1]);
-            if (fno) {
-                extern float fno_audio_get_ema_loss(const void*);
-                extern float fno_audio_get_last_loss(const void*);
-                extern uint64_t fno_audio_get_steps(const void*);
-                extern uint32_t fno_audio_get_param_count(const void*);
-                /* Cortex audio FNO is currently inference-only —
-                 * fno_audio_processor_t::ema_loss / last_loss are never
-                 * written by nimcp_fno_layer.c (fno_audio_forward only
-                 * increments forward_steps). Reading them returns 0.0,
-                 * which used to clobber whatever brain_part_core wrote
-                 * from the SNN-FNO populations into the same metric
-                 * field. Only update steps/params here; gate ema_loss /
-                 * last_loss writes on a non-zero value so the SNN-FNO
-                 * source-of-truth survives. 2026-04-26 fno_loss=0/1282-step
-                 * paradox. */
-                float _cortex_fno_ema  = fno_audio_get_ema_loss(fno);
-                float _cortex_fno_last = fno_audio_get_last_loss(fno);
-                if (_cortex_fno_ema > 0.0f) {
-                    brain->network_metrics.fno_audio_ema_loss = _cortex_fno_ema;
-                }
-                if (_cortex_fno_last > 0.0f) {
-                    brain->network_metrics.fno_audio_loss = _cortex_fno_last;
-                }
-                brain->network_metrics.fno_audio_steps = fno_audio_get_steps(fno);
-                brain->network_metrics.fno_audio_params = fno_audio_get_param_count(fno);
-            }
+        /* Update FNO metrics from all 4 cortex CNN processors.
+         * Visual/speech/somato use self-distillation training (loss written
+         * by cortex_cnn_backward via fno_audio_record_loss). Audio FNO is
+         * inference-only (no pre-FNO target available); its loss stays 0
+         * until a reconstruction objective is added. */
+        struct { uint32_t cortex_idx; const char* name; uint32_t metric;
+                 float* last_loss; float* ema_loss; uint64_t* steps; uint32_t* params;
+                 void* (*get)(const struct cortex_cnn_processor*); } _fno_slots[4] = {
+            { 0, "visual", 0,
+              &brain->network_metrics.fno_visual_loss, &brain->network_metrics.fno_visual_ema_loss,
+              &brain->network_metrics.fno_visual_steps, &brain->network_metrics.fno_visual_params, NULL },
+            { 1, "audio", 1,
+              &brain->network_metrics.fno_audio_loss, &brain->network_metrics.fno_audio_ema_loss,
+              &brain->network_metrics.fno_audio_steps, &brain->network_metrics.fno_audio_params, NULL },
+            { 2, "speech", 2,
+              &brain->network_metrics.fno_speech_loss, &brain->network_metrics.fno_speech_ema_loss,
+              &brain->network_metrics.fno_speech_steps, &brain->network_metrics.fno_speech_params, NULL },
+            { 3, "somato", 3,
+              &brain->network_metrics.fno_somato_loss, &brain->network_metrics.fno_somato_ema_loss,
+              &brain->network_metrics.fno_somato_steps, &brain->network_metrics.fno_somato_params, NULL },
+        };
+        extern void* cortex_cnn_get_fno_visual(const struct cortex_cnn_processor*);
+        extern void* cortex_cnn_get_fno_audio (const struct cortex_cnn_processor*);
+        extern void* cortex_cnn_get_fno_speech(const struct cortex_cnn_processor*);
+        extern void* cortex_cnn_get_fno_somato(const struct cortex_cnn_processor*);
+        extern float    fno_audio_get_ema_loss   (const void*);
+        extern float    fno_audio_get_last_loss  (const void*);
+        extern uint64_t fno_audio_get_steps      (const void*);
+        extern uint32_t fno_audio_get_param_count(const void*);
+        _fno_slots[0].get = cortex_cnn_get_fno_visual;
+        _fno_slots[1].get = cortex_cnn_get_fno_audio;
+        _fno_slots[2].get = cortex_cnn_get_fno_speech;
+        _fno_slots[3].get = cortex_cnn_get_fno_somato;
+        for (int si = 0; si < 4; si++) {
+            uint32_t ci = _fno_slots[si].cortex_idx;
+            if (!brain->cortex_cnns[ci]) continue;
+            void* fno = _fno_slots[si].get(brain->cortex_cnns[ci]);
+            if (!fno) continue;
+            float ema = fno_audio_get_ema_loss(fno);
+            float lst = fno_audio_get_last_loss(fno);
+            if (ema > 0.0f) *_fno_slots[si].ema_loss  = ema;
+            if (lst > 0.0f) *_fno_slots[si].last_loss = lst;
+            *_fno_slots[si].steps  = fno_audio_get_steps(fno);
+            *_fno_slots[si].params = fno_audio_get_param_count(fno);
         }
 
         /* Update FNO population metrics from SNN FNO models */

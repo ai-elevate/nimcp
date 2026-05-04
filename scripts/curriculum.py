@@ -72,6 +72,15 @@ class ProgressiveCurriculum:
         """Pass-through for sensory queries — curriculum does not filter these."""
         return self.source.get_sensory()
 
+    def get_codebase_snippet(self):
+        return self.source.get_codebase_snippet()
+
+    def get_advanced(self, domain=None):
+        return self.source.get_advanced(domain)
+
+    def get_question(self):
+        return self.source.get_question()
+
     def pick_object(self, max_reject: int = 50) -> tuple[str, str]:
         """Pick an object, filtering to currently-allowed categories."""
         n_allowed = self._current_n()
