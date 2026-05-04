@@ -2664,6 +2664,47 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     return dict;
 }
 
+static PyObject* Brain_get_immune_state(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_immune_metrics_t imm;
+    if (nimcp_brain_get_immune_metrics(self->brain, &imm) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get immune metrics");
+        return NULL;
+    }
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define IMM_SET(key, val) do { \
+    PyObject* v = (val); \
+    if (!v) { Py_DECREF(dict); return NULL; } \
+    if (PyDict_SetItemString(dict, (key), v) < 0) { Py_DECREF(v); Py_DECREF(dict); return NULL; } \
+    Py_DECREF(v); \
+} while (0)
+
+    IMM_SET("antigen_count",        PyLong_FromUnsignedLong(imm.total_exceptions));
+    IMM_SET("threats_neutralized",  PyLong_FromUnsignedLong(imm.recovered_exceptions));
+    IMM_SET("inflammation_level",   PyFloat_FromDouble(imm.inflammation_level));
+    IMM_SET("antibody_count",       PyLong_FromUnsignedLong(imm.active_antibodies));
+    IMM_SET("t_cell_count",         PyLong_FromUnsignedLong(imm.active_t_cells));
+    IMM_SET("b_cell_count",         PyLong_FromUnsignedLong(imm.active_b_cells));
+    IMM_SET("memory_cell_count",    PyLong_FromUnsignedLong(imm.memory_cells));
+    IMM_SET("bbb_threats_processed", PyLong_FromUnsignedLong(imm.bbb_threats_processed));
+    IMM_SET("cytokine_il1",         PyFloat_FromDouble(imm.cytokine_il1));
+    IMM_SET("cytokine_il6",         PyFloat_FromDouble(imm.cytokine_il6));
+    IMM_SET("cytokine_il10",        PyFloat_FromDouble(imm.cytokine_il10));
+    IMM_SET("cytokine_tnf",         PyFloat_FromDouble(imm.cytokine_tnf));
+    IMM_SET("cytokine_ifn",         PyFloat_FromDouble(imm.cytokine_ifn_gamma));
+    IMM_SET("cytokine_il4",         PyFloat_FromDouble(imm.cytokine_il4));
+
+#undef IMM_SET
+    return dict;
+}
+
 /**
  * WHAT: Evaluate quality of last brain decision using two-tier rubric
  * WHY:  Human-style grading (A+ through F) of cognitive output quality
@@ -10505,6 +10546,10 @@ static PyMethodDef Brain_methods[] = {
      "Get brain metrics as dict: probe() -> dict"},
     {"broadcast_probe", (PyCFunction)Brain_broadcast_probe, METH_NOARGS,
      "Probe brain metrics and broadcast via bio-async: broadcast_probe() -> bool"},
+
+    // Immune system snapshot for monitoring exporter
+    {"get_immune_state", (PyCFunction)Brain_get_immune_state, METH_NOARGS,
+     "Get immune system snapshot: get_immune_state() -> dict (cytokines, T/B cells, BBB threats)"},
 
     // Rubric (cognitive output quality evaluation)
     {"rubric", (PyCFunction)Brain_rubric, METH_NOARGS,

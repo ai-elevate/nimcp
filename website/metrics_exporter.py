@@ -387,6 +387,18 @@ def collect_metrics():
                 }
         metrics['cortex'] = cortex
 
+    # Immune snapshot — flatten into top-level keys matching IMMUNE_FIELD_TYPES
+    # so the QuestDB push path picks them up. RPC returns {} on older daemons
+    # missing the get_immune_state binding.
+    r = _safe_query(b, 'get_immune_state', timeout=15)
+    if r and not r.get('error'):
+        imm = r.get('immune', {}) or {}
+        if imm:
+            metrics['immune'] = imm
+            for k, v in imm.items():
+                if k not in metrics:
+                    metrics[k] = v
+
     # Chat eval — extract from training log (chat_eval results are printed there)
     try:
         log_path = os.path.join(os.path.dirname(__file__), '..', 'training.log')

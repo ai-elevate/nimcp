@@ -1887,6 +1887,18 @@ typedef struct {
     uint32_t recovered_exceptions;   /**< Exceptions successfully recovered */
     float inflammation_level;        /**< Continuous inflammation [0.0-1.0] */
     uint32_t active_antibodies;      /**< Number of active antibody responses */
+
+    /* Extended fields appended for monitoring (additive — old callers safe). */
+    uint32_t active_t_cells;         /**< Active T-cell count */
+    uint32_t active_b_cells;         /**< Active B-cell count */
+    uint32_t memory_cells;           /**< Memory cell count */
+    uint32_t bbb_threats_processed;  /**< BBB perimeter threats handled */
+    float cytokine_il1;              /**< IL-1β concentration [0..1] */
+    float cytokine_il6;              /**< IL-6 concentration [0..1] */
+    float cytokine_il10;             /**< IL-10 (anti-inflammatory) [0..1] */
+    float cytokine_tnf;              /**< TNF-α concentration [0..1] */
+    float cytokine_ifn_gamma;        /**< IFN-γ concentration [0..1] */
+    float cytokine_il4;              /**< IL-4 (Th2/class switching) [0..1] */
 } nimcp_immune_metrics_t;
 
 /**

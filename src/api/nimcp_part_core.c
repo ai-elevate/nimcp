@@ -2199,6 +2199,17 @@ nimcp_status_t nimcp_brain_get_immune_metrics(nimcp_brain_t brain, nimcp_immune_
     out->inflammation_level = istats.inflammation_level_continuous;
     out->active_antibodies = istats.active_antibodies;
 
+    out->active_t_cells = istats.active_t_cells;
+    out->active_b_cells = istats.active_b_cells;
+    out->memory_cells = istats.memory_cells;
+    out->bbb_threats_processed = (uint32_t)istats.bbb_threats_processed;
+    out->cytokine_il1 = istats.cytokine_il1;
+    out->cytokine_il6 = istats.cytokine_il6;
+    out->cytokine_il10 = istats.cytokine_il10;
+    out->cytokine_tnf = istats.cytokine_tnf;
+    out->cytokine_ifn_gamma = istats.cytokine_ifn_gamma;
+    out->cytokine_il4 = istats.cytokine_il4;
+
     set_error("No error");
     return NIMCP_OK;
 }

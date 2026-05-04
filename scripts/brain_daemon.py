@@ -1199,6 +1199,15 @@ class BrainService:
         if True:  # RWLock in handle()
             return {"neuron_count": self.brain.get_neuron_count()}
 
+    def _cmd_get_immune_state(self, _req):
+        try:
+            state = self.brain.get_immune_state()
+        except AttributeError:
+            return {"error": "get_immune_state not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_immune_state: {e}"}
+        return {"immune": state}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:
