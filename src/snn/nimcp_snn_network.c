@@ -5505,15 +5505,89 @@ int snn_network_save(snn_network_t* network, const char* path) {
     fclose(f);
 
     /* Atomic rename: temp → final path.
-     * If the destination already exists as a directory (misconfig/stale symlink),
-     * rename(2) fails with EISDIR/ENOTDIR. Surface the actual errno so ops can
-     * fix the underlying condition instead of guessing. */
-    if (rename(tmp_path, path) != 0) {
-        int saved_errno = errno;
-        NIMCP_LOGGING_ERROR("snn_network_save: rename %s → %s failed: %s (errno=%d)",
-                            tmp_path, path, strerror(saved_errno), saved_errno);
-        remove(tmp_path);
-        return -1;
+     *
+     * Pod MFS rename race: ~50% of saves trip an ENOENT on rename(tmp,final)
+     * even though the tmp file just fclose()d successfully. The kernel/FS
+     * needs a moment to settle directory state. Without this retry, the
+     * trainer's downstream sidecar-rename loop finds no <snapshot>.snn.tmp
+     * to rename, so timestamped .snn files never land on disk and resume
+     * sidecar-checks see "missing .snn" until the next initial-save cycle.
+     *
+     * Retry up to 3× with backoff, then fall back to copy+unlink. If the
+     * destination is genuinely bad (EISDIR/ENOTDIR/EROFS) the retries
+     * also surface that; the errno from the final attempt is logged. */
+    int rename_rc = -1;
+    int saved_errno = 0;
+    {
+        struct timespec wait_ts;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (rename(tmp_path, path) == 0) {
+                rename_rc = 0;
+                break;
+            }
+            saved_errno = errno;
+            if (attempt < 2) {
+                /* 50ms, 200ms back-offs */
+                wait_ts.tv_sec = 0;
+                wait_ts.tv_nsec = (attempt == 0 ? 50L : 200L) * 1000000L;
+                nanosleep(&wait_ts, NULL);
+            }
+        }
+    }
+
+    if (rename_rc != 0) {
+        /* Rename exhausted retries — try copy+unlink. This costs an extra
+         * disk round-trip but preserves atomicity from the load side: the
+         * destination is fully written before being visible at the final
+         * name. */
+        NIMCP_LOGGING_WARN("snn_network_save: rename %s → %s failed after retries: %s "
+                           "(errno=%d) — falling back to copy",
+                           tmp_path, path, strerror(saved_errno), saved_errno);
+
+        FILE* src = fopen(tmp_path, "rb");
+        FILE* dst = NULL;
+        char copy_tmp[1024];
+        snprintf(copy_tmp, sizeof(copy_tmp), "%s.copy", path);
+        if (src) dst = fopen(copy_tmp, "wb");
+        if (!src || !dst) {
+            NIMCP_LOGGING_ERROR("snn_network_save: copy fallback open failed "
+                                "(src=%p dst=%p, errno=%d)", (void*)src, (void*)dst, errno);
+            if (src) fclose(src);
+            if (dst) fclose(dst);
+            remove(tmp_path);
+            return -1;
+        }
+
+        char buf[1 << 20];  /* 1 MiB chunks */
+        size_t n;
+        int copy_ok = 1;
+        while ((n = fread(buf, 1, sizeof(buf), src)) > 0) {
+            if (fwrite(buf, 1, n, dst) != n) {
+                NIMCP_LOGGING_ERROR("snn_network_save: copy fwrite failed: %s",
+                                    strerror(errno));
+                copy_ok = 0;
+                break;
+            }
+        }
+        fclose(src);
+        if (fclose(dst) != 0) copy_ok = 0;
+
+        if (!copy_ok) {
+            remove(copy_tmp);
+            remove(tmp_path);
+            return -1;
+        }
+
+        if (rename(copy_tmp, path) != 0) {
+            saved_errno = errno;
+            NIMCP_LOGGING_ERROR("snn_network_save: final copy-rename %s → %s failed: %s "
+                                "(errno=%d)", copy_tmp, path, strerror(saved_errno),
+                                saved_errno);
+            remove(copy_tmp);
+            remove(tmp_path);
+            return -1;
+        }
+        remove(tmp_path);  /* original tmp now redundant */
     }
 
     NIMCP_LOGGING_INFO("SNN network saved to %s (raw, %u neurons, %u CSR pops)",

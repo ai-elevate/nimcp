@@ -9242,9 +9242,16 @@ def main():
                 start_step = state.get("step", 0)
                 print(f"  Resuming from stage {start_stage}, step {start_step} ({snapshot})")
             elif missing_sidecars:
+                # Snapshot main .bin loaded fine; only the sidecar (e.g. .snn) is
+                # missing — that's a known SNN-save MFS rename race, not a curriculum
+                # regression. Trust the state-file bookmark; the affected network
+                # restarts from default but the curriculum stage stays correct.
+                start_stage = state.get("stage", args.stage)
+                start_step = state.get("step", 0)
                 print(f"  WARNING: {snapshot} exists but missing sidecars: "
-                      f"{missing_sidecars} — checkpoint is partial, falling back")
-                snapshot_path = ""  # force fallback below
+                      f"{missing_sidecars} — keeping curriculum at "
+                      f"stage {start_stage}, step {start_step} (affected network "
+                      f"loads default state)")
             else:
                 # State file points to pruned/missing snapshot — find latest.
                 # Also check the canonical athena_immersive.bin which is
