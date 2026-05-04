@@ -166,6 +166,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_persistence.c # Save/load, snapshots, checkpoints (1,187 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_checkpoint_unified.c # Unified single-file checkpoint format
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_kg_snapshot.c # KG-based snapshot persistence (Phase SNAPSHOT-KG)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/persistence/nimcp_brain_kg_sidecar.c  # Internal KG file sidecar (.kg alongside checkpoint)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/calibration/nimcp_temperature_scaling.c # Layer C: post-hoc confidence calibration (Guo et al. 2017)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/distributed/nimcp_brain_distributed.c # Copy-on-write, P2P sync, consensus (561 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/strategy/nimcp_brain_strategy.c     # Strategy pattern, monitoring, optimization (770 lines)

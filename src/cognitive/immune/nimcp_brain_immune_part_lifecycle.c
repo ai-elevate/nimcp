@@ -71,6 +71,17 @@ brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config) 
     system->next_inflammation_id = 1;
     system->start_time = get_timestamp_ms();
 
+    /* Phase C: Create regulatory T cell system for cytokine storm damping.
+     * NULL-tolerant: if treg_create fails we fall back to no-suppression
+     * (the LOG_WARN below telegraphs the degraded mode). The brain immune
+     * system itself stays usable. */
+    system->tregs = treg_create(NULL, system);
+    system->treg_storm_engaged = false;
+    if (!system->tregs) {
+        LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME,
+            "treg_create failed — cytokine storm damping disabled");
+    }
+
     if (system->config.enable_logging) {
         LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME, "Brain immune system created");
     }
@@ -96,6 +107,13 @@ void brain_immune_destroy(brain_immune_system_t* system) {
 
 
     brain_immune_stop(system);
+
+    /* Phase C: Destroy Treg system before pools so any pending callbacks
+     * that touch the immune system stop firing. */
+    if (system->tregs) {
+        treg_destroy((treg_system_t*)system->tregs);
+        system->tregs = NULL;
+    }
 
     if (system->mutex) {
         /* Destroy mutex (handles destroy+free+NULL) */

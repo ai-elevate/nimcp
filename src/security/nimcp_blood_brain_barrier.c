@@ -24,11 +24,13 @@
  */
 
 #include <stddef.h>  /* for NULL */
+#include <stdint.h>  /* for INT64_MIN/INT64_MAX */
 //=============================================================================
 // Includes
 //=============================================================================
 
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_enhanced_detection.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -355,6 +357,36 @@ size_t bbb_system_get_max_string_length(bbb_system_t system)
     return max_len;
 }
 
+/**
+ * @brief Get min integer bound from system config
+ *
+ * WHAT: Thread-safe accessor for system's input.min_integer config
+ * WHY:  Allow sub-modules to honor configured integer bounds without exposing struct
+ */
+int64_t bbb_system_get_min_integer(bbb_system_t system)
+{
+    if (!system) return INT64_MIN;
+    nimcp_mutex_lock(&system->mutex);
+    int64_t v = system->config.input.min_integer;
+    nimcp_mutex_unlock(&system->mutex);
+    return v;
+}
+
+/**
+ * @brief Get max integer bound from system config
+ *
+ * WHAT: Thread-safe accessor for system's input.max_integer config
+ * WHY:  Allow sub-modules to honor configured integer bounds without exposing struct
+ */
+int64_t bbb_system_get_max_integer(bbb_system_t system)
+{
+    if (!system) return INT64_MAX;
+    nimcp_mutex_lock(&system->mutex);
+    int64_t v = system->config.input.max_integer;
+    nimcp_mutex_unlock(&system->mutex);
+    return v;
+}
+
 //=============================================================================
 // System Lifecycle
 //=============================================================================
@@ -410,6 +442,14 @@ NIMCP_EXPORT bbb_system_t bbb_system_create(const bbb_config_t* config)
     } else {
         system->immune_ops_cond_initialized = false;
         LOG_WARN("bbb_system_create: Failed to initialize immune ops condition variable");
+    }
+
+    /* Wire enhanced detection (path traversal + shell injection).
+     * Defense-in-depth: if init fails the static patterns still work, so
+     * we log and continue rather than failing system creation. */
+    if (!bbb_enhanced_detection_init()) {
+        LOG_WARN("bbb_system_create: bbb_enhanced_detection_init failed — "
+                 "path/shell detectors disabled, falling back to static patterns");
     }
 
     return system;

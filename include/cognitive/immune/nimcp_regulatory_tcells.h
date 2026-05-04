@@ -239,6 +239,9 @@ typedef struct {
     /* Effectiveness */
     float avg_suppression_factor;      /**< Average suppression */
     uint64_t inflammation_reductions;  /**< Successful reductions */
+    uint64_t cytokines_damped;         /**< Pro-inflammatory cytokines that
+                                          had their concentration reduced
+                                          via Treg suppression */
 } treg_stats_t;
 
 /**

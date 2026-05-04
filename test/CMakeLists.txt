@@ -2401,6 +2401,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/adversarial/lgss/CMakeLists.txt")
     add_subdirectory(adversarial/lgss)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/adversarial/bbb/CMakeLists.txt")
+    message(STATUS "Adding BBB adversarial / PEN tests...")
+    add_subdirectory(adversarial/bbb)
+endif()
+
 # ============================================================================
 # Python Unit Tests
 # ============================================================================

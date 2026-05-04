@@ -196,7 +196,8 @@ typedef enum {
     BRAIN_CYTOKINE_IL10 = CYTOKINE_IL10,   /**< Anti-inflammatory, resolution */
     BRAIN_CYTOKINE_TNF = CYTOKINE_TNFA,    /**< Severe inflammation */
     BRAIN_CYTOKINE_IFN_GAMMA = 5,          /**< Antiviral-style (quarantine) - brain-specific */
-    BRAIN_CYTOKINE_COUNT = 6
+    BRAIN_CYTOKINE_IL4 = 6,                /**< Th2 driver, B-cell class switching IgM→IgG */
+    BRAIN_CYTOKINE_COUNT = 7
 } brain_cytokine_type_t;
 
 /* Backward compatibility aliases for brain_cytokine_type_t */
@@ -591,6 +592,7 @@ typedef struct {
     float cytokine_il10;                   /**< IL-10 anti-inflammatory level */
     float cytokine_tnf;                    /**< TNF-α pro-inflammatory level */
     float cytokine_ifn_gamma;              /**< IFN-γ antiviral level */
+    float cytokine_il4;                    /**< IL-4 Th2/B-cell class switching level */
 
     /* Inflammation state */
     brain_inflammation_level_t inflammation_level; /**< Current discrete label (backward compat) */
@@ -727,6 +729,13 @@ struct brain_immune_system {
     /* W11: optional back-reference to the parent brain for KG emission.
      * Set via brain_immune_set_brain_ref() during brain init; NULL-safe. */
     void* brain_ref;                       /**< brain_t (opaque) for W11 KG events */
+
+    /* Phase C: Regulatory T cell system for cytokine storm damping.
+     * Created in brain_immune_create(), destroyed in brain_immune_destroy().
+     * Opaque void* here to avoid circular include with nimcp_regulatory_tcells.h
+     * (which includes this header). Always cast to treg_system_t* internally. */
+    void* tregs;
+    bool treg_storm_engaged;               /**< True while pro-cyto suppression active */
 };
 
 /* ============================================================================

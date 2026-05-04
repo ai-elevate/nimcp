@@ -33,6 +33,7 @@
  */
 
 #include "security/nimcp_blood_brain_barrier.h"
+#include "security/nimcp_bbb_enhanced_detection.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
@@ -60,6 +61,8 @@ BRIDGE_BOILERPLATE_MESH_ONLY(bbb_input_gate, MESH_ADAPTER_CATEGORY_SECURITY)
 extern void bbb_system_inc_validations(bbb_system_t system);
 extern void bbb_system_inc_threats(bbb_system_t system);
 extern size_t bbb_system_get_max_string_length(bbb_system_t system);
+extern int64_t bbb_system_get_min_integer(bbb_system_t system);
+extern int64_t bbb_system_get_max_integer(bbb_system_t system);
 
 //=============================================================================
 // Constants
@@ -147,6 +150,10 @@ static const char* format_patterns[] = {
     "%x%x%x%x",      /* Stack reading attempt */
     "%p%p%p%p",      /* Pointer leaking */
     "%08x.%08x",     /* Memory dump pattern with width specifier */
+    /* Positional format specifiers (POSIX %N$X) — used by attackers to
+     * pick stack slots out of order and to bypass naive %n filters. */
+    "%1$", "%2$", "%3$", "%4$", "%5$",
+    "%6$", "%7$", "%8$", "%9$",
     NULL
 };
 
@@ -213,6 +220,64 @@ static bool check_patterns(const char* input, const char* patterns[])
 
     for (int i = 0; patterns[i] != NULL; i++) {
         if (case_insensitive_strstr(input, patterns[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @brief Length-aware case-insensitive substring search
+ *
+ * WHAT: memmem-style search that scans the FULL (data, size) buffer
+ * WHY:  bbb_validate_input must not be fooled by an attacker-embedded NUL
+ *       byte that truncates the string mid-payload. strlen-based scans
+ *       miss anything after the first NUL.
+ * HOW:  Linear scan using tolower() on each byte; treats input as bytes,
+ *       not C-strings.
+ *
+ * @param data   Buffer to search (any bytes, may contain NULs)
+ * @param size   Buffer length in bytes
+ * @param pat    NUL-terminated pattern (treated as ASCII bytes)
+ * @return true if pattern found
+ */
+static bool memmem_ci(const void* data, size_t size, const char* pat)
+{
+    if (!data || !pat || !*pat || size == 0) {
+        return false;
+    }
+    const unsigned char* hay = (const unsigned char*)data;
+    size_t plen = strlen(pat);
+    if (plen > size) return false;
+
+    for (size_t i = 0; i + plen <= size; i++) {
+        size_t j;
+        for (j = 0; j < plen; j++) {
+            if (tolower(hay[i + j]) !=
+                tolower((unsigned char)pat[j])) {
+                break;
+            }
+        }
+        if (j == plen) return true;
+    }
+    return false;
+}
+
+/**
+ * @brief Length-aware version of check_patterns
+ *
+ * WHAT: Scan a fixed-size buffer for any pattern, ignoring embedded NULs
+ * WHY:  Defense against NUL-truncation attacks against bbb_validate_input
+ * HOW:  Iterate patterns, call memmem_ci on each
+ */
+static bool check_patterns_buf(const void* data, size_t size,
+                               const char* patterns[])
+{
+    if (!data || !patterns || size == 0) {
+        return false;
+    }
+    for (int i = 0; patterns[i] != NULL; i++) {
+        if (memmem_ci(data, size, patterns[i])) {
             return true;
         }
     }
@@ -432,33 +497,43 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         return false;
     }
 
-    /* For text data, perform string validation */
+    /* For text data, perform string validation across the FULL byte range.
+     *
+     * EMBEDDED-NUL FIX: The previous implementation broke on the first '\0'
+     * and called bbb_validate_string on a truncated prefix. An attacker could
+     * sneak a benign prefix + NUL + dangerous payload past every validator
+     * because strlen()-based scanning stops at the NUL. We now build a
+     * NUL-stripped copy of the entire (data, size) buffer (replacing each
+     * 0x00 with space 0x20 so pattern matching still works) and validate
+     * that. Non-printable/non-space bytes still mark the buffer as binary
+     * and fall through to the shellcode-only path above.
+     *
+     * Rationale: pattern matchers use strstr/strchr which are NUL-terminated,
+     * so we cannot pass them a buffer with embedded NULs. Replacing NULs with
+     * space is the simplest fix that preserves token boundaries without
+     * silently dropping bytes (which would let "AA\0BB" look like "AA"+"BB"
+     * and bypass detection of multi-character attack strings spanning the
+     * NUL). */
     const char* str = (const char*)data;
     bool is_printable = true;
-    size_t str_len = 0;
-
-    /* Find string length within size bounds.
-     * W4-12: Cap str_len so memcpy never reads past the data buffer. */
     for (size_t i = 0; i < size; i++) {
-        if (str[i] == '\0') {
-            str_len = i;
-            break;
-        }
-        if (!isprint((unsigned char)str[i]) && !isspace((unsigned char)str[i])) {
+        unsigned char c = (unsigned char)str[i];
+        if (c == 0) continue;  /* embedded NUL — allowed in scanning */
+        if (!isprint(c) && !isspace(c)) {
             is_printable = false;
             break;
         }
-        str_len = i + 1;
     }
-    /* Ensure str_len doesn't exceed the input buffer size */
-    if (str_len > size) str_len = size;
 
-    if (is_printable && str_len > 0) {
-        /* Create null-terminated copy for string validation */
-        char* safe_str = (char*)nimcp_malloc(str_len + 1);
+    if (is_printable && size > 0) {
+        /* Create NUL-stripped copy of the entire buffer for string validation */
+        char* safe_str = (char*)nimcp_malloc(size + 1);
         if (safe_str) {
-            memcpy(safe_str, str, str_len);
-            safe_str[str_len] = '\0';
+            for (size_t i = 0; i < size; i++) {
+                unsigned char c = (unsigned char)str[i];
+                safe_str[i] = (c == 0) ? ' ' : (char)c;
+            }
+            safe_str[size] = '\0';
             bool valid = bbb_validate_string(system, safe_str, result);
             nimcp_free(safe_str);
             return valid;
@@ -609,6 +684,23 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
         return false;
     }
 
+    /* Enhanced detection: path traversal + shell injection.
+     * These detectors run after the static patterns and propagate their
+     * findings back to the caller's result struct. They internally call
+     * bbb_report_threat() so the immune system gets notified. */
+    {
+        bbb_validation_result_t path_result;
+        if (!bbb_validate_file_path(system, str, &path_result)) {
+            *result = path_result;
+            return false;
+        }
+        bbb_validation_result_t cmd_result;
+        if (!bbb_validate_command(system, str, &cmd_result)) {
+            *result = cmd_result;
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -654,6 +746,25 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
         result->severity = BBB_SEVERITY_MEDIUM;
         snprintf(result->reason, sizeof(result->reason),
                  "Integer at boundary - possible overflow");
+        return false;
+    }
+
+    /* Honor configured bounds from bbb_input_config_t.min_integer/max_integer.
+     * Out-of-range integers are treated as overflow attacks and reported to
+     * the immune system. Only enforce when bounds are actually configured
+     * (min != max) so a default zero-zero config doesn't reject every
+     * non-zero integer. */
+    int64_t min_v = bbb_system_get_min_integer(system);
+    int64_t max_v = bbb_system_get_max_integer(system);
+    if (min_v != max_v && (value < min_v || value > max_v)) {
+        result->valid = false;
+        result->threat = BBB_THREAT_INTEGER_OVERFLOW;
+        result->severity = BBB_SEVERITY_MEDIUM;
+        snprintf(result->reason, sizeof(result->reason),
+                 "Integer %lld out of configured range [%lld, %lld]",
+                 (long long)value, (long long)min_v, (long long)max_v);
+        bbb_report_threat(system, BBB_THREAT_INTEGER_OVERFLOW, BBB_SEVERITY_MEDIUM,
+                          result->reason, &value, &value, sizeof(value));
         return false;
     }
 
@@ -727,6 +838,33 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
                  "Pointer in low memory region (0x%lx)", (unsigned long)addr);
         return false;
     }
+
+    /* x86_64 canonical-address split:
+     *   user space:    0x0000_0000_0000_0000 .. 0x0000_7fff_ffff_ffff
+     *   non-canonical: 0x0000_8000_0000_0000 .. 0xffff_7fff_ffff_ffff
+     *   kernel space:  0xffff_8000_0000_0000 .. 0xffff_ffff_ffff_ffff
+     * User-mode pointers MUST live in the low half. Anything in the
+     * non-canonical hole or kernel half is an attack/garbage pointer.
+     * Gated to 64-bit so 32-bit builds don't get bogus rejections. */
+#if defined(__x86_64__) || (UINTPTR_MAX == 0xFFFFFFFFFFFFFFFFULL)
+    if (addr >= 0x0000800000000000ULL && addr < 0xFFFF800000000000ULL) {
+        res->valid = false;
+        res->threat = BBB_THREAT_MEMORY_VIOLATION;
+        res->severity = BBB_SEVERITY_HIGH;
+        snprintf(res->reason, sizeof(res->reason),
+                 "Non-canonical pointer (0x%lx) - outside x86_64 user range",
+                 (unsigned long)addr);
+        return false;
+    }
+    if (addr >= 0xFFFF800000000000ULL) {
+        res->valid = false;
+        res->threat = BBB_THREAT_MEMORY_VIOLATION;
+        res->severity = BBB_SEVERITY_HIGH;
+        snprintf(res->reason, sizeof(res->reason),
+                 "Kernel-space pointer (0x%lx) rejected", (unsigned long)addr);
+        return false;
+    }
+#endif
 
     /* Alignment check for common data types */
     if (expected_size >= 8 && (addr & 0x7) != 0) {

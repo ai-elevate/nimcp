@@ -1107,6 +1107,36 @@ bool brain_save(brain_t brain, const char* filepath)
 
         /* Layer C: TEMPERATURE_V1 sidecar (best-effort; non-fatal). */
         temperature_sidecar_save(brain, filepath);
+
+        /* Immune memory sidecar — preserves B/T cells, antibodies, antigens
+         * across daemon restarts so adaptive immunity actually persists.
+         * Best-effort: log on failure but don't fail the whole save. */
+        if (brain->immune_system) {
+            extern int immune_persistence_save(struct brain_immune_system* system,
+                                               const char* filepath,
+                                               const void* config);
+            char immune_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(immune_path, sizeof(immune_path), "%s.immune", filepath);
+            if (immune_persistence_save((struct brain_immune_system*)brain->immune_system,
+                                        immune_path, NULL) != 0) {
+                fprintf(stderr, "[WARN] immune_persistence_save failed for %s — "
+                        "adaptive memory NOT persisted\n", immune_path);
+            }
+        }
+
+        /* Internal KG sidecar — preserves runtime knowledge-graph nodes and
+         * edges (including HANDLES_MESSAGE bindings + weights accumulated
+         * during training) across daemon restarts. Mirrors the .immune
+         * sidecar pattern: best-effort, never fails the whole save. */
+        if (brain->internal_kg) {
+            extern int brain_kg_save(struct brain_kg* kg, const char* filepath);
+            char kg_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(kg_path, sizeof(kg_path), "%s.kg", filepath);
+            if (brain_kg_save((struct brain_kg*)brain->internal_kg, kg_path) != 0) {
+                fprintf(stderr, "[WARN] brain_kg_save failed for %s — "
+                        "KG facts NOT persisted\n", kg_path);
+            }
+        }
     }
 
     // Health monitoring: save complete
@@ -2145,6 +2175,40 @@ brain_t brain_load(const char* filepath)
      * calibrated_ece + calibrated_at_us. Section absent → defaults stay
      * (T=1.0, ece=-1.0, at_us=0). */
     temperature_sidecar_load(brain, filepath);
+
+    /* Immune memory sidecar — restore B/T cells, antibodies, antigens.
+     * Pre-Phase-B checkpoints won't have a .immune file; that's fine —
+     * the loader logs file-not-found and falls back to a fresh immune
+     * system. We mirror the SNN-sidecar warn-and-continue pattern. */
+    if (brain->immune_system) {
+        extern int immune_persistence_load(struct brain_immune_system* system,
+                                           const char* filepath,
+                                           const void* config);
+        char immune_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(immune_path, sizeof(immune_path), "%s.immune", filepath);
+        if (immune_persistence_load((struct brain_immune_system*)brain->immune_system,
+                                    immune_path, NULL) == 0) {
+            fprintf(stderr, "[INFO] Restored immune memory from %s\n", immune_path);
+        } else {
+            fprintf(stderr, "[INFO] immune_persistence_load: no sidecar at %s "
+                    "(legacy checkpoint or fresh start)\n", immune_path);
+        }
+    }
+
+    /* Internal KG sidecar — restore runtime KG nodes/edges. Pre-sidecar
+     * checkpoints won't have a .kg file; the loader logs and the KG starts
+     * cold (init-time wiring still populates structural roots). */
+    if (brain->internal_kg) {
+        extern int brain_kg_load(struct brain_kg* kg, const char* filepath);
+        char kg_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(kg_path, sizeof(kg_path), "%s.kg", filepath);
+        if (brain_kg_load((struct brain_kg*)brain->internal_kg, kg_path) == 0) {
+            fprintf(stderr, "[INFO] Restored KG facts from %s\n", kg_path);
+        } else {
+            fprintf(stderr, "[INFO] brain_kg_load: no sidecar at %s — "
+                    "KG starts cold\n", kg_path);
+        }
+    }
 
     brain_clear_error();
     return brain;

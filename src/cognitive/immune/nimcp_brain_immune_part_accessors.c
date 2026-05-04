@@ -200,6 +200,7 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
     stats->cytokine_il10 = 0.0f;
     stats->cytokine_tnf = 0.0f;
     stats->cytokine_ifn_gamma = 0.0f;
+    stats->cytokine_il4 = 0.0f;
 
     for (size_t i = 0; i < system->cytokine_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -227,6 +228,9 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
             case BRAIN_CYTOKINE_IFN_GAMMA:
                 stats->cytokine_ifn_gamma += cyt->concentration;
                 break;
+            case BRAIN_CYTOKINE_IL4:
+                stats->cytokine_il4 += cyt->concentration;
+                break;
             default:
                 break;
         }
@@ -238,6 +242,7 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
     if (stats->cytokine_il10 > 1.0f) stats->cytokine_il10 = 1.0f;
     if (stats->cytokine_tnf > 1.0f) stats->cytokine_tnf = 1.0f;
     if (stats->cytokine_ifn_gamma > 1.0f) stats->cytokine_ifn_gamma = 1.0f;
+    if (stats->cytokine_il4 > 1.0f) stats->cytokine_il4 = 1.0f;
 
     /* Compute inflammation level from continuous site levels */
     float max_cont = 0.0f;

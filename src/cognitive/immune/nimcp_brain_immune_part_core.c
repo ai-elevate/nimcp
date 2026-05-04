@@ -1362,6 +1362,25 @@ int brain_immune_produce_antibody(
         return -1;
     }
 
+    /* Phase D.4: IL-4-driven class switching IgM → IgG.
+     * If IL-4 is present (>0.3) AND this B cell has matured enough
+     * (triggered ≥3 times → 3+ prior antibodies), upgrade an incoming
+     * IgM request to IgG. Mirrors biology: Th2 cytokines drive affinity
+     * maturation and class switching during the germinal-center reaction.
+     *
+     * Uses brain_immune_get_cytokine_level which is mutex-locked itself,
+     * but the inner mutex is reentrant on this platform via the platform
+     * mutex layer. To be safe we read the float field from stats which
+     * is already current (last recompute), avoiding nested-lock risk. */
+    bool class_switched_this_call = false;
+    if (ab_class == ANTIBODY_IGM) {
+        float il4_level = system->stats.cytokine_il4;
+        if (il4_level > 0.3f && b_cell->antibodies_produced >= 3) {
+            ab_class = ANTIBODY_IGG;
+            class_switched_this_call = true;
+        }
+    }
+
     brain_antibody_t* antibody = &system->antibodies[system->antibody_count];
     memset(antibody, 0, sizeof(*antibody));
 
@@ -1398,6 +1417,15 @@ int brain_immune_produce_antibody(
     }
 
     nimcp_mutex_unlock(system->mutex);
+
+    /* Phase D.3: Emit IL-4 on IgM→IgG class switch (post-unlock to avoid
+     * nested-lock risk inside release_cytokine).  Concentration 0.3 is a
+     * mild reinforcing pulse — class switching itself should not trigger
+     * a Treg storm response. */
+    if (class_switched_this_call) {
+        (void)brain_immune_release_cytokine(system, BRAIN_CYTOKINE_IL4,
+                                            b_cell_id, 0.3f, 0, NULL);
+    }
 
     if (system->config.enable_logging) {
         LOG_MODULE_DEBUG(BRAIN_IMMUNE_MODULE_NAME,
@@ -1523,6 +1551,27 @@ int brain_immune_release_cytokine(
     if (concentration < 0.0f || !isfinite(concentration)) concentration = 0.0f;
     if (concentration > 1.0f) concentration = 1.0f;
 
+    /* Phase C.3: Apply Treg suppression to pro-inflammatory cytokines.
+     * IL-1, IL-6, TNF are the storm drivers — query the current Treg
+     * suppression factor and damp those concentrations. IL-10 (anti-
+     * inflammatory) and IL-4 (Th2/class-switching) pass through unchanged.
+     * IFN-γ also passes — it's antiviral, not a generic storm driver. */
+    bool is_pro_inflammatory = (type == CYTOKINE_IL1B ||
+                                type == CYTOKINE_IL6  ||
+                                type == CYTOKINE_TNFA);
+    if (is_pro_inflammatory && system->tregs) {
+        treg_system_t* treg = (treg_system_t*)system->tregs;
+        float damp = treg_get_suppression_factor(treg);
+        if (damp > 0.0f) {
+            if (damp > 1.0f) damp = 1.0f;
+            concentration *= (1.0f - damp);
+            /* Observability: record that we damped a pro-inflammatory release.
+             * Best-effort, not lock-protected — the counter is monotonic and
+             * only used for monitoring. */
+            treg->stats.cytokines_damped++;
+        }
+    }
+
     nimcp_mutex_lock(system->mutex);
 
     /* W7: Capacity check under lock to prevent TOCTOU race */
@@ -1581,6 +1630,27 @@ int brain_immune_release_cytokine(
     }
     if (total_pro_inflammatory >= system->config.cytokine_storm_threshold) {
         LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME, "Cytokine storm risk detected!");
+
+        /* Phase C.2: Engage Tregs to actively suppress further pro-cytokine
+         * release. treg_update() pushes a delta-aware suppression factor
+         * proportional to inflammation; we feed it the current pro-cyto
+         * sum (mapped to ~storm level) so it picks the right band.
+         * One-shot log on storm onset; cleared when suppression decays. */
+        if (system->tregs) {
+            (void)treg_update((treg_system_t*)system->tregs, 0);
+            if (!system->treg_storm_engaged) {
+                float damp = treg_get_suppression_factor(
+                    (const treg_system_t*)system->tregs);
+                LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME,
+                    "Treg engaged: damping pro-inflammatory cytokines by %.0f%%",
+                    damp * 100.0f);
+                system->treg_storm_engaged = true;
+            }
+        }
+    } else if (system->treg_storm_engaged &&
+               total_pro_inflammatory < (system->config.cytokine_storm_threshold * 0.5f)) {
+        /* Storm has resolved — allow another onset log next time it spikes. */
+        system->treg_storm_engaged = false;
     }
 
     /* Copy callback data before unlock to prevent race condition */
@@ -1874,6 +1944,16 @@ int brain_immune_secondary_response(
     memory->activation_time = get_timestamp_ms();
 
     nimcp_mutex_unlock(system->mutex);
+
+    /* Phase D.3: Memory secondary response releases IL-4 to drive Th2/B-cell
+     * class switching for any nearby active B cells. Fired BEFORE the IGG
+     * antibody is produced so the IL-4 level is already non-zero when D.4
+     * checks it during plasma maturation in produce_antibody. */
+    {
+        uint32_t il4_id = 0;
+        (void)brain_immune_release_cytokine(system, BRAIN_CYTOKINE_IL4, memory_b_cell_id,
+                                            0.7f, 0, &il4_id);
+    }
 
     /* Immediately produce antibodies */
     uint32_t antibody_id = 0;
