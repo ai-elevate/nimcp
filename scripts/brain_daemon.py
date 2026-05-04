@@ -1208,6 +1208,36 @@ class BrainService:
             return {"error": f"get_immune_state: {e}"}
         return {"immune": state}
 
+    def _cmd_get_grounded_language_diagnostics(self, _req):
+        try:
+            d = self.brain.get_grounded_language_diagnostics()
+        except AttributeError:
+            return {"error": "get_grounded_language_diagnostics not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_grounded_language_diagnostics: {e}"}
+        return {"grounded_language": d}
+
+    def _cmd_probe_comprehend(self, req):
+        text = req.get("text", "")
+        max_components = int(req.get("max_components", 16))
+        try:
+            d = self.brain.probe_comprehend(text, max_components)
+        except AttributeError:
+            return {"error": "probe_comprehend not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"probe_comprehend: {e}"}
+        return {"probe": d}
+
+    def _cmd_set_snn_language_bridge_blend(self, req):
+        blend = float(req.get("blend", 0.5))
+        try:
+            self.brain.set_snn_language_bridge_blend(blend)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_blend not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_blend: {e}"}
+        return {"ok": True, "blend": blend}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:

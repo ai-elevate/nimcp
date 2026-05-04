@@ -2664,6 +2664,123 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     return dict;
 }
 
+/* ----------------------------------------------------------------
+ * Grounded-language diagnostics (collapse triage)
+ * ---------------------------------------------------------------- */
+
+static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    nimcp_grounded_language_diagnostics_t d;
+    if (nimcp_brain_get_grounded_language_diagnostics(self->brain, &d) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "diagnostics failed");
+        return NULL;
+    }
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+#define GLD_SET(k, v) do { \
+    PyObject* _v = (v); \
+    if (!_v) { Py_DECREF(dict); return NULL; } \
+    if (PyDict_SetItemString(dict, (k), _v) < 0) { Py_DECREF(_v); Py_DECREF(dict); return NULL; } \
+    Py_DECREF(_v); \
+} while (0)
+    GLD_SET("vocab_size",                    PyLong_FromUnsignedLong(d.vocab_size));
+    GLD_SET("total_bindings",                PyLong_FromUnsignedLong(d.total_bindings));
+    GLD_SET("total_groundings",              PyLong_FromUnsignedLong(d.total_groundings));
+    GLD_SET("total_comprehensions",          PyLong_FromUnsignedLong(d.total_comprehensions));
+    GLD_SET("total_productions",             PyLong_FromUnsignedLong(d.total_productions));
+    GLD_SET("templates_learned",             PyLong_FromUnsignedLong(d.templates_learned));
+    GLD_SET("avg_binding_strength",          PyFloat_FromDouble(d.avg_binding_strength));
+    GLD_SET("avg_comprehension_confidence",  PyFloat_FromDouble(d.avg_comprehension_confidence));
+    GLD_SET("vocabulary_growth_rate",        PyFloat_FromDouble(d.vocabulary_growth_rate));
+    GLD_SET("snn_bridge_blend",              PyFloat_FromDouble(d.snn_bridge_blend));
+    GLD_SET("bridge_total_productions",      PyLong_FromUnsignedLong(d.bridge_total_productions));
+    GLD_SET("bridge_avg_word_confidence",    PyFloat_FromDouble(d.bridge_avg_word_confidence));
+    GLD_SET("bridge_avg_binding_weight",     PyFloat_FromDouble(d.bridge_avg_binding_weight));
+    GLD_SET("bridge_active_bindings",        PyLong_FromUnsignedLong(d.bridge_active_bindings));
+#undef GLD_SET
+    return dict;
+}
+
+static PyObject* Brain_probe_comprehend(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* text;
+    int max_components = 16;
+    if (!PyArg_ParseTuple(args, "s|i", &text, &max_components)) return NULL;
+    if (max_components <= 0 || max_components > 1024) max_components = 16;
+
+    float* comp = (float*)calloc((size_t)max_components, sizeof(float));
+    if (!comp) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    uint32_t written = 0, concept_count = 0;
+    float l2 = 0.0f, conf = 0.0f;
+    nimcp_status_t s = nimcp_brain_probe_comprehend(self->brain, text,
+                                                     comp, (uint32_t)max_components,
+                                                     &written, &l2, &conf, &concept_count);
+    if (s != NIMCP_OK) {
+        free(comp);
+        PyErr_Format(PyExc_RuntimeError, "probe_comprehend failed: status=%d", (int)s);
+        return NULL;
+    }
+
+    PyObject* dict = PyDict_New();
+    PyObject* comps = PyList_New((Py_ssize_t)written);
+    if (!dict || !comps) {
+        Py_XDECREF(dict); Py_XDECREF(comps);
+        free(comp);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < written; i++) {
+        PyList_SET_ITEM(comps, (Py_ssize_t)i, PyFloat_FromDouble(comp[i]));
+    }
+    free(comp);
+
+    if (PyDict_SetItemString(dict, "components", comps) < 0) goto err;
+    Py_DECREF(comps); comps = NULL;
+#define PC_SET(k, v) do { \
+    PyObject* _v = (v); \
+    if (!_v || PyDict_SetItemString(dict, (k), _v) < 0) { Py_XDECREF(_v); goto err; } \
+    Py_DECREF(_v); \
+} while (0)
+    PC_SET("l2_norm",       PyFloat_FromDouble(l2));
+    PC_SET("confidence",    PyFloat_FromDouble(conf));
+    PC_SET("concept_count", PyLong_FromUnsignedLong(concept_count));
+    PC_SET("text",          PyUnicode_FromString(text));
+#undef PC_SET
+    return dict;
+
+err:
+    Py_XDECREF(comps);
+    Py_DECREF(dict);
+    return NULL;
+}
+
+static PyObject* Brain_set_snn_language_bridge_blend(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float blend;
+    if (!PyArg_ParseTuple(args, "f", &blend)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_blend(self->brain, blend);
+    if (s == NIMCP_ERROR_INVALID) {
+        PyErr_Format(PyExc_ValueError, "set_blend rejected (out of range)");
+        return NULL;
+    }
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_get_immune_state(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -10550,6 +10667,14 @@ static PyMethodDef Brain_methods[] = {
     // Immune system snapshot for monitoring exporter
     {"get_immune_state", (PyCFunction)Brain_get_immune_state, METH_NOARGS,
      "Get immune system snapshot: get_immune_state() -> dict (cytokines, T/B cells, BBB threats)"},
+
+    // Grounded-language diagnostics (collapse triage)
+    {"get_grounded_language_diagnostics", (PyCFunction)Brain_get_grounded_language_diagnostics, METH_NOARGS,
+     "Get grounded-language diagnostic snapshot: get_grounded_language_diagnostics() -> dict"},
+    {"probe_comprehend", (PyCFunction)Brain_probe_comprehend, METH_VARARGS,
+     "Read-only comprehension probe: probe_comprehend(text, max_components=16) -> dict (l2_norm, confidence, concept_count, components)"},
+    {"set_snn_language_bridge_blend", (PyCFunction)Brain_set_snn_language_bridge_blend, METH_VARARGS,
+     "Set SNN-language bridge blend [0,1]: set_snn_language_bridge_blend(blend) -> None"},
 
     // Rubric (cognitive output quality evaluation)
     {"rubric", (PyCFunction)Brain_rubric, METH_NOARGS,

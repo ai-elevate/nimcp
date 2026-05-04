@@ -824,40 +824,62 @@ static const char* best_word_for_concept(const grounded_language_t* gl, uint64_t
     return best;
 }
 
-/** Find words closest to a semantic vector */
+/* Score one word against a target vector — DRY extraction so the loop
+ * body in find_words_near_vector stays readable and the same scoring
+ * function can be reused by tests. Returns the combined
+ * distributional + grounded score, or 0.0f if the entry should be
+ * skipped. The caller is responsible for class filtering. */
+static float score_word_against_vector(const grounded_language_t* gl,
+                                       const gl_lexicon_entry_t* entry,
+                                       const float* target, uint32_t dim) {
+    if (!entry || !entry->context_initialized) return 0.0f;
+    uint32_t cmp_dim = (dim < gl->semantic_dim) ? dim : gl->semantic_dim;
+    float sim = cosine_similarity(target, entry->context_vector, cmp_dim);
+
+    float concept_sim = 0.0f;
+    for (uint32_t b = 0; b < entry->binding_count; b++) {
+        const float* cf = get_concept_features(gl, entry->bindings[b].concept_id);
+        if (cf) {
+            float cs = cosine_similarity(target, cf, cmp_dim);
+            cs *= entry->bindings[b].strength;
+            if (cs > concept_sim) concept_sim = cs;
+        }
+    }
+    return 0.4f * sim + 0.6f * concept_sim;
+}
+
+/** Find words closest to a semantic vector.
+ *
+ * Collapse guard (2026-05): when the lexicon hasn't accumulated enough
+ * grounded bindings, score_word_against_vector() returns near-uniform
+ * tiny values across all candidates. The original deterministic top-K
+ * selection then pinned the same handful of words for every prompt,
+ * which is the user-visible "the awareness controlled" mode collapse.
+ *
+ * Strategy: keep the deterministic top-K when any candidate scores
+ * meaningfully (> GL_DIVERSITY_MIN_TOPSCORE). When the best score is
+ * below that floor, treat the result as "no signal" and shuffle the
+ * insertion order so produce() at least gets *different* words across
+ * prompts (degenerate-but-diverse beats degenerate-and-stuck).
+ */
+#define GL_DIVERSITY_MIN_TOPSCORE 0.05f
+
 static uint32_t find_words_near_vector(const grounded_language_t* gl,
                                         const float* target, uint32_t dim,
                                         gl_word_class_t required_class,
                                         const char** out_words, float* out_scores,
                                         uint32_t max_words) {
-    /* Score each word by how close its context vector is to target */
     uint32_t count = 0;
+    float best_seen = 0.0f;
 
     for (uint32_t w = 0; w < gl->vocab_count && count < max_words; w++) {
         const gl_lexicon_entry_t* entry = gl->vocab_list[w];
         if (!entry || !entry->context_initialized) continue;
-
-        /* Filter by word class if specified */
         if (required_class != GL_CLASS_UNKNOWN && entry->learned_class != required_class) {
             continue;
         }
-
-        uint32_t cmp_dim = (dim < gl->semantic_dim) ? dim : gl->semantic_dim;
-        float sim = cosine_similarity(target, entry->context_vector, cmp_dim);
-
-        /* Also check concept bindings — words bound to concepts near target */
-        float concept_sim = 0.0f;
-        for (uint32_t b = 0; b < entry->binding_count; b++) {
-            const float* cf = get_concept_features(gl, entry->bindings[b].concept_id);
-            if (cf) {
-                float cs = cosine_similarity(target, cf, cmp_dim);
-                cs *= entry->bindings[b].strength; /* Weight by binding strength */
-                if (cs > concept_sim) concept_sim = cs;
-            }
-        }
-
-        /* Combined score: distributional + grounded */
-        float score = 0.4f * sim + 0.6f * concept_sim;
+        float score = score_word_against_vector(gl, entry, target, dim);
+        if (score > best_seen) best_seen = score;
 
         /* Insert into sorted output (simple insertion sort) */
         uint32_t insert_pos = count;
@@ -867,9 +889,7 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
                 break;
             }
         }
-
         if (insert_pos < max_words) {
-            /* Shift down */
             if (count < max_words) count++;
             for (uint32_t j = count - 1; j > insert_pos; j--) {
                 out_words[j] = out_words[j - 1];
@@ -877,6 +897,28 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
             }
             out_words[insert_pos] = entry->form;
             out_scores[insert_pos] = score;
+        }
+    }
+
+    /* Diversity injection: if no candidate scored above the meaningful
+     * floor, the top-K is degenerate. Shuffle the result so callers
+     * don't always see the same first word. We use a hash of the
+     * target's first component as the seed so identical inputs still
+     * map to identical orderings (deterministic, but per-input). */
+    if (best_seen < GL_DIVERSITY_MIN_TOPSCORE && count > 1) {
+        uint32_t seed = 0x9E3779B9u;
+        for (uint32_t i = 0; i < dim && i < 8; i++) {
+            uint32_t bits;
+            memcpy(&bits, &target[i], sizeof(bits));
+            seed ^= bits + (seed << 6) + (seed >> 2);
+        }
+        /* Fisher-Yates shuffle with deterministic LCG seeded from input. */
+        uint32_t rng = (seed == 0) ? 1u : seed;
+        for (uint32_t i = count - 1; i > 0; i--) {
+            rng = rng * 1664525u + 1013904223u;
+            uint32_t j = rng % (i + 1);
+            const char* tw = out_words[i]; out_words[i] = out_words[j]; out_words[j] = tw;
+            float ts = out_scores[i];      out_scores[i] = out_scores[j]; out_scores[j] = ts;
         }
     }
 
@@ -1769,9 +1811,22 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
         }
         if (confidence) *confidence = 0.1f;
     } else {
-        strncpy(response, prod.text, response_max - 1);
-        response[response_max - 1] = '\0';
-        if (confidence) *confidence = prod.fluency * prod.relevance;
+        /* Collapse-guard (2026-05): when fluency × relevance is below the
+         * meaningful-confidence floor, emitting the produced template
+         * looks authoritative but is just whichever seeded attractor
+         * happens to score nearest. Surface the lack of grounding to the
+         * caller instead — the user-visible "the awareness controlled"
+         * mode collapse came directly from this path. */
+        float prod_conf = prod.fluency * prod.relevance;
+        if (prod_conf < GL_RESPOND_MIN_CONFIDENCE) {
+            snprintf(response, response_max,
+                     "I don't have words for that yet.");
+            if (confidence) *confidence = prod_conf;  /* Honest, low. */
+        } else {
+            strncpy(response, prod.text, response_max - 1);
+            response[response_max - 1] = '\0';
+            if (confidence) *confidence = prod_conf;
+        }
     }
 
     int result_len = (int)strlen(response);
@@ -2087,6 +2142,10 @@ void grounded_language_get_stats(const grounded_language_t* gl, gl_stats_t* stat
     }
     stats->avg_binding_strength = (total_bindings > 0) ?
         total_strength / (float)total_bindings : 0.0f;
+}
+
+uint32_t grounded_language_get_semantic_dim(const grounded_language_t* gl) {
+    return gl ? gl->semantic_dim : 0u;
 }
 
 /*=============================================================================

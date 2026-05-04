@@ -2703,7 +2703,7 @@ nimcp_status_t nimcp_brain_comprehend(
     int rc = grounded_language_comprehend(b->grounded_lang, text, &result);
     if (rc != 0) {
         gl_comprehension_result_cleanup(&result);
-        return NIMCP_ERROR_OPERATION_FAILED;
+        return NIMCP_ERROR;
     }
 
     if (out_semantic && result.semantic_vector) {
@@ -2758,6 +2758,141 @@ nimcp_status_t nimcp_brain_grounded_respond(
     int rc = grounded_language_respond(b->grounded_lang, input_text,
                                        out_response, response_max, out_confidence);
     return (rc >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+/* =================================================================
+ * Grounded-language diagnostics (read-only collapse triage)
+ * =================================================================
+ *
+ * Three accessors share a brain-handle preflight + zero-out-on-error
+ * contract. Kept as separate functions per SRP — each one does exactly
+ * one thing — but the validation is consolidated in a small static
+ * helper to avoid copy-paste. */
+
+static nimcp_status_t _gl_diag_validate(nimcp_brain_t brain, brain_t* out_b)
+{
+    if (!brain) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR;
+    *out_b = b;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
+    nimcp_brain_t brain,
+    nimcp_grounded_language_diagnostics_t* out)
+{
+    if (!out) return NIMCP_ERROR_INVALID;
+    memset(out, 0, sizeof(*out));
+    out->snn_bridge_blend = -1.0f;  /* Sentinel for "no bridge". */
+
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    if (b->grounded_lang) {
+        gl_stats_t gls;
+        memset(&gls, 0, sizeof(gls));
+        grounded_language_get_stats(b->grounded_lang, &gls);
+        out->vocab_size                  = gls.vocab_size;
+        out->total_bindings              = gls.total_bindings;
+        out->total_groundings            = gls.total_groundings;
+        out->total_comprehensions        = gls.total_comprehensions;
+        out->total_productions           = gls.total_productions;
+        out->templates_learned           = gls.templates_learned;
+        out->avg_binding_strength        = gls.avg_binding_strength;
+        out->avg_comprehension_confidence = gls.avg_comprehension_confidence;
+        out->vocabulary_growth_rate      = gls.vocabulary_growth_rate;
+    }
+
+    if (b->snn_lang_bridge) {
+        out->snn_bridge_blend = snn_language_bridge_get_blend(b->snn_lang_bridge);
+        snn_lang_stats_t bs;
+        memset(&bs, 0, sizeof(bs));
+        if (snn_language_bridge_get_stats(b->snn_lang_bridge, &bs) == 0) {
+            out->bridge_total_productions   = (uint32_t)bs.total_produce_calls;
+            out->bridge_avg_word_confidence = bs.avg_word_confidence;
+            out->bridge_avg_binding_weight  = bs.avg_binding_weight;
+            out->bridge_active_bindings     = bs.active_bindings;
+        }
+    }
+
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_probe_comprehend(
+    nimcp_brain_t brain,
+    const char* input_text,
+    float* out_components,
+    uint32_t max_components,
+    uint32_t* out_components_written,
+    float* out_l2_norm,
+    float* out_confidence,
+    uint32_t* out_concept_count)
+{
+    /* Zero outputs first so callers see a deterministic failure state. */
+    if (out_components && max_components > 0) {
+        memset(out_components, 0, max_components * sizeof(float));
+    }
+    if (out_components_written) *out_components_written = 0;
+    if (out_l2_norm)            *out_l2_norm = 0.0f;
+    if (out_confidence)         *out_confidence = 0.0f;
+    if (out_concept_count)      *out_concept_count = 0;
+
+    if (!brain || !input_text) return NIMCP_ERROR_INVALID;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+
+    gl_comprehension_result_t result;
+    memset(&result, 0, sizeof(result));
+    int rc = grounded_language_comprehend(b->grounded_lang, input_text, &result);
+    if (rc != 0) {
+        gl_comprehension_result_cleanup(&result);
+        return NIMCP_ERROR;
+    }
+
+    if (out_confidence)    *out_confidence = result.comprehension_confidence;
+    if (out_concept_count) *out_concept_count = result.concept_count;
+
+    /* Compute L2 norm + capture leading components, bounded strictly
+     * by semantic_dim. Walking past it reads OOB heap and produced
+     * garbage L2/components in the first version of this probe. */
+    if (result.semantic_vector) {
+        uint32_t sdim = grounded_language_get_semantic_dim(b->grounded_lang);
+        if (sdim == 0) sdim = 1;  /* defensive — shouldn't happen */
+        double sumsq = 0.0;
+        uint32_t written = 0;
+        for (uint32_t i = 0; i < sdim; i++) {
+            float v = result.semantic_vector[i];
+            if (!isfinite(v)) v = 0.0f;
+            sumsq += (double)v * (double)v;
+            if (out_components && written < max_components) {
+                out_components[written++] = v;
+            }
+        }
+        if (out_components_written) *out_components_written = written;
+        if (out_l2_norm) *out_l2_norm = (float)sqrt(sumsq);
+    }
+
+    gl_comprehension_result_cleanup(&result);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_snn_language_bridge_blend(
+    nimcp_brain_t brain,
+    float blend)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    if (!isfinite(blend) || blend < 0.0f || blend > 1.0f) {
+        return NIMCP_ERROR_INVALID;
+    }
+    snn_language_bridge_set_blend(b->snn_lang_bridge, blend);
+    return NIMCP_OK;
 }
 
 nimcp_status_t nimcp_brain_creative_blend(

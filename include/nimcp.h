@@ -801,6 +801,89 @@ nimcp_status_t nimcp_brain_grounded_respond(
 );
 
 /**
+ * @brief Diagnostic snapshot of grounded-language state.
+ *
+ * Read-only counters/averages for language-collapse triage. Single
+ * responsibility: surface the grounded_language module's internal stats
+ * + the SNN-language bridge's blend without piggybacking on the existing
+ * stats endpoints (those are already crowded).
+ *
+ * vocab_size = 0 with a non-NULL grounded_lang signals an init-only system.
+ * snn_bridge_blend = -1.0f signals "no bridge attached".
+ */
+typedef struct {
+    /* Lexicon + comprehension */
+    uint32_t vocab_size;
+    uint32_t total_bindings;
+    uint32_t total_groundings;
+    uint32_t total_comprehensions;
+    uint32_t total_productions;
+    uint32_t templates_learned;
+    float    avg_binding_strength;
+    float    avg_comprehension_confidence;
+    float    vocabulary_growth_rate;
+    /* SNN-language bridge */
+    float    snn_bridge_blend;        /**< Current blend factor [0,1] or -1 if no bridge */
+    uint32_t bridge_total_productions;
+    float    bridge_avg_word_confidence;
+    float    bridge_avg_binding_weight;
+    uint32_t bridge_active_bindings;
+} nimcp_grounded_language_diagnostics_t;
+
+/**
+ * @brief Get grounded-language diagnostic snapshot.
+ *
+ * Best-effort: returns NIMCP_OK with zeroed struct (and bridge_blend = -1.0f)
+ * when grounded_lang or snn_bridge are absent.
+ */
+nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
+    nimcp_brain_t brain,
+    nimcp_grounded_language_diagnostics_t* out
+);
+
+/**
+ * @brief Probe the comprehension pipeline for a single text.
+ *
+ * Runs grounded_language_comprehend(text) read-only and surfaces metrics
+ * needed for collapse-detection: comprehension confidence, semantic vector
+ * L2 norm, concept count, and the first N components of the semantic
+ * vector for cross-prompt cosine analysis. Does NOT call produce(), so
+ * this is safe to fan out across many probes without polluting state.
+ *
+ * @param brain               Brain handle
+ * @param input_text          Text to comprehend
+ * @param out_components      Output buffer for first N semantic-vector components
+ * @param max_components      Capacity of out_components
+ * @param out_components_written  Number of components written (≤ max_components)
+ * @param out_l2_norm         L2 norm of full semantic vector (or 0.0 on error)
+ * @param out_confidence      comprehension_confidence (or 0.0 on error)
+ * @param out_concept_count   activated_concepts count (or 0 on error)
+ * @return NIMCP_OK on success; struct fields zeroed on error.
+ */
+nimcp_status_t nimcp_brain_probe_comprehend(
+    nimcp_brain_t brain,
+    const char* input_text,
+    float* out_components,
+    uint32_t max_components,
+    uint32_t* out_components_written,
+    float* out_l2_norm,
+    float* out_confidence,
+    uint32_t* out_concept_count
+);
+
+/**
+ * @brief Set the SNN-language bridge blend factor at runtime.
+ *
+ * Fix path for collapse: cap blend at <0.9 so produce() doesn't bypass the
+ * vector-template path when the bridge's spike confidence is low. Returns
+ * NIMCP_ERROR_NOT_INITIALIZED if no bridge attached.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_blend(
+    nimcp_brain_t brain,
+    float blend
+);
+
+/**
  * @brief Generate creative text by blending two concepts
  *
  * Conceptual blending — combine two semantic vectors to create novel expression.

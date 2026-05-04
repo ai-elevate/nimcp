@@ -667,6 +667,31 @@ void grounded_language_get_stats(
     const grounded_language_t* gl,
     gl_stats_t* stats);
 
+/**
+ * @brief Get the semantic vector dimension this system was created with.
+ *
+ * WHAT: Exposes the immutable semantic_dim chosen at create() time.
+ * WHY:  Diagnostic probes (probe_comprehend) need this to bound reads
+ *       — comprehension_result.semantic_vector is sized to this dim and
+ *       walking past it is undefined behaviour.
+ * @return semantic_dim, or 0 if gl is NULL.
+ */
+uint32_t grounded_language_get_semantic_dim(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Minimum production confidence below which respond() returns
+ *        an "I don't have words for that yet" fallback instead of
+ *        emitting a degenerate template.
+ *
+ * Confidence here = fluency × relevance from gl_production_result_t.
+ * Below this floor the lexicon hasn't accumulated enough word-concept
+ * binding strength to justify producing — emitting a top-1 template
+ * looks like authoritative speech but is just the strongest seeded
+ * attractor, which causes mode collapse in the user-visible output.
+ */
+#define GL_RESPOND_MIN_CONFIDENCE 0.05f
+
 /*=============================================================================
  * Serialization
  *===========================================================================*/
