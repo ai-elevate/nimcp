@@ -417,7 +417,14 @@ static void apply_research_profile(brain_config_t* config)
     config->homeostatic_target_rate_hz = 5.0f;
     config->homeostatic_tau_ms = 10000.0f;
 
-    config->enable_dendritic_computation = true;
+    /* Brain-level dendritic_tree is a SINGLE tree, not a per-neuron 1:1
+     * mapping with the 2M main-net population.  dendritic_tree_update() runs
+     * but dendrite_compute_somatic_current() has no neuron to inject into.
+     * The cortical-column dendrite path (cortex_cnn_dendritic) is a separate,
+     * fully-wired subsystem and is unaffected by this flag.  Default OFF here
+     * to match the documented default in nimcp_brain.h:1583 and prevent the
+     * statue-shaped per-step update from running at the brain level. */
+    config->enable_dendritic_computation = false;
     config->dendritic_branches = 8;
     config->dendritic_compartments = 5;
 

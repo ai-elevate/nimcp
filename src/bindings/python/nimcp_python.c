@@ -3208,6 +3208,46 @@ static PyObject* Brain_get_hemispheric_balance(BrainObject* self, PyObject* Py_U
 }
 
 
+/* Brain.get_module_activity() — returns dict of statue-suspect probe
+ * counters. Field order MUST match nimcp_brain_get_module_activity in
+ * src/api/nimcp_part_core.c. */
+static PyObject* Brain_get_module_activity(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    uint64_t out[32];
+    nimcp_status_t st = nimcp_brain_get_module_activity(self->brain, out);
+    if (st != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "nimcp_brain_get_module_activity failed");
+        return NULL;
+    }
+    return Py_BuildValue(
+        "{s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K,s:K}",
+        "astrocyte_modulation_events",         out[0],
+        "oligodendrocyte_myelin_apply",        out[1],
+        "microglia_pruning_events",            out[2],
+        "sleep_replay_events",                 out[3],
+        "sleep_downscale_events",              out[4],
+        "lgss_input_rejections",               out[5],
+        "lgss_action_blocks",                  out[6],
+        "lgss_motor_blocks",                   out[7],
+        "lgss_training_blocks",                out[8],
+        "lgss_reward_blocks",                  out[9],
+        "ethics_violations",                   out[10],
+        "hnn_forward_invocations",             out[11],
+        "hnn_fallback_invocations",            out[12],
+        "cortical_column_forward_invocations", out[13],
+        "cortical_wta_winners_total",          out[14],
+        "cortical_wta_calls",                  out[15],
+        "thalamic_routes_dispatched",          out[16],
+        "thalamic_drops_backpressure",         out[17],
+        "callosum_transfers",                  out[18],
+        "kg_consumer_hits",                    out[19]);
+}
+
+
 /**
  * Configure recurrent forward pass parameters.
  * enable_recurrent(enabled, max_iterations=3, confidence_threshold=0.7, blend_alpha=0.3)
@@ -6961,7 +7001,11 @@ static PyObject* Brain_configure_cognitive(BrainObject* self, PyObject* Py_UNUSE
     internal->config.enable_mental_health_monitoring = true;
     internal->config.enable_training_integration = true;
     internal->config.enable_homeostatic_plasticity = true;
-    internal->config.enable_dendritic_computation = true;
+    /* Brain-level dendritic_tree is not 1:1 with main-net neurons -- the
+     * update runs but produces no consumer-side current injection.  Cortical
+     * columns have their own fully-wired dendrite path.  See
+     * nimcp_brain_config_profiles.c for full rationale. */
+    internal->config.enable_dendritic_computation = false;
     internal->config.enable_eligibility_traces = true;
 
     Py_RETURN_TRUE;
@@ -8431,6 +8475,22 @@ static PyObject* Brain_utm_get_training_health(BrainObject* self, PyObject* Py_U
         "dfa_exponent", (double)nimcp_utm_get_dfa_exponent(mgr),
         "gradients_healthy", (int)nimcp_utm_gradients_healthy(mgr),
         "early_stopped", (int)nimcp_utm_is_early_stopped(mgr));
+}
+
+static PyObject* Brain_utm_set_early_stopping_enabled(BrainObject* self, PyObject* args) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    int enabled;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_utm_set_early_stopping_enabled(mgr, enabled ? true : false);
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_utm_reset_early_stopping(BrainObject* self, PyObject* Py_UNUSED(args)) {
+    nimcp_unified_training_manager_t* mgr = UTM_FROM_BRAIN(self);
+    if (!mgr) { PyErr_SetString(PyExc_RuntimeError, "UTM not initialized"); return NULL; }
+    nimcp_utm_reset_early_stopping(mgr);
+    Py_RETURN_NONE;
 }
 
 static PyObject* Brain_utm_forward_only(BrainObject* self, PyObject* args) {
@@ -10708,6 +10768,8 @@ static PyMethodDef Brain_methods[] = {
      "Get total inter-hemispheric callosum transfers: get_callosum_transfers() -> int"},
     {"get_hemispheric_balance", (PyCFunction)Brain_get_hemispheric_balance, METH_NOARGS,
      "Get hemispheric balance [-1=left, +1=right]: get_hemispheric_balance() -> float"},
+    {"get_module_activity", (PyCFunction)Brain_get_module_activity, METH_NOARGS,
+     "Get module activity counters (statue-suspect probe): get_module_activity() -> dict"},
 
     // Recurrent forward pass + BPTT
     {"enable_recurrent", (PyCFunction)Brain_enable_recurrent, METH_VARARGS | METH_KEYWORDS,
@@ -10793,6 +10855,10 @@ static PyMethodDef Brain_methods[] = {
      "Swap back to live parameters after EMA inference -> True"},
     {"utm_get_training_health", (PyCFunction)Brain_utm_get_training_health, METH_NOARGS,
      "Get DFA-based training health: -> dict{health, health_name, dfa_exponent, gradients_healthy, early_stopped}"},
+    {"utm_set_early_stopping_enabled", (PyCFunction)Brain_utm_set_early_stopping_enabled, METH_VARARGS,
+     "Enable/disable UTM early stopping at runtime: utm_set_early_stopping_enabled(bool)"},
+    {"utm_reset_early_stopping", (PyCFunction)Brain_utm_reset_early_stopping, METH_NOARGS,
+     "Clear an already-tripped early-stop flag and reset counter/best_loss"},
     {"utm_forward_only", (PyCFunction)Brain_utm_forward_only, METH_VARARGS,
      "Forward-only inference through UTM: utm_forward_only(features, output_dim) -> [float, ...]"},
     {"utm_set_per_network_lr", (PyCFunction)Brain_utm_set_per_network_lr, METH_VARARGS,

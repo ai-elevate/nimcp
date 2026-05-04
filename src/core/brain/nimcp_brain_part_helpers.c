@@ -1187,6 +1187,23 @@ uint32_t perform_forward_pass(brain_t brain, const float* features, uint32_t num
     const float* fwd_features = features;
     uint32_t fwd_num = num_features;
 
+    /* === PER-SUBSYSTEM WALL-CLOCK TIMING (NIMCP_DEBUG_TIMING=1) ===
+     * The brain_decide caller already times "forward" as a single phase.
+     * These markers split that phase into cortex-CNN / adaptive / CNN /
+     * SNN / LNN buckets so we can identify which subsystem dominates as
+     * brain state grows (e.g., cortex CNN inference on CPU). */
+    static int _pf_dbg_checked = 0, _pf_dbg = 0;
+    if (!_pf_dbg_checked) {
+        const char* env = getenv("NIMCP_DEBUG_TIMING");
+        _pf_dbg = (env && env[0] == '1');
+        _pf_dbg_checked = 1;
+    }
+    uint64_t _pf_t0 = _pf_dbg ? nimcp_time_get_us() : 0;
+    uint64_t _pf_t_cortex = 0, _pf_t_adaptive = 0, _pf_t_cnn = 0;
+    uint64_t _pf_t_snn = 0, _pf_t_lnn = 0, _pf_t_end = 0;
+    #define PF_MARK(var) do { if (_pf_dbg) (var) = nimcp_time_get_us(); } while (0)
+    #define PF_MS(a, b) (((b) - (a)) / 1000.0)
+
     /* === Parallel path: submit adaptive + CNN + SNN to thread pool === */
     /* DISABLED: GPU forward from worker threads fails silently (CUDA context
      * not propagated). Sequential path calls GPU forward from main thread. */
@@ -1357,6 +1374,8 @@ sequential_fallback:
         fwd_features = s_blended;
     }
 
+    PF_MARK(_pf_t_cortex);  /* end cortex CNN forward + fusion */
+
     /* 1. Adaptive network — primary forward pass (always runs) */
     if (brain->can_use_readonly) {
         active_neurons = adaptive_network_forward_readonly(
@@ -1365,6 +1384,7 @@ sequential_fallback:
         active_neurons = adaptive_network_forward(
             brain->network, fwd_features, fwd_num, decision->output_vector, decision->output_size, 0);
     }
+    PF_MARK(_pf_t_adaptive);  /* end adaptive (ANN main net) forward */
 
     PROBE_STAGE(brain, PROBE_INF_ADAPTIVE_FWD, {
         PROBE_SET_INT(&_ctx, "active_neurons", (int64_t)active_neurons);
@@ -1411,6 +1431,7 @@ sequential_fallback:
             nimcp_tensor_destroy(cnn_input);
         }
     }
+    PF_MARK(_pf_t_cnn);  /* end CNN trainer forward */
 
     /* 3. SNN forward — spike-based blending */
     if (brain->snn_network) {
@@ -1495,6 +1516,7 @@ sequential_fallback:
     if (brain->snn_routing_bridge) {
         snn_routing_bridge_update(brain->snn_routing_bridge, 1.0f);
     }
+    PF_MARK(_pf_t_snn);  /* end SNN forward + routing bridge */
 
 lnn_gating:
 
@@ -1557,6 +1579,22 @@ lnn_gating:
                 }
             }
 
+            /* HNN probe: if any layer is configured for Hamiltonian dynamics
+             * AND has its H-network + momentum tensor allocated, this forward
+             * call will route through lnn_layer_forward_hamiltonian. We can
+             * only count "configured to take HNN path" here — the in-loop
+             * fallback (e.g. p==NULL) is invisible from this site. The
+             * fallback counter is incremented opportunistically when use_hamiltonian
+             * is set but H_net is NULL (layer was meant to be HNN but isn't). */
+            if (brain->lnn_network && brain->lnn_network->n_layers > 0 &&
+                brain->lnn_network->layers && brain->lnn_network->layers[0]) {
+                lnn_layer_t* l0 = brain->lnn_network->layers[0];
+                if (l0->use_hamiltonian && l0->H_net) {
+                    brain->module_activity.hnn_forward_invocations++;
+                } else if (l0->use_hamiltonian && !l0->H_net) {
+                    brain->module_activity.hnn_fallback_invocations++;
+                }
+            }
             int rc = lnn_forward_step(brain->lnn_network, lnn_input, lnn_output, 0.01f);
             if (rc == 0) {
                 const float* lo_data = (const float*)nimcp_tensor_data(lnn_output);
@@ -1593,8 +1631,28 @@ lnn_gating:
             PROBE_SET_INT(&_ctx, "lnn_out_size", (int64_t)lnn_out_size);
         });
     }
+    PF_MARK(_pf_t_lnn);  /* end LNN gating */
 
     decision->inference_time_us = nimcp_time_elapsed_us(start_time);
+
+    /* === EMIT PER-SUBSYSTEM TIMING SUMMARY (NIMCP_DEBUG_TIMING=1) === */
+    if (_pf_dbg) {
+        PF_MARK(_pf_t_end);
+        double total_ms = PF_MS(_pf_t0, _pf_t_end);
+        if (total_ms > 500.0) {  /* only log slow forward passes (cycle is 8.5s) */
+            NIMCP_LOGGING_INFO(
+                "perform_forward_pass (ms): cortex=%.0f adaptive=%.0f cnn=%.0f "
+                "snn=%.0f lnn=%.0f TOTAL=%.0f",
+                PF_MS(_pf_t0,         _pf_t_cortex),
+                PF_MS(_pf_t_cortex,   _pf_t_adaptive),
+                PF_MS(_pf_t_adaptive, _pf_t_cnn),
+                PF_MS(_pf_t_cnn,      _pf_t_snn),
+                PF_MS(_pf_t_snn,      _pf_t_lnn),
+                total_ms);
+        }
+    }
+    #undef PF_MARK
+    #undef PF_MS
 
     return active_neurons;
 }

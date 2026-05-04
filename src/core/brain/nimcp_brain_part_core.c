@@ -36,6 +36,7 @@ static const int   IMAGINATION_SIM_STEPS     = 3;      /* Number of prospective 
 #include "core/brain/nimcp_brain_kg.h"
 #include "security/nimcp_w11_safety_kg_events.h"  /* W11: LGSS KG emission */
 #include "cognitive/kg/nimcp_wave13_metacog_kg.h"  /* W13: analogy + multiscale events */
+#include "middleware/routing/nimcp_thalamic_router.h"  /* routing_stats_t for module_activity counters */
 
 static brain_t s_net_main_ann_kg_brain = NULL;
 
@@ -124,6 +125,7 @@ static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision,
             if (decision->confidence > 1.0f) decision->confidence = 1.0f;
             __atomic_add_fetch(&brain->kg_consumer_hits, 1,
                                __ATOMIC_RELAXED);
+            brain->module_activity.kg_consumer_hits++;
         }
         if (edges) brain_kg_edge_list_destroy(edges);
     }
@@ -160,6 +162,7 @@ static void w16_apply_kg_consumers(brain_t brain, brain_decision_t* decision,
             if (decision->confidence > 1.0f) decision->confidence = 1.0f;
             __atomic_add_fetch(&brain->kg_consumer_hits, 1,
                                __ATOMIC_RELAXED);
+            brain->module_activity.kg_consumer_hits++;
         } else {
             brain_kg_set_access_level(brain->internal_kg,
                 BRAIN_KG_ACCESS_ADMIN, brain->internal_kg_admin_token);
@@ -1165,6 +1168,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                                      lgss_input_ctx.action_description);
         }
         if (lgss_input_ret == 0 && lgss_input_eval.action == SAFETY_ACTION_DENY) {
+            brain->module_activity.lgss_input_rejections++;
             nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_INPUT_REJECTED, 2,
                 "LGSS input validator REJECTED inference input: %u features, "
                 "nan=%u, max_abs=%.1f", num_features, nan_count, max_abs);
@@ -1944,6 +1948,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                                 brain->ternary_hypercolumns &&
                                 brain->num_ternary_hypercolumns > 0;
         if (mcs_per_hc > 0 && feature_dim > 0 && out_sz == alloc_out_sz) {
+            brain->module_activity.cortical_column_forward_invocations++;
             /* Step 1: per-HC compute + distribution */
             for (uint32_t h = 0; h < num_hcs; h++) {
                 hypercolumn_t* hc = brain->hypercolumns[h];
@@ -1961,10 +1966,12 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                         (cc_ternary_hypercolumn_t*)brain->ternary_hypercolumns[h];
                     if (thc) {
                         uint32_t winner = cc_ternary_hypercolumn_wta(thc);
+                        brain->module_activity.cortical_wta_calls++;
                         /* If wta returns out-of-range index, skip the
                          * sparsify (slot stays as raw distribution) rather
                          * than misclassify a non-winner as winner. */
                         if (winner < mcs_per_hc) {
+                            brain->module_activity.cortical_wta_winners_total++;
                             for (uint32_t m = 0; m < mcs_per_hc; m++) {
                                 slot[m] = (m == winner) ? slot[m] * CC_WTA_WINNER_GAIN
                                                         : slot[m] * CC_WTA_LOSER_GAIN;
@@ -2250,6 +2257,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                       0,  // message_type: inference output
                       decision->output_vector,
                       send_size);
+        brain->module_activity.callosum_transfers++;
 
         // Process any queued callosum messages (deliver after latency)
         callosum_process_queues(brain->callosum);
@@ -3464,7 +3472,39 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
     if (!post_forward_submitted && brain->glial && brain->config.enable_glial) {
         brain->glial_update_counter++;
         if (brain->glial_update_counter % 50 == 0) {
+            /* Snapshot internal monotonic counters so we can attribute the
+             * delta of this step() call into brain->module_activity for the
+             * ablation harness. */
+            uint64_t pre_astro = brain->glial->total_astrocyte_modulations;
+            uint64_t pre_myel  = brain->glial->total_oligodendrocyte_myelinations;
+            uint64_t pre_prune = brain->glial->total_microglia_prunings;
             glial_integration_step(brain->glial, brain->current_time_us);
+            brain->module_activity.astrocyte_modulation_events +=
+                (brain->glial->total_astrocyte_modulations - pre_astro);
+            brain->module_activity.oligodendrocyte_myelin_apply +=
+                (brain->glial->total_oligodendrocyte_myelinations - pre_myel);
+            brain->module_activity.microglia_pruning_events +=
+                (brain->glial->total_microglia_prunings - pre_prune);
+
+            /* Thalamic router: sample stats delta on the same amortized
+             * cadence. Counts dispatched routes + queue-full drops as
+             * monotonic deltas vs. the last snapshot we took. */
+            if (brain->thalamic_router) {
+                routing_stats_t rs = {0};
+                if (thalamic_router_get_stats(brain->thalamic_router, &rs)) {
+                    uint64_t prev_routed = brain->module_activity.thalamic_routes_dispatched;
+                    uint64_t prev_drops  = brain->module_activity.thalamic_drops_backpressure;
+                    /* Stats are themselves monotonic from router-create, so
+                     * the absolute values are the right thing to copy in.
+                     * We use max() to be safe against any reset elsewhere. */
+                    if (rs.signals_routed > prev_routed) {
+                        brain->module_activity.thalamic_routes_dispatched = rs.signals_routed;
+                    }
+                    if (rs.signals_dropped > prev_drops) {
+                        brain->module_activity.thalamic_drops_backpressure = rs.signals_dropped;
+                    }
+                }
+            }
         }
     }
 
@@ -3626,6 +3666,7 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
 
         // If action not allowed, modify decision
         if (!ethics_eval.allowed) {
+            brain->module_activity.ethics_violations++;
             // Block unethical action
             decision->confidence = 0.0F;
             strncat(decision->label, " [BLOCKED-ETHICS]",
@@ -3686,6 +3727,7 @@ skip_sequential_reasoning: ; /* Label for parallel reasoning dispatch */
                                      lgss_action_ctx.action_description);
         }
         if (lgss_action_ret == 0 && lgss_action_eval.action == SAFETY_ACTION_DENY) {
+            brain->module_activity.lgss_action_blocks++;
             /* Block unsafe decision — reduce confidence to zero, tag label */
             decision->confidence = 0.0f;
             strncat(decision->label, " [BLOCKED-LGSS]",
@@ -4474,6 +4516,7 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
                                      lgss_motor_ctx.action_description);
         }
         if (lgss_motor_ret == 0 && lgss_motor_eval.action == SAFETY_ACTION_DENY) {
+            brain->module_activity.lgss_motor_blocks++;
             /* Motor gate blocked — zero out output vector and reduce confidence */
             for (uint32_t i = 0; i < decision->output_size; i++) {
                 decision->output_vector[i] = 0.0f;
@@ -4501,8 +4544,11 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
             decision->output_vector, decision->output_size,
             native_text, sizeof(native_text));
         if (text_len > 0) {
-            /* Store in decision metadata if field exists, otherwise log */
-            (void)native_text; /* Available for caller via future API */
+            /* Append generated text to decision->explanation so callers can
+             * see what the brain "said" in its own words. */
+            size_t cur_len = strlen(decision->explanation);
+            size_t avail = sizeof(decision->explanation) - cur_len - 1;
+            if (avail > 0) strncat(decision->explanation, native_text, avail);
         }
     }
 
@@ -4543,13 +4589,20 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
         wave13_multiscale_emit_push(brain, "inference", decision->confidence);
     }
 
-    /* Inner speech: refine output through self-talk loop */
+    /* Inner speech: refine output through self-talk loop.
+     * Skip when the underlying language model is undertrained — refine
+     * is a no-op (or noise) below a minimum vocab size. */
     if (brain->inner_speech && brain->native_language_enabled &&
         decision && decision->output_vector && decision->output_size > 0) {
+        extern uint32_t nimcp_language_get_vocab_size(const void*);
         extern int nimcp_inner_speech_refine(void*, float*, uint32_t, float*, char*, uint32_t);
-        nimcp_inner_speech_refine(brain->inner_speech,
-            decision->output_vector, decision->output_size,
-            decision->output_vector, NULL, 0);
+        uint32_t vocab = brain->native_language
+            ? nimcp_language_get_vocab_size(brain->native_language) : 0;
+        if (vocab >= 32) {
+            nimcp_inner_speech_refine(brain->inner_speech,
+                decision->output_vector, decision->output_size,
+                decision->output_vector, NULL, 0);
+        }
     }
 
     /* Record refined output to episodic replay for consolidation during sleep */
@@ -4712,8 +4765,13 @@ skip_sequential_c5: ; /* Label for parallel C5 dispatch (C5.5/C6/Hyperledger rem
             est.crisis_confidence = 0.0f;
 
             empathetic_response_t resp = {0};
-            (void)empathetic_response_generate(
-                brain->empathetic_response_engine, &est, &resp);
+            if (empathetic_response_generate(
+                    brain->empathetic_response_engine, &est, &resp) &&
+                decision &&
+                (resp.requires_human_escalation || arsl > 0.85f)) {
+                /* High detected distress → be more cautious. */
+                decision->confidence *= 0.9f;
+            }
         }
     }
 

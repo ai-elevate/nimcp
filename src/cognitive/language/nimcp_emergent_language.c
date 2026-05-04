@@ -1,3 +1,14 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * This module has no production callers. nimcp_emergent_language_create
+ * is referenced only inside this file; brain-struct has no
+ * `emergent_language` field. The intended consumer was likely the
+ * brain-native language path, which now lives in inner_speech /
+ * brain_native_language. Either wire a consumer or delete the file
+ * before the next major version. Do not extend.
+ */
+
 /**
  * @file nimcp_emergent_language.c
  * @brief Emergent language — vocabulary discovered from neural activation patterns

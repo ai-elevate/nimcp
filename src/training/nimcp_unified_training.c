@@ -170,10 +170,16 @@ void nimcp_utm_default_config(nimcp_unified_training_config_t* config) {
     /* Item 13: Per-network LR (default: 0 = use global) */
     /* Already zeroed by memset */
 
-    /* Item 14: Early stopping (default: enabled) */
+    /* Item 14: Early stopping (default: enabled, but with conservative
+     * thresholds for immersive curricula where loss can plateau for
+     * thousands of steps without indicating convergence — e.g. Sensory
+     * Enrichment phase. Was patience=50 / min_delta=1e-5 — far too
+     * aggressive; tripped at step 1500 mid-mode-collapse, locking the
+     * Adaptive net at a flat 4725 loss. New defaults are safer; callers
+     * who want fast early-stop should override explicitly. */
     config->enable_early_stopping = true;
-    config->early_stopping_patience = 50;
-    config->early_stopping_min_delta = 1e-5f;
+    config->early_stopping_patience = 5000;
+    config->early_stopping_min_delta = 1e-3f;
 
     /* 15-item gap analysis defaults (all enabled per user preference) */
     config->enable_gradient_manager = true;
@@ -2893,6 +2899,21 @@ void nimcp_utm_set_per_network_lr(nimcp_unified_training_manager_t* mgr,
 bool nimcp_utm_is_early_stopped(const nimcp_unified_training_manager_t* mgr) {
     if (!mgr) return false;
     return mgr->early_stopped;
+}
+
+void nimcp_utm_set_early_stopping_enabled(nimcp_unified_training_manager_t* mgr,
+                                          bool enabled) {
+    if (!mgr) return;
+    mgr->early_stopping_enabled = enabled;
+    /* Note: does not clear an already-tripped flag — caller must reset. */
+}
+
+void nimcp_utm_reset_early_stopping(nimcp_unified_training_manager_t* mgr) {
+    if (!mgr) return;
+    mgr->early_stopped = false;
+    mgr->early_stopping_counter = 0;
+    mgr->early_stopping_best_loss = INFINITY;
+    NIMCP_LOGGING_INFO("UTM: early-stopping state reset (counter=0, best=+inf)");
 }
 
 int nimcp_utm_get_ema_params(const nimcp_unified_training_manager_t* mgr,

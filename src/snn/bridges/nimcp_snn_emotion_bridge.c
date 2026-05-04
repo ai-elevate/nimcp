@@ -1,3 +1,13 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * snn_emotion_bridge_create has zero callers in production code. The
+ * actual SNN-emotion path now goes through
+ * src/cognitive/emotion/nimcp_emotion_snn_bridge.c. Do NOT delete —
+ * the SNN wave campaign may revive this. Either wire a consumer or
+ * delete before the next major version. Do not extend.
+ */
+
 /**
  * @file nimcp_snn_emotion_bridge.c
  * @brief SNN-Emotion integration bridge implementation

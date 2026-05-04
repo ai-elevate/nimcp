@@ -752,6 +752,13 @@ int lnn_hamiltonian_apply_gradients(lnn_hamiltonian_net_t* net, float lr) {
         }
     }
 
+    /* Weights changed → the learned H(q,p) function changed, so the cached
+     * H_initial baseline now refers to a different Hamiltonian than
+     * H_current. Invalidate it so energy_deviation rebases on the next
+     * eval — the drift metric measures integrator conservation across a
+     * single learned-H window, not across training. */
+    net->has_initial = false;
+
     return 0;
 }
 

@@ -1017,6 +1017,15 @@ struct brain_struct {
     struct stdp_quantum_bridge* stdp_quantum_bridge;         // STDP-Quantum optimization bridge
     bool stdp_quantum_bridge_enabled;                        // STDP-Quantum bridge enabled
 
+    /* Neuromodulator-Plasticity bridge: 3-factor R-STDP gating
+     * (DA-LTP gate + RPE + NE memory boost + 5-HT consolidation + Hab avoidance).
+     * Lazy-created on first call to brain_apply_reward_learning(). */
+    struct neuromod_plasticity_bridge_struct* neuromod_plasticity_bridge;
+
+    /* Dale's principle enforcement (excitatory neurons → all positive weights,
+     * inhibitory → all negative). Applied after each plasticity coordinator step. */
+    bool enforce_dales_law;
+
     struct immune_bridge_coordinator* immune_bridge_coordinator;  // Immune bridge coordination
     bool immune_bridge_coordinator_enabled;                       // Immune bridge coordinator enabled
 
@@ -2299,6 +2308,53 @@ struct brain_struct {
         uint32_t fep_orchestrator_steps;
         float    fep_orchestrator_last_loss;
     } cognitive_stats;
+
+    /* Module activity counters — populated by hot-path increments in
+     * subsystems flagged as "statue suspects" (wired into hot path, but no
+     * existing metric quantifies their action). Used by the ablation harness
+     * to distinguish "module is firing" from "module is dead". All counters
+     * are monotonic uint64; reset only on brain create. */
+    struct {
+        /* Glial — see src/core/brain/glial/* (G3/G4/G5 wiring) */
+        uint64_t astrocyte_modulation_events;     /* synapse weight modulations applied */
+        uint64_t oligodendrocyte_myelin_apply;    /* conduction-delay applies */
+        uint64_t microglia_pruning_events;        /* synapse prunings */
+
+        /* Sleep-wake — see src/core/brain/sleep/* */
+        uint64_t sleep_replay_events;             /* memory replay invocations */
+        uint64_t sleep_downscale_events;          /* synaptic homeostasis downscales */
+
+        /* LGSS / safety gates — see src/security/lgss/*, src/core/brain/nimcp_brain_part_core.c
+           (LGSS gates in brain_decide / brain_learn_vector) */
+        uint64_t lgss_input_rejections;
+        uint64_t lgss_action_blocks;
+        uint64_t lgss_motor_blocks;
+        uint64_t lgss_training_blocks;
+        uint64_t lgss_reward_blocks;
+        uint64_t ethics_violations;
+
+        /* HNN forward path — does the LNN actually route through Hamiltonian-mode? */
+        uint64_t hnn_forward_invocations;         /* lnn_layer_forward_hamiltonian calls */
+        uint64_t hnn_fallback_invocations;        /* HNN failed -> fell back to LTC */
+
+        /* Cortical column pool + ternary WTA — CC2-CC5 wiring */
+        uint64_t cortical_column_forward_invocations;
+        uint64_t cortical_wta_winners_total;      /* sum of winners across all calls */
+        uint64_t cortical_wta_calls;              /* count of WTA invocations */
+
+        /* Thalamic router */
+        uint64_t thalamic_routes_dispatched;
+        uint64_t thalamic_drops_backpressure;
+
+        /* Hemispheric callosum */
+        uint64_t callosum_transfers;
+
+        /* KG hot-path consumers — W16/W17 */
+        uint64_t kg_consumer_hits;                /* brain_decide / brain_learn_vector consults */
+
+        /* Reserved for future */
+        uint64_t reserved[8];
+    } module_activity;
 
     // =========================================================================
     // COGNITIVE DISPATCH METRICS (Parallel Actor Pattern)

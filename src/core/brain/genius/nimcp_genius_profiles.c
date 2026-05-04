@@ -1,3 +1,14 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * The runtime side of this module is unused: genius_brain_create and
+ * genius_profile_get have zero callers outside this file/directory.
+ * Static profile data is consumed once at construction (if at all) and
+ * no `genius_profiles_t` instance is attached to the brain at runtime.
+ * Either wire a consumer or delete the file before the next major
+ * version. Do not extend.
+ */
+
 /**
  * @file nimcp_genius_profiles.c
  * @brief Genius Profiles Implementation - Static profiles and bridge operations

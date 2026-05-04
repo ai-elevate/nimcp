@@ -1,3 +1,14 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * snn_attention_bridge_create has zero callers in production code.
+ * cycle_coordinator declares an attention_bridge field but no init site
+ * wires it. The SNN lightweight CSR migration (CLAUDE.md cb-migration)
+ * likely supersedes this bridge. Do NOT delete — the SNN wave campaign
+ * may bring it back. Either wire a consumer or delete before the next
+ * major version. Do not extend.
+ */
+
 /**
  * @file nimcp_snn_attention_bridge.c
  * @brief SNN-Attention integration bridge implementation

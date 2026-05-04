@@ -995,6 +995,17 @@ void nimcp_utm_set_per_network_lr(nimcp_unified_training_manager_t* mgr,
 /** @brief Check if early stopping has triggered */
 bool nimcp_utm_is_early_stopped(const nimcp_unified_training_manager_t* mgr);
 
+/** @brief Enable/disable early stopping at runtime. Disabling does NOT
+ *  clear an already-tripped early_stopped flag — call reset for that. */
+void nimcp_utm_set_early_stopping_enabled(nimcp_unified_training_manager_t* mgr,
+                                          bool enabled);
+
+/** @brief Clear an already-tripped early-stop. Resets early_stopped=false,
+ *  counter=0, best_loss=+inf so the next composite loss starts fresh.
+ *  Use between curriculum phases (e.g. after Sensory Enrichment) to
+ *  unblock training when the prior phase plateaued legitimately. */
+void nimcp_utm_reset_early_stopping(nimcp_unified_training_manager_t* mgr);
+
 /** @brief Get EMA-averaged parameters for a param group (copies out) */
 int nimcp_utm_get_ema_params(const nimcp_unified_training_manager_t* mgr,
                                uint32_t group_idx, float* out_params, size_t count);

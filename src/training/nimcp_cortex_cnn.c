@@ -957,6 +957,7 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
                                         const uint8_t* pixels,
                                         uint32_t w, uint32_t h, uint32_t ch) {
     if (!proc || proc->type != CORTEX_CNN_VISUAL || !pixels) return NULL;
+    if (!proc->trainer) return NULL;  /* defensive: partial load / racy destroy */
     if (w == 0 || h == 0 || ch == 0) return NULL;
 
     /* Convert uint8 pixels to float [0,1] and pack as 1D tensor (H*W*C) */
@@ -1041,6 +1042,7 @@ const float* cortex_cnn_forward_visual(cortex_cnn_processor_t* proc,
 const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
                                        const float* mel, uint32_t mel_size) {
     if (!proc || proc->type != CORTEX_CNN_AUDIO || !mel) return NULL;
+    if (mel_size == 0) return NULL;
 
     /* FNO path — spectral convolution for native frequency-domain processing */
     if (proc->fno_audio) {
@@ -1070,6 +1072,7 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
     }
 
     /* CNN path — Conv2d layers (original architecture) */
+    if (!proc->trainer) return NULL;  /* defensive: partial load / racy destroy */
     uint32_t dims[4] = {1, 1, 1, mel_size};
     nimcp_tensor_t* input = nimcp_tensor_create(dims, 4, NIMCP_DTYPE_F32);
     if (!input) return NULL;
@@ -1095,6 +1098,8 @@ const float* cortex_cnn_forward_audio(cortex_cnn_processor_t* proc,
 const float* cortex_cnn_forward_speech(cortex_cnn_processor_t* proc,
                                         const float* phonemes, uint32_t size) {
     if (!proc || proc->type != CORTEX_CNN_SPEECH || !phonemes) return NULL;
+    if (!proc->trainer) return NULL;  /* defensive: partial load / racy destroy */
+    if (size == 0) return NULL;
 
     /* Pack as [1, 1, 1, size] */
     uint32_t dims[4] = {1, 1, 1, size};
@@ -1179,6 +1184,7 @@ static void haar_wavelet_1level(const float* in, float* out, uint32_t n) {
 const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
                                         const float* segments, uint32_t n_segments) {
     if (!proc || proc->type != CORTEX_CNN_SOMATO || !segments) return NULL;
+    if (!proc->trainer) return NULL;  /* defensive: partial load / racy destroy */
     if (n_segments == 0) return NULL;
 
     /* ================================================================
@@ -1278,6 +1284,15 @@ const float* cortex_cnn_forward_somato(cortex_cnn_processor_t* proc,
 float cortex_cnn_backward(cortex_cnn_processor_t* proc,
                            const char* label, uint32_t num_outputs) {
     if (!proc || !proc->trainer || !proc->has_fwd_result || !label) return -1.0f;
+    /* Defensive: last_fwd.output / activations may be NULL if a concurrent
+     * forward call zeroed last_fwd between the has_fwd_result check above and
+     * this backward (e.g. UTM step interleaving with modality-specific block).
+     * cnn_trainer_backward asserts on these — guard up-front to avoid the
+     * NIMCP_THROW path which is heavier. */
+    if (!proc->last_fwd.output || !proc->last_fwd.activations) {
+        proc->has_fwd_result = false;
+        return -1.0f;
+    }
     if (num_outputs == 0) num_outputs = proc->embedding_dim;
 
     uint32_t label_idx = cortex_get_or_create_label(proc, label);
@@ -1656,6 +1671,12 @@ static int cortex_adapter_backward(void* ctx, const float* dl_doutput, uint32_t 
     cortex_cnn_adapter_ctx_t* a = (cortex_cnn_adapter_ctx_t*)ctx;
     if (!a || !a->proc || !a->proc->trainer || !dl_doutput) return -1;
     if (!a->proc->has_fwd_result) return -1;
+    /* Defensive: cnn_trainer_backward_with_gradient asserts on these — guard
+     * up-front. Same race window as cortex_cnn_backward — see comment there. */
+    if (!a->proc->last_fwd.output || !a->proc->last_fwd.activations) {
+        a->proc->has_fwd_result = false;
+        return -1;
+    }
 
     /* Pass external gradient to CNN backward */
     uint32_t dims[1] = {output_dim};

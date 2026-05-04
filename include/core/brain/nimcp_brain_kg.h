@@ -796,6 +796,17 @@ int brain_kg_generate_token(
 int brain_kg_verify_integrity(brain_kg_t* kg);
 
 /**
+ * @brief Reset the integrity baseline so the next verify call seals a fresh checksum.
+ *
+ * Use this after a batch of authorized init-time mutations (e.g., the various
+ * *_init_roots() calls during brain init) so a subsequent verify_integrity()
+ * doesn't fire a false positive against a baseline captured mid-init.
+ *
+ * @param kg KG handle (no-op if NULL)
+ */
+void brain_kg_reset_integrity_baseline(brain_kg_t* kg);
+
+/**
  * @brief Mark node as critical (protected)
  *
  * Critical nodes trigger immune alerts when modified.

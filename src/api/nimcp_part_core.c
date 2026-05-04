@@ -3437,6 +3437,70 @@ float nimcp_brain_get_hemispheric_balance(nimcp_brain_t brain)
 }
 
 
+/* nimcp_brain_get_module_activity — statue-suspect probe accessor.
+ *
+ * Field order (MUST match nimcp.h docstring + Python binding):
+ *   [0]  astrocyte_modulation_events
+ *   [1]  oligodendrocyte_myelin_apply
+ *   [2]  microglia_pruning_events
+ *   [3]  sleep_replay_events
+ *   [4]  sleep_downscale_events
+ *   [5]  lgss_input_rejections
+ *   [6]  lgss_action_blocks
+ *   [7]  lgss_motor_blocks
+ *   [8]  lgss_training_blocks
+ *   [9]  lgss_reward_blocks
+ *   [10] ethics_violations
+ *   [11] hnn_forward_invocations
+ *   [12] hnn_fallback_invocations
+ *   [13] cortical_column_forward_invocations
+ *   [14] cortical_wta_winners_total
+ *   [15] cortical_wta_calls
+ *   [16] thalamic_routes_dispatched
+ *   [17] thalamic_drops_backpressure
+ *   [18] callosum_transfers
+ *   [19] kg_consumer_hits
+ *   [20..31] reserved (zero)
+ *
+ * Counters are monotonic uint64; reset only at brain create. Read is
+ * unlocked — counters may race with writers, callers should treat
+ * deltas as approximate. */
+nimcp_status_t nimcp_brain_get_module_activity(
+    nimcp_brain_t brain, uint64_t out[32])
+{
+    if (!brain || !brain->internal_brain || !out) {
+        set_error("nimcp_brain_get_module_activity: NULL brain or out");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    brain_t b = brain->internal_brain;
+    out[0]  = b->module_activity.astrocyte_modulation_events;
+    out[1]  = b->module_activity.oligodendrocyte_myelin_apply;
+    out[2]  = b->module_activity.microglia_pruning_events;
+    out[3]  = b->module_activity.sleep_replay_events;
+    out[4]  = b->module_activity.sleep_downscale_events;
+    out[5]  = b->module_activity.lgss_input_rejections;
+    out[6]  = b->module_activity.lgss_action_blocks;
+    out[7]  = b->module_activity.lgss_motor_blocks;
+    out[8]  = b->module_activity.lgss_training_blocks;
+    out[9]  = b->module_activity.lgss_reward_blocks;
+    out[10] = b->module_activity.ethics_violations;
+    out[11] = b->module_activity.hnn_forward_invocations;
+    out[12] = b->module_activity.hnn_fallback_invocations;
+    out[13] = b->module_activity.cortical_column_forward_invocations;
+    out[14] = b->module_activity.cortical_wta_winners_total;
+    out[15] = b->module_activity.cortical_wta_calls;
+    out[16] = b->module_activity.thalamic_routes_dispatched;
+    out[17] = b->module_activity.thalamic_drops_backpressure;
+    out[18] = b->module_activity.callosum_transfers;
+    out[19] = b->module_activity.kg_consumer_hits;
+    for (int i = 20; i < 32; i++) out[i] = 0;
+
+    set_error("No error");
+    return NIMCP_OK;
+}
+
+
 nimcp_status_t nimcp_brain_enable_recurrent(nimcp_brain_t brain, bool enable,
                                              uint32_t max_iterations,
                                              float confidence_threshold,

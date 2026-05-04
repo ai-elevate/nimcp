@@ -1,3 +1,11 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * metabolic_pink_noise_create has zero callers in production code.
+ * Wrapper around pink_noise_create that is unused. Either wire a
+ * consumer or delete before the next major version. Do not extend.
+ */
+
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_metabolic_pink_noise_bridge.c - Metabolic Pink Noise Implementation

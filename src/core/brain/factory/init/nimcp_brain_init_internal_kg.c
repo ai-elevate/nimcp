@@ -296,6 +296,14 @@ bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
     /* INITIAL INTEGRITY CHECK                                                */
     /* ====================================================================== */
 
+    /* brain_kg_populate_from_brain() seals an integrity checksum at its end,
+     * but several subsequent init steps (memory_kg_init_roots, world_model_kg_init_roots,
+     * w9kg_init_roots, connect_internal_kg_to_*) mutate the KG further. That
+     * leaves a stale baseline that fires false integrity-violation reports on
+     * the very first verify call. Reset the baseline so it captures the full
+     * post-init state, then verify against it. */
+    brain_kg_reset_integrity_baseline(kg);
+
     int integrity_result = brain_kg_verify_integrity(kg);
     if (integrity_result == 0) {
         fprintf(stderr, "[INTERNAL_KG] Initial integrity checksum computed\n");

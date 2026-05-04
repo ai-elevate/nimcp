@@ -365,6 +365,13 @@ static uint32_t perform_forward_pass(brain_t brain, const float* features, uint3
                 s_inference_health.history_count % s_inference_health.check_interval == 0) {
                 nimcp_inference_health_check(&s_inference_health);
             }
+            /* Wire DFA-derived health into decision confidence: when the
+             * ensemble is DRIFTING (3) or OSCILLATING (4), dampen so
+             * downstream consumers see lower confidence on unhealthy
+             * inference distributions. */
+            if (s_inference_health.health >= 3 && decision) {
+                decision->confidence *= 0.9f;
+            }
         }
     }
 

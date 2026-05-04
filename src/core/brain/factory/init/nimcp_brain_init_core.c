@@ -117,6 +117,15 @@ brain_t nimcp_brain_factory_allocate_brain(void)
     brain->cached_decision = NULL;
     brain->input_size = 0;
 
+    /* Dale's principle: default ON.
+     * Re-enabled 2026-04-30 with proper thread safety: brain_enforce_dales_law
+     * acquires the plasticity-coordinator mutex for the full sweep, so
+     * structural plasticity can't realloc outgoing.overflow mid-iteration.
+     * Skips the sweep entirely if the coordinator is absent (e.g., mid-load),
+     * avoiding the previous unsynchronized-race SIGSEGV. */
+    brain->enforce_dales_law = true;
+    brain->neuromod_plasticity_bridge = NULL;
+
     // Initialize cache mutex for thread-safe access
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
         set_error("Failed to initialize cache mutex");

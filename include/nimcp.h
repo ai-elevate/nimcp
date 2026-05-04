@@ -1472,6 +1472,44 @@ uint64_t nimcp_brain_get_callosum_transfers(nimcp_brain_t brain);
 float nimcp_brain_get_hemispheric_balance(nimcp_brain_t brain);
 
 /**
+ * @brief Get module activity counters (statue-suspect probe).
+ *
+ * Returns monotonic uint64 counters for hot-path modules whose ablation
+ * effect is otherwise hard to distinguish from "module not firing". Used
+ * by the ablation harness to confirm that a module is actually invoked
+ * during inference/learning, separate from "ablation moves loss" outcome.
+ *
+ * Field order in out[] (caller MUST allocate at least 32 elements):
+ *   [0]  astrocyte_modulation_events
+ *   [1]  oligodendrocyte_myelin_apply
+ *   [2]  microglia_pruning_events
+ *   [3]  sleep_replay_events
+ *   [4]  sleep_downscale_events
+ *   [5]  lgss_input_rejections
+ *   [6]  lgss_action_blocks
+ *   [7]  lgss_motor_blocks
+ *   [8]  lgss_training_blocks
+ *   [9]  lgss_reward_blocks
+ *   [10] ethics_violations
+ *   [11] hnn_forward_invocations
+ *   [12] hnn_fallback_invocations
+ *   [13] cortical_column_forward_invocations
+ *   [14] cortical_wta_winners_total
+ *   [15] cortical_wta_calls
+ *   [16] thalamic_routes_dispatched
+ *   [17] thalamic_drops_backpressure
+ *   [18] callosum_transfers
+ *   [19] kg_consumer_hits
+ *   [20..31] reserved (zero)
+ *
+ * @param brain Brain handle
+ * @param out Caller-allocated uint64[32] receiver
+ * @return NIMCP_OK on success; NIMCP_ERROR_INVALID_PARAM if brain or out is NULL
+ */
+nimcp_status_t nimcp_brain_get_module_activity(
+    nimcp_brain_t brain, uint64_t out[32]);
+
+/**
  * @brief Connect a cloud backend for hybrid edge-cloud inference
  *
  * When connected, the local brain will escalate uncertain decisions to the

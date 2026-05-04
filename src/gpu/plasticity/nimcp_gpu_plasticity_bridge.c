@@ -420,10 +420,26 @@ int gpu_plasticity_homeostatic_update(
     }
     params.target_rate = target_rate;
 
-    /* Upload firing rates to GPU */
+    /* Upload firing rates to GPU.
+     * BUG FIX: Previously this used a transient g_rates tensor; the running
+     * average update + scaling landed there and the host buffer was freed on
+     * return — leaving state->avg_rates uninitialized so the downstream
+     * gpu_plasticity_homeostatic_scale_weights() consumer (which reads
+     * state->avg_rates) saw garbage. Use the persistent state tensor when
+     * available so the running average and scaled rates survive the call. */
     size_t n_dim = (size_t)n_neurons;
-    nimcp_gpu_tensor_t* g_rates = nimcp_gpu_tensor_from_host(
-        gpu_ctx, firing_rates, &n_dim, 1, NIMCP_GPU_PRECISION_FP32);
+    nimcp_gpu_tensor_t* g_rates = NULL;
+    bool own_rates = false;
+    if (state && state->avg_rates && n_neurons <= state->max_neurons) {
+        g_rates = state->avg_rates;
+        if (!nimcp_gpu_tensor_upload(g_rates, firing_rates)) {
+            return -1;
+        }
+    } else {
+        g_rates = nimcp_gpu_tensor_from_host(
+            gpu_ctx, firing_rates, &n_dim, 1, NIMCP_GPU_PRECISION_FP32);
+        own_rates = true;
+    }
     if (!g_rates) return -1;
 
     /* Create or use persistent scaling factors tensor */
@@ -438,7 +454,7 @@ int gpu_plasticity_homeostatic_update(
     }
 
     if (!g_scaling) {
-        nimcp_gpu_tensor_destroy(g_rates);
+        if (own_rates) nimcp_gpu_tensor_destroy(g_rates);
         return -1;
     }
 
@@ -478,7 +494,7 @@ int gpu_plasticity_homeostatic_update(
                           n_neurons, target_rate);
     }
 
-    nimcp_gpu_tensor_destroy(g_rates);
+    if (own_rates) nimcp_gpu_tensor_destroy(g_rates);
     if (own_scaling) {
         nimcp_gpu_tensor_destroy(g_scaling);
     }

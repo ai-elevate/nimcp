@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 METRICS_FILE = os.path.join(os.path.dirname(__file__), 'metrics.json')
+IMMERSIVE_STATE = '/workspace/nimcp/checkpoints/athena/immersive_state.json'
 INTERVAL = 60  # seconds (5 queries × 25-30s worst case = allow full minute)
 
 
@@ -167,6 +168,21 @@ def collect_metrics():
     if metrics.get('snn_spikes', 0) == 0 and metrics.get('snn_step_spikes', 0) > 0:
         metrics['snn_spikes'] = metrics['snn_step_spikes']
         metrics['snn_rate_hz'] = metrics['snn_step_rate']
+
+    # Stage + step from immersive_state.json (authoritative — trainer writes
+    # this after every checkpoint save). Runs LAST so it overrides the
+    # training-log regex above, which can lag or surface stale step numbers
+    # when the log gets rotated. Without this the dashboard's stage readout
+    # is stuck on its "Loading..." default.
+    try:
+        with open(IMMERSIVE_STATE) as f:
+            st = json.load(f)
+        if isinstance(st.get('stage'), int):
+            metrics['current_stage'] = st['stage']
+        if isinstance(st.get('step'), int):
+            metrics['current_step'] = st['step']
+    except Exception:
+        pass
 
     return metrics
 

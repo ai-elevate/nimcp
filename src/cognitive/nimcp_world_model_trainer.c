@@ -109,11 +109,19 @@ int nimcp_wmt_record_transition(nimcp_world_model_trainer_t* wmt,
     const float* action, uint32_t action_dim,
     const float* next_state)
 {
-    if (!wmt || !state || !action || !next_state) {
+    if (!wmt || !state || !next_state) {
         return -1;
     }
-    if (state_dim == 0 || action_dim == 0) {
+    if (state_dim == 0) {
         return -1;
+    }
+    /* action is optional: supervised-learning callers (brain_learn_vector)
+     * have no action vector; treat as actionless transition (action_dim=0). */
+    if (action == NULL) {
+        action_dim = 0;
+    } else if (action_dim == 0) {
+        /* non-NULL pointer with zero dim — caller error; ignore action */
+        action = NULL;
     }
 
     /* Clamp dimensions */
@@ -123,7 +131,9 @@ int nimcp_wmt_record_transition(nimcp_world_model_trainer_t* wmt,
     nimcp_wmt_transition_t* t = &wmt->history[wmt->history_write_idx];
     memset(t, 0, sizeof(*t));
     memcpy(t->state, state, sd * sizeof(float));
-    memcpy(t->action, action, ad * sizeof(float));
+    if (action && ad > 0) {
+        memcpy(t->action, action, ad * sizeof(float));
+    }
     memcpy(t->next_state, next_state, sd * sizeof(float));
     t->state_dim  = sd;
     t->action_dim = ad;

@@ -237,7 +237,16 @@ static void stage_glial_task(void* arg)
         uint32_t counter = __atomic_add_fetch(&brain->glial_update_counter, 1, __ATOMIC_RELAXED);
         if ((counter % 50) == 0) {
             uint64_t now = nimcp_time_get_us();
+            uint64_t pre_astro = brain->glial->total_astrocyte_modulations;
+            uint64_t pre_myel  = brain->glial->total_oligodendrocyte_myelinations;
+            uint64_t pre_prune = brain->glial->total_microglia_prunings;
             glial_integration_step(brain->glial, now);
+            brain->module_activity.astrocyte_modulation_events +=
+                (brain->glial->total_astrocyte_modulations - pre_astro);
+            brain->module_activity.oligodendrocyte_myelin_apply +=
+                (brain->glial->total_oligodendrocyte_myelinations - pre_myel);
+            brain->module_activity.microglia_pruning_events +=
+                (brain->glial->total_microglia_prunings - pre_prune);
             __atomic_store_n(&brain->last_glial_update_us, now, __ATOMIC_RELEASE);
         }
     }

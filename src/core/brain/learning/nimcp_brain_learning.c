@@ -71,6 +71,98 @@
 #include "portia/nimcp_portia.h"
 #include "edge/nimcp_sensor.h"
 #include "edge/nimcp_safety_watchdog.h"
+#include "integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "core/neuron_types/nimcp_neuron_types.h"
+#include "plasticity/nimcp_plasticity_coordinator.h"  /* coord mutex for Dale's law */
+
+/* Dale's principle enforcer: clip outgoing weights so excitatory neurons project
+ * only positive (≥0) and inhibitory only negative (≤0). Called after each batch
+ * of plasticity updates (STDP/BCM/etc) in a single coordinator-adjacent spot
+ * so all paths converge here rather than sprinkling clips across optimizers.
+ *
+ * COMPLEXITY: O(neurons × outgoing_per_neuron). For 2M neurons × ~320 syn/neuron
+ * this is ~640M ops; gated behind brain->enforce_dales_law to allow opt-out.
+ * Throttled (every 32nd call) to amortize cost.
+ *
+ * THREAD SAFETY (re-enabled 2026-04-30 by user request):
+ * Previous version was opt-in disabled because it raced with structural
+ * plasticity reallocing nrn->outgoing.overflow. Now we acquire the
+ * plasticity-coordinator's mutex for the full sweep — that's the same lock
+ * structural_plasticity_form_synapse and sparse_synapse_grow_overflow
+ * serialize on (the coordinator owns the brain-wide plasticity write lock,
+ * including structural-plasticity tick callbacks). If the coordinator is
+ * absent (e.g., partial checkpoint load), we skip rather than run racy.
+ * Per-neuron synapse cap (MAX_SYN_PER_NEURON) bounds blast radius from any
+ * residual torn read of `outgoing.embedded_count` that might slip through.
+ *
+ * Best-effort: if coordinator is NULL, do nothing — better to skip a sweep
+ * than to crash the trainer worker thread. The next call after coordinator
+ * comes online will run the sweep. */
+static void brain_enforce_dales_law(brain_t brain)
+{
+    if (!brain || !brain->enforce_dales_law) return;
+    if (!brain->network) return;
+
+    /* Throttle: full E/I sweep every 32nd call to keep <1% of plasticity time
+     * even when the coordinator lock is taken (sweep is the long pole). */
+    static __thread uint32_t dale_tick = 0;
+    if ((++dale_tick & 0x1F) != 0) return;
+
+    /* Thread safety: take the plasticity coordinator's mutex for the whole
+     * sweep so structural plasticity (which also goes through the coordinator)
+     * cannot realloc outgoing.overflow mid-iteration. If the coordinator is
+     * absent (mid-load, fresh init w/o bio_async + immune, etc), skip — running
+     * unsynchronized was the 2026-04-30 SIGSEGV vector. The next post-load
+     * call will pick up the sweep once the coordinator is online. */
+    plasticity_coordinator_t* coord = brain->plasticity_coordinator;
+    if (!coord || !coord->mutex) return;
+
+    neural_network_t base = adaptive_network_get_base_network(brain->network);
+    if (!base) return;
+
+    uint32_t n = neural_network_get_num_neurons(base);
+    if (n == 0) return;
+    /* Hard upper bound to bail on garbage neuron count (e.g. uninitialized
+     * num_neurons read post-checkpoint-resume before init completes). */
+    const uint32_t SANE_NEURON_MAX = 50u * 1000u * 1000u;  /* 50M */
+    if (n > SANE_NEURON_MAX) return;
+
+    /* Per-neuron synapse cap — defensive against torn outgoing.embedded_count
+     * reads (uint32 read/write is atomic on x86_64 but not guaranteed C-spec).
+     * Real fan-out is bounded by MAX_FAN_IN (384) plus overflow; 4096 leaves
+     * generous headroom while still bailing on garbage. */
+    const uint32_t MAX_SYN_PER_NEURON = 4096u;
+
+    nimcp_mutex_lock(coord->mutex);
+
+    uint32_t flipped = 0;
+    for (uint32_t i = 0; i < n; ++i) {
+        neuron_t* nrn = neural_network_get_neuron(base, i);
+        if (!nrn) continue;
+        bool is_exc = neuron_type_is_excitatory(nrn->type);
+        uint32_t syn_count = sparse_synapse_count(&nrn->outgoing);
+        if (syn_count == 0 || syn_count > MAX_SYN_PER_NEURON) continue;
+        for (uint32_t s = 0; s < syn_count; ++s) {
+            synapse_handle_t* h = sparse_synapse_get(&nrn->outgoing, s);
+            if (!h) continue;
+            /* isfinite check — defensive vs. any in-flight write that left a
+             * non-finite intermediate. With the coordinator lock held this
+             * should be unreachable; keep the guard so a stuck NaN doesn't
+             * pin a "violation" we'd then clamp into a real hot zero. */
+            float w = h->weight;
+            if (!isfinite(w)) continue;
+            if (is_exc && w < 0.0f) { h->weight = 0.0f; flipped++; }
+            else if (!is_exc && w > 0.0f) { h->weight = 0.0f; flipped++; }
+        }
+    }
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (flipped > 0) {
+        adaptive_network_invalidate_gpu_structure(brain->network);
+    }
+}
 
 /* Loss history circular buffer size — must match brain_internal.h loss_history[10] */
 #define LOSS_HISTORY_SIZE 10
@@ -1010,6 +1102,7 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                                      lgss_train_ctx.action_description);
         }
         if (lgss_train_ret == 0 && lgss_train_eval.action == SAFETY_ACTION_DENY) {
+            brain->module_activity.lgss_training_blocks++;
             nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
                 "LGSS training guard REJECTED learning step: label=%s, nan=%u",
                 label ? label : "(null)", train_nan);
@@ -1738,6 +1831,8 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             }
             /* CPU coordinator still runs for registered mechanism callbacks */
             plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
+            /* Dale's principle enforcement (post-plasticity weight sign clip). */
+            brain_enforce_dales_law(brain);
         }
         /* Structural plasticity: form new synapses for high-activity pairs */
         if (brain->structural_plasticity && brain->structural_plasticity_enabled) {
@@ -3402,10 +3497,46 @@ sequential_training:
          * Lower loss = more effective = higher utilization. */
         nimcp_dynamic_arch_record_activation(brain->dynamic_arch,
             "adaptive", 0, (loss < 1.0f) ? 1.0f : 1.0f / (loss + 1e-8f));
-        /* Analyze every 1000 steps */
+        /* Analyze every 1000 steps -- gated by enough activation samples
+         * (1 record/step * 1000 steps == 1000 samples per region, matching
+         * the module's default monitor_interval).  Apply the resulting
+         * advisory recommendations as a SAFE learning-rate modulation only --
+         * we never resize the architecture at runtime (that would break the
+         * checkpoint format and the SNN hierarchical CSR layout).
+         * GROW  -> region under-fitting / saturated -> nudge LR up by +5%
+         * SHRINK-> region under-utilized / dormant   -> nudge LR down by -5%
+         * All changes are clamped to [base*0.25, base*4.0]. */
         if ((brain->stats.total_learning_steps % 1000) == 0) {
             extern int nimcp_dynamic_arch_analyze(void*);
-            nimcp_dynamic_arch_analyze(brain->dynamic_arch);
+            int n_recs = nimcp_dynamic_arch_analyze(brain->dynamic_arch);
+            if (n_recs > 0) {
+                extern int nimcp_dynamic_arch_get_recommendation(
+                    const void*, uint32_t, void*);
+                /* Match definition order in include/cognitive/nimcp_dynamic_arch.h */
+                struct rec_local {
+                    char     region_name[64];
+                    int      action;          /* 0=GROW, 1=SHRINK, 2=NONE */
+                    int32_t  suggested_delta;
+                    float    utilization;
+                };
+                const float base = brain->base_learning_rate > 0.0f
+                                       ? brain->base_learning_rate
+                                       : brain->config.learning_rate;
+                const float lo = base * 0.25f;
+                const float hi = base * 4.0f;
+                for (int i = 0; i < n_recs && i < 8; i++) {
+                    struct rec_local rec;
+                    if (nimcp_dynamic_arch_get_recommendation(
+                            brain->dynamic_arch, (uint32_t)i, &rec) != 0) continue;
+                    if (rec.action == 0) {           /* GROW */
+                        brain->config.learning_rate *= 1.05f;
+                    } else if (rec.action == 1) {    /* SHRINK */
+                        brain->config.learning_rate *= 0.95f;
+                    }
+                }
+                if (brain->config.learning_rate < lo) brain->config.learning_rate = lo;
+                if (brain->config.learning_rate > hi) brain->config.learning_rate = hi;
+            }
         }
     }
 
@@ -4132,6 +4263,8 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
         }
         /* CPU coordinator still runs for registered mechanism callbacks */
         plasticity_coordinator_update(brain->plasticity_coordinator, now_ms, 1.0f);
+        /* Dale's principle enforcement (post-plasticity weight sign clip). */
+        brain_enforce_dales_law(brain);
     }
     /* Structural plasticity: form new synapses for high-activity pairs */
     if (brain->structural_plasticity && brain->structural_plasticity_enabled) {
@@ -4992,7 +5125,16 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     if (brain->glial) {
         // Use simulated time in microseconds for timestamp-based step
         uint64_t glial_timestamp = (uint64_t)(brain->stats.total_learning_steps * 1000);
+        uint64_t pre_astro = brain->glial->total_astrocyte_modulations;
+        uint64_t pre_myel  = brain->glial->total_oligodendrocyte_myelinations;
+        uint64_t pre_prune = brain->glial->total_microglia_prunings;
         glial_integration_step(brain->glial, glial_timestamp);
+        brain->module_activity.astrocyte_modulation_events +=
+            (brain->glial->total_astrocyte_modulations - pre_astro);
+        brain->module_activity.oligodendrocyte_myelin_apply +=
+            (brain->glial->total_oligodendrocyte_myelinations - pre_myel);
+        brain->module_activity.microglia_pruning_events +=
+            (brain->glial->total_microglia_prunings - pre_prune);
     }
 
     uint64_t _t_post_us = nimcp_time_get_us() - _t_post_start;
@@ -5856,6 +5998,7 @@ uint32_t brain_apply_reward_learning(brain_t brain, float reward)
                                      lgss_reward_ctx.action_description);
         }
         if (lgss_reward_ret == 0 && lgss_reward_eval.action == SAFETY_ACTION_DENY) {
+            brain->module_activity.lgss_reward_blocks++;
             nimcp_safety_audit_log_event(NIMCP_SAFETY_AUDIT_LGSS_REWARD_BLOCKED, 2,
                 "LGSS reward alignment BLOCKED reward signal: value=%.4f", reward);
             LOG_MODULE_WARN("BRAIN", "LGSS reward alignment blocked reward signal — "
@@ -5878,6 +6021,30 @@ uint32_t brain_apply_reward_learning(brain_t brain, float reward)
 
     // Get current network time
     uint64_t current_time = nimcp_time_get_us();
+
+    /* Neuromod-Plasticity bridge: 3-factor R-STDP eligibility consolidation.
+     * Lazy-create on first reward call. Feeds reward + expected (avg_rpe shifted)
+     * into apply_reward_pe; the bridge updates LTP/LTD gates that downstream
+     * STDP/BCM mechanisms can read via neuromod_plasticity_get_state(). */
+    if (!brain->neuromod_plasticity_bridge) {
+        neuromod_plasticity_config_t npb_cfg = neuromod_plasticity_default_config();
+        brain->neuromod_plasticity_bridge = neuromod_plasticity_create(&npb_cfg);
+    }
+    if (brain->neuromod_plasticity_bridge) {
+        /* expected = neutral baseline (0.5); RPE = reward - expected. */
+        float rpe_out = 0.0f;
+        float reward_pe_in = (reward + 1.0f) * 0.5f;  /* map [-1,1] -> [0,1] */
+        neuromod_plasticity_apply_reward_pe(brain->neuromod_plasticity_bridge,
+                                            reward_pe_in, 0.5f, &rpe_out);
+        /* Pull current DA level from the neuromodulator system to gate LTP. */
+        if (brain->neuromodulator_system) {
+            float da = neuromodulator_get_level(brain->neuromodulator_system,
+                                                NEUROMOD_DOPAMINE);
+            float gate = 0.0f;
+            neuromod_plasticity_apply_da_gating(brain->neuromod_plasticity_bridge,
+                                                da, &gate);
+        }
+    }
 
     // Apply reward-modulated learning with eligibility traces
     // Uses neural_network_apply_reward_learning() from neuralnet.c (lines 1472-1600)

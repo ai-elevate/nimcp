@@ -424,6 +424,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
          * and log a summary. This is forward-error-correction style resilience. */
         uint32_t broadcast_failures = 0;
         uint32_t broadcast_total = 0;
+        uint32_t broadcast_nonfull_failures = 0;  /* failures *other than* QUEUE_FULL */
         for (uint32_t i = 0; i < g_router->module_count; i++) {
             bio_module_entry_t* entry = &g_router->modules[i];
             if (entry->magic == BIO_MODULE_MAGIC &&
@@ -439,15 +440,16 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                     broadcast_failures++;
                     /* QUEUE_FULL is "subscriber too slow / no consumer loop" — common
                      * enough (e.g. modules registered without a drain tick) that
-                     * per-message WARNs flood the log. The aggregate-failure
-                     * LOG_WARN below still fires once per broadcast, so the
-                     * problem is still visible. Other enqueue errors (timeout,
-                     * mutex failure, shutdown) remain WARN. */
+                     * per-message WARNs flood the log. The aggregate WARN below also
+                     * downgrades to DEBUG when *all* failures are QUEUE_FULL — that's
+                     * a steady-state condition, not a fault. Non-QUEUE_FULL failures
+                     * (timeout, mutex, shutdown) still elevate the aggregate to WARN. */
                     if (enq_result == NIMCP_ERROR_QUEUE_FULL) {
                         LOG_DEBUG("bio_router: broadcast handler %u (%s) inbox full for "
                                   "msg_type=0x%04X — dropping",
                                   entry->module_id, entry->module_name, header->type);
                     } else {
+                        broadcast_nonfull_failures++;
                         LOG_WARN("bio_router: broadcast handler %u (%s) failed for "
                                  "msg_type=0x%04X (err=%d)",
                                  entry->module_id, entry->module_name, header->type, enq_result);
@@ -463,8 +465,15 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             }
         }
         if (broadcast_failures > 0) {
-            LOG_WARN("bio_router: broadcast had %u/%u handler failures for msg_type=0x%04X",
-                     broadcast_failures, broadcast_total, header->type);
+            if (broadcast_nonfull_failures > 0) {
+                LOG_WARN("bio_router: broadcast had %u/%u handler failures for msg_type=0x%04X "
+                         "(%u non-queue-full)",
+                         broadcast_failures, broadcast_total, header->type,
+                         broadcast_nonfull_failures);
+            } else {
+                LOG_DEBUG("bio_router: broadcast had %u/%u QUEUE_FULL drops for msg_type=0x%04X",
+                          broadcast_failures, broadcast_total, header->type);
+            }
             result = NIMCP_ERROR_OUT_OF_RANGE;
         }
 

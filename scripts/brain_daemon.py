@@ -890,7 +890,7 @@ class BrainService:
             # This prevents metrics/status queries from timing out behind learn_vector.
             if cmd in ('ping', 'status', 'get_neuron_count', 'get_snn_stats',
                        'get_network_metrics', 'get_cortex_cnn_metrics',
-                       'get_cognitive_stats'):
+                       'get_cognitive_stats', 'get_module_activity'):
                 return handler(req)
 
             # All other commands (learn_vector, decide_full, save, etc.) take the lock
@@ -1394,6 +1394,16 @@ class BrainService:
             m = self.brain.get_cortex_cnn_metrics()
             return {"metrics": m if m else {}}
 
+    def _cmd_get_module_activity(self, _req):
+        # Statue-suspect probe counters. See nimcp_brain_get_module_activity
+        # docstring (include/nimcp.h) for field meanings.
+        if True:  # RWLock in handle()
+            try:
+                m = self.brain.get_module_activity()
+            except Exception as e:
+                return {"error": "get_module_activity failed: %s" % e}
+            return {"activity": m if m else {}}
+
     # -- Biological state --
 
     def _cmd_substrate_get_health(self, _req):
@@ -1562,6 +1572,16 @@ class BrainService:
     def _cmd_utm_get_training_health(self, _req):
         if True:  # RWLock in handle()
             return {"health": self.brain.utm_get_training_health()}
+
+    def _cmd_utm_set_early_stopping_enabled(self, req):
+        if True:
+            self.brain.utm_set_early_stopping_enabled(bool(req.get("enabled", False)))
+        return {"ok": True}
+
+    def _cmd_utm_reset_early_stopping(self, _req):
+        if True:
+            self.brain.utm_reset_early_stopping()
+        return {"ok": True}
 
     def _cmd_utm_forward_only(self, req):
         if True:  # RWLock in handle()
@@ -2124,6 +2144,7 @@ class BrainDaemon:
         'decide_full', 'predict', 'speak', 'generate_text',
         'get_neuron_count', 'get_snn_stats', 'get_network_metrics',
         'get_cortex_cnn_metrics', 'get_cognitive_stats',
+        'get_module_activity',
         'get_training_dashboard', 'get_probe_metrics',
         'get_lateralization', 'get_cloud_stats',
         'utm_forward_only', 'utm_get_training_health',
@@ -2491,20 +2512,64 @@ class AutoCheckpointer:
         tmp_path = canonical + ".tmp"
         existing_size = os.path.getsize(canonical) if os.path.exists(canonical) else 0
 
+        # Helper: clean up orphan shards left by a failed save attempt.
+        # The C-side save writes shards in order (.snn first ~9-14GB, then
+        # adaptive into the .bin, then sidecars). A mid-write quota failure
+        # leaves an 8-9GB .snn (or other sidecar) under tmp_path.* — these
+        # MUST be removed or every retry compounds the quota deficit.
+        def _cleanup_save_partials(prefix):
+            partials = glob.glob(prefix) + glob.glob(prefix + '.*')
+            for p in partials:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+
+        # Helper: directory-size based quota-aware free check.
+        # os.statvfs reports the underlying MFS filesystem (multi-PB), NOT
+        # the pod's per-pod quota (~80GB). MFS errno=122 quota errors fire
+        # despite os.statvfs claiming TB free. We trust an explicit quota
+        # cap (NIMCP_CHECKPOINT_QUOTA_GB env, default 75GB conservative)
+        # and measure against actual checkpoint-dir size + fixed reserve
+        # for the inbound 14GB save.
+        def _checkpoint_free_gb():
+            try:
+                quota_gb = float(os.environ.get('NIMCP_CHECKPOINT_QUOTA_GB', '75'))
+            except ValueError:
+                quota_gb = 75.0
+            total = 0
+            for root, _, files in os.walk(self.checkpoint_dir):
+                for f in files:
+                    try:
+                        total += os.path.getsize(os.path.join(root, f))
+                    except OSError:
+                        pass
+            used_gb = total / (1024**3)
+            # Cross-check against statvfs and take the more pessimistic
+            try:
+                st = os.statvfs(self.checkpoint_dir)
+                fs_free_gb = (st.f_bavail * st.f_frsize) / (1024**3)
+            except OSError:
+                fs_free_gb = 1e9
+            return min(quota_gb - used_gb, fs_free_gb)
+
         try:
-            # STEP 0: Check disk space — need at least 10 GB free
-            stat = os.statvfs(self.checkpoint_dir)
-            free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
-            if free_gb < 10.0:
-                logger.warning("Low disk space (%.1f GB free) — pruning old checkpoints", free_gb)
+            # STEP 0: Quota-aware disk check — need at least 20 GB free
+            # (one 14GB save + 6GB headroom for sidecars + retry margin).
+            min_free_gb = 20.0
+            free_gb = _checkpoint_free_gb()
+            if free_gb < min_free_gb:
+                logger.warning("Low quota-free space (%.1f GB free of NIMCP_CHECKPOINT_QUOTA_GB=%s) "
+                               "— pruning old checkpoints", free_gb,
+                               os.environ.get('NIMCP_CHECKPOINT_QUOTA_GB', '75'))
                 auto_files = sorted(glob.glob(
                     os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
                 auto_files = [f for f in auto_files if not any(
                     f.endswith('.bin.' + ext) for ext in
                     ['snn','lnn','cnn','meta','tokenizer','mirror_neurons',
                      'executive','cortex_visual','cortex_audio',
-                     'cortex_speech','cortex_somato'])]
-                while auto_files and free_gb < 10.0:
+                     'cortex_speech','cortex_somato','cb_rescaled','temperature'])]
+                while auto_files and free_gb < min_free_gb:
                     old = auto_files.pop(0)
                     try:
                         os.remove(old)
@@ -2513,16 +2578,31 @@ class AutoCheckpointer:
                         logger.info("Pruned old checkpoint: %s", old)
                     except Exception:
                         pass
-                    stat = os.statvfs(self.checkpoint_dir)
-                    free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
-                if free_gb < 10.0:
+                    free_gb = _checkpoint_free_gb()
+                # Also drop any orphan .tmp shards from prior failed saves
+                for orphan in glob.glob(os.path.join(self.checkpoint_dir, "*.tmp")) + \
+                              glob.glob(os.path.join(self.checkpoint_dir, "*.bin.tmp.*")):
+                    try:
+                        os.remove(orphan)
+                        logger.info("Removed orphan shard: %s", orphan)
+                    except Exception:
+                        pass
+                free_gb = _checkpoint_free_gb()
+                if free_gb < min_free_gb:
                     logger.error("Still only %.1f GB free after pruning — skipping save", free_gb)
                     return
 
             # STEP 1: Save to temp file (never touch the real checkpoint).
             # brain.save() automatically writes sidecars (.snn, .lnn, .cnn,
             # .meta, .cortex_*, etc.) to tmp_path.snn, tmp_path.lnn, etc.
-            self.brain.save(tmp_path)
+            # On any failure mid-write, clean up the partials so the next
+            # retry has a clean slate.
+            try:
+                self.brain.save(tmp_path)
+            except Exception as save_exc:
+                _cleanup_save_partials(tmp_path)
+                logger.error("brain.save FAILED — orphan shards cleaned: %s", save_exc)
+                raise
 
             # STEP 2: Validate — temp file must be reasonably sized.
             # Threshold scales with neuron count: ~50 bytes/neuron minimum
@@ -2629,8 +2709,10 @@ class AutoCheckpointer:
                 except Exception as e:
                     logger.warning("Timestamped backup failed: %s", e)
 
-                # Keep last 5 timestamped backups (loop kept only 1 prior to
-                # 2026-04-26 — comment said 5 but threshold was > 1).
+                # Keep last 2 timestamped backups (was 5 — too greedy on
+                # the pod's ~80GB quota, where each is ~14GB so 5 = 70GB
+                # just for backups). 2 covers "current + previous" for
+                # rollback safety without hogging quota.
                 auto_files = sorted(_glob.glob(
                     os.path.join(self.checkpoint_dir, "athena_auto_*.bin")))
                 # Filter to only core files (not sidecars like .bin.snn)
@@ -2639,7 +2721,7 @@ class AutoCheckpointer:
                     ['snn','lnn','cnn','meta','tokenizer','mirror_neurons',
                      'executive','cortex_visual','cortex_audio',
                      'cortex_speech','cortex_somato'])]
-                while len(auto_files) > 5:
+                while len(auto_files) > 2:
                     old = auto_files.pop(0)
                     try:
                         os.remove(old)
@@ -3477,6 +3559,21 @@ def main():
     except Exception as _cc_err:
         logger.warning("configure_cognitive() failed: %s — sleep-wake and "
                        "related subsystems may be inert", _cc_err)
+
+    # UTM early-stopping: disable + reset on every brain start.
+    # The C-side default trips on flat curriculum phases (Sensory
+    # Enrichment in particular) and locks the Adaptive net at a
+    # mode-collapsed plateau. Immersive curricula need the trainer to
+    # keep updating across plateaus; the curriculum, not the optimizer,
+    # decides when to advance. If a phase legitimately needs early-stop,
+    # turn it back on inside that phase.
+    try:
+        brain.utm_reset_early_stopping()
+        brain.utm_set_early_stopping_enabled(False)
+        logger.info("UTM early-stopping: disabled + reset (immersive default)")
+    except Exception as _es_err:
+        logger.warning("utm_set_early_stopping_enabled failed: %s — "
+                       "rebuild Python .so for new bindings", _es_err)
 
     # Reapply any SNN knob overrides saved from previous sessions. Must
     # run AFTER configure_cognitive (which may reset some defaults) so

@@ -2199,6 +2199,13 @@ int brain_kg_verify_integrity(brain_kg_t* kg) {
     return 0;
 }
 
+void brain_kg_reset_integrity_baseline(brain_kg_t* kg) {
+    if (!kg) return;
+    nimcp_mutex_lock(kg->mutex);
+    kg->security.integrity_checksum = 0;
+    nimcp_mutex_unlock(kg->mutex);
+}
+
 int brain_kg_mark_critical(brain_kg_t* kg, brain_kg_node_id_t node_id) {
     if (!kg || node_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_mark_critical: kg is NULL");

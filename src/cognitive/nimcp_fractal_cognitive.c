@@ -1,3 +1,14 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * The standalone fractal_cognitive module has no production callers.
+ * fractal_cognitive_init is unused; brain->fractal_cache field is
+ * declared in include/core/brain/nimcp_brain_internal.h but never
+ * populated. The DFA function path used in unified_training is a
+ * separate, wired path. Either wire a consumer or delete the file
+ * before the next major version. Do not extend.
+ */
+
 //=============================================================================
 // nimcp_fractal_cognitive.c - Fractal Topology Cognitive Integration
 //=============================================================================

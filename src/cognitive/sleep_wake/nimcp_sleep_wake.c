@@ -734,6 +734,7 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
                 (void*)brain, base_lr);
             if (replayed > 0) {
                 memories_replayed += (uint32_t)replayed;
+                brain->module_activity.sleep_replay_events += (uint64_t)replayed;
             }
         }
 
@@ -752,6 +753,7 @@ static void sleep_stage_deep_nrem(sleep_system_t sleep)
                 nimcp_mutex_lock(&sleep->lock);
                 sleep->total_synapses_pruned += scaled;
                 nimcp_mutex_unlock(&sleep->lock);
+                brain->module_activity.sleep_downscale_events += (uint64_t)scaled;
             }
         }
     }

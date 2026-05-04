@@ -323,6 +323,21 @@ bool nimcp_brain_factory_init_edge_subsystem(brain_t brain) {
         brain->contrastive_self = nimcp_contrastive_self_create(NULL);
         brain->self_curriculum = nimcp_self_curriculum_create(NULL);
         brain->dynamic_arch = nimcp_dynamic_arch_create(NULL);
+        /* Register the two regions whose activations are recorded:
+         * - "adaptive" (fed from learning loss in nimcp_brain_learning.c:3404)
+         * - "inference" (fed from decision confidence in nimcp_brain_part_core.c:4658)
+         * Without this, record_activation silently fails and analyze() sees
+         * an empty stat table -- the whole module was a statue. */
+        if (brain->dynamic_arch) {
+            extern int nimcp_dynamic_arch_register_region(void*, const char*, uint32_t, uint32_t);
+            /* Region neuron-count is only used to compute the advisory delta in
+             * nimcp_dynamic_arch_analyze (count * 0.2 for grow, * 0.1 for shrink).
+             * We consume `action` only (LR modulation, NOT resizing), so a
+             * nominal value is sufficient. */
+            const uint32_t nominal_region_size = 1024u;
+            nimcp_dynamic_arch_register_region(brain->dynamic_arch, "adaptive",  0, nominal_region_size);
+            nimcp_dynamic_arch_register_region(brain->dynamic_arch, "inference", 0, nominal_region_size);
+        }
         brain->world_model_trainer = nimcp_wmt_create(NULL);
         brain->output_attention = nimcp_oa_create(NULL);
         brain->wm_scratchpad = nimcp_wms_create(NULL);

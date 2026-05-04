@@ -1211,6 +1211,13 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     uint32_t modulations_submitted = 0;
     reasoning_calibration_t* cal = engine_get_calibration(engine);
 
+    /* Snapshot pre-calibration confidences so we can record producer→outcome
+     * pairs after Phase 7 finalizes chain->overall_confidence. */
+    float pre_calib_confidence[REASONING_MAX_CONTRIBUTORS];
+    for (uint32_t i = 0; i < num_active; i++) {
+        pre_calib_confidence[i] = session->contributions[i].result_confidence;
+    }
+
     for (uint32_t i = 0; i < num_active; i++) {
         convergent_contribution_t* contrib = &session->contributions[i];
         if (contrib->skipped || !contrib->completed) continue;
@@ -1266,6 +1273,21 @@ int reasoning_engine_reason_convergent(reasoning_engine_t* engine,
     /* Mark chain as complete if convergence threshold met */
     if (chain->overall_confidence >= config->confidence_threshold) {
         chain->is_complete = true;
+    }
+
+    /* ── Phase 7.5: Record per-contributor calibration outcomes ──
+     * Each evidence producer's pre-calibration confidence is the prediction;
+     * the converged overall_confidence is the observed outcome. The calibrator
+     * EMA-tracks |predicted − outcome| to derive scale/bias for next chain. */
+    if (cal && config->enable_calibration) {
+        for (uint32_t i = 0; i < num_active; i++) {
+            const convergent_contribution_t* contrib = &session->contributions[i];
+            if (contrib->skipped || !contrib->completed) continue;
+            if (contrib->role != REASONING_ROLE_EVIDENCE_PRODUCER) continue;
+            reasoning_calibration_record(cal, contrib->module_name,
+                                         pre_calib_confidence[i],
+                                         chain->overall_confidence);
+        }
     }
 
     /* ── Phase 8: Synthesis — format conclusion ── */

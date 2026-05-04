@@ -1,3 +1,11 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * calcium_pink_noise_bridge_create has zero callers in production
+ * code. Wrapper around pink_noise_create that is unused. Either wire
+ * a consumer or delete before the next major version. Do not extend.
+ */
+
 /**
  * @file nimcp_calcium_pink_noise_bridge.c
  * @brief Calcium Dynamics - Pink Noise Integration Bridge Implementation

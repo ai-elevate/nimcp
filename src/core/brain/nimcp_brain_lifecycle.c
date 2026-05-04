@@ -44,6 +44,7 @@
 #include "core/brain/nimcp_brain_bio_async.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "plasticity/structural/nimcp_structural_plasticity.h"
+#include "integration/inter/neuromod_plasticity/nimcp_neuromod_plasticity_bridge.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "core/brain_regions/nimcp_brain_regions.h"
@@ -418,6 +419,11 @@ brain_t allocate_brain(void)
     brain->cognitive_stats.self_heal_last_loss     = NAN;
     brain->cognitive_stats.intuition_last_loss     = NAN;
     brain->cognitive_stats.fep_orchestrator_last_loss = NAN;
+
+    /* Module activity counters — explicitly zero (brain is calloc'd, but
+     * be explicit to document the contract: counters are monotonic and
+     * reset only at brain create). */
+    memset(&brain->module_activity, 0, sizeof(brain->module_activity));
 
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "allocate_brain: failed to initialize cache mutex");
@@ -937,6 +943,12 @@ void brain_destroy(brain_t brain)
         plasticity_coordinator_destroy(brain->plasticity_coordinator);
         brain->plasticity_coordinator = NULL;
         brain->plasticity_coordinator_enabled = false;
+    }
+
+    // Cleanup neuromod-plasticity bridge (lazy-created in brain_apply_reward_learning).
+    if (brain->neuromod_plasticity_bridge) {
+        neuromod_plasticity_destroy(brain->neuromod_plasticity_bridge);
+        brain->neuromod_plasticity_bridge = NULL;
     }
 
     // 1. Cleanup bio-async orchestrator

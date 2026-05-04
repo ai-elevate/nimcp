@@ -1454,6 +1454,33 @@ _hp_state = {
 }
 
 
+# Per-stage warning flag — only log "binding missing" once per stage to avoid spam
+# when an older .so build does not expose set_training_dashboard.
+_DASHBOARD_WARNED_STAGES = set()
+
+
+def _push_dashboard(brain, stage, step, **kwargs):
+    """Wire the live trainer state into the brain's training_dashboard struct.
+
+    Tolerant of:
+    - older .so builds that do not expose set_training_dashboard (logged once per stage)
+    - daemon RPC layer transient failures (silently swallowed)
+
+    Pass any subset of kwargs accepted by nimcp_brain_set_training_dashboard:
+    domain, fact_ratio, warm_start_complete, warm_start_step,
+    lr_physics, lr_chemistry, lr_biology,
+    wm_steps, wm_phys, wm_chem, wm_bio,
+    collapse_events, surprises, replays, vocab_size, lang_confidence, active_engines.
+    """
+    try:
+        brain.set_training_dashboard(stage=int(stage), step=int(step), **kwargs)
+    except Exception as e:
+        if stage not in _DASHBOARD_WARNED_STAGES:
+            _DASHBOARD_WARNED_STAGES.add(stage)
+            print(f"  [Dashboard] set_training_dashboard unavailable for stage {stage} "
+                  f"({type(e).__name__}: {e}) — metrics will read zero", flush=True)
+
+
 def _check_hp_overrides(brain, lr_scheduler, step):
     """Check all hyperparameter override files and apply changes.
 
@@ -4331,9 +4358,13 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         audio_samples, label, desc = sample
 
-        # Submit real audio to the audio SNN bridge
+        # Submit real audio to the audio SNN bridge. Mel-transform first
+        # (n_mels=128) — Audio cortex CNN expects 128-element features,
+        # not raw 32000-sample waveforms. Without this, ESC-50 frames
+        # silently bypass the cortex.
         try:
-            brain.submit_sensory("audio", audio_samples)
+            mel = audio_to_mel(audio_samples, n_mels=128)
+            brain.submit_sensory("audio", mel)
         except Exception as e:
             logger.debug("Audio submit failed: %s", e)
 
@@ -4376,11 +4407,12 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             except Exception:
                 pass
 
-        # Submit audio
+        # Submit audio (mel-transform first — see _tell_audio for rationale)
         if audio_data:
             audio_samples, _, _ = audio_data
             try:
-                brain.submit_sensory("audio", audio_samples)
+                mel = audio_to_mel(audio_samples, n_mels=128)
+                brain.submit_sensory("audio", mel)
             except Exception:
                 pass
 
@@ -5198,7 +5230,7 @@ ENRICHMENT_FLAG = os.path.join(CHECKPOINT_DIR, ".sensory_enrichment_done")
 
 
 def run_sensory_enrichment(brain, composer, parent, decoder,
-                           num_exposures=2500):
+                           num_exposures=500):
     """Unified multimodal sensory enrichment — integrated, not phased.
 
     Previous version ran 4 sequential phases (visual → audio → cross-modal →
@@ -5414,7 +5446,10 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
         if aud_sample:
             aud_samples, _, _desc_a = aud_sample
             try:
-                brain.submit_sensory("audio", aud_samples)
+                # Mel-transform raw 32K-sample ESC-50 → 128 features
+                # so it matches the audio cortex CNN input dim.
+                mel = audio_to_mel(aud_samples, n_mels=128)
+                brain.submit_sensory("audio", mel)
                 present_a = True
             except Exception: pass
         if spk_sample:
@@ -5648,6 +5683,13 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
     collapse_detector = CollapseDetector(brain_ref=brain)
     curriculum = CurriculumEscalator(unlock_threshold=500.0)
     mini_batch_buf = []
+    # Publish initial stage state to the brain dashboard so the
+    # get_training_dashboard RPC stops returning zeros.
+    _push_dashboard(brain, stage=0, step=start_from,
+                    domain="stage0_sensory",
+                    lr_physics=lr_scheduler.get_lr(),
+                    lr_chemistry=lr_scheduler.get_lr(),
+                    lr_biology=lr_scheduler.get_lr())
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
         if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
@@ -5867,6 +5909,16 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
                 pass
             print(f"    {' | '.join(parts)}", flush=True)
 
+            # Live-publish dashboard state. Same 50-step cadence as the
+            # quick-feedback block above so we don't add extra socket calls.
+            _push_dashboard(brain, stage=0, step=i + 1,
+                            domain="stage0_sensory",
+                            lr_physics=lr_scheduler.get_lr(),
+                            lr_chemistry=lr_scheduler.get_lr(),
+                            lr_biology=lr_scheduler.get_lr(),
+                            collapse_events=int(getattr(collapse_detector,
+                                                        "collapse_count", 0) or 0))
+
         # Progress report
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
@@ -6068,6 +6120,13 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             start_from = step
 
     # === SINGLE-STEP MODE (fallback) ===
+    # Publish initial stage state to the brain dashboard so the
+    # get_training_dashboard RPC stops returning zeros.
+    _push_dashboard(brain, stage=1, step=start_from,
+                    domain="stage1_naming",
+                    lr_physics=lr_ctrl.get_lr(),
+                    lr_chemistry=lr_ctrl.get_lr(),
+                    lr_biology=lr_ctrl.get_lr())
     for i in range(start_from, num_stimuli):
         # Mode collapse early detection
         if ((i + 1) % COLLAPSE_CHECK_INTERVAL == 0
@@ -6320,6 +6379,17 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 pass
             print(f"    {' | '.join(parts)}", flush=True)
 
+            # Live-publish dashboard state every 50 steps. Single global LR
+            # (lr_ctrl) — replicate to all 3 per-domain fields rather than
+            # leaving them at zero.
+            _push_dashboard(brain, stage=1, step=i + 1,
+                            domain="stage1_naming",
+                            lr_physics=lr_ctrl.get_lr(),
+                            lr_chemistry=lr_ctrl.get_lr(),
+                            lr_biology=lr_ctrl.get_lr(),
+                            collapse_events=int(getattr(collapse_detector,
+                                                        "collapse_count", 0) or 0))
+
         # Progress
         if (i + 1) % 500 == 0:
             avg_loss = np.mean(losses[-500:]) if losses else 0
@@ -6441,6 +6511,19 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
 
     print(f"  [Warm Start] First {WARM_START_STEPS} steps: "
           f"{WARM_START_FACT_RATIO*100:.0f}% facts → {TARGET_FACT_RATIO*100:.0f}% facts")
+
+    # Publish initial stage state — Stage 2 has real per-domain LR scaling
+    # (1.2× physics, 1.5× chemistry, 1.5× biology applied per-step), but at
+    # stage entry we only have the base lr — push that and let the in-loop
+    # block refine with the actual effective_lr.
+    _push_dashboard(brain, stage=2, step=start_from,
+                    domain="stage2_warmstart",
+                    fact_ratio=WARM_START_FACT_RATIO,
+                    warm_start_complete=False,
+                    warm_start_step=WARM_START_STEPS,
+                    lr_physics=lr_ctrl.get_lr() * 1.2,
+                    lr_chemistry=lr_ctrl.get_lr() * 1.5,
+                    lr_biology=lr_ctrl.get_lr() * 1.5)
 
     for i in range(start_from, num_stimuli):
         # Full mode collapse detection (every 100 steps)
@@ -6655,6 +6738,22 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             clock.do_sleep(brain, parent)
         # Checkpoint every 50 steps + auto-sync to Hetzner every 500
         if (i + 1) % 50 == 0:
+            # Live-publish dashboard state every 50 steps. Use the actual
+            # per-domain LR multipliers Stage 2 applies in the inner loop
+            # (1.2× physics, 1.5× chemistry, 1.5× biology), so the dashboard
+            # reflects the rates we're actually using.
+            _ws_done = (steps_in >= WARM_START_STEPS)
+            _push_dashboard(brain, stage=2, step=i + 1,
+                            domain=("stage2_facts" if _ws_done
+                                    else "stage2_warmstart"),
+                            fact_ratio=float(fact_ratio),
+                            warm_start_complete=bool(_ws_done),
+                            warm_start_step=WARM_START_STEPS,
+                            lr_physics=lr_ctrl.get_lr() * 1.2,
+                            lr_chemistry=lr_ctrl.get_lr() * 1.5,
+                            lr_biology=lr_ctrl.get_lr() * 1.5,
+                            collapse_events=int(getattr(collapse_detector,
+                                                        "collapse_count", 0) or 0))
             _save_checkpoint(brain, decoder, stage=2, step=i+1)
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
@@ -6791,6 +6890,14 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
     diversity = DiversityRegularizer(
         buffer_size=100, interval=100, num_corrections=8,
         strength=0.2, min_variance_ratio=0.1)
+
+    # Publish initial Stage 3 state — only a single envelope LR is available
+    # here (lr_scheduler), so replicate it across the per-domain fields.
+    _push_dashboard(brain, stage=3, step=start_from,
+                    domain="stage3_dialogue",
+                    lr_physics=lr_scheduler.get_lr(),
+                    lr_chemistry=lr_scheduler.get_lr(),
+                    lr_biology=lr_scheduler.get_lr())
 
     for i in range(start_from, num_interactions):
         action = clock.tick(brain)
@@ -7008,6 +7115,31 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
         if (i + 1) % 50 == 0:
             for d in active_domains:
                 mastery.adapt_difficulty(d)
+
+            # Live-publish dashboard state. Stage 3 has REAL per-domain
+            # adaptive LRs via the mastery tracker — pull them when the
+            # domain is currently unlocked, fall back to envelope otherwise.
+            try:
+                _envelope_lr = lr_scheduler.get_lr()
+                def _per_domain_lr(name):
+                    if name in active_domains:
+                        try:
+                            return mastery.get_adaptive_lr(name) * _envelope_lr
+                        except Exception:
+                            return _envelope_lr
+                    return _envelope_lr
+                _push_dashboard(brain, stage=3, step=i + 1,
+                                domain="stage3_dialogue",
+                                lr_physics=float(_per_domain_lr("physics")),
+                                lr_chemistry=float(_per_domain_lr("chemistry")),
+                                lr_biology=float(_per_domain_lr("biology")))
+            except Exception:
+                # Mastery tracker shape may differ — never block training
+                _push_dashboard(brain, stage=3, step=i + 1,
+                                domain="stage3_dialogue",
+                                lr_physics=lr_scheduler.get_lr(),
+                                lr_chemistry=lr_scheduler.get_lr(),
+                                lr_biology=lr_scheduler.get_lr())
 
         # Refit embedding adapter periodically
         if (i + 1) % 1000 == 0:

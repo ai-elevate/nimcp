@@ -1,3 +1,13 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * sfa_pink_noise_create has zero callers in production code.
+ * brain_cycle_coordinator stores a `pink_noise_bridge` pointer but
+ * never calls update on it. The wrapper is a statue around
+ * pink_noise_create (which itself is wired elsewhere). Either wire a
+ * consumer or delete before the next major version. Do not extend.
+ */
+
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(sfa_pink_noise_bridge)

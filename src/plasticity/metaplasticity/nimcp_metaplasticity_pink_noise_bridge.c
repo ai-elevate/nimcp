@@ -1,3 +1,11 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * metaplasticity_pink_noise_create has zero callers in production
+ * code. Wrapper around pink_noise_create that is unused. Either wire
+ * a consumer or delete before the next major version. Do not extend.
+ */
+
 #include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_metaplasticity_pink_noise_bridge.c - Pink Noise for Metaplasticity

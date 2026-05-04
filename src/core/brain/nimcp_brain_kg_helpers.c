@@ -438,5 +438,6 @@ bool brain_kg_helpers_query_attention_focus(brain_t brain)
     }
 
     __atomic_add_fetch(&brain->kg_consumer_hits, 1, __ATOMIC_RELAXED);
+    brain->module_activity.kg_consumer_hits++;
     return true;
 }

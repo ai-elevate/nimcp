@@ -1,3 +1,15 @@
+/*
+ * DEPRECATED — STATUE (audit 2026-04-30)
+ *
+ * wm_snn_create is called once at working_memory_part_lifecycle.c:248
+ * and the bridge struct is destroyed at lifecycle teardown, but no code
+ * path calls wm_snn_step / wm_snn_simulate / wm_snn_store_in_slot /
+ * wm_snn_recall_from_slot during the brain hot path. The bridge is
+ * lifecycle-only — created but never stepped. The lightweight CSR pop
+ * migration may supersede this. Either wire a consumer or delete
+ * before the next major version. Do not extend.
+ */
+
 /**
  * @file nimcp_working_memory_snn_bridge.c
  * @brief Working Memory - SNN Bidirectional Integration Bridge Implementation
