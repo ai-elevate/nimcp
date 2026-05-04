@@ -31,6 +31,7 @@
 #include "generation/nimcp_tokenizer.h"
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
+#include "core/brain/nimcp_brain_kg.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "snn/bridges/nimcp_snn_speech_bridge.h"
 #include "snn/bridges/nimcp_snn_audio_bridge.h"
@@ -537,6 +538,95 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             grounded_language_connect_speech(brain->grounded_lang, brain->speech_cortex);
         if (brain->cortical_column_pool)
             grounded_language_connect_columns(brain->grounded_lang, brain->cortical_column_pool);
+
+        /* Memory-system attachments — every successful grounding event
+         * fans out to working memory + episodic replay + hippocampus
+         * (each independently optional). Without these, the trained
+         * vocabulary is invisible to the rest of the memory hierarchy. */
+        if (brain->working_memory)
+            grounded_language_connect_working_memory(brain->grounded_lang,
+                                                      brain->working_memory);
+        if (brain->episodic_replay)
+            grounded_language_connect_episodic_replay(brain->grounded_lang,
+                                                       brain->episodic_replay);
+        if (brain->hippocampus)
+            grounded_language_connect_hippocampus(brain->grounded_lang,
+                                                   brain->hippocampus);
+
+        /* Region-adapter attachments — every newly-created lexicon entry
+         * is mirrored into broca/wernicke. Single source of truth =
+         * grounded_language; broca/wernicke get copies for production
+         * + comprehension respectively. No-op when adapters absent. */
+        if (brain->broca)
+            grounded_language_connect_broca(brain->grounded_lang,
+                                             brain->broca);
+        if (brain->wernicke)
+            grounded_language_connect_wernicke(brain->grounded_lang,
+                                                brain->wernicke);
+
+        /* Internal KG self-registration — register grounded_language as
+         * a COGNITIVE node so KG analytics + downstream consumers can
+         * see the lexicon subsystem exists. Mirrors the surface_geometry
+         * registration pattern (init_surface_geometry.c:212-255):
+         * elevate to ADMIN, find-or-add node, add edges to peer
+         * subsystems, restore READ. Edges express dependencies:
+         *   grounded_language → semantic_memory (DEPENDS_ON)
+         *   grounded_language → snn_language_bridge (INTEGRATES_WITH)
+         *   grounded_language → broca / wernicke   (PROVIDES_TO) */
+        if (brain->internal_kg_enabled && brain->internal_kg) {
+            uint64_t admin_token = brain->internal_kg_admin_token;
+            brain_kg_set_access_level(brain->internal_kg,
+                                       BRAIN_KG_ACCESS_ADMIN, admin_token);
+
+            brain_kg_node_id_t gl_node =
+                brain_kg_find_node(brain->internal_kg, "grounded_language_subsystem");
+            if (gl_node == BRAIN_KG_INVALID_NODE) {
+                gl_node = brain_kg_add_node(
+                    brain->internal_kg,
+                    "grounded_language_subsystem",
+                    BRAIN_KG_NODE_COGNITIVE,
+                    "Grounded language: word-concept binding lexicon + "
+                    "syntactic templates + cross-modal grounding events");
+            }
+
+            if (gl_node != BRAIN_KG_INVALID_NODE) {
+                brain_kg_node_id_t sm_node =
+                    brain_kg_find_node(brain->internal_kg, "semantic_memory");
+                if (sm_node != BRAIN_KG_INVALID_NODE) {
+                    brain_kg_add_edge(brain->internal_kg, gl_node, sm_node,
+                        BRAIN_KG_EDGE_DEPENDS_ON,
+                        "lexicon binds words to semantic_memory concepts",
+                        0.9f);
+                }
+                brain_kg_node_id_t snn_node =
+                    brain_kg_find_node(brain->internal_kg, "snn_language_bridge");
+                if (snn_node != BRAIN_KG_INVALID_NODE) {
+                    brain_kg_add_edge(brain->internal_kg, gl_node, snn_node,
+                        BRAIN_KG_EDGE_INTEGRATES_WITH,
+                        "spike-driven dual-path produce/comprehend",
+                        0.7f);
+                }
+                brain_kg_node_id_t broca_node =
+                    brain_kg_find_node(brain->internal_kg, "broca");
+                if (broca_node != BRAIN_KG_INVALID_NODE) {
+                    brain_kg_add_edge(brain->internal_kg, gl_node, broca_node,
+                        BRAIN_KG_EDGE_PROVIDES_TO,
+                        "grounded_language mirrors lexicon entries to broca",
+                        0.6f);
+                }
+                brain_kg_node_id_t wernicke_node =
+                    brain_kg_find_node(brain->internal_kg, "wernicke");
+                if (wernicke_node != BRAIN_KG_INVALID_NODE) {
+                    brain_kg_add_edge(brain->internal_kg, gl_node, wernicke_node,
+                        BRAIN_KG_EDGE_PROVIDES_TO,
+                        "grounded_language mirrors lexicon entries to wernicke",
+                        0.6f);
+                }
+            }
+
+            brain_kg_set_access_level(brain->internal_kg,
+                                       BRAIN_KG_ACCESS_READ, 0);
+        }
 
         LOG_INFO(LOG_MODULE, "Grounded language system created (dim=128)");
 

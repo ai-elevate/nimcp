@@ -699,6 +699,49 @@ nimcp_status_t nimcp_brain_ground_word(
 );
 
 /**
+ * @brief Bootstrap the grounded lexicon from a curated JSON fixture.
+ *
+ * One-shot loader for data/lexicon/base_lexicon_v1.json (or any fixture
+ * with the same schema). Each entry — { "form", "class", "features" } —
+ * is forwarded to grounded_language_fast_map, creating word, concept,
+ * binding, and context vector in one pass.
+ *
+ * Use case: avoid waiting for the brain to learn ~1500 common
+ * nouns/verbs/adjectives from raw distributional exposure (slow). The
+ * fixture seeds those content words so curriculum text immediately has
+ * lexical anchors — function words like "the/is/and" are already
+ * seeded by grounded_language_create.
+ *
+ * Schema (validated at load time):
+ *   {
+ *     "version": 1,
+ *     "semantic_dim_hint": 128,
+ *     "words": [
+ *       { "form": "dog",   "class": "noun",      "features": [...] },
+ *       { "form": "run",   "class": "verb",      "features": [...] },
+ *       { "form": "red",   "class": "adjective", "features": [...] }
+ *     ]
+ *   }
+ *
+ * Behavior:
+ *   - Malformed individual word entries are skipped (logged once at end);
+ *     the call still returns NIMCP_OK if at least the top-level frame
+ *     parsed.
+ *   - Top-level malformed JSON or unsupported version returns NIMCP_ERROR
+ *     / NIMCP_ERROR_INVALID respectively.
+ *   - File-open / read failures return NIMCP_ERROR.
+ *
+ * @param brain      Brain handle (must have grounded_lang attached)
+ * @param json_path  Path to a base_lexicon_v*.json file
+ * @return NIMCP_OK on success, NIMCP_ERROR_INVALID on bad input/version,
+ *         NIMCP_ERROR on file/parse failure.
+ */
+nimcp_status_t nimcp_brain_bootstrap_lexicon(
+    nimcp_brain_t brain,
+    const char* json_path
+);
+
+/**
  * @brief Learn language from text (distributional + syntactic patterns)
  *
  * Processes text to learn word co-occurrence patterns, infer word classes,

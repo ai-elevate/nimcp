@@ -36,6 +36,7 @@
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "perception/nimcp_speech_cortex.h"
+#include "language/nimcp_grounded_language.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "cognitive/introspection/nimcp_introspection.h"
@@ -951,6 +952,33 @@ bool brain_process_multimodal(
             has_visual, has_audio, has_direct)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_process_multimodal: operation failed");
         return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // STAGE 1.5: Wernicke comprehension → grounded_language ingestion
+    // -------------------------------------------------------------------------
+    // When raw audio is present and both wernicke and grounded_lang exist,
+    // run audio through wernicke_comprehend and route the recognized words
+    // back into grounded_language as auditory grounding events. This closes
+    // the audio→language loop: every recognized word grows total_groundings
+    // with attention=word.confidence, which is what turns the lexicon from
+    // a static seed into a vocabulary that responds to actual audio.
+    if (brain->wernicke && brain->grounded_lang && audio_success &&
+        input->audio_data && input->audio_samples > 0 &&
+        audio_features && audio_dim > 0) {
+        // Sample rate isn't carried on multimodal_input_t; speech-band 16 kHz
+        // is the established NIMCP default (matches audio_cortex + Speech
+        // Commands fixtures used in training).
+        const uint32_t kAudioSampleRateHz = 16000u;
+        extern int gl_drive_audio_comprehension(grounded_language_t*, void*,
+                                                 const float*, uint32_t,
+                                                 uint32_t,
+                                                 const float*, uint32_t);
+        (void)gl_drive_audio_comprehension(
+            (grounded_language_t*)brain->grounded_lang,
+            brain->wernicke,
+            input->audio_data, input->audio_samples, kAudioSampleRateHz,
+            audio_features, audio_dim);
     }
 
     // -------------------------------------------------------------------------

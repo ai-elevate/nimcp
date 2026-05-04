@@ -554,6 +554,59 @@ STATE_FILE = "checkpoints/athena/immersive_state.json"
 MASTERY_FILE = "checkpoints/athena/mastery_state.json"
 CONTENT_CACHE = "checkpoints/athena/claude_content_cache.json"
 
+# Cross-modal grounding helper. The function-word stoplist is ~50 words —
+# anything not on the list is treated as a content word and gets a
+# brain.ground_word() call binding it to the active sensory features.
+# Kept compact deliberately: false positives (rarely-content words like
+# "very") just get an extra binding, which is harmless.
+_GL_FUNCTION_WORDS = {
+    "the","a","an","is","are","was","were","be","been","being",
+    "i","me","my","mine","you","your","yours","he","him","his","she","her",
+    "hers","it","its","we","us","our","ours","they","them","their","theirs",
+    "this","that","these","those","what","which","who","whom","whose",
+    "of","in","on","at","by","for","with","without","to","from","into",
+    "and","or","but","not","no","yes","do","does","did","done","doing",
+    "have","has","had","having","can","could","will","would","shall","should",
+    "may","might","must","as","if","then","than","so","because",
+    "very","just","also","too","more","most","much","many","some","any",
+    "all","each","every","other","another","such","same",
+}
+
+def _tokenize_for_grounding(text):
+    """Return lowercased content tokens of length >= 2, max 16 per text."""
+    import re
+    tokens = re.findall(r"[a-zA-Z]+", text.lower())
+    out = []
+    seen = set()
+    for t in tokens:
+        if len(t) < 2: continue
+        if t in _GL_FUNCTION_WORDS: continue
+        if t in seen: continue
+        seen.add(t)
+        out.append(t)
+        if len(out) >= 16: break
+    return out
+
+def _ground_content_words(brain, text, modality_features, modality):
+    """Bind content words from `text` to the sensory `modality_features`
+    via brain.ground_word. Returns the count of bindings actually made
+    (best-effort — silently skips on per-word failures)."""
+    words = _tokenize_for_grounding(text)
+    if not words or modality_features is None:
+        return 0
+    feats_list = modality_features if isinstance(modality_features, list) \
+                 else list(modality_features)
+    if not feats_list:
+        return 0
+    bound = 0
+    for w in words:
+        try:
+            if brain.ground_word(w, feats_list, modality=modality, attention=0.7):
+                bound += 1
+        except Exception:
+            pass
+    return bound
+
 # Adaptive curriculum constants
 MASTERY_WINDOW = 20          # Rolling window for accuracy tracking
 MASTERY_THRESHOLD_LOW = 0.3  # Below this: remedial (reduce difficulty)
@@ -2855,6 +2908,18 @@ def _inject_cognitive_training(brain, composer, step, learning_rate,
         cog_lr = learning_rate * COGNITIVE_TRAIN_LR_BOOST
         loss = brain.learn_vector(features, target, label=label,
                                   confidence=0.8, learning_rate=cog_lr)
+        # Cross-modal grounding on the cognitive hot path. Every 5 sensory
+        # steps we drop a cognitive item through here; binding its content
+        # words to the text features is what fills total_bindings /
+        # total_groundings in the grounded_language module. Without this,
+        # those counters stay at 0 and respond() falls through to IDK.
+        try:
+            _ground_content_words(brain, text, features,
+                                  modality=5)  # GL_MODALITY_LINGUISTIC
+            if answer and answer != text:
+                brain.learn_language_pair(text, answer, learning_rate=0.05)
+        except Exception:
+            pass
         if curriculum:
             curriculum.record_loss(loss if loss else 0, item.get('domain', ''))
             curriculum.check_escalation()
@@ -4451,7 +4516,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         return features, target, word_label, desc
 
-    def _train_cognitive(self, brain, text, domain=10, target_text=None):
+    def _train_cognitive(self, brain, text, domain=10, target_text=None,
+                         modality_features=None, modality=5):
         """Train ALL cognitive modules on a text sample.
 
         Calls brain.train_cognitive() which trains:
@@ -4460,11 +4526,14 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
           3. Language generator (LNN decoder, output projection, embeddings)
           4. Grounded language pairs (if target_text provided)
 
-        Also calls brain.train_language() for direct LNN training, and
-        brain.learn_language() for grounded lexicon distributional learning.
-
-        This ensures the ENTIRE cognitive pipeline learns together, not just
-        the neural network weights from learn_vector().
+        Also calls:
+          - brain.train_language() for direct LNN training
+          - brain.learn_language() for grounded lexicon distributional learning
+          - brain.ground_word() per content word, when modality_features is
+            supplied — this is the cross-modal binding step that actually
+            grows total_bindings/total_groundings counters in the
+            grounded_language module. Without it, the module accumulates
+            distributional context but never word→concept bindings.
         """
         if not text or len(text) < 3:
             return
@@ -4488,6 +4557,21 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             brain.learn_language(text)
         except Exception:
             pass
+        # Cross-modal grounding: actually bind content words to sensory
+        # features. This is what turns vocab from "248 seeded function
+        # words" into a real lexicon that can produce above the IDK floor.
+        if modality_features is not None:
+            try:
+                _ground_content_words(brain, text, modality_features, modality)
+            except Exception:
+                pass
+        # Paired learning (input → target text) — separate API path that
+        # builds bindings from text-to-text correspondences.
+        if target_text and target_text != text:
+            try:
+                brain.learn_language_pair(text, target_text, learning_rate=0.05)
+            except Exception:
+                pass
 
     def observe_response(self, result):
         """Observe what Athena's brain produced — without judging it.
@@ -4537,7 +4621,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 result = brain.decide_full(features)
                 loss = brain.learn_vector(features, target,
                                           label=label[:50], confidence=0.5)
-                self._train_cognitive(brain, f"{label}: {desc}", domain=10)
+                self._train_cognitive(brain, f"{label}: {desc}", domain=10,
+                                       modality_features=features, modality=0)
                 if self.decoder:
                     output_vec = result.get("output_vector")
                     if output_vec is not None:
@@ -4559,7 +4644,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 result = brain.decide_full(features)
                 loss = brain.learn_vector(features, target,
                                           label=label[:50], confidence=0.5)
-                self._train_cognitive(brain, desc, domain=10)
+                self._train_cognitive(brain, desc, domain=10,
+                                       modality_features=features, modality=1)
                 if self.decoder:
                     output_vec = result.get("output_vector")
                     if output_vec is not None:
@@ -4586,7 +4672,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         loss = brain.learn_vector(features, target, label=description[:50],
                                   confidence=0.5)
-        self._train_cognitive(brain, description, domain=10)
+        self._train_cognitive(brain, description, domain=10,
+                               modality_features=features, modality=5)
         if self.decoder:
             output_vec = result.get("output_vector")
             if output_vec is not None:
@@ -4673,7 +4760,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 loss = brain.learn_vector(features, target,
                                           label=paired_concept[:50],
                                           confidence=0.6, **lr_kwargs)
-                self._train_cognitive(brain, teaching, domain=10)
+                self._train_cognitive(brain, teaching, domain=10,
+                                       modality_features=features, modality=0)
                 encouragement = self._pop_content("_encouragements")
                 if loss is not None and loss < 0.5 and encouragement:
                     print(f"  Parent: {encouragement}")
@@ -4717,7 +4805,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                                   **lr_kwargs)
 
         # Train ALL cognitive modules on this text
-        self._train_cognitive(brain, concept + ". " + description, domain=10)  # GENERAL
+        self._train_cognitive(brain, concept + ". " + description, domain=10,
+                               modality_features=features, modality=5)  # GENERAL
 
         # Encourage based on engagement and loss trend
         encouragement = self._pop_content("_encouragements")
@@ -4786,7 +4875,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(lesson_text)
         # Dense target trains adaptive; label trains CNN classifier
         brain.learn_vector(features, target, label=topic[:50], confidence=0.7)
-        self._train_cognitive(brain, lesson_text, domain=3)  # ETHICS
+        self._train_cognitive(brain, lesson_text, domain=3,
+                               modality_features=features, modality=3)  # ETHICS / EMOTIONAL
         self.moral_lessons.append(topic)
 
     # --- Imagination ---
@@ -4815,7 +4905,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             target = make_semantic_target(inspiration)
             # Dense target + label for CNN classifier
             brain.learn_vector(features, target, label="inspiration", confidence=0.5)
-            self._train_cognitive(brain, inspiration, domain=2)  # ART
+            self._train_cognitive(brain, inspiration, domain=2,
+                                   modality_features=features, modality=3)  # ART / EMOTIONAL
             try:
                 brain.bg_update_reward(0.7, 0.3)
             except Exception:
@@ -4845,7 +4936,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 print(f"  [Real speech: '{word}']")
                 loss = brain.learn_vector(features, target,
                                           label=word[:50], confidence=0.6)
-                self._train_cognitive(brain, word, domain=0)
+                self._train_cognitive(brain, word, domain=0,
+                                       modality_features=features, modality=1)  # AUDITORY
                 try:
                     result = brain.decide_full(features)
                     output_vec = result.get("output_vector")
@@ -4880,7 +4972,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(target_phrase)
         loss = brain.learn_vector(features, target, label=target_phrase[:50],
                                    confidence=0.6)
-        self._train_cognitive(brain, target_phrase, domain=0)  # LANGUAGE
+        self._train_cognitive(brain, target_phrase, domain=0,
+                               modality_features=features, modality=1)  # LANGUAGE / AUDITORY
 
         # Now ask the brain to speak — see what it produces
         try:

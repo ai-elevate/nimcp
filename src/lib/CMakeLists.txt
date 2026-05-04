@@ -2317,6 +2317,8 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_config.c           # Default configuration
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_bio_async.c        # Bio-async messaging
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language.c        # Grounded language system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_persistence.c  # Grounded language sidecar persistence
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_memory_bridge.c  # Grounded language ↔ memory subsystems bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_creative_language_bridge.c # Creative cognition → language bridge
 
     # Language Layer Bridges (Phase L8: Integration bridges)

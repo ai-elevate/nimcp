@@ -2761,6 +2761,397 @@ nimcp_status_t nimcp_brain_grounded_respond(
 }
 
 /* =================================================================
+ * Base lexicon bootstrap (Option C of language training plan)
+ * =================================================================
+ *
+ * One-shot loader for data/lexicon/base_lexicon_v1.json — a curated
+ * fixture of ~1500 common English nouns/verbs/adjectives with stable
+ * 128-d feature vectors. Each entry is forwarded to
+ * grounded_language_fast_map(), which creates the lexicon entry +
+ * concept binding + context vector in a single call (DRY: this
+ * function does NOT reinvent the lexicon insert path).
+ *
+ * The JSON parser below is intentionally minimal — just enough to
+ * walk our own fixture format. It is NOT a general-purpose JSON lib
+ * (no escape-decoding past the few we need, no UTF-16 surrogates, no
+ * object-key ordering rules). Keeping it private here means the
+ * bootstrap module owns parsing end-to-end (SOLID/SRP) without
+ * pulling in a third-party dep just for one fixture.
+ */
+
+typedef struct {
+    const char* p;     /* current cursor */
+    const char* end;   /* one past last byte */
+} _lex_json_t;
+
+static void _lex_json_skip_ws(_lex_json_t* j) {
+    while (j->p < j->end) {
+        char c = *j->p;
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            j->p++;
+        } else {
+            return;
+        }
+    }
+}
+
+/* Match a single literal char after whitespace. Returns 1 on success, 0 on mismatch. */
+static int _lex_json_match(_lex_json_t* j, char want) {
+    _lex_json_skip_ws(j);
+    if (j->p < j->end && *j->p == want) { j->p++; return 1; }
+    return 0;
+}
+
+/* Parse a JSON string into a fixed-size buffer. Returns 1 on success.
+ * Handles only the escapes our generator produces ( \" \\ \/ \n \t ).
+ * On overflow returns 0 (caller treats as malformed).
+ */
+static int _lex_json_parse_string(_lex_json_t* j, char* out, size_t out_cap) {
+    _lex_json_skip_ws(j);
+    if (j->p >= j->end || *j->p != '"') return 0;
+    j->p++;
+    size_t n = 0;
+    while (j->p < j->end) {
+        char c = *j->p++;
+        if (c == '"') {
+            if (n >= out_cap) return 0;
+            out[n] = '\0';
+            return 1;
+        }
+        if (c == '\\') {
+            if (j->p >= j->end) return 0;
+            char esc = *j->p++;
+            char real;
+            switch (esc) {
+                case '"':  real = '"';  break;
+                case '\\': real = '\\'; break;
+                case '/':  real = '/';  break;
+                case 'n':  real = '\n'; break;
+                case 't':  real = '\t'; break;
+                case 'r':  real = '\r'; break;
+                case 'b':  real = '\b'; break;
+                case 'f':  real = '\f'; break;
+                /* \uXXXX not supported — fixture is plain ASCII. */
+                default:   return 0;
+            }
+            if (n + 1 >= out_cap) return 0;
+            out[n++] = real;
+            continue;
+        }
+        if (n + 1 >= out_cap) return 0;
+        out[n++] = c;
+    }
+    return 0;  /* unterminated */
+}
+
+/* Parse a JSON number (integer or floating point). Returns 1 on success. */
+static int _lex_json_parse_number(_lex_json_t* j, double* out) {
+    _lex_json_skip_ws(j);
+    if (j->p >= j->end) return 0;
+    /* strtod won't run past j->end naturally, but the JSON we parse is always
+     * NUL-terminated by the caller (we read into a heap buffer + NUL), so
+     * strtod is safe. */
+    char* endp = NULL;
+    double v = strtod(j->p, &endp);
+    if (endp == j->p) return 0;
+    j->p = endp;
+    *out = v;
+    return 1;
+}
+
+/* Skip an arbitrary JSON value (any depth). Used to gracefully tolerate
+ * unknown fields. Returns 1 on success, 0 on malformed input. */
+static int _lex_json_skip_value(_lex_json_t* j) {
+    _lex_json_skip_ws(j);
+    if (j->p >= j->end) return 0;
+    char c = *j->p;
+    if (c == '"') {
+        /* skip string */
+        j->p++;
+        while (j->p < j->end) {
+            char k = *j->p++;
+            if (k == '\\' && j->p < j->end) { j->p++; continue; }
+            if (k == '"') return 1;
+        }
+        return 0;
+    }
+    if (c == '{' || c == '[') {
+        char open_c = c;
+        char close_c = (c == '{') ? '}' : ']';
+        int depth = 1;
+        j->p++;
+        while (j->p < j->end && depth > 0) {
+            char k = *j->p++;
+            if (k == '"') {
+                /* skip string body */
+                while (j->p < j->end) {
+                    char s = *j->p++;
+                    if (s == '\\' && j->p < j->end) { j->p++; continue; }
+                    if (s == '"') break;
+                }
+            } else if (k == open_c) {
+                depth++;
+            } else if (k == close_c) {
+                depth--;
+            }
+        }
+        return depth == 0;
+    }
+    /* number / true / false / null — read until a structural char or ws */
+    while (j->p < j->end) {
+        char k = *j->p;
+        if (k == ',' || k == '}' || k == ']' ||
+            k == ' ' || k == '\t' || k == '\n' || k == '\r') {
+            return 1;
+        }
+        j->p++;
+    }
+    return 1;
+}
+
+/* Map "noun"/"verb"/"adjective"/etc. to a category hint for fast_map.
+ * fast_map's `category` arg is forwarded to find_or_create_concept; the
+ * grounded_language module currently treats it as an opaque uint32. We
+ * pass GL_CLASS_* so future versions that wire category → concept type
+ * have something meaningful. */
+static uint32_t _lex_class_from_string(const char* s) {
+    if (!s) return GL_CLASS_UNKNOWN;
+    if (strcmp(s, "noun")      == 0) return GL_CLASS_NOUN;
+    if (strcmp(s, "verb")      == 0) return GL_CLASS_VERB;
+    if (strcmp(s, "adjective") == 0) return GL_CLASS_ADJECTIVE;
+    if (strcmp(s, "adverb")    == 0) return GL_CLASS_ADVERB;
+    if (strcmp(s, "function")  == 0) return GL_CLASS_FUNCTION;
+    if (strcmp(s, "pronoun")   == 0) return GL_CLASS_PRONOUN;
+    return GL_CLASS_UNKNOWN;
+}
+
+/* Read entire file into a NUL-terminated heap buffer. Caller frees with
+ * nimcp_free. Returns NULL on error. *out_len excludes the NUL. */
+static char* _lex_slurp_file(const char* path, size_t* out_len) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return NULL;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return NULL; }
+    long sz = ftell(f);
+    if (sz < 0) { fclose(f); return NULL; }
+    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return NULL; }
+    /* Sanity cap: 128 MB. The fixture is ~5 MB. */
+    if ((unsigned long)sz > (128UL * 1024UL * 1024UL)) { fclose(f); return NULL; }
+    char* buf = (char*)nimcp_malloc((size_t)sz + 1);
+    if (!buf) { fclose(f); return NULL; }
+    size_t got = fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    if (got != (size_t)sz) { nimcp_free(buf); return NULL; }
+    buf[sz] = '\0';
+    if (out_len) *out_len = (size_t)sz;
+    return buf;
+}
+
+/* Parse one word entry: expects { "form": "...", "class": "...", "features": [..] }.
+ * Calls grounded_language_fast_map() on success. Returns 1 if the word was
+ * bootstrapped, 0 if the entry was malformed/skipped. Skipping never aborts
+ * the outer loop — we degrade gracefully on bad rows. */
+static int _lex_parse_word_entry(_lex_json_t* j,
+                                 grounded_language_t* gl,
+                                 uint32_t expected_dim) {
+    if (!_lex_json_match(j, '{')) return 0;
+
+    char form[GL_MAX_WORD_LEN] = {0};
+    char klass[32] = {0};
+    int  have_form = 0, have_class = 0, have_feats = 0;
+    /* Stack-side feature buffer sized to the canonical semantic dim.
+     * Anything past expected_dim is ignored; missing tail is zero-padded. */
+    float features[GL_SEMANTIC_DIM];
+    memset(features, 0, sizeof(features));
+    uint32_t feat_count = 0;
+
+    /* parse object members */
+    int first = 1;
+    for (;;) {
+        _lex_json_skip_ws(j);
+        if (_lex_json_match(j, '}')) break;
+        if (!first && !_lex_json_match(j, ',')) return 0;
+        first = 0;
+
+        char key[32] = {0};
+        if (!_lex_json_parse_string(j, key, sizeof(key))) return 0;
+        if (!_lex_json_match(j, ':')) return 0;
+
+        if (strcmp(key, "form") == 0) {
+            if (!_lex_json_parse_string(j, form, sizeof(form))) return 0;
+            have_form = 1;
+        } else if (strcmp(key, "class") == 0) {
+            if (!_lex_json_parse_string(j, klass, sizeof(klass))) return 0;
+            have_class = 1;
+        } else if (strcmp(key, "features") == 0) {
+            if (!_lex_json_match(j, '[')) return 0;
+            int feat_first = 1;
+            for (;;) {
+                _lex_json_skip_ws(j);
+                if (_lex_json_match(j, ']')) break;
+                if (!feat_first && !_lex_json_match(j, ',')) return 0;
+                feat_first = 0;
+                double v = 0.0;
+                if (!_lex_json_parse_number(j, &v)) return 0;
+                if (feat_count < expected_dim) {
+                    features[feat_count] = (float)v;
+                }
+                feat_count++;
+            }
+            have_feats = 1;
+        } else {
+            /* Unknown key — skip its value. */
+            if (!_lex_json_skip_value(j)) return 0;
+        }
+    }
+
+    if (!have_form || !have_class || !have_feats) return 0;
+    if (form[0] == '\0') return 0;
+    if (feat_count == 0) return 0;
+
+    uint32_t category = _lex_class_from_string(klass);
+    /* feature_dim passed to fast_map = how many we filled in (capped). */
+    uint32_t fdim = (feat_count < expected_dim) ? feat_count : expected_dim;
+
+    uint64_t cid = grounded_language_fast_map(gl, form, features, fdim, category);
+    return (cid != 0) ? 1 : 0;
+}
+
+nimcp_status_t nimcp_brain_bootstrap_lexicon(
+    nimcp_brain_t brain,
+    const char* json_path)
+{
+    if (!brain || !json_path) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_INVALID;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+
+    size_t buf_len = 0;
+    char* buf = _lex_slurp_file(json_path, &buf_len);
+    if (!buf) {
+        LOG_WARN("nimcp_brain_bootstrap_lexicon: failed to read %s", json_path);
+        return NIMCP_ERROR;
+    }
+
+    _lex_json_t j = { .p = buf, .end = buf + buf_len };
+
+    /* Top-level object */
+    if (!_lex_json_match(&j, '{')) {
+        LOG_WARN("nimcp_brain_bootstrap_lexicon: malformed JSON (expected '{')");
+        nimcp_free(buf);
+        return NIMCP_ERROR;
+    }
+
+    int saw_version = 0;
+    int saw_words = 0;
+    int parsed_count = 0;
+    int skipped_count = 0;
+    uint32_t expected_dim = grounded_language_get_semantic_dim(b->grounded_lang);
+    if (expected_dim == 0 || expected_dim > GL_SEMANTIC_DIM) {
+        expected_dim = GL_SEMANTIC_DIM;
+    }
+
+    int first_member = 1;
+    for (;;) {
+        _lex_json_skip_ws(&j);
+        if (_lex_json_match(&j, '}')) break;
+        if (!first_member && !_lex_json_match(&j, ',')) {
+            LOG_WARN("nimcp_brain_bootstrap_lexicon: malformed JSON (member sep)");
+            nimcp_free(buf);
+            return NIMCP_ERROR;
+        }
+        first_member = 0;
+
+        char key[32] = {0};
+        if (!_lex_json_parse_string(&j, key, sizeof(key))) {
+            LOG_WARN("nimcp_brain_bootstrap_lexicon: malformed top-level key");
+            nimcp_free(buf);
+            return NIMCP_ERROR;
+        }
+        if (!_lex_json_match(&j, ':')) {
+            nimcp_free(buf);
+            return NIMCP_ERROR;
+        }
+
+        if (strcmp(key, "version") == 0) {
+            double v = 0.0;
+            if (!_lex_json_parse_number(&j, &v)) {
+                nimcp_free(buf);
+                return NIMCP_ERROR;
+            }
+            if ((int)v != 1) {
+                LOG_WARN("nimcp_brain_bootstrap_lexicon: unsupported version %d (expected 1)",
+                         (int)v);
+                nimcp_free(buf);
+                return NIMCP_ERROR_INVALID;
+            }
+            saw_version = 1;
+        } else if (strcmp(key, "semantic_dim_hint") == 0) {
+            double v = 0.0;
+            if (!_lex_json_parse_number(&j, &v)) {
+                nimcp_free(buf);
+                return NIMCP_ERROR;
+            }
+            /* Hint only — we trust the runtime gl->semantic_dim. */
+            (void)v;
+        } else if (strcmp(key, "words") == 0) {
+            if (!_lex_json_match(&j, '[')) {
+                nimcp_free(buf);
+                return NIMCP_ERROR;
+            }
+            int word_first = 1;
+            for (;;) {
+                _lex_json_skip_ws(&j);
+                if (_lex_json_match(&j, ']')) break;
+                if (!word_first && !_lex_json_match(&j, ',')) {
+                    LOG_WARN("nimcp_brain_bootstrap_lexicon: malformed words[] (sep)");
+                    nimcp_free(buf);
+                    return NIMCP_ERROR;
+                }
+                word_first = 0;
+
+                /* Snapshot cursor so we can recover from a single bad entry. */
+                const char* before = j.p;
+                int ok = _lex_parse_word_entry(&j, b->grounded_lang, expected_dim);
+                if (ok) {
+                    parsed_count++;
+                } else {
+                    skipped_count++;
+                    /* Recovery: if the parser bailed mid-object, advance to
+                     * the next ',' or ']' at our depth. We do this by re-using
+                     * skip_value starting from the snapshot: rewind, then
+                     * skip the whole value. */
+                    j.p = before;
+                    if (!_lex_json_skip_value(&j)) {
+                        LOG_WARN("nimcp_brain_bootstrap_lexicon: unrecoverable parse error in words[]");
+                        nimcp_free(buf);
+                        return NIMCP_ERROR;
+                    }
+                }
+            }
+            saw_words = 1;
+        } else {
+            /* Unknown top-level key — skip. */
+            if (!_lex_json_skip_value(&j)) {
+                nimcp_free(buf);
+                return NIMCP_ERROR;
+            }
+        }
+    }
+
+    nimcp_free(buf);
+
+    if (!saw_version || !saw_words) {
+        LOG_WARN("nimcp_brain_bootstrap_lexicon: missing required fields (version=%d words=%d)",
+                 saw_version, saw_words);
+        return NIMCP_ERROR_INVALID;
+    }
+
+    LOG_INFO("Bootstrapped %d words from %s (skipped %d malformed)",
+             parsed_count, json_path, skipped_count);
+    return NIMCP_OK;
+}
+
+/* =================================================================
  * Grounded-language diagnostics (read-only collapse triage)
  * =================================================================
  *

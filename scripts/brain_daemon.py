@@ -1135,6 +1135,35 @@ class BrainService:
             result = self.brain.grounded_respond(text)
         return {"result": result}
 
+    def _cmd_bootstrap_lexicon(self, req):
+        """Bootstrap the grounded lexicon from a JSON fixture.
+
+        Best-effort: returns success flag + the count of words now in
+        the lexicon (post-bootstrap). The C side handles malformed
+        entries gracefully so this should never raise.
+        """
+        path = req.get("path")
+        if not path:
+            return {"error": "missing 'path' field"}
+        try:
+            result = self.brain.bootstrap_lexicon(path)
+        except AttributeError:
+            return {"error": "bootstrap_lexicon not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"bootstrap_lexicon: {e}"}
+        # Surface post-bootstrap vocab size so callers can verify the load.
+        try:
+            diag = self.brain.get_grounded_language_diagnostics()
+            vocab_size = int(diag.get("vocab_size", 0)) if isinstance(diag, dict) else 0
+        except Exception:
+            vocab_size = 0
+        out = {"vocab_size": vocab_size}
+        if isinstance(result, dict):
+            out.update(result)
+        else:
+            out["result"] = result
+        return out
+
     # -- LNN --
 
     def _cmd_lnn_forward_step(self, req):
@@ -3294,6 +3323,14 @@ def main():
                              "learning.")
     parser.add_argument("--log-file", type=str, default=None,
                         help="Log file path (default: stderr)")
+    parser.add_argument("--bootstrap-lexicon", type=str, default=None,
+                        metavar="PATH",
+                        help="Optional path to base_lexicon_v*.json. If "
+                             "given AND the brain has < 300 vocab words at "
+                             "startup, bootstrap the grounded lexicon from "
+                             "this file. Skipped on resume from a "
+                             "checkpoint that already has a populated "
+                             "lexicon to avoid double-bootstrapping.")
     args = parser.parse_args()
 
     # Logging setup
@@ -3682,6 +3719,43 @@ def main():
         print(f"  [6.5/8] ✓ Eager cognitive init: {count} subsystems created", flush=True)
     except Exception as e:
         print(f"  [6.5/8] ⚠ Eager cognitive init failed: {e} (non-fatal)", flush=True)
+
+    # Optional base-lexicon bootstrap. Runs only when:
+    #   1. --bootstrap-lexicon PATH was supplied, AND
+    #   2. The current grounded lexicon has fewer than 300 words (so we don't
+    #      double-bootstrap on --resume from a checkpoint that already has
+    #      it). The 300-word threshold is comfortably above the ~248 seeded
+    #      function words shipped by grounded_language_create().
+    if args.bootstrap_lexicon:
+        try:
+            diag = brain.get_grounded_language_diagnostics()
+            current_vocab = int(diag.get("vocab_size", 0)) if isinstance(diag, dict) else 0
+        except Exception as _diag_e:
+            current_vocab = 0
+            logger.warning("bootstrap_lexicon: could not read vocab_size (%s) — proceeding",
+                           _diag_e)
+        if current_vocab >= 300:
+            print(f"  [6.6/8] Skipping lexicon bootstrap (vocab_size={current_vocab} >= 300)",
+                  flush=True)
+        elif not os.path.exists(args.bootstrap_lexicon):
+            logger.warning("bootstrap_lexicon: file not found: %s",
+                           args.bootstrap_lexicon)
+        else:
+            try:
+                result = brain.bootstrap_lexicon(args.bootstrap_lexicon)
+                ok = bool(result.get("success", False)) if isinstance(result, dict) else bool(result)
+                if ok:
+                    try:
+                        diag2 = brain.get_grounded_language_diagnostics()
+                        new_vocab = int(diag2.get("vocab_size", 0)) if isinstance(diag2, dict) else 0
+                    except Exception:
+                        new_vocab = 0
+                    print(f"  [6.6/8] ✓ Bootstrapped lexicon from {args.bootstrap_lexicon} "
+                          f"(vocab {current_vocab} -> {new_vocab})", flush=True)
+                else:
+                    logger.warning("bootstrap_lexicon: load reported failure: %s", result)
+            except Exception as _boot_e:
+                logger.warning("bootstrap_lexicon: %s (non-fatal)", _boot_e)
 
     # Create service and daemon
     print("  [7/8] Creating brain service...", flush=True)

@@ -1137,6 +1137,23 @@ bool brain_save(brain_t brain, const char* filepath)
                         "KG facts NOT persisted\n", kg_path);
             }
         }
+
+        /* Grounded language sidecar — preserves the trained lexicon
+         * (vocab_list, lexicon hash table, learned word classes,
+         * distributional context vectors, valence/arousal) and syntactic
+         * templates across daemon restarts. Without this, the language
+         * module wipes its vocabulary on every restart and stays at zero
+         * bindings no matter how long training runs. */
+        if (brain->grounded_lang) {
+            extern int gl_persistence_save(const struct grounded_language* gl,
+                                           const char* path);
+            char gl_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(gl_path, sizeof(gl_path), "%s.gl_lang", filepath);
+            if (gl_persistence_save(brain->grounded_lang, gl_path) != 0) {
+                fprintf(stderr, "[WARN] gl_persistence_save failed for %s — "
+                        "trained lexicon NOT persisted\n", gl_path);
+            }
+        }
     }
 
     // Health monitoring: save complete
@@ -2207,6 +2224,23 @@ brain_t brain_load(const char* filepath)
         } else {
             fprintf(stderr, "[INFO] brain_kg_load: no sidecar at %s — "
                     "KG starts cold\n", kg_path);
+        }
+    }
+
+    /* Grounded language sidecar — restore trained lexicon + templates.
+     * Pre-sidecar checkpoints won't have a .gl_lang file; the loader logs
+     * and the language module continues with only seeded function/concept
+     * words (no trained vocabulary). */
+    if (brain->grounded_lang) {
+        extern int gl_persistence_load(struct grounded_language* gl,
+                                       const char* path);
+        char gl_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(gl_path, sizeof(gl_path), "%s.gl_lang", filepath);
+        if (gl_persistence_load(brain->grounded_lang, gl_path) == 0) {
+            fprintf(stderr, "[INFO] Restored grounded language lexicon from %s\n", gl_path);
+        } else {
+            fprintf(stderr, "[INFO] gl_persistence_load: no sidecar at %s — "
+                    "lexicon starts from seeded vocabulary only\n", gl_path);
         }
     }
 

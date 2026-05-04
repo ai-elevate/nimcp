@@ -3826,6 +3826,42 @@ static PyObject* Brain_ground_word(BrainObject* self, PyObject* args, PyObject* 
 }
 
 /**
+ * WHAT: Bootstrap the grounded lexicon from a JSON fixture.
+ * WHY:  One-shot inject ~1500 nouns/verbs/adjectives so the brain doesn't
+ *       have to learn common content words from raw distributional data.
+ * HOW:  Thin wrapper over nimcp_brain_bootstrap_lexicon. Returns dict
+ *       with success flag and (best-effort) the path that was loaded.
+ */
+static PyObject* Brain_bootstrap_lexicon(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    const char* json_path = NULL;
+
+    static char* kwlist[] = {"json_path", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &json_path))
+        return NULL;
+
+    if (!self->brain || !self->brain->internal_brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+
+    nimcp_status_t status;
+    Py_BEGIN_ALLOW_THREADS
+    status = nimcp_brain_bootstrap_lexicon(self->brain, json_path);
+    Py_END_ALLOW_THREADS
+
+    PyObject* result = PyDict_New();
+    if (!result) return NULL;
+    PyObject* tmp;
+    tmp = PyBool_FromLong(status == NIMCP_OK);
+    PyDict_SetItemString(result, "success", tmp); Py_DECREF(tmp);
+    tmp = PyLong_FromLong((long)status);
+    PyDict_SetItemString(result, "status", tmp); Py_DECREF(tmp);
+    tmp = PyUnicode_FromString(json_path);
+    PyDict_SetItemString(result, "path", tmp); Py_DECREF(tmp);
+    return result;
+}
+
+/**
  * WHAT: Learn language from text (distributional + syntactic)
  * WHY:  Learn word co-occurrence and sentence patterns from exposure
  */
@@ -10937,6 +10973,8 @@ static PyMethodDef Brain_methods[] = {
     // Grounded Language (human-like word-concept binding)
     {"ground_word", (PyCFunction)Brain_ground_word, METH_VARARGS | METH_KEYWORDS,
      "Ground a word in sensory experience: ground_word(word, features, modality=5, attention=0.8) -> bool"},
+    {"bootstrap_lexicon", (PyCFunction)Brain_bootstrap_lexicon, METH_VARARGS | METH_KEYWORDS,
+     "Bootstrap base lexicon from JSON: bootstrap_lexicon(json_path) -> dict {success, status, path}"},
     {"learn_language", (PyCFunction)Brain_learn_language, METH_VARARGS | METH_KEYWORDS,
      "Learn language from text exposure: learn_language(text) -> dict with loss, success"},
     {"learn_language_pair", (PyCFunction)Brain_learn_language_pair, METH_VARARGS | METH_KEYWORDS,

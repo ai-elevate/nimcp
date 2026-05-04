@@ -69,7 +69,13 @@ QUESTDB_SCHEMA_DDL = [
     "  snn_sparsity DOUBLE,"
     "  trn_mean_rate_hz DOUBLE,"
     "  arousal DOUBLE,"
-    "  sleep_pressure DOUBLE"
+    "  sleep_pressure DOUBLE,"
+    "  gl_vocab_size LONG,"
+    "  gl_total_bindings LONG,"
+    "  gl_total_groundings LONG,"
+    "  gl_total_productions LONG,"
+    "  gl_templates_learned LONG,"
+    "  gl_snn_bridge_blend DOUBLE"
     ") timestamp(timestamp) PARTITION BY DAY",
 
     # cortex_cnn_metrics: one row per modality per scrape
@@ -130,6 +136,9 @@ TRAINING_METRICS_COLUMNS = {
     'fno_speech_steps': int, 'fno_somato_steps': int,
     'snn_rate_hz': float, 'snn_sparsity': float,
     'trn_mean_rate_hz': float, 'arousal': float, 'sleep_pressure': float,
+    'gl_vocab_size': int, 'gl_total_bindings': int,
+    'gl_total_groundings': int, 'gl_total_productions': int,
+    'gl_templates_learned': int, 'gl_snn_bridge_blend': float,
 }
 
 CORTEX_FIELD_TYPES = {
@@ -398,6 +407,26 @@ def collect_metrics():
             for k, v in imm.items():
                 if k not in metrics:
                     metrics[k] = v
+
+    # Grounded-language diagnostics — counters that tell us whether the
+    # cross-modal grounding pipeline is actually accumulating bindings.
+    # Pre-fix these were stuck at 0 even after thousands of training steps,
+    # which is what made respond() collapse to the IDK fallback. Surface
+    # them to QuestDB so the dashboard can show vocab growth in real time.
+    r = _safe_query(b, 'get_grounded_language_diagnostics', timeout=15)
+    if r and not r.get('error'):
+        gl = r.get('grounded_language', r) or {}
+        if gl:
+            metrics['grounded_language'] = gl
+            metrics['gl_vocab_size'] = gl.get('vocab_size', 0)
+            metrics['gl_total_bindings'] = gl.get('total_bindings', 0)
+            metrics['gl_total_groundings'] = gl.get('total_groundings', 0)
+            metrics['gl_total_productions'] = gl.get('total_productions', 0)
+            metrics['gl_templates_learned'] = gl.get('templates_learned', 0)
+            blend = gl.get('snn_bridge_blend', -1.0)
+            # Sentinel -1.0 means bridge not attached; only emit real blend.
+            if isinstance(blend, (int, float)) and blend >= 0.0:
+                metrics['gl_snn_bridge_blend'] = float(blend)
 
     # Chat eval — extract from training log (chat_eval results are printed there)
     try:

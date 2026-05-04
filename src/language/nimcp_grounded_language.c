@@ -11,6 +11,7 @@
  */
 
 #include "language/nimcp_grounded_language.h"
+#include "language/nimcp_grounded_language_internal.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -40,61 +41,13 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
 /*=============================================================================
  * Internal Structures
+ *
+ * `struct grounded_language` and `gl_context_t` are defined in
+ * src/language/nimcp_grounded_language_internal.h so that the persistence
+ * sidecar (nimcp_grounded_language_persistence.c) can iterate the lexicon
+ * field-by-field without duplicating the layout. Do NOT add struct
+ * definitions here — put them in the internal header.
  *===========================================================================*/
-
-/**
- * @brief Context buffer for tracking conversation state
- */
-typedef struct {
-    float*   context_vector;          /**< Running context [semantic_dim] */
-    float    context_strength;        /**< How strong current context is */
-    uint32_t words_in_context;        /**< Words seen in current context */
-    uint64_t last_concepts[16];       /**< Recent concept activations */
-    uint32_t last_concept_count;      /**< Number of recent concepts */
-} gl_context_t;
-
-/**
- * @brief Internal state of the grounded language system
- */
-struct grounded_language {
-    /* Lexicon: word forms -> concept bindings */
-    gl_lexicon_entry_t** lexicon;       /**< Hash table of lexicon entries */
-    uint32_t             lexicon_size;  /**< Hash table size */
-    uint32_t             vocab_count;   /**< Number of words */
-    gl_lexicon_entry_t** vocab_list;    /**< Linear list for iteration */
-
-    /* Syntactic templates */
-    gl_template_t*       templates;     /**< Array of syntactic templates */
-    uint32_t             template_count;
-    uint32_t             template_capacity;
-
-    /* Semantic integration */
-    uint32_t             semantic_dim;  /**< Dimension of semantic vectors */
-    semantic_memory_system_t* semantic_memory; /**< Brain's concept store */
-
-    /* Context state */
-    gl_context_t         context;       /**< Current conversation context */
-
-    /* Cross-modal connections */
-    void*                visual_ctx;
-    void*                auditory_ctx;
-    void*                speech_ctx;
-    void*                column_pool;
-    void*                emotional_ctx;
-
-    /* Learning parameters */
-    float                hebbian_lr;    /**< Hebbian learning rate */
-    float                decay_rate;    /**< Association decay rate */
-
-    /* Statistics */
-    gl_stats_t           stats;
-
-    /* RNG state for sampling */
-    uint64_t             rng_state;
-
-    /* SNN language bridge (optional — spike-driven dual path) */
-    struct snn_language_bridge* snn_bridge;
-};
 
 /*=============================================================================
  * Utility Functions
@@ -199,6 +152,13 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
             gl->vocab_list[gl->vocab_count] = entry;
             gl->vocab_count++;
             gl->stats.vocab_size = gl->vocab_count;
+
+            /* Mirror the new entry into broca/wernicke region lexicons
+             * if either adapter is connected. No-op when not wired. */
+            extern void gl_mirror_new_word_to_regions(grounded_language_t*,
+                                                       const char*);
+            gl_mirror_new_word_to_regions(gl, entry->form);
+
             return entry;
         }
 
@@ -1261,6 +1221,15 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
     }
 
     gl->stats.total_groundings++;
+
+    /* Memory-bridge fan-out: push the event into working memory,
+     * episodic replay, and hippocampus if any of them are connected.
+     * No-op when the brain init didn't wire those subsystems. */
+    extern void gl_dispatch_event_to_memory(grounded_language_t*,
+                                             const gl_grounding_event_t*,
+                                             uint64_t);
+    gl_dispatch_event_to_memory(gl, event, concept_id);
+
     return rc;
 }
 
@@ -2286,4 +2255,15 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
     fclose(f);
     LOG_INFO(LOG_MODULE, "Loaded grounded language state from %s (%u words)", path, gl->vocab_count);
     return gl;
+}
+
+/*=============================================================================
+ * Internal — exposed via nimcp_grounded_language_internal.h
+ *===========================================================================*/
+
+gl_lexicon_entry_t* gl_internal_lexicon_find_or_create(
+    grounded_language_t* gl,
+    const char* word) {
+    if (!gl || !word) return NULL;
+    return lexicon_find_or_create(gl, word);
 }

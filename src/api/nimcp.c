@@ -70,6 +70,7 @@ static void api_set_error(const char* fmt, ...);
 #include "core/brain/inference/nimcp_brain_inference.h"  // brain_freeze, brain_is_frozen
 #include "core/brain/factory/nimcp_brain_factory.h"      // nimcp_brain_factory_init_brain_config
 #include <stdio.h>
+#include <stdlib.h>   /* strtod for base-lexicon JSON parser */
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>

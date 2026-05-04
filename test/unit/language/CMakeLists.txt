@@ -75,3 +75,91 @@ gtest_discover_tests(unit_grounded_language_diagnostics
         LABELS "unit;language;grounded;diagnostics"
         TIMEOUT 60
 )
+
+# ============================================================================
+# Grounded Language Persistence Sidecar Tests (Option A)
+# ============================================================================
+add_executable(unit_grounded_language_persistence
+    test_grounded_language_persistence.cpp
+)
+target_link_libraries(unit_grounded_language_persistence
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_persistence
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_persistence PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_persistence
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;persistence"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# Grounded Language ↔ Memory Subsystem Bridge Tests
+# ============================================================================
+add_executable(unit_grounded_language_memory_bridge
+    test_grounded_language_memory_bridge.cpp
+)
+target_link_libraries(unit_grounded_language_memory_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_memory_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_memory_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_memory_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;memory_bridge"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# Grounded Language ↔ Broca/Wernicke Region Bridge Tests
+# ============================================================================
+add_executable(unit_grounded_language_region_bridge
+    test_grounded_language_region_bridge.cpp
+)
+target_link_libraries(unit_grounded_language_region_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_region_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_region_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_region_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;region_bridge"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# Grounded Language Sleep-State Consolidation Tests
+# ============================================================================
+add_executable(unit_grounded_language_sleep
+    test_grounded_language_sleep.cpp
+)
+target_link_libraries(unit_grounded_language_sleep
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_sleep
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_sleep PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_sleep
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;sleep"
+        TIMEOUT 60
+)

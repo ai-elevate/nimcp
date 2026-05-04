@@ -2635,6 +2635,16 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                                             (sleep_state == SLEEP_STATE_REM) ? 0.5f : 0.3f;
             snn_language_bridge_sleep_consolidate(brain->snn_lang_bridge,
                                                    consolidation_strength);
+
+            // Grounded-language symbolic lexicon consolidation runs at
+            // the same stage strengths as the SNN bridge — DEEP_NREM
+            // strengthens frequent bindings + decays stale ones, REM
+            // does light spreading, LIGHT_NREM does mild decay only.
+            if (brain->grounded_lang) {
+                (void)grounded_language_sleep_consolidate(
+                    (grounded_language_t*)brain->grounded_lang,
+                    (int)sleep_state, consolidation_strength);
+            }
         }
     }
 

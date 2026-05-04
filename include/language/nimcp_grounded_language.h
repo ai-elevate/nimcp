@@ -630,6 +630,119 @@ void grounded_language_connect_snn_bridge(
     grounded_language_t* gl,
     struct snn_language_bridge* bridge);
 
+/**
+ * @brief Connect to working memory — active words get pushed to the
+ *        Miller-7±2 buffer with attention-derived salience, so the rest
+ *        of the cognitive stack can reason over recently-grounded words.
+ * @param gl  System handle
+ * @param wm  working_memory_t* (opaque here to avoid include surface)
+ */
+void grounded_language_connect_working_memory(
+    grounded_language_t* gl,
+    void* wm);
+
+/**
+ * @brief Connect to episodic replay buffer — every grounding event gets
+ *        recorded as a replay-eligible experience. During sleep the
+ *        replay system re-presents high-importance grounding events
+ *        through brain.learn_vector to consolidate the binding.
+ * @param gl      System handle
+ * @param replay  nimcp_episodic_replay_t* (opaque)
+ */
+void grounded_language_connect_episodic_replay(
+    grounded_language_t* gl,
+    void* replay);
+
+/**
+ * @brief Connect to the hippocampus adapter — high-attention grounding
+ *        events train word→concept associations in the hippocampus,
+ *        producing genuine episodic encoding of when a word was learned.
+ * @param gl           System handle
+ * @param hippocampus  hippocampus_adapter_t* (opaque)
+ */
+void grounded_language_connect_hippocampus(
+    grounded_language_t* gl,
+    void* hippocampus);
+
+/**
+ * @brief Connect Broca's area adapter — every new lexicon entry is
+ *        mirrored into the production lexicon so broca can articulate
+ *        words that grounded_language has learned. SOLID single-source-
+ *        of-truth: grounded_language owns the canonical lexicon; broca
+ *        receives copies for production-side phoneme planning.
+ * @param gl     System handle
+ * @param broca  broca_adapter_t* (opaque)
+ */
+void grounded_language_connect_broca(
+    grounded_language_t* gl,
+    void* broca);
+
+/**
+ * @brief Connect Wernicke's area adapter — every new lexicon entry is
+ *        mirrored into the comprehension lexicon so wernicke can
+ *        recognize words that grounded_language has learned. Also
+ *        provides the entry point for routing wernicke comprehension
+ *        results back into grounded_language as auditory grounding
+ *        events (see grounded_language_ingest_wernicke_result).
+ * @param gl        System handle
+ * @param wernicke  wernicke_adapter_t* (opaque)
+ */
+void grounded_language_connect_wernicke(
+    grounded_language_t* gl,
+    void* wernicke);
+
+/**
+ * @brief Ingest a wernicke comprehension result as auditory grounding
+ *        events. For each recognized word in the result, a
+ *        gl_grounding_event_t is constructed with modality=AUDITORY,
+ *        attention=word.confidence, and pushed through the standard
+ *        grounding pipeline. Closes the audio→language loop.
+ * @param gl              System handle
+ * @param comp_result     wernicke_comprehension_t* (opaque cast inside)
+ * @param audio_features  Sensory feature vector that produced the
+ *                        comprehension (modality=audio); NULL skips.
+ * @param feature_dim     Length of audio_features
+ * @return Number of grounding events successfully recorded, or -1.
+ */
+int grounded_language_ingest_wernicke_result(
+    grounded_language_t* gl,
+    const void* comp_result,
+    const float* audio_features,
+    uint32_t feature_dim);
+
+/**
+ * @brief Sleep-state consolidation pass over the lexicon.
+ *
+ * WHAT: Apply consolidation effects matching the current sleep stage.
+ *       NREM stages strengthen frequent / high-confidence bindings and
+ *       decay rarely-fired ones (memory replay + forgetting curve).
+ *       REM does light associative spreading on the recent context
+ *       buffer (creative recombination).
+ * WHY:  Without this, the lexicon never participates in sleep
+ *       consolidation — vocabulary growth is wake-only and decay is
+ *       absent, so noise accumulates and the trained lexicon drifts
+ *       from biological plausibility.
+ *
+ * Stage effects:
+ *   - SLEEP_STATE_AWAKE / DROWSY: no-op
+ *   - SLEEP_STATE_LIGHT_NREM (strength≈0.3): mild decay of unused bindings
+ *   - SLEEP_STATE_DEEP_NREM  (strength≈0.8): strong reinforcement of
+ *     frequent bindings + decay of stale ones
+ *   - SLEEP_STATE_REM        (strength≈0.5): mild spreading via
+ *     context vectors (no decay)
+ *
+ * @param gl              System handle (NULL → no-op)
+ * @param sleep_state_int sleep_state_t value (kept as int to keep
+ *                        nimcp_sleep_wake.h out of the public include
+ *                        surface; impl casts internally)
+ * @param strength        Consolidation magnitude [0, 1]
+ * @return 0 on success, -1 on bad parameters.
+ */
+int grounded_language_sleep_consolidate(
+    grounded_language_t* gl,
+    int sleep_state_int,
+    float strength);
+
 /*=============================================================================
  * Query / Introspection
  *===========================================================================*/
