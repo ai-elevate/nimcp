@@ -86,3 +86,11 @@ set_tests_properties(unit_core_brain_hemispheric_memory_opt_test PROPERTIES
     TIMEOUT 300
     RESOURCE_LOCK "brain_heavy"
 )
+
+# Test: Hemispheric Language Bridge Tests (lightweight — no full brain_t)
+add_test_binary(
+    unit_core_brain_hemispheric_language_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_hemispheric_language_bridge.cpp
+    unit
+)
+set_tests_properties(unit_core_brain_hemispheric_language_test PROPERTIES TIMEOUT 60)

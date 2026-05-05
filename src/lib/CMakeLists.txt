@@ -216,6 +216,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_portia_bridge.c  # Portia integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_contralateral_mapping.c      # Motor/sensory body mapping
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_glial_bridge.c   # Glial integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_language_bridge.c # Lateralized language wiring
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_hemispheric_injury.c        # Injury and recovery
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/hemispheric/nimcp_split_brain_experiments.c  # Split-brain experiments
 
