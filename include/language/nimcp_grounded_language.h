@@ -1230,7 +1230,13 @@ uint32_t grounded_language_get_top_phrases(
 
 /**
  * @brief Look up a specific phrase by its space-joined form.
- *        Read-only. Returns NULL if not in the table.
+ *        Returns NULL if not in the table.
+ *
+ *        Conceptually read-only but mutates a lazy semantic_vec cache
+ *        on the matching phrase entry (computed from constituent
+ *        word context_vectors on first lookup, reused thereafter).
+ *        The cache is single-threaded by GL contract — the const-
+ *        cast is intentional and safe under that contract.
  */
 const gl_phrase_t* grounded_language_lookup_phrase(
     const grounded_language_t* gl,
@@ -1251,13 +1257,21 @@ uint32_t grounded_language_phrase_count(const grounded_language_t* gl);
  * modalities are currently providing context.
  *
  * Score for each binding c:
- *   score(c) = binding.confidence
+ *   score(c) = max(binding.confidence, 0.05)
  *            × Σ_m  modality_strength[m] × modality_weights[m]
  *
  * The caller supplies a length-GL_MODALITY_COUNT weights vector
  * representing the currently-active modalities (e.g., [0.9, 0.1, 0, 0,
  * 0, 0] = "I'm looking at something but barely hearing anything"). The
  * top-K bindings by score are written into out_concepts/out_scores.
+ *
+ * Score range: not bounded to [0,1]. Each modality contributes up to
+ * 1.0, summed across GL_MODALITY_COUNT (= 6) modalities, then scaled
+ * by confidence. Practical max is ~6.0; callers comparing scores
+ * across queries should use relative ranking, not absolute thresholds.
+ *
+ * Out-array contract: only indices [0, return_value) are written;
+ * indices ≥ return_value are unmodified.
  *
  * Returns the number of bindings ranked, or 0 on bad input.
  *===========================================================================*/

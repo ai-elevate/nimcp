@@ -167,9 +167,13 @@ struct grounded_language {
 
     /* Compositional phrases (#9). Fixed-capacity table accumulated
      * lazily by learn_from_text. semantic_vec is gl-owned; cleared on
-     * destroy. */
+     * destroy. phrases_dropped counts the times capacity overflow
+     * forced a new phrase to be skipped (without LRU eviction those
+     * would just be lost; with eviction they're swapped in for the
+     * least-frequent existing entry). */
     gl_phrase_t*         phrases;
     uint32_t             phrase_count;
+    uint64_t             phrases_evicted;
 };
 
 /**

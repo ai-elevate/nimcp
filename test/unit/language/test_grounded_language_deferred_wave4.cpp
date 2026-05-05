@@ -159,6 +159,55 @@ TEST_F(GLDeferredW4, MaxKBoundsResultCount) {
     EXPECT_EQ(1u, n);
 }
 
+TEST_F(GLDeferredW4, HeapFallbackForLargeBindingCount) {
+    /* Walkthrough #9: exercise the heap-allocation path (n > 64
+     * bindings). Use an isolated GL with a large semantic_dim so
+     * orthogonal one-hot features yield unique concepts. */
+    constexpr uint32_t WIDE_DIM = 128;
+    semantic_memory_system_t* wsm = semantic_memory_create();
+    ASSERT_NE(wsm, nullptr);
+    grounded_language_t* wgl = grounded_language_create(WIDE_DIM, wsm);
+    ASSERT_NE(wgl, nullptr);
+
+    /* Use 80 nearly-orthogonal one-hot vectors. */
+    for (int i = 0; i < 80; i++) {
+        std::vector<float> f(WIDE_DIM, 0.0f);
+        f[i % WIDE_DIM] = 1.0f;
+        gl_grounding_event_t ev{};
+        ev.word = "polysem_wide";
+        ev.modality = GL_MODALITY_VISUAL;
+        ev.sensory_features = f.data();
+        ev.feature_dim = WIDE_DIM;
+        ev.attention = 1.0f;
+        grounded_language_ground(wgl, &ev);
+    }
+
+    const gl_lexicon_entry_t* e =
+        grounded_language_lookup(wgl, "polysem_wide");
+    ASSERT_NE(e, nullptr);
+    if (e->binding_count <= 64) {
+        grounded_language_destroy(wgl);
+        semantic_memory_destroy(wsm);
+        GTEST_SKIP() << "binding_count=" << e->binding_count
+                     << " (semantic_memory merged signatures); "
+                        "heap-fallback path remains untested but stack "
+                        "path is exercised by other tests";
+    }
+
+    uint64_t ids[120] = {0};
+    float scores[120] = {0};
+    uint32_t n = grounded_language_disambiguate(wgl, "polysem_wide",
+                                                  nullptr, ids, scores, 120);
+    /* No crash, results sorted descending. */
+    EXPECT_GE(n, 64u);
+    for (uint32_t i = 1; i < n; i++) {
+        EXPECT_GE(scores[i - 1], scores[i]);
+    }
+
+    grounded_language_destroy(wgl);
+    semantic_memory_destroy(wsm);
+}
+
 TEST_F(GLDeferredW4, AllZeroWeightsFallsBackToOverallStrength) {
     std::vector<float> f1(TEST_DIM, 0.0f); f1[0] = 1.0f;
     std::vector<float> f2(TEST_DIM, 0.0f); f2[1] = 1.0f;

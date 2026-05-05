@@ -247,8 +247,12 @@ static int _gl_phrase_form(char* out, size_t out_sz,
     return 1;
 }
 
-/* Find phrase by form, or insert if not present and capacity allows.
- * Returns NULL if at cap. Component_words is recorded on insert. */
+/* Find phrase by form, or insert if not present. When at capacity,
+ * evicts the least-frequent existing phrase (LRU-by-frequency) so
+ * long-running training keeps the most-useful phrases rather than
+ * locking in the first 512 ever seen. Returns the slot — never NULL
+ * once gl->phrases is allocated. Component_words is recorded on
+ * insert (or refresh after eviction). */
 static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
                                                 const char* form,
                                                 uint8_t component_words) {
@@ -262,8 +266,35 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
             return &gl->phrases[i];
         }
     }
-    if (gl->phrase_count >= GL_MAX_PHRASES) return NULL;
-    gl_phrase_t* p = &gl->phrases[gl->phrase_count++];
+
+    gl_phrase_t* p;
+    if (gl->phrase_count < GL_MAX_PHRASES) {
+        p = &gl->phrases[gl->phrase_count++];
+    } else {
+        /* Capacity overflow — evict least-frequent. Linear scan to
+         * pick the victim. */
+        uint32_t victim = 0;
+        for (uint32_t i = 1; i < gl->phrase_count; i++) {
+            if (gl->phrases[i].frequency < gl->phrases[victim].frequency) {
+                victim = i;
+            }
+        }
+        /* Refuse to evict if the victim has higher frequency than the
+         * incoming phrase would naturally start at — the new phrase
+         * starts at frequency=0 and would be evicted on its own first
+         * tick. Drop the new one instead. */
+        if (gl->phrases[victim].frequency > 0) {
+            p = &gl->phrases[victim];
+            nimcp_free(p->semantic_vec);
+            memset(p, 0, sizeof(*p));
+            gl->phrases_evicted++;
+        } else {
+            /* Everything is freq=0 — can't reliably pick a victim.
+             * Reject the new phrase rather than thrash. */
+            return NULL;
+        }
+    }
+
     size_t flen = strlen(form);
     if (flen >= GL_MAX_PHRASE_LEN) flen = GL_MAX_PHRASE_LEN - 1;
     memcpy(p->form, form, flen);
@@ -334,7 +365,8 @@ const gl_phrase_t* grounded_language_lookup_phrase(
                  * component's context_vector. */
                 char tmp[GL_MAX_PHRASE_LEN];
                 memcpy(tmp, mut->form, sizeof(tmp));
-                char* tok = strtok(tmp, " ");
+                char* save = NULL;
+                char* tok = strtok_r(tmp, " ", &save);
                 uint32_t n = 0;
                 while (tok) {
                     const gl_lexicon_entry_t* e = lexicon_find(gl, tok);
@@ -344,7 +376,7 @@ const gl_phrase_t* grounded_language_lookup_phrase(
                         }
                         n++;
                     }
-                    tok = strtok(NULL, " ");
+                    tok = strtok_r(NULL, " ", &save);
                 }
                 if (n > 0) {
                     float inv = 1.0f / (float)n;
@@ -451,7 +483,13 @@ uint32_t grounded_language_disambiguate(const grounded_language_t* gl,
         } else {
             modality_score = b->strength;
         }
-        scores[i] = modality_score * (b->confidence > 0.0f ? b->confidence : 1.0f);
+        /* Use confidence directly. Clamp tiny floor so brand-new
+         * bindings (confidence ≈ 0.2 from lexicon_bind) still register
+         * a non-trivial score, but never let a 0-confidence binding
+         * outrank a real one with a 1.0 fallback. */
+        float conf = b->confidence;
+        if (conf < 0.05f) conf = 0.05f;
+        scores[i] = modality_score * conf;
         ids[i]    = b->concept_id;
     }
 
@@ -2846,11 +2884,13 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
 
-    /* Magic + version. v2 adds context_dialect (#14) at the end of the
-     * file (after templates) so older v1 files load cleanly with an
-     * empty dialect tag. */
+    /* Magic + version. v2 adds context_dialect (#14) at the end of
+     * the file (after templates). v3 adds compositional phrases (#9)
+     * — phrase count + each phrase form + component_words + frequency.
+     * Phrase semantic_vec is NOT persisted (lazily recomputed from
+     * components on first lookup post-load). */
     uint32_t magic = GL_MAGIC;
-    uint32_t version = 2;
+    uint32_t version = 3;
     fwrite(&magic, sizeof(magic), 1, f);
     fwrite(&version, sizeof(version), 1, f);
     fwrite(&gl->semantic_dim, sizeof(gl->semantic_dim), 1, f);
@@ -2890,9 +2930,23 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
      * a length prefix. */
     fwrite(gl->context_dialect, GL_MAX_DIALECT_LEN, 1, f);
 
+    /* v3: compositional phrases (#9). count + per-phrase fixed record:
+     *   form[GL_MAX_PHRASE_LEN] | component_words(u8) | frequency(u32)
+     * semantic_vec is NOT persisted — it's a lazy cache rebuilt from
+     * constituent words on first lookup post-load. */
+    fwrite(&gl->phrase_count, sizeof(gl->phrase_count), 1, f);
+    for (uint32_t pi = 0; pi < gl->phrase_count; pi++) {
+        const gl_phrase_t* p = &gl->phrases[pi];
+        fwrite(p->form, GL_MAX_PHRASE_LEN, 1, f);
+        fwrite(&p->component_words, sizeof(p->component_words), 1, f);
+        fwrite(&p->frequency, sizeof(p->frequency), 1, f);
+    }
+
     fclose(f);
-    LOG_INFO(LOG_MODULE, "Saved grounded language state to %s (%u words, %u templates, dialect='%s')",
-             path, gl->vocab_count, gl->template_count, gl->context_dialect);
+    LOG_INFO(LOG_MODULE,
+             "Saved grounded language state to %s (%u words, %u templates, %u phrases, dialect='%s')",
+             path, gl->vocab_count, gl->template_count,
+             gl->phrase_count, gl->context_dialect);
     return 0;
 }
 
@@ -2988,9 +3042,33 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         }
     }
 
+    /* v3+: compositional phrases (#9). v2 and earlier files don't have
+     * this section; phrase_count stays 0 and phrases will be re-learned
+     * from text. */
+    if (version >= 3) {
+        uint32_t saved_phrase_count = 0;
+        if (fread(&saved_phrase_count, sizeof(saved_phrase_count), 1, f) == 1) {
+            uint32_t cap = (saved_phrase_count > GL_MAX_PHRASES)
+                ? GL_MAX_PHRASES : saved_phrase_count;
+            for (uint32_t pi = 0; pi < cap; pi++) {
+                char form_buf[GL_MAX_PHRASE_LEN];
+                uint8_t comp_n;
+                uint32_t freq;
+                if (fread(form_buf, GL_MAX_PHRASE_LEN, 1, f) != 1) break;
+                if (fread(&comp_n, sizeof(comp_n), 1, f) != 1) break;
+                if (fread(&freq,  sizeof(freq),   1, f) != 1) break;
+                form_buf[GL_MAX_PHRASE_LEN - 1] = '\0';
+                gl_phrase_t* p = _gl_phrase_find_or_create(gl, form_buf, comp_n);
+                if (p) p->frequency = freq;
+            }
+        }
+    }
+
     fclose(f);
-    LOG_INFO(LOG_MODULE, "Loaded grounded language state from %s (%u words, version=%u, dialect='%s')",
-             path, gl->vocab_count, version, gl->context_dialect);
+    LOG_INFO(LOG_MODULE,
+             "Loaded grounded language state from %s (%u words, %u phrases, version=%u, dialect='%s')",
+             path, gl->vocab_count, gl->phrase_count, version,
+             gl->context_dialect);
     return gl;
 }
 

@@ -4,7 +4,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstdio>
 #include <cstring>
+#include <unistd.h>
 #include <set>
 #include <string>
 #include <vector>
@@ -188,6 +190,110 @@ TEST_F(GLDeferredW5, PhraseTableCapacityClamps) {
     }
     uint32_t n = grounded_language_phrase_count(gl);
     EXPECT_LE(n, (uint32_t)GL_MAX_PHRASES);
+}
+
+/* ====================================================================
+ * Walkthrough findings — regression tests
+ * ==================================================================*/
+
+TEST_F(GLDeferredW5, FrequentPhrasesEvictRareOnesAtCap) {
+    /* Walkthrough #5 fix: capacity overflow now evicts least-frequent
+     * phrase rather than silently dropping new ones. Build several
+     * very-frequent phrases first, then push new phrases past the cap.
+     * The high-frequency phrases must survive. */
+    for (int i = 0; i < 50; i++) {
+        learn("hot phrase here");          /* "hot phrase" freq → high */
+        learn("hot phrase always");
+    }
+    const gl_phrase_t* hot = grounded_language_lookup_phrase(gl, "hot phrase");
+    ASSERT_NE(hot, nullptr);
+    uint32_t hot_freq_pre = hot->frequency;
+    EXPECT_GE(hot_freq_pre, 50u);
+
+    /* Now flood with thousands of rare bigrams. Each appears once so
+     * frequency=1; "hot phrase" with freq>=50 should never be evicted. */
+    for (int i = 0; i < 2000; i++) {
+        char text[96];
+        snprintf(text, sizeof(text), "rare_a%d rare_b%d", i, i);
+        learn(text);
+    }
+
+    const gl_phrase_t* hot_post =
+        grounded_language_lookup_phrase(gl, "hot phrase");
+    ASSERT_NE(hot_post, nullptr);
+    EXPECT_GE(hot_post->frequency, hot_freq_pre);
+}
+
+TEST_F(GLDeferredW5, PhrasesSurviveSaveLoadRoundtrip) {
+    /* Walkthrough #6 fix: phrases must persist across save/load (v3). */
+    learn("famous quote attached");
+    learn("famous quote forever");
+    learn("famous quote remembered");
+
+    const gl_phrase_t* pre = grounded_language_lookup_phrase(gl, "famous quote");
+    ASSERT_NE(pre, nullptr);
+    uint32_t freq_pre = pre->frequency;
+    uint32_t count_pre = grounded_language_phrase_count(gl);
+    EXPECT_GE(freq_pre, 3u);
+
+    char path[] = "/tmp/gl_phrase_persist_XXXXXX.bin";
+    int fd = mkstemps(path, 4);
+    ASSERT_GE(fd, 0);
+    close(fd);
+    EXPECT_EQ(0, grounded_language_save(gl, path));
+
+    grounded_language_t* gl2 = grounded_language_load(path, sm);
+    ASSERT_NE(gl2, nullptr);
+    EXPECT_EQ(count_pre, grounded_language_phrase_count(gl2));
+    const gl_phrase_t* post = grounded_language_lookup_phrase(gl2, "famous quote");
+    ASSERT_NE(post, nullptr);
+    EXPECT_EQ(freq_pre, post->frequency);
+    EXPECT_EQ(2, post->component_words);
+
+    grounded_language_destroy(gl2);
+    unlink(path);
+}
+
+TEST_F(GLDeferredW5, PhraseSemanticVecApproximatesMeanOfComponents) {
+    /* Walkthrough #10 fix: phrase semantic_vec must actually be the
+     * mean of constituent context_vectors. Drive learn_from_text with
+     * sentences that build distinct context vectors for "alpha" and
+     * "beta", then verify the "alpha beta" phrase vector ≈ mean. */
+    for (int i = 0; i < 30; i++) {
+        learn("alpha shines bright daily");
+        learn("beta moves slow always");
+    }
+    /* Now the bigram. */
+    for (int i = 0; i < 5; i++) learn("alpha beta together");
+
+    const gl_lexicon_entry_t* ea = grounded_language_lookup(gl, "alpha");
+    const gl_lexicon_entry_t* eb = grounded_language_lookup(gl, "beta");
+    ASSERT_NE(ea, nullptr);
+    ASSERT_NE(eb, nullptr);
+    /* If neither component has a context vector (depends on ordering)
+     * the mean is zero — that case is uninteresting. Require at
+     * least one. */
+    if (!ea->context_initialized && !eb->context_initialized) {
+        GTEST_SKIP() << "context vectors not initialized";
+    }
+
+    const gl_phrase_t* p = grounded_language_lookup_phrase(gl, "alpha beta");
+    ASSERT_NE(p, nullptr);
+    ASSERT_TRUE(p->vec_initialized);
+    ASSERT_NE(p->semantic_vec, nullptr);
+
+    /* Compute expected mean of the two context vectors and compare. */
+    uint32_t n = (uint32_t)ea->context_initialized +
+                 (uint32_t)eb->context_initialized;
+    ASSERT_GE(n, 1u);
+    for (uint32_t d = 0; d < TEST_DIM; d++) {
+        float expected = 0.0f;
+        if (ea->context_initialized) expected += ea->context_vector[d];
+        if (eb->context_initialized) expected += eb->context_vector[d];
+        expected /= (float)n;
+        EXPECT_NEAR(expected, p->semantic_vec[d], 1e-5f)
+            << "mismatch at dim " << d;
+    }
 }
 
 }  // namespace
