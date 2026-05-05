@@ -1121,6 +1121,13 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     uint32_t known_words = 0;
     uint32_t concept_count = 0;
 
+    /* #10 Active-learning curriculum signal — track the first word that
+     * either misses the lexicon or has weak bindings, so we can fire a
+     * single NEEDS_GROUNDING event below pointed at the most-needy
+     * token (rather than per-word spam). */
+    const char* needy_word = NULL;
+    float       needy_word_conf = 1.0f;
+
     /* NLP frontend: morphological normalization between exact and fuzzy.
      * gl_nlp_lookup_chain walks exact → morph-strip → fuzzy in order. */
     extern const gl_lexicon_entry_t* gl_nlp_lookup_chain(grounded_language_t*,
@@ -1140,11 +1147,24 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                        result->semantic_vector) == 0) {
                 subword_hits++;
             }
-            /* Truly unknown word - note novelty but continue */
+            /* Truly unknown word — candidate for active-learning hook. */
+            if (!needy_word) needy_word = words[w];
+            needy_word_conf = 0.0f;
             continue;
         }
 
         known_words++;
+
+        /* #10 Track weakest known word for the active-learning hook. */
+        float top_strength = 0.0f;
+        for (uint32_t b = 0; b < entry->binding_count; b++) {
+            if (entry->bindings[b].strength > top_strength)
+                top_strength = entry->bindings[b].strength;
+        }
+        if (top_strength < needy_word_conf) {
+            needy_word = words[w];
+            needy_word_conf = top_strength;
+        }
 
         /* Activate all bound concepts */
         for (uint32_t b = 0; b < entry->binding_count && concept_count < GL_MAX_ACTIVE_CONCEPTS; b++) {
@@ -1285,6 +1305,22 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     bus_ev.confidence   = result->comprehension_confidence;
     gl_fire_event(gl, &bus_ev);
 
+    /* #10 Active-learning curriculum signal. If overall comprehension
+     * confidence is low or the weakest word's strength is below the
+     * threshold, fire NEEDS_GROUNDING with the targeted word so
+     * curriculum modules can prioritize it for the next exposure. */
+    if (needy_word &&
+        (result->comprehension_confidence < GL_LOW_CONFIDENCE_THRESHOLD ||
+         needy_word_conf < GL_LOW_CONFIDENCE_THRESHOLD)) {
+        gl_event_t need_ev = {0};
+        need_ev.type        = GL_EVENT_NEEDS_GROUNDING;
+        need_ev.word        = needy_word;
+        need_ev.text        = text;
+        need_ev.confidence  = needy_word_conf;
+        gl_fire_event(gl, &need_ev);
+        gl->stats.total_needs_grounding++;
+    }
+
     nimcp_free(buf);
     return 0;
 }
@@ -1306,6 +1342,65 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "grounded_language_ground: NULL parameter");
         return -1;
+    }
+
+    /* #7 Negative grounding (anti-example).
+     * "This is NOT a cat" — weaken the closest existing binding for the
+     * matching modality without creating new entries / concepts. The
+     * lookup is read-only: if the word isn't in the lexicon there's no
+     * binding to weaken, so we return 0 (no-op success). The bus still
+     * fires GROUNDED with negative confidence so curriculum modules can
+     * count the contrast event. */
+    if (event->negative) {
+        char lower_w[GL_MAX_WORD_LEN];
+        lowercase_word(event->word, lower_w, GL_MAX_WORD_LEN);
+        const gl_lexicon_entry_t* found = lexicon_find(gl, lower_w);
+        if (found) {
+            gl_lexicon_entry_t* mut = (gl_lexicon_entry_t*)found;
+            /* Pick binding with highest modality strength on this modality
+             * (the one most "implicated" — the anti-example most
+             * naturally targets the strongest competing association). */
+            uint32_t target = UINT32_MAX;
+            float best = 0.0f;
+            for (uint32_t i = 0; i < mut->binding_count; i++) {
+                float ms = mut->bindings[i].modality_strength[event->modality];
+                if (ms > best) { best = ms; target = i; }
+            }
+            if (target == UINT32_MAX && mut->binding_count > 0) {
+                /* No modality-specific signal — fall back to overall
+                 * strongest binding. */
+                target = 0;
+                for (uint32_t i = 1; i < mut->binding_count; i++) {
+                    if (mut->bindings[i].strength > mut->bindings[target].strength)
+                        target = i;
+                }
+            }
+            if (target != UINT32_MAX) {
+                gl_word_binding_t* b = &mut->bindings[target];
+                float decay = gl->hebbian_lr * event->attention;
+                b->modality_strength[event->modality] -= decay;
+                if (b->modality_strength[event->modality] < 0.0f)
+                    b->modality_strength[event->modality] = 0.0f;
+                b->strength -= decay * 0.5f;  /* overall weaker than mod-specific */
+                if (b->strength < 0.0f) b->strength = 0.0f;
+                b->last_activation_ms = (uint64_t)time(NULL) * 1000;
+            }
+        }
+
+        gl->stats.total_negative_groundings++;
+
+        /* Fire GROUNDED with negative confidence to mark the contrast. */
+        extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+        gl_event_t bus_ev = {0};
+        bus_ev.type        = GL_EVENT_GROUNDED;
+        bus_ev.word        = event->word;
+        bus_ev.concept_id  = 0;
+        bus_ev.valence     = event->emotional_valence;
+        bus_ev.arousal     = event->emotional_arousal;
+        bus_ev.confidence  = -event->attention;   /* sign = anti-learning */
+        bus_ev.semantic_vec = event->sensory_features;
+        gl_fire_event(gl, &bus_ev);
+        return 0;
     }
 
     /* Find or create lexicon entry */
@@ -2207,6 +2302,29 @@ void grounded_language_connect_snn_bridge(grounded_language_t* gl,
 }
 
 /*=============================================================================
+ * #14 Dialect / accent conditioning
+ *===========================================================================*/
+
+void grounded_language_set_dialect(grounded_language_t* gl, const char* dialect) {
+    if (!gl) return;
+    if (!dialect || !dialect[0]) {
+        gl->context_dialect[0] = '\0';
+        return;
+    }
+    /* Truncating copy + guaranteed NUL. strncpy doesn't NUL-terminate
+     * when src ≥ dst; do it explicitly. */
+    size_t n = strlen(dialect);
+    if (n >= GL_MAX_DIALECT_LEN) n = GL_MAX_DIALECT_LEN - 1;
+    memcpy(gl->context_dialect, dialect, n);
+    gl->context_dialect[n] = '\0';
+}
+
+const char* grounded_language_get_dialect(const grounded_language_t* gl) {
+    if (!gl) return "";
+    return gl->context_dialect;
+}
+
+/*=============================================================================
  * Query / Introspection
  *===========================================================================*/
 
@@ -2342,6 +2460,16 @@ int grounded_language_get_probe_metrics(const grounded_language_t* gl,
         out->audio_salience     = mod.audio_salience;
         out->speech_confidence  = mod.speech_confidence;
     }
+
+    /* Dialect tag (#14) — copy with NUL guarantee. */
+    size_t dlen = 0;
+    while (dlen < GL_MAX_DIALECT_LEN - 1 && gl->context_dialect[dlen] != '\0') dlen++;
+    memcpy(out->context_dialect, gl->context_dialect, dlen);
+    out->context_dialect[dlen] = '\0';
+
+    /* Negative-grounding + active-learning counters. */
+    out->total_negative_groundings = gl->stats.total_negative_groundings;
+    out->total_needs_grounding     = gl->stats.total_needs_grounding;
     return 0;
 }
 

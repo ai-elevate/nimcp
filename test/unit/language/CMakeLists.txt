@@ -271,6 +271,24 @@ gtest_discover_tests(unit_grounded_language_network_bridge
 )
 
 # ============================================================================
+# Grounded Language Deferred Wave 1 (#7 negative + #14 dialect + #10 needs)
+# ============================================================================
+add_executable(unit_grounded_language_deferred_wave1
+    test_grounded_language_deferred_wave1.cpp
+)
+target_link_libraries(unit_grounded_language_deferred_wave1
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_deferred_wave1
+    PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_deferred_wave1 PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_deferred_wave1
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;language;deferred;wave1" TIMEOUT 60
+)
+
+# ============================================================================
 # Grounded Language Cortex Modulation Tests
 # ============================================================================
 add_executable(unit_grounded_language_cortex_modulation

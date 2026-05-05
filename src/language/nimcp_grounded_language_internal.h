@@ -158,6 +158,12 @@ struct grounded_language {
     uint32_t             decayed_ring[24];
     uint8_t              decayed_ring_head;          /* index of current bucket */
     uint64_t             decayed_all_time;
+
+    /* Dialect/accent context (#14). Empty string = dialect-agnostic
+     * mode. Setter truncates to GL_MAX_DIALECT_LEN-1 + NUL. Used by
+     * fuzzy lookup as a tie-break preference and surfaced via probe
+     * metrics for observability. */
+    char                 context_dialect[GL_MAX_DIALECT_LEN];
 };
 
 /**

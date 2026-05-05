@@ -102,6 +102,9 @@ extern "C" {
 /** Magic number for serialization */
 #define GL_MAGIC                  0x474C4E47  /* "GLNG" */
 
+/** Maximum dialect tag length (e.g., "en-US", "fr-CA", "zh-CN", "es-MX"). */
+#define GL_MAX_DIALECT_LEN        16
+
 /*=============================================================================
  * Enumerations
  *===========================================================================*/
@@ -266,6 +269,13 @@ typedef struct {
     float        emotional_arousal;             /**< Arousal context [0, 1] */
     float        attention;                     /**< Attentional weight [0, 1] */
     const char*  context_sentence;              /**< Sentence context (optional) */
+    /* #7 Negative grounding (contrast pair). When true, this is an
+     * "anti-example": the word does NOT mean the bound concept under
+     * these features. Engages negative-Hebbian: existing word↔concept
+     * binding for the matching modality is weakened by attention*lr,
+     * no new entry is created, frequency is NOT incremented. Fires
+     * GROUNDED with negative confidence to signal anti-learning. */
+    bool         negative;
 } gl_grounding_event_t;
 
 /**
@@ -287,6 +297,13 @@ typedef struct {
      * the rolling sum, _all_time is the cumulative. */
     uint32_t entries_decayed_last_24h;
     uint64_t entries_decayed_all_time;
+    /* Negative-grounding telemetry (#7) — counts ground() calls that
+     * arrived with event->negative=true and successfully weakened
+     * an existing binding. */
+    uint64_t total_negative_groundings;
+    /* Active-learning telemetry (#10) — counts NEEDS_GROUNDING events
+     * fired by comprehend on low-confidence input. */
+    uint64_t total_needs_grounding;
 } gl_stats_t;
 
 /**
@@ -779,6 +796,27 @@ int grounded_language_get_cortex_modulation(
     gl_cortex_modulation_t* out);
 
 /*=============================================================================
+ * Dialect / accent conditioning (#14)
+ *
+ * The lexicon is stored language-agnostic by design — words from any
+ * locale can coexist. Dialect tagging lets callers mark the *current*
+ * input/output context (e.g., "en-US", "fr-CA", "zh-CN") so that
+ * fuzzy lookup, production templates, and SNN bridge prefer entries
+ * that were learned under that dialect when ranking ties. Default is
+ * the empty string — dialect-agnostic mode. Both setter and getter
+ * are NULL-safe; setter truncates to GL_MAX_DIALECT_LEN-1 chars.
+ *===========================================================================*/
+
+/** Set the current dialect context. NULL or "" clears the tag. */
+void grounded_language_set_dialect(grounded_language_t* gl,
+                                     const char* dialect);
+
+/** Read the current dialect tag (NUL-terminated). Returns "" when
+ *  unset or gl is NULL. The pointer is owned by GL — copy if you
+ *  need to retain it past a subsequent set call. */
+const char* grounded_language_get_dialect(const grounded_language_t* gl);
+
+/*=============================================================================
  * NLP Frontend (Morphology / Embeddings / Subword Tokenizer)
  *
  * Three-stage lookup chain for unknown words in comprehend:
@@ -1033,6 +1071,11 @@ typedef enum {
     GL_EVENT_GROUNDED,           /**< grounded_language_ground succeeded */
     GL_EVENT_COMPREHENDED,       /**< grounded_language_comprehend finished */
     GL_EVENT_PRODUCED,           /**< grounded_language_produce finished */
+    /* #10 Active-learning curriculum signal. Fired when comprehend hits
+     * a word with confidence below GL_LOW_CONFIDENCE_THRESHOLD —
+     * downstream curriculum modules can register their interest in
+     * grounding that word the next time it shows up in sensory input. */
+    GL_EVENT_NEEDS_GROUNDING,
 } gl_event_type_t;
 
 /**
@@ -1058,11 +1101,16 @@ typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
  * which events a subscriber receives — the bus skips wrappers whose
  * mask doesn't match, removing the if-else boilerplate from every
  * wrapper and cutting bus-walk cost from O(N) to ~O(N_relevant). */
-#define GL_EVENT_MASK_NEW_WORD     (1u << 0)
-#define GL_EVENT_MASK_GROUNDED     (1u << 1)
-#define GL_EVENT_MASK_COMPREHENDED (1u << 2)
-#define GL_EVENT_MASK_PRODUCED     (1u << 3)
-#define GL_EVENT_MASK_ALL          (0xFFFFFFFFu)
+#define GL_EVENT_MASK_NEW_WORD          (1u << 0)
+#define GL_EVENT_MASK_GROUNDED          (1u << 1)
+#define GL_EVENT_MASK_COMPREHENDED      (1u << 2)
+#define GL_EVENT_MASK_PRODUCED          (1u << 3)
+#define GL_EVENT_MASK_NEEDS_GROUNDING   (1u << 4)
+#define GL_EVENT_MASK_ALL               (0xFFFFFFFFu)
+
+/** Confidence floor below which comprehend fires a NEEDS_GROUNDING
+ *  event for the lowest-confidence word it just processed (#10). */
+#define GL_LOW_CONFIDENCE_THRESHOLD     0.20f
 
 /**
  * @brief Subscribe to GL events. Returns 0 on success, -1 if the
@@ -1173,6 +1221,13 @@ typedef struct {
     bool     hippocampus_attached;
     bool     embedding_attached;
     bool     tokenizer_attached;
+
+    /* === Dialect / accent (#14) === */
+    char     context_dialect[GL_MAX_DIALECT_LEN];
+
+    /* === Active-learning + negative-grounding throughput === */
+    uint64_t total_negative_groundings;
+    uint64_t total_needs_grounding;
 } gl_probe_metrics_t;
 
 /**

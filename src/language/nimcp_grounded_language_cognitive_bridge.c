@@ -54,11 +54,12 @@
 /* Convert event type → mask bit, for the per-subscriber filter check. */
 static inline uint32_t _gl_type_to_mask(gl_event_type_t t) {
     switch (t) {
-        case GL_EVENT_NEW_WORD:     return GL_EVENT_MASK_NEW_WORD;
-        case GL_EVENT_GROUNDED:     return GL_EVENT_MASK_GROUNDED;
-        case GL_EVENT_COMPREHENDED: return GL_EVENT_MASK_COMPREHENDED;
-        case GL_EVENT_PRODUCED:     return GL_EVENT_MASK_PRODUCED;
-        default:                    return 0;
+        case GL_EVENT_NEW_WORD:        return GL_EVENT_MASK_NEW_WORD;
+        case GL_EVENT_GROUNDED:        return GL_EVENT_MASK_GROUNDED;
+        case GL_EVENT_COMPREHENDED:    return GL_EVENT_MASK_COMPREHENDED;
+        case GL_EVENT_PRODUCED:        return GL_EVENT_MASK_PRODUCED;
+        case GL_EVENT_NEEDS_GROUNDING: return GL_EVENT_MASK_NEEDS_GROUNDING;
+        default:                       return 0;
     }
 }
 
