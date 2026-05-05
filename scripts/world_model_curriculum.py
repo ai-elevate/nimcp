@@ -504,6 +504,34 @@ class WorldModelCurriculum:
         3: [scenario_food_web],
     }
 
+    # Verb tags for MOTOR-modality grounding (modality=2). Each scenario name
+    # maps to the action verb that best describes the dynamics it produces;
+    # the verb is bound to the action vector via brain.ground_word so the
+    # lexicon's MOTOR slot accumulates real signal during world-model training.
+    SCENARIO_VERBS = {
+        # Physics
+        "scenario_free_fall":      "fall",
+        "scenario_projectile":     "throw",
+        "scenario_collision":      "collide",
+        "scenario_stacking":       "stack",
+        "scenario_bounce":         "bounce",
+        "scenario_ramp":           "roll",
+        # Chemistry
+        "scenario_reaction_dynamics": "react",
+        "scenario_phase_transition":  "melt",
+        "scenario_acid_base":         "mix",
+        "scenario_equilibrium":       "balance",
+        # Biology
+        "scenario_predator_prey":   "hunt",
+        "scenario_logistic_growth": "grow",
+        "scenario_food_web":        "eat",
+        "scenario_homeostasis":     "regulate",
+        "scenario_genetics":        "inherit",
+    }
+
+    # GL_MODALITY_MOTOR — keep in sync with grounded_lexicon.h. 2 = MOTOR.
+    _GL_MODALITY_MOTOR = 2
+
     def __init__(self, brain_proxy=None, max_level=3):
         self.brain = brain_proxy
         self.max_level = max_level
@@ -552,12 +580,19 @@ class WorldModelCurriculum:
             out *= (1.0 / norm) * np.sqrt(float(n))
         return out.tolist()
 
-    def _feed_transitions(self, transitions, domain_label):
+    def _feed_transitions(self, transitions, domain_label, verb=None):
         """Feed transitions to the brain via learn_vector_batch.
 
         Raw physics states are spread-encoded into the full 1024-dim
         embedding space via a fixed random projection, preventing the
         gradient concentration that caused batch mode to blow ANN loss.
+
+        If `verb` is non-empty AND the brain proxy exposes `ground_word`,
+        each transition's encoded action vector is ALSO bound to the verb
+        in the grounded lexicon under modality=2 (MOTOR). This is what
+        gives the lexicon its MOTOR-modality signal during training; without
+        it, motor bindings stay empty and grounded_lexicon's motor slot
+        is never populated.
         """
         if not self.brain:
             return len(transitions)
@@ -566,7 +601,8 @@ class WorldModelCurriculum:
         for state, action, next_state in transitions:
             features = self._spread_encode(state + action)
             target = self._spread_encode(next_state)
-            pairs.append((features, target))
+            action_vec = self._spread_encode(action)
+            pairs.append((features, target, action_vec))
 
         if not pairs:
             return 0
@@ -575,8 +611,9 @@ class WorldModelCurriculum:
         # Batch mode blows ANN loss even with spread encoding —
         # learn_vector_batch accumulates gradients too aggressively
         # for this brain's weight scale regardless of input distribution.
+        ground_motor = bool(verb) and hasattr(self.brain, "ground_word")
         fed = 0
-        for features, target in pairs:
+        for features, target, action_vec in pairs:
             try:
                 self.brain.learn_vector(features, target,
                                         label=domain_label,
@@ -584,6 +621,15 @@ class WorldModelCurriculum:
                 fed += 1
             except Exception:
                 pass
+            # MOTOR grounding — best-effort. A parallel agent is wiring
+            # ground_word on the proxy; until then this silently no-ops.
+            if ground_motor:
+                try:
+                    self.brain.ground_word(verb, action_vec,
+                                           modality=self._GL_MODALITY_MOTOR,
+                                           attention=0.5)
+                except Exception:
+                    pass
         return fed
 
     def run_physics_epoch(self, level=None, scenarios_per_level=5):
@@ -594,10 +640,12 @@ class WorldModelCurriculum:
         for lv in levels:
             generators = self.PHYSICS_SCENARIOS.get(lv, [])
             for gen in generators:
+                verb = self.SCENARIO_VERBS.get(gen.__name__)
                 for _ in range(scenarios_per_level):
                     try:
                         transitions = gen(self._phys)
-                        fed = self._feed_transitions(transitions, f"physics_L{lv}")
+                        fed = self._feed_transitions(transitions, f"physics_L{lv}",
+                                                     verb=verb)
                         total += fed
                         self.total_transitions += fed
                         self.total_scenarios += 1
@@ -613,10 +661,12 @@ class WorldModelCurriculum:
         for lv in levels:
             generators = self.CHEMISTRY_SCENARIOS.get(lv, [])
             for gen in generators:
+                verb = self.SCENARIO_VERBS.get(gen.__name__)
                 for _ in range(scenarios_per_level):
                     try:
                         transitions = gen()
-                        fed = self._feed_transitions(transitions, f"chemistry_L{lv}")
+                        fed = self._feed_transitions(transitions, f"chemistry_L{lv}",
+                                                     verb=verb)
                         total += fed
                         self.total_transitions += fed
                         self.total_scenarios += 1
@@ -632,10 +682,12 @@ class WorldModelCurriculum:
         for lv in levels:
             generators = self.BIOLOGY_SCENARIOS.get(lv, [])
             for gen in generators:
+                verb = self.SCENARIO_VERBS.get(gen.__name__)
                 for _ in range(scenarios_per_level):
                     try:
                         transitions = gen()
-                        fed = self._feed_transitions(transitions, f"biology_L{lv}")
+                        fed = self._feed_transitions(transitions, f"biology_L{lv}",
+                                                     verb=verb)
                         total += fed
                         self.total_transitions += fed
                         self.total_scenarios += 1

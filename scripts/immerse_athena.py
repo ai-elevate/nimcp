@@ -462,6 +462,24 @@ def submit_multimodal(brain, description):
         batch_modalities["somatosensory"] = (somato_vec.tolist(), len(somato_vec))
         _sensory_submitted.append("S")
 
+        # SPATIAL-modality grounding (GL_MODALITY_SPATIAL=4). The somato
+        # vector encodes texture/temperature/pressure derived from keyword
+        # matching, which is a body-relative spatial proxy (where the
+        # surface meets the body). Bind content tokens against it so the
+        # lexicon's SPATIAL slot accumulates real signal during training;
+        # without this the SPATIAL bin is always empty. Lower attention
+        # (0.6) than visual/audio (0.7) because the encoding is keyword-
+        # derived, not from a real spatial sensor.
+        if hasattr(brain, "ground_word"):
+            _spatial_tokens = _tokenize_for_grounding(description)
+            _somato_list = somato_vec.tolist()
+            for _tok in _spatial_tokens:
+                try:
+                    brain.ground_word(_tok, _somato_list,
+                                      modality=4, attention=0.6)
+                except Exception:
+                    pass
+
     # Single batched socket call for all modalities
     if batch_modalities:
         _has_vis = "visual" in batch_modalities
@@ -577,6 +595,62 @@ _GL_FUNCTION_WORDS = {
     "all","each","every","other","another","such","same",
 }
 
+# Soft import for sensory category → emotion mapping. Used by _train_cognitive
+# call sites in the sensory describe paths to derive (valence, arousal) from
+# the description string instead of hardcoding per call site.
+try:
+    from synthesized_sensory import _infer_category as _ss_infer_category
+    from synthesized_sensory import EMOTION_BY_CATEGORY as _SS_EMOTION_BY_CATEGORY
+except Exception:
+    _ss_infer_category = None
+    _SS_EMOTION_BY_CATEGORY = {}
+
+
+def _emotion_from_description(description):
+    """Best-effort (valence, arousal) for a sensory description string.
+
+    Falls back to (0.0, 0.0) if synthesized_sensory is unavailable or the
+    description doesn't map cleanly to a category.
+    """
+    if not description or _ss_infer_category is None:
+        return (0.0, 0.0)
+    try:
+        cat = _ss_infer_category("", description)
+        v, a = _SS_EMOTION_BY_CATEGORY.get(cat, (0.0, 0.0))
+        return (float(v), float(a))
+    except Exception:
+        return (0.0, 0.0)
+
+
+# Per-register (valence, arousal) for the canonical literary corpus. Derived
+# from data/canonical_corpus/index.json's `registers` block. Used by
+# _ingest_canonical_corpus to set a baseline grounding emotion before each
+# work's chunk so that text from e.g. Poe gets dark gothic affect and
+# nursery verse gets warm positive affect, instead of every register
+# grounding into emotion=(0,0).
+_REGISTER_EMOTION = {
+    "nursery_verse":           (+0.5, 0.4),  # warm + playful
+    "victorian_children":      (+0.4, 0.5),  # Carroll — bright, curious
+    "nonsense_verse":          (+0.5, 0.6),  # Carroll — playful, animated
+    "19c_literary_prose":      (+0.1, 0.4),  # Melville — measured, weighty
+    "russian_19c_translation": (-0.1, 0.5),  # Tolstoy/Dostoevsky — somber
+    "early_modern_english":    (+0.1, 0.5),  # Shakespeare — varied
+    "middle_english":          (+0.2, 0.4),  # Chaucer — warm, narrative
+    "epic_fantasy":            (+0.3, 0.6),  # Tolkien — heroic
+    "weird_fantasy":           (-0.1, 0.6),  # Vance — strange, alert
+    "stoic_philosophy":        (+0.2, 0.2),  # Marcus Aurelius — calm
+    "scholastic":              (+0.1, 0.2),  # Aquinas — measured
+    "sacred_text_kjv":         (+0.3, 0.3),  # KJV — reverent, calm
+    "sacred_text_quran":       (+0.3, 0.3),
+    "sacred_text_gita":        (+0.3, 0.3),
+    "sacred_text_talmud":      (+0.2, 0.3),
+    "heroic_couplet":          (+0.2, 0.4),  # Pope — pointed wit
+    "gothic_verse":            (-0.4, 0.6),  # Poe verse — dark, alert
+    "gothic_tale":             (-0.5, 0.7),  # Poe tales — darker, tense
+    "treatise":                (+0.1, 0.3),  # Da Vinci, Sun Tzu — observational
+}
+
+
 def _tokenize_for_grounding(text):
     """Return lowercased content tokens of length >= 2, max 16 per text."""
     import re
@@ -592,10 +666,19 @@ def _tokenize_for_grounding(text):
         if len(out) >= 16: break
     return out
 
-def _ground_content_words(brain, text, modality_features, modality):
+def _ground_content_words(brain, text, modality_features, modality,
+                          valence=0.0, arousal=0.0):
     """Bind content words from `text` to the sensory `modality_features`
     via brain.ground_word. Returns the count of bindings actually made
-    (best-effort — silently skips on per-word failures)."""
+    (best-effort — silently skips on per-word failures).
+
+    `valence` ∈ [-1, 1] and `arousal` ∈ [0, 1] are forwarded to
+    brain.ground_word so the binding inherits the affective context of
+    the call site (moral lesson, gothic verse, etc.) instead of being
+    pinned to emotion=(0,0). The kwarg path through the daemon RPC may
+    or may not honor these yet — older binding stacks will simply ignore
+    the extra kwargs. We swallow TypeError so the call still succeeds
+    against legacy bindings."""
     words = _tokenize_for_grounding(text)
     if not words or modality_features is None:
         return 0
@@ -606,7 +689,17 @@ def _ground_content_words(brain, text, modality_features, modality):
     bound = 0
     for w in words:
         try:
-            if brain.ground_word(w, feats_list, modality=modality, attention=0.7):
+            try:
+                ok = brain.ground_word(w, feats_list, modality=modality,
+                                       attention=0.7,
+                                       valence=valence, arousal=arousal)
+            except TypeError:
+                # Older binding without valence/arousal kwargs — fall back
+                # to the original call shape so we don't lose grounding
+                # entirely while the parallel agent's RPC plumbing lands.
+                ok = brain.ground_word(w, feats_list, modality=modality,
+                                       attention=0.7)
+            if ok:
                 bound += 1
         except Exception:
             pass
@@ -4522,7 +4615,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         return features, target, word_label, desc
 
     def _train_cognitive(self, brain, text, domain=10, target_text=None,
-                         modality_features=None, modality=5):
+                         modality_features=None, modality=5,
+                         valence=0.0, arousal=0.0):
         """Train ALL cognitive modules on a text sample.
 
         Calls brain.train_cognitive() which trains:
@@ -4539,6 +4633,11 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             grows total_bindings/total_groundings counters in the
             grounded_language module. Without it, the module accumulates
             distributional context but never word→concept bindings.
+
+        `valence` / `arousal` are forwarded to _ground_content_words so the
+        per-word bindings inherit the call site's affective context (moral
+        lesson, gothic verse, neutral speech, etc.) instead of every
+        binding emitting emotion=(0,0).
         """
         if not text or len(text) < 3:
             return
@@ -4567,7 +4666,8 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # words" into a real lexicon that can produce above the IDK floor.
         if modality_features is not None:
             try:
-                _ground_content_words(brain, text, modality_features, modality)
+                _ground_content_words(brain, text, modality_features, modality,
+                                       valence=valence, arousal=arousal)
             except Exception:
                 pass
         # Paired learning (input → target text) — separate API path that
@@ -4626,8 +4726,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 result = brain.decide_full(features)
                 loss = brain.learn_vector(features, target,
                                           label=label[:50], confidence=0.5)
+                _v, _a = _emotion_from_description(desc)
                 self._train_cognitive(brain, f"{label}: {desc}", domain=10,
-                                       modality_features=features, modality=0)
+                                       modality_features=features, modality=0,
+                                       valence=_v, arousal=_a)
                 if self.decoder:
                     output_vec = result.get("output_vector")
                     if output_vec is not None:
@@ -4649,8 +4751,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 result = brain.decide_full(features)
                 loss = brain.learn_vector(features, target,
                                           label=label[:50], confidence=0.5)
+                _v, _a = _emotion_from_description(desc)
                 self._train_cognitive(brain, desc, domain=10,
-                                       modality_features=features, modality=1)
+                                       modality_features=features, modality=1,
+                                       valence=_v, arousal=_a)
                 if self.decoder:
                     output_vec = result.get("output_vector")
                     if output_vec is not None:
@@ -4677,8 +4781,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         loss = brain.learn_vector(features, target, label=description[:50],
                                   confidence=0.5)
+        _v, _a = _emotion_from_description(description)
         self._train_cognitive(brain, description, domain=10,
-                               modality_features=features, modality=5)
+                               modality_features=features, modality=5,
+                               valence=_v, arousal=_a)
         if self.decoder:
             output_vec = result.get("output_vector")
             if output_vec is not None:
@@ -4765,8 +4871,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 loss = brain.learn_vector(features, target,
                                           label=paired_concept[:50],
                                           confidence=0.6, **lr_kwargs)
+                _v, _a = _emotion_from_description(teaching)
                 self._train_cognitive(brain, teaching, domain=10,
-                                       modality_features=features, modality=0)
+                                       modality_features=features, modality=0,
+                                       valence=_v, arousal=_a)
                 encouragement = self._pop_content("_encouragements")
                 if loss is not None and loss < 0.5 and encouragement:
                     print(f"  Parent: {encouragement}")
@@ -4810,8 +4918,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                                   **lr_kwargs)
 
         # Train ALL cognitive modules on this text
+        _v, _a = _emotion_from_description(concept + " " + description)
         self._train_cognitive(brain, concept + ". " + description, domain=10,
-                               modality_features=features, modality=5)  # GENERAL
+                               modality_features=features, modality=5,
+                               valence=_v, arousal=_a)  # GENERAL
 
         # Encourage based on engagement and loss trend
         encouragement = self._pop_content("_encouragements")
@@ -4880,8 +4990,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(lesson_text)
         # Dense target trains adaptive; label trains CNN classifier
         brain.learn_vector(features, target, label=topic[:50], confidence=0.7)
+        # Moral lesson: positive moral, mild engagement.
         self._train_cognitive(brain, lesson_text, domain=3,
-                               modality_features=features, modality=3)  # ETHICS / EMOTIONAL
+                               modality_features=features, modality=3,
+                               valence=0.3, arousal=0.4)  # ETHICS / EMOTIONAL
         self.moral_lessons.append(topic)
 
     # --- Imagination ---
@@ -4910,8 +5022,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             target = make_semantic_target(inspiration)
             # Dense target + label for CNN classifier
             brain.learn_vector(features, target, label="inspiration", confidence=0.5)
+            # Inspire/art: positive aesthetic, mild engagement.
             self._train_cognitive(brain, inspiration, domain=2,
-                                   modality_features=features, modality=3)  # ART / EMOTIONAL
+                                   modality_features=features, modality=3,
+                                   valence=0.5, arousal=0.4)  # ART / EMOTIONAL
             try:
                 brain.bg_update_reward(0.7, 0.3)
             except Exception:
@@ -4941,8 +5055,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 print(f"  [Real speech: '{word}']")
                 loss = brain.learn_vector(features, target,
                                           label=word[:50], confidence=0.6)
+                # Real-audio speech path: neutral content, mid arousal.
                 self._train_cognitive(brain, word, domain=0,
-                                       modality_features=features, modality=1)  # AUDITORY
+                                       modality_features=features, modality=1,
+                                       valence=0.0, arousal=0.5)  # AUDITORY
                 try:
                     result = brain.decide_full(features)
                     output_vec = result.get("output_vector")
@@ -4977,8 +5093,10 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         target = make_semantic_target(target_phrase)
         loss = brain.learn_vector(features, target, label=target_phrase[:50],
                                    confidence=0.6)
+        # Speech production path: neutral content, mid arousal.
         self._train_cognitive(brain, target_phrase, domain=0,
-                               modality_features=features, modality=1)  # LANGUAGE / AUDITORY
+                               modality_features=features, modality=1,
+                               valence=0.0, arousal=0.5)  # LANGUAGE / AUDITORY
 
         # Now ask the brain to speak — see what it produces
         try:
@@ -5563,6 +5681,24 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
             brain.submit_sensory("somatosensory", somato_vec.tolist(), n_segments=len(somato_vec))
         except Exception: pass
 
+        # SPATIAL-modality grounding (GL_MODALITY_SPATIAL=4). Bind content
+        # tokens of the concept/teaching text against the synthesized somato
+        # vector — this is the only place SPATIAL signal enters the lexicon.
+        # Use the concept itself when no teaching override is set; otherwise
+        # use the override text since it carries richer surface-feature
+        # vocabulary. Attention 0.6 < visual/audio (0.7) — keyword-derived,
+        # not a real spatial sensor.
+        if hasattr(brain, "ground_word"):
+            _spatial_text = teaching_override if teaching_override else str(concept)
+            _spatial_tokens = _tokenize_for_grounding(_spatial_text)
+            _somato_list = somato_vec.tolist()
+            for _tok in _spatial_tokens:
+                try:
+                    brain.ground_word(_tok, _somato_list,
+                                      modality=4, attention=0.6)
+                except Exception:
+                    pass
+
         # Phase 5B: drive the octopus with modality-specific enrichment.
         # Each sampler reads the fresh cortex state that submit_sensory just
         # pushed and feeds a stably-laid-out 64-dim vector to octopus_explore
@@ -5815,6 +5951,22 @@ def _ingest_canonical_corpus(brain, stage, *, corpus_root,
             wstate["byte_offset"] = end_byte
             continue
 
+        # Set a baseline grounding emotion derived from the work's register
+        # so e.g. Poe gets dark/gothic affect and KJV gets reverent/calm
+        # affect, instead of every chunk grounding into emotion=(0,0).
+        # If the proxy doesn't expose set_grounding_emotion yet (older
+        # daemon), or the call raises for any reason, we degrade silently
+        # and continue — text ingestion must not be blocked by the affect
+        # channel.
+        register = (work or {}).get("register")
+        emotion = _REGISTER_EMOTION.get(register) if register else None
+        if emotion is not None:
+            try:
+                brain.set_grounding_emotion(float(emotion[0]),
+                                             float(emotion[1]))
+            except Exception:
+                pass
+
         # Drive the chunk into the brain. Mirror the babbling-loop shape:
         # train_language(text, target_text=text) + learn_language(text).
         try:
@@ -5828,6 +5980,15 @@ def _ingest_canonical_corpus(brain, stage, *, corpus_root,
             # Don't propagate — one bad chunk shouldn't tank the run.
             print(f"  [Canonical] {work_id} brain call failed: {e}")
             # Still advance the cursor so we don't re-feed the same bad chunk.
+
+        # Reset baseline emotion so subsequent (non-canonical) ingestion
+        # paths don't inherit this work's affect.
+        if emotion is not None:
+            try:
+                brain.set_grounding_emotion(0.0, 0.0)
+            except Exception:
+                pass
+
         # Update state.
         delta_bytes = max(0, end_byte - start_byte)
         wstate["byte_offset"] = int(end_byte)
