@@ -222,6 +222,260 @@ bool grounded_language_has_word(const grounded_language_t* gl, const char* word)
 }
 
 /*=============================================================================
+ * #9 Compositional phrase tracking
+ *===========================================================================*/
+
+/* Build a space-joined lowercased phrase form from N word tokens.
+ * Returns 1 on success, 0 on overflow. */
+static int _gl_phrase_form(char* out, size_t out_sz,
+                             char** words, uint32_t n) {
+    if (!out || out_sz == 0 || !words || n == 0) return 0;
+    size_t pos = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (i > 0) {
+            if (pos + 1 >= out_sz) return 0;
+            out[pos++] = ' ';
+        }
+        for (const char* p = words[i]; *p; p++) {
+            if (pos + 1 >= out_sz) return 0;
+            unsigned char c = (unsigned char)*p;
+            if (c >= 'A' && c <= 'Z') c = (unsigned char)(c - 'A' + 'a');
+            out[pos++] = (char)c;
+        }
+    }
+    out[pos] = '\0';
+    return 1;
+}
+
+/* Find phrase by form, or insert if not present and capacity allows.
+ * Returns NULL if at cap. Component_words is recorded on insert. */
+static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
+                                                const char* form,
+                                                uint8_t component_words) {
+    if (!gl || !gl->phrases || !form) return NULL;
+    uint32_t h = hash_word(form);
+    /* Linear scan — N ≤ GL_MAX_PHRASES = 512. learn_from_text is
+     * cold-ish and we can afford O(N) per phrase track. */
+    for (uint32_t i = 0; i < gl->phrase_count; i++) {
+        if (gl->phrases[i].form_hash == h &&
+            strcmp(gl->phrases[i].form, form) == 0) {
+            return &gl->phrases[i];
+        }
+    }
+    if (gl->phrase_count >= GL_MAX_PHRASES) return NULL;
+    gl_phrase_t* p = &gl->phrases[gl->phrase_count++];
+    size_t flen = strlen(form);
+    if (flen >= GL_MAX_PHRASE_LEN) flen = GL_MAX_PHRASE_LEN - 1;
+    memcpy(p->form, form, flen);
+    p->form[flen] = '\0';
+    p->form_hash = h;
+    p->component_words = component_words;
+    p->frequency = 0;
+    p->semantic_vec = NULL;
+    p->vec_initialized = false;
+    return p;
+}
+
+/* Track bigrams + trigrams in a sentence. Cheap; called once per
+ * learn_from_text after the existing distributional loops. */
+static void _gl_track_phrases(grounded_language_t* gl,
+                                char** words, uint32_t word_count) {
+    if (!gl || !gl->phrases || word_count < 2) return;
+    char buf[GL_MAX_PHRASE_LEN];
+
+    for (uint32_t i = 0; i + 1 < word_count; i++) {
+        if (_gl_phrase_form(buf, sizeof(buf), &words[i], 2)) {
+            gl_phrase_t* p = _gl_phrase_find_or_create(gl, buf, 2);
+            if (p) {
+                p->frequency++;
+                /* Vector cache invalidated when components change —
+                 * cheapest way is to clear on any frequency tick so
+                 * the next lookup recomputes from current word
+                 * vectors. We could be smarter but recompute is O(dim). */
+                p->vec_initialized = false;
+            }
+        }
+        if (i + 2 < word_count) {
+            if (_gl_phrase_form(buf, sizeof(buf), &words[i], 3)) {
+                gl_phrase_t* p = _gl_phrase_find_or_create(gl, buf, 3);
+                if (p) { p->frequency++; p->vec_initialized = false; }
+            }
+        }
+    }
+}
+
+const gl_phrase_t* grounded_language_lookup_phrase(
+        const grounded_language_t* gl, const char* form) {
+    if (!gl || !gl->phrases || !form) return NULL;
+    /* Lowercase the input into a stack buffer for case-insensitive lookup. */
+    char low[GL_MAX_PHRASE_LEN];
+    size_t i = 0;
+    for (; form[i] && i < sizeof(low) - 1; i++) {
+        unsigned char c = (unsigned char)form[i];
+        if (c >= 'A' && c <= 'Z') c = (unsigned char)(c - 'A' + 'a');
+        low[i] = (char)c;
+    }
+    low[i] = '\0';
+    uint32_t h = hash_word(low);
+    for (uint32_t k = 0; k < gl->phrase_count; k++) {
+        if (gl->phrases[k].form_hash == h &&
+            strcmp(gl->phrases[k].form, low) == 0) {
+            /* Lazy compute the semantic vector from constituent words. */
+            gl_phrase_t* mut = (gl_phrase_t*)&gl->phrases[k];
+            if (!mut->vec_initialized) {
+                if (!mut->semantic_vec) {
+                    mut->semantic_vec = (float*)nimcp_calloc(
+                        gl->semantic_dim, sizeof(float));
+                    if (!mut->semantic_vec) return NULL;
+                }
+                memset(mut->semantic_vec, 0,
+                       gl->semantic_dim * sizeof(float));
+                /* Tokenize the form back out and average each
+                 * component's context_vector. */
+                char tmp[GL_MAX_PHRASE_LEN];
+                memcpy(tmp, mut->form, sizeof(tmp));
+                char* tok = strtok(tmp, " ");
+                uint32_t n = 0;
+                while (tok) {
+                    const gl_lexicon_entry_t* e = lexicon_find(gl, tok);
+                    if (e && e->context_initialized) {
+                        for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                            mut->semantic_vec[d] += e->context_vector[d];
+                        }
+                        n++;
+                    }
+                    tok = strtok(NULL, " ");
+                }
+                if (n > 0) {
+                    float inv = 1.0f / (float)n;
+                    for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                        mut->semantic_vec[d] *= inv;
+                    }
+                }
+                mut->vec_initialized = true;
+            }
+            return &gl->phrases[k];
+        }
+    }
+    return NULL;
+}
+
+uint32_t grounded_language_phrase_count(const grounded_language_t* gl) {
+    return gl ? gl->phrase_count : 0u;
+}
+
+uint32_t grounded_language_get_top_phrases(const grounded_language_t* gl,
+                                             uint32_t min_freq,
+                                             uint8_t min_n,
+                                             const gl_phrase_t** out_phrases,
+                                             uint32_t max_k) {
+    if (!gl || !gl->phrases || !out_phrases || max_k == 0) return 0;
+    uint32_t n = gl->phrase_count;
+    if (n == 0) return 0;
+
+    /* Selection sort over the first max_k positions. N ≤ 512 — cheap. */
+    /* Build an index array filtered by qualifiers first. */
+    uint32_t idx_buf_stack[GL_MAX_PHRASES];
+    uint32_t* idx = idx_buf_stack;
+    uint32_t qcount = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        const gl_phrase_t* p = &gl->phrases[i];
+        if (p->frequency < min_freq) continue;
+        if (min_n != 0 && p->component_words != min_n) continue;
+        idx[qcount++] = i;
+    }
+    if (qcount == 0) return 0;
+
+    uint32_t k = (qcount < max_k) ? qcount : max_k;
+    for (uint32_t i = 0; i < k; i++) {
+        uint32_t best = i;
+        for (uint32_t j = i + 1; j < qcount; j++) {
+            if (gl->phrases[idx[j]].frequency >
+                gl->phrases[idx[best]].frequency) best = j;
+        }
+        if (best != i) { uint32_t t = idx[i]; idx[i] = idx[best]; idx[best] = t; }
+        out_phrases[i] = &gl->phrases[idx[i]];
+    }
+    return k;
+}
+
+/*=============================================================================
+ * #8 Cross-modal disambiguation
+ *===========================================================================*/
+
+uint32_t grounded_language_disambiguate(const grounded_language_t* gl,
+                                          const char* word,
+                                          const float* modality_weights,
+                                          uint64_t* out_concepts,
+                                          float* out_scores,
+                                          uint32_t max_k) {
+    if (!gl || !word || !out_concepts || !out_scores || max_k == 0) return 0;
+
+    const gl_lexicon_entry_t* e = lexicon_find(gl, word);
+    if (!e || e->binding_count == 0) return 0;
+
+    /* Determine if we have a real weight signal. NULL or all-zero
+     * weights → fall back to plain confidence × overall-strength
+     * ranking (general "best concept" query). */
+    bool have_weights = false;
+    if (modality_weights) {
+        for (uint32_t m = 0; m < GL_MODALITY_COUNT; m++) {
+            if (modality_weights[m] > 1e-6f) { have_weights = true; break; }
+        }
+    }
+
+    /* Score each binding. */
+    uint32_t n = e->binding_count;
+    /* Stack-bounded — entry binding_count grows on demand but is
+     * realistically <64 in practice. Use a small buffer with overflow
+     * fallback to heap. */
+    float  stack_scores[64];
+    uint64_t stack_ids[64];
+    float* scores = (n <= 64) ? stack_scores : (float*)nimcp_malloc(n * sizeof(float));
+    uint64_t* ids = (n <= 64) ? stack_ids    : (uint64_t*)nimcp_malloc(n * sizeof(uint64_t));
+    if (!scores || !ids) {
+        if (n > 64) { nimcp_free(scores); nimcp_free(ids); }
+        return 0;
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        const gl_word_binding_t* b = &e->bindings[i];
+        float modality_score = 0.0f;
+        if (have_weights) {
+            for (uint32_t m = 0; m < GL_MODALITY_COUNT; m++) {
+                float w = modality_weights[m];
+                if (w < 0.0f) w = 0.0f;
+                if (w > 1.0f) w = 1.0f;
+                modality_score += b->modality_strength[m] * w;
+            }
+        } else {
+            modality_score = b->strength;
+        }
+        scores[i] = modality_score * (b->confidence > 0.0f ? b->confidence : 1.0f);
+        ids[i]    = b->concept_id;
+    }
+
+    /* Partial top-k selection (selection sort over the first max_k
+     * positions). N ≤ ~64 in practice — no need for heapsort. */
+    uint32_t k = (n < max_k) ? n : max_k;
+    for (uint32_t i = 0; i < k; i++) {
+        uint32_t best = i;
+        for (uint32_t j = i + 1; j < n; j++) {
+            if (scores[j] > scores[best]) best = j;
+        }
+        if (best != i) {
+            float ts = scores[i]; scores[i] = scores[best]; scores[best] = ts;
+            uint64_t ti = ids[i]; ids[i] = ids[best]; ids[best] = ti;
+        }
+        out_concepts[i] = ids[i];
+        out_scores[i]   = scores[i];
+    }
+
+    if (n > 64) { nimcp_free(scores); nimcp_free(ids); }
+    return k;
+}
+
+/*=============================================================================
  * #5 LRU lexicon eviction
  *===========================================================================*/
 
@@ -1109,6 +1363,16 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
         return NULL;
     }
 
+    /* Compositional phrases (#9) */
+    gl->phrases = (gl_phrase_t*)nimcp_calloc(GL_MAX_PHRASES, sizeof(gl_phrase_t));
+    if (!gl->phrases) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_create: failed to allocate phrase table");
+        grounded_language_destroy(gl);
+        return NULL;
+    }
+    gl->phrase_count = 0;
+
     /* Learning parameters */
     gl->hebbian_lr = GL_HEBBIAN_LR_DEFAULT;
     gl->decay_rate = GL_DECAY_RATE_DEFAULT;
@@ -1148,6 +1412,15 @@ void grounded_language_destroy(grounded_language_t* gl) {
     nimcp_free(gl->vocab_list);
     nimcp_free(gl->templates);
     nimcp_free(gl->context.context_vector);
+
+    /* Phrases (#9) — each entry's semantic_vec is gl-owned. */
+    if (gl->phrases) {
+        for (uint32_t p = 0; p < gl->phrase_count; p++) {
+            nimcp_free(gl->phrases[p].semantic_vec);
+        }
+        nimcp_free(gl->phrases);
+    }
+
     nimcp_free(gl);
 }
 
@@ -1645,6 +1918,9 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
             }
         }
     }
+
+    /* #9 Compositional templates — track frequent bigrams + trigrams. */
+    _gl_track_phrases(gl, words, word_count);
 
     nimcp_free(buf);
     return updates;

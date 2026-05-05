@@ -164,6 +164,12 @@ struct grounded_language {
      * fuzzy lookup as a tie-break preference and surfaced via probe
      * metrics for observability. */
     char                 context_dialect[GL_MAX_DIALECT_LEN];
+
+    /* Compositional phrases (#9). Fixed-capacity table accumulated
+     * lazily by learn_from_text. semantic_vec is gl-owned; cleared on
+     * destroy. */
+    gl_phrase_t*         phrases;
+    uint32_t             phrase_count;
 };
 
 /**

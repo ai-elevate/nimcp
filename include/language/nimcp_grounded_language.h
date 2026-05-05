@@ -60,8 +60,15 @@ extern "C" {
  * Constants
  *===========================================================================*/
 
-/** Maximum vocabulary size for the grounded lexicon */
-#define GL_MAX_VOCAB              16384
+/** Maximum vocabulary size for the grounded lexicon.
+ *  Sized for multilingual production training: an avg adult has ~30K
+ *  English words; Athena trains across 24 domains × 5 languages
+ *  (EN/FR/DE/IT/ES/ZH), so the realistic ceiling is 50K-100K. 131072
+ *  (= 2^17) is the next power of two above 100K — leaves headroom
+ *  while keeping the hash table size a clean power of two. With LRU
+ *  eviction wired into sleep_consolidate(DEEP_NREM), reaching the cap
+ *  triggers pruning rather than refusing new words. */
+#define GL_MAX_VOCAB              131072
 
 /** Maximum word form length in bytes */
 #define GL_MAX_WORD_LEN           64
@@ -1166,6 +1173,122 @@ uint32_t grounded_language_subscriber_count(const grounded_language_t* gl);
  *         false for NULL or empty input).
  */
 bool grounded_language_has_word(const grounded_language_t* gl, const char* word);
+
+/*=============================================================================
+ * Compositional templates — bigrams + trigrams + phrase vectors (#9)
+ *
+ * Words rarely appear in isolation. Children learn that "good morning"
+ * means more than "good" + "morning" — the bigram itself carries
+ * meaning. This module tracks frequent bigrams + trigrams from
+ * learn_from_text and stores a compositional semantic vector
+ * (mean of constituent word vectors) per phrase.
+ *
+ * Storage: a fixed-capacity table keyed by the lowercased space-
+ * joined form (e.g., "good morning", "happy birthday to"). Counts
+ * exposure; computes the phrase vector lazily on first query.
+ *
+ * Public API: tracking happens automatically in learn_from_text;
+ * top-K phrases retrievable via grounded_language_get_top_phrases.
+ *===========================================================================*/
+
+#define GL_MAX_PHRASE_LEN     128
+#define GL_MAX_PHRASES         512
+
+/** A phrase entry (bigram or trigram). The form is space-separated
+ *  lowercased word forms. component_words is the count (2 or 3). */
+typedef struct {
+    char     form[GL_MAX_PHRASE_LEN];
+    uint32_t form_hash;
+    uint8_t  component_words;        /**< 2 = bigram, 3 = trigram */
+    uint32_t frequency;
+    /* Compositional semantic vector — mean of component word
+     * context_vectors. Computed lazily and cached; cleared when any
+     * component word's binding mutates so it stays consistent.
+     * Sized to GL_SEMANTIC_DIM at gl_create time. */
+    float*   semantic_vec;
+    bool     vec_initialized;
+} gl_phrase_t;
+
+/**
+ * @brief Retrieve the top-K most frequent learned phrases. Returns
+ *        the count actually written. Read-only.
+ *
+ * @param gl          System handle (NULL → 0)
+ * @param min_freq    Minimum frequency to qualify (0 = all)
+ * @param min_n       Minimum component words (2 or 3; 0 = both)
+ * @param out_phrases Caller-allocated array of pointers; results
+ *                    are owned by GL — copy if you need to retain.
+ * @param max_k       Capacity
+ * @return Number of phrases written, 0 on bad input.
+ */
+uint32_t grounded_language_get_top_phrases(
+    const grounded_language_t* gl,
+    uint32_t min_freq,
+    uint8_t min_n,
+    const gl_phrase_t** out_phrases,
+    uint32_t max_k);
+
+/**
+ * @brief Look up a specific phrase by its space-joined form.
+ *        Read-only. Returns NULL if not in the table.
+ */
+const gl_phrase_t* grounded_language_lookup_phrase(
+    const grounded_language_t* gl,
+    const char* form);
+
+/**
+ * @brief Number of phrases currently tracked. Useful for probes.
+ */
+uint32_t grounded_language_phrase_count(const grounded_language_t* gl);
+
+/*=============================================================================
+ * Cross-modal disambiguation (#8)
+ *
+ * Polysemous words ("bat" = flying mammal OR baseball bat, "bank" =
+ * river edge OR financial institution) have multiple concept bindings,
+ * each weighted across modalities. Plain comprehension activates them
+ * all; disambiguation picks the most likely concept given which sensory
+ * modalities are currently providing context.
+ *
+ * Score for each binding c:
+ *   score(c) = binding.confidence
+ *            × Σ_m  modality_strength[m] × modality_weights[m]
+ *
+ * The caller supplies a length-GL_MODALITY_COUNT weights vector
+ * representing the currently-active modalities (e.g., [0.9, 0.1, 0, 0,
+ * 0, 0] = "I'm looking at something but barely hearing anything"). The
+ * top-K bindings by score are written into out_concepts/out_scores.
+ *
+ * Returns the number of bindings ranked, or 0 on bad input.
+ *===========================================================================*/
+
+/**
+ * @brief Pick the top-K concept bindings for `word` given a per-
+ *        modality salience profile. Read-only — does not mutate
+ *        bindings or fire bus events.
+ *
+ *        When the word is unknown OR has only one binding, returns
+ *        ≤ 1 (no disambiguation needed). When all weights are zero
+ *        the result falls back to plain confidence × overall-strength
+ *        ranking so callers can use this as a general "best concept"
+ *        query without supplying weights.
+ *
+ * @param gl                    System handle
+ * @param word                  Word form to disambiguate
+ * @param modality_weights      Length GL_MODALITY_COUNT, in [0,1]
+ *                              (clamped internally)
+ * @param out_concepts          Caller-allocated output: concept ids
+ * @param out_scores            Caller-allocated output: scores
+ * @param max_k                 Capacity of out arrays
+ * @return Number of bindings ranked into out_*; 0 on bad input.
+ */
+uint32_t grounded_language_disambiguate(
+    const grounded_language_t* gl,
+    const char* word,
+    const float* modality_weights,
+    uint64_t* out_concepts,
+    float* out_scores,
+    uint32_t max_k);
 
 /*=============================================================================
  * Lexicon LRU eviction (#5)
