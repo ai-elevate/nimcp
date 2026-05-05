@@ -13,10 +13,20 @@ to the chunk that documents.
 Public API:
     iter_code_chunks(file_path, *, max_chars=2000)
         -> Iterator[(chunk_id, code_text)]
+    iter_repo_chunks(repo_relative_path, *, repo_root=None, max_chars=2000)
+        -> Iterator[(chunk_id, code_text)]
+    resolve_work_files(work, *, corpus_root, repo_root=None) -> list[str]
     load_code_index(root) -> dict   # delegates to canonical_corpus.load_index
 
 The loader is pure read-side: no daemon calls, no mutation of corpus
 files. The caller is responsible for driving chunks into the brain.
+
+Schema notes:
+    Each work entry has EITHER ``files`` (corpus-relative paths under
+    ``data/code_corpus/``) OR ``repo_files`` (repo-relative paths
+    resolved against the NIMCP source tree). The latter lets us point
+    at curated slices of NIMCP's own implementation as a meta-grounding
+    register without copying source files into the corpus.
 """
 
 from __future__ import annotations
@@ -256,3 +266,89 @@ def load_code_index(root: str) -> dict:
 
     from canonical_corpus import load_index  # noqa: E402
     return load_index(root)
+
+
+# --- Repo-relative resolution ---------------------------------------------
+#
+# The "nimcp_self" register points at curated slices of NIMCP's own source
+# tree (e.g. ``src/api/nimcp_part_lifecycle.c``, ``include/nimcp.h``).
+# These files are referenced via ``repo_files`` rather than ``files`` so we
+# don't duplicate the source on disk.
+
+# Markers we expect to find at the NIMCP repo root. We require BOTH so that
+# we don't accidentally identify some random ancestor (e.g. a parent dir
+# that happens to have a ``scripts/`` subdir) as the repo root.
+_REPO_ROOT_MARKERS = ("CMakeLists.txt", "scripts")
+
+
+def _find_repo_root(start: str) -> str:
+    """Walk up from ``start`` looking for a directory that contains all of
+    the markers in :data:`_REPO_ROOT_MARKERS`.
+
+    Returns the absolute path to the first matching ancestor. Falls back
+    to the directory three levels above this module (``scripts/code_corpus.py``
+    -> ``scripts/`` -> repo root) if no marker match is found — that's the
+    layout the project ships with today.
+    """
+    here = os.path.abspath(start)
+    if os.path.isfile(here):
+        here = os.path.dirname(here)
+
+    cur = here
+    while True:
+        if all(os.path.exists(os.path.join(cur, m))
+               for m in _REPO_ROOT_MARKERS):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            # Reached filesystem root without finding markers — fall back
+            # to a heuristic based on this module's known location.
+            module_dir = os.path.dirname(os.path.abspath(__file__))
+            return os.path.dirname(module_dir)
+        cur = parent
+
+
+def resolve_work_files(work: dict,
+                       *,
+                       corpus_root: str,
+                       repo_root: str = None) -> List[str]:
+    """Return absolute paths for one work entry.
+
+    The work dict may carry ``files`` (corpus-relative, joined against
+    ``corpus_root``) OR ``repo_files`` (repo-relative, joined against
+    ``repo_root``). If ``repo_root`` is ``None`` we auto-detect by
+    walking up from ``corpus_root``.
+
+    If neither key is present, returns an empty list — the caller is
+    expected to skip such entries rather than error out, so an empty
+    list is a soft signal.
+    """
+    if "files" in work and work["files"]:
+        return [os.path.join(corpus_root, rel) for rel in work["files"]]
+
+    if "repo_files" in work and work["repo_files"]:
+        if repo_root is None:
+            repo_root = _find_repo_root(corpus_root)
+        return [os.path.join(repo_root, rel) for rel in work["repo_files"]]
+
+    return []
+
+
+def iter_repo_chunks(repo_relative_path: str,
+                     *,
+                     repo_root: str = None,
+                     max_chars: int = 2000) -> Iterator[Tuple[int, str]]:
+    """Yield (chunk_id, code_text) pairs for a repo-relative source path.
+
+    Thin wrapper around :func:`iter_code_chunks` that resolves the path
+    against the NIMCP repo root. ``repo_root`` is auto-detected if not
+    supplied (see :func:`_find_repo_root`).
+
+    Used for the ``nimcp_self`` register, which lets Athena read curated
+    slices of her own implementation — meta-grounding, not data leakage,
+    because she's the artificial person whose source this is.
+    """
+    if repo_root is None:
+        repo_root = _find_repo_root(os.path.abspath(os.curdir))
+    abs_path = os.path.join(repo_root, repo_relative_path)
+    yield from iter_code_chunks(abs_path, max_chars=max_chars)

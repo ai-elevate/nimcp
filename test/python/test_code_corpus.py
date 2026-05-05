@@ -233,9 +233,17 @@ class TestIndex(unittest.TestCase):
     def test_required_keys_per_work(self):
         idx = cc.load_code_index(CORPUS_ROOT)
         for work in idx["works"]:
-            for key in ("id", "register", "title", "files",
+            # Every work has the standard scalar keys.
+            for key in ("id", "register", "title",
                         "language", "stage", "weight", "source"):
                 self.assertIn(key, work, f"missing {key} on {work.get('id')}")
+            # Each work has either ``files`` (corpus-relative) or
+            # ``repo_files`` (repo-relative), but not both.
+            has_files = bool(work.get("files"))
+            has_repo = bool(work.get("repo_files"))
+            self.assertTrue(
+                has_files ^ has_repo,
+                f"{work.get('id')}: must have exactly one of files/repo_files")
 
     def test_minimum_stage_counts(self):
         idx = cc.load_code_index(CORPUS_ROOT)
@@ -273,8 +281,11 @@ class TestSampleFiles(unittest.TestCase):
             self.idx = json.load(f)
 
     def _all_paths(self):
+        # Only iterate over hand-authored entries (those with ``files``).
+        # Repo-relative entries (``repo_files``) point at the live NIMCP
+        # source tree and are validated separately in TestRepoFiles.
         for work in self.idx["works"]:
-            for rel in work["files"]:
+            for rel in work.get("files", []):
                 yield work, os.path.join(CORPUS_ROOT, rel)
 
     def test_every_referenced_file_exists(self):
@@ -336,7 +347,8 @@ class TestEndToEndChunkAllSamples(unittest.TestCase):
                   "r", encoding="utf-8") as f:
             idx = json.load(f)
         for work in idx["works"]:
-            for rel in work["files"]:
+            # Hand-authored ``files``: chunked from the corpus tree.
+            for rel in work.get("files", []):
                 path = os.path.join(CORPUS_ROOT, rel)
                 chunks = list(cc.iter_code_chunks(path))
                 self.assertGreater(
@@ -345,6 +357,144 @@ class TestEndToEndChunkAllSamples(unittest.TestCase):
                 # Every chunk must be non-empty after strip.
                 for cid, text in chunks:
                     self.assertGreater(len(text.strip()), 0)
+
+
+# ---------------------------------------------------------------------------
+# Repo-relative resolution: the "nimcp_self" register
+# ---------------------------------------------------------------------------
+
+class TestRepoFiles(unittest.TestCase):
+    """Validates the ``repo_files`` schema extension and the
+    ``nimcp_self`` register that references curated slices of the
+    NIMCP source tree (no on-disk duplication)."""
+
+    def setUp(self):
+        with open(os.path.join(CORPUS_ROOT, "index.json"),
+                  "r", encoding="utf-8") as f:
+            self.idx = json.load(f)
+        self.nimcp_self = [w for w in self.idx["works"]
+                           if w.get("register") == "nimcp_self"]
+
+    # --- resolve_work_files --------------------------------------------
+
+    def test_resolve_files_corpus_relative(self):
+        # A hand-authored entry: should resolve under CORPUS_ROOT.
+        hand = next(w for w in self.idx["works"]
+                    if w.get("source") == "hand_authored")
+        paths = cc.resolve_work_files(hand, corpus_root=CORPUS_ROOT)
+        self.assertEqual(len(paths), len(hand["files"]))
+        for p in paths:
+            self.assertTrue(p.startswith(CORPUS_ROOT),
+                            f"hand-authored path leaked outside corpus: {p}")
+            self.assertTrue(os.path.isfile(p), f"missing: {p}")
+
+    def test_resolve_repo_files_repo_relative(self):
+        self.assertGreater(len(self.nimcp_self), 0,
+                           "nimcp_self register has no entries")
+        for work in self.nimcp_self:
+            paths = cc.resolve_work_files(work, corpus_root=CORPUS_ROOT)
+            self.assertEqual(len(paths), len(work["repo_files"]))
+            for p in paths:
+                self.assertTrue(os.path.isabs(p),
+                                f"{work['id']}: not absolute: {p}")
+                self.assertTrue(os.path.isfile(p),
+                                f"{work['id']}: missing repo file: {p}")
+                # And the path must NOT live under the corpus root —
+                # that would mean we accidentally duplicated source.
+                self.assertFalse(
+                    p.startswith(CORPUS_ROOT + os.sep),
+                    f"{work['id']}: repo file resolved into corpus tree: {p}")
+
+    def test_resolve_neither_returns_empty(self):
+        # Synthetic work with neither key present.
+        empty = {"id": "x", "register": "?", "title": "?",
+                 "language": "python", "stage": 2, "weight": 1.0,
+                 "source": "?"}
+        self.assertEqual(cc.resolve_work_files(empty, corpus_root=CORPUS_ROOT), [])
+
+        # Both keys empty also gives [].
+        empty2 = dict(empty, files=[], repo_files=[])
+        self.assertEqual(cc.resolve_work_files(empty2, corpus_root=CORPUS_ROOT), [])
+
+    def test_resolve_explicit_repo_root(self):
+        # When the caller passes repo_root explicitly, no auto-detect.
+        explicit = "/some/other/place"
+        work = {"repo_files": ["a/b.c"]}
+        paths = cc.resolve_work_files(
+            work, corpus_root=CORPUS_ROOT, repo_root=explicit)
+        self.assertEqual(paths, [os.path.join(explicit, "a/b.c")])
+
+    # --- repo-root auto-detection --------------------------------------
+
+    def test_auto_detect_repo_root_from_corpus_root(self):
+        # CORPUS_ROOT is a child of REPO; the helper must find REPO.
+        detected = cc._find_repo_root(CORPUS_ROOT)
+        self.assertEqual(os.path.realpath(detected),
+                         os.path.realpath(REPO))
+
+    # --- iter_repo_chunks ----------------------------------------------
+
+    def test_iter_repo_chunks_yields_chunks(self):
+        # canonical_corpus.py is small but well-formed Python — easy to chunk.
+        rel = "scripts/canonical_corpus.py"
+        chunks = list(cc.iter_repo_chunks(rel, repo_root=REPO))
+        self.assertGreater(len(chunks), 0,
+                           f"iter_repo_chunks({rel}) yielded zero chunks")
+        blob = "\n".join(c[1] for c in chunks)
+        # Sanity: at least one of the module's canonical tokens shows up.
+        # We look for either Python keywords (def/import) or domain
+        # tokens unique to this corpus loader.
+        recognizable = ("def ", "import ", "athena", "corpus")
+        self.assertTrue(
+            any(tok in blob.lower() for tok in recognizable),
+            f"iter_repo_chunks output had no recognizable tokens "
+            f"(looked for {recognizable})")
+
+    def test_iter_repo_chunks_on_c_file(self):
+        # Verify a real C file is chunkable too.
+        rel = "src/security/nimcp_audit_log.c"
+        chunks = list(cc.iter_repo_chunks(rel, repo_root=REPO))
+        self.assertGreater(len(chunks), 0)
+        blob = "\n".join(c[1] for c in chunks)
+        # Audit log file should mention either "audit" or "nimcp".
+        self.assertTrue(
+            "audit" in blob.lower() or "nimcp" in blob.lower(),
+            "expected nimcp/audit tokens in audit log file")
+
+    # --- index integrity for the nimcp_self register -------------------
+
+    def test_every_repo_file_resolves(self):
+        for work in self.nimcp_self:
+            for rel in work.get("repo_files", []):
+                full = os.path.join(REPO, rel)
+                self.assertTrue(
+                    os.path.isfile(full),
+                    f"{work['id']}: dangling repo_files entry {rel!r}")
+
+    def test_nimcp_self_has_stage_coverage(self):
+        # At least one entry per of stage 2 and stage 3 (matches the
+        # curriculum ramp the hand-authored register uses).
+        stages = {int(w["stage"]) for w in self.nimcp_self}
+        self.assertIn(2, stages, "nimcp_self has no Stage 2 entry")
+        self.assertIn(3, stages, "nimcp_self has no Stage 3 entry")
+
+    def test_nimcp_self_files_substantial(self):
+        # Each referenced repo file must be non-trivial (>= 50 lines)
+        # so it actually contributes something to the corpus.
+        for work in self.nimcp_self:
+            for rel in work["repo_files"]:
+                full = os.path.join(REPO, rel)
+                with open(full, "r", encoding="utf-8") as f:
+                    n_lines = sum(1 for _ in f)
+                self.assertGreaterEqual(
+                    n_lines, 50,
+                    f"{work['id']}: {rel} has only {n_lines} lines")
+
+    def test_no_work_has_both_files_and_repo_files(self):
+        for work in self.idx["works"]:
+            self.assertFalse(
+                bool(work.get("files")) and bool(work.get("repo_files")),
+                f"{work['id']}: must not set both files and repo_files")
 
 
 if __name__ == "__main__":
