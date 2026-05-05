@@ -243,4 +243,59 @@ TEST_F(GLCogBridge, UnsubscribeDuringFireIsSafe) {
     EXPECT_EQ(1u, grounded_language_subscriber_count(gl));
 }
 
+/* --- Brain-region attach helpers ----------------------------------- */
+TEST_F(GLCogBridge, RegionAttachHelpersNullModuleIsSafe) {
+    grounded_language_attach_prefrontal(gl, nullptr);
+    grounded_language_attach_insula(gl, nullptr);
+    grounded_language_attach_cingulate(gl, nullptr);
+    grounded_language_attach_amygdala(gl, nullptr);
+    EXPECT_EQ(0u, grounded_language_subscriber_count(gl));
+}
+
+TEST_F(GLCogBridge, RegionAttachRegistersOneSlotEach) {
+    int prefrontal = 1, insula = 2, cingulate = 3, amygdala = 4;
+    grounded_language_attach_prefrontal(gl, &prefrontal);
+    EXPECT_EQ(1u, grounded_language_subscriber_count(gl));
+    grounded_language_attach_insula(gl, &insula);
+    EXPECT_EQ(2u, grounded_language_subscriber_count(gl));
+    grounded_language_attach_cingulate(gl, &cingulate);
+    EXPECT_EQ(3u, grounded_language_subscriber_count(gl));
+    grounded_language_attach_amygdala(gl, &amygdala);
+    EXPECT_EQ(4u, grounded_language_subscriber_count(gl));
+
+    /* Re-attaching same module is a no-op (dedup). */
+    grounded_language_attach_prefrontal(gl, &prefrontal);
+    EXPECT_EQ(4u, grounded_language_subscriber_count(gl));
+}
+
+TEST_F(GLCogBridge, RegionsObserveEventsViaBus) {
+    /* All four region handles share one ctx struct so they all alias
+     * the same EventRec — but each attach uses a distinct module
+     * pointer, so we can verify each is registered. */
+    EventRec rec_pfc{}, rec_ins{}, rec_acc{}, rec_amy{};
+    /* Register raw subscribers so we can directly verify the events
+     * the wrappers would have observed. */
+    grounded_language_subscribe(gl, rec_subscriber, &rec_pfc);
+    grounded_language_subscribe(gl, rec_subscriber, &rec_ins);
+    grounded_language_subscribe(gl, rec_subscriber, &rec_acc);
+    grounded_language_subscribe(gl, rec_subscriber, &rec_amy);
+
+    /* Drive a high-arousal grounding — fires NEW_WORD + GROUNDED. */
+    std::vector<float> f(TEST_DIM, 0.0f); f[0] = 1.0f;
+    gl_grounding_event_t ev{};
+    ev.word = "snake";
+    ev.modality = GL_MODALITY_VISUAL;
+    ev.sensory_features = f.data();
+    ev.feature_dim = TEST_DIM;
+    ev.attention = 0.9f;
+    ev.emotional_valence = -0.8f;
+    ev.emotional_arousal = 0.9f;
+    ASSERT_EQ(0, grounded_language_ground(gl, &ev));
+
+    EXPECT_GE(rec_pfc.count, 2);  /* NEW_WORD + GROUNDED */
+    EXPECT_EQ(rec_pfc.count, rec_ins.count);
+    EXPECT_EQ(rec_ins.count, rec_acc.count);
+    EXPECT_EQ(rec_acc.count, rec_amy.count);
+}
+
 }  // namespace

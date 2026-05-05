@@ -1116,6 +1116,30 @@ void grounded_language_attach_analogical(grounded_language_t* gl, void* mod);
  *  feed the emergent-symbol learner. */
 void grounded_language_attach_emergent_language(grounded_language_t* gl, void* mod);
 
+/*--------------------------------------------------------------------------
+ * Brain-region subscribers — anatomical regions that should observe
+ * language events in their own modality. All four are NULL-tolerant
+ * (mod = NULL is a disconnect).
+ *------------------------------------------------------------------------*/
+
+/** Attach prefrontal cortex: COMPREHENDED + PRODUCED + high-arousal
+ *  GROUNDED events feed executive monitoring of language. */
+void grounded_language_attach_prefrontal(grounded_language_t* gl, void* mod);
+
+/** Attach insula: COMPREHENDED events with non-zero valence feed
+ *  interoceptive integration (gut-feel evaluation of an utterance). */
+void grounded_language_attach_insula(grounded_language_t* gl, void* mod);
+
+/** Attach cingulate cortex: COMPREHENDED + PRODUCED events feed
+ *  conflict-monitoring (low-confidence comprehensions or production
+ *  errors are flagged for ACC attention). */
+void grounded_language_attach_cingulate(grounded_language_t* gl, void* mod);
+
+/** Attach amygdala: GROUNDED events with arousal > 0.3 feed
+ *  emotional tagging of the bound concept (fear/threat conditioning
+ *  on language-encoded experiences). */
+void grounded_language_attach_amygdala(grounded_language_t* gl, void* mod);
+
 /*=============================================================================
  * Query / Introspection
  *===========================================================================*/

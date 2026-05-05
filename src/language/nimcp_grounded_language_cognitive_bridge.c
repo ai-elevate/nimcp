@@ -229,6 +229,67 @@ static int _wrap_emergent_language(void* ctx, const gl_event_t* ev) {
 }
 
 /*=============================================================================
+ * Brain-region wrappers — anatomical regions that observe language
+ * events in their own modality. Each wrapper logs the observation;
+ * downstream module-native consumers wire onto the log on the next
+ * tick, same pattern as the cognitive wrappers above.
+ *===========================================================================*/
+
+static int _wrap_prefrontal(void* ctx, const gl_event_t* ev) {
+    if (!ctx || !ev) return -1;
+    /* Executive monitoring: hears comprehensions + productions, plus
+     * high-arousal groundings (salient items demand attention). */
+    bool relevant =
+        ev->type == GL_EVENT_COMPREHENDED ||
+        ev->type == GL_EVENT_PRODUCED     ||
+        (ev->type == GL_EVENT_GROUNDED && ev->arousal > 0.3f);
+    if (!relevant) return 0;
+    LOG_DEBUG(LOG_MODULE,
+               "prefrontal observe type=%d conf=%.2f text='%s'",
+               (int)ev->type, ev->confidence,
+               ev->text ? ev->text : (ev->word ? ev->word : "(null)"));
+    return 0;
+}
+
+static int _wrap_insula(void* ctx, const gl_event_t* ev) {
+    if (!ctx || !ev) return -1;
+    /* Interoceptive valence integration: COMPREHENDED utterances with
+     * any non-trivial valence are candidate gut-feel inputs. */
+    if (ev->type != GL_EVENT_COMPREHENDED) return 0;
+    if (ev->valence > -0.05f && ev->valence < 0.05f) return 0;
+    LOG_DEBUG(LOG_MODULE, "insula valence_tap text='%s' val=%.2f",
+               ev->text ? ev->text : "(null)", ev->valence);
+    return 0;
+}
+
+static int _wrap_cingulate(void* ctx, const gl_event_t* ev) {
+    if (!ctx || !ev) return -1;
+    /* Conflict monitoring: low-confidence COMPREHENDED or any PRODUCED
+     * event is a candidate signal for ACC attention. */
+    bool relevant =
+        (ev->type == GL_EVENT_COMPREHENDED && ev->confidence < 0.7f) ||
+        ev->type == GL_EVENT_PRODUCED;
+    if (!relevant) return 0;
+    LOG_DEBUG(LOG_MODULE,
+               "cingulate conflict_tap type=%d conf=%.2f",
+               (int)ev->type, ev->confidence);
+    return 0;
+}
+
+static int _wrap_amygdala(void* ctx, const gl_event_t* ev) {
+    if (!ctx || !ev) return -1;
+    /* Emotional conditioning: GROUNDED events with arousal > 0.3 are
+     * candidates for fear/threat tagging of the bound concept. */
+    if (ev->type != GL_EVENT_GROUNDED) return 0;
+    if (ev->arousal < 0.3f) return 0;
+    LOG_DEBUG(LOG_MODULE,
+               "amygdala emotion_tag concept_id=%llu val=%.2f aro=%.2f",
+               (unsigned long long)ev->concept_id,
+               ev->valence, ev->arousal);
+    return 0;
+}
+
+/*=============================================================================
  * Attach helpers — register the wrapper with the module pointer as ctx.
  * Passing NULL is the disconnect operation (unsubscribes the wrapper).
  *===========================================================================*/
@@ -253,5 +314,9 @@ _GL_DEFINE_ATTACH(narrative,          _wrap_narrative)
 _GL_DEFINE_ATTACH(metacognition,      _wrap_metacognition)
 _GL_DEFINE_ATTACH(analogical,         _wrap_analogical)
 _GL_DEFINE_ATTACH(emergent_language,  _wrap_emergent_language)
+_GL_DEFINE_ATTACH(prefrontal,         _wrap_prefrontal)
+_GL_DEFINE_ATTACH(insula,             _wrap_insula)
+_GL_DEFINE_ATTACH(cingulate,          _wrap_cingulate)
+_GL_DEFINE_ATTACH(amygdala,           _wrap_amygdala)
 
 #undef _GL_DEFINE_ATTACH

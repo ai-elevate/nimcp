@@ -578,6 +578,23 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             grounded_language_attach_analogical(brain->grounded_lang,
                                                   brain->analogical_transfer);
 
+        /* Anatomical brain-region subscribers — each region observes
+         * the language stream in its own modality. NULL-tolerant per
+         * the wrappers; only registered when the region adapter is
+         * present on this brain. */
+        if (brain->prefrontal)
+            grounded_language_attach_prefrontal(brain->grounded_lang,
+                                                  brain->prefrontal);
+        if (brain->insula)
+            grounded_language_attach_insula(brain->grounded_lang,
+                                              brain->insula);
+        if (brain->cingulate)
+            grounded_language_attach_cingulate(brain->grounded_lang,
+                                                 brain->cingulate);
+        if (brain->amygdala)
+            grounded_language_attach_amygdala(brain->grounded_lang,
+                                                brain->amygdala);
+
         /* Memory-system attachments — every successful grounding event
          * fans out to working memory + episodic replay + hippocampus
          * (each independently optional). Without these, the trained
