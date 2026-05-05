@@ -319,6 +319,32 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
 
     snn_network_t* snn = brain->snn_network;
 
+    /* Resume guard. Pop creation (add_one_pop) is idempotent — it returns
+     * the existing id if the named pop is already present. The wiring stage
+     * (Stage 1.b) is NOT idempotent: snn_network_connect_populations adds
+     * fresh synapses on every call. Re-running on a checkpoint that already
+     * has the wiring duplicates every connection and trips a CSR write past
+     * its allocated bucket → SIGSEGV in snn_csr_add_entry on the second pass.
+     *
+     * If all four language pops are already present, the brain is being
+     * loaded from a checkpoint that ran this init at least once. Skip the
+     * wiring (it's already saved in the SNN's CSR) but still rebind the
+     * Broca/Wernicke adapters to their pops (the adapter pointers don't
+     * survive checkpoint reload — only the SNN does). */
+    bool prebuilt = pop_already_exists(snn, LANG_WERNICKE_POP_NAME) &&
+                    pop_already_exists(snn, LANG_BROCA_POP_NAME) &&
+                    pop_already_exists(snn, LANG_ARCUATE_POP_NAME) &&
+                    pop_already_exists(snn, SENSORYMOTOR_RING_POP_NAME);
+    if (prebuilt) {
+        int wid = find_pop_id_by_name(snn, LANG_WERNICKE_POP_NAME);
+        int bid = find_pop_id_by_name(snn, LANG_BROCA_POP_NAME);
+        attach_lang_adapters_to_substrate(brain, snn, bid, wid);
+        LOG_INFO(LOG_MODULE,
+                 "language pops already present (resume path) — skipping "
+                 "wiring; adapters rebound to broca=%d wernicke=%d", bid, wid);
+        return true;
+    }
+
     /* Stage 1.a: create the four pops (idempotent — bails on duplicates). */
     int wernicke_id = -1, broca_id = -1, arcuate_id = -1, sensorymotor_id = -1;
     bool ok = true;

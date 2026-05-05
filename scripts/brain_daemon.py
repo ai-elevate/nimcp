@@ -2922,33 +2922,14 @@ class AutoCheckpointer:
             except Exception as _cbm_e:
                 logger.warning("CB marker write failed (save still good): %s", _cbm_e)
 
-            # STEP 5b: Update immersive_state.json with current step
-            # The training script's _save_checkpoint should do this but may
-            # fail silently. The daemon knows total_learning_steps and can
-            # compute the approximate stage 2 step.
-            try:
-                import json as _json
-                state_file = os.path.join(self.checkpoint_dir, "immersive_state.json")
-                total_steps = self.brain.probe().get("total_learning_steps", 0)
-                # Read existing state to preserve stage info
-                state = {"stage": 2, "step": 0}
-                if os.path.exists(state_file):
-                    with open(state_file) as _sf:
-                        state = _json.load(_sf)
-                # Estimate current step from total_learning_steps delta
-                # Base: 98374 total = step 10600 in stage 2 (from session start)
-                base_total = 98374
-                base_step = 10600
-                if total_steps > base_total:
-                    estimated_step = base_step + (total_steps - base_total)
-                    state["step"] = estimated_step
-                    state["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
-                    with open(state_file, "w") as _sf:
-                        _json.dump(state, _sf, indent=2)
-                    logger.info("State file updated: stage=%d step=%d (total=%d)",
-                                state["stage"], state["step"], total_steps)
-            except Exception as e:
-                logger.debug("State file update failed: %s", e)
+            # The trainer (immerse_athena._save_checkpoint_sync) is the sole
+            # writer of immersive_state.json — it knows the per-stage step
+            # value the curriculum cares about. The daemon used to overwrite
+            # state["step"] here with a hard-coded interpolation off
+            # total_learning_steps (base_total=98374, base_step=10600), which
+            # produced numbers like 47986 regardless of the real curriculum
+            # progress and clobbered the trainer's correct value (e.g. 150).
+            # Removed 2026-05-05.
 
             # STEP 6: Sync to Hetzner with CRC32 verification
             self._sync_to_hetzner(canonical)
