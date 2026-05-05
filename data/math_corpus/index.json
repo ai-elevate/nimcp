@@ -19,8 +19,9 @@
       "files": ["algebra/arithmetic_basics.txt"],
       "language": "en",
       "stage": 1,
-      "weight": 1.0,
-      "source": "hand_authored"
+      "weight": 0.3,
+      "source": "hand_authored",
+      "comment": "Demoted from 1.0 — overlaps with parietal magnitude-sense primitives. Lesson exists mainly to ground the words (addition/minus/sum) onto the substrate's existing number machinery; symbolic content here is mostly redundant with the region."
     },
     {
       "id": "seed.algebra_intro",

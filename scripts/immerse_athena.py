@@ -576,6 +576,7 @@ CONTENT_CACHE = "checkpoints/athena/claude_content_cache.json"
 # drip hooks inside run_stage_1/2/3 can read it without threading args through
 # every signature. Stays None when --no-canonical-corpus is passed.
 _CANONICAL_CFG = None  # dict with keys: enabled, root, chunk_chars, max_chunks_per_stage
+_MATH_CFG = None       # same shape as _CANONICAL_CFG; for the math+logic corpus
 
 # Cross-modal grounding helper. The function-word stoplist is ~50 words —
 # anything not on the list is treated as a content word and gets a
@@ -5808,10 +5809,11 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
 # ============================================================================
 
 CANONICAL_STATE_FILENAME = ".canonical_corpus_state.json"
+MATH_STATE_FILENAME = ".math_corpus_state.json"
 
 
-def _canonical_state_path(checkpoint_dir):
-    return os.path.join(checkpoint_dir, CANONICAL_STATE_FILENAME)
+def _canonical_state_path(checkpoint_dir, filename=CANONICAL_STATE_FILENAME):
+    return os.path.join(checkpoint_dir, filename)
 
 
 def _canonical_default_state():
@@ -5822,9 +5824,9 @@ def _canonical_default_state():
     }
 
 
-def _load_canonical_state(checkpoint_dir):
-    """Read the canonical-corpus resume state. Empty default if missing."""
-    path = _canonical_state_path(checkpoint_dir)
+def _load_canonical_state(checkpoint_dir, filename=CANONICAL_STATE_FILENAME):
+    """Read the corpus resume state. Empty default if missing."""
+    path = _canonical_state_path(checkpoint_dir, filename)
     if not os.path.exists(path):
         return _canonical_default_state()
     try:
@@ -5845,13 +5847,13 @@ def _load_canonical_state(checkpoint_dir):
     return state
 
 
-def _save_canonical_state(checkpoint_dir, state):
-    """Atomic write of canonical-corpus resume state (tempfile + os.replace)."""
+def _save_canonical_state(checkpoint_dir, state, filename=CANONICAL_STATE_FILENAME):
+    """Atomic write of corpus resume state (tempfile + os.replace)."""
     try:
         os.makedirs(checkpoint_dir, exist_ok=True)
     except Exception:
         pass
-    path = _canonical_state_path(checkpoint_dir)
+    path = _canonical_state_path(checkpoint_dir, filename)
     tmp_path = path + ".tmp"
     try:
         with open(tmp_path, "w", encoding="utf-8") as f:
@@ -5876,22 +5878,28 @@ def _ingest_canonical_corpus(brain, stage, *, corpus_root,
                               max_chunks_per_call=None,
                               chunk_chars=1200,
                               checkpoint_dir,
-                              log_every=20):
-    """Drive canonical-corpus chunks into the brain for one stage.
+                              log_every=20,
+                              state_filename=CANONICAL_STATE_FILENAME,
+                              label="Canonical"):
+    """Drive corpus chunks into the brain for one stage.
 
     - Optional: silently skips when index.json is missing.
-    - Resumable: per-work byte cursor lives in `.canonical_corpus_state.json`.
+    - Resumable: per-work byte cursor lives in `<state_filename>`.
     - Round-robin schedule over stage's works, weighted by manifest weights.
     - Each chunk is fed through brain.train_language() and brain.learn_language()
       mirroring the babbling-loop call shape. Per-chunk failures are logged
       and skipped (one bad chunk doesn't tank the run).
+
+    The same code path drives both the literary (data/canonical_corpus/)
+    and mathematical (data/math_corpus/) ingestion — they share the
+    index.json schema; only the corpus root and state filename differ.
     """
     try:
         from canonical_corpus import (
             load_index, works_for_stage, iter_chunks, round_robin_schedule,
         )
     except Exception as e:
-        print(f"  [Canonical] loader import failed: {e} — skipping")
+        print(f"  [{label}] loader import failed: {e} — skipping")
         return
 
     try:
@@ -5900,14 +5908,14 @@ def _ingest_canonical_corpus(brain, stage, *, corpus_root,
         # Corpus is optional — quiet skip.
         return
     except Exception as e:
-        print(f"  [Canonical] load_index failed: {e} — skipping")
+        print(f"  [{label}] load_index failed: {e} — skipping")
         return
 
     works = works_for_stage(idx, stage)
     if not works:
         return
 
-    state = _load_canonical_state(checkpoint_dir)
+    state = _load_canonical_state(checkpoint_dir, state_filename)
     work_by_id = {w["id"]: w for w in works}
 
     # Plan a round-robin order over works for this call.
@@ -6008,8 +6016,33 @@ def _ingest_canonical_corpus(brain, stage, *, corpus_root,
     # Final flush.
     _save_canonical_state(checkpoint_dir, state)
 
-    print(f"  [Canonical] stage {stage}: ingested {chunks_done_call} chunks "
+    print(f"  [{label}] stage {stage}: ingested {chunks_done_call} chunks "
           f"across {len(works)} works ({bytes_done_call} bytes)")
+
+
+def _ingest_math_corpus(brain, stage, *, corpus_root="data/math_corpus",
+                         max_chunks_per_call=None,
+                         chunk_chars=1200,
+                         checkpoint_dir,
+                         log_every=20):
+    """Drive math-corpus chunks. Thin wrapper over _ingest_canonical_corpus
+    (same schema, different root + state file).
+
+    The math corpus complements (does not replace) the parietal lobe's
+    numerical primitives. Parietal supplies number sense and magnitude
+    comparison; the corpus supplies symbolic content (variables, proofs,
+    calculus, logic) that has no architectural prior.
+    """
+    _ingest_canonical_corpus(
+        brain, stage,
+        corpus_root=corpus_root,
+        max_chunks_per_call=max_chunks_per_call,
+        chunk_chars=chunk_chars,
+        checkpoint_dir=checkpoint_dir,
+        log_every=log_every,
+        state_filename=MATH_STATE_FILENAME,
+        label="Math",
+    )
 
 
 # ============================================================================
@@ -6533,6 +6566,18 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                         checkpoint_dir=CHECKPOINT_DIR)
                 except Exception as _e:
                     print(f"  [Canonical] drip failed: {_e}")
+
+            # Math-corpus drip — same pacing.
+            if batch_end % 200 == 0 and _MATH_CFG and _MATH_CFG.get("enabled"):
+                try:
+                    _ingest_math_corpus(
+                        brain, stage=1,
+                        corpus_root=_MATH_CFG.get("root", "data/math_corpus"),
+                        chunk_chars=_MATH_CFG.get("chunk_chars", 1200),
+                        max_chunks_per_call=20,
+                        checkpoint_dir=CHECKPOINT_DIR)
+                except Exception as _e:
+                    print(f"  [Math] drip failed: {_e}")
 
             # Cognitive training injection
             if batch_end % COGNITIVE_TRAIN_INTERVAL == 0:
@@ -7223,6 +7268,17 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                         checkpoint_dir=CHECKPOINT_DIR)
                 except Exception as _e:
                     print(f"  [Canonical] drip failed: {_e}")
+            # Math-corpus drip — symbolic content alongside the literary.
+            if (i + 1) % 200 == 0 and _MATH_CFG and _MATH_CFG.get("enabled"):
+                try:
+                    _ingest_math_corpus(
+                        brain, stage=2,
+                        corpus_root=_MATH_CFG.get("root", "data/math_corpus"),
+                        chunk_chars=_MATH_CFG.get("chunk_chars", 1200),
+                        max_chunks_per_call=20,
+                        checkpoint_dir=CHECKPOINT_DIR)
+                except Exception as _e:
+                    print(f"  [Math] drip failed: {_e}")
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
                 try:
@@ -7667,6 +7723,17 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     checkpoint_dir=CHECKPOINT_DIR)
             except Exception as _e:
                 print(f"  [Canonical] drip failed: {_e}")
+        # Math-corpus drip — symbolic content alongside the literary.
+        if (i + 1) % 200 == 0 and _MATH_CFG and _MATH_CFG.get("enabled"):
+            try:
+                _ingest_math_corpus(
+                    brain, stage=3,
+                    corpus_root=_MATH_CFG.get("root", "data/math_corpus"),
+                    chunk_chars=_MATH_CFG.get("chunk_chars", 1200),
+                    max_chunks_per_call=20,
+                    checkpoint_dir=CHECKPOINT_DIR)
+            except Exception as _e:
+                print(f"  [Math] drip failed: {_e}")
 
         # Checkpoint every 50 steps (state file only)
         if (i + 1) % 50 == 0 and (i + 1) % 2000 != 0:
@@ -9451,6 +9518,34 @@ def main():
     parser.add_argument("--canonical-corpus-root", type=str,
                         default="data/canonical_corpus",
                         help="Path to canonical corpus root (default: data/canonical_corpus)")
+
+    # --- Math + formal logic corpus (default ON) ---
+    # The parietal lobe handles numerical primitives (magnitude, comparison);
+    # this corpus supplies symbolic content (variables, proofs, calculus,
+    # logic) that has no architectural prior.
+    if hasattr(argparse, "BooleanOptionalAction"):
+        parser.add_argument("--math-corpus",
+                            action=argparse.BooleanOptionalAction,
+                            default=True,
+                            help="Ingest the math+logic corpus during stages 1-3 "
+                                 "(default: on; pass --no-math-corpus to skip)")
+    else:
+        parser.add_argument("--math-corpus", dest="math_corpus",
+                            action="store_true", default=True,
+                            help="Ingest the math+logic corpus during stages 1-3")
+        parser.add_argument("--no-math-corpus", dest="math_corpus",
+                            action="store_false",
+                            help="Disable math-corpus ingestion")
+    parser.add_argument("--math-chunk-chars", type=int, default=1200,
+                        help="Max characters per math-corpus chunk (default: 1200)")
+    parser.add_argument("--math-max-chunks-per-stage", type=int, default=0,
+                        help="Cap math chunks per stage priming pass "
+                             "(0 = unlimited; positive caps for fast smoke runs)")
+    parser.add_argument("--math-restart", action="store_true",
+                        help="Delete .math_corpus_state.json before starting")
+    parser.add_argument("--math-corpus-root", type=str,
+                        default="data/math_corpus",
+                        help="Path to math corpus root (default: data/math_corpus)")
     args = parser.parse_args()
 
     # Publish canonical-corpus config so drip hooks inside run_stage_N can
@@ -9472,6 +9567,26 @@ def main():
                 print(f"  [Canonical] --canonical-restart: removed {_crp}")
             except Exception as _e:
                 print(f"  [Canonical] --canonical-restart: failed to remove {_crp}: {_e}")
+
+    # Publish math-corpus config so drip hooks inside run_stage_N can
+    # read it without threading args through every signature.
+    global _MATH_CFG
+    _MATH_CFG = {
+        "enabled": bool(getattr(args, "math_corpus", True)),
+        "root": getattr(args, "math_corpus_root", "data/math_corpus"),
+        "chunk_chars": int(getattr(args, "math_chunk_chars", 1200)),
+        "max_chunks_per_stage": int(getattr(args, "math_max_chunks_per_stage", 0) or 0),
+    }
+
+    # --math-restart: wipe the math resume-state file before starting.
+    if getattr(args, "math_restart", False):
+        _mrp = _canonical_state_path(CHECKPOINT_DIR, MATH_STATE_FILENAME)
+        if os.path.exists(_mrp):
+            try:
+                os.remove(_mrp)
+                print(f"  [Math] --math-restart: removed {_mrp}")
+            except Exception as _e:
+                print(f"  [Math] --math-restart: failed to remove {_mrp}: {_e}")
 
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(name)s] %(message)s")
@@ -9933,6 +10048,13 @@ def main():
                 chunk_chars=args.canonical_chunk_chars,
                 max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
+        if getattr(args, "math_corpus", True):
+            _ingest_math_corpus(
+                brain, stage=1,
+                corpus_root=args.math_corpus_root,
+                chunk_chars=args.math_chunk_chars,
+                max_chunks_per_call=(args.math_max_chunks_per_stage or None),
+                checkpoint_dir=CHECKPOINT_DIR)
         run_stage_1(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
@@ -9952,6 +10074,13 @@ def main():
                 corpus_root=args.canonical_corpus_root,
                 chunk_chars=args.canonical_chunk_chars,
                 max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
+                checkpoint_dir=CHECKPOINT_DIR)
+        if getattr(args, "math_corpus", True):
+            _ingest_math_corpus(
+                brain, stage=2,
+                corpus_root=args.math_corpus_root,
+                chunk_chars=args.math_chunk_chars,
+                max_chunks_per_call=(args.math_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
         stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
@@ -9976,6 +10105,13 @@ def main():
                 corpus_root=args.canonical_corpus_root,
                 chunk_chars=args.canonical_chunk_chars,
                 max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
+                checkpoint_dir=CHECKPOINT_DIR)
+        if getattr(args, "math_corpus", True):
+            _ingest_math_corpus(
+                brain, stage=3,
+                corpus_root=args.math_corpus_root,
+                chunk_chars=args.math_chunk_chars,
+                max_chunks_per_call=(args.math_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
         run_stage_3(brain, composer, parent, clock, source, decoder,
                     num_interactions=args.stage3_interactions,
