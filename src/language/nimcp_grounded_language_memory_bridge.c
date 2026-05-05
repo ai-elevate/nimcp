@@ -45,6 +45,9 @@
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "cognitive/nimcp_sleep_wake.h"
+#include "perception/nimcp_visual_cortex.h"
+#include "perception/nimcp_audio_cortex.h"
+#include "perception/nimcp_speech_cortex.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -283,6 +286,92 @@ void gl_dispatch_event_to_memory(grounded_language_t* gl,
 /* Cap on per-pass reinforcement so a single sleep cycle can't
  * runaway-amplify a binding. */
 #define _GL_SLEEP_STRENGTH_CEIL  1.0f
+
+/*----------------------------------------------------------------------
+ * Cortex modulation — scalar taps from the connected cortexes.
+ *
+ * Why this is the right scope: visual_cortex/audio_cortex/speech_cortex
+ * all expose feature-extraction APIs that require raw input (image bytes,
+ * audio samples). Holding raw input across language calls would balloon
+ * memory + force re-extraction. Scalar taps (phoneme confidence, speech
+ * salience, processing-active flag) are cheap O(1) reads of cached state
+ * and let us bias grounding/comprehension by current sensory activity.
+ *
+ * Mapping:
+ *   visual_activity   ← visual_cortex_get_stats(images_processed > 0 ? 1 : 0)
+ *                       (no scalar attention tap available; this is a
+ *                       coarse "has-the-cortex-seen-data-recently" proxy)
+ *   audio_salience    ← audio_cortex_get_speech_salience(NULL,0) when
+ *                       attached. The accessor is feature-driven; we
+ *                       call it with empty features to read the cached
+ *                       last-tick salience (impl returns last value).
+ *   speech_confidence ← speech_cortex_get_phoneme_confidence()
+ *
+ * Each tap is independent — missing cortex means 0 for that channel.
+ *--------------------------------------------------------------------*/
+int grounded_language_get_cortex_modulation(grounded_language_t* gl,
+                                              gl_cortex_modulation_t* out) {
+    if (!out) return -1;
+    memset(out, 0, sizeof(*out));
+    if (!gl) return -1;
+
+    /* Visual: stats-based activity proxy. Stats are O(1). */
+    if (gl->visual_ctx) {
+        visual_cortex_stats_t vs;
+        memset(&vs, 0, sizeof(vs));
+        if (visual_cortex_get_stats((const visual_cortex_t*)gl->visual_ctx, &vs)) {
+            /* Coarse: nonzero processing → activity=1; saturating tanh on count. */
+            out->visual_activity = (vs.images_processed > 0) ? 1.0f : 0.0f;
+        }
+    }
+
+    /* Audio: speech salience scalar. The accessor signature requires a
+     * feature buffer; pass NULL/0 → impl returns its last-cached value
+     * if available. Defensive cast in case the cortex hasn't run. */
+    if (gl->auditory_ctx) {
+        float sal = audio_cortex_get_speech_salience(
+            (audio_cortex_t*)gl->auditory_ctx, NULL, 0);
+        if (sal >= 0.0f && sal <= 1.0f) out->audio_salience = sal;
+    }
+
+    /* Speech: phoneme confidence — direct scalar from cached state. */
+    if (gl->speech_ctx) {
+        float c = speech_cortex_get_phoneme_confidence(
+            (speech_cortex_t*)gl->speech_ctx);
+        if (c >= 0.0f && c <= 1.0f) out->speech_confidence = c;
+    }
+
+    return 0;
+}
+
+/* Internal helper — returns a multiplier in [1.0, 1.0+max_boost] driven
+ * by the modality-relevant cortex tap. Used to bias attention/strength
+ * for in-modality grounding events. Caller picks max_boost. */
+static float _gl_cortex_attention_boost(grounded_language_t* gl,
+                                         gl_modality_t modality,
+                                         float max_boost) {
+    gl_cortex_modulation_t m;
+    if (grounded_language_get_cortex_modulation(gl, &m) != 0) return 1.0f;
+    float tap = 0.0f;
+    switch (modality) {
+        case GL_MODALITY_VISUAL:    tap = m.visual_activity;   break;
+        case GL_MODALITY_AUDITORY:  tap = m.audio_salience;    break;
+        case GL_MODALITY_MOTOR:     /* fall-through: speech-side */
+        case GL_MODALITY_SPATIAL:   tap = m.speech_confidence; break;
+        default: tap = 0.0f;
+    }
+    if (tap < 0.0f) tap = 0.0f;
+    if (tap > 1.0f) tap = 1.0f;
+    return 1.0f + max_boost * tap;
+}
+
+/* Public-ish: callers in nimcp_grounded_language.c use this to scale
+ * binding strength + confidence at ground/comprehend time. */
+float gl_cortex_modulation_for_modality(grounded_language_t* gl,
+                                         gl_modality_t modality,
+                                         float max_boost) {
+    return _gl_cortex_attention_boost(gl, modality, max_boost);
+}
 
 int grounded_language_sleep_consolidate(grounded_language_t* gl,
                                          int sleep_state_int,

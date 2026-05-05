@@ -107,6 +107,15 @@ struct grounded_language {
      * in sync with grounded_language as the single source of truth. */
     void*                broca_adapter;      /**< broca_adapter_t* */
     void*                wernicke_adapter;   /**< wernicke_adapter_t* */
+
+    /* NLP frontend attachments — embedding layer + BPE tokenizer used
+     * to enrich semantic_vector and recover from totally-OOV words.
+     * All optional; comprehend skips the corresponding stages when NULL. */
+    void*                embeddings;         /**< embedding_layer_t* */
+    uint32_t             emb_dim;            /**< embedding output dim */
+    void*                tokenizer;          /**< tokenizer_t* (BPE) */
+    gl_word_to_id_fn     word_to_id_fn;      /**< word→id mapper */
+    void*                word_to_id_ctx;     /**< opaque ctx for fn */
 };
 
 /**

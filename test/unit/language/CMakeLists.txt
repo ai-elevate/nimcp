@@ -163,3 +163,69 @@ gtest_discover_tests(unit_grounded_language_sleep
         LABELS "unit;language;grounded;sleep"
         TIMEOUT 60
 )
+
+# ============================================================================
+# Grounded Language NLP Frontend Tests (morphology + POS + connect APIs)
+# ============================================================================
+add_executable(unit_grounded_language_nlp
+    test_grounded_language_nlp.cpp
+)
+target_link_libraries(unit_grounded_language_nlp
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_nlp
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_nlp PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_nlp
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;nlp"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# Grounded Language Chunker + NER + Chinking Tests
+# ============================================================================
+add_executable(unit_grounded_language_chunker
+    test_grounded_language_chunker.cpp
+)
+target_link_libraries(unit_grounded_language_chunker
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_chunker
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_chunker PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_chunker
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;chunker;ner"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# Grounded Language Cortex Modulation Tests
+# ============================================================================
+add_executable(unit_grounded_language_cortex_modulation
+    test_grounded_language_cortex_modulation.cpp
+)
+target_link_libraries(unit_grounded_language_cortex_modulation
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_cortex_modulation
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_cortex_modulation PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_cortex_modulation
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;cortex"
+        TIMEOUT 60
+)

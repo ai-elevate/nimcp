@@ -153,6 +153,16 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
             gl->vocab_count++;
             gl->stats.vocab_size = gl->vocab_count;
 
+            /* NLP: seed learned_class from morphological cue if any.
+             * Low confidence (0.4) — surface morphology is suggestive
+             * but not authoritative; positional context will overwrite. */
+            extern gl_word_class_t gl_morph_pos_hint(const char*);
+            gl_word_class_t hint = gl_morph_pos_hint(entry->form);
+            if (hint != GL_CLASS_UNKNOWN) {
+                entry->learned_class = hint;
+                entry->class_confidence = 0.4f;
+            }
+
             /* Mirror the new entry into broca/wernicke region lexicons
              * if either adapter is connected. No-op when not wired. */
             extern void gl_mirror_new_word_to_regions(grounded_language_t*,
@@ -189,12 +199,23 @@ static const gl_lexicon_entry_t* lexicon_find(const grounded_language_t* gl, con
     return NULL;
 }
 
+/* External alias used by the NLP frontend (sibling .c file). */
+const gl_lexicon_entry_t* lexicon_find_internal(const grounded_language_t* gl,
+                                                  const char* word) {
+    return lexicon_find(gl, word);
+}
+
 /*=============================================================================
  * Fuzzy Matching (Two-stage fallback for typos/misspellings)
  *===========================================================================*/
 
 /** Minimum similarity threshold to accept a fuzzy match */
 #define GL_FUZZY_THRESHOLD  0.65f
+
+/** Sanity floor for the *weaker* of the two signals (phonological vs
+ *  character-set). Typos clear both signals; random consonant strings
+ *  clear phonological alone (5-feature space is small) and fail this. */
+#define GL_FUZZY_MIN_SIGNAL 0.40f
 
 /** Minimum word length to attempt fuzzy matching (skip "a", "I", etc.) */
 #define GL_FUZZY_MIN_LEN    3
@@ -370,6 +391,13 @@ static const gl_lexicon_entry_t* lexicon_find_fuzzy(const grounded_language_t* g
         /* Stage 2: Fuzzy character-set similarity */
         float fuzzy_score = fuzzy_charset_similarity(lower, candidate->form);
 
+        /* Sanity floor: the *weaker* signal must clear a small bar.
+         * Phonological alone is too lenient (5-feature space) and will
+         * "match" nonsense like 'zxqvkbjpfm' to 'surprising' at 0.7+.
+         * Real typos clear both signals; nonsense doesn't. */
+        float weaker = (phon_score < fuzzy_score) ? phon_score : fuzzy_score;
+        if (weaker < GL_FUZZY_MIN_SIGNAL) continue;
+
         /* Take the better of the two approaches */
         float score = (phon_score > fuzzy_score) ? phon_score : fuzzy_score;
 
@@ -385,6 +413,12 @@ static const gl_lexicon_entry_t* lexicon_find_fuzzy(const grounded_language_t* g
     }
 
     return best_entry;
+}
+
+/* External alias for the NLP frontend (sibling .c file). */
+const gl_lexicon_entry_t* lexicon_find_fuzzy_external(const grounded_language_t* gl,
+                                                        const char* word) {
+    return lexicon_find_fuzzy(gl, word);
 }
 
 /** Add or strengthen a binding between a word and a concept */
@@ -1071,15 +1105,27 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     uint32_t known_words = 0;
     uint32_t concept_count = 0;
 
+    /* NLP frontend: morphological normalization between exact and fuzzy.
+     * gl_nlp_lookup_chain walks exact → morph-strip → fuzzy in order. */
+    extern const gl_lexicon_entry_t* gl_nlp_lookup_chain(grounded_language_t*,
+                                                           const char*);
+    extern int gl_nlp_subword_lookup(grounded_language_t*, const char*, float*);
+
+    uint32_t subword_hits = 0;
+
     for (uint32_t w = 0; w < word_count; w++) {
-        const gl_lexicon_entry_t* entry = lexicon_find(gl, words[w]);
+        const gl_lexicon_entry_t* entry = gl_nlp_lookup_chain(gl, words[w]);
         if (!entry) {
-            /* Exact match failed — try fuzzy matching (phonological + character-set) */
-            entry = lexicon_find_fuzzy(gl, words[w]);
-            if (!entry) {
-                /* Truly unknown word - note novelty but continue */
-                continue;
+            /* Last resort: BPE subword fallback when a tokenizer is
+             * connected. Doesn't yield an entry — just bumps confidence
+             * and (if embeddings are wired) blends subword vectors into
+             * the semantic_vector below. */
+            if (gl_nlp_subword_lookup(gl, words[w],
+                                       result->semantic_vector) == 0) {
+                subword_hits++;
             }
+            /* Truly unknown word - note novelty but continue */
+            continue;
         }
 
         known_words++;
@@ -1124,13 +1170,31 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                 result->semantic_vector[d] += entry->context_vector[d] * ctx_weight;
             }
         }
+
+        /* NLP: if a word-embedding layer is connected and the dim
+         * matches semantic_dim, fold the per-word embedding into the
+         * semantic vector. Caller-owned ctx + word→id callback so this
+         * file doesn't need to know the tokenizer's vocab. */
+        extern int gl_nlp_embedding_lookup(grounded_language_t*, const char*, float*);
+        float emb_buf[1024];
+        if (gl->semantic_dim <= 1024 &&
+            gl_nlp_embedding_lookup(gl, words[w], emb_buf) == 0) {
+            float emb_weight = 0.2f / (float)word_count;
+            for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                result->semantic_vector[d] += emb_buf[d] * emb_weight;
+            }
+        }
     }
 
     result->concept_count = concept_count;
+    /* Subword-recognized words count as half-known: the BPE tokenizer
+     * found valid subword tokens for them but no full lexicon entry. */
+    float effective_known = (float)known_words + 0.5f * (float)subword_hits;
+    if (effective_known > (float)word_count) effective_known = (float)word_count;
     result->comprehension_confidence = (word_count > 0) ?
-        (float)known_words / (float)word_count : 0.0f;
+        effective_known / (float)word_count : 0.0f;
     result->novelty = (word_count > 0) ?
-        1.0f - (float)known_words / (float)word_count : 1.0f;
+        1.0f - effective_known / (float)word_count : 1.0f;
 
     /* Normalize semantic vector */
     normalize_vector(result->semantic_vector, gl->semantic_dim);
@@ -1164,6 +1228,23 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
         float blend = snn_language_bridge_get_blend(gl->snn_bridge);
         result->comprehension_confidence =
             result->comprehension_confidence * (1.0f - blend) + snn_conf * blend;
+    }
+
+    /* Cortex modulation: scale comprehension confidence when sensory
+     * cortexes are currently active. Caps at 1.0. No-op when no cortex
+     * is connected (all scalars stay 0). */
+    extern int grounded_language_get_cortex_modulation(grounded_language_t*,
+                                                        gl_cortex_modulation_t*);
+    gl_cortex_modulation_t mod = {0};
+    if (grounded_language_get_cortex_modulation(gl, &mod) == 0) {
+        float peak = mod.visual_activity;
+        if (mod.audio_salience > peak)    peak = mod.audio_salience;
+        if (mod.speech_confidence > peak) peak = mod.speech_confidence;
+        if (peak < 0.0f) peak = 0.0f;
+        if (peak > 1.0f) peak = 1.0f;
+        result->comprehension_confidence *= (1.0f + 0.2f * peak);
+        if (result->comprehension_confidence > 1.0f)
+            result->comprehension_confidence = 1.0f;
     }
 
     nimcp_free(buf);
@@ -1206,6 +1287,14 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
     /* Emotional modulation: emotionally salient events create stronger bindings */
     float emotional_boost = 1.0f + fabsf(event->emotional_valence) * event->emotional_arousal;
     bind_strength *= emotional_boost;
+
+    /* Cortex modulation: when the in-modality cortex is currently active
+     * (e.g. visual_cortex just processed an image while we're grounding
+     * a visual word), boost binding strength up to +30%. Cheap scalar
+     * read; no-op when cortexes aren't connected. */
+    extern float gl_cortex_modulation_for_modality(grounded_language_t*,
+                                                    gl_modality_t, float);
+    bind_strength *= gl_cortex_modulation_for_modality(gl, event->modality, 0.3f);
 
     int rc = lexicon_bind(gl, entry, concept_id, bind_strength, event->modality);
 

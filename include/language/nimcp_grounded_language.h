@@ -743,6 +743,200 @@ int grounded_language_sleep_consolidate(
     int sleep_state_int,
     float strength);
 
+/**
+ * @brief Modulation taps from the connected cortexes — used to bias
+ *        grounding strength and comprehension confidence in real time.
+ *        All values are 0 when the corresponding cortex isn't attached
+ *        or its scalar state isn't readable (e.g. visual_cortex has no
+ *        scalar attention tap, only stats counters — left at 0).
+ */
+typedef struct {
+    float visual_activity;    /**< Visual cortex activity proxy [0, 1] */
+    float audio_salience;     /**< Audio cortex speech-salience tap [0, 1] */
+    float speech_confidence;  /**< Speech cortex phoneme confidence [0, 1] */
+} gl_cortex_modulation_t;
+
+/**
+ * @brief Read current cortex modulation values into out.
+ *
+ * Cheap (~3 scalar reads). Called from grounded_language_ground() and
+ * grounded_language_comprehend() to bias strength/confidence by which
+ * sensory cortexes are currently active. Zero-fills out on NULL gl
+ * or NULL out.
+ *
+ * @param gl   System handle
+ * @param out  Caller-supplied modulation struct (zero-filled on entry)
+ * @return 0 on success, -1 on bad parameters.
+ */
+int grounded_language_get_cortex_modulation(
+    grounded_language_t* gl,
+    gl_cortex_modulation_t* out);
+
+/*=============================================================================
+ * NLP Frontend (Morphology / Embeddings / Subword Tokenizer)
+ *
+ * Three-stage lookup chain for unknown words in comprehend:
+ *   1. Exact lexicon hit                 (fast, O(1))
+ *   2. Morphological normalization       (suffix-strip, then exact retry)
+ *   3. Fuzzy match                       (phonological + character-set)
+ *   4. BPE subword fallback              (only when tokenizer is connected)
+ * Stages 2+4 + the embedding blend below are no-ops when the relevant
+ * subsystems aren't connected — the legacy behavior is preserved.
+ *===========================================================================*/
+
+/**
+ * @brief Strip common English inflectional suffixes to produce a
+ *        normalized lookup form (a lightweight stemmer — not full
+ *        lemmatization, but enough to make running→run, cats→cat,
+ *        quickly→quick land on the same lexicon entry).
+ *
+ * @param word    Input word (NUL-terminated, ASCII-lowercased recommended)
+ * @param out     Caller-supplied buffer for stripped form
+ * @param out_sz  Size of out buffer (>= GL_MAX_WORD_LEN recommended)
+ * @return Number of suffix chars stripped (0 if unchanged), -1 on error.
+ */
+int gl_morph_normalize(const char* word, char* out, size_t out_sz);
+
+/**
+ * @brief Suffix-based POS hint. Returns a gl_word_class_t guess from
+ *        morphological cues alone (-ing/-ed→VERB, -ly→ADVERB,
+ *        -tion/-ness/-ment→NOUN, -ous/-ive/-ful/-able→ADJECTIVE).
+ *        Returns GL_CLASS_UNKNOWN when no suffix matches.
+ *
+ *        Used to bootstrap word-class inference for never-seen-in-context
+ *        words. Combined with the existing positional heuristic in
+ *        learn_from_text — morphology takes priority when confidence is
+ *        higher.
+ */
+gl_word_class_t gl_morph_pos_hint(const char* word);
+
+/**
+ * @brief Word-form → integer-token-id callback used by the embedding
+ *        bridge. The caller knows their tokenizer's vocab; GL just asks
+ *        "what id is this word?" Return 0 for unknown.
+ */
+typedef uint32_t (*gl_word_to_id_fn)(void* ctx, const char* word);
+
+/**
+ * @brief Connect a word-embedding layer + lookup callback. When wired,
+ *        grounded_language_comprehend() blends the per-word embedding
+ *        into the result's semantic_vector (subject to dim match).
+ *
+ *        Pass NULL for emb to disconnect. emb_dim must equal GL's
+ *        semantic_dim or the embedding contribution is skipped per word.
+ *
+ * @param gl              System handle
+ * @param emb             embedding_layer_t* (opaque)
+ * @param emb_dim         Embedding output dimension
+ * @param word_to_id_fn   Callback to map word → token_id (caller-owned)
+ * @param ctx             Opaque ctx forwarded to word_to_id_fn
+ */
+void grounded_language_connect_embeddings(
+    grounded_language_t* gl,
+    void* emb,
+    uint32_t emb_dim,
+    gl_word_to_id_fn word_to_id_fn,
+    void* ctx);
+
+/**
+ * @brief Connect a BPE tokenizer for subword fallback on totally OOV
+ *        words. When wired, comprehend's last-resort path decomposes
+ *        unrecognized words into subword token ids and pulls embeddings
+ *        for those (when the embedding layer is also connected).
+ *
+ * @param gl   System handle
+ * @param tok  tokenizer_t* (opaque), NULL to disconnect
+ */
+void grounded_language_connect_tokenizer(
+    grounded_language_t* gl,
+    void* tok);
+
+/*=============================================================================
+ * Named Entity Recognition + Shallow Chunking
+ *
+ * NER:       per-word classifier driven by capitalization / numeric form /
+ *            sentence-position cues. Pure function — no lexicon mutation.
+ * Chunking:  groups consecutive words into NP/VP/PP/ADJP/ADVP based on the
+ *            POS sequence (lexicon-known classes + morph hints + NER).
+ * Chinking:  hard breaks inside chunks at commas / conjunctions / verb
+ *            tokens that interrupt an otherwise contiguous NP.
+ *===========================================================================*/
+
+/**
+ * @brief Entity types produced by gl_ner_classify(). Coarse-grained on
+ *        purpose — finer-grained NER (date subtypes, ORG vs LOC) is a
+ *        downstream KG concern.
+ */
+typedef enum {
+    GL_ENTITY_NONE   = 0,
+    GL_ENTITY_PERSON,    /**< Capitalized, alphabetic, mid-sentence */
+    GL_ENTITY_PLACE,     /**< Caps + known place suffix (-ville, -burg) */
+    GL_ENTITY_ORG,       /**< All-caps acronym, or caps + corp suffix */
+    GL_ENTITY_NUMBER,    /**< Pure numeric tokens */
+    GL_ENTITY_DATE,      /**< 4-digit year, or numeric+slash forms */
+    GL_ENTITY_OTHER,     /**< Capitalized but not classifiable */
+} gl_entity_type_t;
+
+/**
+ * @brief Classify a single token as an entity (or not).
+ *
+ * @param word               Input token (caller already split text)
+ * @param prev_word_or_null  Preceding token, or NULL at sentence start
+ * @param is_sentence_start  True if this is the first token of a sentence
+ *                           (sentence-initial caps don't imply entity)
+ */
+gl_entity_type_t gl_ner_classify(const char* word,
+                                  const char* prev_word_or_null,
+                                  bool is_sentence_start);
+
+/**
+ * @brief Chunk type produced by the shallow chunker.
+ */
+typedef enum {
+    GL_CHUNK_NONE = 0,
+    GL_CHUNK_NP,         /**< Noun phrase: (DT|PRON)? ADJ* (NOUN|ENTITY)+ */
+    GL_CHUNK_VP,         /**< Verb phrase: (AUX)? VERB ADV* */
+    GL_CHUNK_PP,         /**< Prepositional phrase: prep + NP */
+    GL_CHUNK_ADJP,       /**< Adjective phrase: ADV? ADJ */
+    GL_CHUNK_ADVP,       /**< Adverb phrase: ADV+ */
+} gl_chunk_type_t;
+
+/** Maximum words per chunk reported by the API. */
+#define GL_CHUNK_MAX_WORDS 12
+
+/**
+ * @brief Single chunk emitted by grounded_language_chunk(). Index into
+ *        the caller's tokenized input is via [start_word, end_word).
+ */
+typedef struct {
+    gl_chunk_type_t  type;
+    uint32_t         start_word;       /**< First word index, inclusive */
+    uint32_t         end_word;         /**< Last word index, exclusive */
+    char             head_word[32];    /**< Head form (NOUN for NP, etc.) */
+    gl_entity_type_t head_entity;      /**< Entity tag on the head, if any */
+    bool             chinked;          /**< True if a chink rule split this */
+} gl_chunk_t;
+
+/**
+ * @brief Run the shallow chunker over a sentence. Tokenizes the input,
+ *        classifies each token (lexicon → morph hint → NER fallback),
+ *        then greedily groups tokens into NP/VP/PP/ADJP/ADVP using
+ *        regex-style POS patterns. Chinking rules break NPs at commas,
+ *        conjunctions, and unrelated verbs.
+ *
+ * @param gl              System handle
+ * @param text            Input sentence (caller-owned NUL-terminated)
+ * @param chunks_out      Caller-supplied buffer
+ * @param max_chunks      Capacity of chunks_out
+ * @param chunk_count_out [OUT] Number of chunks written
+ * @return 0 on success, -1 on error.
+ */
+int grounded_language_chunk(grounded_language_t* gl,
+                             const char* text,
+                             gl_chunk_t* chunks_out,
+                             uint32_t max_chunks,
+                             uint32_t* chunk_count_out);
+
 /*=============================================================================
  * Query / Introspection
  *===========================================================================*/
