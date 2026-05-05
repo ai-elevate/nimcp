@@ -169,6 +169,13 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
                                                        const char*);
             gl_mirror_new_word_to_regions(gl, entry->form);
 
+            /* Fire NEW_WORD event on the cognitive bus. */
+            extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+            gl_event_t ev = {0};
+            ev.type = GL_EVENT_NEW_WORD;
+            ev.word = entry->form;
+            gl_fire_event(gl, &ev);
+
             return entry;
         }
 
@@ -1260,6 +1267,15 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     if (result->comprehension_confidence > 1.0f)
         result->comprehension_confidence = 1.0f;
 
+    /* Fire COMPREHENDED event on the cognitive bus. */
+    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+    gl_event_t bus_ev = {0};
+    bus_ev.type         = GL_EVENT_COMPREHENDED;
+    bus_ev.text         = text;
+    bus_ev.semantic_vec = result->semantic_vector;
+    bus_ev.confidence   = result->comprehension_confidence;
+    gl_fire_event(gl, &bus_ev);
+
     nimcp_free(buf);
     return 0;
 }
@@ -1331,6 +1347,18 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
                                              const gl_grounding_event_t*,
                                              uint64_t);
     gl_dispatch_event_to_memory(gl, event, concept_id);
+
+    /* Fire GROUNDED event on the cognitive bus. */
+    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+    gl_event_t bus_ev = {0};
+    bus_ev.type        = GL_EVENT_GROUNDED;
+    bus_ev.word        = event->word;
+    bus_ev.concept_id  = concept_id;
+    bus_ev.valence     = event->emotional_valence;
+    bus_ev.arousal     = event->emotional_arousal;
+    bus_ev.confidence  = event->attention;
+    bus_ev.semantic_vec = event->sensory_features;
+    gl_fire_event(gl, &bus_ev);
 
     return rc;
 }
@@ -1653,6 +1681,16 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     memcpy(result->semantic_vector, intent, copy_dim * sizeof(float));
 
     gl->stats.total_productions++;
+
+    /* Fire PRODUCED event on the cognitive bus. */
+    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+    gl_event_t bus_ev = {0};
+    bus_ev.type         = GL_EVENT_PRODUCED;
+    bus_ev.text         = result->text;
+    bus_ev.semantic_vec = result->semantic_vector;
+    bus_ev.confidence   = result->fluency;
+    gl_fire_event(gl, &bus_ev);
+
     return 0;
 }
 

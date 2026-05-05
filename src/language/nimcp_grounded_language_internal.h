@@ -130,6 +130,14 @@ struct grounded_language {
     float                last_cnn_mag;
     float                last_fno_mag;
     float                last_ann_mag;
+
+    /* Cognitive subscriber bus — flat array, ctx is the dedup key.
+     * Capacity is small (16) on purpose: we expect ~10 cognitive
+     * modules at most; anything larger is a misuse. */
+    #define GL_MAX_SUBSCRIBERS 16
+    gl_event_callback_t  subscribers[GL_MAX_SUBSCRIBERS];
+    void*                subscriber_ctxs[GL_MAX_SUBSCRIBERS];
+    uint32_t             subscriber_count;
 };
 
 /**

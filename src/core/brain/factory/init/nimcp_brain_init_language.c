@@ -555,6 +555,29 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
          * can attach via grounded_language_attach_lnn / _fno when
          * they have direct handles. */
 
+        /* Cognitive subscriber bus — register every present cognitive
+         * module so it observes NEW_WORD/GROUNDED/COMPREHENDED/
+         * PRODUCED events. Each attach is NULL-tolerant (skips when
+         * the module isn't created). */
+        if (brain->inner_speech)
+            grounded_language_attach_inner_speech(brain->grounded_lang,
+                                                    brain->inner_speech);
+        if (brain->imagination)
+            grounded_language_attach_imagination(brain->grounded_lang,
+                                                   brain->imagination);
+        /* theory_of_mind is a struct-by-value typedef on brain_t — pass
+         * its address so the wrapper has a stable ctx pointer. */
+        grounded_language_attach_theory_of_mind(brain->grounded_lang,
+                                                  &brain->theory_of_mind);
+        if (brain->empathetic_response_engine)
+            grounded_language_attach_empathy(brain->grounded_lang,
+                                               brain->empathetic_response_engine);
+        grounded_language_attach_introspection(brain->grounded_lang,
+                                                 &brain->introspection);
+        if (brain->analogical_transfer)
+            grounded_language_attach_analogical(brain->grounded_lang,
+                                                  brain->analogical_transfer);
+
         /* Memory-system attachments — every successful grounding event
          * fans out to working memory + episodic replay + hippocampus
          * (each independently optional). Without these, the trained

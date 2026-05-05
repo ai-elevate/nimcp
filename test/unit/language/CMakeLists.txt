@@ -209,6 +209,28 @@ gtest_discover_tests(unit_grounded_language_chunker
 )
 
 # ============================================================================
+# Grounded Language Cognitive Subscriber Bus Tests
+# ============================================================================
+add_executable(unit_grounded_language_cognitive_bridge
+    test_grounded_language_cognitive_bridge.cpp
+)
+target_link_libraries(unit_grounded_language_cognitive_bridge
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_cognitive_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_cognitive_bridge PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_cognitive_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;cognitive_bridge"
+        TIMEOUT 60
+)
+
+# ============================================================================
 # Grounded Language Per-Network Bridge Tests (LNN/CNN/FNO/ANN)
 # ============================================================================
 add_executable(unit_grounded_language_network_bridge

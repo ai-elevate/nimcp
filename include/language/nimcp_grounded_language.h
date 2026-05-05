@@ -1006,6 +1006,117 @@ int grounded_language_get_network_modulation(grounded_language_t* gl,
                                                gl_network_modulation_t* out);
 
 /*=============================================================================
+ * Cognitive subscriber bus
+ *
+ * GL fires lightweight events at four points (new word created, grounding
+ * succeeded, comprehension finished, production finished). Cognitive
+ * modules subscribe a callback to receive these events and react in
+ * their own terms — inner speech may rehearse the word, imagination
+ * may register the concept, theory-of-mind may treat the utterance as
+ * an observation, etc.
+ *
+ * Pull direction (cognitive module → GL) uses the existing public APIs
+ * (grounded_language_lookup, _produce, _comprehend, _ground). The bus
+ * here covers the push direction without GL needing to know each
+ * module's internals. Up to 16 subscribers; out-of-order unsubscribe
+ * is supported via the ctx pointer.
+ *===========================================================================*/
+
+typedef enum {
+    GL_EVENT_NEW_WORD     = 0,  /**< A new lexicon entry was just created */
+    GL_EVENT_GROUNDED,           /**< grounded_language_ground succeeded */
+    GL_EVENT_COMPREHENDED,       /**< grounded_language_comprehend finished */
+    GL_EVENT_PRODUCED,           /**< grounded_language_produce finished */
+} gl_event_type_t;
+
+/**
+ * @brief Event payload pushed to subscribers. Pointer fields are
+ *        owned by GL and valid only for the duration of the callback.
+ *        Subscribers must copy any data they want to retain.
+ */
+typedef struct {
+    gl_event_type_t  type;
+    const char*      word;          /**< NEW_WORD/GROUNDED: the word; else NULL */
+    const char*      text;          /**< COMPREHENDED/PRODUCED: full text; else NULL */
+    const float*     semantic_vec;  /**< COMPREHENDED/PRODUCED: [gl->semantic_dim] */
+    uint64_t         concept_id;    /**< GROUNDED: bound concept; else 0 */
+    float            valence;       /**< Emotional valence at event time */
+    float            arousal;       /**< Emotional arousal */
+    float            confidence;    /**< [0,1]; comprehension/production confidence */
+} gl_event_t;
+
+/** Subscriber callback. Return 0 to continue, non-zero to log+continue. */
+typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
+
+/**
+ * @brief Subscribe to GL events. Returns 0 on success, -1 if the
+ *        subscriber table is full or arguments invalid.
+ *
+ * @param gl   System handle
+ * @param fn   Callback (must be non-NULL)
+ * @param ctx  Opaque ctx forwarded on every callback. Used as the
+ *             dedup key — registering the same ctx twice replaces
+ *             the prior callback.
+ */
+int grounded_language_subscribe(grounded_language_t* gl,
+                                  gl_event_callback_t fn,
+                                  void* ctx);
+
+/** Unsubscribe by ctx pointer. Returns 0 if removed, -1 if not found. */
+int grounded_language_unsubscribe(grounded_language_t* gl, void* ctx);
+
+/** How many subscribers are currently registered. */
+uint32_t grounded_language_subscriber_count(const grounded_language_t* gl);
+
+/*=============================================================================
+ * Per-cognitive-module attach helpers — convenience wrappers that
+ * subscribe a wrapper callback translating gl_event_t into the
+ * module's native API. Each accepts NULL for the module pointer to
+ * make brain-init wiring tolerant of missing modules.
+ *===========================================================================*/
+
+/** Attach inner-speech: every NEW_WORD + COMPREHENDED event becomes
+ *  a candidate for silent rehearsal. mod is the inner_speech_t* opaque
+ *  handle (NULL = no-op). */
+void grounded_language_attach_inner_speech(grounded_language_t* gl, void* mod);
+
+/** Attach imagination engine: GROUNDED events register the new
+ *  concept as a candidate scene element. */
+void grounded_language_attach_imagination(grounded_language_t* gl, void* mod);
+
+/** Attach theory of mind: COMPREHENDED utterances are observations
+ *  about an external speaker's beliefs. */
+void grounded_language_attach_theory_of_mind(grounded_language_t* gl, void* mod);
+
+/** Attach empathetic response: emotionally-charged GROUNDED events
+ *  (high arousal) seed empathy generation. */
+void grounded_language_attach_empathy(grounded_language_t* gl, void* mod);
+
+/** Attach introspection: every PRODUCED event is logged as a
+ *  self-narration sample. */
+void grounded_language_attach_introspection(grounded_language_t* gl, void* mod);
+
+/** Attach reasoning subsystem: COMPREHENDED utterances feed forward
+ *  chaining as new premises. */
+void grounded_language_attach_reasoning(grounded_language_t* gl, void* mod);
+
+/** Attach narrative system: COMPREHENDED text appended to the
+ *  current narrative buffer. */
+void grounded_language_attach_narrative(grounded_language_t* gl, void* mod);
+
+/** Attach metacognition: every event ticks the metacognitive
+ *  reflection counter. */
+void grounded_language_attach_metacognition(grounded_language_t* gl, void* mod);
+
+/** Attach analogical-transfer: NEW_WORD events trigger analogy
+ *  search against existing concepts. */
+void grounded_language_attach_analogical(grounded_language_t* gl, void* mod);
+
+/** Attach emergent-language module: GROUNDED + PRODUCED events
+ *  feed the emergent-symbol learner. */
+void grounded_language_attach_emergent_language(grounded_language_t* gl, void* mod);
+
+/*=============================================================================
  * Query / Introspection
  *===========================================================================*/
 
