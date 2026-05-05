@@ -212,6 +212,15 @@ const gl_lexicon_entry_t* lexicon_find_internal(const grounded_language_t* gl,
     return lexicon_find(gl, word);
 }
 
+/* Public read-only "is this word in the lexicon?" probe (#1).
+ * Used by region adapters (broca/wernicke) to decide whether to fall
+ * through to GL when their local lexicons miss, without paying the
+ * cost of a full comprehend / fuzzy / morph chain. */
+bool grounded_language_has_word(const grounded_language_t* gl, const char* word) {
+    if (!gl || !word || !word[0]) return false;
+    return lexicon_find(gl, word) != NULL;
+}
+
 /*=============================================================================
  * Fuzzy Matching (Two-stage fallback for typos/misspellings)
  *===========================================================================*/
@@ -2251,10 +2260,89 @@ void grounded_language_get_stats(const grounded_language_t* gl, gl_stats_t* stat
     }
     stats->avg_binding_strength = (total_bindings > 0) ?
         total_strength / (float)total_bindings : 0.0f;
+
+    /* Forgetting telemetry (#15) — sum the 24-hour ring + cumulative. */
+    uint32_t sum24 = 0;
+    for (int i = 0; i < 24; i++) sum24 += gl->decayed_ring[i];
+    stats->entries_decayed_last_24h = sum24;
+    stats->entries_decayed_all_time = gl->decayed_all_time;
 }
 
 uint32_t grounded_language_get_semantic_dim(const grounded_language_t* gl) {
     return gl ? gl->semantic_dim : 0u;
+}
+
+int grounded_language_get_probe_metrics(const grounded_language_t* gl,
+                                          gl_probe_metrics_t* out) {
+    if (!gl || !out) return -1;
+    memset(out, 0, sizeof(*out));
+
+    /* Lexicon gauges — share the get_stats walk for binding averages. */
+    float total_strength = 0.0f;
+    float total_confidence = 0.0f;
+    uint32_t total_bindings = 0;
+    for (uint32_t w = 0; w < gl->vocab_count; w++) {
+        const gl_lexicon_entry_t* entry = gl->vocab_list[w];
+        if (!entry) continue;
+        for (uint32_t b = 0; b < entry->binding_count; b++) {
+            total_strength   += entry->bindings[b].strength;
+            total_confidence += entry->bindings[b].confidence;
+            total_bindings++;
+        }
+    }
+    out->vocab_count          = gl->vocab_count;
+    out->templates_count      = gl->template_count;
+    out->avg_binding_strength = (total_bindings > 0)
+        ? total_strength / (float)total_bindings : 0.0f;
+    out->avg_binding_confidence = (total_bindings > 0)
+        ? total_confidence / (float)total_bindings : 0.0f;
+
+    /* Bus state. */
+    out->subscriber_count = gl->subscriber_count;
+    for (uint32_t i = 0; i < gl->subscriber_count; i++) {
+        if (gl->subscriber_priorities[i] > 0)
+            out->subscriber_high_priority++;
+        if (gl->subscriber_masks[i] != GL_EVENT_MASK_ALL)
+            out->subscriber_filtered++;
+    }
+    out->events_dropped_reentry = gl->events_dropped_reentry;
+    out->in_fire_event          = gl->in_fire_event;
+
+    /* Forgetting curve. */
+    uint32_t sum24 = 0;
+    for (int i = 0; i < 24; i++) sum24 += gl->decayed_ring[i];
+    out->entries_decayed_last_24h = sum24;
+    out->entries_decayed_all_time = gl->decayed_all_time;
+
+    /* Network bridge magnitudes (last broadcast). */
+    out->last_lnn_response_mag = gl->last_lnn_mag;
+    out->last_cnn_response_mag = gl->last_cnn_mag;
+    out->last_fno_response_mag = gl->last_fno_mag;
+    out->last_ann_response_mag = gl->last_ann_mag;
+
+    /* Throughput counters from gl_stats_t. */
+    out->total_groundings      = gl->stats.total_groundings;
+    out->total_comprehensions  = gl->stats.total_comprehensions;
+    out->total_productions     = gl->stats.total_productions;
+    out->total_new_words       = gl->stats.vocab_size;
+
+    /* Region wiring health (booleans for each connect_*). */
+    out->broca_attached          = (gl->broca_adapter != NULL);
+    out->wernicke_attached       = (gl->wernicke_adapter != NULL);
+    out->working_memory_attached = (gl->working_memory != NULL);
+    out->hippocampus_attached    = (gl->hippocampus != NULL);
+    out->embedding_attached      = (gl->embeddings != NULL);
+    out->tokenizer_attached      = (gl->tokenizer != NULL);
+
+    /* Cortex modulation taps — read live from connected cortexes. */
+    gl_cortex_modulation_t mod;
+    if (grounded_language_get_cortex_modulation(
+            (grounded_language_t*)gl, &mod) == 0) {
+        out->visual_activity    = mod.visual_activity;
+        out->audio_salience     = mod.audio_salience;
+        out->speech_confidence  = mod.speech_confidence;
+    }
+    return 0;
 }
 
 /*=============================================================================

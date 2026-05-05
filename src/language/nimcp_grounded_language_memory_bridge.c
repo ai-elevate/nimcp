@@ -385,12 +385,15 @@ int grounded_language_sleep_consolidate(grounded_language_t* gl,
         return 0;
     }
 
+    uint32_t decayed_this_pass = 0;
+
     /* For each lexicon entry, scale binding strengths by stage rule. */
     for (uint32_t i = 0; i < gl->vocab_count; i++) {
         gl_lexicon_entry_t* e = gl->vocab_list[i];
         if (!e) continue;
 
         bool is_frequent = (e->frequency >= _GL_SLEEP_FREQ_FLOOR);
+        bool entry_was_decayed = false;
 
         if (state == SLEEP_STATE_DEEP_NREM) {
             /* Reinforce frequent bindings, decay stale ones.
@@ -405,18 +408,28 @@ int grounded_language_sleep_consolidate(grounded_language_t* gl,
                     bind->confidence += 0.05f * strength;
                     if (bind->confidence > 1.0f) bind->confidence = 1.0f;
                 } else {
+                    float prior = bind->strength;
                     bind->strength *= (1.0f - 0.05f * strength);
                     if (bind->strength < _GL_SLEEP_STRENGTH_FLOOR)
                         bind->strength = _GL_SLEEP_STRENGTH_FLOOR;
+                    if (prior > _GL_SLEEP_STRENGTH_FLOOR &&
+                        bind->strength <= _GL_SLEEP_STRENGTH_FLOOR) {
+                        entry_was_decayed = true;
+                    }
                 }
             }
         } else if (state == SLEEP_STATE_LIGHT_NREM) {
             /* Mild decay across the board — sleep "sorting" stage. */
             for (uint32_t b = 0; b < e->binding_count; b++) {
                 gl_word_binding_t* bind = &e->bindings[b];
+                float prior = bind->strength;
                 bind->strength *= (1.0f - 0.02f * strength);
                 if (bind->strength < _GL_SLEEP_STRENGTH_FLOOR)
                     bind->strength = _GL_SLEEP_STRENGTH_FLOOR;
+                if (prior > _GL_SLEEP_STRENGTH_FLOOR &&
+                    bind->strength <= _GL_SLEEP_STRENGTH_FLOOR) {
+                    entry_was_decayed = true;
+                }
             }
         } else if (state == SLEEP_STATE_REM) {
             /* REM associative spreading — bump valence/arousal toward
@@ -425,6 +438,15 @@ int grounded_language_sleep_consolidate(grounded_language_t* gl,
             e->valence *= (1.0f - 0.02f * strength);
             e->arousal *= (1.0f - 0.02f * strength);
         }
+        if (entry_was_decayed) decayed_this_pass++;
+    }
+
+    /* Forgetting-curve telemetry (#15): bump current bucket + all-time
+     * counter. The bucket ring rotation happens elsewhere on hour
+     * rollover; this just accumulates within the current bucket. */
+    if (decayed_this_pass > 0) {
+        gl->decayed_ring[gl->decayed_ring_head] += decayed_this_pass;
+        gl->decayed_all_time += decayed_this_pass;
     }
     return 0;
 }

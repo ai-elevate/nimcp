@@ -51,42 +51,100 @@
  * Bus core
  *===========================================================================*/
 
+/* Convert event type → mask bit, for the per-subscriber filter check. */
+static inline uint32_t _gl_type_to_mask(gl_event_type_t t) {
+    switch (t) {
+        case GL_EVENT_NEW_WORD:     return GL_EVENT_MASK_NEW_WORD;
+        case GL_EVENT_GROUNDED:     return GL_EVENT_MASK_GROUNDED;
+        case GL_EVENT_COMPREHENDED: return GL_EVENT_MASK_COMPREHENDED;
+        case GL_EVENT_PRODUCED:     return GL_EVENT_MASK_PRODUCED;
+        default:                    return 0;
+    }
+}
+
+int grounded_language_subscribe_ex(grounded_language_t* gl,
+                                     gl_event_callback_t fn,
+                                     void* ctx,
+                                     uint32_t type_mask,
+                                     int8_t priority) {
+    if (!gl || !fn) return -1;
+    if (type_mask == 0) return -1;     /* never-fires is a misuse */
+
+    /* Dedup: in-place replace if same ctx already registered. The
+     * sort below repositions the slot if priority changed. */
+    int32_t found_idx = -1;
+    for (uint32_t i = 0; i < gl->subscriber_count; i++) {
+        if (gl->subscriber_ctxs[i] == ctx) {
+            found_idx = (int32_t)i;
+            break;
+        }
+    }
+
+    uint32_t slot;
+    if (found_idx >= 0) {
+        slot = (uint32_t)found_idx;
+    } else {
+        if (gl->subscriber_count >= GL_MAX_SUBSCRIBERS) {
+            LOG_WARN(LOG_MODULE,
+                      "subscriber table full (max %d) — dropping ctx=%p",
+                      GL_MAX_SUBSCRIBERS, ctx);
+            return -1;
+        }
+        slot = gl->subscriber_count++;
+    }
+
+    gl->subscribers[slot]            = fn;
+    gl->subscriber_ctxs[slot]        = ctx;
+    gl->subscriber_masks[slot]       = type_mask;
+    gl->subscriber_priorities[slot]  = priority;
+
+    /* Insertion sort by descending priority. Stable for equal priorities
+     * (preserves registration order when ties). N ≤ 24 — cheap. */
+    for (uint32_t i = 1; i < gl->subscriber_count; i++) {
+        gl_event_callback_t fn_i = gl->subscribers[i];
+        void* cx_i = gl->subscriber_ctxs[i];
+        uint32_t m_i = gl->subscriber_masks[i];
+        int8_t p_i = gl->subscriber_priorities[i];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && gl->subscriber_priorities[j] < p_i) {
+            gl->subscribers[j + 1]            = gl->subscribers[j];
+            gl->subscriber_ctxs[j + 1]        = gl->subscriber_ctxs[j];
+            gl->subscriber_masks[j + 1]       = gl->subscriber_masks[j];
+            gl->subscriber_priorities[j + 1]  = gl->subscriber_priorities[j];
+            j--;
+        }
+        gl->subscribers[j + 1]            = fn_i;
+        gl->subscriber_ctxs[j + 1]        = cx_i;
+        gl->subscriber_masks[j + 1]       = m_i;
+        gl->subscriber_priorities[j + 1]  = p_i;
+    }
+    return 0;
+}
+
 int grounded_language_subscribe(grounded_language_t* gl,
                                   gl_event_callback_t fn,
                                   void* ctx) {
-    if (!gl || !fn) return -1;
-
-    /* Dedup: replace existing entry with the same ctx. */
-    for (uint32_t i = 0; i < gl->subscriber_count; i++) {
-        if (gl->subscriber_ctxs[i] == ctx) {
-            gl->subscribers[i] = fn;
-            return 0;
-        }
-    }
-    if (gl->subscriber_count >= GL_MAX_SUBSCRIBERS) {
-        LOG_WARN(LOG_MODULE,
-                  "subscriber table full (max %d) — dropping ctx=%p",
-                  GL_MAX_SUBSCRIBERS, ctx);
-        return -1;
-    }
-    gl->subscribers[gl->subscriber_count]     = fn;
-    gl->subscriber_ctxs[gl->subscriber_count] = ctx;
-    gl->subscriber_count++;
-    return 0;
+    return grounded_language_subscribe_ex(gl, fn, ctx,
+                                            GL_EVENT_MASK_ALL, 0);
 }
 
 int grounded_language_unsubscribe(grounded_language_t* gl, void* ctx) {
     if (!gl) return -1;
     for (uint32_t i = 0; i < gl->subscriber_count; i++) {
         if (gl->subscriber_ctxs[i] == ctx) {
-            /* Swap-remove. Order is not contractually preserved. */
-            uint32_t last = gl->subscriber_count - 1;
-            if (i != last) {
-                gl->subscribers[i]     = gl->subscribers[last];
-                gl->subscriber_ctxs[i] = gl->subscriber_ctxs[last];
+            /* Order-preserving remove: shift the trailing entries down
+             * to keep priority order intact. */
+            for (uint32_t j = i; j + 1 < gl->subscriber_count; j++) {
+                gl->subscribers[j]            = gl->subscribers[j + 1];
+                gl->subscriber_ctxs[j]        = gl->subscriber_ctxs[j + 1];
+                gl->subscriber_masks[j]       = gl->subscriber_masks[j + 1];
+                gl->subscriber_priorities[j]  = gl->subscriber_priorities[j + 1];
             }
-            gl->subscribers[last]     = NULL;
-            gl->subscriber_ctxs[last] = NULL;
+            uint32_t last = gl->subscriber_count - 1;
+            gl->subscribers[last]            = NULL;
+            gl->subscriber_ctxs[last]        = NULL;
+            gl->subscriber_masks[last]       = 0;
+            gl->subscriber_priorities[last]  = 0;
             gl->subscriber_count--;
             return 0;
         }
@@ -101,20 +159,38 @@ uint32_t grounded_language_subscriber_count(const grounded_language_t* gl) {
 
 /* Internal helper used by the GL primary impl to fire events.
  * Best-effort: a failing subscriber callback is logged but doesn't
- * block subsequent subscribers. */
+ * block subsequent subscribers.
+ *
+ * Re-entry guard (#11): if a subscriber callback re-enters fire (e.g.
+ * by calling ground/comprehend/produce inside its body), the inner
+ * call hits the in_fire_event flag and becomes a no-op — preventing
+ * the infinite-recursion / blown-stack class of bugs. We bump a
+ * counter so misbehavior is observable rather than silent. */
 void gl_fire_event(grounded_language_t* gl, const gl_event_t* event) {
     if (!gl || !event || gl->subscriber_count == 0) return;
-    /* Snapshot the count + arrays so a subscriber that unsubscribes
-     * itself mid-fire doesn't corrupt iteration. */
+    if (gl->in_fire_event) {
+        gl->events_dropped_reentry++;
+        return;
+    }
+
+    uint32_t evmask = _gl_type_to_mask(event->type);
+
+    /* Snapshot the arrays so subscribers that unsubscribe themselves
+     * mid-fire don't corrupt iteration. */
     uint32_t n = gl->subscriber_count;
     gl_event_callback_t fns[GL_MAX_SUBSCRIBERS];
     void* ctxs[GL_MAX_SUBSCRIBERS];
+    uint32_t masks[GL_MAX_SUBSCRIBERS];
     for (uint32_t i = 0; i < n; i++) {
-        fns[i]  = gl->subscribers[i];
-        ctxs[i] = gl->subscriber_ctxs[i];
+        fns[i]   = gl->subscribers[i];
+        ctxs[i]  = gl->subscriber_ctxs[i];
+        masks[i] = gl->subscriber_masks[i];
     }
+
+    gl->in_fire_event = true;
     for (uint32_t i = 0; i < n; i++) {
         if (!fns[i]) continue;
+        if ((masks[i] & evmask) == 0) continue;   /* per-sub filter */
         int rc = fns[i](ctxs[i], event);
         if (rc != 0) {
             LOG_DEBUG(LOG_MODULE,
@@ -122,6 +198,7 @@ void gl_fire_event(grounded_language_t* gl, const gl_event_t* event) {
                        ctxs[i], rc, (int)event->type);
         }
     }
+    gl->in_fire_event = false;
 }
 
 /*=============================================================================

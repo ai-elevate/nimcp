@@ -133,11 +133,31 @@ struct grounded_language {
 
     /* Cognitive + region subscriber bus — flat array, ctx is the dedup
      * key. Cap covers ~10 cognitive modules + 5 anatomical regions +
-     * the hemispheric language bridge, with headroom for future waves. */
+     * the hemispheric language bridge, with headroom for future waves.
+     * Sorted by descending priority on insert so fire walks once.
+     * type_mask gates per-event-type delivery (#3 priority + #4 mask). */
     #define GL_MAX_SUBSCRIBERS 24
     gl_event_callback_t  subscribers[GL_MAX_SUBSCRIBERS];
     void*                subscriber_ctxs[GL_MAX_SUBSCRIBERS];
+    uint32_t             subscriber_masks[GL_MAX_SUBSCRIBERS];
+    int8_t               subscriber_priorities[GL_MAX_SUBSCRIBERS];
     uint32_t             subscriber_count;
+
+    /* Re-entry guard (#11). Set true while gl_fire_event is iterating;
+     * a subscriber that calls back into a function that would re-fire
+     * an event hits this and the inner fire becomes a no-op (with a
+     * dropped-events counter increment). Prevents infinite recursion
+     * if a wrapper accidentally drives ground/comprehend/produce. */
+    bool                 in_fire_event;
+    uint64_t             events_dropped_reentry;
+
+    /* Forgetting-curve telemetry (#15). Bumped by sleep_consolidate
+     * each time an entry is decayed below retention. The ring rotates
+     * once per call to gl_forgetting_telemetry_rotate (called by the
+     * sleep_consolidate path on hour rollover). */
+    uint32_t             decayed_ring[24];
+    uint8_t              decayed_ring_head;          /* index of current bucket */
+    uint64_t             decayed_all_time;
 };
 
 /**

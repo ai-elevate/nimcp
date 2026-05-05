@@ -281,6 +281,12 @@ typedef struct {
     float    avg_binding_strength;              /**< Mean association strength */
     float    avg_comprehension_confidence;      /**< Mean comprehension score */
     float    vocabulary_growth_rate;            /**< New words per 1000 events */
+    /* Forgetting-curve telemetry (#15) — bumped by sleep_consolidate
+     * when a lexicon entry is decayed below its retention threshold.
+     * Ring of last-24h counts (24 buckets of 1h each); _last_24h is
+     * the rolling sum, _all_time is the cumulative. */
+    uint32_t entries_decayed_last_24h;
+    uint64_t entries_decayed_all_time;
 } gl_stats_t;
 
 /**
@@ -1048,9 +1054,21 @@ typedef struct {
 /** Subscriber callback. Return 0 to continue, non-zero to log+continue. */
 typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
 
+/* Event-type bitmask (#4 — per-subscriber filter). Use these to limit
+ * which events a subscriber receives — the bus skips wrappers whose
+ * mask doesn't match, removing the if-else boilerplate from every
+ * wrapper and cutting bus-walk cost from O(N) to ~O(N_relevant). */
+#define GL_EVENT_MASK_NEW_WORD     (1u << 0)
+#define GL_EVENT_MASK_GROUNDED     (1u << 1)
+#define GL_EVENT_MASK_COMPREHENDED (1u << 2)
+#define GL_EVENT_MASK_PRODUCED     (1u << 3)
+#define GL_EVENT_MASK_ALL          (0xFFFFFFFFu)
+
 /**
  * @brief Subscribe to GL events. Returns 0 on success, -1 if the
  *        subscriber table is full or arguments invalid.
+ *
+ *  Equivalent to subscribe_ex(gl, fn, ctx, GL_EVENT_MASK_ALL, 0).
  *
  * @param gl   System handle
  * @param fn   Callback (must be non-NULL)
@@ -1062,11 +1080,112 @@ int grounded_language_subscribe(grounded_language_t* gl,
                                   gl_event_callback_t fn,
                                   void* ctx);
 
+/**
+ * @brief Subscribe with extended options (#3 priority + #4 type mask).
+ *
+ *  - type_mask: bitwise-OR of GL_EVENT_MASK_* constants. The bus skips
+ *    callbacks whose mask doesn't match the firing event's type.
+ *  - priority: higher fires first. Use 0 for default. Use a higher
+ *    value for the hemispheric-bridge / lateralization callback so it
+ *    can mute downstream observers before they react. Range [-127,127].
+ *
+ *  Behaviorally equivalent to subscribe() when type_mask=GL_EVENT_MASK_ALL
+ *  and priority=0; both are stable identity for legacy callers.
+ *
+ * @return 0 on success, -1 on invalid args or table full.
+ */
+int grounded_language_subscribe_ex(grounded_language_t* gl,
+                                     gl_event_callback_t fn,
+                                     void* ctx,
+                                     uint32_t type_mask,
+                                     int8_t priority);
+
 /** Unsubscribe by ctx pointer. Returns 0 if removed, -1 if not found. */
 int grounded_language_unsubscribe(grounded_language_t* gl, void* ctx);
 
 /** How many subscribers are currently registered. */
 uint32_t grounded_language_subscriber_count(const grounded_language_t* gl);
+
+/**
+ * @brief Test whether a word currently has a lexicon entry (#1).
+ *        Lower-cases on entry. Read-only — never creates a binding.
+ *        Used by region adapters (broca/wernicke) to fall through to
+ *        GL when their local lexicons miss without paying the cost
+ *        of a full comprehend.
+ * @return true if the word is in the lexicon, false otherwise (also
+ *         false for NULL or empty input).
+ */
+bool grounded_language_has_word(const grounded_language_t* gl, const char* word);
+
+/*=============================================================================
+ * Probes & Metrics (operational telemetry beyond gl_stats_t)
+ *===========================================================================*/
+
+/**
+ * @brief Operational probe metrics for the language module. Returned
+ *        by grounded_language_get_probe_metrics — covers everything a
+ *        Grafana/dashboard query would want without exposing internal
+ *        struct layout.
+ *
+ *  All counters are cumulative since gl_create. All gauges are
+ *  instantaneous (current state). Caller-owned out struct, zero-filled
+ *  on entry by the impl so missing fields stay defaulted.
+ */
+typedef struct {
+    /* === Lexicon gauges === */
+    uint32_t vocab_count;             /**< Current entries in lexicon */
+    uint32_t templates_count;         /**< Current syntactic templates */
+    float    avg_binding_strength;    /**< Mean across all bindings */
+    float    avg_binding_confidence;  /**< Mean across all bindings */
+
+    /* === Bus state === */
+    uint32_t subscriber_count;        /**< Total subscribers right now */
+    uint32_t subscriber_high_priority;/**< Subs with priority > 0 */
+    uint32_t subscriber_filtered;     /**< Subs with mask != ALL */
+    uint64_t events_dropped_reentry;  /**< Inner fire blocked by guard (#11) */
+    bool     in_fire_event;           /**< True if we're inside fire right now */
+
+    /* === Forgetting curve (#15) === */
+    uint32_t entries_decayed_last_24h;
+    uint64_t entries_decayed_all_time;
+
+    /* === Network bridges === */
+    float    last_lnn_response_mag;   /**< [0,1] last LNN bridge magnitude */
+    float    last_cnn_response_mag;
+    float    last_fno_response_mag;
+    float    last_ann_response_mag;
+
+    /* === Cortex modulation taps (current state, not cumulative) === */
+    float    visual_activity;
+    float    audio_salience;
+    float    speech_confidence;
+
+    /* === Throughput rates (since boot) === */
+    uint64_t total_groundings;
+    uint64_t total_comprehensions;
+    uint64_t total_productions;
+    uint64_t total_new_words;
+
+    /* === Region wiring health === */
+    bool     broca_attached;
+    bool     wernicke_attached;
+    bool     working_memory_attached;
+    bool     hippocampus_attached;
+    bool     embedding_attached;
+    bool     tokenizer_attached;
+} gl_probe_metrics_t;
+
+/**
+ * @brief Snapshot operational probe metrics. Out is zero-filled
+ *        on entry so future field additions remain backwards-safe
+ *        (missing reads see 0, not stale stack data).
+ *
+ * @param gl   System handle (NULL → no-op, returns -1)
+ * @param out  Destination (NULL → no-op, returns -1)
+ * @return 0 on success, -1 on bad params.
+ */
+int grounded_language_get_probe_metrics(const grounded_language_t* gl,
+                                          gl_probe_metrics_t* out);
 
 /*=============================================================================
  * Per-cognitive-module attach helpers — convenience wrappers that
