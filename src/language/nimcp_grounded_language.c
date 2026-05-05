@@ -432,6 +432,45 @@ uint32_t grounded_language_get_top_phrases(const grounded_language_t* gl,
 }
 
 /*=============================================================================
+ * #12 SNN spike → lexicon decoding
+ *===========================================================================*/
+
+int gl_observe_snn_spikes(grounded_language_t* gl,
+                            const float* spike_rates,
+                            uint32_t rate_dim,
+                            float* confidence_out) {
+    if (!gl || !spike_rates || rate_dim == 0) return -1;
+    if (rate_dim != gl->semantic_dim) return -1;
+    if (gl->vocab_count == 0) return 0;
+
+    /* Find best-matching lexicon entry by cosine similarity of
+     * spike_rates against each entry's context_vector. */
+    int32_t best_idx = -1;
+    float best_sim = 0.0f;
+    for (uint32_t v = 0; v < gl->vocab_count; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e || !e->context_initialized) continue;
+        float sim = cosine_similarity(spike_rates, e->context_vector,
+                                        gl->semantic_dim);
+        if (sim > best_sim) { best_sim = sim; best_idx = (int32_t)v; }
+    }
+
+    if (confidence_out) *confidence_out = best_sim;
+    if (best_idx < 0 || best_sim < GL_SNN_SPIKE_MATCH_THRESHOLD) return 0;
+
+    /* Fire COMPREHENDED for the matched word. */
+    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+    gl_event_t bus_ev = {0};
+    bus_ev.type         = GL_EVENT_COMPREHENDED;
+    bus_ev.word         = gl->vocab_list[best_idx]->form;
+    bus_ev.text         = gl->vocab_list[best_idx]->form;
+    bus_ev.semantic_vec = spike_rates;
+    bus_ev.confidence   = best_sim;
+    gl_fire_event(gl, &bus_ev);
+    return 1;
+}
+
+/*=============================================================================
  * #8 Cross-modal disambiguation
  *===========================================================================*/
 
@@ -2884,13 +2923,12 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
 
-    /* Magic + version. v2 adds context_dialect (#14) at the end of
-     * the file (after templates). v3 adds compositional phrases (#9)
-     * — phrase count + each phrase form + component_words + frequency.
-     * Phrase semantic_vec is NOT persisted (lazily recomputed from
-     * components on first lookup post-load). */
+    /* Magic + version. v2 adds context_dialect (#14). v3 adds
+     * compositional phrases (#9). v4 (#6) compresses each entry's
+     * context_vector to int8 with per-vector max-abs scaling — 4×
+     * size reduction at <0.4% per-element error. */
     uint32_t magic = GL_MAGIC;
-    uint32_t version = 3;
+    uint32_t version = 4;
     fwrite(&magic, sizeof(magic), 1, f);
     fwrite(&version, sizeof(version), 1, f);
     fwrite(&gl->semantic_dim, sizeof(gl->semantic_dim), 1, f);
@@ -2908,10 +2946,40 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
         fwrite(&entry->valence, sizeof(entry->valence), 1, f);
         fwrite(&entry->arousal, sizeof(entry->arousal), 1, f);
 
-        /* Context vector */
+        /* Context vector — v4 int8 quantization (#6): per-vector
+         * max-abs as float, then int8 codes. Decoded as
+         *   x = (q / 127.0) × max_abs.
+         * Empty/zero vectors store max_abs=0 and skip the int8 block.
+         * v3 and earlier wrote a float block — kept for read parity. */
         fwrite(&entry->context_initialized, sizeof(entry->context_initialized), 1, f);
         if (entry->context_initialized) {
-            fwrite(entry->context_vector, sizeof(float), gl->semantic_dim, f);
+            float max_abs = 0.0f;
+            for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                float a = fabsf(entry->context_vector[d]);
+                if (a > max_abs) max_abs = a;
+            }
+            fwrite(&max_abs, sizeof(float), 1, f);
+            if (max_abs > 0.0f) {
+                /* Quantize to int8. Stack buffer up to 1024 dims;
+                 * realistically semantic_dim ≤ 256. */
+                int8_t qbuf[1024];
+                if (gl->semantic_dim > 1024) {
+                    /* Fallback: write zeros — vector will dequantize
+                     * to zero. Defensive guard for unusual configs. */
+                    int8_t zero = 0;
+                    for (uint32_t d = 0; d < gl->semantic_dim; d++)
+                        fwrite(&zero, sizeof(int8_t), 1, f);
+                } else {
+                    float inv = 127.0f / max_abs;
+                    for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                        float v = entry->context_vector[d] * inv;
+                        if (v >  127.0f) v =  127.0f;
+                        if (v < -127.0f) v = -127.0f;
+                        qbuf[d] = (int8_t)(v >= 0.0f ? v + 0.5f : v - 0.5f);
+                    }
+                    fwrite(qbuf, sizeof(int8_t), gl->semantic_dim, f);
+                }
+            }
         }
 
         /* Bindings */
@@ -2997,7 +3065,32 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         fread_chk(&ctx_init, sizeof(ctx_init), 1, f);
         entry->context_initialized = ctx_init;
         if (ctx_init) {
-            fread_chk(entry->context_vector, sizeof(float), semantic_dim, f);
+            if (version >= 4) {
+                /* v4 quantized read: max_abs + int8 codes. */
+                float max_abs = 0.0f;
+                fread_chk(&max_abs, sizeof(float), 1, f);
+                if (max_abs > 0.0f && semantic_dim <= 1024) {
+                    int8_t qbuf[1024];
+                    fread_chk(qbuf, sizeof(int8_t), semantic_dim, f);
+                    float scale = max_abs / 127.0f;
+                    for (uint32_t d = 0; d < semantic_dim; d++) {
+                        entry->context_vector[d] = (float)qbuf[d] * scale;
+                    }
+                } else if (max_abs > 0.0f) {
+                    /* Defensive: walk past the int8 block to keep
+                     * stream alignment when semantic_dim > 1024. */
+                    int8_t skip;
+                    for (uint32_t d = 0; d < semantic_dim; d++)
+                        fread_chk(&skip, sizeof(int8_t), 1, f);
+                    memset(entry->context_vector, 0,
+                           semantic_dim * sizeof(float));
+                }
+                /* max_abs == 0 → zero vector, nothing more on disk. */
+            } else {
+                /* v1-v3 legacy: float block. */
+                fread_chk(entry->context_vector, sizeof(float),
+                          semantic_dim, f);
+            }
         }
 
         uint32_t binding_count;

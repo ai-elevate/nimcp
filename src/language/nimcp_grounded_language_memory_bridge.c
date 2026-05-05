@@ -45,6 +45,8 @@
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "cognitive/nimcp_sleep_wake.h"
+
+#include <math.h>
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "perception/nimcp_speech_cortex.h"
@@ -154,16 +156,72 @@ void gl_mirror_new_word_to_regions(grounded_language_t* gl, const char* form) {
  *   3. wernicke_free_comprehension(&comp)
  * Returns events recorded, or -1 on failure / NULL inputs.
  *--------------------------------------------------------------------*/
+/* #2 Audio feature extraction — RMS envelope per equal-length chunk.
+ * Cheap, deterministic, audio-content-distinguishing without an FFT.
+ * Each output is normalized into [0, 1] by the global peak chunk-RMS
+ * across the utterance. Silent chunks → 0; loud chunks → 1.
+ *
+ * Returns 0 on success, -1 on bad input. */
+int gl_extract_audio_features(const float* audio,
+                                uint32_t samples,
+                                uint32_t sample_rate,
+                                float* out_features,
+                                uint32_t feature_dim) {
+    (void)sample_rate;  /* reserved for future band-aware extractor */
+    if (!audio || samples == 0 || !out_features || feature_dim == 0) {
+        return -1;
+    }
+    /* Chunk size — last chunk picks up any remainder. */
+    uint32_t chunk = samples / feature_dim;
+    if (chunk == 0) {
+        /* feature_dim > samples; replicate available samples + zero-pad. */
+        for (uint32_t i = 0; i < feature_dim; i++) {
+            out_features[i] = (i < samples) ? fabsf(audio[i]) : 0.0f;
+        }
+        return 0;
+    }
+
+    float peak = 0.0f;
+    for (uint32_t b = 0; b < feature_dim; b++) {
+        uint32_t start = b * chunk;
+        uint32_t end = (b == feature_dim - 1) ? samples : start + chunk;
+        float ss = 0.0f;
+        for (uint32_t s = start; s < end; s++) ss += audio[s] * audio[s];
+        float rms = sqrtf(ss / (float)(end - start));
+        out_features[b] = rms;
+        if (rms > peak) peak = rms;
+    }
+    if (peak > 1e-9f) {
+        float inv = 1.0f / peak;
+        for (uint32_t b = 0; b < feature_dim; b++) out_features[b] *= inv;
+    }
+    return 0;
+}
+
 int gl_drive_audio_comprehension(grounded_language_t* gl,
                                   void* wernicke_adapter_v,
                                   const float* audio, uint32_t samples,
                                   uint32_t sample_rate,
                                   const float* audio_features,
                                   uint32_t feature_dim) {
-    if (!gl || !wernicke_adapter_v || !audio || samples == 0 ||
-        !audio_features || feature_dim == 0) {
+    if (!gl || !wernicke_adapter_v || !audio || samples == 0) {
         return -1;
     }
+    /* Auto-extract features when caller passes NULL — saves the caller
+     * from maintaining a parallel feature pipeline. */
+    float local_feat[32];
+    const float* feat = audio_features;
+    uint32_t fdim = feature_dim;
+    if (!feat) {
+        fdim = 32;
+        if (gl_extract_audio_features(audio, samples, sample_rate,
+                                        local_feat, fdim) != 0) {
+            return -1;
+        }
+        feat = local_feat;
+    }
+    if (!feat || fdim == 0) return -1;
+
     wernicke_comprehension_t comp;
     memset(&comp, 0, sizeof(comp));
     if (!wernicke_comprehend((wernicke_adapter_t*)wernicke_adapter_v,
@@ -171,7 +229,7 @@ int gl_drive_audio_comprehension(grounded_language_t* gl,
         return -1;
     }
     int n = grounded_language_ingest_wernicke_result(
-        gl, &comp, audio_features, feature_dim);
+        gl, &comp, feat, fdim);
     wernicke_free_comprehension(&comp);
     return n;
 }

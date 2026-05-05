@@ -1175,6 +1175,100 @@ uint32_t grounded_language_subscriber_count(const grounded_language_t* gl);
 bool grounded_language_has_word(const grounded_language_t* gl, const char* word);
 
 /*=============================================================================
+ * SNN spike → lexicon decoding (#12)
+ *
+ * Push a per-population spike-rate vector into the GL and observe
+ * which lexicon entries best match it. The spike vector is treated
+ * as a semantic-space projection (broca/wernicke language pops
+ * already produce activity patterns the GL can read); we project
+ * those rates against each lexicon entry's context_vector and emit a
+ * COMPREHENDED event for the top match if it crosses a similarity
+ * threshold.
+ *
+ * Closes the brain-internal language loop: SNN spike activity →
+ * matched word(s) → bus event → cognitive consumers (inner_speech,
+ * narrative, theory_of_mind, etc.).
+ *
+ * Returns the number of words that fired COMPREHENDED events
+ * (0 or 1 in practice — top-1 only). -1 on bad input.
+ *===========================================================================*/
+
+/** Cosine-similarity floor for SNN spike → lexicon match. Below this,
+ *  the projection is too weak to call a "comprehension". */
+#define GL_SNN_SPIKE_MATCH_THRESHOLD     0.5f
+
+/**
+ * @brief Observe SNN spike-rate activity and (when a match exceeds
+ *        the similarity threshold) emit COMPREHENDED for the
+ *        best-matching lexicon entry.
+ *
+ * @param gl                System handle
+ * @param spike_rates       Per-population rate vector (Hz or
+ *                          normalized; only relative magnitudes
+ *                          matter — they're cosine-similarity-
+ *                          compared against context vectors)
+ * @param rate_dim          Length of spike_rates; must equal
+ *                          gl's semantic_dim or the call is no-op
+ * @param confidence_out    Optional: receives the cosine similarity
+ *                          of the matched word (NULL OK)
+ * @return 1 if a word matched and event was fired, 0 if no match
+ *         exceeded the threshold, -1 on bad input.
+ */
+int gl_observe_snn_spikes(grounded_language_t* gl,
+                            const float* spike_rates,
+                            uint32_t rate_dim,
+                            float* confidence_out);
+
+/*=============================================================================
+ * Audio-feature extraction (#2)
+ *
+ * Helper for callers that have raw audio samples but no pre-computed
+ * feature vector. Computes a simple time-domain RMS envelope: divides
+ * `samples` into `feature_dim` equal-length chunks and writes the
+ * normalized RMS of each chunk into out_features. The result is a
+ * coarse-but-deterministic perceptual envelope suitable for grounding
+ * — distinct utterances produce distinct vectors without requiring
+ * an FFT or MFCC pipeline.
+ *
+ * Use case: the auditory grounding loop. Wernicke produces words from
+ * raw audio; the caller wants to ground those words in the audio that
+ * produced them. Rather than maintaining a parallel feature pipeline,
+ * call this once per utterance and reuse the result for every word.
+ *
+ * Returns 0 on success, -1 on bad input. Output is in [0, 1] range
+ * after normalization by the global RMS — silent chunks → 0, peak
+ * chunks → 1.
+ *===========================================================================*/
+
+int gl_extract_audio_features(const float* audio,
+                                uint32_t samples,
+                                uint32_t sample_rate,
+                                float* out_features,
+                                uint32_t feature_dim);
+
+/**
+ * @brief One-shot audio → comprehension → grounding helper.
+ *        Internally: extracts features, runs wernicke comprehend,
+ *        feeds recognized words back as auditory grounding events.
+ *
+ *        Caller passes raw audio + wernicke adapter; gl handles the
+ *        rest. Returns count of grounding events recorded, -1 on
+ *        failure. NULL audio_features is no longer required — pass
+ *        NULL to have the helper compute a default 32-dim envelope
+ *        internally.
+ *
+ *        This is the supersedes the older internal-only signature
+ *        that required the caller to pre-compute audio_features.
+ */
+int gl_drive_audio_comprehension(grounded_language_t* gl,
+                                   void* wernicke_adapter,
+                                   const float* audio,
+                                   uint32_t samples,
+                                   uint32_t sample_rate,
+                                   const float* audio_features,
+                                   uint32_t feature_dim);
+
+/*=============================================================================
  * Compositional templates — bigrams + trigrams + phrase vectors (#9)
  *
  * Words rarely appear in isolation. Children learn that "good morning"
