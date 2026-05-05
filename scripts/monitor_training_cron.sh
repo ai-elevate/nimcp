@@ -32,10 +32,15 @@ OUTPUT_SIM_THRESHOLD=0.95
 EFF_RANK_THRESHOLD=10
 GRAD_NORM_THRESHOLD=100
 CHECKPOINT_MIN_SIZE=104857600  # 100 MB
-RSS_WARN_GB=55  # warn if RSS > 55 GB
-DISK_WARN_PCT=85       # warn if filesystem use% >= this
-DISK_CRIT_PCT=95       # critical if filesystem use% >= this
+RSS_WARN_GB=72  # warn if RSS > 72 GB (pod cgroup cap is 85.68 GB)
+DISK_WARN_PCT=80       # warn if filesystem use% >= this
+DISK_CRIT_PCT=92       # critical if filesystem use% >= this
 SNAPSHOT_RETENTION=5   # keep N newest athena_auto_* snapshot families (incl. shards)
+PIP_CACHE_CAP_GB=5     # truncate ~/.cache/pip if > this (GB)
+UV_CACHE_CAP_GB=2      # truncate ~/.cache/uv if > this (GB)
+HF_CACHE_WARN_GB=120   # alert (no delete) if huggingface cache > this (GB)
+JOURNAL_CAP_MB=500     # vacuum /var/log/journal to this size (MB)
+SIBLING_WARN_GB=50     # alert if any /home/$USER/<dir> outside nimcp > this
 
 NOW=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -763,6 +768,111 @@ prune_pod_snapshots() {
 }
 
 #=============================================================================
+# 8. AUTO-PRUNE local caches that grow unbounded (pip, uv, journal)
+#=============================================================================
+prune_local_caches() {
+    local freed=0 sz_kb cap_kb
+
+    # pip cache — pip never gc's; cap by total size
+    if [ -d "$HOME/.cache/pip" ]; then
+        sz_kb=$(du -sk "$HOME/.cache/pip" 2>/dev/null | awk '{print $1}')
+        cap_kb=$((PIP_CACHE_CAP_GB * 1024 * 1024))
+        if [ "${sz_kb:-0}" -gt "$cap_kb" ]; then
+            rm -rf "$HOME/.cache/pip"
+            freed=$((freed + sz_kb))
+            log "Pruned ~/.cache/pip ($(awk "BEGIN {printf \"%.1f\", $sz_kb / 1048576}")GB > ${PIP_CACHE_CAP_GB}GB cap)"
+        fi
+    fi
+
+    # uv cache — same pattern
+    if [ -d "$HOME/.cache/uv" ]; then
+        sz_kb=$(du -sk "$HOME/.cache/uv" 2>/dev/null | awk '{print $1}')
+        cap_kb=$((UV_CACHE_CAP_GB * 1024 * 1024))
+        if [ "${sz_kb:-0}" -gt "$cap_kb" ]; then
+            rm -rf "$HOME/.cache/uv"
+            freed=$((freed + sz_kb))
+            log "Pruned ~/.cache/uv ($(awk "BEGIN {printf \"%.1f\", $sz_kb / 1048576}")GB > ${UV_CACHE_CAP_GB}GB cap)"
+        fi
+    fi
+
+    # systemd journal — runs once a day at minute 0-4 of hour 4 (idempotent if cron fires multiple times)
+    local hh mm
+    hh=$(date +%H); mm=$(date +%M)
+    if [ "$hh" = "04" ] && [ "$mm" -lt 5 ]; then
+        if command -v journalctl >/dev/null 2>&1; then
+            sudo -n journalctl --vacuum-size=${JOURNAL_CAP_MB}M >/dev/null 2>&1 \
+                && log "Vacuumed /var/log/journal to ${JOURNAL_CAP_MB}M"
+        fi
+    fi
+}
+
+#=============================================================================
+# 9. AUTO-PRUNE stale stage-N checkpoints (s0/s2 zombies + 0-byte corruption)
+#    Live training is on a single stage at a time; once moved on, prior
+#    stage's per-step .bin files are not used. The active stage is the one
+#    pointed to by athena_immersive.bin's symlink target.
+#=============================================================================
+prune_local_stage_checkpoints() {
+    [ -d "$CHECKPOINT_DIR" ] || return 0
+    local active_stage=""
+    if [ -L "$CHECKPOINT_DIR/athena_immersive.bin" ]; then
+        local target
+        target=$(readlink "$CHECKPOINT_DIR/athena_immersive.bin")
+        # extract sN from athena_sN_stepXXXX.bin
+        active_stage=$(echo "$target" | grep -oE 'athena_s[0-9]+' | head -1)
+    fi
+
+    # Always nuke 0-byte zombie shards (corrupt aborted writes)
+    local zombies
+    zombies=$(find "$CHECKPOINT_DIR" -maxdepth 1 -size 0 -name 'athena_s*' 2>/dev/null | wc -l)
+    [ "$zombies" -gt 0 ] && find "$CHECKPOINT_DIR" -maxdepth 1 -size 0 -name 'athena_s*' -delete 2>/dev/null \
+        && log "Deleted $zombies zero-byte zombie checkpoint shards"
+
+    # If we know the active stage, nuke all OTHER stage families (s0/s1/s2 not in use)
+    if [ -n "$active_stage" ]; then
+        local removed=0 freed=0 sz
+        for stage_pattern in athena_s0 athena_s1 athena_s2 athena_s3; do
+            [ "$stage_pattern" = "$active_stage" ] && continue
+            while IFS= read -r f; do
+                [ -e "$f" ] || continue
+                sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
+                rm -f -- "$f" && { removed=$((removed + 1)); freed=$((freed + sz)); }
+            done < <(find "$CHECKPOINT_DIR" -maxdepth 1 -name "${stage_pattern}_*" 2>/dev/null)
+        done
+        if [ "$removed" -gt 0 ]; then
+            log "Stage-prune: deleted $removed files ($(awk "BEGIN {printf \"%.1f\", $freed / 1073741824}")GB) from inactive stages (active=$active_stage)"
+        fi
+    fi
+}
+
+#=============================================================================
+# 10. AUDIT (no-delete) — huggingface cache + sibling project dirs
+#=============================================================================
+check_external_dirs() {
+    if [ -d "$HOME/.cache/huggingface" ]; then
+        local hf_kb hf_cap_kb
+        hf_kb=$(du -sk "$HOME/.cache/huggingface" 2>/dev/null | awk '{print $1}')
+        hf_cap_kb=$((HF_CACHE_WARN_GB * 1024 * 1024))
+        if [ "${hf_kb:-0}" -gt "$hf_cap_kb" ]; then
+            alert "WARN" "~/.cache/huggingface = $(awk "BEGIN {printf \"%.0f\", $hf_kb / 1048576}")GB (> ${HF_CACHE_WARN_GB}GB) — review for unused/duplicate models"
+        fi
+    fi
+
+    # Sibling project dirs (anything in $HOME that isn't nimcp/.cache/.claude/etc)
+    local cap_kb=$((SIBLING_WARN_GB * 1024 * 1024))
+    while IFS= read -r d; do
+        [ -d "$d" ] || continue
+        local sz_kb
+        sz_kb=$(du -sk "$d" 2>/dev/null | awk '{print $1}')
+        if [ "${sz_kb:-0}" -gt "$cap_kb" ]; then
+            alert "WARN" "$d = $(awk "BEGIN {printf \"%.0f\", $sz_kb / 1048576}")GB (> ${SIBLING_WARN_GB}GB) — sibling dir bloating /"
+        fi
+    done < <(find "$HOME" -maxdepth 1 -mindepth 1 -type d \
+              ! -name 'nimcp' ! -name '.cache' ! -name '.claude' ! -name '.local' \
+              ! -name '.venv' ! -name '.config' ! -name '.ssh' ! -name '.*' 2>/dev/null)
+}
+
+#=============================================================================
 # MAIN
 #=============================================================================
 log "========== TRAINING MONITOR RUN =========="
@@ -774,8 +884,11 @@ check_utm_health
 check_differentiation
 check_checkpoints
 prune_local_snapshots
+prune_local_stage_checkpoints
+prune_local_caches
 prune_pod_snapshots
 check_disk_usage
+check_external_dirs
 
 log "========== END MONITOR RUN =========="
 log ""
