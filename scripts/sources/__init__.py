@@ -14,7 +14,7 @@ is a one-line edit here.
 
 # Bundled backends (each one self-registers on import):
 # from . import wikipedia    # noqa: F401   — added by CE-15
-# from . import investopedia # noqa: F401   — added by CE-16
+from . import investopedia  # noqa: F401   — added by CE-16
 # from . import arxiv        # noqa: F401   — added by CE-17
 # from . import gutenberg_stream  # noqa: F401  — added by CE-18
 
