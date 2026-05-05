@@ -7429,6 +7429,15 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                             checkpoint_dir=CHECKPOINT_DIR)
                     except Exception as _e:
                         print(f"  [Stream:{_kind}] drip failed: {_e}")
+            # Storytelling drip (CE-1) — produce a short narrative from a
+            # stage-appropriate seed and score coherence; feedback signal
+            # re-anchors the brain on collapse / off-topic drift.
+            if (i + 1) % 200 == 0:
+                try:
+                    from storytelling import run_storytelling_drip
+                    run_storytelling_drip(brain, stage=2, composer=composer)
+                except Exception as _e:
+                    print(f"  [Story] drip failed: {_e}")
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
                 try:
@@ -7895,6 +7904,14 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                         checkpoint_dir=CHECKPOINT_DIR)
                 except Exception as _e:
                     print(f"  [Stream:{_kind}] drip failed: {_e}")
+        # Storytelling drip (CE-1) — produce a short narrative from a
+        # stage-3 seed and score coherence; corrective feedback on collapse.
+        if (i + 1) % 200 == 0:
+            try:
+                from storytelling import run_storytelling_drip
+                run_storytelling_drip(brain, stage=3, composer=composer)
+            except Exception as _e:
+                print(f"  [Story] drip failed: {_e}")
 
         # Checkpoint every 50 steps (state file only)
         if (i + 1) % 50 == 0 and (i + 1) % 2000 != 0:
