@@ -229,6 +229,31 @@ def iter_one_chunk(kind: str, source_id: str, *,
 # ----------------------------------------------------------------------------
 # Backends register themselves on import. Importing scripts.sources triggers
 # scripts.sources.__init__ which imports all available backends.
+#
+# Path repair: the bundled backends (wikipedia/investopedia/arxiv/gutenberg_stream/
+# hf_github) write `from scripts.streaming_ingest import ...`, which only
+# resolves when the *parent* of the scripts/ directory is on sys.path. The
+# trainer is launched as `python3 scripts/immerse_athena.py` from the repo
+# root — that puts scripts/ on sys.path but NOT the repo root, so the
+# `scripts.streaming_ingest` import would silently fail and no backend would
+# register. Add the repo root here so the backends find the canonical module.
+import sys as _sys
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+
+# Also alias self under both top-level and package names so backends that
+# do `from scripts.streaming_ingest import ...` reach THIS module — and
+# THIS registry — instead of triggering a fresh re-import that creates a
+# parallel _REGISTRY dict. Without this, `available_kinds()` returns []
+# because backends register against the package-path twin, not the
+# top-level module the trainer reads from.
+_self_mod = _sys.modules.get(__name__)
+if _self_mod is not None:
+    if __name__ == "streaming_ingest":
+        _sys.modules.setdefault("scripts.streaming_ingest", _self_mod)
+    elif __name__ == "scripts.streaming_ingest":
+        _sys.modules.setdefault("streaming_ingest", _self_mod)
 
 try:
     from scripts import sources as _sources_pkg  # noqa: F401

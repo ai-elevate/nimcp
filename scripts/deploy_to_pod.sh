@@ -58,6 +58,27 @@ if [[ "$mode" == "full" && ! -f "$LIBNIMCP_REAL" ]]; then
     echo "ERROR: build/lib/libnimcp.so → $LIBNIMCP_REAL missing. Run: make nimcp -j4" >&2
     exit 3
 fi
+# Curriculum-stack files that landed in the CE-1..19 campaign. These are
+# pure-Python (no .so dependency) but the trainer needs them on the pod.
+# Skip any path that doesn't exist locally so older branches still bundle.
+CE_SCRIPTS=()
+for f in \
+    scripts/storytelling.py scripts/socratic_qa.py scripts/sibling_dialog.py \
+    scripts/tom_probes.py scripts/counterfactual.py scripts/failure_replay.py \
+    scripts/music_rhythm.py scripts/visual_art.py \
+    scripts/canonical_corpus.py scripts/code_corpus.py scripts/streaming_ingest.py \
+    scripts/claude_teacher.py; do
+  [[ -f "$f" ]] && CE_SCRIPTS+=("$f")
+done
+[[ -d scripts/sources ]] && CE_SCRIPTS+=(scripts/sources)
+CE_DATA=()
+for d in \
+    data/canonical_corpus data/math_corpus \
+    data/physics_corpus data/chemistry_corpus data/biology_corpus \
+    data/finance_corpus data/code_corpus; do
+  [[ -d "$d" ]] && CE_DATA+=("$d")
+done
+
 case "$mode" in
   full)
     tar czf "$BUNDLE" \
@@ -68,7 +89,9 @@ case "$mode" in
         scripts/brain_daemon.py scripts/brain_client.py \
         scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py \
-        data/stimuli/
+        "${CE_SCRIPTS[@]}" \
+        data/stimuli/ \
+        "${CE_DATA[@]}"
     ;;
   scripts)
     tar czf "$BUNDLE" \
@@ -76,7 +99,9 @@ case "$mode" in
         scripts/run_full_battery.py \
         scripts/brain_daemon.py scripts/brain_client.py \
         scripts/cb_rescaled_marker.py \
-        scripts/immerse_athena.py
+        scripts/immerse_athena.py \
+        "${CE_SCRIPTS[@]}" \
+        "${CE_DATA[@]}"
     ;;
   stimuli)
     tar czf "$BUNDLE" data/stimuli/
@@ -224,10 +249,31 @@ cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
 
-# Stimuli.
+# Curriculum-stack files (CE-1..19).
+for f in /tmp/scripts/storytelling.py /tmp/scripts/socratic_qa.py \
+         /tmp/scripts/sibling_dialog.py /tmp/scripts/tom_probes.py \
+         /tmp/scripts/counterfactual.py /tmp/scripts/failure_replay.py \
+         /tmp/scripts/music_rhythm.py /tmp/scripts/visual_art.py \
+         /tmp/scripts/canonical_corpus.py /tmp/scripts/code_corpus.py \
+         /tmp/scripts/streaming_ingest.py /tmp/scripts/claude_teacher.py; do
+  [[ -f "$f" ]] && cp -f "$f" "$POD_DIR/scripts/"
+done
+if [[ -d /tmp/scripts/sources ]]; then
+  rm -rf "$POD_DIR/scripts/sources"
+  cp -r /tmp/scripts/sources "$POD_DIR/scripts/"
+fi
+
+# Stimuli + curriculum data corpora.
 rm -rf "$POD_DIR/data/stimuli"
 mkdir -p "$POD_DIR/data"
 cp -r /tmp/data/stimuli "$POD_DIR/data/"
+for d in canonical_corpus math_corpus physics_corpus chemistry_corpus \
+         biology_corpus finance_corpus code_corpus; do
+  if [[ -d "/tmp/data/$d" ]]; then
+    rm -rf "$POD_DIR/data/$d"
+    cp -r "/tmp/data/$d" "$POD_DIR/data/"
+  fi
+done
 
 # 4) Relaunch daemon with the same argv (detached, stdout/stderr to log dir).
 mkdir -p "$POD_LOGDIR" "$(dirname "$POD_SOCKET")"
@@ -294,7 +340,31 @@ cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
-echo "=== Scripts updated. Daemon handlers need a restart to take effect. ==="
+# Curriculum-stack files (CE-1..19). Ship whatever's in the bundle —
+# old branches without these files won't have them packed, and `cp -f`
+# is a no-op on missing sources thanks to the for-loop existence guard.
+for f in /tmp/scripts/storytelling.py /tmp/scripts/socratic_qa.py \
+         /tmp/scripts/sibling_dialog.py /tmp/scripts/tom_probes.py \
+         /tmp/scripts/counterfactual.py /tmp/scripts/failure_replay.py \
+         /tmp/scripts/music_rhythm.py /tmp/scripts/visual_art.py \
+         /tmp/scripts/canonical_corpus.py /tmp/scripts/code_corpus.py \
+         /tmp/scripts/streaming_ingest.py /tmp/scripts/claude_teacher.py; do
+  [[ -f "$f" ]] && cp -f "$f" "$POD_DIR/scripts/"
+done
+if [[ -d /tmp/scripts/sources ]]; then
+  rm -rf "$POD_DIR/scripts/sources"
+  cp -r /tmp/scripts/sources "$POD_DIR/scripts/"
+fi
+# Curriculum data corpora — replace each whole tree atomically.
+mkdir -p "$POD_DIR/data"
+for d in canonical_corpus math_corpus physics_corpus chemistry_corpus \
+         biology_corpus finance_corpus code_corpus; do
+  if [[ -d "/tmp/data/$d" ]]; then
+    rm -rf "$POD_DIR/data/$d"
+    cp -r "/tmp/data/$d" "$POD_DIR/data/"
+  fi
+done
+echo "=== Scripts updated. Trainer needs a restart to pick up wiring changes. ==="
 REMOTE_SCRIPTS
 
 elif [[ "$mode" == "stimuli" ]]; then
