@@ -298,8 +298,10 @@ typedef struct {
     uint32_t entries_decayed_last_24h;
     uint64_t entries_decayed_all_time;
     /* Negative-grounding telemetry (#7) — counts ground() calls that
-     * arrived with event->negative=true and successfully weakened
-     * an existing binding. */
+     * arrived with event->negative=true. Incremented unconditionally
+     * (including for unknown words and when no binding is weakened),
+     * because the contrast-pair signal itself is curriculum-meaningful
+     * even when the lexicon doesn't yet have an entry to weaken. */
     uint64_t total_negative_groundings;
     /* Active-learning telemetry (#10) — counts NEEDS_GROUNDING events
      * fired by comprehend on low-confidence input. */
@@ -1222,6 +1224,15 @@ uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n);
  * Output buffers (out_words[]) point into GL's vocab storage and are
  * valid only until the next lexicon mutation (fast_map / ground /
  * eviction). Callers that need to retain forms must copy.
+ *
+ * Result order: vocab_list iteration order (insertion order).
+ * Consumers should not rely on a specific ranking.
+ *
+ * Character set: ASCII alphabet only ([A-Za-z]). Words with non-ASCII
+ * letters at the matched edge are silently skipped — a French word
+ * like "café" passes alliteration ('c'+'a'...) but a word starting
+ * with "é" returns 0 from _gl_first_alpha_lower and is skipped.
+ * UTF-8 codepoint awareness is deferred to a future wave.
  *===========================================================================*/
 
 /** Suffix length used by the rhyme matcher (final N letters must match

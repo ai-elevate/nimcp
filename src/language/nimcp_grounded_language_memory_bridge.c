@@ -448,5 +448,19 @@ int grounded_language_sleep_consolidate(grounded_language_t* gl,
         gl->decayed_ring[gl->decayed_ring_head] += decayed_this_pass;
         gl->decayed_all_time += decayed_this_pass;
     }
+
+    /* #5 LRU eviction — DEEP_NREM is the safe biological moment to prune.
+     * The wake-time hot path no longer auto-evicts (it could free entries
+     * held by callers walking vocab_list, and could evict the very word
+     * being looked up). Sleep is the natural decay/consolidation phase
+     * where no caller is mid-lookup, and the strength * (1 - 0.05) decay
+     * already lowers the relative frequency of unused bindings.
+     *
+     * Trigger when vocab is past the high-water mark — leave headroom
+     * during normal operation, only prune when growth pressure exists. */
+    if (state == SLEEP_STATE_DEEP_NREM &&
+        gl->vocab_count >= GL_LRU_HIGH_WATER) {
+        grounded_language_evict_lru(gl, GL_LRU_EVICT_BATCH);
+    }
     return 0;
 }

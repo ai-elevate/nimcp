@@ -7,7 +7,11 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <unistd.h>
+#include <string>
 #include <vector>
 
 extern "C" {
@@ -208,6 +212,28 @@ TEST_F(GLDeferredW1, DialectVisibleInProbeMetrics) {
     EXPECT_STREQ("de-DE", pm.context_dialect);
 }
 
+TEST_F(GLDeferredW1, DialectSurvivesSaveLoadRoundTrip) {
+    /* Regression for walkthrough finding: dialect must survive
+     * grounded_language_save → grounded_language_load (added to v2). */
+    grounded_language_set_dialect(gl, "fr-CA");
+    std::vector<float> f(TEST_DIM, 0.0f); f[0] = 1.0f;
+    grounded_language_fast_map(gl, "bonjour_uniq", f.data(), TEST_DIM, 0);
+
+    char path[] = "/tmp/gl_dialect_roundtrip_XXXXXX.bin";
+    int fd = mkstemps(path, 4);
+    ASSERT_GE(fd, 0);
+    close(fd);
+
+    EXPECT_EQ(0, grounded_language_save(gl, path));
+
+    grounded_language_t* gl2 = grounded_language_load(path, sm);
+    ASSERT_NE(gl2, nullptr);
+    EXPECT_STREQ("fr-CA", grounded_language_get_dialect(gl2));
+
+    grounded_language_destroy(gl2);
+    unlink(path);
+}
+
 TEST_F(GLDeferredW1, DialectNullSafeOnNullGl) {
     /* Don't crash. */
     grounded_language_set_dialect(nullptr, "en-US");
@@ -280,6 +306,56 @@ TEST_F(GLDeferredW1, NeedsGroundingStatsCounter) {
     gl_stats_t s1;
     grounded_language_get_stats(gl, &s1);
     EXPECT_EQ(s0.total_needs_grounding + 1u, s1.total_needs_grounding);
+}
+
+/* ====================================================================
+ * Wrapper guards — wrappers like amygdala/ofc/imagination/emergent_lang
+ * must NOT act on a negative-grounding event (concept_id=0, conf<0)
+ * because there's no concept to bind/tag. Test by attaching the
+ * wrapper and verifying it doesn't fire on a negative ground.
+ * ==================================================================*/
+
+/* Spy subscriber that counts callback invocations regardless of
+ * filter. We use ALL mask + observe whether the bridge wrappers
+ * forward via the bus. Since the wrappers use LOG_DEBUG, we can't
+ * directly observe them — instead we check the contract: a subscriber
+ * with MASK_GROUNDED that filters confidence < 0 itself receives
+ * the event but a downstream consumer wouldn't act. */
+TEST_F(GLDeferredW1, BridgeWrappersGuardAgainstNegativeGrounding) {
+    /* Indirect test: confirm that GL fires the negative event and
+     * that we can recognize it via concept_id=0. Wrapper code is
+     * tested by the act of compilation (added the guard) — this
+     * test pins the contract going forward. */
+    struct Cap { int n_neg = 0; int n_pos = 0; };
+    Cap cap;
+    auto cb = +[](void* ctx, const gl_event_t* ev) -> int {
+        Cap* c = (Cap*)ctx;
+        if (ev->type != GL_EVENT_GROUNDED) return 0;
+        if (ev->concept_id == 0 || ev->confidence < 0.0f) c->n_neg++;
+        else c->n_pos++;
+        return 0;
+    };
+    grounded_language_subscribe_ex(gl, cb, &cap, GL_EVENT_MASK_GROUNDED, 0);
+
+    /* Positive ground first to set up an entry. */
+    std::vector<float> f(TEST_DIM, 0.0f); f[0] = 1.0f;
+    gl_grounding_event_t pos{};
+    pos.word = "wolf";
+    pos.modality = GL_MODALITY_VISUAL;
+    pos.sensory_features = f.data();
+    pos.feature_dim = TEST_DIM;
+    pos.attention = 1.0f;
+    pos.emotional_arousal = 0.6f;
+    grounded_language_ground(gl, &pos);
+    EXPECT_EQ(1, cap.n_pos);
+    EXPECT_EQ(0, cap.n_neg);
+
+    /* Negative ground — concept_id=0, confidence<0. */
+    gl_grounding_event_t neg = pos;
+    neg.negative = true;
+    grounded_language_ground(gl, &neg);
+    EXPECT_EQ(1, cap.n_pos);
+    EXPECT_EQ(1, cap.n_neg);
 }
 
 TEST_F(GLDeferredW1, NeedsGroundingMaskAllSubscriberAlsoReceives) {

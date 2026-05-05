@@ -116,15 +116,6 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
     char lower[GL_MAX_WORD_LEN];
     lowercase_word(word, lower, GL_MAX_WORD_LEN);
     uint32_t h = hash_word(lower);
-
-    /* #5 Auto-trigger LRU eviction when the lexicon is near the cap.
-     * Don't pay this cost on every call — only when we've crossed the
-     * high-water threshold. The find_or_create itself is the
-     * authoritative growth point so this is the natural spot. */
-    if (gl->vocab_count >= GL_LRU_HIGH_WATER) {
-        grounded_language_evict_lru(gl, GL_LRU_EVICT_BATCH);
-    }
-
     uint32_t idx = h % gl->lexicon_size;
 
     /* Linear probe to find existing entry */
@@ -2579,9 +2570,11 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
 
-    /* Magic + version */
+    /* Magic + version. v2 adds context_dialect (#14) at the end of the
+     * file (after templates) so older v1 files load cleanly with an
+     * empty dialect tag. */
     uint32_t magic = GL_MAGIC;
-    uint32_t version = 1;
+    uint32_t version = 2;
     fwrite(&magic, sizeof(magic), 1, f);
     fwrite(&version, sizeof(version), 1, f);
     fwrite(&gl->semantic_dim, sizeof(gl->semantic_dim), 1, f);
@@ -2616,9 +2609,14 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
     fwrite(&gl->template_count, sizeof(gl->template_count), 1, f);
     fwrite(gl->templates, sizeof(gl_template_t), gl->template_count, f);
 
+    /* v2: dialect tag (#14). Always exactly GL_MAX_DIALECT_LEN bytes
+     * for a fixed-width record so future fields can be appended without
+     * a length prefix. */
+    fwrite(gl->context_dialect, GL_MAX_DIALECT_LEN, 1, f);
+
     fclose(f);
-    LOG_INFO(LOG_MODULE, "Saved grounded language state to %s (%u words, %u templates)",
-             path, gl->vocab_count, gl->template_count);
+    LOG_INFO(LOG_MODULE, "Saved grounded language state to %s (%u words, %u templates, dialect='%s')",
+             path, gl->vocab_count, gl->template_count, gl->context_dialect);
     return 0;
 }
 
@@ -2700,8 +2698,23 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         gl->template_count = template_count;
     }
 
+    /* v2+: context_dialect (#14). v1 files don't have it; leave the
+     * default empty string. fread on EOF returns 0 — silent fallback
+     * preserves backwards compatibility. */
+    if (version >= 2) {
+        char dialect_buf[GL_MAX_DIALECT_LEN];
+        size_t got = fread(dialect_buf, GL_MAX_DIALECT_LEN, 1, f);
+        if (got == 1) {
+            /* Force NUL termination defensively in case the file was
+             * written without it. */
+            dialect_buf[GL_MAX_DIALECT_LEN - 1] = '\0';
+            memcpy(gl->context_dialect, dialect_buf, GL_MAX_DIALECT_LEN);
+        }
+    }
+
     fclose(f);
-    LOG_INFO(LOG_MODULE, "Loaded grounded language state from %s (%u words)", path, gl->vocab_count);
+    LOG_INFO(LOG_MODULE, "Loaded grounded language state from %s (%u words, version=%u, dialect='%s')",
+             path, gl->vocab_count, version, gl->context_dialect);
     return gl;
 }
 

@@ -225,6 +225,9 @@ static int _wrap_inner_speech(void* ctx, const gl_event_t* ev) {
 static int _wrap_imagination(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
     if (ev->type != GL_EVENT_GROUNDED) return 0;
+    /* Skip negative groundings (concept_id=0, confidence<0) — those are
+     * anti-learning markers, not new scene elements. */
+    if (ev->concept_id == 0 || ev->confidence < 0.0f) return 0;
     /* New grounding → candidate scene element for imagination. */
     LOG_DEBUG(LOG_MODULE,
                "imagination register concept_id=%llu word='%s'",
@@ -301,6 +304,10 @@ static int _wrap_emergent_language(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
     if (ev->type != GL_EVENT_GROUNDED &&
         ev->type != GL_EVENT_PRODUCED) return 0;
+    /* Skip negative-grounding markers — emergent language learns from
+     * positive examples, not anti-pairs. */
+    if (ev->type == GL_EVENT_GROUNDED &&
+        (ev->concept_id == 0 || ev->confidence < 0.0f)) return 0;
     LOG_DEBUG(LOG_MODULE, "emergent_lang feed type=%d word='%s'",
                (int)ev->type, ev->word ? ev->word : "(null)");
     return 0;
@@ -360,6 +367,9 @@ static int _wrap_amygdala(void* ctx, const gl_event_t* ev) {
     /* Emotional conditioning: GROUNDED events with arousal >= 0.3 are
      * candidates for fear/threat tagging of the bound concept. */
     if (ev->type != GL_EVENT_GROUNDED) return 0;
+    /* Skip negative-grounding events (concept_id=0 + confidence<0) —
+     * fear-tagging a sentinel "no concept" would be semantically wrong. */
+    if (ev->concept_id == 0 || ev->confidence < 0.0f) return 0;
     if (ev->arousal < 0.3f) return 0;
     LOG_DEBUG(LOG_MODULE,
                "amygdala emotion_tag concept_id=%llu val=%.2f aro=%.2f",
@@ -374,6 +384,11 @@ static int _wrap_ofc(void* ctx, const gl_event_t* ev) {
      * candidate stimulus-value bindings for OFC reward learning.
      * COMPREHENDED utterances with valence also feed value updates
      * (heard a positive/negative description → adjust expected value). */
+    /* Skip negative-grounding events: concept_id=0 + confidence<0 means
+     * "this word does NOT mean concept X" — there's no concept to bind
+     * a value to. */
+    if (ev->type == GL_EVENT_GROUNDED &&
+        (ev->concept_id == 0 || ev->confidence < 0.0f)) return 0;
     bool relevant =
         (ev->type == GL_EVENT_GROUNDED &&
          (ev->valence > 0.05f || ev->valence < -0.05f)) ||

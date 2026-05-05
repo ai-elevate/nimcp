@@ -248,6 +248,56 @@ TEST_F(GLDeferredW2, EvictLruRebuildsHashTable) {
     EXPECT_TRUE(grounded_language_has_word(gl, "post_evict"));
 }
 
+/* ====================================================================
+ * #5 LRU eviction via sleep_consolidate (the safe trigger point)
+ * ==================================================================*/
+
+extern "C" {
+#include "cognitive/nimcp_sleep_wake.h"
+}
+
+TEST_F(GLDeferredW2, SleepConsolidateAtDeepNremDoesNotPanic) {
+    /* Sanity: even when vocab is below high-water, deep-NREM consolidation
+     * should run cleanly without invoking eviction. */
+    seed_word("alpha");
+    seed_word("beta");
+    int rc = grounded_language_sleep_consolidate(
+        gl, (int)SLEEP_STATE_DEEP_NREM, 0.8f);
+    EXPECT_EQ(0, rc);
+    EXPECT_TRUE(grounded_language_has_word(gl, "alpha"));
+    EXPECT_TRUE(grounded_language_has_word(gl, "beta"));
+}
+
+TEST_F(GLDeferredW2, FindOrCreateNoLongerAutoEvicts) {
+    /* Regression for the auto-trigger UAF/word-loss bug found in
+     * walkthrough. Repeatedly grounding the same low-frequency word
+     * after seeding a few others should NEVER cause that word to be
+     * silently re-allocated (which the old auto-trigger could do). */
+    seed_word("anchor1");
+    seed_word("anchor2");
+    seed_word("survivor_low_freq");
+
+    const gl_lexicon_entry_t* before =
+        grounded_language_lookup(gl, "survivor_low_freq");
+    ASSERT_NE(before, nullptr);
+    uint32_t pre_freq = before->frequency;
+
+    /* Add many more words — but eviction is no longer auto-triggered.
+     * The held entry pointer must still point at the same form. */
+    for (int i = 0; i < 50; i++) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "filler_%d", i);
+        seed_word(buf);
+    }
+
+    const gl_lexicon_entry_t* after =
+        grounded_language_lookup(gl, "survivor_low_freq");
+    ASSERT_NE(after, nullptr);
+    /* Same heap object — auto-eviction is gone. */
+    EXPECT_EQ(before, after);
+    EXPECT_EQ(pre_freq, after->frequency);
+}
+
 TEST_F(GLDeferredW2, EvictLruDecrementsVocabCount) {
     gl_probe_metrics_t pm0;
     grounded_language_get_probe_metrics(gl, &pm0);
