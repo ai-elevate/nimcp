@@ -88,6 +88,19 @@ TEST_F(HemiLangBridge, TickWithNoBridgeReturnsZero) {
     EXPECT_EQ(0, hemispheric_language_bridge_tick(&hb));
 }
 
+TEST_F(HemiLangBridge, TickNullBrainReturnsZero) {
+    /* Must not deref hb at all. */
+    EXPECT_EQ(0, hemispheric_language_bridge_tick(nullptr));
+}
+
+/* --- get_stats out has the new aphasia_dropped field zeroed -------- */
+TEST_F(HemiLangBridge, GetStatsZerosAphasiaCounter) {
+    hemispheric_language_stats_t s;
+    memset(&s, 0xAA, sizeof(s));
+    (void)hemispheric_language_bridge_get_stats(&hb, &s);
+    EXPECT_EQ(0u, s.aphasia_dropped);
+}
+
 /* --- set_aphasia: silently no-ops without bridge, accepts any value
  *     once installed (clamping happens internally) ----------------- */
 TEST_F(HemiLangBridge, SetAphasiaWithoutBridgeIsSafe) {

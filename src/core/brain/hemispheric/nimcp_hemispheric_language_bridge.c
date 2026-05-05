@@ -118,12 +118,20 @@ static int _hl_left_subscriber(void* ctx, const gl_event_t* ev) {
         default: return 0;  /* NEW_WORD stays in the left hemisphere */
     }
 
+    /* Aphasia gate: severity ≥ 0.99 fully blocks the left→right
+     * forward (simulating Broca's-style disconnection). Otherwise we
+     * scale confidence multiplicatively before crossing. */
+    if (b->aphasia_severity >= 0.99f) {
+        b->stats.aphasia_dropped++;
+        return 0;
+    }
+
     /* Pack a small fixed payload. */
     hl_payload_t payload = {0};
     payload.event_type = (int32_t)ev->type;
     payload.valence    = ev->valence;
     payload.arousal    = ev->arousal;
-    payload.confidence = ev->confidence;
+    payload.confidence = ev->confidence * (1.0f - b->aphasia_severity);
     payload.concept_id = ev->concept_id;
 
     const char* src = ev->word ? ev->word : (ev->text ? ev->text : "");
@@ -178,6 +186,7 @@ int hemispheric_language_bridge_install(hemispheric_brain_t* hb) {
 
     /* Reuse existing slot if already installed for this hb. */
     hl_bridge_t* b = _find_bridge(hb);
+    bool fresh_slot = false;
     if (!b) {
         b = _alloc_bridge(hb);
         if (!b) {
@@ -186,31 +195,41 @@ int hemispheric_language_bridge_install(hemispheric_brain_t* hb) {
                       HL_MAX_BRIDGES);
             return -1;
         }
+        fresh_slot = true;
     } else {
         /* Re-install: unsubscribe the prior callback first. */
         if (b->left_gl) grounded_language_unsubscribe(b->left_gl, b);
     }
     b->left_gl = left_gl;
 
+    /* Subscribe FIRST so we can roll back the lateralization mute if
+     * the bus rejects us — otherwise a failed install leaves the right
+     * hemisphere silently muted with no live forwarder. */
+    if (grounded_language_subscribe(left_gl, _hl_left_subscriber, b) != 0) {
+        LOG_WARN(LOG_MODULE, "subscribe failed on left GL");
+        if (fresh_slot) {
+            memset(b, 0, sizeof(*b));   /* free the slot */
+        } else {
+            b->left_gl = NULL;          /* keep stats; clear handle */
+        }
+        return -1;
+    }
+
     /* Lateralization: mute the right hemisphere's GL (if any) so the
      * two hemispheres don't independently train competing lexicons.
-     * We don't destroy it — split-brain restore needs the handle. */
-    if (right_brain->grounded_lang) {
+     * We don't destroy it — split-brain restore needs the handle.
+     * Skip if we're re-installing and already have a saved handle. */
+    if (!b->rh_gl_was_present && right_brain->grounded_lang) {
         b->saved_rh_gl = (grounded_language_t*)right_brain->grounded_lang;
         right_brain->grounded_lang = NULL;
         b->rh_gl_was_present = true;
     }
 
-    /* Subscribe to the left GL. ctx = bridge so the callback can
-     * find its own state without a global lookup. */
-    if (grounded_language_subscribe(left_gl, _hl_left_subscriber, b) != 0) {
-        LOG_WARN(LOG_MODULE, "subscribe failed on left GL");
-        return -1;
-    }
-
     LOG_INFO(LOG_MODULE,
-              "installed: left_gl=%p rh_gl_muted=%d callosum=%p",
-              (void*)left_gl, b->rh_gl_was_present, (void*)hb->callosum);
+              "installed: left_gl=%p rh_gl_muted=%s callosum=%p",
+              (void*)left_gl,
+              b->rh_gl_was_present ? "yes" : "no",
+              (void*)hb->callosum);
     return 0;
 }
 
@@ -232,6 +251,7 @@ void hemispheric_language_bridge_uninstall(hemispheric_brain_t* hb) {
  *===========================================================================*/
 
 int hemispheric_language_bridge_tick(hemispheric_brain_t* hb) {
+    if (!hb) return 0;
     hl_bridge_t* b = _find_bridge(hb);
     if (!b || !hb->callosum) return 0;
 

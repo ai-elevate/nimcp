@@ -47,6 +47,7 @@ typedef struct {
     uint64_t callosum_msgs_sent;  /**< Messages crossing the callosum */
     uint64_t callosum_msgs_dropped; /**< Dropped due to bandwidth/severance */
     uint64_t rh_emotion_updates;  /**< Right-hemisphere emotion taps */
+    uint64_t aphasia_dropped;     /**< Dropped pre-send by aphasia gate */
 } hemispheric_language_stats_t;
 
 /**
