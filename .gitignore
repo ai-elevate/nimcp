@@ -219,6 +219,13 @@ memory-bank/activeContext.md
 
 # Generated training datasets (reproducible via scripts/prepare_nimcp_dataset.py)
 datasets/nimcp_local/
+
+# Canonical literary corpus — text files are reproducible from index.json
+# (Project Gutenberg) or user-supplied to data/canonical_corpus/_inbox/.
+# The manifest (index.json) is committed; corpora and inbox drops are not.
+data/canonical_corpus/**/*.txt
+data/canonical_corpus/_inbox/*
+!data/canonical_corpus/_inbox/.gitkeep
 .claude/worktrees/
 logs/
 frontend/backend/brain_data/
