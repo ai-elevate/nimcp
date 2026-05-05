@@ -119,6 +119,11 @@ struct wernicke_adapter {
      * adapter does NOT free them. */
     snn_network_t* snn;
     int snn_pop_id;
+
+    /* Grounded-language binding (opaque). Future consumers will use
+     * this to ingest comprehension results as auditory grounding
+     * events. Lifetime: GL is owned by brain; adapter does NOT free. */
+    void* grounded_lang;
 };
 
 /*=============================================================================
@@ -1277,4 +1282,17 @@ snn_network_t* wernicke_get_snn_network(const wernicke_adapter_t* adapter)
 {
     if (!adapter) return NULL;
     return adapter->snn;
+}
+
+bool wernicke_attach_grounded_language(wernicke_adapter_t* adapter, void* gl)
+{
+    if (!adapter) return false;
+    adapter->grounded_lang = gl;       /* NULL = unbind */
+    return true;
+}
+
+void* wernicke_get_grounded_language(const wernicke_adapter_t* adapter)
+{
+    if (!adapter) return NULL;
+    return adapter->grounded_lang;
 }

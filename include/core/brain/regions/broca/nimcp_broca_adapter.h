@@ -842,6 +842,24 @@ int broca_get_snn_pop_id(const broca_adapter_t* adapter);
  */
 snn_network_t* broca_get_snn_network(const broca_adapter_t* adapter);
 
+/*=============================================================================
+ * GROUNDED-LANGUAGE BINDING
+ *===========================================================================*/
+
+/**
+ * @brief Attach the grounded_language handle. Used by future production-
+ *        path code that wants to fall through to GL when the broca
+ *        local lexicon misses. Stored as opaque void*. NULL = unbind.
+ *
+ * @param adapter Broca adapter instance
+ * @param gl      grounded_language_t* (opaque)
+ * @return true on success, false if adapter is NULL
+ */
+bool broca_attach_grounded_language(broca_adapter_t* adapter, void* gl);
+
+/** @brief Get the bound grounded_language handle (NULL if unbound). */
+void* broca_get_grounded_language(const broca_adapter_t* adapter);
+
 #ifdef __cplusplus
 }
 #endif

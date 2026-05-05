@@ -32,6 +32,8 @@
 #include "generation/nimcp_embedding.h"
 #include "training/nimcp_cortex_cnn.h"
 #include "language/nimcp_grounded_language.h"
+#include "core/brain/regions/broca/nimcp_broca_adapter.h"
+#include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/nimcp_brain_kg.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "snn/bridges/nimcp_snn_speech_bridge.h"
@@ -615,13 +617,23 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
         /* Region-adapter attachments — every newly-created lexicon entry
          * is mirrored into broca/wernicke. Single source of truth =
          * grounded_language; broca/wernicke get copies for production
-         * + comprehension respectively. No-op when adapters absent. */
-        if (brain->broca)
+         * + comprehension respectively. No-op when adapters absent.
+         * Reverse direction: each adapter also caches the GL handle so
+         * future production-/comprehension-side code can fall through
+         * to GL when its local lexicon misses or to ingest results
+         * back as auditory grounding events. */
+        if (brain->broca) {
             grounded_language_connect_broca(brain->grounded_lang,
                                              brain->broca);
-        if (brain->wernicke)
+            broca_attach_grounded_language(brain->broca,
+                                             brain->grounded_lang);
+        }
+        if (brain->wernicke) {
             grounded_language_connect_wernicke(brain->grounded_lang,
                                                 brain->wernicke);
+            wernicke_attach_grounded_language(brain->wernicke,
+                                                brain->grounded_lang);
+        }
 
         /* Internal KG self-registration — register grounded_language as
          * a COGNITIVE node so KG analytics + downstream consumers can

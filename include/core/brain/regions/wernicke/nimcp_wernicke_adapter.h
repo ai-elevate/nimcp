@@ -1157,6 +1157,25 @@ int wernicke_get_snn_pop_id(const wernicke_adapter_t* adapter);
  */
 snn_network_t* wernicke_get_snn_network(const wernicke_adapter_t* adapter);
 
+/*=============================================================================
+ * GROUNDED-LANGUAGE BINDING
+ *===========================================================================*/
+
+/**
+ * @brief Attach the grounded_language handle. After this, downstream
+ *        consumers can ingest wernicke comprehension results as
+ *        auditory grounding events. Stored as opaque void* so callers
+ *        don't need the GL header. NULL = unbind.
+ *
+ * @param adapter Wernicke adapter instance
+ * @param gl      grounded_language_t* (opaque)
+ * @return true on success, false if adapter is NULL
+ */
+bool wernicke_attach_grounded_language(wernicke_adapter_t* adapter, void* gl);
+
+/** @brief Get the bound grounded_language handle (NULL if unbound). */
+void* wernicke_get_grounded_language(const wernicke_adapter_t* adapter);
+
 #ifdef __cplusplus
 }
 #endif

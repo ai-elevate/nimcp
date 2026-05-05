@@ -607,3 +607,21 @@ TEST_F(WernickeAdapterTest, ProcessBioMessagesNull) {
     uint32_t processed = wernicke_process_bio_messages(nullptr, 10);
     EXPECT_EQ(processed, 0);
 }
+
+/* GROUNDED-LANGUAGE BINDING */
+TEST_F(WernickeAdapterTest, AttachGroundedLanguageStoresAndUnbinds) {
+    adapter = wernicke_create(nullptr);
+    ASSERT_NE(adapter, nullptr);
+    int dummy_gl = 0;
+    EXPECT_EQ(nullptr, wernicke_get_grounded_language(adapter));
+    EXPECT_TRUE(wernicke_attach_grounded_language(adapter, &dummy_gl));
+    EXPECT_EQ(&dummy_gl, wernicke_get_grounded_language(adapter));
+    EXPECT_TRUE(wernicke_attach_grounded_language(adapter, nullptr));
+    EXPECT_EQ(nullptr, wernicke_get_grounded_language(adapter));
+}
+
+TEST_F(WernickeAdapterTest, AttachGroundedLanguageNullAdapterIsSafe) {
+    int dummy_gl = 0;
+    EXPECT_FALSE(wernicke_attach_grounded_language(nullptr, &dummy_gl));
+    EXPECT_EQ(nullptr, wernicke_get_grounded_language(nullptr));
+}

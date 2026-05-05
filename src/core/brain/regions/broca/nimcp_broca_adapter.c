@@ -118,6 +118,11 @@ struct broca_adapter {
     snn_network_t* snn;
     int snn_pop_id;
 
+    /* Grounded-language binding (opaque). Future production-path code
+     * will use this for fallthrough when the local broca lexicon misses
+     * but GL knows the word. Lifetime: GL is owned by brain. */
+    void* grounded_lang;
+
     /* Statistics */
     broca_stats_t stats;
 };
@@ -1741,4 +1746,15 @@ int broca_get_snn_pop_id(const broca_adapter_t* adapter) {
 snn_network_t* broca_get_snn_network(const broca_adapter_t* adapter) {
     if (!adapter) return NULL;
     return adapter->snn;
+}
+
+bool broca_attach_grounded_language(broca_adapter_t* adapter, void* gl) {
+    if (!adapter) return false;
+    adapter->grounded_lang = gl;       /* NULL = unbind */
+    return true;
+}
+
+void* broca_get_grounded_language(const broca_adapter_t* adapter) {
+    if (!adapter) return NULL;
+    return adapter->grounded_lang;
 }

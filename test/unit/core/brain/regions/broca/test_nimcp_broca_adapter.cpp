@@ -449,3 +449,23 @@ TEST_F(BrocaAdapterTest, GetConfigNull) {
     EXPECT_FALSE(broca_get_config(NULL, &config));
     EXPECT_FALSE(broca_get_config(adapter, NULL));
 }
+
+// ============================================================================
+// GROUNDED-LANGUAGE BINDING
+// ============================================================================
+
+TEST_F(BrocaAdapterTest, AttachGroundedLanguageStoresAndUnbinds) {
+    int dummy_gl = 0;
+    EXPECT_EQ(nullptr, broca_get_grounded_language(adapter));
+    EXPECT_TRUE(broca_attach_grounded_language(adapter, &dummy_gl));
+    EXPECT_EQ(&dummy_gl, broca_get_grounded_language(adapter));
+    /* NULL = unbind. */
+    EXPECT_TRUE(broca_attach_grounded_language(adapter, nullptr));
+    EXPECT_EQ(nullptr, broca_get_grounded_language(adapter));
+}
+
+TEST_F(BrocaAdapterTest, AttachGroundedLanguageNullAdapterIsSafe) {
+    int dummy_gl = 0;
+    EXPECT_FALSE(broca_attach_grounded_language(NULL, &dummy_gl));
+    EXPECT_EQ(nullptr, broca_get_grounded_language(NULL));
+}
