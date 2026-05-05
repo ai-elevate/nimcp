@@ -1699,6 +1699,30 @@ void grounded_language_get_stats(
     gl_stats_t* stats);
 
 /**
+ * @brief Per-modality binding-coverage telemetry.
+ *
+ * WHAT: For each modality m in [0, GL_MODALITY_COUNT), counts the number of
+ *       bindings across the entire lexicon that have non-zero
+ *       modality_strength[m]. A binding contributes to a modality's count
+ *       once per modality it has learned content in (so a single binding
+ *       grounded across multiple modalities increments multiple slots).
+ * WHY:  Curriculum integration tests need a direct probe to verify that
+ *       grounding events are actually producing per-modality coverage —
+ *       a brain that has only ever been grounded visually should report
+ *       zero on auditory/motor/etc. The aggregate gl_stats_t.total_bindings
+ *       collapses this signal.
+ * HOW:  Linear walk over vocab_list × bindings (small constant per binding,
+ *       bounded by GL_MODALITY_COUNT). Cheap; called from probes only.
+ *
+ * @param gl          System handle (NULL → out_counts left zeroed)
+ * @param out_counts  Caller-allocated array of size GL_MODALITY_COUNT (= 6).
+ *                    Zeroed at entry. Writes counts[VISUAL=0..LINGUISTIC=5].
+ */
+void grounded_language_get_modality_counts(
+    const grounded_language_t* gl,
+    uint32_t out_counts[GL_MODALITY_COUNT]);
+
+/**
  * @brief Get the semantic vector dimension this system was created with.
  *
  * WHAT: Exposes the immutable semantic_dim chosen at create() time.

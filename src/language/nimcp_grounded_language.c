@@ -431,6 +431,38 @@ uint32_t grounded_language_get_top_phrases(const grounded_language_t* gl,
     return k;
 }
 
+/* Per-modality binding-coverage probe. See header for contract.
+ *
+ * For every binding in every lexicon entry, increment out_counts[m] for
+ * each modality m whose modality_strength[m] > 0. A binding grounded in
+ * just visual contributes only to out_counts[VISUAL]; one reinforced
+ * across visual+auditory contributes to both. This is the natural
+ * "coverage" probe — it answers "how many bindings carry information in
+ * modality m" rather than collapsing to a single dominant modality. */
+void grounded_language_get_modality_counts(const grounded_language_t* gl,
+                                            uint32_t out_counts[GL_MODALITY_COUNT]) {
+    if (!out_counts) return;
+    for (uint32_t m = 0; m < GL_MODALITY_COUNT; m++) out_counts[m] = 0;
+    if (!gl || !gl->vocab_list || gl->vocab_count == 0) return;
+
+    for (uint32_t v = 0; v < gl->vocab_count; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e || !e->bindings) continue;
+        for (uint32_t bi = 0; bi < e->binding_count; bi++) {
+            const gl_word_binding_t* b = &e->bindings[bi];
+            for (uint32_t m = 0; m < GL_MODALITY_COUNT; m++) {
+                /* Defensive: GL_MODALITY_COUNT is the array length so the
+                 * index is in-range by construction; the loop bound is the
+                 * "modality < GL_MODALITY_COUNT" guard. Count any modality
+                 * that has accrued binding strength > 0 (set on the first
+                 * grounding event for that modality, decayed but never
+                 * pushed below 0 by subsequent updates). */
+                if (b->modality_strength[m] > 0.0f) out_counts[m]++;
+            }
+        }
+    }
+}
+
 /*=============================================================================
  * #12 SNN spike → lexicon decoding
  *===========================================================================*/
