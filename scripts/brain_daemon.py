@@ -1246,6 +1246,19 @@ class BrainService:
             return {"error": f"get_grounded_language_diagnostics: {e}"}
         return {"grounded_language": d}
 
+    def _cmd_get_top_phrases(self, req):
+        try:
+            top_k = int(req.get("top_k", 20))
+        except (TypeError, ValueError):
+            top_k = 20
+        try:
+            phrases = self.brain.get_top_phrases(top_k=top_k)
+        except AttributeError:
+            return {"error": "get_top_phrases not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_top_phrases: {e}"}
+        return {"phrases": phrases}
+
     def _cmd_probe_comprehend(self, req):
         text = req.get("text", "")
         max_components = int(req.get("max_components", 16))

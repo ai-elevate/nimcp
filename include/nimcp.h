@@ -915,6 +915,40 @@ nimcp_status_t nimcp_brain_probe_comprehend(
 );
 
 /**
+ * @brief Public phrase-entry POD copy (decouples API from internal gl_phrase_t,
+ *        which carries heap pointers we don't want to expose).
+ *
+ * `form` is a fixed-size lowercased space-joined string (e.g., "good morning").
+ * `component_words` is 2 (bigram) or 3 (trigram).
+ */
+#define NIMCP_PHRASE_FORM_MAX 128
+typedef struct {
+    char     form[NIMCP_PHRASE_FORM_MAX];
+    uint32_t frequency;
+    uint8_t  component_words;
+} nimcp_phrase_entry_t;
+
+/**
+ * @brief Retrieve the top-K most frequent learned phrases (read-only).
+ *
+ * Thin wrapper over grounded_language_get_top_phrases() that copies entries
+ * into a caller-owned buffer. Returns the number of entries written, which
+ * may be less than max_phrases. Returns -1 if `brain` is NULL/invalid or
+ * grounded_language is not initialised. A successful call with no qualifying
+ * phrases returns 0.
+ *
+ * @param brain         Brain handle
+ * @param out_phrases   Caller-allocated array of size >= max_phrases
+ * @param max_phrases   Capacity of out_phrases
+ * @return Count written (>= 0) or -1 on error.
+ */
+int nimcp_brain_get_top_phrases(
+    nimcp_brain_t brain,
+    nimcp_phrase_entry_t* out_phrases,
+    uint32_t max_phrases
+);
+
+/**
  * @brief Set the SNN-language bridge blend factor at runtime.
  *
  * Fix path for collapse: cap blend at <0.9 so produce() doesn't bypass the

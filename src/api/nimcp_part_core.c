@@ -3271,6 +3271,48 @@ nimcp_status_t nimcp_brain_probe_comprehend(
     return NIMCP_OK;
 }
 
+/* Public top-phrases accessor.
+ *
+ * Returns the count copied (>= 0) or -1 on error. The internal
+ * grounded_language_get_top_phrases() returns const-pointers into a
+ * GL-owned table; we copy form/frequency/component_words into a caller-
+ * owned POD array to avoid lifetime entanglement.
+ */
+int nimcp_brain_get_top_phrases(
+    nimcp_brain_t brain,
+    nimcp_phrase_entry_t* out_phrases,
+    uint32_t max_phrases)
+{
+    if (!out_phrases || max_phrases == 0) return -1;
+    /* Zero output up front so a partial failure leaves a deterministic state. */
+    memset(out_phrases, 0, (size_t)max_phrases * sizeof(*out_phrases));
+
+    brain_t b = NULL;
+    if (_gl_diag_validate(brain, &b) != NIMCP_OK) return -1;
+    if (!b->grounded_lang) return -1;
+
+    /* Bound max_phrases to GL capacity to keep our stack array small. */
+    uint32_t cap = max_phrases;
+    if (cap > GL_MAX_PHRASES) cap = GL_MAX_PHRASES;
+
+    const gl_phrase_t* tmp[GL_MAX_PHRASES] = {0};
+    uint32_t n = grounded_language_get_top_phrases(b->grounded_lang,
+                                                    /* min_freq */ 0,
+                                                    /* min_n    */ 0,
+                                                    tmp, cap);
+    for (uint32_t i = 0; i < n; i++) {
+        if (!tmp[i]) continue;
+        /* form is already null-terminated and bounded by GL_MAX_PHRASE_LEN
+         * (== NIMCP_PHRASE_FORM_MAX); strncpy + force-terminate is paranoid
+         * defence in depth in case GL_MAX_PHRASE_LEN ever shrinks. */
+        strncpy(out_phrases[i].form, tmp[i]->form, NIMCP_PHRASE_FORM_MAX - 1);
+        out_phrases[i].form[NIMCP_PHRASE_FORM_MAX - 1] = '\0';
+        out_phrases[i].frequency       = tmp[i]->frequency;
+        out_phrases[i].component_words = tmp[i]->component_words;
+    }
+    return (int)n;
+}
+
 nimcp_status_t nimcp_brain_set_snn_language_bridge_blend(
     nimcp_brain_t brain,
     float blend)

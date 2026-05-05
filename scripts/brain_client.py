@@ -657,6 +657,16 @@ class BrainProxy:
         resp = self._send({"cmd": "comprehend", "text": text})
         return resp.get("result", {})
 
+    def get_top_phrases(self, top_k: int = 20) -> list:
+        """Return the top-K most-frequent learned phrases as a list of dicts.
+
+        Each dict carries {"form": str, "frequency": int, "component_words": int}.
+        Returns an empty list if grounded_language is not yet initialised on the
+        daemon brain or if the daemon is on an older nimcp.so without the wrapper.
+        """
+        resp = self._send({"cmd": "get_top_phrases", "top_k": int(top_k)})
+        return resp.get("phrases", [])
+
     def generate(self, prompt=None, semantic_input=None):
         req = {"cmd": "generate"}
         if prompt is not None:

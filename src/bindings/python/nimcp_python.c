@@ -2704,6 +2704,69 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     return dict;
 }
 
+/*
+ * Brain_get_top_phrases — return the most-frequent learned phrases as a
+ * list of dicts. Optional kwarg `top_k` (default 20). When grounded
+ * language is not initialised, returns an empty list rather than raising
+ * so callers can poll without ceremony.
+ */
+static PyObject* Brain_get_top_phrases(BrainObject* self,
+                                        PyObject* args,
+                                        PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    static char* kwlist[] = {(char*)"top_k", NULL};
+    int top_k = 20;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|i", kwlist, &top_k)) {
+        return NULL;
+    }
+    if (top_k <= 0) top_k = 20;
+    if (top_k > 512) top_k = 512;  /* matches GL_MAX_PHRASES cap in core */
+
+    nimcp_phrase_entry_t* buf =
+        (nimcp_phrase_entry_t*)calloc((size_t)top_k, sizeof(nimcp_phrase_entry_t));
+    if (!buf) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    int n = nimcp_brain_get_top_phrases(self->brain, buf, (uint32_t)top_k);
+    if (n < 0) {
+        /* GL not present or invalid handle — return empty list. */
+        free(buf);
+        return PyList_New(0);
+    }
+    PyObject* list = PyList_New((Py_ssize_t)n);
+    if (!list) {
+        free(buf);
+        return NULL;
+    }
+    for (int i = 0; i < n; i++) {
+        PyObject* d = PyDict_New();
+        if (!d) {
+            Py_DECREF(list);
+            free(buf);
+            return NULL;
+        }
+        PyObject* form = PyUnicode_FromString(buf[i].form);
+        PyObject* freq = PyLong_FromUnsignedLong((unsigned long)buf[i].frequency);
+        PyObject* comp = PyLong_FromUnsignedLong((unsigned long)buf[i].component_words);
+        if (!form || !freq || !comp ||
+            PyDict_SetItemString(d, "form", form) < 0 ||
+            PyDict_SetItemString(d, "frequency", freq) < 0 ||
+            PyDict_SetItemString(d, "component_words", comp) < 0) {
+            Py_XDECREF(form); Py_XDECREF(freq); Py_XDECREF(comp);
+            Py_DECREF(d); Py_DECREF(list); free(buf);
+            return NULL;
+        }
+        Py_DECREF(form); Py_DECREF(freq); Py_DECREF(comp);
+        PyList_SET_ITEM(list, (Py_ssize_t)i, d);
+    }
+    free(buf);
+    return list;
+}
+
 static PyObject* Brain_probe_comprehend(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -10707,6 +10770,8 @@ static PyMethodDef Brain_methods[] = {
     // Grounded-language diagnostics (collapse triage)
     {"get_grounded_language_diagnostics", (PyCFunction)Brain_get_grounded_language_diagnostics, METH_NOARGS,
      "Get grounded-language diagnostic snapshot: get_grounded_language_diagnostics() -> dict"},
+    {"get_top_phrases", (PyCFunction)Brain_get_top_phrases, METH_VARARGS | METH_KEYWORDS,
+     "Get top-K most-frequent learned phrases: get_top_phrases(top_k=20) -> list[dict {form, frequency, component_words}]"},
     {"probe_comprehend", (PyCFunction)Brain_probe_comprehend, METH_VARARGS,
      "Read-only comprehension probe: probe_comprehend(text, max_components=16) -> dict (l2_norm, confidence, concept_count, components)"},
     {"set_snn_language_bridge_blend", (PyCFunction)Brain_set_snn_language_bridge_blend, METH_VARARGS,

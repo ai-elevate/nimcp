@@ -77,6 +77,28 @@ gtest_discover_tests(unit_grounded_language_diagnostics
 )
 
 # ============================================================================
+# Top-Phrases Public API Tests (curriculum-integration RPC chain)
+# ============================================================================
+add_executable(unit_top_phrases_public_api
+    test_top_phrases_public_api.cpp
+)
+target_link_libraries(unit_top_phrases_public_api
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_top_phrases_public_api
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_top_phrases_public_api PRIVATE cxx_std_17)
+gtest_discover_tests(unit_top_phrases_public_api
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;top_phrases"
+        TIMEOUT 60
+)
+
+# ============================================================================
 # Grounded Language Persistence Sidecar Tests (Option A)
 # ============================================================================
 add_executable(unit_grounded_language_persistence
