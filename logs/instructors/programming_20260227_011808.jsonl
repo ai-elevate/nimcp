@@ -1,1 +1,0 @@
-{"action": "LEARN", "method": "adversarial", "correct": false, "loss": 0.0, "confidence_mod": 0.637, "ethics_label": "neutral", "dataset": "github_code_2025", "features_dim": 1024, "ts": 1772151504.5555332, "domain": "programming"}

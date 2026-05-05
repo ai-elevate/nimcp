@@ -5427,6 +5427,25 @@ int brain_enable_multi_network_training(brain_t brain)
                           "(brain has %u inputs, %u outputs)", num_inputs, num_outputs);
     }
 
+    /* STEP 2.6: Idempotent post-load language-substrate guarantee.
+     *
+     * The init_language_pops() call inside STEP 2.5 only fires when the SNN
+     * is being CREATED in this call (cold-init / fresh brain). On --resume,
+     * brain->snn_network is already populated from the checkpoint and the
+     * entire STEP 2.5 block is skipped, so the language pops never get
+     * registered. Result: Broca/Wernicke/Arcuate/Sensorymotor adapters init
+     * but their substrate pops never exist (pop_id < 0, unbound forever).
+     *
+     * This second call is unconditional. add_one_pop() is idempotent — it
+     * returns success without doing work if the pop name already exists, so
+     * cold-init paths cost only 4 string lookups on the second call. On
+     * --resume paths, this is the call that actually creates Broca 64K +
+     * Wernicke 64K + Arcuate 32K + Sensorymotor 40K = 200K language pops.
+     */
+    if (brain->snn_network) {
+        (void)nimcp_brain_factory_init_language_pops(brain);
+    }
+
     // ========================================================================
     // STEP 3: Create CNN trainer with dense layers (via shared helper)
     // ========================================================================

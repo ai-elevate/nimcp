@@ -6272,25 +6272,52 @@ def _ingest_code_corpus(brain, stage, *, corpus_root="data/code_corpus",
 # `run_X_drip(brain, stage, *, composer=None, ...)` function. We dispatch
 # them all through one helper so the cadence + error handling stays
 # uniform across the curriculum.
+# Each entry: (module_name, function_name, min_stage).
+# min_stage gates abstract / metacognitive drips so they don't fire during
+# Stage 1 — at parentese-comprehension developmental level, drilling abstract
+# Q&A / theory-of-mind / counterfactual templates collapses production into
+# a "verb + abstract-noun" template space (eval 2026-05-05). Concrete /
+# sensory / narrative drips stay at min_stage=1. Abstract drips activate at
+# min_stage=2 once the brain has more grounded vocabulary to work with.
 _PROBE_DRIPS = (
-    ("storytelling",   "run_storytelling_drip"),     # CE-1
-    ("socratic_qa",    "run_socratic_drip"),          # CE-2
-    ("sibling_dialog", "run_sibling_drip"),           # CE-3
-    ("music_rhythm",   "run_music_drip"),             # CE-6
-    ("visual_art",     "run_visual_drip"),            # CE-7
-    ("tom_probes",     "run_tom_drip"),               # CE-8
-    ("counterfactual", "run_counterfactual_drip"),    # CE-9
-    ("failure_replay", "run_replay_drip"),            # CE-10
-    ("claude_teacher", "run_claude_teacher_drip"),    # CE-19 (no-op when API unavailable)
+    ("storytelling",   "run_storytelling_drip",     1),  # CE-1  concrete narrative
+    ("socratic_qa",    "run_socratic_drip",         2),  # CE-2  abstract Q&A
+    ("sibling_dialog", "run_sibling_drip",          2),  # CE-3  abstract paired Q&A
+    ("music_rhythm",   "run_music_drip",            1),  # CE-6  sensory
+    ("visual_art",     "run_visual_drip",           1),  # CE-7  sensory
+    ("tom_probes",     "run_tom_drip",              2),  # CE-8  theory-of-mind
+    ("counterfactual", "run_counterfactual_drip",   2),  # CE-9  counterfactual reasoning
+    ("failure_replay", "run_replay_drip",           1),  # CE-10 meta on produced text
+    ("claude_teacher", "run_claude_teacher_drip",   2),  # CE-19 abstract pedagogy
 )
+
+
+# Per-corpus developmental min-stage. Eval 2026-05-05 showed that priming
+# all formal/symbolic corpora into Stage-1 (parentese-comprehension) brain
+# collapses production into "[abstract verb] + [abstract noun]" templates.
+# Stage 1 is the parentese / sensory-grounding period — it should see only
+# concrete narrative + sensory descriptors, not formal physics/chemistry/
+# biology/finance/code. Stage 2 admits descriptive science. Stage 3 admits
+# formal symbolic / financial / code text.
+_CORPUS_MIN_STAGE = {
+    "physics":   2,
+    "chemistry": 2,
+    "biology":   2,
+    "finance":   3,
+    "code":      3,
+}
 
 
 def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
     """Stage-entry priming for CE-5/11/12/13/14. Each fires once per stage
     with no per-call cap (full priming pass, like canonical/math). Each
     cfg's `enabled` flag gates the call individually; missing data dirs
-    surface as a warning inside the canonical-loader path."""
-    if _PHYSICS_CFG and _PHYSICS_CFG.get("enabled"):
+    surface as a warning inside the canonical-loader path. Per-corpus
+    developmental min_stage gates apply on top of `enabled` (see
+    _CORPUS_MIN_STAGE)."""
+    s = int(stage)
+    if (_PHYSICS_CFG and _PHYSICS_CFG.get("enabled")
+            and s >= _CORPUS_MIN_STAGE["physics"]):
         try:
             _ingest_physics_corpus(
                 brain, stage=stage,
@@ -6300,7 +6327,8 @@ def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
                 checkpoint_dir=checkpoint_dir)
         except Exception as _e:
             print(f"  [Physics] stage-{stage} priming failed: {_e}")
-    if _CHEMISTRY_CFG and _CHEMISTRY_CFG.get("enabled"):
+    if (_CHEMISTRY_CFG and _CHEMISTRY_CFG.get("enabled")
+            and s >= _CORPUS_MIN_STAGE["chemistry"]):
         try:
             _ingest_chemistry_corpus(
                 brain, stage=stage,
@@ -6310,7 +6338,8 @@ def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
                 checkpoint_dir=checkpoint_dir)
         except Exception as _e:
             print(f"  [Chemistry] stage-{stage} priming failed: {_e}")
-    if _BIOLOGY_CFG and _BIOLOGY_CFG.get("enabled"):
+    if (_BIOLOGY_CFG and _BIOLOGY_CFG.get("enabled")
+            and s >= _CORPUS_MIN_STAGE["biology"]):
         try:
             _ingest_biology_corpus(
                 brain, stage=stage,
@@ -6320,7 +6349,8 @@ def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
                 checkpoint_dir=checkpoint_dir)
         except Exception as _e:
             print(f"  [Biology] stage-{stage} priming failed: {_e}")
-    if _FINANCE_CFG and _FINANCE_CFG.get("enabled"):
+    if (_FINANCE_CFG and _FINANCE_CFG.get("enabled")
+            and s >= _CORPUS_MIN_STAGE["finance"]):
         try:
             _ingest_finance_corpus(
                 brain, stage=stage,
@@ -6330,7 +6360,8 @@ def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
                 checkpoint_dir=checkpoint_dir)
         except Exception as _e:
             print(f"  [Finance] stage-{stage} priming failed: {_e}")
-    if _CODE_CFG and _CODE_CFG.get("enabled"):
+    if (_CODE_CFG and _CODE_CFG.get("enabled")
+            and s >= _CORPUS_MIN_STAGE["code"]):
         try:
             _ingest_code_corpus(
                 brain, stage=stage,
@@ -6344,11 +6375,22 @@ def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
 
 def _run_probe_drips(brain, stage, *, composer=None,
                      skip_kinds=()):
-    """Fire each registered probe drip once. Each drip is responsible
-    for its own stage-1 no-op behavior. We isolate failures per-module so
-    one broken probe can't kill the whole stage."""
-    for mod_name, fn_name in _PROBE_DRIPS:
+    """Fire each registered probe drip once. Each drip carries its own
+    min_stage threshold (third tuple element) so abstract / metacognitive
+    drips don't fire during Stage 1 — empirically (eval 2026-05-05) that
+    collapses production into a "verb + abstract-noun" template space.
+    We isolate failures per-module so one broken probe can't kill the
+    whole stage."""
+    for entry in _PROBE_DRIPS:
+        # Backward-compat: tolerate 2-tuple entries (default min_stage=1).
+        if len(entry) == 3:
+            mod_name, fn_name, min_stage = entry
+        else:
+            mod_name, fn_name = entry
+            min_stage = 1
         if mod_name in skip_kinds:
+            continue
+        if int(stage) < int(min_stage):
             continue
         try:
             mod = __import__(mod_name)
@@ -6899,8 +6941,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                 except Exception as _e:
                     print(f"  [Canonical] drip failed: {_e}")
 
-            # Math-corpus drip — same pacing.
-            if batch_end % 200 == 0 and _MATH_CFG and _MATH_CFG.get("enabled"):
+            # Math-corpus drip — DISABLED in Stage 1 (eval 2026-05-05: formal
+            # symbolic math is developmentally inappropriate at parentese-
+            # comprehension level and feeds the abstract-template collapse).
+            # Math priming/drip activates from Stage 2 onward.
+            if False and batch_end % 200 == 0 and _MATH_CFG and _MATH_CFG.get("enabled"):
                 try:
                     _ingest_math_corpus(
                         brain, stage=1,
@@ -10523,13 +10568,8 @@ def main():
                 chunk_chars=args.canonical_chunk_chars,
                 max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
-        if getattr(args, "math_corpus", True):
-            _ingest_math_corpus(
-                brain, stage=1,
-                corpus_root=args.math_corpus_root,
-                chunk_chars=args.math_chunk_chars,
-                max_chunks_per_call=(args.math_max_chunks_per_stage or None),
-                checkpoint_dir=CHECKPOINT_DIR)
+        # Math corpus is abstract symbolic content — gated to stage >= 2.
+        # Stage 1 is "Look! That's a ___!" sensory grounding.
         if _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
             for _kind in _STREAMING_CFG.get("kinds", []):
                 _ingest_streaming_corpus(

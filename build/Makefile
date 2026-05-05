@@ -7764,6 +7764,19 @@ e2e_test_snn_runaway_suppression/fast:
 .PHONY : e2e_test_snn_runaway_suppression/fast
 
 #=============================================================================
+# Target rules for targets named e2e_test_snn_cb_gpu
+
+# Build rule for target.
+e2e_test_snn_cb_gpu: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_test_snn_cb_gpu
+.PHONY : e2e_test_snn_cb_gpu
+
+# fast build rule for target.
+e2e_test_snn_cb_gpu/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/CMakeFiles/e2e_test_snn_cb_gpu.dir/build.make test/e2e/CMakeFiles/e2e_test_snn_cb_gpu.dir/build
+.PHONY : e2e_test_snn_cb_gpu/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_reasoning_abduction
 
 # Build rule for target.
@@ -12754,6 +12767,19 @@ e2e_snn_language_bridge: cmake_check_build_system
 e2e_snn_language_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/language/CMakeFiles/e2e_snn_language_bridge.dir/build.make test/e2e/language/CMakeFiles/e2e_snn_language_bridge.dir/build
 .PHONY : e2e_snn_language_bridge/fast
+
+#=============================================================================
+# Target rules for targets named e2e_grounded_language_collapse_fix
+
+# Build rule for target.
+e2e_grounded_language_collapse_fix: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_grounded_language_collapse_fix
+.PHONY : e2e_grounded_language_collapse_fix
+
+# fast build rule for target.
+e2e_grounded_language_collapse_fix/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/language/CMakeFiles/e2e_grounded_language_collapse_fix.dir/build.make test/e2e/language/CMakeFiles/e2e_grounded_language_collapse_fix.dir/build
+.PHONY : e2e_grounded_language_collapse_fix/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -24456,6 +24482,19 @@ unit_core_brain_hemispheric_memory_opt_test/fast:
 .PHONY : unit_core_brain_hemispheric_memory_opt_test/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_hemispheric_language_test
+
+# Build rule for target.
+unit_core_brain_hemispheric_language_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_hemispheric_language_test
+.PHONY : unit_core_brain_hemispheric_language_test
+
+# fast build rule for target.
+unit_core_brain_hemispheric_language_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/core/brain/hemispheric/CMakeFiles/unit_core_brain_hemispheric_language_test.dir/build.make test/unit/core/brain/hemispheric/CMakeFiles/unit_core_brain_hemispheric_language_test.dir/build
+.PHONY : unit_core_brain_hemispheric_language_test/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_subcortical_basal_ganglia_test
 
 # Build rule for target.
@@ -33309,6 +33348,253 @@ unit_grounded_language/fast:
 .PHONY : unit_grounded_language/fast
 
 #=============================================================================
+# Target rules for targets named unit_grounded_language_diagnostics
+
+# Build rule for target.
+unit_grounded_language_diagnostics: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_diagnostics
+.PHONY : unit_grounded_language_diagnostics
+
+# fast build rule for target.
+unit_grounded_language_diagnostics/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_diagnostics.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_diagnostics.dir/build
+.PHONY : unit_grounded_language_diagnostics/fast
+
+#=============================================================================
+# Target rules for targets named unit_top_phrases_public_api
+
+# Build rule for target.
+unit_top_phrases_public_api: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_top_phrases_public_api
+.PHONY : unit_top_phrases_public_api
+
+# fast build rule for target.
+unit_top_phrases_public_api/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_top_phrases_public_api.dir/build.make test/unit/language/CMakeFiles/unit_top_phrases_public_api.dir/build
+.PHONY : unit_top_phrases_public_api/fast
+
+#=============================================================================
+# Target rules for targets named unit_modality_counts
+
+# Build rule for target.
+unit_modality_counts: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_modality_counts
+.PHONY : unit_modality_counts
+
+# fast build rule for target.
+unit_modality_counts/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_modality_counts.dir/build.make test/unit/language/CMakeFiles/unit_modality_counts.dir/build
+.PHONY : unit_modality_counts/fast
+
+#=============================================================================
+# Target rules for targets named unit_ground_word_with_emotion
+
+# Build rule for target.
+unit_ground_word_with_emotion: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_ground_word_with_emotion
+.PHONY : unit_ground_word_with_emotion
+
+# fast build rule for target.
+unit_ground_word_with_emotion/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_ground_word_with_emotion.dir/build.make test/unit/language/CMakeFiles/unit_ground_word_with_emotion.dir/build
+.PHONY : unit_ground_word_with_emotion/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_persistence
+
+# Build rule for target.
+unit_grounded_language_persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_persistence
+.PHONY : unit_grounded_language_persistence
+
+# fast build rule for target.
+unit_grounded_language_persistence/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_persistence.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_persistence.dir/build
+.PHONY : unit_grounded_language_persistence/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_memory_bridge
+
+# Build rule for target.
+unit_grounded_language_memory_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_memory_bridge
+.PHONY : unit_grounded_language_memory_bridge
+
+# fast build rule for target.
+unit_grounded_language_memory_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_memory_bridge.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_memory_bridge.dir/build
+.PHONY : unit_grounded_language_memory_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_region_bridge
+
+# Build rule for target.
+unit_grounded_language_region_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_region_bridge
+.PHONY : unit_grounded_language_region_bridge
+
+# fast build rule for target.
+unit_grounded_language_region_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_region_bridge.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_region_bridge.dir/build
+.PHONY : unit_grounded_language_region_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_sleep
+
+# Build rule for target.
+unit_grounded_language_sleep: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_sleep
+.PHONY : unit_grounded_language_sleep
+
+# fast build rule for target.
+unit_grounded_language_sleep/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_sleep.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_sleep.dir/build
+.PHONY : unit_grounded_language_sleep/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_nlp
+
+# Build rule for target.
+unit_grounded_language_nlp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_nlp
+.PHONY : unit_grounded_language_nlp
+
+# fast build rule for target.
+unit_grounded_language_nlp/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_nlp.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_nlp.dir/build
+.PHONY : unit_grounded_language_nlp/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_chunker
+
+# Build rule for target.
+unit_grounded_language_chunker: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_chunker
+.PHONY : unit_grounded_language_chunker
+
+# fast build rule for target.
+unit_grounded_language_chunker/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_chunker.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_chunker.dir/build
+.PHONY : unit_grounded_language_chunker/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_cognitive_bridge
+
+# Build rule for target.
+unit_grounded_language_cognitive_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_cognitive_bridge
+.PHONY : unit_grounded_language_cognitive_bridge
+
+# fast build rule for target.
+unit_grounded_language_cognitive_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_cognitive_bridge.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_cognitive_bridge.dir/build
+.PHONY : unit_grounded_language_cognitive_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_enhancements
+
+# Build rule for target.
+unit_grounded_language_enhancements: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_enhancements
+.PHONY : unit_grounded_language_enhancements
+
+# fast build rule for target.
+unit_grounded_language_enhancements/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_enhancements.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_enhancements.dir/build
+.PHONY : unit_grounded_language_enhancements/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_network_bridge
+
+# Build rule for target.
+unit_grounded_language_network_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_network_bridge
+.PHONY : unit_grounded_language_network_bridge
+
+# fast build rule for target.
+unit_grounded_language_network_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_network_bridge.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_network_bridge.dir/build
+.PHONY : unit_grounded_language_network_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_deferred_wave1
+
+# Build rule for target.
+unit_grounded_language_deferred_wave1: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_deferred_wave1
+.PHONY : unit_grounded_language_deferred_wave1
+
+# fast build rule for target.
+unit_grounded_language_deferred_wave1/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave1.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave1.dir/build
+.PHONY : unit_grounded_language_deferred_wave1/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_deferred_wave2
+
+# Build rule for target.
+unit_grounded_language_deferred_wave2: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_deferred_wave2
+.PHONY : unit_grounded_language_deferred_wave2
+
+# fast build rule for target.
+unit_grounded_language_deferred_wave2/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave2.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave2.dir/build
+.PHONY : unit_grounded_language_deferred_wave2/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_deferred_wave4
+
+# Build rule for target.
+unit_grounded_language_deferred_wave4: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_deferred_wave4
+.PHONY : unit_grounded_language_deferred_wave4
+
+# fast build rule for target.
+unit_grounded_language_deferred_wave4/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave4.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave4.dir/build
+.PHONY : unit_grounded_language_deferred_wave4/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_deferred_wave5
+
+# Build rule for target.
+unit_grounded_language_deferred_wave5: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_deferred_wave5
+.PHONY : unit_grounded_language_deferred_wave5
+
+# fast build rule for target.
+unit_grounded_language_deferred_wave5/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave5.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave5.dir/build
+.PHONY : unit_grounded_language_deferred_wave5/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_deferred_wave678
+
+# Build rule for target.
+unit_grounded_language_deferred_wave678: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_deferred_wave678
+.PHONY : unit_grounded_language_deferred_wave678
+
+# fast build rule for target.
+unit_grounded_language_deferred_wave678/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave678.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave678.dir/build
+.PHONY : unit_grounded_language_deferred_wave678/fast
+
+#=============================================================================
+# Target rules for targets named unit_grounded_language_cortex_modulation
+
+# Build rule for target.
+unit_grounded_language_cortex_modulation: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_grounded_language_cortex_modulation
+.PHONY : unit_grounded_language_cortex_modulation
+
+# fast build rule for target.
+unit_grounded_language_cortex_modulation/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/language/CMakeFiles/unit_grounded_language_cortex_modulation.dir/build.make test/unit/language/CMakeFiles/unit_grounded_language_cortex_modulation.dir/build
+.PHONY : unit_grounded_language_cortex_modulation/fast
+
+#=============================================================================
 # Target rules for targets named integration_language
 
 # Build rule for target.
@@ -33335,6 +33621,32 @@ integration_grounded_language_brain/fast:
 .PHONY : integration_grounded_language_brain/fast
 
 #=============================================================================
+# Target rules for targets named integration_grounded_language_collapse_fix
+
+# Build rule for target.
+integration_grounded_language_collapse_fix: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_grounded_language_collapse_fix
+.PHONY : integration_grounded_language_collapse_fix
+
+# fast build rule for target.
+integration_grounded_language_collapse_fix/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/language/CMakeFiles/integration_grounded_language_collapse_fix.dir/build.make test/integration/language/CMakeFiles/integration_grounded_language_collapse_fix.dir/build
+.PHONY : integration_grounded_language_collapse_fix/fast
+
+#=============================================================================
+# Target rules for targets named integration_bootstrap_lexicon
+
+# Build rule for target.
+integration_bootstrap_lexicon: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_bootstrap_lexicon
+.PHONY : integration_bootstrap_lexicon
+
+# fast build rule for target.
+integration_bootstrap_lexicon/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/language/CMakeFiles/integration_bootstrap_lexicon.dir/build.make test/integration/language/CMakeFiles/integration_bootstrap_lexicon.dir/build
+.PHONY : integration_bootstrap_lexicon/fast
+
+#=============================================================================
 # Target rules for targets named regression_grounded_language
 
 # Build rule for target.
@@ -33346,6 +33658,32 @@ regression_grounded_language: cmake_check_build_system
 regression_grounded_language/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/language/CMakeFiles/regression_grounded_language.dir/build.make test/regression/language/CMakeFiles/regression_grounded_language.dir/build
 .PHONY : regression_grounded_language/fast
+
+#=============================================================================
+# Target rules for targets named regression_grounded_language_collapse_fix
+
+# Build rule for target.
+regression_grounded_language_collapse_fix: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_grounded_language_collapse_fix
+.PHONY : regression_grounded_language_collapse_fix
+
+# fast build rule for target.
+regression_grounded_language_collapse_fix/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/language/CMakeFiles/regression_grounded_language_collapse_fix.dir/build.make test/regression/language/CMakeFiles/regression_grounded_language_collapse_fix.dir/build
+.PHONY : regression_grounded_language_collapse_fix/fast
+
+#=============================================================================
+# Target rules for targets named regression_language_cortex_training
+
+# Build rule for target.
+regression_language_cortex_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_language_cortex_training
+.PHONY : regression_language_cortex_training
+
+# fast build rule for target.
+regression_language_cortex_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/language/CMakeFiles/regression_language_cortex_training.dir/build.make test/regression/language/CMakeFiles/regression_language_cortex_training.dir/build
+.PHONY : regression_language_cortex_training/fast
 
 #=============================================================================
 # Target rules for targets named unit_active_neuron_tracking
@@ -40576,6 +40914,19 @@ unit_snn_test_snn_gpu_per_neuron_lif_unit/fast:
 .PHONY : unit_snn_test_snn_gpu_per_neuron_lif_unit/fast
 
 #=============================================================================
+# Target rules for targets named unit_snn_test_snn_cb_gpu_unit
+
+# Build rule for target.
+unit_snn_test_snn_cb_gpu_unit: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_test_snn_cb_gpu_unit
+.PHONY : unit_snn_test_snn_cb_gpu_unit
+
+# fast build rule for target.
+unit_snn_test_snn_cb_gpu_unit/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/CMakeFiles/unit_snn_test_snn_cb_gpu_unit.dir/build.make test/unit/snn/CMakeFiles/unit_snn_test_snn_cb_gpu_unit.dir/build
+.PHONY : unit_snn_test_snn_cb_gpu_unit/fast
+
+#=============================================================================
 # Target rules for targets named unit_snn_test_snn_dendritic_unit
 
 # Build rule for target.
@@ -41252,6 +41603,19 @@ integration_snn_test_snn_conductance_integration/fast:
 .PHONY : integration_snn_test_snn_conductance_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_test_snn_cb_gpu_integration
+
+# Build rule for target.
+integration_snn_test_snn_cb_gpu_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_test_snn_cb_gpu_integration
+.PHONY : integration_snn_test_snn_cb_gpu_integration
+
+# fast build rule for target.
+integration_snn_test_snn_cb_gpu_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/CMakeFiles/integration_snn_test_snn_cb_gpu_integration.dir/build.make test/integration/snn/CMakeFiles/integration_snn_test_snn_cb_gpu_integration.dir/build
+.PHONY : integration_snn_test_snn_cb_gpu_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_snn_test_snn_dendritic_integration
 
 # Build rule for target.
@@ -41367,6 +41731,32 @@ regression_snn_test_snn_conductance_regression: cmake_check_build_system
 regression_snn_test_snn_conductance_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir/build
 .PHONY : regression_snn_test_snn_conductance_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_cb_gpu_regression
+
+# Build rule for target.
+regression_snn_test_snn_cb_gpu_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_cb_gpu_regression
+.PHONY : regression_snn_test_snn_cb_gpu_regression
+
+# fast build rule for target.
+regression_snn_test_snn_cb_gpu_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_cb_gpu_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_cb_gpu_regression.dir/build
+.PHONY : regression_snn_test_snn_cb_gpu_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_test_snn_cb_loop_baseline
+
+# Build rule for target.
+regression_snn_test_snn_cb_loop_baseline: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_test_snn_cb_loop_baseline
+.PHONY : regression_snn_test_snn_cb_loop_baseline
+
+# fast build rule for target.
+regression_snn_test_snn_cb_loop_baseline/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_snn_cb_loop_baseline.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_snn_cb_loop_baseline.dir/build
+.PHONY : regression_snn_test_snn_cb_loop_baseline/fast
 
 #=============================================================================
 # Target rules for targets named regression_snn_test_per_receptor_regression
@@ -44216,6 +44606,19 @@ test_lgss_adversarial/fast:
 .PHONY : test_lgss_adversarial/fast
 
 #=============================================================================
+# Target rules for targets named test_bbb_pentest
+
+# Build rule for target.
+test_bbb_pentest: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_bbb_pentest
+.PHONY : test_bbb_pentest
+
+# fast build rule for target.
+test_bbb_pentest/fast:
+	$(MAKE) $(MAKESILENT) -f test/adversarial/bbb/CMakeFiles/test_bbb_pentest.dir/build.make test/adversarial/bbb/CMakeFiles/test_bbb_pentest.dir/build
+.PHONY : test_bbb_pentest/fast
+
+#=============================================================================
 # Target rules for targets named unit_python_test_python_memory_safety
 
 # Build rule for target.
@@ -45667,6 +46070,7 @@ help:
 	@echo "... e2e_gpu_test_e2e_swarm_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_visual_processing_gpu"
 	@echo "... e2e_grounded_language"
+	@echo "... e2e_grounded_language_collapse_fix"
 	@echo "... e2e_hotpath"
 	@echo "... e2e_memory_test_memory_store"
 	@echo "... e2e_mesh_security"
@@ -45875,6 +46279,7 @@ help:
 	@echo "... e2e_test_sleep_wake_cycle"
 	@echo "... e2e_test_snn_backprop"
 	@echo "... e2e_test_snn_bridge_pipeline"
+	@echo "... e2e_test_snn_cb_gpu"
 	@echo "... e2e_test_snn_dendritic"
 	@echo "... e2e_test_snn_layer_subtypes"
 	@echo "... e2e_test_snn_per_receptor"
@@ -45949,6 +46354,7 @@ help:
 	@echo "... integration_bio_async_cross_bridge"
 	@echo "... integration_biological"
 	@echo "... integration_biology_neurovascular_test_neurovascular_integration"
+	@echo "... integration_bootstrap_lexicon"
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
 	@echo "... integration_brain_cycle_coordinator_test"
@@ -46237,6 +46643,7 @@ help:
 	@echo "... integration_gpu_test_substrate_gpu_integration"
 	@echo "... integration_gpu_test_visual_processing_gpu"
 	@echo "... integration_grounded_language_brain"
+	@echo "... integration_grounded_language_collapse_fix"
 	@echo "... integration_heartbeat_B01_memory_core"
 	@echo "... integration_heartbeat_B02_memory"
 	@echo "... integration_heartbeat_B03_immune"
@@ -46460,6 +46867,7 @@ help:
 	@echo "... integration_snn_test_integration"
 	@echo "... integration_snn_test_lang_attach_integration"
 	@echo "... integration_snn_test_snn_biophysical_integration"
+	@echo "... integration_snn_test_snn_cb_gpu_integration"
 	@echo "... integration_snn_test_snn_conductance_integration"
 	@echo "... integration_snn_test_snn_dendritic_integration"
 	@echo "... integration_snn_test_snn_substrate_integration"
@@ -46822,6 +47230,7 @@ help:
 	@echo "... regression_gpu_test_substrate_gpu_regression"
 	@echo "... regression_gpu_test_visual_processing_regression"
 	@echo "... regression_grounded_language"
+	@echo "... regression_grounded_language_collapse_fix"
 	@echo "... regression_hamiltonian_fno_unit_test"
 	@echo "... regression_health_stability"
 	@echo "... regression_heartbeat_B01_memory_core"
@@ -46869,6 +47278,7 @@ help:
 	@echo "... regression_jepa_fep_bridge"
 	@echo "... regression_jepa_qmc"
 	@echo "... regression_kb_persistence_test"
+	@echo "... regression_language_cortex_training"
 	@echo "... regression_language_pathway"
 	@echo "... regression_lateralization_regression"
 	@echo "... regression_lc_math_regression"
@@ -47050,6 +47460,8 @@ help:
 	@echo "... regression_snn_test_per_receptor_regression"
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_snn_test_snn_biophysical_regression"
+	@echo "... regression_snn_test_snn_cb_gpu_regression"
+	@echo "... regression_snn_test_snn_cb_loop_baseline"
 	@echo "... regression_snn_test_snn_conductance_regression"
 	@echo "... regression_snn_test_snn_conduction_delay_regression"
 	@echo "... regression_snn_test_snn_dale_regression"
@@ -47173,6 +47585,7 @@ help:
 	@echo "... test_backward_chaining"
 	@echo "... test_basal_ganglia_pipeline_e2e"
 	@echo "... test_basal_ganglia_thalamus_e2e"
+	@echo "... test_bbb_pentest"
 	@echo "... test_biochemistry"
 	@echo "... test_biology_sim"
 	@echo "... test_brain_quantum_reasoning"
@@ -47910,6 +48323,7 @@ help:
 	@echo "... unit_core_brain_hemispheric_glial_test"
 	@echo "... unit_core_brain_hemispheric_immune_test"
 	@echo "... unit_core_brain_hemispheric_injury_test"
+	@echo "... unit_core_brain_hemispheric_language_test"
 	@echo "... unit_core_brain_hemispheric_memory_opt_test"
 	@echo "... unit_core_brain_hemispheric_sleep_test"
 	@echo "... unit_core_brain_hemispheric_test"
@@ -48275,7 +48689,24 @@ help:
 	@echo "... unit_gpu_test_training_kernels"
 	@echo "... unit_gpu_training_test_gradient_kernels"
 	@echo "... unit_gpu_training_test_optimizer_kernels"
+	@echo "... unit_ground_word_with_emotion"
 	@echo "... unit_grounded_language"
+	@echo "... unit_grounded_language_chunker"
+	@echo "... unit_grounded_language_cognitive_bridge"
+	@echo "... unit_grounded_language_cortex_modulation"
+	@echo "... unit_grounded_language_deferred_wave1"
+	@echo "... unit_grounded_language_deferred_wave2"
+	@echo "... unit_grounded_language_deferred_wave4"
+	@echo "... unit_grounded_language_deferred_wave5"
+	@echo "... unit_grounded_language_deferred_wave678"
+	@echo "... unit_grounded_language_diagnostics"
+	@echo "... unit_grounded_language_enhancements"
+	@echo "... unit_grounded_language_memory_bridge"
+	@echo "... unit_grounded_language_network_bridge"
+	@echo "... unit_grounded_language_nlp"
+	@echo "... unit_grounded_language_persistence"
+	@echo "... unit_grounded_language_region_bridge"
+	@echo "... unit_grounded_language_sleep"
 	@echo "... unit_habenula_test_adapter"
 	@echo "... unit_habenula_test_core"
 	@echo "... unit_health_agent_heartbeat"
@@ -48488,6 +48919,7 @@ help:
 	@echo "... unit_middleware_training_test_training_logic_bridge"
 	@echo "... unit_middleware_training_test_training_module"
 	@echo "... unit_middleware_training_test_weight_update_router"
+	@echo "... unit_modality_counts"
 	@echo "... unit_networking_distributed_test_distributed_cognition_refactored"
 	@echo "... unit_networking_events_test_events"
 	@echo "... unit_networking_events_test_spike_event_real"
@@ -48753,6 +49185,7 @@ help:
 	@echo "... unit_snn_test_snn_anti_reward"
 	@echo "... unit_snn_test_snn_basket"
 	@echo "... unit_snn_test_snn_bio_async"
+	@echo "... unit_snn_test_snn_cb_gpu_unit"
 	@echo "... unit_snn_test_snn_conduction_delay_unit"
 	@echo "... unit_snn_test_snn_config"
 	@echo "... unit_snn_test_snn_dale_unit"
@@ -48796,6 +49229,7 @@ help:
 	@echo "... unit_test_wave5_physics_stage"
 	@echo "... unit_test_wave6_chemistry_init"
 	@echo "... unit_test_wave8a_cochlea_init"
+	@echo "... unit_top_phrases_public_api"
 	@echo "... unit_training_exception_handling"
 	@echo "... unit_training_state_manager"
 	@echo "... unit_training_test_adv_gs"

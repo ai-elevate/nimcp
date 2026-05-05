@@ -1,1 +1,0 @@
-{"health_check": true, "phase": "Phase 0", "healthy": false, "errors": ["predict crashed: No error"], "acc_wine": 0.0, "acc_breast_cancer": 0.0, "overall_accuracy": 0.0, "neuron_count": 1501280, "timestamp": 1772151981.0625944, "elapsed_s": 330.33696246147156}

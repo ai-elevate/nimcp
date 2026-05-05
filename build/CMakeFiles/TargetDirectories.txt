@@ -694,6 +694,7 @@
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_metacognition.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_calibration.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_snn_runaway_suppression.dir
+/home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_snn_cb_gpu.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_abduction.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_kb_persistence.dir
 /home/bbrelin/nimcp/build/test/e2e/CMakeFiles/e2e_test_reasoning_affective.dir
@@ -1358,6 +1359,7 @@
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/e2e_grounded_language.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/e2e_snn_language_bridge.dir
+/home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/e2e_grounded_language_collapse_fix.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/language/CMakeFiles/rebuild_cache.dir
@@ -3553,6 +3555,7 @@
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/unit_core_brain_hemispheric_injury_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/unit_core_brain_split_brain_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/unit_core_brain_hemispheric_memory_opt_test.dir
+/home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/unit_core_brain_hemispheric_language_test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/core/brain/hemispheric/CMakeFiles/rebuild_cache.dir
@@ -5389,6 +5392,25 @@
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_language_orchestrator.dir
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_language_bridges.dir
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_diagnostics.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_top_phrases_public_api.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_modality_counts.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_ground_word_with_emotion.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_persistence.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_memory_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_region_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_sleep.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_nlp.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_chunker.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_cognitive_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_enhancements.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_network_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave1.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave2.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave4.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave5.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_deferred_wave678.dir
+/home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/unit_grounded_language_cortex_modulation.dir
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/rebuild_cache.dir
@@ -5398,6 +5420,8 @@
 /home/bbrelin/nimcp/build/test/unit/language/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/integration_language.dir
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/integration_grounded_language_brain.dir
+/home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/integration_grounded_language_collapse_fix.dir
+/home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/integration_bootstrap_lexicon.dir
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/rebuild_cache.dir
@@ -5406,6 +5430,8 @@
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/language/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/language/CMakeFiles/regression_grounded_language.dir
+/home/bbrelin/nimcp/build/test/regression/language/CMakeFiles/regression_grounded_language_collapse_fix.dir
+/home/bbrelin/nimcp/build/test/regression/language/CMakeFiles/regression_language_cortex_training.dir
 /home/bbrelin/nimcp/build/test/regression/language/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/language/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/language/CMakeFiles/rebuild_cache.dir
@@ -6711,6 +6737,7 @@
 /home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/unit_snn_test_snn_conduction_delay_unit.dir
 /home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/unit_snn_test_snn_heterogeneity_unit.dir
 /home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/unit_snn_test_snn_gpu_per_neuron_lif_unit.dir
+/home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/unit_snn_test_snn_cb_gpu_unit.dir
 /home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/unit_snn_test_snn_dendritic_unit.dir
 /home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/unit_snn_test_lang_attach_unit.dir
 /home/bbrelin/nimcp/build/test/unit/snn/CMakeFiles/test.dir
@@ -6784,6 +6811,7 @@
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_snn_thalamic_substrate_compose.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_snn_substrate_integration.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_snn_conductance_integration.dir
+/home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_snn_cb_gpu_integration.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_snn_dendritic_integration.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/integration_snn_test_lang_attach_integration.dir
 /home/bbrelin/nimcp/build/test/integration/snn/CMakeFiles/test.dir
@@ -6807,6 +6835,8 @@
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_language_bridge.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_snn_biophysical_regression.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_snn_conductance_regression.dir
+/home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_snn_cb_gpu_regression.dir
+/home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_snn_cb_loop_baseline.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_per_receptor_regression.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_snn_dale_regression.dir
 /home/bbrelin/nimcp/build/test/regression/snn/CMakeFiles/regression_snn_test_snn_gap_junction_regression.dir
@@ -7439,6 +7469,14 @@
 /home/bbrelin/nimcp/build/test/adversarial/lgss/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/adversarial/lgss/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/adversarial/lgss/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/test_bbb_pentest.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/adversarial/bbb/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/python/CMakeFiles/unit_python_test_python_memory_safety.dir
 /home/bbrelin/nimcp/build/test/unit/python/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/python/CMakeFiles/edit_cache.dir

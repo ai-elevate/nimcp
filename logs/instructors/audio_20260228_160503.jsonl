@@ -1,3 +1,0 @@
-{"action": "DATASET_ERROR", "dataset": "esc50", "error": "[audio] Dataset load error: module 'transformers' has no attribute 'PreTrainedTokenizerBase'", "ts": 1772291104.454673, "domain": "audio"}
-{"action": "DATASET_ERROR", "dataset": "common_voice", "error": "[audio] Dataset load error: The directory at hf://datasets/mozilla-foundation/common_voice_17_0@11dc88355e899d1bf2df74f01b904a8544a17b33 doesn't contain any data files", "ts": 1772291105.7161412, "domain": "audio"}
-{"action": "DATASET_ERROR", "dataset": "gtzan", "error": "[audio] Dataset load error: Dataset scripts are no longer supported, but found gtzan.py", "ts": 1772291106.5306613, "domain": "audio"}

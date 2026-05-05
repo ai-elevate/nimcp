@@ -209,6 +209,23 @@ src/bindings/web-demo/frontend/*.log
 # Root-level clutter (screenshots moved to docs/screenshots/)
 /*.log
 /*.png
+/*.txt
+/TRAINING_ALERT*
+/ablation_*
+/metrics_log*
+/snapshots/
+
+# Redundant build flavours (only build/ is tracked behavior)
+build-asan/
+build_dbg/
+build-fuzz/
+build_test/
+
+# Stray helper scripts left over from one-off ops
+fix_nginx_*.sh
+
+# QuestDB local data store (telemetry / metrics / KG snapshots)
+data/questdb/
 
 # Brain data
 *.nimcp

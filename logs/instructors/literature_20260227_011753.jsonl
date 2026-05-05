@@ -1,1 +1,0 @@
-{"action": "LEARN", "method": "curriculum", "correct": false, "loss": 0.0, "confidence_mod": 0.677, "ethics_label": "beneficial", "dataset": "gutenberg_english", "features_dim": 1024, "ts": 1772151482.99436, "domain": "literature"}

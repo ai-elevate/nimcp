@@ -1,1 +1,0 @@
-{"action": "LEARN", "method": "contrastive", "correct": false, "loss": 0.0, "confidence_mod": 0.608, "ethics_label": "neutral", "dataset": "fineweb_10bt", "features_dim": 1024, "ts": 1772151499.0348587, "domain": "language"}
