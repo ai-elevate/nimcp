@@ -938,6 +938,74 @@ int grounded_language_chunk(grounded_language_t* gl,
                              uint32_t* chunk_count_out);
 
 /*=============================================================================
+ * Per-Network Bridges (LNN / cortex-CNN / FNO / ANN)
+ *
+ * grounded_language already feeds into SNN via nimcp_snn_language_bridge.
+ * These bridges close the gap with the other networks: the comprehend
+ * semantic_vector gets broadcast to each connected network's forward
+ * pass, and per-network response magnitudes feed back as modulation
+ * factors on confidence + binding strength.
+ *
+ * Each attach function takes an opaque pointer; broadcast/modulation
+ * are no-ops when no network is wired (the legacy single-tier path
+ * is preserved). Networks can be wired and unwired independently —
+ * passing NULL to any attach function is the disconnect operation.
+ *===========================================================================*/
+
+/**
+ * @brief Per-network response magnitudes from the most recent
+ *        broadcast. Each scalar in [0, 1]. Zero when the corresponding
+ *        network isn't attached or its forward pass produced no
+ *        meaningful output.
+ */
+typedef struct {
+    float lnn_magnitude;      /**< L2 norm of LNN forward output (normalized) */
+    float cnn_magnitude;      /**< Cortex-CNN feature norm (normalized) */
+    float fno_magnitude;      /**< FNO embedding norm (normalized) */
+    float ann_magnitude;      /**< ANN/adaptive predictor norm (reserved) */
+} gl_network_modulation_t;
+
+/** Attach an LNN layer. lnn_layer_t* (opaque). NULL = disconnect. */
+void grounded_language_attach_lnn(grounded_language_t* gl, void* lnn_layer);
+
+/** Attach a cortex-CNN processor (uses the speech variant for 1D float input). */
+void grounded_language_attach_cortex_cnn(grounded_language_t* gl, void* cnn_proc);
+
+/** Attach an FNO audio processor (uses fno_audio_forward for 1D float input). */
+void grounded_language_attach_fno(grounded_language_t* gl, void* fno_proc);
+
+/** Attach a generic ANN predictor — reserved hook (uses callback). */
+typedef int (*gl_ann_predict_fn)(void* ctx, const float* in, uint32_t in_dim,
+                                   float* out, uint32_t out_dim);
+void grounded_language_attach_ann(grounded_language_t* gl,
+                                   gl_ann_predict_fn fn,
+                                   void* ctx);
+
+/**
+ * @brief Broadcast a semantic vector to every attached network. Runs
+ *        each forward pass with the vector as input, captures response
+ *        magnitudes into the GL's last-modulation cache. Returns the
+ *        number of networks that successfully responded.
+ *
+ * @param gl   System handle
+ * @param vec  Semantic vector (length = gl->semantic_dim)
+ * @param dim  Dimension of vec
+ * @return Count of networks that produced a valid response, -1 on error.
+ */
+int grounded_language_broadcast_to_networks(grounded_language_t* gl,
+                                              const float* vec,
+                                              uint32_t dim);
+
+/**
+ * @brief Read the last-broadcast modulation values. Cheap scalar read.
+ *        Used internally by comprehend to bias confidence.
+ *
+ * @return 0 on success, -1 on bad parameters. Out is zero-filled on entry.
+ */
+int grounded_language_get_network_modulation(grounded_language_t* gl,
+                                               gl_network_modulation_t* out);
+
+/*=============================================================================
  * Query / Introspection
  *===========================================================================*/
 

@@ -2321,6 +2321,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_memory_bridge.c  # Grounded language ↔ memory subsystems bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_nlp.c     # NLP frontend: morphology + embeddings + BPE fallback
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_chunker.c # NER + shallow chunker + chinking
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_network_bridge.c # Per-network bridges (LNN/CNN/FNO/ANN)
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_creative_language_bridge.c # Creative cognition → language bridge
 
     # Language Layer Bridges (Phase L8: Integration bridges)

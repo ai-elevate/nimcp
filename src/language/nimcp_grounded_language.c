@@ -1247,6 +1247,19 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             result->comprehension_confidence = 1.0f;
     }
 
+    /* Per-network broadcast: feed the final semantic_vector to LNN /
+     * CNN / FNO / ANN if attached, then apply their averaged response
+     * magnitude as a confidence boost up to +15%. No-op (factor=1.0)
+     * when no networks are wired. */
+    extern int grounded_language_broadcast_to_networks(grounded_language_t*,
+                                                         const float*, uint32_t);
+    extern float gl_network_modulation_factor(grounded_language_t*, float);
+    grounded_language_broadcast_to_networks(gl, result->semantic_vector,
+                                              gl->semantic_dim);
+    result->comprehension_confidence *= gl_network_modulation_factor(gl, 0.15f);
+    if (result->comprehension_confidence > 1.0f)
+        result->comprehension_confidence = 1.0f;
+
     nimcp_free(buf);
     return 0;
 }

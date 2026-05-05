@@ -30,6 +30,7 @@
 #include "generation/nimcp_language_generator.h"
 #include "generation/nimcp_tokenizer.h"
 #include "generation/nimcp_embedding.h"
+#include "training/nimcp_cortex_cnn.h"
 #include "language/nimcp_grounded_language.h"
 #include "core/brain/nimcp_brain_kg.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
@@ -538,6 +539,21 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             grounded_language_connect_speech(brain->grounded_lang, brain->speech_cortex);
         if (brain->cortical_column_pool)
             grounded_language_connect_columns(brain->grounded_lang, brain->cortical_column_pool);
+
+        /* Per-network bridges — feed the comprehend semantic_vector
+         * to LNN/CNN/FNO/ANN forward passes so each network sees
+         * language input + contributes confidence modulation. ANN
+         * predictor is left for the runtime to wire (no clean default
+         * predictor available at init time). */
+        if (brain->cortex_cnns[CORTEX_CNN_SPEECH]) {
+            grounded_language_attach_cortex_cnn(brain->grounded_lang,
+                                                  brain->cortex_cnns[CORTEX_CNN_SPEECH]);
+        }
+        /* LNN + FNO: brain->lnn_network and the SNN-FNO populations are
+         * not the layer/processor handles the bridge expects. Leaving
+         * unwired here — runtime callers (daemon, training scripts)
+         * can attach via grounded_language_attach_lnn / _fno when
+         * they have direct handles. */
 
         /* Memory-system attachments — every successful grounding event
          * fans out to working memory + episodic replay + hippocampus

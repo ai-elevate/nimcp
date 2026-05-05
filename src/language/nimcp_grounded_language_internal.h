@@ -116,6 +116,20 @@ struct grounded_language {
     void*                tokenizer;          /**< tokenizer_t* (BPE) */
     gl_word_to_id_fn     word_to_id_fn;      /**< word→id mapper */
     void*                word_to_id_ctx;     /**< opaque ctx for fn */
+
+    /* Per-network bridges — comprehend's semantic_vector gets broadcast
+     * to each attached network's forward pass; the response magnitudes
+     * feed back as confidence modulation (parallel to cortex modulation). */
+    void*                lnn_layer;          /**< lnn_layer_t* */
+    void*                cortex_cnn_proc;    /**< cortex_cnn_processor_t* */
+    void*                fno_proc;           /**< fno_audio_processor_t* */
+    gl_ann_predict_fn    ann_predict_fn;     /**< caller-owned ANN predictor */
+    void*                ann_ctx;            /**< opaque ctx for ann_predict_fn */
+    /* Last broadcast results — read by comprehend modulation hook. */
+    float                last_lnn_mag;
+    float                last_cnn_mag;
+    float                last_fno_mag;
+    float                last_ann_mag;
 };
 
 /**
