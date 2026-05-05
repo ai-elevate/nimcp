@@ -577,6 +577,7 @@ CONTENT_CACHE = "checkpoints/athena/claude_content_cache.json"
 # every signature. Stays None when --no-canonical-corpus is passed.
 _CANONICAL_CFG = None  # dict with keys: enabled, root, chunk_chars, max_chunks_per_stage
 _MATH_CFG = None       # same shape as _CANONICAL_CFG; for the math+logic corpus
+_STREAMING_CFG = None  # dict: enabled, kinds (list[str]), chunk_chars, max_chunks_per_stage
 
 # Cross-modal grounding helper. The function-word stoplist is ~50 words —
 # anything not on the list is treated as a content word and gets a
@@ -6020,6 +6021,130 @@ def _ingest_canonical_corpus(brain, stage, *, corpus_root,
           f"across {len(works)} works ({bytes_done_call} bytes)")
 
 
+def _ingest_streaming_corpus(brain, stage, *, kind,
+                              max_chunks_per_call=None,
+                              chunk_chars=1200,
+                              checkpoint_dir,
+                              log_every=20):
+    """Drive chunks from a streaming source (Wikipedia, Investopedia,
+    arXiv, Gutenberg-stream, etc.) into the brain for one stage.
+
+    Pulls one chunk per source per call, advances the resume cursor,
+    persists state every `log_every` chunks. NEVER writes source content
+    to disk — required by the deployment's storage constraint.
+
+    `kind` is the StreamingSource registered key; if no source is
+    registered for that kind (backend not yet implemented), this is a
+    silent no-op.
+    """
+    try:
+        from streaming_ingest import (
+            get_source, load_streaming_state, save_streaming_state,
+            _kind_state, iter_one_chunk,
+        )
+    except Exception as e:
+        print(f"  [Stream] streaming_ingest import failed: {e} — skipping")
+        return
+
+    src = get_source(kind)
+    if src is None:
+        return  # Backend not yet wired; silent skip.
+
+    try:
+        source_ids = src.list_for_stage(stage)
+    except Exception as e:
+        print(f"  [Stream:{kind}] list_for_stage failed: {e} — skipping")
+        return
+    if not source_ids:
+        return
+
+    state = load_streaming_state(checkpoint_dir)
+    sub = _kind_state(state, kind)
+    completed = set(sub.get("completed", []))
+    in_progress = sub.setdefault("in_progress", {})
+
+    chunks_done_call = 0
+    bytes_done_call = 0
+    cap = max_chunks_per_call if (max_chunks_per_call and max_chunks_per_call > 0) else None
+
+    # Round-robin one chunk per remaining source per pass.
+    pending = [sid for sid in source_ids if sid not in completed]
+    pass_count = 0
+    while pending:
+        if cap is not None and chunks_done_call >= cap:
+            break
+        new_pending = []
+        for sid in pending:
+            if cap is not None and chunks_done_call >= cap:
+                new_pending.append(sid)
+                continue
+            position = int(in_progress.get(sid, 0) or 0)
+            try:
+                pair = iter_one_chunk(kind, sid,
+                                       start_position=position,
+                                       chunk_chars=chunk_chars)
+            except Exception as e:
+                print(f"  [Stream:{kind}] {sid} fetch failed: {e}")
+                # Don't advance position; will retry next call.
+                continue
+            if pair is None:
+                # End of this source.
+                if sid not in completed:
+                    completed.add(sid)
+                    sub["completed"] = sorted(completed)
+                in_progress.pop(sid, None)
+                continue
+            next_position, text = pair
+            if not text or not text.strip():
+                in_progress[sid] = int(next_position)
+                continue
+
+            # Drive the chunk through the brain. Mirror the canonical /
+            # math seam's call shape so the failure modes are identical.
+            try:
+                try:
+                    brain.train_language(text, text)
+                except TypeError:
+                    brain.train_language(text=text, target_text=text)
+                brain.learn_language(text)
+            except Exception as e:
+                print(f"  [Stream:{kind}] {sid} brain call failed: {e}")
+                # Still advance — sticky-bad chunks shouldn't loop forever.
+
+            in_progress[sid] = int(next_position)
+            chunks_done_call += 1
+            bytes_done_call += len(text.encode("utf-8"))
+            state["totals"]["chunks_ingested"] = (
+                int(state["totals"].get("chunks_ingested", 0)) + 1)
+            state["totals"]["bytes_ingested"] = (
+                int(state["totals"].get("bytes_ingested", 0))
+                + len(text.encode("utf-8")))
+
+            # Did we just finish the source?
+            try:
+                if src.is_complete(sid, int(next_position)):
+                    completed.add(sid)
+                    sub["completed"] = sorted(completed)
+                    in_progress.pop(sid, None)
+                    continue
+            except Exception:
+                pass
+            new_pending.append(sid)
+
+            if chunks_done_call % max(1, int(log_every)) == 0:
+                save_streaming_state(checkpoint_dir, state)
+
+        pending = new_pending
+        pass_count += 1
+        # Defensive bound: don't loop indefinitely on a degenerate source.
+        if pass_count > 1000:
+            break
+
+    save_streaming_state(checkpoint_dir, state)
+    print(f"  [Stream:{kind}] stage {stage}: ingested {chunks_done_call} "
+          f"chunks across {len(source_ids)} sources ({bytes_done_call} bytes)")
+
+
 def _ingest_math_corpus(brain, stage, *, corpus_root="data/math_corpus",
                          max_chunks_per_call=None,
                          chunk_chars=1200,
@@ -6578,6 +6703,20 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                         checkpoint_dir=CHECKPOINT_DIR)
                 except Exception as _e:
                     print(f"  [Math] drip failed: {_e}")
+
+            # Streaming-corpus drip — same pacing. Streams network-fetched
+            # chunks (Wikipedia, Investopedia, arXiv, Gutenberg-stream) that
+            # MUST NOT be persisted to disk per deployment storage limits.
+            if batch_end % 200 == 0 and _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
+                for _kind in _STREAMING_CFG.get("kinds", []):
+                    try:
+                        _ingest_streaming_corpus(
+                            brain, stage=1, kind=_kind,
+                            chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
+                            max_chunks_per_call=20,
+                            checkpoint_dir=CHECKPOINT_DIR)
+                    except Exception as _e:
+                        print(f"  [Stream:{_kind}] drip failed: {_e}")
 
             # Cognitive training injection
             if batch_end % COGNITIVE_TRAIN_INTERVAL == 0:
@@ -7279,6 +7418,17 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                         checkpoint_dir=CHECKPOINT_DIR)
                 except Exception as _e:
                     print(f"  [Math] drip failed: {_e}")
+            # Streaming-corpus drip — network-fetched, never persisted.
+            if (i + 1) % 200 == 0 and _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
+                for _kind in _STREAMING_CFG.get("kinds", []):
+                    try:
+                        _ingest_streaming_corpus(
+                            brain, stage=2, kind=_kind,
+                            chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
+                            max_chunks_per_call=20,
+                            checkpoint_dir=CHECKPOINT_DIR)
+                    except Exception as _e:
+                        print(f"  [Stream:{_kind}] drip failed: {_e}")
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
                 try:
@@ -7734,6 +7884,17 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                     checkpoint_dir=CHECKPOINT_DIR)
             except Exception as _e:
                 print(f"  [Math] drip failed: {_e}")
+        # Streaming-corpus drip — network-fetched, never persisted.
+        if (i + 1) % 200 == 0 and _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
+            for _kind in _STREAMING_CFG.get("kinds", []):
+                try:
+                    _ingest_streaming_corpus(
+                        brain, stage=3, kind=_kind,
+                        chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
+                        max_chunks_per_call=20,
+                        checkpoint_dir=CHECKPOINT_DIR)
+                except Exception as _e:
+                    print(f"  [Stream:{_kind}] drip failed: {_e}")
 
         # Checkpoint every 50 steps (state file only)
         if (i + 1) % 50 == 0 and (i + 1) % 2000 != 0:
@@ -9546,6 +9707,23 @@ def main():
     parser.add_argument("--math-corpus-root", type=str,
                         default="data/math_corpus",
                         help="Path to math corpus root (default: data/math_corpus)")
+
+    # --- Streaming corpora (Wikipedia, Investopedia, arXiv,
+    # gutenberg-stream).  Comma-separated kind list, default empty so
+    # nothing fires until backends are explicitly enabled. Each backend
+    # self-registers in scripts/sources/. ---
+    parser.add_argument("--streaming-kinds", type=str, default="",
+                        help="Comma-separated streaming-source kinds to enable "
+                             "(e.g. 'wikipedia,investopedia,arxiv,gutenberg_stream'). "
+                             "Empty = none. Backends not yet registered are "
+                             "silently skipped.")
+    parser.add_argument("--streaming-chunk-chars", type=int, default=1200,
+                        help="Max characters per streaming chunk (default: 1200)")
+    parser.add_argument("--streaming-max-chunks-per-stage", type=int, default=0,
+                        help="Cap streaming chunks per stage priming pass per kind "
+                             "(0 = unlimited; positive caps for fast smoke runs)")
+    parser.add_argument("--streaming-restart", action="store_true",
+                        help="Delete .streaming_corpus_state.json before starting")
     args = parser.parse_args()
 
     # Publish canonical-corpus config so drip hooks inside run_stage_N can
@@ -9587,6 +9765,33 @@ def main():
                 print(f"  [Math] --math-restart: removed {_mrp}")
             except Exception as _e:
                 print(f"  [Math] --math-restart: failed to remove {_mrp}: {_e}")
+
+    # Publish streaming-corpus config. Kinds is a comma-separated list of
+    # registered backend kinds; empty means streaming is disabled. Backends
+    # never persist source content to disk — only resume positions.
+    global _STREAMING_CFG
+    _streaming_kinds_raw = (getattr(args, "streaming_kinds", "") or "").strip()
+    _streaming_kinds = [k.strip() for k in _streaming_kinds_raw.split(",") if k.strip()]
+    _STREAMING_CFG = {
+        "enabled": bool(_streaming_kinds),
+        "kinds": _streaming_kinds,
+        "chunk_chars": int(getattr(args, "streaming_chunk_chars", 1200)),
+        "max_chunks_per_stage": int(getattr(args, "streaming_max_chunks_per_stage", 0) or 0),
+    }
+
+    # --streaming-restart: wipe the streaming resume-state file before starting.
+    if getattr(args, "streaming_restart", False):
+        try:
+            from streaming_ingest import streaming_state_path as _stream_state_path
+            _srp = _stream_state_path(CHECKPOINT_DIR)
+        except Exception:
+            _srp = os.path.join(CHECKPOINT_DIR, ".streaming_corpus_state.json")
+        if os.path.exists(_srp):
+            try:
+                os.remove(_srp)
+                print(f"  [Stream] --streaming-restart: removed {_srp}")
+            except Exception as _e:
+                print(f"  [Stream] --streaming-restart: failed to remove {_srp}: {_e}")
 
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(name)s] %(message)s")
@@ -10055,6 +10260,13 @@ def main():
                 chunk_chars=args.math_chunk_chars,
                 max_chunks_per_call=(args.math_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
+        if _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
+            for _kind in _STREAMING_CFG.get("kinds", []):
+                _ingest_streaming_corpus(
+                    brain, stage=1, kind=_kind,
+                    chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
+                    max_chunks_per_call=(_STREAMING_CFG.get("max_chunks_per_stage") or None),
+                    checkpoint_dir=CHECKPOINT_DIR)
         run_stage_1(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
@@ -10082,6 +10294,13 @@ def main():
                 chunk_chars=args.math_chunk_chars,
                 max_chunks_per_call=(args.math_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
+        if _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
+            for _kind in _STREAMING_CFG.get("kinds", []):
+                _ingest_streaming_corpus(
+                    brain, stage=2, kind=_kind,
+                    chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
+                    max_chunks_per_call=(_STREAMING_CFG.get("max_chunks_per_stage") or None),
+                    checkpoint_dir=CHECKPOINT_DIR)
         stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
             num_stimuli=args.stage2_stimuli,
@@ -10113,6 +10332,13 @@ def main():
                 chunk_chars=args.math_chunk_chars,
                 max_chunks_per_call=(args.math_max_chunks_per_stage or None),
                 checkpoint_dir=CHECKPOINT_DIR)
+        if _STREAMING_CFG and _STREAMING_CFG.get("enabled"):
+            for _kind in _STREAMING_CFG.get("kinds", []):
+                _ingest_streaming_corpus(
+                    brain, stage=3, kind=_kind,
+                    chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
+                    max_chunks_per_call=(_STREAMING_CFG.get("max_chunks_per_stage") or None),
+                    checkpoint_dir=CHECKPOINT_DIR)
         run_stage_3(brain, composer, parent, clock, source, decoder,
                     num_interactions=args.stage3_interactions,
                     start_from=start_step if start_stage == 3 else 0)
