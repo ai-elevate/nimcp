@@ -1236,8 +1236,9 @@ int gl_observe_snn_spikes(grounded_language_t* gl,
  * call this once per utterance and reuse the result for every word.
  *
  * Returns 0 on success, -1 on bad input. Output is in [0, 1] range
- * after normalization by the global RMS — silent chunks → 0, peak
- * chunks → 1.
+ * after normalization by the peak chunk-RMS across the utterance
+ * (NOT the global RMS): silent chunks → 0, the loudest chunk → 1.0,
+ * everything else scaled in proportion.
  *===========================================================================*/
 
 int gl_extract_audio_features(const float* audio,

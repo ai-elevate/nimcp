@@ -441,6 +441,7 @@ int gl_observe_snn_spikes(grounded_language_t* gl,
                             float* confidence_out) {
     if (!gl || !spike_rates || rate_dim == 0) return -1;
     if (rate_dim != gl->semantic_dim) return -1;
+    if (confidence_out) *confidence_out = 0.0f;
     if (gl->vocab_count == 0) return 0;
 
     /* Find best-matching lexicon entry by cosine similarity of
@@ -2960,25 +2961,23 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
             }
             fwrite(&max_abs, sizeof(float), 1, f);
             if (max_abs > 0.0f) {
-                /* Quantize to int8. Stack buffer up to 1024 dims;
-                 * realistically semantic_dim ≤ 256. */
-                int8_t qbuf[1024];
-                if (gl->semantic_dim > 1024) {
-                    /* Fallback: write zeros — vector will dequantize
-                     * to zero. Defensive guard for unusual configs. */
-                    int8_t zero = 0;
-                    for (uint32_t d = 0; d < gl->semantic_dim; d++)
-                        fwrite(&zero, sizeof(int8_t), 1, f);
-                } else {
-                    float inv = 127.0f / max_abs;
-                    for (uint32_t d = 0; d < gl->semantic_dim; d++) {
-                        float v = entry->context_vector[d] * inv;
-                        if (v >  127.0f) v =  127.0f;
-                        if (v < -127.0f) v = -127.0f;
-                        qbuf[d] = (int8_t)(v >= 0.0f ? v + 0.5f : v - 0.5f);
-                    }
-                    fwrite(qbuf, sizeof(int8_t), gl->semantic_dim, f);
+                /* Quantize to int8. Heap-allocate so we never silently
+                 * zero out user data when semantic_dim is bumped — the
+                 * 4096-cap from load() bounds peak allocation here. */
+                int8_t* qbuf = (int8_t*)nimcp_malloc(gl->semantic_dim);
+                if (!qbuf) {
+                    fclose(f);
+                    return -1;
                 }
+                float inv = 127.0f / max_abs;
+                for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                    float v = entry->context_vector[d] * inv;
+                    if (v >  127.0f) v =  127.0f;
+                    if (v < -127.0f) v = -127.0f;
+                    qbuf[d] = (int8_t)(v >= 0.0f ? v + 0.5f : v - 0.5f);
+                }
+                fwrite(qbuf, sizeof(int8_t), gl->semantic_dim, f);
+                nimcp_free(qbuf);
             }
         }
 
@@ -3037,6 +3036,17 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
     fread_chk(&semantic_dim, sizeof(semantic_dim), 1, f);
     fread_chk(&vocab_count, sizeof(vocab_count), 1, f);
 
+    /* Sanity-bound header values — corrupt or truncated checkpoints
+     * can otherwise drive grounded_language_create into multi-GiB
+     * allocations or send the read loop into billions of iterations.
+     * 4096 is a generous cap (current GL_SEMANTIC_DIM is 128); GL_MAX_VOCAB
+     * is the hard ceiling for any legitimate file. */
+    if (semantic_dim == 0 || semantic_dim > 4096 ||
+        vocab_count > GL_MAX_VOCAB) {
+        fclose(f);
+        return NULL;
+    }
+
     grounded_language_t* gl = grounded_language_create(semantic_dim, semantic_memory);
     if (!gl) { fclose(f); return NULL; }
 
@@ -3069,21 +3079,27 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
                 /* v4 quantized read: max_abs + int8 codes. */
                 float max_abs = 0.0f;
                 fread_chk(&max_abs, sizeof(float), 1, f);
-                if (max_abs > 0.0f && semantic_dim <= 1024) {
-                    int8_t qbuf[1024];
-                    fread_chk(qbuf, sizeof(int8_t), semantic_dim, f);
+                if (max_abs > 0.0f) {
+                    /* Heap-allocate so semantic_dim can grow without
+                     * silently corrupting context_vectors. The header
+                     * sanity-check above caps semantic_dim at 4096. */
+                    int8_t* qbuf = (int8_t*)nimcp_calloc(semantic_dim,
+                                                          sizeof(int8_t));
+                    if (!qbuf) {
+                        grounded_language_destroy(gl);
+                        fclose(f);
+                        return NULL;
+                    }
+                    /* calloc zero-initializes, so a short fread leaves
+                     * residual zeros in qbuf rather than uninitialized
+                     * stack memory bleeding into context_vector. */
+                    size_t got = fread(qbuf, sizeof(int8_t), semantic_dim, f);
+                    (void)got;
                     float scale = max_abs / 127.0f;
                     for (uint32_t d = 0; d < semantic_dim; d++) {
                         entry->context_vector[d] = (float)qbuf[d] * scale;
                     }
-                } else if (max_abs > 0.0f) {
-                    /* Defensive: walk past the int8 block to keep
-                     * stream alignment when semantic_dim > 1024. */
-                    int8_t skip;
-                    for (uint32_t d = 0; d < semantic_dim; d++)
-                        fread_chk(&skip, sizeof(int8_t), 1, f);
-                    memset(entry->context_vector, 0,
-                           semantic_dim * sizeof(float));
+                    nimcp_free(qbuf);
                 }
                 /* max_abs == 0 → zero vector, nothing more on disk. */
             } else {

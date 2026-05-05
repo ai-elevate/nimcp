@@ -158,8 +158,9 @@ void gl_mirror_new_word_to_regions(grounded_language_t* gl, const char* form) {
  *--------------------------------------------------------------------*/
 /* #2 Audio feature extraction — RMS envelope per equal-length chunk.
  * Cheap, deterministic, audio-content-distinguishing without an FFT.
- * Each output is normalized into [0, 1] by the global peak chunk-RMS
- * across the utterance. Silent chunks → 0; loud chunks → 1.
+ * Each output is normalized into [0, 1] by the peak chunk-RMS across
+ * the utterance (NOT the global RMS). Silent chunks → 0; the loudest
+ * chunk → 1.0; all others scaled in proportion.
  *
  * Returns 0 on success, -1 on bad input. */
 int gl_extract_audio_features(const float* audio,
