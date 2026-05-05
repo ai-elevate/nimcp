@@ -131,10 +131,10 @@ struct grounded_language {
     float                last_fno_mag;
     float                last_ann_mag;
 
-    /* Cognitive subscriber bus — flat array, ctx is the dedup key.
-     * Capacity is small (16) on purpose: we expect ~10 cognitive
-     * modules at most; anything larger is a misuse. */
-    #define GL_MAX_SUBSCRIBERS 16
+    /* Cognitive + region subscriber bus — flat array, ctx is the dedup
+     * key. Cap covers ~10 cognitive modules + 5 anatomical regions +
+     * the hemispheric language bridge, with headroom for future waves. */
+    #define GL_MAX_SUBSCRIBERS 24
     gl_event_callback_t  subscribers[GL_MAX_SUBSCRIBERS];
     void*                subscriber_ctxs[GL_MAX_SUBSCRIBERS];
     uint32_t             subscriber_count;

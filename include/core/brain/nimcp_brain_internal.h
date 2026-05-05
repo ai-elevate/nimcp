@@ -1685,6 +1685,15 @@ struct brain_struct {
     uint64_t last_cingulate_update_us;                                // Last cingulate update timestamp
 
     // =========================================================================
+    // ORBITOFRONTAL CORTEX (OFC) — Reward valuation + reversal learning
+    // =========================================================================
+    // OFC binds stimulus values to reward-prediction errors. Used by the
+    // grounded_language regional bridge to tag groundings with a value
+    // estimate (gut-feel for whether an utterance is rewarding).
+    struct nimcp_ofc* ofc;                                            // OFC adapter
+    bool ofc_enabled;                                                 // OFC enabled for this brain
+
+    // =========================================================================
     // PARIETAL CORTEX INTEGRATION (Spatial Processing & Attention)
     // =========================================================================
     // The Parietal Cortex provides spatial processing and attention:

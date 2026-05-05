@@ -312,6 +312,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.c  # Quantum-accelerated conflict resolution
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/cingulate/nimcp_cingulate_immune_bridge.c   # Cingulate-immune integration (error/conflict-immune)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cingulate.c           # Cingulate factory init
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_ofc.c                  # OFC factory init
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_prefrontal.c          # Prefrontal factory init (was statue)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_insula.c              # Insula factory init (was statue)
 
     # Hypothalamus - Homeostatic regulation, circadian rhythms, stress response (Phase H1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.c         # Hypothalamus core adapter

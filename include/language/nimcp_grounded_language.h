@@ -1140,6 +1140,11 @@ void grounded_language_attach_cingulate(grounded_language_t* gl, void* mod);
  *  on language-encoded experiences). */
 void grounded_language_attach_amygdala(grounded_language_t* gl, void* mod);
 
+/** Attach orbitofrontal cortex (OFC): GROUNDED + COMPREHENDED events
+ *  with non-trivial valence feed reward-value bindings (stimulus
+ *  value learning + RPE updates). */
+void grounded_language_attach_ofc(grounded_language_t* gl, void* mod);
+
 /*=============================================================================
  * Query / Introspection
  *===========================================================================*/

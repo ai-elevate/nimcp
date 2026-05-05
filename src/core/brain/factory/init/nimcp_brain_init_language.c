@@ -594,6 +594,9 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
         if (brain->amygdala)
             grounded_language_attach_amygdala(brain->grounded_lang,
                                                 brain->amygdala);
+        if (brain->ofc)
+            grounded_language_attach_ofc(brain->grounded_lang,
+                                           brain->ofc);
 
         /* Memory-system attachments — every successful grounding event
          * fans out to working memory + episodic replay + hippocampus

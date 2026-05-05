@@ -238,11 +238,12 @@ static int _wrap_emergent_language(void* ctx, const gl_event_t* ev) {
 static int _wrap_prefrontal(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
     /* Executive monitoring: hears comprehensions + productions, plus
-     * high-arousal groundings (salient items demand attention). */
+     * high-arousal groundings (salient items demand attention).
+     * Use >=0.3f to match empathy/amygdala boundary semantics. */
     bool relevant =
         ev->type == GL_EVENT_COMPREHENDED ||
         ev->type == GL_EVENT_PRODUCED     ||
-        (ev->type == GL_EVENT_GROUNDED && ev->arousal > 0.3f);
+        (ev->type == GL_EVENT_GROUNDED && ev->arousal >= 0.3f);
     if (!relevant) return 0;
     LOG_DEBUG(LOG_MODULE,
                "prefrontal observe type=%d conf=%.2f text='%s'",
@@ -278,7 +279,7 @@ static int _wrap_cingulate(void* ctx, const gl_event_t* ev) {
 
 static int _wrap_amygdala(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
-    /* Emotional conditioning: GROUNDED events with arousal > 0.3 are
+    /* Emotional conditioning: GROUNDED events with arousal >= 0.3 are
      * candidates for fear/threat tagging of the bound concept. */
     if (ev->type != GL_EVENT_GROUNDED) return 0;
     if (ev->arousal < 0.3f) return 0;
@@ -289,18 +290,38 @@ static int _wrap_amygdala(void* ctx, const gl_event_t* ev) {
     return 0;
 }
 
+static int _wrap_ofc(void* ctx, const gl_event_t* ev) {
+    if (!ctx || !ev) return -1;
+    /* Reward valuation: GROUNDED events with non-trivial valence are
+     * candidate stimulus-value bindings for OFC reward learning.
+     * COMPREHENDED utterances with valence also feed value updates
+     * (heard a positive/negative description → adjust expected value). */
+    bool relevant =
+        (ev->type == GL_EVENT_GROUNDED &&
+         (ev->valence > 0.05f || ev->valence < -0.05f)) ||
+        (ev->type == GL_EVENT_COMPREHENDED &&
+         (ev->valence > 0.05f || ev->valence < -0.05f));
+    if (!relevant) return 0;
+    LOG_DEBUG(LOG_MODULE,
+               "ofc value_bind type=%d concept_id=%llu val=%.2f",
+               (int)ev->type,
+               (unsigned long long)ev->concept_id,
+               ev->valence);
+    return 0;
+}
+
 /*=============================================================================
  * Attach helpers — register the wrapper with the module pointer as ctx.
  * Passing NULL is the disconnect operation (unsubscribes the wrapper).
  *===========================================================================*/
 
+/* NULL `mod` is a strict no-op (not a "detach by NULL ctx" — that
+ * would clobber unrelated entries that happen to have NULL ctx).
+ * Callers wanting to detach should call grounded_language_unsubscribe
+ * with the original module pointer they registered with. */
 #define _GL_DEFINE_ATTACH(name, wrapper)                                       \
     void grounded_language_attach_##name(grounded_language_t* gl, void* mod) { \
-        if (!gl) return;                                                       \
-        if (!mod) {                                                            \
-            grounded_language_unsubscribe(gl, NULL);                           \
-            return;                                                            \
-        }                                                                      \
+        if (!gl || !mod) return;                                               \
         grounded_language_subscribe(gl, wrapper, mod);                         \
     }
 
@@ -318,5 +339,6 @@ _GL_DEFINE_ATTACH(prefrontal,         _wrap_prefrontal)
 _GL_DEFINE_ATTACH(insula,             _wrap_insula)
 _GL_DEFINE_ATTACH(cingulate,          _wrap_cingulate)
 _GL_DEFINE_ATTACH(amygdala,           _wrap_amygdala)
+_GL_DEFINE_ATTACH(ofc,                _wrap_ofc)
 
 #undef _GL_DEFINE_ATTACH

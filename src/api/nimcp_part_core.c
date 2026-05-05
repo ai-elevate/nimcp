@@ -4363,6 +4363,14 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     extern bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_parietal_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_intuition_subsystem(brain_t);
+    /* Previously dormant — init waves existed but were never invoked, so
+     * brain->prefrontal/cingulate/insula stayed NULL and the GL regional
+     * subscribers no-op'd silently. Activated here so the regional
+     * language wiring (commit 5074c4b0f) can actually fire. */
+    extern bool nimcp_brain_factory_init_prefrontal_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_cingulate_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_insula_subsystem(brain_t);
+    extern bool nimcp_brain_factory_init_ofc_subsystem(brain_t);
 
     INIT_IF_NULL(broca, nimcp_brain_factory_init_broca_subsystem);
     INIT_IF_NULL(wernicke, nimcp_brain_factory_init_wernicke_subsystem);
@@ -4374,6 +4382,10 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     INIT_IF_NULL(parietal_cortex, nimcp_brain_factory_init_parietal_cortex_subsystem);
     INIT_IF_NULL(parietal, nimcp_brain_factory_init_parietal_subsystem);
     INIT_IF_NULL(intuition_system, nimcp_brain_factory_init_intuition_subsystem);
+    INIT_IF_NULL(prefrontal, nimcp_brain_factory_init_prefrontal_subsystem);
+    INIT_IF_NULL(cingulate, nimcp_brain_factory_init_cingulate_subsystem);
+    INIT_IF_NULL(insula, nimcp_brain_factory_init_insula_subsystem);
+    INIT_IF_NULL(ofc, nimcp_brain_factory_init_ofc_subsystem);
 
     /* Monitoring & infrastructure */
     extern bool nimcp_brain_factory_init_mental_health_subsystem(brain_t);

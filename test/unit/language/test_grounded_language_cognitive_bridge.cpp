@@ -176,15 +176,15 @@ TEST_F(GLCogBridge, AllSubscribersReceiveEvents) {
 
 /* --- Capacity gate ------------------------------------------------ */
 TEST_F(GLCogBridge, OverCapacityReturnsError) {
-    EventRec recs[20];
-    /* GL_MAX_SUBSCRIBERS == 16 — first 16 succeed. */
+    EventRec recs[32];
+    /* GL_MAX_SUBSCRIBERS == 24 — first 24 succeed, rest rejected. */
     int ok_count = 0;
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 32; i++) {
         if (grounded_language_subscribe(gl, rec_subscriber, &recs[i]) == 0) {
             ok_count++;
         }
     }
-    EXPECT_EQ(16, ok_count);
+    EXPECT_EQ(24, ok_count);
 }
 
 /* --- Per-module attach helpers: NULL safety ------------------------ */
@@ -249,11 +249,12 @@ TEST_F(GLCogBridge, RegionAttachHelpersNullModuleIsSafe) {
     grounded_language_attach_insula(gl, nullptr);
     grounded_language_attach_cingulate(gl, nullptr);
     grounded_language_attach_amygdala(gl, nullptr);
+    grounded_language_attach_ofc(gl, nullptr);
     EXPECT_EQ(0u, grounded_language_subscriber_count(gl));
 }
 
 TEST_F(GLCogBridge, RegionAttachRegistersOneSlotEach) {
-    int prefrontal = 1, insula = 2, cingulate = 3, amygdala = 4;
+    int prefrontal = 1, insula = 2, cingulate = 3, amygdala = 4, ofc = 5;
     grounded_language_attach_prefrontal(gl, &prefrontal);
     EXPECT_EQ(1u, grounded_language_subscriber_count(gl));
     grounded_language_attach_insula(gl, &insula);
@@ -262,10 +263,27 @@ TEST_F(GLCogBridge, RegionAttachRegistersOneSlotEach) {
     EXPECT_EQ(3u, grounded_language_subscriber_count(gl));
     grounded_language_attach_amygdala(gl, &amygdala);
     EXPECT_EQ(4u, grounded_language_subscriber_count(gl));
+    grounded_language_attach_ofc(gl, &ofc);
+    EXPECT_EQ(5u, grounded_language_subscriber_count(gl));
 
     /* Re-attaching same module is a no-op (dedup). */
     grounded_language_attach_prefrontal(gl, &prefrontal);
-    EXPECT_EQ(4u, grounded_language_subscriber_count(gl));
+    EXPECT_EQ(5u, grounded_language_subscriber_count(gl));
+}
+
+/* --- Audit fix #1: NULL mod is strict no-op (not unsubscribe-by-NULL).
+ *     A pre-existing subscriber with NULL ctx must NOT be clobbered
+ *     when an attach helper is called with NULL mod. */
+TEST_F(GLCogBridge, AttachWithNullDoesNotClobberNullCtxSubscriber) {
+    /* Register a raw subscriber with NULL ctx (legal, edge case). */
+    ASSERT_EQ(0, grounded_language_subscribe(gl, rec_subscriber, nullptr));
+    EXPECT_EQ(1u, grounded_language_subscriber_count(gl));
+
+    /* These should all be no-ops — the NULL-ctx subscriber must survive. */
+    grounded_language_attach_inner_speech(gl, nullptr);
+    grounded_language_attach_prefrontal(gl, nullptr);
+    grounded_language_attach_ofc(gl, nullptr);
+    EXPECT_EQ(1u, grounded_language_subscriber_count(gl));
 }
 
 TEST_F(GLCogBridge, RegionsObserveEventsViaBus) {
