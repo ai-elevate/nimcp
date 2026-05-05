@@ -578,6 +578,11 @@ CONTENT_CACHE = "checkpoints/athena/claude_content_cache.json"
 _CANONICAL_CFG = None  # dict with keys: enabled, root, chunk_chars, max_chunks_per_stage
 _MATH_CFG = None       # same shape as _CANONICAL_CFG; for the math+logic corpus
 _STREAMING_CFG = None  # dict: enabled, kinds (list[str]), chunk_chars, max_chunks_per_stage
+_PHYSICS_CFG = None    # CE-11
+_CHEMISTRY_CFG = None  # CE-12
+_BIOLOGY_CFG = None    # CE-13
+_FINANCE_CFG = None    # CE-14
+_CODE_CFG = None       # CE-5
 
 # Cross-modal grounding helper. The function-word stoplist is ~50 words —
 # anything not on the list is treated as a content word and gets a
@@ -6170,6 +6175,208 @@ def _ingest_math_corpus(brain, stage, *, corpus_root="data/math_corpus",
     )
 
 
+# CE-11/12/13/14/5 STEM + finance + code corpus state filenames. Each gets
+# its own resume-state file so they don't trample one another.
+PHYSICS_STATE_FILENAME = ".physics_corpus_state.json"
+CHEMISTRY_STATE_FILENAME = ".chemistry_corpus_state.json"
+BIOLOGY_STATE_FILENAME = ".biology_corpus_state.json"
+FINANCE_STATE_FILENAME = ".finance_corpus_state.json"
+CODE_STATE_FILENAME = ".code_corpus_state.json"
+
+
+def _ingest_physics_corpus(brain, stage, *, corpus_root="data/physics_corpus",
+                            max_chunks_per_call=None, chunk_chars=1200,
+                            checkpoint_dir, log_every=20):
+    """CE-11 wrapper. Same shape as _ingest_math_corpus."""
+    _ingest_canonical_corpus(
+        brain, stage,
+        corpus_root=corpus_root,
+        max_chunks_per_call=max_chunks_per_call,
+        chunk_chars=chunk_chars,
+        checkpoint_dir=checkpoint_dir,
+        log_every=log_every,
+        state_filename=PHYSICS_STATE_FILENAME,
+        label="Physics",
+    )
+
+
+def _ingest_chemistry_corpus(brain, stage, *, corpus_root="data/chemistry_corpus",
+                              max_chunks_per_call=None, chunk_chars=1200,
+                              checkpoint_dir, log_every=20):
+    """CE-12 wrapper."""
+    _ingest_canonical_corpus(
+        brain, stage,
+        corpus_root=corpus_root,
+        max_chunks_per_call=max_chunks_per_call,
+        chunk_chars=chunk_chars,
+        checkpoint_dir=checkpoint_dir,
+        log_every=log_every,
+        state_filename=CHEMISTRY_STATE_FILENAME,
+        label="Chemistry",
+    )
+
+
+def _ingest_biology_corpus(brain, stage, *, corpus_root="data/biology_corpus",
+                            max_chunks_per_call=None, chunk_chars=1200,
+                            checkpoint_dir, log_every=20):
+    """CE-13 wrapper."""
+    _ingest_canonical_corpus(
+        brain, stage,
+        corpus_root=corpus_root,
+        max_chunks_per_call=max_chunks_per_call,
+        chunk_chars=chunk_chars,
+        checkpoint_dir=checkpoint_dir,
+        log_every=log_every,
+        state_filename=BIOLOGY_STATE_FILENAME,
+        label="Biology",
+    )
+
+
+def _ingest_finance_corpus(brain, stage, *, corpus_root="data/finance_corpus",
+                            max_chunks_per_call=None, chunk_chars=1200,
+                            checkpoint_dir, log_every=20):
+    """CE-14 wrapper."""
+    _ingest_canonical_corpus(
+        brain, stage,
+        corpus_root=corpus_root,
+        max_chunks_per_call=max_chunks_per_call,
+        chunk_chars=chunk_chars,
+        checkpoint_dir=checkpoint_dir,
+        log_every=log_every,
+        state_filename=FINANCE_STATE_FILENAME,
+        label="Finance",
+    )
+
+
+def _ingest_code_corpus(brain, stage, *, corpus_root="data/code_corpus",
+                        max_chunks_per_call=None, chunk_chars=1200,
+                        checkpoint_dir, log_every=20):
+    """CE-5 wrapper. Note: code chunks are function-aligned, not
+    paragraph-aligned. The canonical loader still tokenizes the file as
+    text — that's fine for first-pass ingest. The richer code-aware
+    chunker in scripts/code_corpus.py is exposed for downstream consumers
+    that want function-level granularity."""
+    _ingest_canonical_corpus(
+        brain, stage,
+        corpus_root=corpus_root,
+        max_chunks_per_call=max_chunks_per_call,
+        chunk_chars=chunk_chars,
+        checkpoint_dir=checkpoint_dir,
+        log_every=log_every,
+        state_filename=CODE_STATE_FILENAME,
+        label="Code",
+    )
+
+
+# CE-1..3, 6..10, 19 probe-style drips. Each module exposes a
+# `run_X_drip(brain, stage, *, composer=None, ...)` function. We dispatch
+# them all through one helper so the cadence + error handling stays
+# uniform across the curriculum.
+_PROBE_DRIPS = (
+    ("storytelling",   "run_storytelling_drip"),     # CE-1
+    ("socratic_qa",    "run_socratic_drip"),          # CE-2
+    ("sibling_dialog", "run_sibling_drip"),           # CE-3
+    ("music_rhythm",   "run_music_drip"),             # CE-6
+    ("visual_art",     "run_visual_drip"),            # CE-7
+    ("tom_probes",     "run_tom_drip"),               # CE-8
+    ("counterfactual", "run_counterfactual_drip"),    # CE-9
+    ("failure_replay", "run_replay_drip"),            # CE-10
+    ("claude_teacher", "run_claude_teacher_drip"),    # CE-19 (no-op when API unavailable)
+)
+
+
+def _run_extra_corpora_priming(brain, stage, *, checkpoint_dir):
+    """Stage-entry priming for CE-5/11/12/13/14. Each fires once per stage
+    with no per-call cap (full priming pass, like canonical/math). Each
+    cfg's `enabled` flag gates the call individually; missing data dirs
+    surface as a warning inside the canonical-loader path."""
+    if _PHYSICS_CFG and _PHYSICS_CFG.get("enabled"):
+        try:
+            _ingest_physics_corpus(
+                brain, stage=stage,
+                corpus_root=_PHYSICS_CFG.get("root", "data/physics_corpus"),
+                chunk_chars=_PHYSICS_CFG.get("chunk_chars", 1200),
+                max_chunks_per_call=(_PHYSICS_CFG.get("max_chunks_per_stage") or None),
+                checkpoint_dir=checkpoint_dir)
+        except Exception as _e:
+            print(f"  [Physics] stage-{stage} priming failed: {_e}")
+    if _CHEMISTRY_CFG and _CHEMISTRY_CFG.get("enabled"):
+        try:
+            _ingest_chemistry_corpus(
+                brain, stage=stage,
+                corpus_root=_CHEMISTRY_CFG.get("root", "data/chemistry_corpus"),
+                chunk_chars=_CHEMISTRY_CFG.get("chunk_chars", 1200),
+                max_chunks_per_call=(_CHEMISTRY_CFG.get("max_chunks_per_stage") or None),
+                checkpoint_dir=checkpoint_dir)
+        except Exception as _e:
+            print(f"  [Chemistry] stage-{stage} priming failed: {_e}")
+    if _BIOLOGY_CFG and _BIOLOGY_CFG.get("enabled"):
+        try:
+            _ingest_biology_corpus(
+                brain, stage=stage,
+                corpus_root=_BIOLOGY_CFG.get("root", "data/biology_corpus"),
+                chunk_chars=_BIOLOGY_CFG.get("chunk_chars", 1200),
+                max_chunks_per_call=(_BIOLOGY_CFG.get("max_chunks_per_stage") or None),
+                checkpoint_dir=checkpoint_dir)
+        except Exception as _e:
+            print(f"  [Biology] stage-{stage} priming failed: {_e}")
+    if _FINANCE_CFG and _FINANCE_CFG.get("enabled"):
+        try:
+            _ingest_finance_corpus(
+                brain, stage=stage,
+                corpus_root=_FINANCE_CFG.get("root", "data/finance_corpus"),
+                chunk_chars=_FINANCE_CFG.get("chunk_chars", 1200),
+                max_chunks_per_call=(_FINANCE_CFG.get("max_chunks_per_stage") or None),
+                checkpoint_dir=checkpoint_dir)
+        except Exception as _e:
+            print(f"  [Finance] stage-{stage} priming failed: {_e}")
+    if _CODE_CFG and _CODE_CFG.get("enabled"):
+        try:
+            _ingest_code_corpus(
+                brain, stage=stage,
+                corpus_root=_CODE_CFG.get("root", "data/code_corpus"),
+                chunk_chars=_CODE_CFG.get("chunk_chars", 1500),
+                max_chunks_per_call=(_CODE_CFG.get("max_chunks_per_stage") or None),
+                checkpoint_dir=checkpoint_dir)
+        except Exception as _e:
+            print(f"  [Code] stage-{stage} priming failed: {_e}")
+
+
+def _run_probe_drips(brain, stage, *, composer=None,
+                     skip_kinds=()):
+    """Fire each registered probe drip once. Each drip is responsible
+    for its own stage-1 no-op behavior. We isolate failures per-module so
+    one broken probe can't kill the whole stage."""
+    for mod_name, fn_name in _PROBE_DRIPS:
+        if mod_name in skip_kinds:
+            continue
+        try:
+            mod = __import__(mod_name)
+            fn = getattr(mod, fn_name, None)
+            if fn is None:
+                continue
+            # CE-2 socratic_qa needs a chunk_text; we feed it a tiny
+            # stage-appropriate snippet so the drip has something to ask
+            # about. The richer integration (real corpus chunks) can come
+            # later — this keeps the probe alive without requiring corpus
+            # plumbing through the drip layer.
+            if mod_name == "socratic_qa":
+                _snippets = {
+                    1: "",
+                    2: "The cat watched the bird through the window. "
+                       "When the man opened the door the bird flew away.",
+                    3: "The captain ignored the warning signal because "
+                       "he trusted his charts. The ship struck the reef "
+                       "before dawn and the survivors were rescued at first light.",
+                }
+                fn(brain, stage, chunk_text=_snippets.get(int(stage), ""),
+                   composer=composer)
+            else:
+                fn(brain, stage, composer=composer)
+        except Exception as _e:
+            print(f"  [Probe:{mod_name}] drip failed: {_e}")
+
+
 # ============================================================================
 # Stage Runners
 # ============================================================================
@@ -6717,6 +6924,10 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                             checkpoint_dir=CHECKPOINT_DIR)
                     except Exception as _e:
                         print(f"  [Stream:{_kind}] drip failed: {_e}")
+            # CE-1..3, 6..10, 19 probe drips — each module decides its own
+            # stage-1 behavior (some are no-op, some are active).
+            if batch_end % 200 == 0 and getattr(args, "probe_drips", True):
+                _run_probe_drips(brain, stage=1, composer=composer)
 
             # Cognitive training injection
             if batch_end % COGNITIVE_TRAIN_INTERVAL == 0:
@@ -7429,15 +7640,11 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                             checkpoint_dir=CHECKPOINT_DIR)
                     except Exception as _e:
                         print(f"  [Stream:{_kind}] drip failed: {_e}")
-            # Storytelling drip (CE-1) — produce a short narrative from a
-            # stage-appropriate seed and score coherence; feedback signal
-            # re-anchors the brain on collapse / off-topic drift.
-            if (i + 1) % 200 == 0:
-                try:
-                    from storytelling import run_storytelling_drip
-                    run_storytelling_drip(brain, stage=2, composer=composer)
-                except Exception as _e:
-                    print(f"  [Story] drip failed: {_e}")
+            # CE-1..3, 6..10, 19 probe drips — fire all once at every
+            # 200-stimulus mark. Each module decides its own stage-1/2/3
+            # gating internally; failures are isolated per-module.
+            if (i + 1) % 200 == 0 and getattr(args, "probe_drips", True):
+                _run_probe_drips(brain, stage=2, composer=composer)
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
                 try:
@@ -7904,14 +8111,9 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                         checkpoint_dir=CHECKPOINT_DIR)
                 except Exception as _e:
                     print(f"  [Stream:{_kind}] drip failed: {_e}")
-        # Storytelling drip (CE-1) — produce a short narrative from a
-        # stage-3 seed and score coherence; corrective feedback on collapse.
-        if (i + 1) % 200 == 0:
-            try:
-                from storytelling import run_storytelling_drip
-                run_storytelling_drip(brain, stage=3, composer=composer)
-            except Exception as _e:
-                print(f"  [Story] drip failed: {_e}")
+        # CE-1..3, 6..10, 19 probe drips — fire all at every 200-stimulus mark.
+        if (i + 1) % 200 == 0 and getattr(args, "probe_drips", True):
+            _run_probe_drips(brain, stage=3, composer=composer)
 
         # Checkpoint every 50 steps (state file only)
         if (i + 1) % 50 == 0 and (i + 1) % 2000 != 0:
@@ -9741,6 +9943,33 @@ def main():
                              "(0 = unlimited; positive caps for fast smoke runs)")
     parser.add_argument("--streaming-restart", action="store_true",
                         help="Delete .streaming_corpus_state.json before starting")
+    # CE-5/11/12/13/14 — STEM + finance + code corpus toggles. All default ON.
+    parser.add_argument("--physics-corpus", dest="physics_corpus",
+                        action="store_true", default=True)
+    parser.add_argument("--no-physics-corpus", dest="physics_corpus",
+                        action="store_false")
+    parser.add_argument("--chemistry-corpus", dest="chemistry_corpus",
+                        action="store_true", default=True)
+    parser.add_argument("--no-chemistry-corpus", dest="chemistry_corpus",
+                        action="store_false")
+    parser.add_argument("--biology-corpus", dest="biology_corpus",
+                        action="store_true", default=True)
+    parser.add_argument("--no-biology-corpus", dest="biology_corpus",
+                        action="store_false")
+    parser.add_argument("--finance-corpus", dest="finance_corpus",
+                        action="store_true", default=True)
+    parser.add_argument("--no-finance-corpus", dest="finance_corpus",
+                        action="store_false")
+    parser.add_argument("--code-corpus", dest="code_corpus",
+                        action="store_true", default=True)
+    parser.add_argument("--no-code-corpus", dest="code_corpus",
+                        action="store_false")
+    # CE-1..3, 6..10, 19 probe drips. All default ON; --no-probe-drips
+    # disables them all (e.g., for fast smoke runs).
+    parser.add_argument("--probe-drips", dest="probe_drips",
+                        action="store_true", default=True)
+    parser.add_argument("--no-probe-drips", dest="probe_drips",
+                        action="store_false")
     args = parser.parse_args()
 
     # Publish canonical-corpus config so drip hooks inside run_stage_N can
@@ -9782,6 +10011,30 @@ def main():
                 print(f"  [Math] --math-restart: removed {_mrp}")
             except Exception as _e:
                 print(f"  [Math] --math-restart: failed to remove {_mrp}: {_e}")
+
+    # CE-11/12/13/14/5 — publish per-corpus configs. They all share the
+    # canonical-corpus dispatcher so the cfg shape mirrors _MATH_CFG.
+    global _PHYSICS_CFG, _CHEMISTRY_CFG, _BIOLOGY_CFG, _FINANCE_CFG, _CODE_CFG
+    _PHYSICS_CFG = {"enabled": bool(getattr(args, "physics_corpus", True)),
+                    "root": "data/physics_corpus",
+                    "chunk_chars": 1200,
+                    "max_chunks_per_stage": 0}
+    _CHEMISTRY_CFG = {"enabled": bool(getattr(args, "chemistry_corpus", True)),
+                      "root": "data/chemistry_corpus",
+                      "chunk_chars": 1200,
+                      "max_chunks_per_stage": 0}
+    _BIOLOGY_CFG = {"enabled": bool(getattr(args, "biology_corpus", True)),
+                    "root": "data/biology_corpus",
+                    "chunk_chars": 1200,
+                    "max_chunks_per_stage": 0}
+    _FINANCE_CFG = {"enabled": bool(getattr(args, "finance_corpus", True)),
+                    "root": "data/finance_corpus",
+                    "chunk_chars": 1200,
+                    "max_chunks_per_stage": 0}
+    _CODE_CFG = {"enabled": bool(getattr(args, "code_corpus", True)),
+                 "root": "data/code_corpus",
+                 "chunk_chars": 1500,  # code chunks slightly larger
+                 "max_chunks_per_stage": 0}
 
     # Publish streaming-corpus config. Kinds is a comma-separated list of
     # registered backend kinds; empty means streaming is disabled. Backends
@@ -10284,6 +10537,7 @@ def main():
                     chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
                     max_chunks_per_call=(_STREAMING_CFG.get("max_chunks_per_stage") or None),
                     checkpoint_dir=CHECKPOINT_DIR)
+        _run_extra_corpora_priming(brain, stage=1, checkpoint_dir=CHECKPOINT_DIR)
         run_stage_1(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
@@ -10318,6 +10572,7 @@ def main():
                     chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
                     max_chunks_per_call=(_STREAMING_CFG.get("max_chunks_per_stage") or None),
                     checkpoint_dir=CHECKPOINT_DIR)
+        _run_extra_corpora_priming(brain, stage=2, checkpoint_dir=CHECKPOINT_DIR)
         stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
             num_stimuli=args.stage2_stimuli,
@@ -10356,6 +10611,7 @@ def main():
                     chunk_chars=_STREAMING_CFG.get("chunk_chars", 1200),
                     max_chunks_per_call=(_STREAMING_CFG.get("max_chunks_per_stage") or None),
                     checkpoint_dir=CHECKPOINT_DIR)
+        _run_extra_corpora_priming(brain, stage=3, checkpoint_dir=CHECKPOINT_DIR)
         run_stage_3(brain, composer, parent, clock, source, decoder,
                     num_interactions=args.stage3_interactions,
                     start_from=start_step if start_stage == 3 else 0)
