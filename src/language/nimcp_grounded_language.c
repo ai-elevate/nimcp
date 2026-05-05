@@ -1386,16 +1386,32 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
  * Template-based Production
  *===========================================================================*/
 
-/** Select best template for a given set of word classes */
+/** Select best template for a given set of word classes.
+ *
+ * Tunable via env var NIMCP_TEMPLATE_PRIOR_WEIGHT (default 1.0):
+ *   score = pow(t->frequency, prior_w) * t->confidence
+ * Lower values dampen the frequency prior so templates compete more on
+ * confidence; 0.0 removes the frequency term entirely. Env var is read once
+ * per process (cached) so this is a daemon-restart-level knob, not per-call.
+ */
 static const gl_template_t* select_template(const grounded_language_t* gl,
                                              bool has_noun, bool has_verb,
                                              bool has_adj) {
+    static float prior_w = -1.0f;
+    if (prior_w < 0.0f) {
+        const char* s = getenv("NIMCP_TEMPLATE_PRIOR_WEIGHT");
+        prior_w = (s && *s) ? (float)atof(s) : 1.0f;
+        if (prior_w < 0.0f) prior_w = 0.0f;
+        if (prior_w > 4.0f) prior_w = 4.0f;
+    }
+
     float best_score = -1.0f;
     const gl_template_t* best = NULL;
 
     for (uint32_t i = 0; i < gl->template_count; i++) {
         const gl_template_t* t = &gl->templates[i];
-        float score = t->frequency * t->confidence;
+        float freq_term = (prior_w == 1.0f) ? t->frequency : powf(t->frequency, prior_w);
+        float score = freq_term * t->confidence;
 
         /* Bonus for templates that match available word classes */
         bool can_fill = true;
