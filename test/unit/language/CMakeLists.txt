@@ -289,6 +289,24 @@ gtest_discover_tests(unit_grounded_language_deferred_wave1
 )
 
 # ============================================================================
+# Grounded Language Deferred Wave 2 (#13 phonological + #5 LRU eviction)
+# ============================================================================
+add_executable(unit_grounded_language_deferred_wave2
+    test_grounded_language_deferred_wave2.cpp
+)
+target_link_libraries(unit_grounded_language_deferred_wave2
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_grounded_language_deferred_wave2
+    PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_grounded_language_deferred_wave2 PRIVATE cxx_std_17)
+gtest_discover_tests(unit_grounded_language_deferred_wave2
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES LABELS "unit;language;deferred;wave2" TIMEOUT 60
+)
+
+# ============================================================================
 # Grounded Language Cortex Modulation Tests
 # ============================================================================
 add_executable(unit_grounded_language_cortex_modulation

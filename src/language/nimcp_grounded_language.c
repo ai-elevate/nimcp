@@ -116,6 +116,15 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
     char lower[GL_MAX_WORD_LEN];
     lowercase_word(word, lower, GL_MAX_WORD_LEN);
     uint32_t h = hash_word(lower);
+
+    /* #5 Auto-trigger LRU eviction when the lexicon is near the cap.
+     * Don't pay this cost on every call — only when we've crossed the
+     * high-water threshold. The find_or_create itself is the
+     * authoritative growth point so this is the natural spot. */
+    if (gl->vocab_count >= GL_LRU_HIGH_WATER) {
+        grounded_language_evict_lru(gl, GL_LRU_EVICT_BATCH);
+    }
+
     uint32_t idx = h % gl->lexicon_size;
 
     /* Linear probe to find existing entry */
@@ -219,6 +228,89 @@ const gl_lexicon_entry_t* lexicon_find_internal(const grounded_language_t* gl,
 bool grounded_language_has_word(const grounded_language_t* gl, const char* word) {
     if (!gl || !word || !word[0]) return false;
     return lexicon_find(gl, word) != NULL;
+}
+
+/*=============================================================================
+ * #5 LRU lexicon eviction
+ *===========================================================================*/
+
+/* Free a single lexicon entry's heap storage. */
+static void _gl_free_entry(gl_lexicon_entry_t* e) {
+    if (!e) return;
+    nimcp_free(e->bindings);
+    nimcp_free(e->context_vector);
+    nimcp_free(e);
+}
+
+/* Rebuild the hash table from vocab_list. After eviction the previous
+ * probe chains are stale; rather than chase tombstones through every
+ * lookup we wipe and re-insert. O(N) — only called from the eviction
+ * path which is itself rare. */
+static void _gl_rebuild_lexicon_hash(grounded_language_t* gl) {
+    memset(gl->lexicon, 0, gl->lexicon_size * sizeof(gl_lexicon_entry_t*));
+    for (uint32_t v = 0; v < gl->vocab_count; v++) {
+        gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e) continue;
+        uint32_t idx = e->form_hash % gl->lexicon_size;
+        for (uint32_t probe = 0; probe < gl->lexicon_size; probe++) {
+            uint32_t slot = (idx + probe) % gl->lexicon_size;
+            if (!gl->lexicon[slot]) {
+                gl->lexicon[slot] = e;
+                break;
+            }
+        }
+    }
+}
+
+uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
+    if (!gl || n == 0 || gl->vocab_count == 0) return 0;
+
+    /* Pass 1: find the n-th lowest frequency among unpinned entries.
+     * For small batches an N×K linear scan is fine — N ≤ vocab_count,
+     * K = n. With n ≤ ~256 and vocab ≤ 16384 we're talking 4M ops
+     * worst-case, which is microseconds. No need for partial-sort. */
+    uint32_t evicted = 0;
+    while (evicted < n) {
+        uint32_t target = UINT32_MAX;
+        uint32_t target_freq = UINT32_MAX;
+        for (uint32_t v = 0; v < gl->vocab_count; v++) {
+            const gl_lexicon_entry_t* e = gl->vocab_list[v];
+            if (!e) continue;
+            if (e->frequency >= GL_LRU_FREQ_PIN_FLOOR) continue;
+            if (e->frequency < target_freq) {
+                target_freq = e->frequency;
+                target = v;
+            }
+        }
+        if (target == UINT32_MAX) break;  /* nothing left to evict */
+
+        _gl_free_entry(gl->vocab_list[target]);
+        gl->vocab_list[target] = NULL;
+        evicted++;
+    }
+
+    if (evicted == 0) return 0;
+
+    /* Compact vocab_list — shift survivors down to fill the holes. */
+    uint32_t write = 0;
+    for (uint32_t read = 0; read < gl->vocab_count; read++) {
+        if (gl->vocab_list[read]) {
+            if (write != read) gl->vocab_list[write] = gl->vocab_list[read];
+            write++;
+        }
+    }
+    /* Clear stale tail slots so destroy() doesn't double-free. */
+    for (uint32_t i = write; i < gl->vocab_count; i++) gl->vocab_list[i] = NULL;
+    gl->vocab_count = write;
+    gl->stats.vocab_size = gl->vocab_count;
+
+    /* Rebuild hash table (probe chains are now stale). */
+    _gl_rebuild_lexicon_hash(gl);
+
+    LOG_DEBUG(LOG_MODULE,
+              "lexicon eviction: removed %u entries (vocab now %u)",
+              evicted, gl->vocab_count);
+    return evicted;
 }
 
 /*=============================================================================

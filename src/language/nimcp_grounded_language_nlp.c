@@ -52,6 +52,7 @@
 #include "generation/nimcp_tokenizer.h"
 
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
@@ -320,6 +321,150 @@ int gl_nlp_subword_lookup(grounded_language_t* gl,
         }
     }
     return 0;
+}
+
+/*=============================================================================
+ * #13 Phonological retrieval — rhyme + alliteration
+ *
+ * Linear-scan helpers over the active vocab. Bounded by GL_MAX_VOCAB
+ * (16384 entries) — cheap in exchange for keeping the index out of
+ * the hot-path mutation paths (no synchronization, no persistence
+ * parity required, no eviction follow-through).
+ *===========================================================================*/
+
+/* Skip non-alphabetic trailing chars and copy up to suffix_len into
+ * out (lowercased, NUL-terminated). Returns the number of letters
+ * actually captured (≤ suffix_len); 0 if the word has too few letters. */
+static uint32_t _gl_word_suffix_lower(const char* word,
+                                        uint32_t suffix_len,
+                                        char* out,
+                                        size_t out_sz) {
+    if (!word || !out || out_sz == 0) return 0;
+    if (suffix_len + 1 > out_sz) return 0;
+
+    /* Find end of word (NUL terminator). */
+    size_t len = 0;
+    while (word[len] != '\0') len++;
+
+    /* Skip trailing non-alpha (punctuation, digits). */
+    while (len > 0 &&
+           !(((unsigned char)word[len - 1] >= 'a' &&
+              (unsigned char)word[len - 1] <= 'z') ||
+             ((unsigned char)word[len - 1] >= 'A' &&
+              (unsigned char)word[len - 1] <= 'Z'))) {
+        len--;
+    }
+
+    if (len < suffix_len) return 0;
+
+    for (uint32_t i = 0; i < suffix_len; i++) {
+        unsigned char c = (unsigned char)word[len - suffix_len + i];
+        if (c >= 'A' && c <= 'Z') c = (unsigned char)(c - 'A' + 'a');
+        out[i] = (char)c;
+    }
+    out[suffix_len] = '\0';
+    return suffix_len;
+}
+
+/* Lowercased first alphabetic byte of the word, or 0 when no alpha
+ * is present. */
+static char _gl_first_alpha_lower(const char* word) {
+    if (!word) return 0;
+    for (const char* p = word; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c >= 'A' && c <= 'Z') return (char)(c - 'A' + 'a');
+        if (c >= 'a' && c <= 'z') return (char)c;
+    }
+    return 0;
+}
+
+uint32_t grounded_language_lookup_rhymes(const grounded_language_t* gl,
+                                           const char* word,
+                                           const char** out_words,
+                                           uint32_t max_out) {
+    if (!gl || !word || !out_words || max_out == 0) return 0;
+
+    char ref_suf[GL_RHYME_SUFFIX_LEN + 1];
+    if (_gl_word_suffix_lower(word, GL_RHYME_SUFFIX_LEN,
+                                ref_suf, sizeof(ref_suf)) == 0) {
+        return 0;
+    }
+
+    /* Lowercase the input itself so we can exclude self-match. */
+    char self[64];
+    {
+        size_t i = 0;
+        for (; word[i] && i < sizeof(self) - 1; i++) {
+            unsigned char c = (unsigned char)word[i];
+            if (c >= 'A' && c <= 'Z') c = (unsigned char)(c - 'A' + 'a');
+            self[i] = (char)c;
+        }
+        self[i] = '\0';
+    }
+
+    uint32_t n = 0;
+    for (uint32_t v = 0; v < gl->vocab_count && n < max_out; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e) continue;
+        char cand_suf[GL_RHYME_SUFFIX_LEN + 1];
+        if (_gl_word_suffix_lower(e->form, GL_RHYME_SUFFIX_LEN,
+                                    cand_suf, sizeof(cand_suf)) == 0) {
+            continue;
+        }
+        if (memcmp(cand_suf, ref_suf, GL_RHYME_SUFFIX_LEN) != 0) continue;
+        /* Skip self-match (form is already stored lowercased on insert). */
+        size_t ci = 0;
+        bool same = true;
+        while (e->form[ci] && self[ci]) {
+            if (e->form[ci] != self[ci]) { same = false; break; }
+            ci++;
+        }
+        if (same && e->form[ci] == self[ci]) continue;
+
+        out_words[n++] = e->form;
+    }
+    return n;
+}
+
+uint32_t grounded_language_lookup_alliterations(const grounded_language_t* gl,
+                                                  const char* word,
+                                                  const char** out_words,
+                                                  uint32_t max_out) {
+    if (!gl || !word || !out_words || max_out == 0) return 0;
+
+    char first = _gl_first_alpha_lower(word);
+    if (first == 0) return 0;
+
+    /* Lowercase self for exclusion. */
+    char self[64];
+    {
+        size_t i = 0;
+        for (; word[i] && i < sizeof(self) - 1; i++) {
+            unsigned char c = (unsigned char)word[i];
+            if (c >= 'A' && c <= 'Z') c = (unsigned char)(c - 'A' + 'a');
+            self[i] = (char)c;
+        }
+        self[i] = '\0';
+    }
+
+    uint32_t n = 0;
+    for (uint32_t v = 0; v < gl->vocab_count && n < max_out; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e) continue;
+        if (_gl_first_alpha_lower(e->form) != first) continue;
+
+        /* Skip self-match. */
+        size_t ci = 0;
+        bool same = true;
+        while (e->form[ci] && self[ci]) {
+            if (e->form[ci] != self[ci]) { same = false; break; }
+            ci++;
+        }
+        if (same && e->form[ci] == self[ci]) continue;
+
+        out_words[n++] = e->form;
+    }
+    return n;
 }
 
 /*=============================================================================

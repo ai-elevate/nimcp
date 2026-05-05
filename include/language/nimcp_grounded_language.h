@@ -1166,6 +1166,105 @@ uint32_t grounded_language_subscriber_count(const grounded_language_t* gl);
 bool grounded_language_has_word(const grounded_language_t* gl, const char* word);
 
 /*=============================================================================
+ * Lexicon LRU eviction (#5)
+ *
+ * The lexicon is capped at GL_MAX_VOCAB. Without eviction, long-running
+ * brains hit the cap and stop accepting new words — which silently
+ * caps cumulative vocabulary growth (the symptom: vocab_count plateaus
+ * at 16384 even though new words keep arriving).
+ *
+ * Policy:
+ *   - Score = frequency. Low-frequency entries are evicted first.
+ *   - Pinned threshold (GL_LRU_FREQ_PIN_FLOOR) — entries above this
+ *     frequency are never evicted, even if N requests it. This protects
+ *     the high-value core vocabulary.
+ *   - Auto-trigger fires inside lexicon_find_or_create when vocab_count
+ *     ≥ GL_LRU_HIGH_WATER. Caller-side trigger via the public API
+ *     below is also supported (curriculum drivers can prune proactively
+ *     during sleep cycles).
+ *===========================================================================*/
+
+/** Eviction threshold: when vocab grows past this, the next insert
+ *  call auto-prunes a batch before allocating. */
+#define GL_LRU_HIGH_WATER          (GL_MAX_VOCAB - 256)
+
+/** Default batch size for an auto-eviction sweep. */
+#define GL_LRU_EVICT_BATCH         256
+
+/** Frequency floor below which entries are eviction candidates.
+ *  Entries with frequency >= this value are pinned (never evicted). */
+#define GL_LRU_FREQ_PIN_FLOOR      10
+
+/**
+ * @brief Evict up to `n` least-frequently-used entries from the lexicon.
+ *        Pinned entries (frequency ≥ GL_LRU_FREQ_PIN_FLOOR) are never
+ *        evicted regardless of `n`. Returns the actual count evicted.
+ *
+ *        After eviction the hash table is rebuilt; outstanding pointers
+ *        from grounded_language_lookup() are invalidated.
+ *
+ * @param gl  System handle (NULL → 0)
+ * @param n   Max entries to evict
+ * @return Count of entries actually freed.
+ */
+uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n);
+
+/*=============================================================================
+ * Phonological retrieval — rhyme + alliteration (#13)
+ *
+ * Linear-scan helpers over the active vocab. Cold-path API used for
+ * curriculum, poetry/song generation, and analogical retrieval —
+ * never invoked from comprehension/production hot loops, so the
+ * vocab-cap-bounded O(N) cost is acceptable in exchange for not
+ * carrying a separate hash index that would need creation, eviction,
+ * and persistence parity.
+ *
+ * Output buffers (out_words[]) point into GL's vocab storage and are
+ * valid only until the next lexicon mutation (fast_map / ground /
+ * eviction). Callers that need to retain forms must copy.
+ *===========================================================================*/
+
+/** Suffix length used by the rhyme matcher (final N letters must match
+ *  case-insensitively, ignoring non-alphabetics). 3 captures most
+ *  common English rhymes ("-ight", "-ound", "-ake") without false
+ *  positives from compound words. */
+#define GL_RHYME_SUFFIX_LEN  3
+
+/**
+ * @brief Find words in the lexicon whose final GL_RHYME_SUFFIX_LEN
+ *        letters match `word`'s suffix. Excludes the input word itself.
+ *
+ * @param gl         System handle
+ * @param word       Reference word (must have at least GL_RHYME_SUFFIX_LEN
+ *                   alphabetic characters)
+ * @param out_words  Caller-supplied buffer of `const char*` pointers
+ * @param max_out    Capacity of out_words
+ * @return Number of rhymes written, or 0 on bad input.
+ */
+uint32_t grounded_language_lookup_rhymes(
+    const grounded_language_t* gl,
+    const char* word,
+    const char** out_words,
+    uint32_t max_out);
+
+/**
+ * @brief Find words in the lexicon whose first letter matches the first
+ *        letter of `word` (case-insensitive). Excludes the input word.
+ *
+ *        Models alliteration as same-onset matching — minimum-viable
+ *        signal that catches 99% of practical use-cases (poetry,
+ *        memorization mnemonics) without a full phonemic onset
+ *        analyzer.
+ *
+ * @return Number of alliterating words written, or 0 on bad input.
+ */
+uint32_t grounded_language_lookup_alliterations(
+    const grounded_language_t* gl,
+    const char* word,
+    const char** out_words,
+    uint32_t max_out);
+
+/*=============================================================================
  * Probes & Metrics (operational telemetry beyond gl_stats_t)
  *===========================================================================*/
 
