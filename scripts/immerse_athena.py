@@ -554,6 +554,11 @@ STATE_FILE = "checkpoints/athena/immersive_state.json"
 MASTERY_FILE = "checkpoints/athena/mastery_state.json"
 CONTENT_CACHE = "checkpoints/athena/claude_content_cache.json"
 
+# Canonical-corpus runtime config — populated from argparse in main() so the
+# drip hooks inside run_stage_1/2/3 can read it without threading args through
+# every signature. Stays None when --no-canonical-corpus is passed.
+_CANONICAL_CFG = None  # dict with keys: enabled, root, chunk_chars, max_chunks_per_stage
+
 # Cross-modal grounding helper. The function-word stoplist is ~50 words —
 # anything not on the list is treated as a content word and gets a
 # brain.ground_word() call binding it to the active sensory features.
@@ -5663,6 +5668,190 @@ def run_sensory_enrichment(brain, composer, parent, decoder,
 
 
 # ============================================================================
+# Canonical literary corpus ingestion
+# ============================================================================
+
+CANONICAL_STATE_FILENAME = ".canonical_corpus_state.json"
+
+
+def _canonical_state_path(checkpoint_dir):
+    return os.path.join(checkpoint_dir, CANONICAL_STATE_FILENAME)
+
+
+def _canonical_default_state():
+    return {
+        "version": 1,
+        "by_work": {},
+        "totals": {"chunks_ingested": 0, "bytes_ingested": 0},
+    }
+
+
+def _load_canonical_state(checkpoint_dir):
+    """Read the canonical-corpus resume state. Empty default if missing."""
+    path = _canonical_state_path(checkpoint_dir)
+    if not os.path.exists(path):
+        return _canonical_default_state()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except Exception:
+        return _canonical_default_state()
+    # Schema-shape sanity (don't trust on-disk json blindly).
+    if not isinstance(state, dict):
+        return _canonical_default_state()
+    state.setdefault("version", 1)
+    state.setdefault("by_work", {})
+    state.setdefault("totals", {"chunks_ingested": 0, "bytes_ingested": 0})
+    if not isinstance(state["by_work"], dict):
+        state["by_work"] = {}
+    if not isinstance(state["totals"], dict):
+        state["totals"] = {"chunks_ingested": 0, "bytes_ingested": 0}
+    return state
+
+
+def _save_canonical_state(checkpoint_dir, state):
+    """Atomic write of canonical-corpus resume state (tempfile + os.replace)."""
+    try:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+    except Exception:
+        pass
+    path = _canonical_state_path(checkpoint_dir)
+    tmp_path = path + ".tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+            f.flush()
+            try:
+                os.fsync(f.fileno())
+            except Exception:
+                pass
+        os.replace(tmp_path, path)
+    except Exception:
+        # Best-effort — losing state means the next run reprocesses some
+        # text, never the other way around. Cleanup orphan tmp.
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+
+
+def _ingest_canonical_corpus(brain, stage, *, corpus_root,
+                              max_chunks_per_call=None,
+                              chunk_chars=1200,
+                              checkpoint_dir,
+                              log_every=20):
+    """Drive canonical-corpus chunks into the brain for one stage.
+
+    - Optional: silently skips when index.json is missing.
+    - Resumable: per-work byte cursor lives in `.canonical_corpus_state.json`.
+    - Round-robin schedule over stage's works, weighted by manifest weights.
+    - Each chunk is fed through brain.train_language() and brain.learn_language()
+      mirroring the babbling-loop call shape. Per-chunk failures are logged
+      and skipped (one bad chunk doesn't tank the run).
+    """
+    try:
+        from canonical_corpus import (
+            load_index, works_for_stage, iter_chunks, round_robin_schedule,
+        )
+    except Exception as e:
+        print(f"  [Canonical] loader import failed: {e} — skipping")
+        return
+
+    try:
+        idx = load_index(corpus_root)
+    except FileNotFoundError:
+        # Corpus is optional — quiet skip.
+        return
+    except Exception as e:
+        print(f"  [Canonical] load_index failed: {e} — skipping")
+        return
+
+    works = works_for_stage(idx, stage)
+    if not works:
+        return
+
+    state = _load_canonical_state(checkpoint_dir)
+    work_by_id = {w["id"]: w for w in works}
+
+    # Plan a round-robin order over works for this call.
+    schedule_size = max(20, len(works) * 5)
+    schedule = round_robin_schedule(works, total_chunks=schedule_size)
+
+    chunks_done_call = 0
+    bytes_done_call = 0
+    cap = max_chunks_per_call if (max_chunks_per_call and max_chunks_per_call > 0) else None
+
+    for work_id in schedule:
+        if cap is not None and chunks_done_call >= cap:
+            break
+        work = work_by_id.get(work_id)
+        if work is None:
+            continue
+        wstate = state["by_work"].setdefault(work_id, {
+            "byte_offset": 0, "chunks_done": 0,
+            "last_stage": None, "last_step": None, "done": False,
+        })
+        if wstate.get("done"):
+            continue
+
+        # Pull just the first chunk from the resume cursor; iter_chunks is a
+        # generator so we don't materialize the whole work.
+        start_byte = int(wstate.get("byte_offset", 0) or 0)
+        try:
+            it = iter_chunks(work, corpus_root,
+                             start_byte=start_byte,
+                             max_chars=chunk_chars)
+            first = next(it, None)
+        except Exception as e:
+            print(f"  [Canonical] {work_id} iter failed: {e}")
+            wstate["done"] = True
+            continue
+        if first is None:
+            wstate["done"] = True
+            continue
+        end_byte, text = first
+        if not text or not text.strip():
+            wstate["byte_offset"] = end_byte
+            continue
+
+        # Drive the chunk into the brain. Mirror the babbling-loop shape:
+        # train_language(text, target_text=text) + learn_language(text).
+        try:
+            try:
+                brain.train_language(text, text)
+            except TypeError:
+                # Some bindings expose train_language as kw-only.
+                brain.train_language(text=text, target_text=text)
+            brain.learn_language(text)
+        except Exception as e:
+            # Don't propagate — one bad chunk shouldn't tank the run.
+            print(f"  [Canonical] {work_id} brain call failed: {e}")
+            # Still advance the cursor so we don't re-feed the same bad chunk.
+        # Update state.
+        delta_bytes = max(0, end_byte - start_byte)
+        wstate["byte_offset"] = int(end_byte)
+        wstate["chunks_done"] = int(wstate.get("chunks_done", 0)) + 1
+        wstate["last_stage"] = int(stage)
+        wstate["last_step"] = int(wstate.get("chunks_done", 0))
+        state["totals"]["chunks_ingested"] = int(state["totals"].get("chunks_ingested", 0)) + 1
+        state["totals"]["bytes_ingested"] = int(state["totals"].get("bytes_ingested", 0)) + delta_bytes
+
+        chunks_done_call += 1
+        bytes_done_call += delta_bytes
+
+        # Periodic state persistence.
+        if chunks_done_call % max(1, int(log_every)) == 0:
+            _save_canonical_state(checkpoint_dir, state)
+
+    # Final flush.
+    _save_canonical_state(checkpoint_dir, state)
+
+    print(f"  [Canonical] stage {stage}: ingested {chunks_done_call} chunks "
+          f"across {len(works)} works ({bytes_done_call} bytes)")
+
+
+# ============================================================================
 # Stage Runners
 # ============================================================================
 
@@ -6169,6 +6358,20 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             # Checkpoint
             if batch_end % 50 == 0:
                 _save_checkpoint(brain, decoder, stage=1, step=batch_end)
+
+            # Canonical-corpus drip — small priming pass interleaved with
+            # the main loop so language exposure stays alive throughout
+            # the stage rather than only at the priming pass at start.
+            if batch_end % 200 == 0 and _CANONICAL_CFG and _CANONICAL_CFG.get("enabled"):
+                try:
+                    _ingest_canonical_corpus(
+                        brain, stage=1,
+                        corpus_root=_CANONICAL_CFG.get("root", "data/canonical_corpus"),
+                        chunk_chars=_CANONICAL_CFG.get("chunk_chars", 1200),
+                        max_chunks_per_call=20,
+                        checkpoint_dir=CHECKPOINT_DIR)
+                except Exception as _e:
+                    print(f"  [Canonical] drip failed: {_e}")
 
             # Cognitive training injection
             if batch_end % COGNITIVE_TRAIN_INTERVAL == 0:
@@ -6848,6 +7051,17 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                             collapse_events=int(getattr(collapse_detector,
                                                         "collapse_count", 0) or 0))
             _save_checkpoint(brain, decoder, stage=2, step=i+1)
+            # Canonical-corpus drip — keep literary exposure alive in stage 2.
+            if (i + 1) % 200 == 0 and _CANONICAL_CFG and _CANONICAL_CFG.get("enabled"):
+                try:
+                    _ingest_canonical_corpus(
+                        brain, stage=2,
+                        corpus_root=_CANONICAL_CFG.get("root", "data/canonical_corpus"),
+                        chunk_chars=_CANONICAL_CFG.get("chunk_chars", 1200),
+                        max_chunks_per_call=20,
+                        checkpoint_dir=CHECKPOINT_DIR)
+                except Exception as _e:
+                    print(f"  [Canonical] drip failed: {_e}")
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
                 try:
@@ -7280,6 +7494,18 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 logger.debug("Synapse pruning failed: %s", e)
             _save_checkpoint(brain, decoder, stage=3, step=i+1)
             mastery.save(MASTERY_FILE)
+
+        # Canonical-corpus drip — keep literary exposure alive in stage 3.
+        if (i + 1) % 200 == 0 and _CANONICAL_CFG and _CANONICAL_CFG.get("enabled"):
+            try:
+                _ingest_canonical_corpus(
+                    brain, stage=3,
+                    corpus_root=_CANONICAL_CFG.get("root", "data/canonical_corpus"),
+                    chunk_chars=_CANONICAL_CFG.get("chunk_chars", 1200),
+                    max_chunks_per_call=20,
+                    checkpoint_dir=CHECKPOINT_DIR)
+            except Exception as _e:
+                print(f"  [Canonical] drip failed: {_e}")
 
         # Checkpoint every 50 steps (state file only)
         if (i + 1) % 50 == 0 and (i + 1) % 2000 != 0:
@@ -9040,7 +9266,51 @@ def main():
                         help="Disable multimodal dataset download")
     parser.add_argument("--daemon", action="store_true",
                         help="Connect to brain daemon instead of loading brain")
+    # --- Canonical literary corpus ingestion (default ON) ---
+    if hasattr(argparse, "BooleanOptionalAction"):
+        parser.add_argument("--canonical-corpus",
+                            action=argparse.BooleanOptionalAction,
+                            default=True,
+                            help="Ingest the canonical literary corpus during stages 1-3 "
+                                 "(default: on; pass --no-canonical-corpus to skip)")
+    else:
+        parser.add_argument("--canonical-corpus", dest="canonical_corpus",
+                            action="store_true", default=True,
+                            help="Ingest the canonical literary corpus during stages 1-3")
+        parser.add_argument("--no-canonical-corpus", dest="canonical_corpus",
+                            action="store_false",
+                            help="Disable canonical-corpus ingestion")
+    parser.add_argument("--canonical-chunk-chars", type=int, default=1200,
+                        help="Max characters per canonical-corpus chunk (default: 1200)")
+    parser.add_argument("--canonical-max-chunks-per-stage", type=int, default=0,
+                        help="Cap chunks per stage priming pass (0 = unlimited; "
+                             "positive caps for fast smoke runs)")
+    parser.add_argument("--canonical-restart", action="store_true",
+                        help="Delete .canonical_corpus_state.json before starting")
+    parser.add_argument("--canonical-corpus-root", type=str,
+                        default="data/canonical_corpus",
+                        help="Path to canonical corpus root (default: data/canonical_corpus)")
     args = parser.parse_args()
+
+    # Publish canonical-corpus config so drip hooks inside run_stage_N can
+    # read it without threading args through every signature.
+    global _CANONICAL_CFG
+    _CANONICAL_CFG = {
+        "enabled": bool(getattr(args, "canonical_corpus", True)),
+        "root": getattr(args, "canonical_corpus_root", "data/canonical_corpus"),
+        "chunk_chars": int(getattr(args, "canonical_chunk_chars", 1200)),
+        "max_chunks_per_stage": int(getattr(args, "canonical_max_chunks_per_stage", 0) or 0),
+    }
+
+    # --canonical-restart: wipe the resume-state file before starting.
+    if getattr(args, "canonical_restart", False):
+        _crp = _canonical_state_path(CHECKPOINT_DIR)
+        if os.path.exists(_crp):
+            try:
+                os.remove(_crp)
+                print(f"  [Canonical] --canonical-restart: removed {_crp}")
+            except Exception as _e:
+                print(f"  [Canonical] --canonical-restart: failed to remove {_crp}: {_e}")
 
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(name)s] %(message)s")
@@ -9495,6 +9765,13 @@ def main():
         training_progress[0], training_progress[1] = 1, 0
         if _training_integration is not None:
             _training_integration.begin_stage(1)
+        if args.canonical_corpus:
+            _ingest_canonical_corpus(
+                brain, stage=1,
+                corpus_root=args.canonical_corpus_root,
+                chunk_chars=args.canonical_chunk_chars,
+                max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
+                checkpoint_dir=CHECKPOINT_DIR)
         run_stage_1(brain, composer, parent, clock, source, decoder,
                     num_stimuli=args.stage1_stimuli,
                     start_from=start_step if start_stage == 1 else 0)
@@ -9508,6 +9785,13 @@ def main():
         training_progress[0], training_progress[1] = 2, 0
         if _training_integration is not None:
             _training_integration.begin_stage(2)
+        if args.canonical_corpus:
+            _ingest_canonical_corpus(
+                brain, stage=2,
+                corpus_root=args.canonical_corpus_root,
+                chunk_chars=args.canonical_chunk_chars,
+                max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
+                checkpoint_dir=CHECKPOINT_DIR)
         stage2_losses = run_stage_2(
             brain, composer, parent, clock, source, decoder,
             num_stimuli=args.stage2_stimuli,
@@ -9525,6 +9809,13 @@ def main():
         training_progress[0], training_progress[1] = 3, 0
         if _training_integration is not None:
             _training_integration.begin_stage(3)
+        if args.canonical_corpus:
+            _ingest_canonical_corpus(
+                brain, stage=3,
+                corpus_root=args.canonical_corpus_root,
+                chunk_chars=args.canonical_chunk_chars,
+                max_chunks_per_call=(args.canonical_max_chunks_per_stage or None),
+                checkpoint_dir=CHECKPOINT_DIR)
         run_stage_3(brain, composer, parent, clock, source, decoder,
                     num_interactions=args.stage3_interactions,
                     start_from=start_step if start_stage == 3 else 0)
