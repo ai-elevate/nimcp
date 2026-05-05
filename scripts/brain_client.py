@@ -280,6 +280,42 @@ class BrainProxy:
         resp = self._send({"cmd": "grounded_respond", "text": text})
         return resp.get("result", {})
 
+    def ground_word(self, word, features, modality=5, attention=0.7,
+                     valence=0.0, arousal=0.0):
+        """Ground a word in sensory features. Returns True on success."""
+        resp = self._send({
+            "cmd": "ground_word",
+            "word": word,
+            "features": _to_list(features),
+            "modality": int(modality),
+            "attention": float(attention),
+            "valence": float(valence),
+            "arousal": float(arousal),
+        })
+        if resp.get("error"):
+            return False
+        return bool(resp.get("ok", False))
+
+    def set_grounding_emotion(self, valence, arousal):
+        """Set the default valence/arousal applied to subsequent ground_word
+        calls when the caller does not pass explicit values."""
+        resp = self._send({
+            "cmd": "set_grounding_emotion",
+            "valence": float(valence),
+            "arousal": float(arousal),
+        })
+        return bool(resp.get("ok", False))
+
+    def learn_language_pair(self, text, target_text, learning_rate=0.05):
+        """Train a single input→target text pair via grounded_language."""
+        resp = self._send({
+            "cmd": "learn_language_pair",
+            "text": text,
+            "target_text": target_text,
+            "learning_rate": float(learning_rate),
+        })
+        return resp
+
     # -- LNN --
 
     def lnn_forward_step(self, features):
@@ -666,6 +702,18 @@ class BrainProxy:
         """
         resp = self._send({"cmd": "get_top_phrases", "top_k": int(top_k)})
         return resp.get("phrases", [])
+
+    def get_modality_counts(self) -> dict:
+        """Return per-modality binding counts as a dict.
+
+        Keys: "visual", "auditory", "motor", "emotional", "spatial", "linguistic".
+        Values: number of bindings across the lexicon with non-zero
+        modality_strength in that channel. Returns an empty dict if
+        grounded_language is not initialised or the daemon's nimcp.so is older
+        than this RPC. Curriculum tests use this to verify modality coverage.
+        """
+        resp = self._send({"cmd": "get_modality_counts"})
+        return resp.get("counts", {})
 
     def generate(self, prompt=None, semantic_input=None):
         req = {"cmd": "generate"}

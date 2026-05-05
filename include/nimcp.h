@@ -699,6 +699,35 @@ nimcp_status_t nimcp_brain_ground_word(
 );
 
 /**
+ * @brief Teach the brain a word with explicit emotional context.
+ *
+ * Same as nimcp_brain_ground_word but also stamps the grounding event with
+ * emotional valence/arousal. The legacy zero-emotion path delegates to this
+ * function (valence=0, arousal=0), so there is exactly ONE implementation
+ * of the C-level event construction.
+ *
+ * @param brain         Brain handle
+ * @param word          Word form to learn
+ * @param features      Sensory feature vector
+ * @param feature_dim   Dimension of feature vector
+ * @param modality      Sensory modality (see nimcp_brain_ground_word)
+ * @param attention     Attentional weight [0,1]
+ * @param valence       Emotional valence in [-1, +1]
+ * @param arousal       Emotional arousal in [0, 1]
+ * @return NIMCP_OK on success
+ */
+nimcp_status_t nimcp_brain_ground_word_with_emotion(
+    nimcp_brain_t brain,
+    const char* word,
+    const float* features,
+    uint32_t feature_dim,
+    uint32_t modality,
+    float attention,
+    float valence,
+    float arousal
+);
+
+/**
  * @brief Bootstrap the grounded lexicon from a curated JSON fixture.
  *
  * One-shot loader for data/lexicon/base_lexicon_v1.json (or any fixture
@@ -946,6 +975,23 @@ int nimcp_brain_get_top_phrases(
     nimcp_brain_t brain,
     nimcp_phrase_entry_t* out_phrases,
     uint32_t max_phrases
+);
+
+/**
+ * @brief Retrieve per-modality binding counts (curriculum coverage probe).
+ *
+ * Thin wrapper over grounded_language_get_modality_counts(). Writes 6 values
+ * indexed by gl_modality_t: [0]=VISUAL, [1]=AUDITORY, [2]=MOTOR,
+ * [3]=EMOTIONAL, [4]=SPATIAL, [5]=LINGUISTIC.
+ *
+ * @param brain       Brain handle
+ * @param out_counts  Caller-allocated uint32_t[6], zeroed on entry.
+ * @return 0 on success, -1 if `brain`/`out_counts` is NULL or grounded
+ *         language is not initialised.
+ */
+int nimcp_brain_get_modality_counts(
+    nimcp_brain_t brain,
+    uint32_t out_counts[6]
 );
 
 /**

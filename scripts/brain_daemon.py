@@ -851,12 +851,18 @@ class BrainService:
         except ImportError:
             pass
 
+        # Default emotional context applied to ground_word calls when the
+        # request omits valence/arousal. Curriculum can drive this via
+        # set_grounding_emotion to colour subsequent groundings.
+        self._grounding_emotion = (0.0, 0.0)
+
     # Commands that modify brain state — need exclusive (write) lock
     _WRITE_COMMANDS = frozenset({
         'learn_vector', 'learn_vector_bin',
         'learn_vector_batch', 'learn_vector_batch_bin',
         'train_batch_text',
         'save', 'sleep_run_cycle', 'retrofit_synapse_metadata',
+        'ground_word', 'set_grounding_emotion', 'learn_language_pair',
     })
 
     def handle_readonly(self, req):
@@ -1246,6 +1252,75 @@ class BrainService:
             return {"error": f"get_grounded_language_diagnostics: {e}"}
         return {"grounded_language": d}
 
+    def _cmd_ground_word(self, req):
+        """Ground a single word in sensory features.
+
+        Request keys:
+          word        (str, required)
+          features    (list[float], required) — sensory feature vector
+          modality    (int, default 5 = LINGUISTIC)
+          attention   (float, default 0.7)
+          valence     (float, optional) — defaults to self._grounding_emotion[0]
+          arousal     (float, optional) — defaults to self._grounding_emotion[1]
+        """
+        word = req.get("word")
+        features = req.get("features")
+        if not word or features is None:
+            return {"error": "ground_word requires 'word' and 'features'"}
+        try:
+            modality = int(req.get("modality", 5))
+            attention = float(req.get("attention", 0.7))
+            default_v, default_a = self._grounding_emotion
+            valence = float(req.get("valence", default_v))
+            arousal = float(req.get("arousal", default_a))
+        except (TypeError, ValueError) as e:
+            return {"error": f"ground_word bad arg: {e}"}
+        try:
+            ok = self.brain.ground_word(word, list(features),
+                                         modality=modality,
+                                         attention=attention,
+                                         valence=valence,
+                                         arousal=arousal)
+        except AttributeError:
+            return {"error": "ground_word not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"ground_word: {e}"}
+        return {"ok": bool(ok), "word": word}
+
+    def _cmd_set_grounding_emotion(self, req):
+        """Set the default emotional context for subsequent ground_word calls."""
+        try:
+            valence = float(req.get("valence", 0.0))
+            arousal = float(req.get("arousal", 0.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_grounding_emotion bad arg: {e}"}
+        self._grounding_emotion = (valence, arousal)
+        return {"ok": True, "valence": valence, "arousal": arousal}
+
+    def _cmd_learn_language_pair(self, req):
+        """Train an input→target text pair via grounded_language."""
+        text = req.get("text")
+        target_text = req.get("target_text")
+        if not text or not target_text:
+            return {"error": "learn_language_pair requires 'text' and 'target_text'"}
+        try:
+            learning_rate = float(req.get("learning_rate", 0.05))
+        except (TypeError, ValueError) as e:
+            return {"error": f"learn_language_pair bad arg: {e}"}
+        try:
+            result = self.brain.learn_language_pair(text, target_text,
+                                                    learning_rate=learning_rate)
+        except AttributeError:
+            return {"unavailable": True,
+                    "reason": "learn_language_pair binding not present — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"learn_language_pair: {e}"}
+        if isinstance(result, dict):
+            out = {"ok": True}
+            out.update(result)
+            return out
+        return {"ok": True, "result": result}
+
     def _cmd_get_top_phrases(self, req):
         try:
             top_k = int(req.get("top_k", 20))
@@ -1258,6 +1333,18 @@ class BrainService:
         except Exception as e:
             return {"error": f"get_top_phrases: {e}"}
         return {"phrases": phrases}
+
+    def _cmd_get_modality_counts(self, _req):
+        # Curriculum coverage probe: returns {"counts": {visual,auditory,...}}.
+        # When GL is uninitialised the binding returns an empty dict rather
+        # than raising, so we propagate that as {"counts": {}} for the client.
+        try:
+            counts = self.brain.get_modality_counts()
+        except AttributeError:
+            return {"error": "get_modality_counts not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_modality_counts: {e}"}
+        return {"counts": counts}
 
     def _cmd_probe_comprehend(self, req):
         text = req.get("text", "")

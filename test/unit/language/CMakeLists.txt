@@ -99,6 +99,50 @@ gtest_discover_tests(unit_top_phrases_public_api
 )
 
 # ============================================================================
+# Modality-Counts Public API Tests (curriculum-coverage probe)
+# ============================================================================
+add_executable(unit_modality_counts
+    test_modality_counts.cpp
+)
+target_link_libraries(unit_modality_counts
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_modality_counts
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_modality_counts PRIVATE cxx_std_17)
+gtest_discover_tests(unit_modality_counts
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;modality_counts"
+        TIMEOUT 60
+)
+
+# ============================================================================
+# ground_word_with_emotion C wrapper tests (curriculum RPC chain)
+# ============================================================================
+add_executable(unit_ground_word_with_emotion
+    test_ground_word_with_emotion.cpp
+)
+target_link_libraries(unit_ground_word_with_emotion
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_include_directories(unit_ground_word_with_emotion
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(unit_ground_word_with_emotion PRIVATE cxx_std_17)
+gtest_discover_tests(unit_ground_word_with_emotion
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;language;grounded;ground_word_emotion"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Grounded Language Persistence Sidecar Tests (Option A)
 # ============================================================================
 add_executable(unit_grounded_language_persistence

@@ -2628,13 +2628,15 @@ nimcp_status_t nimcp_brain_generate_text(
 // Grounded Language API
 //=============================================================================
 
-nimcp_status_t nimcp_brain_ground_word(
+nimcp_status_t nimcp_brain_ground_word_with_emotion(
     nimcp_brain_t brain,
     const char* word,
     const float* features,
     uint32_t feature_dim,
     uint32_t modality,
-    float attention)
+    float attention,
+    float valence,
+    float arousal)
 {
     if (!brain || !word || !features) return NIMCP_ERROR_INVALID_PARAM;
     brain_t b = brain->internal_brain;
@@ -2645,14 +2647,29 @@ nimcp_status_t nimcp_brain_ground_word(
         .modality = (gl_modality_t)modality,
         .sensory_features = features,
         .feature_dim = feature_dim,
-        .emotional_valence = 0.0f,
-        .emotional_arousal = 0.0f,
+        .emotional_valence = valence,
+        .emotional_arousal = arousal,
         .attention = attention,
         .context_sentence = NULL
     };
 
     return (grounded_language_ground(b->grounded_lang, &event) == 0) ?
         NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+nimcp_status_t nimcp_brain_ground_word(
+    nimcp_brain_t brain,
+    const char* word,
+    const float* features,
+    uint32_t feature_dim,
+    uint32_t modality,
+    float attention)
+{
+    /* Legacy zero-emotion path delegates to the with-emotion implementation
+     * so we keep exactly one event-construction site. */
+    return nimcp_brain_ground_word_with_emotion(
+        brain, word, features, feature_dim, modality, attention,
+        /*valence=*/0.0f, /*arousal=*/0.0f);
 }
 
 nimcp_status_t nimcp_brain_learn_language(
@@ -3311,6 +3328,31 @@ int nimcp_brain_get_top_phrases(
         out_phrases[i].component_words = tmp[i]->component_words;
     }
     return (int)n;
+}
+
+/* Public per-modality binding-coverage accessor.
+ *
+ * Returns 0 on success, -1 on bad handle / no GL. Mirrors get_top_phrases
+ * shape — the wrapper exists so curriculum integration tests don't have
+ * to crack open the internal grounded_language_t. */
+int nimcp_brain_get_modality_counts(
+    nimcp_brain_t brain,
+    uint32_t out_counts[6])
+{
+    if (!out_counts) return -1;
+    /* Zero up front so a NULL-handle caller still gets a deterministic
+     * all-zero result if they ignore the return code. */
+    for (uint32_t m = 0; m < 6; m++) out_counts[m] = 0;
+
+    brain_t b = NULL;
+    if (_gl_diag_validate(brain, &b) != NIMCP_OK) return -1;
+    if (!b->grounded_lang) return -1;
+
+    /* GL_MODALITY_COUNT is fixed at 6 by the gl_modality_t enum; the
+     * public API caps at 6 so callers that statically size [6] stay
+     * safe even if the enum ever grows (impl will write only the first 6). */
+    grounded_language_get_modality_counts(b->grounded_lang, out_counts);
+    return 0;
 }
 
 nimcp_status_t nimcp_brain_set_snn_language_bridge_blend(

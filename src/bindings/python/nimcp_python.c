@@ -2767,6 +2767,44 @@ static PyObject* Brain_get_top_phrases(BrainObject* self,
     return list;
 }
 
+/*
+ * Brain_get_modality_counts — return per-modality binding counts as a dict
+ * {visual, auditory, motor, emotional, spatial, linguistic}. When grounded
+ * language is not initialised, returns an empty dict rather than raising
+ * so callers can poll it the same way they poll get_top_phrases.
+ */
+static PyObject* Brain_get_modality_counts(BrainObject* self,
+                                            PyObject* Py_UNUSED(args)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    uint32_t counts[6] = {0};
+    int rc = nimcp_brain_get_modality_counts(self->brain, counts);
+    if (rc != 0) {
+        /* GL not present or invalid handle — return empty dict. Mirrors the
+         * "empty list on no GL" contract of get_top_phrases. */
+        return PyDict_New();
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    /* Index order MUST match gl_modality_t in nimcp_grounded_language.h:
+     * 0=VISUAL, 1=AUDITORY, 2=MOTOR, 3=EMOTIONAL, 4=SPATIAL, 5=LINGUISTIC. */
+    static const char* const KEYS[6] = {
+        "visual", "auditory", "motor", "emotional", "spatial", "linguistic"
+    };
+    for (int i = 0; i < 6; i++) {
+        PyObject* v = PyLong_FromUnsignedLong((unsigned long)counts[i]);
+        if (!v || PyDict_SetItemString(d, KEYS[i], v) < 0) {
+            Py_XDECREF(v);
+            Py_DECREF(d);
+            return NULL;
+        }
+        Py_DECREF(v);
+    }
+    return d;
+}
+
 static PyObject* Brain_probe_comprehend(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -3863,10 +3901,14 @@ static PyObject* Brain_ground_word(BrainObject* self, PyObject* args, PyObject* 
     PyObject* features_list = NULL;
     uint32_t modality = 5; /* GL_MODALITY_LINGUISTIC */
     float attention = 0.8f;
+    float valence = 0.0f;
+    float arousal = 0.0f;
 
-    static char* kwlist[] = {"word", "features", "modality", "attention", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|If", kwlist,
-                                      &word, &features_list, &modality, &attention))
+    static char* kwlist[] = {"word", "features", "modality", "attention",
+                              "valence", "arousal", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|Ifff", kwlist,
+                                      &word, &features_list, &modality, &attention,
+                                      &valence, &arousal))
         return NULL;
 
     if (!self->brain || !self->brain->internal_brain) {
@@ -3880,8 +3922,9 @@ static PyObject* Brain_ground_word(BrainObject* self, PyObject* args, PyObject* 
 
     nimcp_status_t status;
     Py_BEGIN_ALLOW_THREADS
-    status = nimcp_brain_ground_word(self->brain, word, features,
-                                     (uint32_t)num_features, modality, attention);
+    status = nimcp_brain_ground_word_with_emotion(self->brain, word, features,
+                                                  (uint32_t)num_features, modality,
+                                                  attention, valence, arousal);
     Py_END_ALLOW_THREADS
 
     nimcp_free(features);
@@ -10772,6 +10815,8 @@ static PyMethodDef Brain_methods[] = {
      "Get grounded-language diagnostic snapshot: get_grounded_language_diagnostics() -> dict"},
     {"get_top_phrases", (PyCFunction)Brain_get_top_phrases, METH_VARARGS | METH_KEYWORDS,
      "Get top-K most-frequent learned phrases: get_top_phrases(top_k=20) -> list[dict {form, frequency, component_words}]"},
+    {"get_modality_counts", (PyCFunction)Brain_get_modality_counts, METH_NOARGS,
+     "Get per-modality binding counts: get_modality_counts() -> dict {visual, auditory, motor, emotional, spatial, linguistic}"},
     {"probe_comprehend", (PyCFunction)Brain_probe_comprehend, METH_VARARGS,
      "Read-only comprehension probe: probe_comprehend(text, max_components=16) -> dict (l2_norm, confidence, concept_count, components)"},
     {"set_snn_language_bridge_blend", (PyCFunction)Brain_set_snn_language_bridge_blend, METH_VARARGS,
@@ -11037,7 +11082,7 @@ static PyMethodDef Brain_methods[] = {
 
     // Grounded Language (human-like word-concept binding)
     {"ground_word", (PyCFunction)Brain_ground_word, METH_VARARGS | METH_KEYWORDS,
-     "Ground a word in sensory experience: ground_word(word, features, modality=5, attention=0.8) -> bool"},
+     "Ground a word in sensory experience: ground_word(word, features, modality=5, attention=0.8, valence=0.0, arousal=0.0) -> bool"},
     {"bootstrap_lexicon", (PyCFunction)Brain_bootstrap_lexicon, METH_VARARGS | METH_KEYWORDS,
      "Bootstrap base lexicon from JSON: bootstrap_lexicon(json_path) -> dict {success, status, path}"},
     {"learn_language", (PyCFunction)Brain_learn_language, METH_VARARGS | METH_KEYWORDS,
