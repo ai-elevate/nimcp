@@ -510,3 +510,592 @@ class ClaudeTeacher:
             teacher.lessons_taught = state.get("lessons_taught", 0)
             teacher.calls_made = state.get("calls_made", 0)
         return teacher
+
+
+# ===========================================================================
+# CE-19: Hybrid Claude-as-teacher loop (active LLM-in-the-loop tutor).
+# ===========================================================================
+# This section is the curriculum-drip surface that the immersive training
+# loop calls. It coexists with the older CLI-driven `ClaudeTeacher` class
+# above (which other scripts use for embedding + lesson generation via the
+# Max-subscription `claude` CLI). The CE-19 surface uses the Anthropic
+# Python SDK directly so it can be cost-bounded, privacy-bounded, and
+# fully mockable in tests.
+#
+# Like CE-1..CE-14 siblings, CE-19 is a drip module:
+#   1. Generate a richer teaching question from a stage-appropriate topic.
+#   2. Score the brain's reply with a multi-axis rubric (factuality,
+#      coherence, on-topic) — more nuanced than keyword recall.
+#   3. Supply a corrective exemplar to re-anchor when the brain fails.
+#
+# Opt-in + cost-bounded + privacy-preserving:
+#   - The `anthropic` package is imported LAZILY inside functions. If it
+#     is not installed, the drip silently no-ops.
+#   - The API key is read from `os.environ["ANTHROPIC_API_KEY"]`. Missing
+#     key  -> silent no-op (NOT an exception).
+#   - Module-level `_CALL_COUNTER` enforces `MAX_CALLS_PER_SESSION`
+#     (default 200; override via env `NIMCP_CLAUDE_TEACHER_MAX_CALLS`).
+#     Once the cap is reached, every subsequent call short-circuits and
+#     returns None — we log once that the cap was hit.
+#   - Default model `claude-haiku-4-5-20251001` (cheapest current).
+#     Override via env `NIMCP_CLAUDE_TEACHER_MODEL`.
+#   - Default `max_tokens=512`. Brain replies are short.
+#   - Temperature 0.5 for question generation; 0.0 for scoring + exemplars
+#     (we want determinism in feedback).
+#
+# Privacy contract — what we send to the API:
+#   - The topic seed (a short stage-appropriate phrase).
+#   - The question prompt (Claude's own prior output, fed back into a
+#     score call).
+#   - The brain's plain-text reply (what Athena would say out loud).
+# That is ALL. We NEVER send checkpoint paths, weights, synapse counts,
+# neuron state, or any other non-user-visible data. The drip code only
+# takes a brain handle and calls public produce_text / learn_language /
+# train_language methods, never inspecting brain internals.
+#
+# Public API (CE-19):
+#     TEACHER_TOPIC_SEEDS         dict[stage] -> list[str]
+#     MAX_CALLS_PER_SESSION       int (env-overridable)
+#     TEACHER_PASS_THRESHOLD      float (default 0.5)
+#     CALL_BUDGET_REMAINING()     -> int
+#     RESET_CALL_COUNTER()        -> None
+#     is_available()              -> bool
+#     generate_question(...)      -> dict | None
+#     score_brain_response(...)   -> dict | None
+#     build_corrective_exemplar(...) -> str | None
+#     run_claude_teacher_drip(...)   -> list[dict] | None
+#
+# Stage 1 is a no-op (vocabulary still bootstrapping; LLM-graded feedback
+# is too noisy at that stage).
+
+import re as _re19  # local alias — main module already imports json/os
+
+# Stage-appropriate teacher topic seeds. Stage 2 stays in concrete /
+# everyday register; stage 3 admits abstract / meta-cognitive themes.
+TEACHER_TOPIC_SEEDS: dict = {
+    1: [],  # no-op — too early
+    2: [
+        "the seasons changing",
+        "what mothers do",
+        "why the sky is blue",
+        "how plants grow",
+        "kindness and sharing",
+        "the difference between alive and not alive",
+    ],
+    3: [
+        "why some choices are harder than others",
+        "what makes a story feel true",
+        "the difference between knowing and believing",
+        "why people apologize",
+        "how to recognize when you are wrong",
+        "the relationship between memory and identity",
+    ],
+}
+
+
+def _ce19_env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+MAX_CALLS_PER_SESSION: int = _ce19_env_int("NIMCP_CLAUDE_TEACHER_MAX_CALLS", 200)
+
+_CALL_COUNTER: int = 0
+_CAP_LOG_EMITTED: bool = False
+_UNAVAILABLE_LOG_EMITTED: bool = False
+
+TEACHER_PASS_THRESHOLD: float = 0.5
+
+_CE19_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
+
+def CALL_BUDGET_REMAINING() -> int:  # noqa: N802 — public uppercase per spec
+    """Return remaining successful calls allowed this session."""
+    return max(0, MAX_CALLS_PER_SESSION - _CALL_COUNTER)
+
+
+def RESET_CALL_COUNTER() -> None:  # noqa: N802 — public uppercase per spec
+    """Reset call counter + suppression flags (intended for tests)."""
+    global _CALL_COUNTER, _CAP_LOG_EMITTED, _UNAVAILABLE_LOG_EMITTED
+    _CALL_COUNTER = 0
+    _CAP_LOG_EMITTED = False
+    _UNAVAILABLE_LOG_EMITTED = False
+
+
+def _ce19_resolve_model(model):
+    if model:
+        return model
+    return os.environ.get("NIMCP_CLAUDE_TEACHER_MODEL", _CE19_DEFAULT_MODEL)
+
+
+def _ce19_try_import_anthropic():
+    """Lazy + tolerant import. Returns the module or None."""
+    try:
+        import anthropic  # type: ignore
+        return anthropic
+    except Exception:
+        return None
+
+
+def is_available() -> bool:
+    """True iff anthropic importable AND ANTHROPIC_API_KEY set."""
+    if _ce19_try_import_anthropic() is None:
+        return False
+    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+def _ce19_build_client(client):
+    """Use injected client (tests) or build a fresh one. Returns None on
+    failure (anthropic missing, constructor raises)."""
+    if client is not None:
+        return client
+    anthropic = _ce19_try_import_anthropic()
+    if anthropic is None:
+        return None
+    try:
+        return anthropic.Anthropic()
+    except Exception:
+        return None
+
+
+def _ce19_check_cap() -> bool:
+    """Return True if budget remains. Logs once when cap is reached."""
+    global _CAP_LOG_EMITTED
+    if _CALL_COUNTER >= MAX_CALLS_PER_SESSION:
+        if not _CAP_LOG_EMITTED:
+            print(f"  [ClaudeTeacher] call cap reached "
+                  f"({MAX_CALLS_PER_SESSION} calls); subsequent drips will "
+                  f"no-op until RESET_CALL_COUNTER() or process restart.")
+            _CAP_LOG_EMITTED = True
+        return False
+    return True
+
+
+def _ce19_bump_counter() -> None:
+    """Bump on every API attempt — bill conservatively. Even if the
+    response was malformed, we still consumed network + tokens (the API
+    bills per request started)."""
+    global _CALL_COUNTER
+    _CALL_COUNTER += 1
+
+
+def _ce19_extract_text(resp):
+    """Pull plain text out of an Anthropic Messages API response object.
+    Returns None if the shape is unexpected."""
+    try:
+        block = resp.content[0]
+        text = getattr(block, "text", None)
+        if isinstance(text, str):
+            return text
+        if isinstance(block, dict):
+            t = block.get("text")
+            if isinstance(t, str):
+                return t
+    except Exception:
+        return None
+    return None
+
+
+def _ce19_strip_code_fences(text: str) -> str:
+    """Remove ```json / ``` fences if Claude wrapped its output."""
+    s = text.strip()
+    if s.startswith("```"):
+        s = _re19.sub(r"^```[a-zA-Z]*\n?", "", s)
+        if s.endswith("```"):
+            s = s[: -3]
+        s = s.strip()
+    return s
+
+
+def _ce19_parse_json(text: str):
+    if not text:
+        return None
+    cleaned = _ce19_strip_code_fences(text)
+    try:
+        obj = json.loads(cleaned)
+    except Exception:
+        m = _re19.search(r"\{.*\}", cleaned, _re19.DOTALL)
+        if not m:
+            return None
+        try:
+            obj = json.loads(m.group(0))
+        except Exception:
+            return None
+    if not isinstance(obj, dict):
+        return None
+    return obj
+
+
+def _ce19_clip01(x) -> float:
+    try:
+        v = float(x)
+    except Exception:
+        return 0.0
+    if v < 0.0:
+        return 0.0
+    if v > 1.0:
+        return 1.0
+    return v
+
+
+# ---------------------------------------------------------------------------
+# CE-19 public API: generate_question
+# ---------------------------------------------------------------------------
+
+def generate_question(topic: str, stage: int, *,
+                      model=None,
+                      max_tokens=None,
+                      client=None):
+    """Ask Claude for ONE concrete teaching question on `topic` plus 5-10
+    expected concept words. Returns
+    {"question": str, "expected_concepts": list[str]} or None on failure
+    (cap, missing key, parse error, exception).
+
+    `client` lets tests inject a mock Anthropic client.
+    """
+    if not topic:
+        return None
+    if not _ce19_check_cap():
+        return None
+
+    c = _ce19_build_client(client)
+    if c is None:
+        return None
+
+    sys_prompt = (
+        "You are tutoring a young artificial person on stage-%d concepts. "
+        "Generate ONE concrete teaching question on the topic, plus 5-10 "
+        "expected concept words for keyword scoring." % int(stage)
+    )
+    user_prompt = (
+        "Topic: %s\n\nReturn JSON: {\"question\": ..., "
+        "\"expected_concepts\": [...]}." % topic
+    )
+
+    _ce19_bump_counter()
+    try:
+        resp = c.messages.create(
+            model=_ce19_resolve_model(model),
+            max_tokens=max_tokens or 512,
+            temperature=0.5,
+            system=sys_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+    except Exception as e:
+        print(f"  [ClaudeTeacher] generate_question API error: {e}")
+        return None
+
+    text = _ce19_extract_text(resp)
+    if not text:
+        return None
+    obj = _ce19_parse_json(text)
+    if obj is None:
+        return None
+    question = obj.get("question")
+    concepts = obj.get("expected_concepts") or []
+    if not isinstance(question, str) or not question.strip():
+        return None
+    if not isinstance(concepts, list):
+        concepts = []
+    concept_list = [str(x).strip() for x in concepts if str(x).strip()]
+    return {"question": question.strip(), "expected_concepts": concept_list}
+
+
+# ---------------------------------------------------------------------------
+# CE-19 public API: score_brain_response
+# ---------------------------------------------------------------------------
+
+def score_brain_response(question: str,
+                         brain_response: str,
+                         expected_concepts,
+                         *,
+                         model=None,
+                         client=None):
+    """Ask Claude to score the brain's reply on a 4-axis rubric. Returns
+    {"composite": float in [0,1], "factuality": float, "coherence":
+    float, "on_topic": float, "rationale": str} or None on failure.
+
+    Missing rubric keys default to 0.0 (charitable to the parser, harsh
+    to the brain — the brain failed to elicit a clean rubric line)."""
+    if not _ce19_check_cap():
+        return None
+    c = _ce19_build_client(client)
+    if c is None:
+        return None
+
+    concepts_str = ", ".join(str(x) for x in (expected_concepts or []))
+    sys_prompt = (
+        "You are scoring a young artificial person's reply against a "
+        "question. Return JSON with factuality / coherence / on_topic / "
+        "composite floats in [0,1] plus a brief rationale."
+    )
+    user_prompt = (
+        "Question: %s\n\nReply: %s\n\nExpected concepts: %s\n\n"
+        "Return JSON: {\"factuality\": float, \"coherence\": float, "
+        "\"on_topic\": float, \"composite\": float, \"rationale\": str}."
+    ) % (question, brain_response, concepts_str)
+
+    _ce19_bump_counter()
+    try:
+        resp = c.messages.create(
+            model=_ce19_resolve_model(model),
+            max_tokens=512,
+            temperature=0.0,
+            system=sys_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+    except Exception as e:
+        print(f"  [ClaudeTeacher] score_brain_response API error: {e}")
+        return None
+
+    text = _ce19_extract_text(resp)
+    if not text:
+        return None
+    obj = _ce19_parse_json(text)
+    if obj is None:
+        return None
+
+    factuality = _ce19_clip01(obj.get("factuality", 0.0))
+    coherence = _ce19_clip01(obj.get("coherence", 0.0))
+    on_topic = _ce19_clip01(obj.get("on_topic", 0.0))
+    if "composite" in obj:
+        composite = _ce19_clip01(obj.get("composite", 0.0))
+    else:
+        composite = (factuality + coherence + on_topic) / 3.0
+    rationale = obj.get("rationale", "")
+    if not isinstance(rationale, str):
+        rationale = str(rationale)
+    return {
+        "factuality": factuality,
+        "coherence": coherence,
+        "on_topic": on_topic,
+        "composite": composite,
+        "rationale": rationale,
+    }
+
+
+# ---------------------------------------------------------------------------
+# CE-19 public API: build_corrective_exemplar
+# ---------------------------------------------------------------------------
+
+def build_corrective_exemplar(question: str,
+                              brain_response: str,
+                              expected_concepts,
+                              *,
+                              model=None,
+                              client=None):
+    """Ask Claude for a 1-3 sentence corrective answer in the brain's
+    expected vocabulary. Returns the text body, or None on failure."""
+    if not _ce19_check_cap():
+        return None
+    c = _ce19_build_client(client)
+    if c is None:
+        return None
+
+    concepts_str = ", ".join(str(x) for x in (expected_concepts or []))
+    sys_prompt = (
+        "Return a 1-3 sentence answer to the question in plain language a "
+        "young artificial person can learn from."
+    )
+    user_prompt = (
+        "Question: %s\n\nThe young person's incorrect reply was: %s\n\n"
+        "Expected concepts (use them naturally if they fit): %s\n\n"
+        "Return ONLY the corrective answer text — no preamble, no JSON, "
+        "1-3 sentences."
+    ) % (question, brain_response, concepts_str)
+
+    _ce19_bump_counter()
+    try:
+        resp = c.messages.create(
+            model=_ce19_resolve_model(model),
+            max_tokens=512,
+            temperature=0.0,
+            system=sys_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+    except Exception as e:
+        print(f"  [ClaudeTeacher] build_corrective_exemplar API error: {e}")
+        return None
+
+    text = _ce19_extract_text(resp)
+    if not text:
+        return None
+    cleaned = _ce19_strip_code_fences(text).strip()
+    if not cleaned:
+        return None
+    return cleaned
+
+
+# ---------------------------------------------------------------------------
+# CE-19 drip driver
+# ---------------------------------------------------------------------------
+
+# Module-level rotation counter — kept across calls in one process, NOT
+# checkpointed. (Same persistence rule as storytelling.)
+_TOPIC_COUNTER: dict = {1: 0, 2: 0, 3: 0}
+
+
+def _ce19_bump_topic(stage: int) -> int:
+    cur = _TOPIC_COUNTER.get(int(stage), 0)
+    _TOPIC_COUNTER[int(stage)] = cur + 1
+    return cur
+
+
+def _ce19_pick_topic(stage: int, topic_index):
+    seeds = TEACHER_TOPIC_SEEDS.get(int(stage), [])
+    if not seeds:
+        return ""
+    idx = topic_index if topic_index is not None else _ce19_bump_topic(stage)
+    return seeds[int(idx) % len(seeds)]
+
+
+def _ce19_build_intent(composer, prompt_text: str):
+    """Composer-or-zero pattern, mirrors storytelling._build_intent."""
+    intent = None
+    if composer is not None:
+        try:
+            intent = composer.compose(text=prompt_text, modality="text")
+        except Exception:
+            intent = None
+    if intent is None:
+        try:
+            import numpy as _np
+            intent = _np.zeros(1024, dtype=_np.float32)
+        except Exception:
+            return None
+    try:
+        return intent.tolist() if hasattr(intent, "tolist") else list(intent)
+    except Exception:
+        return None
+
+
+def run_claude_teacher_drip(brain, stage: int, *,
+                            composer=None,
+                            num_rounds: int = 1,
+                            topic_index=None,
+                            enabled: bool = True,
+                            log_every: int = 1):
+    """One Claude-as-teacher drip. Returns a list of per-round result
+    dicts, or None when stage 1 / disabled / unavailable / cap-hit /
+    no rounds completed.
+
+    Each round:
+      1. Pick a stage topic.
+      2. generate_question() -> {question, expected_concepts}.
+      3. compose -> brain.produce_text(intent) -> capture text.
+      4. score_brain_response(question, brain_text, concepts).
+      5. composite >= TEACHER_PASS_THRESHOLD ->
+            brain.learn_language(brain_text)
+         else ->
+            exemplar = build_corrective_exemplar(...)
+            if exemplar: brain.train_language(exemplar, exemplar)
+            else:        brain.train_language(question, question)
+
+    All brain calls are wrapped in try/except — failures log + continue.
+    """
+    global _UNAVAILABLE_LOG_EMITTED
+
+    if int(stage) == 1:
+        return None
+    if not enabled:
+        return None
+
+    if not is_available():
+        if not _UNAVAILABLE_LOG_EMITTED:
+            print("  [ClaudeTeacher] anthropic SDK or ANTHROPIC_API_KEY "
+                  "missing — drip will no-op this session.")
+            _UNAVAILABLE_LOG_EMITTED = True
+        return None
+
+    if _CALL_COUNTER >= MAX_CALLS_PER_SESSION:
+        _ce19_check_cap()
+        return None
+
+    rounds: list = []
+    calls_at_start = _CALL_COUNTER
+
+    for r in range(max(1, int(num_rounds))):
+        topic = _ce19_pick_topic(stage, topic_index)
+        if not topic:
+            break
+
+        q = generate_question(topic, stage)
+        if q is None:
+            break
+
+        intent_list = _ce19_build_intent(composer, q["question"])
+        if intent_list is None:
+            break
+        produced_text = ""
+        produced_conf = 0.0
+        try:
+            result = brain.produce_text(intent_list)
+            if isinstance(result, dict):
+                produced_text = result.get("text", "") or ""
+                produced_conf = float(result.get("confidence", 0.0) or 0.0)
+        except Exception as e:
+            print(f"  [ClaudeTeacher:s{stage}] produce_text failed: {e}")
+            continue
+
+        s = score_brain_response(q["question"], produced_text,
+                                 q["expected_concepts"])
+        if s is None:
+            break
+
+        fb_path = "none"
+        exemplar_text = None
+        try:
+            if s["composite"] >= TEACHER_PASS_THRESHOLD and produced_text.strip():
+                brain.learn_language(produced_text)
+                fb_path = "positive"
+            else:
+                exemplar_text = build_corrective_exemplar(
+                    q["question"], produced_text, q["expected_concepts"])
+                if exemplar_text and exemplar_text.strip():
+                    try:
+                        brain.train_language(exemplar_text, exemplar_text)
+                    except TypeError:
+                        brain.train_language(text=exemplar_text,
+                                             target_text=exemplar_text)
+                    fb_path = "exemplar"
+                else:
+                    fallback_q = q["question"]
+                    try:
+                        brain.train_language(fallback_q, fallback_q)
+                    except TypeError:
+                        brain.train_language(text=fallback_q,
+                                             target_text=fallback_q)
+                    fb_path = "question_anchor"
+        except Exception as e:
+            print(f"  [ClaudeTeacher:s{stage}] feedback signal failed: {e}")
+            fb_path = "feedback_error"
+
+        if r % max(1, int(log_every)) == 0:
+            print(f"  [ClaudeTeacher:s{stage}] r={r} topic={topic!r} "
+                  f"composite={s['composite']:.2f} "
+                  f"fact={s['factuality']:.2f} coh={s['coherence']:.2f} "
+                  f"top={s['on_topic']:.2f} fb={fb_path} "
+                  f"calls_used={_CALL_COUNTER - calls_at_start}")
+
+        rounds.append({
+            "stage": int(stage),
+            "round": r,
+            "topic": topic,
+            "question": q["question"],
+            "expected_concepts": list(q["expected_concepts"]),
+            "produced": produced_text,
+            "confidence": produced_conf,
+            "score": s,
+            "feedback_path": fb_path,
+            "exemplar": exemplar_text,
+            "claude_calls_used": _CALL_COUNTER - calls_at_start,
+        })
+
+    if not rounds:
+        return None
+    return rounds
