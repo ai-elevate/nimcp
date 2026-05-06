@@ -151,9 +151,19 @@ static binding_node_t* binding_insert(snn_language_bridge_t* bridge,
 
 snn_lang_config_t snn_lang_config_default(void)
 {
+    /* These two MUST match the SNN_LANG_MAX_*_POPS macros in the
+     * public header — grounded_language's mirror_binding_to_bridge
+     * hashes form_hash modulo SNN_LANG_MAX_WORD_POPS (16384) and
+     * concept_id modulo SNN_LANG_MAX_CONCEPT_POPS (4096). If the
+     * runtime capacity is smaller, register_word/register_concept
+     * silently reject any pop beyond the smaller cap (line 330+346
+     * of this file: `if (pop >= bridge->*_pops_capacity) return -1`)
+     * and ~75% of bindings are dropped on the floor. Bug verified
+     * 2026-05-06 — bridge_active_bindings was effectively zero for
+     * months because of this mismatch. */
     snn_lang_config_t config = {
-        .max_concept_pops = 512,
-        .max_word_pops = 4096,
+        .max_concept_pops = SNN_LANG_MAX_CONCEPT_POPS,
+        .max_word_pops    = SNN_LANG_MAX_WORD_POPS,
         .neurons_per_pop = SNN_LANG_NEURONS_PER_POP,
         .stdp_tau_plus = SNN_LANG_DEFAULT_STDP_TAU,
         .stdp_tau_minus = SNN_LANG_DEFAULT_STDP_TAU,
@@ -838,12 +848,7 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
         }
 
         if (word_pop != UINT32_MAX) {
-            // Cascade word activation through transposed binding matrix
-            float* word_activations = nimcp_calloc(1, sizeof(float));
-            if (!word_activations) { token = strtok_r(NULL, " \t\n,.;:!?\"'()-", &saveptr); continue; }
-            nimcp_free(word_activations);
-
-            // Direct reverse lookup
+            // Direct reverse lookup of word_pop → concept_pop bindings.
             for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
                 binding_node_t* node = bridge->binding_buckets[bucket];
                 while (node) {

@@ -479,7 +479,14 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
         if (read_f32(f, &arousal) != 0) goto fail;
 
         if (entry) {
-            entry->form_hash = form_hash;
+            /* Do NOT overwrite entry->form_hash with the saved value:
+             * gl_internal_lexicon_find_or_create has already set it via
+             * the live hash function, and the entry is sitting in the
+             * hash table at slot (live_hash % size). Restoring a stale
+             * disk hash would break lexicon_find — slot lookups recompute
+             * the live hash and compare against entry->form_hash. The
+             * saved form_hash field is informational only. */
+            (void)form_hash;
             entry->frequency = frequency;
             entry->learned_class = (gl_word_class_t)learned_class_u;
             entry->class_confidence = class_confidence;

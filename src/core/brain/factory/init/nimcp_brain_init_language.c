@@ -744,7 +744,19 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             /* Wire bidirectional: GL → SNN bridge for dual-path production */
             grounded_language_connect_snn_bridge(brain->grounded_lang,
                                                   brain->snn_lang_bridge);
-            LOG_INFO(LOG_MODULE, "SNN language bridge created (STDP word-concept binding)");
+            /* Mirror every existing word↔concept binding into the bridge.
+             * Required because the bulk lexicon loader and the function-word
+             * seed both run BEFORE the bridge exists — without this rebind
+             * they leave the bridge with zero bindings even though the
+             * lexicon has thousands of entries. (verified live 2026-05-06:
+             * bridge_active_bindings was 0 for the bridge's entire history
+             * before this hook was added) */
+            uint64_t mirrored =
+                grounded_language_rebind_all_to_snn_bridge(brain->grounded_lang);
+            LOG_INFO(LOG_MODULE,
+                     "SNN language bridge created (STDP word-concept binding, "
+                     "rebound %llu existing bindings)",
+                     (unsigned long long)mirrored);
         } else {
             LOG_WARN(LOG_MODULE, "SNN language bridge creation failed (non-fatal)");
         }

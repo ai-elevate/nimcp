@@ -884,6 +884,38 @@ const gl_lexicon_entry_t* lexicon_find_fuzzy_external(const grounded_language_t*
     return lexicon_find_fuzzy(gl, word);
 }
 
+/** Mirror a lexicon word↔concept binding into the SNN language bridge.
+ *
+ * Without this, the bridge has zero spike→word bindings (verified live:
+ * bridge_active_bindings = 0 at every checkpoint we've inspected). The
+ * decode_spikes path always returns empty, produce always returns -1,
+ * and respond falls through to "I don't know."
+ *
+ * Mapping:
+ *   word_pop    = entry->form_hash % SNN_LANG_MAX_WORD_POPS    (16384)
+ *   concept_pop = (concept_id mod 2^32) % SNN_LANG_MAX_CONCEPT_POPS  (4096)
+ *
+ * Hash collisions are accepted: at 30K vocab → 16K word_pops, ~50% of
+ * pops hold one word and the rest share. Words sharing a pop become
+ * synonyms-by-collision under decoding. Suboptimal but functional, and
+ * vastly better than the all-zero baseline. The bridge's STDP layer
+ * separates the colliders over training as the spike pre/post traces
+ * diverge for differently-grounded words.
+ */
+static void mirror_binding_to_bridge(grounded_language_t* gl,
+                                      const gl_lexicon_entry_t* entry,
+                                      uint64_t concept_id,
+                                      float strength) {
+    if (!gl->snn_bridge || !entry) return;
+    uint32_t word_pop = entry->form_hash % SNN_LANG_MAX_WORD_POPS;
+    uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
+    /* register_word/register_concept are idempotent (overwrite slot). bind
+     * requires both pops registered (it checks num_*_pops). */
+    snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
+    snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
+    snn_language_bridge_bind(gl->snn_bridge, concept_pop, word_pop, strength);
+}
+
 /** Add or strengthen a binding between a word and a concept */
 static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
                         uint64_t concept_id, float strength, gl_modality_t modality) {
@@ -905,6 +937,7 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
             entry->bindings[i].confidence = 1.0f - expf(-(float)entry->bindings[i].exposure_count / 5.0f);
             entry->bindings[i].last_activation_ms = (uint64_t)time(NULL) * 1000;
             gl->stats.total_bindings++;
+            mirror_binding_to_bridge(gl, entry, concept_id, entry->bindings[i].strength);
             return 0;
         }
     }
@@ -932,6 +965,7 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
 
     entry->binding_count++;
     gl->stats.total_bindings++;
+    mirror_binding_to_bridge(gl, entry, concept_id, strength);
     return 0;
 }
 
@@ -2348,6 +2382,28 @@ void grounded_language_connect_snn_bridge(grounded_language_t* gl,
         return;
     }
     gl->snn_bridge = bridge;
+}
+
+uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {
+    if (!gl) return 0;
+    if (!gl->snn_bridge) return 0;        /* no bridge attached → no-op */
+    if (!gl->vocab_list || gl->vocab_count == 0) return 0;
+
+    uint64_t mirrored = 0;
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[i];
+        if (!e || e->binding_count == 0) continue;
+        for (uint32_t b = 0; b < e->binding_count; b++) {
+            mirror_binding_to_bridge(gl, e,
+                                      e->bindings[b].concept_id,
+                                      e->bindings[b].strength);
+            mirrored++;
+        }
+    }
+    LOG_INFO(LOG_MODULE,
+             "rebind_all_to_snn_bridge: mirrored %llu bindings across %u words",
+             (unsigned long long)mirrored, gl->vocab_count);
+    return mirrored;
 }
 
 /*=============================================================================

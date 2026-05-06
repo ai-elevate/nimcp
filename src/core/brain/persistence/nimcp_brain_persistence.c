@@ -2272,10 +2272,21 @@ void brain_load_post_init_sidecars(brain_t brain)
     if (brain->grounded_lang) {
         extern int gl_persistence_load(struct grounded_language* gl,
                                        const char* path);
+        extern uint64_t grounded_language_rebind_all_to_snn_bridge(
+            struct grounded_language* gl);
         char gl_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(gl_path, sizeof(gl_path), "%s.gl_lang", filepath);
         if (gl_persistence_load(brain->grounded_lang, gl_path) == 0) {
             fprintf(stderr, "[INFO] Restored grounded language lexicon from %s\n", gl_path);
+            /* gl_persistence_load reads bindings directly into entry arrays
+             * and bypasses lexicon_bind, so the SNN bridge never sees the
+             * restored bindings. Walk the lexicon now and re-mirror every
+             * binding into the bridge. No-op if the bridge wasn't created. */
+            uint64_t mirrored =
+                grounded_language_rebind_all_to_snn_bridge(brain->grounded_lang);
+            fprintf(stderr,
+                    "[INFO] Re-mirrored %llu lexicon bindings into SNN bridge\n",
+                    (unsigned long long)mirrored);
         } else {
             fprintf(stderr, "[INFO] gl_persistence_load: no sidecar at %s — "
                     "lexicon starts from seeded vocabulary only\n", gl_path);

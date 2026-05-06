@@ -625,6 +625,32 @@ void grounded_language_connect_snn_bridge(
     struct snn_language_bridge* bridge);
 
 /**
+ * @brief Walk every lexicon entry and re-mirror every word↔concept
+ *        binding into the currently-attached snn_language_bridge.
+ *
+ * Use this after any path that populated the lexicon WITHOUT going
+ * through lexicon_bind() with snn_bridge already attached:
+ *   - bulk lexicon loader (runs before snn_bridge is created)
+ *   - sidecar persistence load (runs after init but mirror would
+ *     otherwise be skipped — bindings are read straight into the
+ *     entry array, bypassing lexicon_bind).
+ *   - any future preload path that builds the lexicon directly.
+ *
+ * Idempotent — register_word/register_concept overwrite their slot
+ * and bind() takes the max of existing-vs-new weight.
+ *
+ * No-op when gl->snn_bridge is NULL (the lexicon is fine, just no
+ * bridge to mirror to). Returns the number of bindings mirrored
+ * (sum across all entries) — 0 means lexicon is empty or bridge is
+ * unattached.
+ *
+ * @param gl  System handle
+ * @return    Total bindings mirrored, 0 on no-op or empty lexicon.
+ */
+uint64_t grounded_language_rebind_all_to_snn_bridge(
+    grounded_language_t* gl);
+
+/**
  * @brief Connect to working memory — active words get pushed to the
  *        Miller-7±2 buffer with attention-derived salience, so the rest
  *        of the cognitive stack can reason over recently-grounded words.
