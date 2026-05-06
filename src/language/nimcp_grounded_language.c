@@ -1179,25 +1179,6 @@ static const float* get_concept_features(const grounded_language_t* gl, uint64_t
  * Word Selection for Production
  *===========================================================================*/
 
-/** Find the best word for a concept (highest binding strength) */
-static const char* best_word_for_concept(const grounded_language_t* gl, uint64_t concept_id) {
-    const char* best = NULL;
-    float best_strength = -1.0f;
-
-    for (uint32_t w = 0; w < gl->vocab_count; w++) {
-        const gl_lexicon_entry_t* entry = gl->vocab_list[w];
-        if (!entry) continue;
-        for (uint32_t b = 0; b < entry->binding_count; b++) {
-            if (entry->bindings[b].concept_id == concept_id &&
-                entry->bindings[b].strength > best_strength) {
-                best_strength = entry->bindings[b].strength;
-                best = entry->form;
-            }
-        }
-    }
-    return best;
-}
-
 /* Score one word against a target vector — DRY extraction so the loop
  * body in find_words_near_vector stays readable and the same scoring
  * function can be reused by tests. Returns the combined
@@ -2170,52 +2151,30 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
         return -1;
     }
 
-    /* Step 1: Comprehend input */
+    /* Comprehend input — gives us the semantic vector to drive production. */
     gl_comprehension_result_t comp = {0};
-    if (grounded_language_comprehend(gl, input_text, &comp) != 0) {
-        gl_comprehension_result_cleanup(&comp);
-        return -1;
-    }
+    int comp_rc = grounded_language_comprehend(gl, input_text, &comp);
 
-    /* Step 2: Produce response from comprehended meaning */
+    /* Produce via the SNN bridge. No template fallbacks, no quality-gated
+     * stock phrases ("I understand about X.", "I don't have words for that
+     * yet.", "I am learning."). Bridge succeeds → emit its output; bridge
+     * fails → emit "I don't know.", the curriculum-trained uncertainty
+     * marker (DK-B). The brain learns grammar emergently or admits it
+     * can't — there is no third option. */
     gl_production_result_t prod = {0};
     int rc = -1;
-
-    if (comp.semantic_vector && comp.comprehension_confidence > 0.1f) {
+    if (comp_rc == 0 && comp.semantic_vector) {
         rc = grounded_language_produce(gl, comp.semantic_vector, gl->semantic_dim,
                                         GL_PRODUCE_RESPOND, &prod);
     }
 
-    if (rc != 0 || !prod.text || prod.word_count == 0) {
-        /* Fallback: echo what we understood */
-        if (comp.concept_count > 0) {
-            const char* word = best_word_for_concept(gl, comp.activated_concepts[0]);
-            if (word) {
-                snprintf(response, response_max, "I understand about %s.", word);
-            } else {
-                snprintf(response, response_max, "I am learning.");
-            }
-        } else {
-            snprintf(response, response_max, "I do not understand yet.");
-        }
-        if (confidence) *confidence = 0.1f;
+    if (rc == 0 && prod.text && prod.word_count > 0) {
+        strncpy(response, prod.text, response_max - 1);
+        response[response_max - 1] = '\0';
+        if (confidence) *confidence = prod.fluency * prod.relevance;
     } else {
-        /* Collapse-guard (2026-05): when fluency × relevance is below the
-         * meaningful-confidence floor, emitting the produced template
-         * looks authoritative but is just whichever seeded attractor
-         * happens to score nearest. Surface the lack of grounding to the
-         * caller instead — the user-visible "the awareness controlled"
-         * mode collapse came directly from this path. */
-        float prod_conf = prod.fluency * prod.relevance;
-        if (prod_conf < GL_RESPOND_MIN_CONFIDENCE) {
-            snprintf(response, response_max,
-                     "I don't have words for that yet.");
-            if (confidence) *confidence = prod_conf;  /* Honest, low. */
-        } else {
-            strncpy(response, prod.text, response_max - 1);
-            response[response_max - 1] = '\0';
-            if (confidence) *confidence = prod_conf;
-        }
+        snprintf(response, response_max, "I don't know.");
+        if (confidence) *confidence = 0.0f;
     }
 
     int result_len = (int)strlen(response);

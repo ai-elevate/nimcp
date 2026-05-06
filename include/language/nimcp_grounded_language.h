@@ -1696,19 +1696,6 @@ void grounded_language_get_modality_counts(
 uint32_t grounded_language_get_semantic_dim(
     const grounded_language_t* gl);
 
-/**
- * @brief Minimum production confidence below which respond() returns
- *        an "I don't have words for that yet" fallback instead of
- *        emitting a degenerate template.
- *
- * Confidence here = fluency × relevance from gl_production_result_t.
- * Below this floor the lexicon hasn't accumulated enough word-concept
- * binding strength to justify producing — emitting a top-1 template
- * looks like authoritative speech but is just the strongest seeded
- * attractor, which causes mode collapse in the user-visible output.
- */
-#define GL_RESPOND_MIN_CONFIDENCE 0.05f
-
 /*=============================================================================
  * Serialization
  *===========================================================================*/
