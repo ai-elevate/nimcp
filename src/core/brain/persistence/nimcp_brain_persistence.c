@@ -2193,10 +2193,48 @@ brain_t brain_load(const char* filepath)
      * (T=1.0, ece=-1.0, at_us=0). */
     temperature_sidecar_load(brain, filepath);
 
+    /* DEFERRED: .immune / .kg / .gl_lang sidecars used to be loaded here
+     * gated on brain->immune_system / brain->internal_kg / brain->grounded_lang
+     * being non-NULL — but those subsystems are created LATER, by
+     * nimcp_brain_eager_init_cognitive(). Inside brain_load() they are all
+     * NULL, so the gates always failed silently (no log, no error, no load)
+     * and the trained lexicon / immune memory / KG facts were lost on every
+     * resume. Fix: brain_load_post_init_sidecars(brain) is now invoked from
+     * eager_init_cognitive AFTER the subsystems exist. The source filepath
+     * is stashed in brain->loaded_from_path by brain_load_auto(). */
+
+    brain_clear_error();
+    return brain;
+}
+
+/*=============================================================================
+ * brain_load_post_init_sidecars
+ *
+ * Loads the .immune / .kg / .gl_lang sidecars belonging to the checkpoint
+ * the brain was loaded from (brain->loaded_from_path). Must be called AFTER
+ * the corresponding subsystems are created (immune_system, internal_kg,
+ * grounded_lang) — otherwise the per-sidecar gates no-op and trained state
+ * is silently lost. nimcp_brain_eager_init_cognitive() is the canonical
+ * call site; the python binding's Brain.eager_init_cognitive() invokes it.
+ *
+ * Safe to call multiple times — each underlying loader is idempotent
+ * (re-loading the same sidecar replaces in-memory state with on-disk state).
+ *
+ * No-op when:
+ *   - brain is NULL
+ *   - brain->loaded_from_path is empty (fresh brain, never loaded)
+ *=============================================================================*/
+void brain_load_post_init_sidecars(brain_t brain)
+{
+    if (!brain) return;
+    if (brain->loaded_from_path[0] == '\0') return;  /* fresh brain */
+
+    const char* filepath = brain->loaded_from_path;
+
     /* Immune memory sidecar — restore B/T cells, antibodies, antigens.
      * Pre-Phase-B checkpoints won't have a .immune file; that's fine —
      * the loader logs file-not-found and falls back to a fresh immune
-     * system. We mirror the SNN-sidecar warn-and-continue pattern. */
+     * system. */
     if (brain->immune_system) {
         extern int immune_persistence_load(struct brain_immune_system* system,
                                            const char* filepath,
@@ -2243,9 +2281,6 @@ brain_t brain_load(const char* filepath)
                     "lexicon starts from seeded vocabulary only\n", gl_path);
         }
     }
-
-    brain_clear_error();
-    return brain;
 }
 
 //=============================================================================

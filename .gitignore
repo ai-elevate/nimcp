@@ -252,3 +252,4 @@ data/multimodal/*.pkl
 models/*.gguf
 models/
 build/
+data/lexicon/cache/

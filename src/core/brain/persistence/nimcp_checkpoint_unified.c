@@ -647,6 +647,17 @@ brain_t brain_load_auto(const char* filepath)
         brain = brain_load(filepath);
     }
 
+    /* Stash the source filepath so nimcp_brain_eager_init_cognitive() can
+     * load the .immune/.kg/.gl_lang sidecars AFTER the corresponding
+     * subsystems are created. Inside brain_load() itself, those subsystems
+     * are still NULL, so the sidecar `if (brain->grounded_lang)` block
+     * silently no-ops and the trained lexicon never reaches the live brain. */
+    if (brain) {
+        strncpy(brain->loaded_from_path, filepath,
+                sizeof(brain->loaded_from_path) - 1);
+        brain->loaded_from_path[sizeof(brain->loaded_from_path) - 1] = '\0';
+    }
+
     /* Post-load layout version check: old checkpoints (pre-SNN-primary)
      * have snn_target_neurons == 0 because those fields didn't exist.
      * New brains always set snn_target_neurons during init. */

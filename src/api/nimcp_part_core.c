@@ -3169,6 +3169,194 @@ nimcp_status_t nimcp_brain_bootstrap_lexicon(
 }
 
 /* =================================================================
+ * Bulk lexicon loader (binary format v1)
+ * =================================================================
+ *
+ * Streams a packed .bin produced by scripts/build_wordnet_glove_lexicon.py
+ * directly into the grounded_language lexicon via fast_map(). Targets the
+ * 50K-150K-word use case where JSON parse cost dominates the cold start.
+ *
+ * Binary layout (little-endian, see the Python builder docstring for the
+ * canonical version):
+ *
+ *   Header (32 bytes):
+ *     u32 magic = 'BLEX' (0x58454c42)
+ *     u32 version = 1
+ *     u32 word_count
+ *     u32 vector_dim       (must equal GL_SEMANTIC_DIM = 128)
+ *     u32 record_max_form  (informational; we always cap at GL_MAX_WORD_LEN-1)
+ *     u32 reserved[3]
+ *
+ *   Records (packed, no inter-record padding):
+ *     u16 form_len         strlen(form), <= GL_MAX_WORD_LEN-1
+ *     u8  form[form_len]   ASCII bytes, no NUL on disk
+ *     u8  class_enum       gl_word_class_t value
+ *     u8  reserved
+ *     f32 vec[vector_dim]
+ *
+ * Validation: magic + version + dim are checked once on header. Each record
+ * is bounds-checked against the file tail. A single bad record short-circuits
+ * the load with a logged warning — partial loads are intentional (we'd
+ * rather have N-1 entries than zero).
+ */
+
+#define NIMCP_BULK_LEX_MAGIC   0x58454C42u   /* 'BLEX' */
+#define NIMCP_BULK_LEX_VERSION 1u
+#define NIMCP_BULK_LEX_HEADER_BYTES 32u
+
+/* Internal entry point — operates directly on grounded_language_t* so it
+ * can also be called from brain_init code (which has the internal handle
+ * but not the public nimcp_brain_t). The public wrapper below just
+ * marshals the brain handle and delegates here. Returns inserted count
+ * (>=0) on success, -1 on file/format error. */
+int nimcp_internal_load_bulk_lexicon(
+    grounded_language_t* gl,
+    const char* bin_path)
+{
+    if (!gl || !bin_path) return -1;
+
+    FILE* f = fopen(bin_path, "rb");
+    if (!f) {
+        LOG_WARN("nimcp_internal_load_bulk_lexicon: cannot open %s", bin_path);
+        return -1;
+    }
+
+    /* --- header --- */
+    uint32_t hdr[8];
+    if (fread(hdr, sizeof(uint32_t), 8, f) != 8) {
+        LOG_WARN("nimcp_internal_load_bulk_lexicon: short header in %s", bin_path);
+        fclose(f);
+        return -1;
+    }
+
+    uint32_t magic       = hdr[0];
+    uint32_t version     = hdr[1];
+    uint32_t word_count  = hdr[2];
+    uint32_t vector_dim  = hdr[3];
+    /* hdr[4]=record_max_form (informational), hdr[5..7]=reserved */
+
+    if (magic != NIMCP_BULK_LEX_MAGIC) {
+        LOG_WARN("nimcp_internal_load_bulk_lexicon: bad magic 0x%08x in %s", magic, bin_path);
+        fclose(f);
+        return -1;
+    }
+    if (version != NIMCP_BULK_LEX_VERSION) {
+        LOG_WARN("nimcp_internal_load_bulk_lexicon: unsupported version %u (expected %u)",
+                 version, NIMCP_BULK_LEX_VERSION);
+        fclose(f);
+        return -1;
+    }
+
+    uint32_t expected_dim = grounded_language_get_semantic_dim(gl);
+    if (expected_dim == 0 || expected_dim > GL_SEMANTIC_DIM) expected_dim = GL_SEMANTIC_DIM;
+    if (vector_dim != expected_dim) {
+        LOG_WARN("nimcp_internal_load_bulk_lexicon: vector_dim %u != gl semantic_dim %u",
+                 vector_dim, expected_dim);
+        fclose(f);
+        return -1;
+    }
+
+    LOG_INFO("nimcp_internal_load_bulk_lexicon: header OK — %u words, dim=%u, file=%s",
+             word_count, vector_dim, bin_path);
+
+    /* --- records --- */
+    /* Per-record buffer reused across the loop. Form fits in
+     * GL_MAX_WORD_LEN; vec fits in GL_SEMANTIC_DIM (asserted above via
+     * the dim check). */
+    char     form[GL_MAX_WORD_LEN];
+    float    vec[GL_SEMANTIC_DIM];
+    uint32_t inserted = 0;
+    uint32_t skipped  = 0;
+
+    for (uint32_t i = 0; i < word_count; i++) {
+        uint16_t form_len = 0;
+        if (fread(&form_len, sizeof(form_len), 1, f) != 1) {
+            LOG_WARN("nimcp_internal_load_bulk_lexicon: short read at record %u (form_len)", i);
+            break;
+        }
+        if (form_len == 0 || form_len >= GL_MAX_WORD_LEN) {
+            LOG_WARN("nimcp_internal_load_bulk_lexicon: invalid form_len %u at record %u",
+                     (unsigned)form_len, i);
+            break;
+        }
+        if (fread(form, 1, form_len, f) != form_len) {
+            LOG_WARN("nimcp_internal_load_bulk_lexicon: short read at record %u (form body)", i);
+            break;
+        }
+        form[form_len] = '\0';
+
+        uint8_t class_byte = 0;
+        uint8_t reserved   = 0;
+        if (fread(&class_byte, 1, 1, f) != 1 || fread(&reserved, 1, 1, f) != 1) {
+            LOG_WARN("nimcp_internal_load_bulk_lexicon: short read at record %u (class)", i);
+            break;
+        }
+        (void)reserved;
+
+        if (fread(vec, sizeof(float), vector_dim, f) != vector_dim) {
+            LOG_WARN("nimcp_internal_load_bulk_lexicon: short read at record %u (vec)", i);
+            break;
+        }
+
+        /* Forward to fast_map. Category arg gets the class enum verbatim,
+         * matching the JSON-loader convention so downstream consumers see
+         * a uniform value regardless of which loader supplied the entry. */
+        uint64_t cid = grounded_language_fast_map(
+            gl,
+            form,
+            vec,
+            vector_dim,
+            (uint32_t)class_byte
+        );
+        if (cid != 0) {
+            inserted++;
+        } else {
+            /* fast_map returns 0 once GL_MAX_VOCAB is hit (or on internal
+             * alloc failure). We log only once and let the loop drain so
+             * the file pointer ends in a known state — but bail early if
+             * we've clearly hit the lexicon ceiling. */
+            skipped++;
+            if (skipped == 1) {
+                LOG_WARN("nimcp_internal_load_bulk_lexicon: fast_map returned 0 at "
+                         "record %u (form='%s') — lexicon full or alloc failed",
+                         i, form);
+            }
+            if (skipped > 256) {
+                LOG_WARN("nimcp_internal_load_bulk_lexicon: aborting after %u skipped "
+                         "records (lexicon likely full)", skipped);
+                break;
+            }
+        }
+    }
+
+    fclose(f);
+
+    LOG_INFO("nimcp_internal_load_bulk_lexicon: inserted %u / %u entries from %s "
+             "(skipped %u)", inserted, word_count, bin_path, skipped);
+    return (int)inserted;
+}
+
+/* Public API wrapper — marshals the brain handle and delegates to the
+ * internal loader so callers without a public handle (e.g., brain init)
+ * can still reuse the same code path. */
+nimcp_status_t nimcp_brain_load_bulk_lexicon(
+    nimcp_brain_t brain,
+    const char* bin_path)
+{
+    if (!brain || !bin_path) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_INVALID;
+    if (!b->grounded_lang) {
+        LOG_WARN("nimcp_brain_load_bulk_lexicon: no grounded_lang on brain");
+        return NIMCP_ERROR;
+    }
+
+    int rc = nimcp_internal_load_bulk_lexicon(b->grounded_lang, bin_path);
+    if (rc < 0) return NIMCP_ERROR;
+    return (rc > 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+/* =================================================================
  * Grounded-language diagnostics (read-only collapse triage)
  * =================================================================
  *
@@ -4533,6 +4721,21 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
         if (b->inference_pool) {
             count++;
         }
+    }
+
+    /* Post-init sidecar load (.immune / .kg / .gl_lang).
+     *
+     * These sidecars used to be loaded inside brain_load() itself, gated on
+     * brain->immune_system / brain->internal_kg / brain->grounded_lang being
+     * non-NULL. But those subsystems are created HERE — not during
+     * brain_load — so the gates always failed silently and the trained
+     * lexicon / immune memory / KG facts were lost on every resume.
+     *
+     * brain_load_auto() stashes the source filepath in brain->loaded_from_path;
+     * the loader is a no-op for fresh brains (path is empty). */
+    {
+        extern void brain_load_post_init_sidecars(brain_t brain);
+        brain_load_post_init_sidecars(b);
     }
 
     return count;

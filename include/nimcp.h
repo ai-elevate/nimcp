@@ -771,6 +771,39 @@ nimcp_status_t nimcp_brain_bootstrap_lexicon(
 );
 
 /**
+ * @brief Bulk-load a packed binary lexicon (50K-150K words) into grounded_lang.
+ *
+ * Streams a .bin produced by scripts/build_wordnet_glove_lexicon.py
+ * directly through grounded_language_fast_map(). Use this instead of
+ * nimcp_brain_bootstrap_lexicon when you need 10× more vocabulary or
+ * want a faster cold-start (binary parse vs JSON parse). Both loaders
+ * coexist; you can call them in sequence.
+ *
+ * Binary format v1 (little-endian):
+ *   Header: u32 magic('BLEX'), u32 version(=1), u32 word_count,
+ *           u32 vector_dim(=GL_SEMANTIC_DIM=128), u32 record_max_form,
+ *           u32 reserved[3]
+ *   Record: u16 form_len, u8[form_len] form (ASCII, no NUL),
+ *           u8 class_enum, u8 reserved, f32 vec[vector_dim]
+ *
+ * Behavior:
+ *   - Each record is forwarded to grounded_language_fast_map() with the
+ *     class_enum byte passed as the `category` argument.
+ *   - A single bad record stops the load (logged), but earlier inserted
+ *     entries are kept — partial loads are intentional.
+ *   - Returns NIMCP_OK iff at least one entry was inserted.
+ *
+ * @param brain     Brain handle (must have grounded_lang attached)
+ * @param bin_path  Path to a wordnet_glove_v*.bin file
+ * @return NIMCP_OK if any entries inserted, NIMCP_ERROR on file/parse
+ *         failure, NIMCP_ERROR_INVALID on bad magic/version/dim.
+ */
+nimcp_status_t nimcp_brain_load_bulk_lexicon(
+    nimcp_brain_t brain,
+    const char* bin_path
+);
+
+/**
  * @brief Learn language from text (distributional + syntactic patterns)
  *
  * Processes text to learn word co-occurrence patterns, infer word classes,

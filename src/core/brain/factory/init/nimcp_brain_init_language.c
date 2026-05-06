@@ -49,6 +49,16 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* Forward declaration of the bulk lexicon loader. Implemented in
+ * src/api/nimcp_part_core.c (compiled into nimcp.c via SRP-include
+ * split, so its symbol lives in the same shared library). Local extern
+ * here keeps brain init from depending on the public nimcp.h, which
+ * would create a circular include — public API → brain init → public API.
+ */
+extern int nimcp_internal_load_bulk_lexicon(
+    grounded_language_t* gl,
+    const char* bin_path);
+
 #define LOG_MODULE "BRAIN_INIT_LANGUAGE"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
@@ -700,6 +710,28 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
         }
 
         LOG_INFO(LOG_MODULE, "Grounded language system created (dim=128)");
+
+        /* Optional env-gated bulk lexicon preload. When NIMCP_BULK_LEXICON is
+         * set to a path, stream that .bin into the lexicon now — before SNN
+         * bridges + cognitive subscribers fire — so any downstream init that
+         * iterates the vocab sees the full preloaded set. Failure is
+         * non-fatal: the brain comes up with whatever the create()-time
+         * function-word seed populated, plus any later JSON bootstrap. */
+        const char* bulk_lex_env = getenv("NIMCP_BULK_LEXICON");
+        if (bulk_lex_env && bulk_lex_env[0] != '\0') {
+            int loaded = nimcp_internal_load_bulk_lexicon(brain->grounded_lang,
+                                                           bulk_lex_env);
+            if (loaded > 0) {
+                LOG_INFO(LOG_MODULE,
+                    "Bulk lexicon preload from %s: +%d entries",
+                    bulk_lex_env, loaded);
+            } else {
+                LOG_WARN(LOG_MODULE,
+                    "Bulk lexicon preload from %s failed (loaded=%d) — "
+                    "brain proceeds with seed lexicon only",
+                    bulk_lex_env, loaded);
+            }
+        }
 
         /* SNN Language Bridge — spike-driven word-concept binding via STDP */
         snn_lang_config_t snn_lang_cfg = snn_lang_config_default();

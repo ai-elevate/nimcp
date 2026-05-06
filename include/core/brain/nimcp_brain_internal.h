@@ -2740,6 +2740,17 @@ struct brain_struct {
      * NULL until first probe created (lazy init via eager_init_cognitive or API).
      * See include/core/probes/nimcp_brain_probes.h */
     struct probe_registry* probe_registry;
+
+    /* === CHECKPOINT PROVENANCE ===
+     * Path the brain was loaded from, set by brain_load_auto() during
+     * checkpoint restoration. Empty string for fresh brains. Used by
+     * nimcp_brain_eager_init_cognitive() to defer post-init sidecar loads
+     * (.gl_lang, .immune, .kg) until AFTER grounded_lang/immune_system/
+     * internal_kg actually exist — they are NULL during brain_load() itself.
+     *
+     * NIMCP_METRICS_PATH_SIZE (= 512) matches the buffer used by the
+     * sidecar load helpers in nimcp_brain_persistence.c. */
+    char loaded_from_path[512];
 };
 
 //=============================================================================
