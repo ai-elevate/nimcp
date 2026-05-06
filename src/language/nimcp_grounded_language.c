@@ -912,22 +912,22 @@ const gl_lexicon_entry_t* lexicon_find_fuzzy_external(const grounded_language_t*
  * diverge for differently-grounded words.
  *
  * D1 — Spike-driven STDP (2026-05-06):
- * Each lexicon-binding event represents a real co-activation (concept and
- * word were associated via grounded learning). Without spike events the
- * bridge's STDP machinery walks zero traces and weights never move from
- * the initial mirror-pushed values (production observed: 35K bindings,
- * avg weight stuck at 0.054, total_ltp_events == 0).
+ * Synthetic spike events at bind time were tried (commit 5d47666ae) but
+ * caused SNN sparsity collapse: concept_pops[].activation has no decay
+ * anywhere in the bridge. Each synthesized concept_spike incremented
+ * activation by +1.0 forever. With 83K bulk-load + sidecar binds, the
+ * bridge's attention-feedback path (generate_attention_feedback →
+ * visual/audio attention_gains EMA) saw uniform-positive activations
+ * across nearly all concept_pops, broadcast "pay attention to everything"
+ * to the sensory bridges, and drove every neuron in the SNN to fire at
+ * least once per window → sparsity dropped from 0.50 to 0.00 and stuck.
  *
- * The pragmatic fix: synthesize spike events at lexicon-binding time using
- * a process-monotonic virtual-time counter. Concept-before-word ordering
- * (Δt = +2ms) drives LTP via the existing apply_stdp path. We then call
- * apply_stdp(t + 10ms) so the post-spike trace is consumed within window.
- *
- * Skipped during persistence rehydrate (is_loading=true) — the load path
- * fires through here many thousand times per resume; we don't want
- * synthesized spikes during cold boot to overwrite the saved binding
- * weights with whatever LTP/LTD the trace decay produces. STDP is paused
- * until the brain comes up live and starts driving real ground events.
+ * Reverted to bind-only. STDP becomes a no-op again (deferred D1 — the
+ * real fix is to wire SNN population spike events through the bridge,
+ * not synthesize them at lexicon-bind time, AND/OR add decay to the
+ * activation accumulators). Bindings still live; bridge production still
+ * works; weights stay at the initial mirror-pushed values until the
+ * proper SNN-spike wiring lands.
  */
 static void mirror_binding_to_bridge(grounded_language_t* gl,
                                       const gl_lexicon_entry_t* entry,
@@ -941,22 +941,6 @@ static void mirror_binding_to_bridge(grounded_language_t* gl,
     snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
     snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
     snn_language_bridge_bind(gl->snn_bridge, concept_pop, word_pop, strength);
-
-    /* Don't synthesize spikes during persistence rehydrate — see comment. */
-    if (gl->is_loading) return;
-
-    /* D1: synthesize a concept→word spike pair so STDP picks up the
-     * co-activation. Virtual time advances 50ms per binding event so each
-     * pair lives in its own STDP window without piling up traces from
-     * unrelated past calls. */
-    gl->snn_virtual_time_ms += 50.0f;
-    float t_concept = gl->snn_virtual_time_ms;
-    float t_word    = gl->snn_virtual_time_ms + 2.0f;   /* concept-before-word → LTP */
-    float t_apply   = gl->snn_virtual_time_ms + 10.0f;  /* both traces still alive */
-
-    snn_language_bridge_concept_spike(gl->snn_bridge, concept_pop, t_concept);
-    snn_language_bridge_word_spike(gl->snn_bridge, word_pop, t_word);
-    snn_language_bridge_apply_stdp(gl->snn_bridge, t_apply);
 }
 
 /** Add or strengthen a binding between a word and a concept */
