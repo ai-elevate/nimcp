@@ -9168,7 +9168,15 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                         '.cortex_visual', '.cortex_audio',
                         '.cortex_speech', '.cortex_somato',
                         '.meta', '.tokenizer', '.mirror_neurons', '.executive',
-                        '.knowledge', '.pink_noise']
+                        '.knowledge', '.pink_noise',
+                        # Deferred-load sidecars (loaded via
+                        # brain_load_post_init_sidecars after subsystems
+                        # are constructed). Without these symlinks the
+                        # athena_immersive.bin.<ext> path doesn't resolve
+                        # on resume → silent "no sidecar at..." log →
+                        # trained state lost. The .gl_lang miss is what
+                        # caused the lexicon to wipe on every restart.
+                        '.gl_lang', '.immune', '.kg']
         import glob as _g
         sidecar_tmps = _g.glob(snapshot_tmp + ".*")
         renamed_exts = set()
