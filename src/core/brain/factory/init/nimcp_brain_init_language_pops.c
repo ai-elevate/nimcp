@@ -326,14 +326,15 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
      * has the wiring duplicates every connection and trips a CSR write past
      * its allocated bucket → SIGSEGV in snn_csr_add_entry on the second pass.
      *
-     * If all four language pops are already present, the brain is being
-     * loaded from a checkpoint that ran this init at least once. Skip the
-     * wiring (it's already saved in the SNN's CSR) but still rebind the
-     * Broca/Wernicke adapters to their pops (the adapter pointers don't
-     * survive checkpoint reload — only the SNN does). */
-    bool prebuilt = pop_already_exists(snn, LANG_WERNICKE_POP_NAME) &&
-                    pop_already_exists(snn, LANG_BROCA_POP_NAME) &&
-                    pop_already_exists(snn, LANG_ARCUATE_POP_NAME) &&
+     * Use OR-of-any (not AND-of-all): the SNN load can truncate part-way
+     * through the lightweight-CSR section (known MFS rename race), leaving
+     * some pops loaded and the rest missing. AND-of-all would treat that as
+     * "fresh" and re-wire — double-wiring the loaded ones → SIGSEGV. OR-of-any
+     * treats partial load as resume; missing pops stay missing (graceful
+     * degradation), but we never crash from re-wiring already-wired pops. */
+    bool prebuilt = pop_already_exists(snn, LANG_WERNICKE_POP_NAME) ||
+                    pop_already_exists(snn, LANG_BROCA_POP_NAME) ||
+                    pop_already_exists(snn, LANG_ARCUATE_POP_NAME) ||
                     pop_already_exists(snn, SENSORYMOTOR_RING_POP_NAME);
     if (prebuilt) {
         int wid = find_pop_id_by_name(snn, LANG_WERNICKE_POP_NAME);

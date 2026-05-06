@@ -5901,7 +5901,22 @@ snn_network_t* snn_network_load(const char* path) {
                 /* Read row_ptr and entries */
                 if (fread(csr->row_ptr, sizeof(uint32_t), csr_n + 1, f) != csr_n + 1 ||
                     fread(csr->entries, sizeof(snn_csr_synapse_t), csr_nnz, f) != csr_nnz) {
-                    NIMCP_LOGGING_WARN("snn_network_load: truncated CSR data for '%s'", pop_name);
+                    NIMCP_LOGGING_WARN("snn_network_load: truncated CSR data for '%s' — "
+                                       "resetting pop CSR to empty so re-init/forward-pass "
+                                       "can treat it as fresh", pop_name);
+                    /* Truncation leaves entries/row_ptr partially filled and unsafe
+                     * to walk. Reset CSR scalar state so any downstream reader
+                     * sees an empty population (n_synapses=0) instead of
+                     * trusting partial bytes. row_ptr/entries memory is left
+                     * allocated; subsequent uses honor n_synapses=0. */
+                    csr->n_neurons = 0;
+                    csr->n_synapses = 0;
+                    csr->finalized = false;
+                    csr->gpu_ready = false;
+                    /* File cursor is now past a corrupt boundary — bail out of
+                     * the lightweight-CSR loop. Subsequent pops will be missing
+                     * from the SNN, and init_language_pops's OR-of-any resume
+                     * guard handles that (treats any survivor as resume). */
                     break;
                 }
                 csr->n_neurons = csr_n;
