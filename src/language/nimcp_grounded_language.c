@@ -169,12 +169,21 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
                                                        const char*);
             gl_mirror_new_word_to_regions(gl, entry->form);
 
-            /* Fire NEW_WORD event on the cognitive bus. */
-            extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
-            gl_event_t ev = {0};
-            ev.type = GL_EVENT_NEW_WORD;
-            ev.word = entry->form;
-            gl_fire_event(gl, &ev);
+            /* Fire NEW_WORD event on the cognitive bus.
+             *
+             * D7: suppress during persistence rehydrate. Resume blasts
+             * ~30K NEW_WORD events to every subscriber (inner-speech,
+             * imagination, theory-of-mind, empathy, introspection,
+             * prefrontal, insula, cingulate, amygdala, ofc, broca,
+             * wernicke, hippocampus, ...) — pure noise on cold boot.
+             * Live grounding events still fire normally. */
+            if (!gl->is_loading) {
+                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+                gl_event_t ev = {0};
+                ev.type = GL_EVENT_NEW_WORD;
+                ev.word = entry->form;
+                gl_fire_event(gl, &ev);
+            }
 
             return entry;
         }
@@ -901,6 +910,24 @@ const gl_lexicon_entry_t* lexicon_find_fuzzy_external(const grounded_language_t*
  * vastly better than the all-zero baseline. The bridge's STDP layer
  * separates the colliders over training as the spike pre/post traces
  * diverge for differently-grounded words.
+ *
+ * D1 — Spike-driven STDP (2026-05-06):
+ * Each lexicon-binding event represents a real co-activation (concept and
+ * word were associated via grounded learning). Without spike events the
+ * bridge's STDP machinery walks zero traces and weights never move from
+ * the initial mirror-pushed values (production observed: 35K bindings,
+ * avg weight stuck at 0.054, total_ltp_events == 0).
+ *
+ * The pragmatic fix: synthesize spike events at lexicon-binding time using
+ * a process-monotonic virtual-time counter. Concept-before-word ordering
+ * (Δt = +2ms) drives LTP via the existing apply_stdp path. We then call
+ * apply_stdp(t + 10ms) so the post-spike trace is consumed within window.
+ *
+ * Skipped during persistence rehydrate (is_loading=true) — the load path
+ * fires through here many thousand times per resume; we don't want
+ * synthesized spikes during cold boot to overwrite the saved binding
+ * weights with whatever LTP/LTD the trace decay produces. STDP is paused
+ * until the brain comes up live and starts driving real ground events.
  */
 static void mirror_binding_to_bridge(grounded_language_t* gl,
                                       const gl_lexicon_entry_t* entry,
@@ -914,6 +941,22 @@ static void mirror_binding_to_bridge(grounded_language_t* gl,
     snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
     snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
     snn_language_bridge_bind(gl->snn_bridge, concept_pop, word_pop, strength);
+
+    /* Don't synthesize spikes during persistence rehydrate — see comment. */
+    if (gl->is_loading) return;
+
+    /* D1: synthesize a concept→word spike pair so STDP picks up the
+     * co-activation. Virtual time advances 50ms per binding event so each
+     * pair lives in its own STDP window without piling up traces from
+     * unrelated past calls. */
+    gl->snn_virtual_time_ms += 50.0f;
+    float t_concept = gl->snn_virtual_time_ms;
+    float t_word    = gl->snn_virtual_time_ms + 2.0f;   /* concept-before-word → LTP */
+    float t_apply   = gl->snn_virtual_time_ms + 10.0f;  /* both traces still alive */
+
+    snn_language_bridge_concept_spike(gl->snn_bridge, concept_pop, t_concept);
+    snn_language_bridge_word_spike(gl->snn_bridge, word_pop, t_word);
+    snn_language_bridge_apply_stdp(gl->snn_bridge, t_apply);
 }
 
 /** Add or strengthen a binding between a word and a concept */

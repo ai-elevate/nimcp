@@ -87,6 +87,12 @@ static const char GL_SIDECAR_MAGIC[8] = {
  * v2: templates removed — grammar is now learned emergently via SNN bridge. */
 #define GL_SIDECAR_VERSION 2u
 
+/* D5 — hash-fn version byte. Bump this whenever gl_hash_form / hash_word
+ * changes. Saved in the low byte of the `reserved` u32 in the v2 header.
+ * v1 files have reserved=0 which we read as legacy hash version 0.
+ * Live runtime version starts at 1 (current FNV-1a mix). */
+#define GL_HASH_FN_VERSION 1u
+
 /* Sanity caps to defend against malformed / hostile input. The handle
  * already enforces GL_MAX_VOCAB at insert time, but we want to bail
  * before allocating gigabytes from a corrupt count field. */
@@ -265,10 +271,12 @@ int gl_persistence_save(const grounded_language_t* gl, const char* path) {
         return -1;
     }
 
-    /* ---- Header (v2: dropped legacy template_count slot). */
+    /* ---- Header (v2: dropped legacy template_count slot).
+     * D5: pack hash_fn_version into the low byte of `reserved`.
+     * High 24 bits stay zero for future use. */
     if (write_bytes(f, GL_SIDECAR_MAGIC, sizeof(GL_SIDECAR_MAGIC)) != 0) goto fail;
     if (write_u32(f, GL_SIDECAR_VERSION) != 0) goto fail;
-    if (write_u32(f, 0u) != 0) goto fail;  /* reserved */
+    if (write_u32(f, (uint32_t)GL_HASH_FN_VERSION) != 0) goto fail;  /* reserved + hash_fn ver */
     if (write_u32(f, gl->semantic_dim) != 0) goto fail;
     if (write_u32(f, gl->vocab_count) != 0) goto fail;
 
@@ -345,39 +353,62 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
         return -1;
     }
 
-    /* ---- Header validation. */
+    /* D7: suppress NEW_WORD events + synthesized SNN-bridge spikes for the
+     * duration of this rehydrate. ~30K replay events across ~20 subscribers
+     * = ~600K wasted callback invocations on cold boot, plus the synthesized
+     * spike pairs would walk STDP weights for bindings whose weights we just
+     * loaded. Cleared on every exit path below (success + fail). */
+    bool prev_loading = gl->is_loading;
+    gl->is_loading = true;
+
+    /* ---- Header validation. All early-exit paths goto fail so the
+     * D7 is_loading flag gets restored. */
     char magic[8];
     if (fread(magic, 1, sizeof(magic), f) != sizeof(magic)
         || memcmp(magic, GL_SIDECAR_MAGIC, sizeof(magic)) != 0) {
         LOG_WARN(LOG_MODULE, "gl_persistence_load: bad magic in %s", path);
-        fclose(f);
-        return -1;
+        goto fail;
     }
 
     uint32_t version = 0, reserved = 0;
     if (read_u32(f, &version) != 0 || read_u32(f, &reserved) != 0) {
-        fclose(f);
-        return -1;
+        goto fail;
     }
     if (version != 1u && version != 2u) {
         LOG_WARN(LOG_MODULE,
                  "gl_persistence_load: unsupported version=%u (runtime=%u) for %s",
                  version, GL_SIDECAR_VERSION, path);
-        fclose(f);
-        return -1;
+        goto fail;
+    }
+
+    /* D5: hash-fn version byte lives in the low byte of `reserved`. v1
+     * files have reserved=0 (legacy hash). If the saved hash version
+     * doesn't match GL_HASH_FN_VERSION the saved form_hash values are
+     * stale relative to live hash_word(); we still load the lexicon
+     * (form strings + bindings remain meaningful) but force-rehash each
+     * entry's form_hash field on insert via lexicon_find_or_create —
+     * which is what already happens (see comment near entry->form_hash
+     * assignment below). The version mismatch is logged as a
+     * not-the-end-of-the-world warning. */
+    uint8_t saved_hash_fn_version = (uint8_t)(reserved & 0xFFu);
+    if (saved_hash_fn_version != GL_HASH_FN_VERSION) {
+        LOG_WARN(LOG_MODULE,
+                 "gl_persistence_load: hash_fn_version mismatch "
+                 "(file=%u runtime=%u) — form_hash fields will be "
+                 "recomputed on rehydrate (lexicon still loadable)",
+                 (unsigned)saved_hash_fn_version,
+                 (unsigned)GL_HASH_FN_VERSION);
     }
 
     uint32_t saved_dim = 0, vocab_count = 0, legacy_template_count = 0;
     if (read_u32(f, &saved_dim) != 0
         || read_u32(f, &vocab_count) != 0) {
-        fclose(f);
-        return -1;
+        goto fail;
     }
     if (version == 1u) {
         /* v1 had a template_count slot in the header; v2 dropped it. */
         if (read_u32(f, &legacy_template_count) != 0) {
-            fclose(f);
-            return -1;
+            goto fail;
         }
     }
 
@@ -385,15 +416,13 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
         LOG_WARN(LOG_MODULE,
                  "gl_persistence_load: semantic_dim mismatch (file=%u handle=%u)",
                  saved_dim, gl->semantic_dim);
-        fclose(f);
-        return -1;
+        goto fail;
     }
     if (vocab_count > GL_MAX_VOCAB) {
         LOG_WARN(LOG_MODULE,
                  "gl_persistence_load: vocab_count %u > GL_MAX_VOCAB %u — corrupt",
                  vocab_count, GL_MAX_VOCAB);
-        fclose(f);
-        return -1;
+        goto fail;
     }
 
     /* ---- Stats + RNG. v1 reads include the legacy templates_learned slot. */
@@ -504,6 +533,7 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
     }
 
     fclose(f);
+    gl->is_loading = prev_loading;  /* D7: end of rehydrate */
     LOG_INFO(LOG_MODULE,
              "Loaded grounded language sidecar from %s (%u words, dim=%u, fmt=v%u)",
              path, gl->vocab_count, gl->semantic_dim, version);
@@ -512,5 +542,6 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
 fail:
     LOG_WARN(LOG_MODULE, "gl_persistence_load: malformed sidecar at %s", path);
     fclose(f);
+    gl->is_loading = prev_loading;  /* D7: end of rehydrate (fail path) */
     return -1;
 }

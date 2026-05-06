@@ -169,6 +169,20 @@ struct grounded_language {
     gl_phrase_t*         phrases;
     uint32_t             phrase_count;
     uint64_t             phrases_evicted;
+
+    /* D7 — set true while a persistence rehydrate is in progress. The
+     * NEW_WORD event publisher and the SNN-bridge spike synthesizer both
+     * gate on this. ~30K rehydrated entries per resume otherwise blast
+     * NEW_WORD to every subscriber + drive synthesized spike traces over
+     * saved STDP weights. Init/runtime always sees is_loading=false. */
+    bool                 is_loading;
+
+    /* D1 — process-monotonic virtual time fed to the SNN language bridge
+     * by mirror_binding_to_bridge so each synthesized spike pair lives in
+     * its own STDP window. Float ms; advanced by 50ms per binding event.
+     * Survives across save/load by design — the bridge keeps running
+     * windowed STDP after resume. */
+    float                snn_virtual_time_ms;
 };
 
 /**

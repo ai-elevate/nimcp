@@ -49,6 +49,19 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* D9 helper — adapter from grounded_language's word_to_id_fn callback
+ * signature `uint32_t(void*, const char*)` to the tokenizer's
+ * `tokenizer_token_to_id(const tokenizer_t*, const char*)`. The function-
+ * pointer signatures only differ in the first arg's type tag; the ABI
+ * is identical (pointer in, pointer in, uint32_t out) but the C standard
+ * doesn't permit casting between them, so use this real function as the
+ * adapter. */
+static uint32_t _gl_word_to_id_via_tokenizer(void* ctx, const char* word) {
+    const tokenizer_t* tok = (const tokenizer_t*)ctx;
+    if (!tok || !word) return 0;
+    return tokenizer_token_to_id(tok, word);
+}
+
 /* Forward declaration of the bulk lexicon loader. Implemented in
  * src/api/nimcp_part_core.c (compiled into nimcp.c via SRP-include
  * split, so its symbol lives in the same shared library). Local extern
@@ -731,6 +744,42 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
                     "brain proceeds with seed lexicon only",
                     bulk_lex_env, loaded);
             }
+        }
+
+        /* D9 — Wire NLP frontend (embedding layer + tokenizer).
+         *
+         * `brain->lang_embedding` and `brain->tokenizer` were created
+         * earlier in this same init path (lines ~430-520). gl_nlp_*
+         * already knows how to consume them but the connect APIs were
+         * never called — leaving the embedding/tokenizer machinery
+         * unreachable from comprehend. Wiring here uses the existing
+         * tokenizer_token_to_id() as the gl_word_to_id_fn callback.
+         *
+         * Dim-match check: embedding_dim was set to 128 (line ~498),
+         * gl->semantic_dim is also 128 (line 540). gl_nlp_embedding_lookup
+         * verifies the match per-call and skips silently if it diverges
+         * — so this is safe even if either dim is reconfigured later. */
+        if (brain->lang_embedding && brain->tokenizer) {
+            /* embedding layer dim — pulled from the cfg used at create time. */
+            uint32_t emb_dim = 128;  /* matches the embedding_create above */
+            grounded_language_connect_embeddings(
+                brain->grounded_lang,
+                brain->lang_embedding,
+                emb_dim,
+                /* word_to_id_fn — adapter calls tokenizer_token_to_id. */
+                _gl_word_to_id_via_tokenizer,
+                brain->tokenizer);
+            grounded_language_connect_tokenizer(brain->grounded_lang,
+                                                  brain->tokenizer);
+            LOG_INFO(LOG_MODULE,
+                     "Grounded language NLP frontend wired: embedding=%p tokenizer=%p emb_dim=%u",
+                     (void*)brain->lang_embedding,
+                     (void*)brain->tokenizer, emb_dim);
+        } else {
+            LOG_WARN(LOG_MODULE,
+                     "Grounded language NLP frontend NOT wired: lang_embedding=%p tokenizer=%p",
+                     (void*)brain->lang_embedding,
+                     (void*)brain->tokenizer);
         }
 
         /* SNN Language Bridge — spike-driven word-concept binding via STDP */
