@@ -1108,89 +1108,6 @@ static void seed_conceptual_words(grounded_language_t* gl) {
     }
 }
 
-/** Create built-in syntactic templates */
-static void seed_templates(grounded_language_t* gl) {
-    /* SVO: "The dog chases the cat" */
-    gl_template_t* t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_SVO;
-    t->slots[0] = GL_CLASS_NOUN;
-    t->slots[1] = GL_CLASS_VERB;
-    t->slots[2] = GL_CLASS_NOUN;
-    t->slot_count = 3;
-    t->frequency = 10.0f;
-    t->confidence = 0.8f;
-
-    /* SV: "The bird flies" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_SV;
-    t->slots[0] = GL_CLASS_NOUN;
-    t->slots[1] = GL_CLASS_VERB;
-    t->slot_count = 2;
-    t->frequency = 8.0f;
-    t->confidence = 0.8f;
-
-    /* Copula: "The sky is blue" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_COPULA;
-    t->slots[0] = GL_CLASS_NOUN;
-    t->slots[1] = GL_CLASS_FUNCTION; /* is/are */
-    t->slots[2] = GL_CLASS_ADJECTIVE;
-    t->slot_count = 3;
-    t->frequency = 8.0f;
-    t->confidence = 0.8f;
-
-    /* NP: "the big red dog" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_NP;
-    t->slots[0] = GL_CLASS_ADJECTIVE;
-    t->slots[1] = GL_CLASS_NOUN;
-    t->slot_count = 2;
-    t->frequency = 6.0f;
-    t->confidence = 0.7f;
-
-    /* SVA: "The cat sits quietly" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_SVA;
-    t->slots[0] = GL_CLASS_NOUN;
-    t->slots[1] = GL_CLASS_VERB;
-    t->slots[2] = GL_CLASS_ADVERB;
-    t->slot_count = 3;
-    t->frequency = 5.0f;
-    t->confidence = 0.7f;
-
-    /* SVOO: "I think learning is important" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_SVOO;
-    t->slots[0] = GL_CLASS_PRONOUN;
-    t->slots[1] = GL_CLASS_VERB;
-    t->slots[2] = GL_CLASS_NOUN;
-    t->slots[3] = GL_CLASS_ADJECTIVE;
-    t->slot_count = 4;
-    t->frequency = 7.0f;
-    t->confidence = 0.75f;
-
-    /* Comparative: "The idea is more complex than the pattern" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_COMPARATIVE;
-    t->slots[0] = GL_CLASS_NOUN;
-    t->slots[1] = GL_CLASS_ADJECTIVE;
-    t->slots[2] = GL_CLASS_NOUN;
-    t->slot_count = 3;
-    t->frequency = 4.0f;
-    t->confidence = 0.7f;
-
-    /* Conditional: "If the evidence is clear then the answer is true" */
-    t = &gl->templates[gl->template_count++];
-    t->type = GL_PATTERN_CONDITIONAL;
-    t->slots[0] = GL_CLASS_NOUN;
-    t->slots[1] = GL_CLASS_ADJECTIVE;
-    t->slots[2] = GL_CLASS_NOUN;
-    t->slots[3] = GL_CLASS_ADJECTIVE;
-    t->slot_count = 4;
-    t->frequency = 3.0f;
-    t->confidence = 0.65f;
-}
-
 /*=============================================================================
  * Concept Operations (via Semantic Memory)
  *===========================================================================*/
@@ -1383,68 +1300,6 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
 }
 
 /*=============================================================================
- * Template-based Production
- *===========================================================================*/
-
-/** Select best template for a given set of word classes.
- *
- * Tunable via env var NIMCP_TEMPLATE_PRIOR_WEIGHT (default 1.0):
- *   score = pow(t->frequency, prior_w) * t->confidence
- * Lower values dampen the frequency prior so templates compete more on
- * confidence; 0.0 removes the frequency term entirely. Env var is read once
- * per process (cached) so this is a daemon-restart-level knob, not per-call.
- */
-static const gl_template_t* select_template(const grounded_language_t* gl,
-                                             bool has_noun, bool has_verb,
-                                             bool has_adj) {
-    static float prior_w = -1.0f;
-    if (prior_w < 0.0f) {
-        const char* s = getenv("NIMCP_TEMPLATE_PRIOR_WEIGHT");
-        prior_w = (s && *s) ? (float)atof(s) : 1.0f;
-        if (prior_w < 0.0f) prior_w = 0.0f;
-        if (prior_w > 4.0f) prior_w = 4.0f;
-    }
-
-    float best_score = -1.0f;
-    const gl_template_t* best = NULL;
-
-    for (uint32_t i = 0; i < gl->template_count; i++) {
-        const gl_template_t* t = &gl->templates[i];
-        float freq_term = (prior_w == 1.0f) ? t->frequency : powf(t->frequency, prior_w);
-        float score = freq_term * t->confidence;
-
-        /* Bonus for templates that match available word classes */
-        bool can_fill = true;
-        for (uint32_t s = 0; s < t->slot_count; s++) {
-            switch (t->slots[s]) {
-                case GL_CLASS_NOUN: if (!has_noun) can_fill = false; break;
-                case GL_CLASS_VERB: if (!has_verb) can_fill = false; break;
-                case GL_CLASS_ADJECTIVE: if (!has_adj) can_fill = false; break;
-                default: break; /* Function words always available */
-            }
-        }
-        if (!can_fill) continue;
-
-        if (score > best_score) {
-            best_score = score;
-            best = t;
-        }
-    }
-
-    return best;
-}
-
-/** Get a copula form for simple sentences */
-static const char* get_copula(void) {
-    return "is";
-}
-
-/** Get a determiner */
-static const char* get_determiner(grounded_language_t* gl) {
-    return (gl_random(gl) > 0.5f) ? "the" : "a";
-}
-
-/*=============================================================================
  * Lifecycle Implementation
  *===========================================================================*/
 
@@ -1466,16 +1321,6 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     if (!gl->lexicon || !gl->vocab_list) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "grounded_language_create: failed to allocate lexicon tables");
-        grounded_language_destroy(gl);
-        return NULL;
-    }
-
-    /* Templates */
-    gl->template_capacity = GL_MAX_TEMPLATES;
-    gl->templates = (gl_template_t*)nimcp_calloc(gl->template_capacity, sizeof(gl_template_t));
-    if (!gl->templates) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "grounded_language_create: failed to allocate templates");
         grounded_language_destroy(gl);
         return NULL;
     }
@@ -1506,10 +1351,10 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     /* RNG */
     gl->rng_state = (uint64_t)time(NULL) ^ 0xDEADBEEFCAFEULL;
 
-    /* Seed with function words and basic templates */
+    /* Seed with function and conceptual words. Syntactic structure is
+     * learned emergently via SNN bridge plasticity, not seeded as templates. */
     seed_function_words(gl);
     seed_conceptual_words(gl);
-    seed_templates(gl);
 
     /* Register with BBB */
     bbb_register_module("grounded_language", BBB_MODULE_TYPE_COGNITIVE);
@@ -1536,7 +1381,6 @@ void grounded_language_destroy(grounded_language_t* gl) {
 
     nimcp_free(gl->lexicon);
     nimcp_free(gl->vocab_list);
-    nimcp_free(gl->templates);
     nimcp_free(gl->context.context_vector);
 
     /* Phrases (#9) — each entry's semantic_vec is gl-owned. */
@@ -2088,6 +1932,7 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
 int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                uint32_t intent_dim, gl_production_mode_t mode,
                                gl_production_result_t* result) {
+    (void)mode;
     if (!gl || !intent || !result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "grounded_language_produce: NULL parameter (gl=%p, intent=%p, result=%p)",
@@ -2096,179 +1941,38 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     }
     memset(result, 0, sizeof(*result));
 
-    /* Dual-path: if SNN bridge available, blend spike-driven production */
-    if (gl->snn_bridge) {
-        float blend = snn_language_bridge_get_blend(gl->snn_bridge);
-        if (blend > 0.0f) {
-            snn_lang_production_result_t spike_result;
-            memset(&spike_result, 0, sizeof(spike_result));
-            if (snn_language_bridge_produce(gl->snn_bridge, intent, intent_dim,
-                                            &spike_result) == 0 &&
-                spike_result.text && spike_result.word_count > 0) {
-                /* At high blend, use spike output directly */
-                if (blend >= 0.9f) {
-                    result->text = spike_result.text;
-                    spike_result.text = NULL; /* Transfer ownership */
-                    result->word_count = spike_result.word_count;
-                    result->fluency = spike_result.fluency;
-                    result->relevance = spike_result.spike_confidence;
-                    result->creativity = spike_result.creativity;
-                    result->semantic_vector = (float*)nimcp_calloc(
-                        gl->semantic_dim, sizeof(float));
-                    if (result->semantic_vector) {
-                        uint32_t copy_dim = (intent_dim < gl->semantic_dim)
-                            ? intent_dim : gl->semantic_dim;
-                        memcpy(result->semantic_vector, intent,
-                               copy_dim * sizeof(float));
-                    }
-                    snn_lang_production_result_cleanup(&spike_result);
-                    gl->stats.total_productions++;
-                    return 0;
-                }
-                /* Low blend: record spike confidence for later blending */
-                result->creativity = spike_result.creativity * blend;
-            }
-            snn_lang_production_result_cleanup(&spike_result);
-        }
-    }
+    /* SNN bridge is the only production path. The brain learns syntactic
+     * structure emergently through training; we no longer impose templates.
+     * If the bridge can't produce (untrained, or no concepts activated),
+     * we return -1 and the caller's IDK gate fires "I don't know" — which
+     * is the honest answer for an undertrained model. */
+    if (!gl->snn_bridge) return -1;
 
-    /* Allocate output buffer */
-    size_t buf_size = GL_MAX_PRODUCTION_WORDS * GL_MAX_WORD_LEN;
-    char* buf = (char*)nimcp_calloc(buf_size, 1);
-    if (!buf) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "grounded_language_produce: failed to allocate output buffer");
+    snn_lang_production_result_t spike_result;
+    memset(&spike_result, 0, sizeof(spike_result));
+    int rc = snn_language_bridge_produce(gl->snn_bridge, intent, intent_dim,
+                                         &spike_result);
+    if (rc != 0 || !spike_result.text || spike_result.word_count == 0) {
+        snn_lang_production_result_cleanup(&spike_result);
         return -1;
     }
+
+    /* Transfer the spike-produced text into the result. */
+    result->text = spike_result.text;
+    spike_result.text = NULL;  /* Ownership transferred. */
+    result->word_count = spike_result.word_count;
+    result->fluency = spike_result.fluency;
+    result->relevance = spike_result.spike_confidence;
+    result->creativity = spike_result.creativity;
 
     result->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
-    if (!result->semantic_vector) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "grounded_language_produce: failed to allocate semantic vector");
-        nimcp_free(buf);
-        return -1;
+    if (result->semantic_vector) {
+        uint32_t copy_dim = (intent_dim < gl->semantic_dim)
+            ? intent_dim : gl->semantic_dim;
+        memcpy(result->semantic_vector, intent, copy_dim * sizeof(float));
     }
 
-    /* Find words close to the intent vector */
-    const char* nouns[16] = {0};
-    float noun_scores[16] = {0};
-    const char* verbs[8] = {0};
-    float verb_scores[8] = {0};
-    const char* adjs[8] = {0};
-    float adj_scores[8] = {0};
-
-    uint32_t nn = find_words_near_vector(gl, intent, intent_dim, GL_CLASS_NOUN,
-                                          nouns, noun_scores, 16);
-    uint32_t nv = find_words_near_vector(gl, intent, intent_dim, GL_CLASS_VERB,
-                                          verbs, verb_scores, 8);
-    uint32_t na = find_words_near_vector(gl, intent, intent_dim, GL_CLASS_ADJECTIVE,
-                                          adjs, adj_scores, 8);
-
-    /* Also find any-class words as fallback */
-    const char* any_words[16] = {0};
-    float any_scores[16] = {0};
-    uint32_t n_any = find_words_near_vector(gl, intent, intent_dim, GL_CLASS_UNKNOWN,
-                                             any_words, any_scores, 16);
-
-    /* Select template */
-    const gl_template_t* tmpl = select_template(gl, nn > 0, nv > 0, na > 0);
-
-    size_t pos = 0;
-    uint32_t words_written = 0;
-
-    if (tmpl) {
-        /* Fill template slots */
-        uint32_t noun_idx = 0, verb_idx = 0, adj_idx = 0;
-
-        for (uint32_t s = 0; s < tmpl->slot_count; s++) {
-            const char* word = NULL;
-
-            switch (tmpl->slots[s]) {
-                case GL_CLASS_NOUN:
-                    if (noun_idx < nn) word = nouns[noun_idx++];
-                    break;
-                case GL_CLASS_VERB:
-                    if (verb_idx < nv) word = verbs[verb_idx++];
-                    break;
-                case GL_CLASS_ADJECTIVE:
-                    if (adj_idx < na) word = adjs[adj_idx++];
-                    break;
-                case GL_CLASS_FUNCTION:
-                    if (tmpl->type == GL_PATTERN_COPULA) {
-                        word = get_copula();
-                    } else {
-                        word = get_determiner(gl);
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            if (word) {
-                /* Add determiner before nouns */
-                if (tmpl->slots[s] == GL_CLASS_NOUN && s == 0) {
-                    const char* det = get_determiner(gl);
-                    size_t det_len = strlen(det);
-                    if (pos + det_len + 1 < buf_size) {
-                        memcpy(buf + pos, det, det_len);
-                        pos += det_len;
-                        buf[pos++] = ' ';
-                        words_written++;
-                    }
-                }
-
-                size_t wlen = strlen(word);
-                if (pos + wlen + 1 < buf_size) {
-                    memcpy(buf + pos, word, wlen);
-                    pos += wlen;
-                    buf[pos++] = ' ';
-                    words_written++;
-                }
-            }
-        }
-    } else {
-        /* No template — just emit top words by score */
-        uint32_t max_emit = (mode == GL_PRODUCE_ELABORATE) ? 12 : 6;
-        for (uint32_t i = 0; i < n_any && i < max_emit; i++) {
-            if (!any_words[i]) continue;
-            size_t wlen = strlen(any_words[i]);
-            if (pos + wlen + 1 < buf_size) {
-                memcpy(buf + pos, any_words[i], wlen);
-                pos += wlen;
-                buf[pos++] = ' ';
-                words_written++;
-            }
-        }
-    }
-
-    /* Handle multi-sentence modes */
-    if (mode == GL_PRODUCE_ELABORATE && tmpl && nn > 1) {
-        /* Add a second sentence with remaining content */
-        if (nn > 1 && na > 0) {
-            pos += (size_t)snprintf(buf + pos, buf_size - pos, "The %s is %s. ",
-                                     (nn > 1) ? nouns[1] : nouns[0],
-                                     adjs[0]);
-            words_written += 4;
-        }
-    }
-
-    /* Trim trailing space */
-    if (pos > 0 && buf[pos - 1] == ' ') {
-        buf[pos - 1] = '.';
-    }
-    buf[pos] = '\0';
-
-    /* Calculate quality metrics */
-    result->text = buf;
-    result->word_count = words_written;
-    result->fluency = (tmpl) ? tmpl->confidence : 0.3f;
-    result->relevance = (n_any > 0) ? any_scores[0] : 0.0f;
-    result->creativity = 0.0f; /* Base production isn't creative */
-
-    /* Store semantic meaning of what was produced */
-    uint32_t copy_dim = (intent_dim < gl->semantic_dim) ? intent_dim : gl->semantic_dim;
-    memcpy(result->semantic_vector, intent, copy_dim * sizeof(float));
-
+    snn_lang_production_result_cleanup(&spike_result);
     gl->stats.total_productions++;
 
     /* Fire PRODUCED event on the cognitive bus. */
@@ -2292,20 +1996,7 @@ int grounded_language_describe_concept(grounded_language_t* gl, uint64_t concept
     }
 
     const float* features = get_concept_features(gl, concept_id);
-    if (!features) {
-        /* Try to describe from word bindings alone */
-        const char* word = best_word_for_concept(gl, concept_id);
-        if (word) {
-            result->text = (char*)nimcp_malloc(strlen(word) + 16);
-            if (result->text) {
-                sprintf(result->text, "It is %s.", word);
-                result->word_count = 3;
-                result->fluency = 0.5f;
-            }
-            return 0;
-        }
-        return -1;
-    }
+    if (!features) return -1;
 
     return grounded_language_produce(gl, features, gl->semantic_dim,
                                       GL_PRODUCE_DESCRIBE, result);
@@ -2633,98 +2324,12 @@ float grounded_language_learn_pair(grounded_language_t* gl, const char* input_te
 }
 
 int grounded_language_learn_syntax(grounded_language_t* gl, const char* text) {
-    if (!gl || !text) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-            "grounded_language_learn_syntax: NULL parameter");
-        return -1;
-    }
-
-    size_t tlen = strlen(text);
-    char* buf = (char*)nimcp_malloc(tlen + 1);
-    if (!buf) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "grounded_language_learn_syntax: failed to allocate buffer");
-        return -1;
-    }
-    memcpy(buf, text, tlen + 1);
-
-    char* words[GL_MAX_PRODUCTION_WORDS];
-    uint32_t word_count = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
-
-    if (word_count < 2) {
-        nimcp_free(buf);
-        return 0;
-    }
-
-    /* Extract word class sequence */
-    gl_word_class_t classes[GL_MAX_TEMPLATE_SLOTS];
-    uint32_t class_count = 0;
-
-    for (uint32_t i = 0; i < word_count && class_count < GL_MAX_TEMPLATE_SLOTS; i++) {
-        const gl_lexicon_entry_t* entry = lexicon_find(gl, words[i]);
-        if (!entry) {
-            classes[class_count++] = GL_CLASS_UNKNOWN;
-            continue;
-        }
-
-        /* Skip function words in the class sequence (they're structural) */
-        if (entry->learned_class == GL_CLASS_FUNCTION ||
-            entry->learned_class == GL_CLASS_PRONOUN) {
-            continue;
-        }
-
-        classes[class_count++] = entry->learned_class;
-    }
-
-    /* Try to match against existing templates */
-    int new_patterns = 0;
-    bool matched = false;
-
-    for (uint32_t t = 0; t < gl->template_count; t++) {
-        gl_template_t* tmpl = &gl->templates[t];
-        if (tmpl->slot_count != class_count) continue;
-
-        bool match = true;
-        for (uint32_t s = 0; s < class_count; s++) {
-            if (tmpl->slots[s] != classes[s] && classes[s] != GL_CLASS_UNKNOWN) {
-                match = false;
-                break;
-            }
-        }
-
-        if (match) {
-            tmpl->frequency += 1.0f;
-            tmpl->confidence = 1.0f - expf(-tmpl->frequency / 10.0f);
-            matched = true;
-            break;
-        }
-    }
-
-    /* Create new template if no match and we have a clear pattern */
-    if (!matched && class_count >= 2 && class_count <= GL_MAX_TEMPLATE_SLOTS &&
-        gl->template_count < gl->template_capacity) {
-
-        bool has_known = false;
-        for (uint32_t s = 0; s < class_count; s++) {
-            if (classes[s] != GL_CLASS_UNKNOWN) has_known = true;
-        }
-
-        if (has_known) {
-            gl_template_t* tmpl = &gl->templates[gl->template_count++];
-            tmpl->type = GL_PATTERN_LEARNED;
-            for (uint32_t s = 0; s < class_count; s++) {
-                tmpl->slots[s] = classes[s];
-            }
-            tmpl->slot_count = class_count;
-            tmpl->frequency = 1.0f;
-            tmpl->confidence = 0.2f;
-            gl->stats.templates_learned++;
-            new_patterns++;
-        }
-    }
-
-    nimcp_free(buf);
-    return new_patterns;
+    /* Templates removed. The brain learns syntactic structure emergently via
+     * SNN bridge plasticity (spike→word bindings + context vectors). No-op
+     * kept so existing callers compile. */
+    (void)gl;
+    (void)text;
+    return 0;
 }
 
 /*=============================================================================
@@ -2894,7 +2499,7 @@ int grounded_language_get_probe_metrics(const grounded_language_t* gl,
         }
     }
     out->vocab_count          = gl->vocab_count;
-    out->templates_count      = gl->template_count;
+    out->templates_count      = 0;  /* templates removed — emergent grammar via SNN bridge */
     out->avg_binding_strength = (total_bindings > 0)
         ? total_strength / (float)total_bindings : 0.0f;
     out->avg_binding_confidence = (total_bindings > 0)
@@ -2975,9 +2580,12 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
     /* Magic + version. v2 adds context_dialect (#14). v3 adds
      * compositional phrases (#9). v4 (#6) compresses each entry's
      * context_vector to int8 with per-vector max-abs scaling — 4×
-     * size reduction at <0.4% per-element error. */
+     * size reduction at <0.4% per-element error. v5 removes the
+     * syntactic-template block; grammar is now learned emergently via
+     * SNN bridge plasticity. v5 readers skip the legacy template
+     * section when loading v4-and-earlier files. */
     uint32_t magic = GL_MAGIC;
-    uint32_t version = 4;
+    uint32_t version = 5;
     fwrite(&magic, sizeof(magic), 1, f);
     fwrite(&version, sizeof(version), 1, f);
     fwrite(&gl->semantic_dim, sizeof(gl->semantic_dim), 1, f);
@@ -3036,9 +2644,7 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
         }
     }
 
-    /* Templates */
-    fwrite(&gl->template_count, sizeof(gl->template_count), 1, f);
-    fwrite(gl->templates, sizeof(gl_template_t), gl->template_count, f);
+    /* v5: no template block — emergent grammar via SNN bridge. */
 
     /* v2: dialect tag (#14). Always exactly GL_MAX_DIALECT_LEN bytes
      * for a fixed-width record so future fields can be appended without
@@ -3059,9 +2665,8 @@ int grounded_language_save(const grounded_language_t* gl, const char* path) {
 
     fclose(f);
     LOG_INFO(LOG_MODULE,
-             "Saved grounded language state to %s (%u words, %u templates, %u phrases, dialect='%s')",
-             path, gl->vocab_count, gl->template_count,
-             gl->phrase_count, gl->context_dialect);
+             "Saved grounded language state to %s (%u words, %u phrases, dialect='%s')",
+             path, gl->vocab_count, gl->phrase_count, gl->context_dialect);
     return 0;
 }
 
@@ -3177,12 +2782,26 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
         }
     }
 
-    /* Templates */
-    uint32_t template_count;
-    fread_chk(&template_count, sizeof(template_count), 1, f);
-    if (template_count <= gl->template_capacity) {
-        fread_chk(gl->templates, sizeof(gl_template_t), template_count, f);
-        gl->template_count = template_count;
+    /* Legacy template block (v<5). Templates were 8-slot fixed records:
+     *   sizeof(gl_template_t) = sizeof(int)            // type enum
+     *                         + 8 * sizeof(int)        // slots[8] enums
+     *                         + sizeof(uint32_t)       // slot_count
+     *                         + 2 * sizeof(float)      // frequency, confidence
+     *                         = 4 + 32 + 4 + 8 = 48 bytes
+     * The struct is removed in v5; we discard the bytes to advance the
+     * file cursor to the dialect block. */
+    if (version < 5) {
+        uint32_t legacy_template_count = 0;
+        fread_chk(&legacy_template_count, sizeof(legacy_template_count), 1, f);
+        if (legacy_template_count > 0) {
+            const long legacy_template_size = 48L;
+            if (fseek(f, (long)legacy_template_count * legacy_template_size,
+                      SEEK_CUR) != 0) {
+                LOG_WARN(LOG_MODULE,
+                         "grounded_language_load: failed to skip %u legacy templates",
+                         legacy_template_count);
+            }
+        }
     }
 
     /* v2+: context_dialect (#14). v1 files don't have it; leave the

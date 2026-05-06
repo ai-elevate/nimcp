@@ -85,12 +85,6 @@ extern "C" {
 /** Maximum words in production buffer */
 #define GL_MAX_PRODUCTION_WORDS   256
 
-/** Maximum syntactic templates */
-#define GL_MAX_TEMPLATES          128
-
-/** Maximum words per template slot */
-#define GL_MAX_TEMPLATE_SLOTS     8
-
 /** Hebbian learning rate for word-concept binding */
 #define GL_HEBBIAN_LR_DEFAULT     0.1f
 
@@ -155,22 +149,6 @@ typedef enum {
     GL_PRODUCE_CREATE           /**< Free creative generation */
 } gl_production_mode_t;
 
-/**
- * @brief Syntactic pattern type
- */
-typedef enum {
-    GL_PATTERN_SVO = 0,         /**< Subject-Verb-Object */
-    GL_PATTERN_SV,              /**< Subject-Verb (intransitive) */
-    GL_PATTERN_SVA,             /**< Subject-Verb-Adjunct */
-    GL_PATTERN_SVOO,            /**< Subject-Verb-Object-Object (ditransitive) */
-    GL_PATTERN_NP,              /**< Noun phrase (Det-Adj-Noun) */
-    GL_PATTERN_COPULA,          /**< Subject-is-Predicate */
-    GL_PATTERN_CONDITIONAL,     /**< If-then pattern */
-    GL_PATTERN_COMPARATIVE,     /**< More/less-than pattern */
-    GL_PATTERN_LEARNED,         /**< Extracted from input (not built-in) */
-    GL_PATTERN_COUNT
-} gl_syntactic_pattern_t;
-
 /*=============================================================================
  * Data Structures
  *===========================================================================*/
@@ -221,21 +199,6 @@ typedef struct {
     float              arousal;                 /**< Emotional arousal [0, 1] */
 
 } gl_lexicon_entry_t;
-
-/**
- * @brief Syntactic template (learned or built-in)
- *
- * WHAT: A sentence pattern with typed slots
- * WHY:  Children learn syntax by extracting patterns, not memorizing rules.
- *       "The [NOUN] [VERB]s the [NOUN]" is learned from examples.
- */
-typedef struct {
-    gl_syntactic_pattern_t type;                /**< Pattern type */
-    gl_word_class_t        slots[GL_MAX_TEMPLATE_SLOTS]; /**< Expected word class per slot */
-    uint32_t               slot_count;          /**< Number of slots */
-    float                  frequency;           /**< How often this pattern seen */
-    float                  confidence;          /**< How reliable this pattern is */
-} gl_template_t;
 
 /**
  * @brief Comprehension result
@@ -294,7 +257,6 @@ typedef struct {
     uint32_t total_groundings;                  /**< Grounding events processed */
     uint32_t total_comprehensions;              /**< Comprehension operations */
     uint32_t total_productions;                 /**< Production operations */
-    uint32_t templates_learned;                 /**< Syntactic patterns discovered */
     float    avg_binding_strength;              /**< Mean association strength */
     float    avg_comprehension_confidence;      /**< Mean comprehension score */
     float    vocabulary_growth_rate;            /**< New words per 1000 events */
@@ -1524,7 +1486,7 @@ uint32_t grounded_language_lookup_alliterations(
 typedef struct {
     /* === Lexicon gauges === */
     uint32_t vocab_count;             /**< Current entries in lexicon */
-    uint32_t templates_count;         /**< Current syntactic templates */
+    uint32_t templates_count;         /**< Always 0 — templates removed; field kept for ABI stability */
     float    avg_binding_strength;    /**< Mean across all bindings */
     float    avg_binding_confidence;  /**< Mean across all bindings */
 

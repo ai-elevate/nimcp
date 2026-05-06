@@ -767,6 +767,20 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     result->fluency = fminf(1.0f, (float)word_count / 8.0f);
     result->creativity = 0.0f;  // Set by creative_produce
 
+    /* Running average of per-call mean word confidence. EMA over the
+     * total_produce_calls counter so the diagnostic stays bounded and
+     * tracks recent behavior without unbounded growth. alpha=1/N gives
+     * a true running mean; we use 0.05 floor so the metric stays
+     * responsive once N is large. */
+    {
+        float alpha = (bridge->stats.total_produce_calls > 0)
+            ? 1.0f / (float)bridge->stats.total_produce_calls : 1.0f;
+        if (alpha < 0.05f) alpha = 0.05f;
+        bridge->stats.avg_word_confidence =
+            (1.0f - alpha) * bridge->stats.avg_word_confidence
+            + alpha * result->spike_confidence;
+    }
+
     return 0;
 }
 

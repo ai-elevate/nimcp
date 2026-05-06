@@ -10,7 +10,7 @@
  * WHY:  The public API (grounded_language.h) keeps the struct opaque
  *       on purpose — external callers shouldn't depend on the layout.
  *       But the persistence sidecar needs to walk every lexicon entry
- *       and template field-by-field, which the public API doesn't allow.
+ *       field-by-field, which the public API doesn't allow.
  *       Pulling the struct into an *internal* header keeps the opaque
  *       contract for the rest of the codebase while letting persistence
  *       and the primary impl share the layout via the same #include.
@@ -59,11 +59,6 @@ struct grounded_language {
     uint32_t             lexicon_size;  /**< Hash table size */
     uint32_t             vocab_count;   /**< Number of words */
     gl_lexicon_entry_t** vocab_list;    /**< Linear list for iteration */
-
-    /* Syntactic templates */
-    gl_template_t*       templates;     /**< Array of syntactic templates */
-    uint32_t             template_count;
-    uint32_t             template_capacity;
 
     /* Semantic integration */
     uint32_t             semantic_dim;  /**< Dimension of semantic vectors */

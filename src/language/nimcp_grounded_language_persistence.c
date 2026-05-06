@@ -6,22 +6,22 @@
  * File format (little-endian, packed):
  *
  *   magic[8]     = "NIMCP_GL"
- *   version      = uint32_t (currently 1)
+ *   version      = uint32_t (currently 2; v1 still readable)
  *   reserved     = uint32_t (zero — pad / future flags)
  *   semantic_dim = uint32_t   (must match destination handle's dim on load)
  *   vocab_count  = uint32_t
- *   template_count = uint32_t
+ *   [v1 only] template_count = uint32_t
  *
- *   gl_stats_t (sizeof-encoded as field-by-field below to stay layout-stable):
- *     stats.vocab_size                  : uint32_t
- *     stats.total_bindings              : uint32_t
- *     stats.total_groundings            : uint32_t
- *     stats.total_comprehensions        : uint32_t
- *     stats.total_productions           : uint32_t
- *     stats.templates_learned           : uint32_t
- *     stats.avg_binding_strength        : float
- *     stats.avg_comprehension_confidence: float
- *     stats.vocabulary_growth_rate      : float
+ *   gl_stats_t (field-by-field):
+ *     stats.vocab_size                   : uint32_t
+ *     stats.total_bindings               : uint32_t
+ *     stats.total_groundings             : uint32_t
+ *     stats.total_comprehensions         : uint32_t
+ *     stats.total_productions            : uint32_t
+ *     [v1 only] stats.templates_learned  : uint32_t
+ *     stats.avg_binding_strength         : float
+ *     stats.avg_comprehension_confidence : float
+ *     stats.vocabulary_growth_rate       : float
  *
  *   rng_state    : uint64_t
  *
@@ -46,12 +46,16 @@
  *     valence            : float
  *     arousal            : float
  *
- *   For each template:
- *     type        : uint32_t (gl_syntactic_pattern_t cast)
+ *   [v1 only] For each template:
+ *     type        : uint32_t
  *     slot_count  : uint32_t
- *     slots       : uint32_t[slot_count]   (gl_word_class_t cast each)
+ *     slots       : uint32_t[slot_count]
  *     frequency   : float
  *     confidence  : float
+ *
+ * v2 dropped the template machinery; grammar is now learned emergently
+ * via SNN bridge plasticity. v2 readers skip the legacy template block
+ * when loading v1 files.
  *
  * Defensive load: any short read, oversized record, or bad enum value
  * causes the load to abort with -1. The handle is left in whatever state
@@ -79,13 +83,17 @@
 static const char GL_SIDECAR_MAGIC[8] = {
     'N', 'I', 'M', 'C', 'P', '_', 'G', 'L'
 };
-#define GL_SIDECAR_VERSION 1u
+/* v1: original layout with templates_learned in stats + per-template records.
+ * v2: templates removed — grammar is now learned emergently via SNN bridge. */
+#define GL_SIDECAR_VERSION 2u
 
 /* Sanity caps to defend against malformed / hostile input. The handle
  * already enforces GL_MAX_VOCAB at insert time, but we want to bail
  * before allocating gigabytes from a corrupt count field. */
 #define GL_PERSIST_MAX_BINDINGS_PER_WORD  4096u
-#define GL_PERSIST_MAX_SLOT_COUNT         GL_MAX_TEMPLATE_SLOTS
+/* Legacy v1 template-record cap. Kept only for the v1 read path's
+ * defensive bounds check while skipping the legacy block. */
+#define GL_PERSIST_LEGACY_MAX_SLOTS       8u
 
 /* ============================================================ I/O helpers */
 
@@ -159,26 +167,42 @@ static int read_floats(FILE* f, float* arr, size_t n) {
 
 /* ============================================================ stats helpers */
 
+/* v2 stats layout — templates_learned slot removed. */
 static int write_stats(FILE* f, const gl_stats_t* s) {
     if (write_u32(f, s->vocab_size) != 0) return -1;
     if (write_u32(f, s->total_bindings) != 0) return -1;
     if (write_u32(f, s->total_groundings) != 0) return -1;
     if (write_u32(f, s->total_comprehensions) != 0) return -1;
     if (write_u32(f, s->total_productions) != 0) return -1;
-    if (write_u32(f, s->templates_learned) != 0) return -1;
     if (write_f32(f, s->avg_binding_strength) != 0) return -1;
     if (write_f32(f, s->avg_comprehension_confidence) != 0) return -1;
     if (write_f32(f, s->vocabulary_growth_rate) != 0) return -1;
     return 0;
 }
 
-static int read_stats(FILE* f, gl_stats_t* s) {
+static int read_stats_v2(FILE* f, gl_stats_t* s) {
     if (read_u32(f, &s->vocab_size) != 0) return -1;
     if (read_u32(f, &s->total_bindings) != 0) return -1;
     if (read_u32(f, &s->total_groundings) != 0) return -1;
     if (read_u32(f, &s->total_comprehensions) != 0) return -1;
     if (read_u32(f, &s->total_productions) != 0) return -1;
-    if (read_u32(f, &s->templates_learned) != 0) return -1;
+    if (read_f32(f, &s->avg_binding_strength) != 0) return -1;
+    if (read_f32(f, &s->avg_comprehension_confidence) != 0) return -1;
+    if (read_f32(f, &s->vocabulary_growth_rate) != 0) return -1;
+    return 0;
+}
+
+/* v1 stats: same fields plus templates_learned at slot 6. Read-and-drop
+ * the legacy slot so subsequent records align. */
+static int read_stats_v1(FILE* f, gl_stats_t* s) {
+    uint32_t legacy_templates_learned = 0;
+    if (read_u32(f, &s->vocab_size) != 0) return -1;
+    if (read_u32(f, &s->total_bindings) != 0) return -1;
+    if (read_u32(f, &s->total_groundings) != 0) return -1;
+    if (read_u32(f, &s->total_comprehensions) != 0) return -1;
+    if (read_u32(f, &s->total_productions) != 0) return -1;
+    if (read_u32(f, &legacy_templates_learned) != 0) return -1;
+    (void)legacy_templates_learned;
     if (read_f32(f, &s->avg_binding_strength) != 0) return -1;
     if (read_f32(f, &s->avg_comprehension_confidence) != 0) return -1;
     if (read_f32(f, &s->vocabulary_growth_rate) != 0) return -1;
@@ -207,43 +231,23 @@ static int read_binding(FILE* f, gl_word_binding_t* b) {
     return 0;
 }
 
-/* ============================================================ template helpers */
-
-static int write_template(FILE* f, const gl_template_t* t) {
-    if (write_u32(f, (uint32_t)t->type) != 0) return -1;
-    uint32_t slot_count = t->slot_count;
-    if (slot_count > GL_PERSIST_MAX_SLOT_COUNT) slot_count = GL_PERSIST_MAX_SLOT_COUNT;
-    if (write_u32(f, slot_count) != 0) return -1;
-    for (uint32_t i = 0; i < slot_count; i++) {
-        if (write_u32(f, (uint32_t)t->slots[i]) != 0) return -1;
-    }
-    if (write_f32(f, t->frequency) != 0) return -1;
-    if (write_f32(f, t->confidence) != 0) return -1;
-    return 0;
-}
-
-static int read_template(FILE* f, gl_template_t* t) {
+/* ============================================================ legacy template skip
+ *
+ * v1 templates were variable-length records: type(u32) + slot_count(u32) +
+ * slots(slot_count × u32) + frequency(f32) + confidence(f32). We discard
+ * each one to advance the file cursor. */
+static int skip_legacy_template_v1(FILE* f) {
     uint32_t type_u = 0, slot_count = 0;
     if (read_u32(f, &type_u) != 0) return -1;
     if (read_u32(f, &slot_count) != 0) return -1;
-    if (slot_count > GL_PERSIST_MAX_SLOT_COUNT) {
-        LOG_WARN(LOG_MODULE, "template slot_count=%u exceeds cap %u — file corrupt",
-                 slot_count, GL_PERSIST_MAX_SLOT_COUNT);
+    if (slot_count > GL_PERSIST_LEGACY_MAX_SLOTS) {
+        LOG_WARN(LOG_MODULE, "legacy template slot_count=%u exceeds cap %u — file corrupt",
+                 slot_count, GL_PERSIST_LEGACY_MAX_SLOTS);
         return -1;
     }
-    t->type = (gl_syntactic_pattern_t)type_u;
-    t->slot_count = slot_count;
-    for (uint32_t i = 0; i < slot_count; i++) {
-        uint32_t slot_u = 0;
-        if (read_u32(f, &slot_u) != 0) return -1;
-        t->slots[i] = (gl_word_class_t)slot_u;
-    }
-    /* Zero-fill any unused slots so memcmp / iteration stays well-defined. */
-    for (uint32_t i = slot_count; i < GL_MAX_TEMPLATE_SLOTS; i++) {
-        t->slots[i] = GL_CLASS_UNKNOWN;
-    }
-    if (read_f32(f, &t->frequency) != 0) return -1;
-    if (read_f32(f, &t->confidence) != 0) return -1;
+    long bytes_to_skip = (long)slot_count * (long)sizeof(uint32_t)
+                         + 2L * (long)sizeof(float);
+    if (fseek(f, bytes_to_skip, SEEK_CUR) != 0) return -1;
     return 0;
 }
 
@@ -261,13 +265,12 @@ int gl_persistence_save(const grounded_language_t* gl, const char* path) {
         return -1;
     }
 
-    /* ---- Header. */
+    /* ---- Header (v2: dropped legacy template_count slot). */
     if (write_bytes(f, GL_SIDECAR_MAGIC, sizeof(GL_SIDECAR_MAGIC)) != 0) goto fail;
     if (write_u32(f, GL_SIDECAR_VERSION) != 0) goto fail;
     if (write_u32(f, 0u) != 0) goto fail;  /* reserved */
     if (write_u32(f, gl->semantic_dim) != 0) goto fail;
     if (write_u32(f, gl->vocab_count) != 0) goto fail;
-    if (write_u32(f, gl->template_count) != 0) goto fail;
 
     if (write_stats(f, &gl->stats) != 0) goto fail;
     if (write_u64(f, gl->rng_state) != 0) goto fail;
@@ -314,15 +317,12 @@ int gl_persistence_save(const grounded_language_t* gl, const char* path) {
         if (write_f32(f, e->arousal) != 0) goto fail;
     }
 
-    /* ---- Templates. */
-    for (uint32_t t = 0; t < gl->template_count; t++) {
-        if (write_template(f, &gl->templates[t]) != 0) goto fail;
-    }
+    /* v2: no template block — emergent grammar via SNN bridge. */
 
     fclose(f);
     LOG_INFO(LOG_MODULE,
-             "Saved grounded language sidecar to %s (%u words, %u templates, dim=%u)",
-             path, gl->vocab_count, gl->template_count, gl->semantic_dim);
+             "Saved grounded language sidecar to %s (%u words, dim=%u)",
+             path, gl->vocab_count, gl->semantic_dim);
     return 0;
 
 fail:
@@ -359,20 +359,26 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
         fclose(f);
         return -1;
     }
-    if (version != GL_SIDECAR_VERSION) {
+    if (version != 1u && version != 2u) {
         LOG_WARN(LOG_MODULE,
-                 "gl_persistence_load: version mismatch (file=%u runtime=%u) for %s",
+                 "gl_persistence_load: unsupported version=%u (runtime=%u) for %s",
                  version, GL_SIDECAR_VERSION, path);
         fclose(f);
         return -1;
     }
 
-    uint32_t saved_dim = 0, vocab_count = 0, template_count = 0;
+    uint32_t saved_dim = 0, vocab_count = 0, legacy_template_count = 0;
     if (read_u32(f, &saved_dim) != 0
-        || read_u32(f, &vocab_count) != 0
-        || read_u32(f, &template_count) != 0) {
+        || read_u32(f, &vocab_count) != 0) {
         fclose(f);
         return -1;
+    }
+    if (version == 1u) {
+        /* v1 had a template_count slot in the header; v2 dropped it. */
+        if (read_u32(f, &legacy_template_count) != 0) {
+            fclose(f);
+            return -1;
+        }
     }
 
     if (saved_dim != gl->semantic_dim) {
@@ -389,16 +395,12 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
         fclose(f);
         return -1;
     }
-    if (template_count > GL_MAX_TEMPLATES) {
-        LOG_WARN(LOG_MODULE,
-                 "gl_persistence_load: template_count %u > GL_MAX_TEMPLATES %u — corrupt",
-                 template_count, GL_MAX_TEMPLATES);
-        fclose(f);
-        return -1;
-    }
 
-    /* ---- Stats + RNG. */
-    if (read_stats(f, &gl->stats) != 0) goto fail;
+    /* ---- Stats + RNG. v1 reads include the legacy templates_learned slot. */
+    int stats_rc = (version == 1u)
+        ? read_stats_v1(f, &gl->stats)
+        : read_stats_v2(f, &gl->stats);
+    if (stats_rc != 0) goto fail;
     if (read_u64(f, &gl->rng_state) != 0) goto fail;
 
     /* ---- Lexicon entries.
@@ -487,31 +489,17 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
         }
     }
 
-    /* ---- Templates. We overwrite the seeded template array up to
-     * template_count, then truncate (any remaining seeded templates beyond
-     * template_count are zeroed out). */
-    if (template_count > gl->template_capacity) {
-        /* Defensive — already bounded above by GL_MAX_TEMPLATES, but
-         * gl->template_capacity is the actual allocated size. */
-        LOG_WARN(LOG_MODULE,
-                 "gl_persistence_load: template_count %u > capacity %u",
-                 template_count, gl->template_capacity);
-        goto fail;
+    /* ---- Legacy templates (v1 only). v2 omits this block entirely. */
+    if (version == 1u) {
+        for (uint32_t t = 0; t < legacy_template_count; t++) {
+            if (skip_legacy_template_v1(f) != 0) goto fail;
+        }
     }
-    for (uint32_t t = 0; t < template_count; t++) {
-        if (read_template(f, &gl->templates[t]) != 0) goto fail;
-    }
-    /* Zero out any tail templates that were seeded but not present in the
-     * checkpoint. Keeps the array's "live" prefix matching template_count. */
-    for (uint32_t t = template_count; t < gl->template_count; t++) {
-        memset(&gl->templates[t], 0, sizeof(gl_template_t));
-    }
-    gl->template_count = template_count;
 
     fclose(f);
     LOG_INFO(LOG_MODULE,
-             "Loaded grounded language sidecar from %s (%u words, %u templates, dim=%u)",
-             path, gl->vocab_count, gl->template_count, gl->semantic_dim);
+             "Loaded grounded language sidecar from %s (%u words, dim=%u, fmt=v%u)",
+             path, gl->vocab_count, gl->semantic_dim, version);
     return 0;
 
 fail:

@@ -3207,7 +3207,6 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         out->total_groundings            = gls.total_groundings;
         out->total_comprehensions        = gls.total_comprehensions;
         out->total_productions           = gls.total_productions;
-        out->templates_learned           = gls.templates_learned;
         out->avg_binding_strength        = gls.avg_binding_strength;
         out->avg_comprehension_confidence = gls.avg_comprehension_confidence;
         out->vocabulary_growth_rate      = gls.vocabulary_growth_rate;

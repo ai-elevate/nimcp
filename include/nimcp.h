@@ -890,7 +890,6 @@ typedef struct {
     uint32_t total_groundings;
     uint32_t total_comprehensions;
     uint32_t total_productions;
-    uint32_t templates_learned;
     float    avg_binding_strength;
     float    avg_comprehension_confidence;
     float    vocabulary_growth_rate;

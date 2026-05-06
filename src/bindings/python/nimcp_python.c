@@ -2691,7 +2691,6 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("total_groundings",              PyLong_FromUnsignedLong(d.total_groundings));
     GLD_SET("total_comprehensions",          PyLong_FromUnsignedLong(d.total_comprehensions));
     GLD_SET("total_productions",             PyLong_FromUnsignedLong(d.total_productions));
-    GLD_SET("templates_learned",             PyLong_FromUnsignedLong(d.templates_learned));
     GLD_SET("avg_binding_strength",          PyFloat_FromDouble(d.avg_binding_strength));
     GLD_SET("avg_comprehension_confidence",  PyFloat_FromDouble(d.avg_comprehension_confidence));
     GLD_SET("vocabulary_growth_rate",        PyFloat_FromDouble(d.vocabulary_growth_rate));
