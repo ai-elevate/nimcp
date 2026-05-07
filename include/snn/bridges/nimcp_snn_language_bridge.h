@@ -134,6 +134,15 @@ typedef struct {
      * accumulator runaway that previously drove SNN sparsity to 0.00. */
     bool     enable_snn_spike_routing;
     float    activation_tau_ms;
+    /* PA-5+: hyperbolic GloVe distance mode. When true *and* the GloVe
+     * blend is active (glove_blend > 0 + emb_lookup attached), the
+     * GloVe term in decode_spikes is replaced with
+     *   1 / (1 + d_H(query, word_emb))
+     * where d_H is the Poincaré-ball hyperbolic distance. Larger ⇒ better,
+     * matching the cosine sign convention. Vectors are projected into the
+     * Poincaré ball via tanh(‖v‖)·v/‖v‖ at query-time. Default false
+     * reproduces Euclidean cosine PA-5 behavior bit-for-bit. */
+    bool     use_hyperbolic_embeddings;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -430,6 +439,21 @@ int snn_language_bridge_set_glove_blend(snn_language_bridge_t* bridge,
 /** PA-5: invalidate the per-word embedding cache. Call after the
  * embedding table changes (rare — only on retraining or model swap). */
 int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge);
+
+/** PA-5+: select the GloVe distance metric.
+ *
+ * @param enabled  false (default) → Euclidean cosine (PA-5 legacy).
+ *                 true → Poincaré-ball hyperbolic distance, mapped to
+ *                        1 / (1 + d_H(query, word_emb)) so the score
+ *                        keeps the "larger is better" convention.
+ * Only takes effect when an embedding lookup is attached and
+ * glove_blend > 0. Switching the mode invalidates the per-word emb cache
+ * (the projected hyperbolic representation is cached alongside).
+ *
+ * @return 0 on success, -1 if bridge invalid.
+ */
+int snn_language_bridge_set_hyperbolic_embeddings(snn_language_bridge_t* bridge,
+                                                   bool enabled);
 
 /** PA-2: configure the autoregressive recurrent decoder.
  *

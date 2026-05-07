@@ -1467,6 +1467,21 @@ class BrainService:
             return {"error": f"set_spike_routing: {e}"}
         return {"ok": True, "enabled": enabled, "tau_ms": tau_ms}
 
+    def _cmd_set_snn_language_bridge_hyperbolic_embeddings(self, req):
+        """PA-5+: toggle Poincaré hyperbolic-distance GloVe metric.
+
+        Request keys:
+          enabled  (bool, required)
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_snn_language_bridge_hyperbolic_embeddings(enabled)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_hyperbolic_embeddings not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_hyperbolic_embeddings: {e}"}
+        return {"ok": True, "enabled": enabled}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 

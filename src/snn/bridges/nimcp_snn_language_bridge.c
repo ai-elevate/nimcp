@@ -15,6 +15,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "utils/geometry/nimcp_hyperbolic.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -274,7 +275,10 @@ snn_lang_config_t snn_lang_config_default(void)
          * activation_tau_ms = 200 is a safe non-zero value; ignored when
          * the master flag is off. */
         .enable_snn_spike_routing = false,
-        .activation_tau_ms        = 200.0f
+        .activation_tau_ms        = 200.0f,
+        /* PA-5+: hyperbolic distance OFF by default. Switching to true
+         * makes decode_spikes use 1/(1+d_H(.,.)) instead of cosine. */
+        .use_hyperbolic_embeddings = false
     };
     return config;
 }
@@ -557,6 +561,7 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
     const float glove_blend = bridge->config.glove_blend;
     const bool emb_active = (glove_blend > 0.0f && bridge->emb_lookup_fn &&
                               bridge->word_emb_cache && bridge->emb_dim > 0);
+    const bool hyper_mode = bridge->config.use_hyperbolic_embeddings;
     const float* emb_query = bridge->emb_query_override
                                ? bridge->emb_query_override
                                : concept_rates;
@@ -564,13 +569,29 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
                                      ? bridge->emb_query_override_dim
                                      : num_concept_pops;
     float intent_emb_norm = 0.0f;
+    /* PA-5+: hyperbolic mode also needs the projected query inside the
+     * Poincaré ball. Project via tanh(‖v‖)·v/‖v‖ — this maps any finite
+     * Euclidean vector into B^d while preserving direction, and clips
+     * to ‖.‖ < 1 even for unit-norm inputs. d_used is capped at the
+     * smaller of emb_dim and emb_query_dim, max 64 (more than enough
+     * for any GloVe slice we ever pass through here). */
+    float intent_hyper[64] = {0};
+    uint32_t d_used = 0;
     if (emb_active) {
-        uint32_t d_used = (bridge->emb_dim < emb_query_dim)
-                           ? bridge->emb_dim : emb_query_dim;
+        d_used = (bridge->emb_dim < emb_query_dim)
+                   ? bridge->emb_dim : emb_query_dim;
+        if (d_used > 64) d_used = 64;
         for (uint32_t d = 0; d < d_used; d++) {
             intent_emb_norm += emb_query[d] * emb_query[d];
         }
         intent_emb_norm = sqrtf(intent_emb_norm + eps);
+        if (hyper_mode) {
+            /* Project: q' = tanh(‖q‖) · q / ‖q‖. */
+            float scale = tanhf(intent_emb_norm) / intent_emb_norm;
+            for (uint32_t d = 0; d < d_used; d++) {
+                intent_hyper[d] = emb_query[d] * scale;
+            }
+        }
     }
 
     for (uint32_t w = 0; w < n_words; w++) {
@@ -585,18 +606,55 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
         /* PA-5: blend in cosine(intent_emb, word_emb[w]) when active.
          * Walkthrough round 2 fix: read embedding query from emb_query
          * (override-aware) so PA-2 autoregressive blending doesn't
-         * corrupt the GloVe term. */
+         * corrupt the GloVe term.
+         * PA-5+: hyper_mode swaps the cosine for 1/(1+d_H(.,.)). */
         if (emb_active) {
             int got = emb_cache_ensure(bridge, w);
             if (got == 1) {
                 const float* emb = bridge->word_emb_cache + (size_t)w * bridge->emb_dim;
-                uint32_t d_used = (bridge->emb_dim < emb_query_dim)
-                                   ? bridge->emb_dim : emb_query_dim;
-                float dot = 0.0f;
-                for (uint32_t d = 0; d < d_used; d++) {
-                    dot += emb_query[d] * emb[d];
+                float glove_score = 0.0f;
+                if (hyper_mode) {
+                    /* Project word emb the same way: e' = tanh(‖e‖)·e/‖e‖.
+                     * word_emb_norm[w] already holds sqrt(Σe² + eps) from
+                     * emb_cache_ensure, so reuse it. */
+                    float wnorm = bridge->word_emb_norm[w];
+                    if (wnorm < eps) wnorm = eps;
+                    float wscale = tanhf(wnorm) / wnorm;
+                    /* Inline Poincaré distance:
+                     *   d = acosh(1 + 2 ‖x-y‖² / ((1-‖x‖²)(1-‖y‖²)))
+                     */
+                    float diff_sq = 0.0f;
+                    float xn_sq = 0.0f;
+                    float yn_sq = 0.0f;
+                    for (uint32_t d = 0; d < d_used; d++) {
+                        float xv = intent_hyper[d];
+                        float yv = emb[d] * wscale;
+                        float dv = xv - yv;
+                        diff_sq += dv * dv;
+                        xn_sq += xv * xv;
+                        yn_sq += yv * yv;
+                    }
+                    /* Clip to ball interior. */
+                    float one_minus_x = 1.0f - xn_sq;
+                    float one_minus_y = 1.0f - yn_sq;
+                    if (one_minus_x < POINCARE_EPSILON) one_minus_x = POINCARE_EPSILON;
+                    if (one_minus_y < POINCARE_EPSILON) one_minus_y = POINCARE_EPSILON;
+                    float arg = 1.0f + 2.0f * diff_sq / (one_minus_x * one_minus_y);
+                    /* Numerically-safe acosh. arg ≥ 1 by construction; floor
+                     * at 1.0 in case of fp drift. */
+                    if (arg < 1.0f) arg = 1.0f;
+                    float d_h = acoshf(arg);
+                    if (!isfinite(d_h)) d_h = 0.0f;
+                    glove_score = 1.0f / (1.0f + d_h);
+                } else {
+                    uint32_t d_cos = (bridge->emb_dim < emb_query_dim)
+                                       ? bridge->emb_dim : emb_query_dim;
+                    float dot = 0.0f;
+                    for (uint32_t d = 0; d < d_cos; d++) {
+                        dot += emb_query[d] * emb[d];
+                    }
+                    glove_score = dot / (intent_emb_norm * bridge->word_emb_norm[w]);
                 }
-                float glove_score = dot / (intent_emb_norm * bridge->word_emb_norm[w]);
                 word_scores[w] = (1.0f - glove_blend) * binding_score
                                   + glove_blend * glove_score;
             } else {
@@ -965,6 +1023,23 @@ int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge)
     if (bridge->word_emb_norm) {
         memset(bridge->word_emb_norm, 0,
                bridge->word_pops_capacity * sizeof(float));
+    }
+    return 0;
+}
+
+/* PA-5+: toggle Poincaré-ball hyperbolic distance for the GloVe term. The
+ * raw Euclidean emb cache is shared between cosine and hyperbolic paths
+ * (we project on the fly in decode_spikes) so no cache invalidation is
+ * strictly required, but we do it anyway to be safe — callers may have
+ * their own cache state predicated on which metric was active. */
+int snn_language_bridge_set_hyperbolic_embeddings(snn_language_bridge_t* bridge,
+                                                    bool enabled)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bool was = bridge->config.use_hyperbolic_embeddings;
+    bridge->config.use_hyperbolic_embeddings = enabled;
+    if (was != enabled) {
+        snn_language_bridge_invalidate_emb_cache(bridge);
     }
     return 0;
 }

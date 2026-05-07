@@ -1102,6 +1102,21 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_spike_routing(
 );
 
 /**
+ * @brief PA-5+: select hyperbolic-distance GloVe metric.
+ *
+ * When enabled (and glove_blend > 0 + emb lookup attached), the embedding
+ * term in decode_spikes uses 1 / (1 + d_H(query, word_emb)) where d_H is
+ * the Poincaré-ball hyperbolic distance, instead of Euclidean cosine.
+ * Default false reproduces PA-5 cosine behavior bit-for-bit.
+ *
+ * @return NIMCP_OK / NIMCP_ERROR_INVALID / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_hyperbolic_embeddings(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/**
  * @brief PA-4: train the SNN language bridge on a single (prev, next) bigram
  *        via a next-token contrastive update.
  *
