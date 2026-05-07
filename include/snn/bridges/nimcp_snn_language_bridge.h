@@ -167,6 +167,13 @@ typedef struct {
     float    fluency;          // Fluency score [0, 1]
     float    spike_confidence; // Average spike-based word confidence
     float    creativity;       // Creativity contribution from imagination SNN
+    /* DK-A+: quantum-Shannon entropy-derived confidence.
+     * 1 − (H(p) / log2(K)) over the post-softmax candidate distribution at
+     * each produced step, averaged across produced words. Peaked posteriors
+     * → near 1.0 (high confidence). Flat posteriors → near 0.0 (low). 0 if
+     * no posterior was computed (argmax / mode 0 path). spike_confidence
+     * stays for backcompat. */
+    float    entropy_confidence;
 } snn_lang_production_result_t;
 
 /** Bridge statistics */

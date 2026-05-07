@@ -1440,6 +1440,10 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     if (topk > 32)  topk = 32;
     const int sampling_mode = bridge->config.sampling_mode;
 
+    /* DK-A+: accumulator for the average per-step entropy_confidence. */
+    float total_entropy_conf = 0.0f;
+    uint32_t entropy_steps = 0;
+
     for (uint32_t w = 0; w < max_words; w++) {
         // Get top word
         snn_lang_word_result_t word_result;
@@ -1497,6 +1501,24 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
                 word_result = topK[valid_idx[0]];
             } else {
                 for (uint32_t i = 0; i < n_valid; i++) probs[i] /= sum;
+
+                /* DK-A+: quantum-Shannon entropy confidence over the
+                 * candidate posterior. 1 − H(p)/log2(K) — peaked → 1,
+                 * flat → 0. Computed in nats then normalized via Hmax in
+                 * nats too, so the ratio is unit-free in [0, 1]. */
+                if (n_valid > 1) {
+                    float H = 0.0f;
+                    for (uint32_t i = 0; i < n_valid; i++) {
+                        float p = probs[i];
+                        if (p > 1e-12f) H -= p * logf(p);
+                    }
+                    float Hmax = logf((float)n_valid);  /* nats */
+                    float ec = (Hmax > 0.0f) ? (1.0f - H / Hmax) : 1.0f;
+                    if (ec < 0.0f) ec = 0.0f;
+                    if (ec > 1.0f) ec = 1.0f;
+                    total_entropy_conf += ec;
+                    entropy_steps++;
+                }
 
                 /* PA-6+: q-MC route. Feed sqrt(probs) as quantum
                  * amplitudes — the quantum-MC importance sampler then
@@ -1629,6 +1651,12 @@ sample_done:;
     result->spike_confidence = total_confidence / word_count;
     result->fluency = fminf(1.0f, (float)word_count / 8.0f);
     result->creativity = 0.0f;  // Set by creative_produce
+    /* DK-A+: average per-step entropy_confidence over the steps where we
+     * actually had a posterior. 0 when only argmax fired (no posterior to
+     * measure). */
+    result->entropy_confidence = (entropy_steps > 0)
+                                   ? (total_entropy_conf / (float)entropy_steps)
+                                   : 0.0f;
 
     /* Running average of per-call mean word confidence. EMA over the
      * total_produce_calls counter so the diagnostic stays bounded and
