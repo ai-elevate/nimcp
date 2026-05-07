@@ -51,6 +51,7 @@ static void api_set_error(const char* fmt, ...);
 #include "generation/nimcp_tokenizer.h"           // Tokenizer encode/decode
 #include "generation/nimcp_embedding.h"           // Token embeddings
 #include "language/nimcp_grounded_language.h"     // Grounded language system
+#include "language/nimcp_bigram_spectrum.h"        // PA-4+ bigram FFT diagnostics
 #include "snn/bridges/nimcp_snn_language_bridge.h" // SNN-language spike bridge (diagnostics)
 #include "cognitive/nimcp_emotional_system.h"     // For avatar emotional state
 #include "middleware/training/nimcp_brain_training_integration.h"  // Training coordinator

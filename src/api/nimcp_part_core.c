@@ -3415,6 +3415,71 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
     return NIMCP_OK;
 }
 
+/*=============================================================================
+ * PA-4+ : Bigram FFT spectral metrics
+ *
+ * Lazily attaches a bigram-spectrum tracker to the brain's grounded
+ * language module on first call. The tracker is owned for the brain's
+ * lifetime and tied to the brain pointer in a small static side-map so
+ * we don't have to extend the brain struct layout.
+ *===========================================================================*/
+
+#define BIGRAM_SPECTRUM_VOCAB_CAP 256u
+#define BRAIN_SPECTRUM_MAP_CAP    4
+
+static struct {
+    nimcp_brain_t      brain;
+    bigram_spectrum_t* spectrum;
+} g_brain_spectrum_map[BRAIN_SPECTRUM_MAP_CAP] = { {0} };
+
+static bigram_spectrum_t* _brain_get_or_create_spectrum(nimcp_brain_t brain,
+                                                          struct grounded_language* gl) {
+    /* Existing? */
+    for (int i = 0; i < BRAIN_SPECTRUM_MAP_CAP; i++) {
+        if (g_brain_spectrum_map[i].brain == brain) {
+            return g_brain_spectrum_map[i].spectrum;
+        }
+    }
+    /* Create new + attach. */
+    bigram_spectrum_t* bs = bigram_spectrum_create(BIGRAM_SPECTRUM_VOCAB_CAP);
+    if (!bs) return NULL;
+
+    /* Insert into first free slot. */
+    for (int i = 0; i < BRAIN_SPECTRUM_MAP_CAP; i++) {
+        if (g_brain_spectrum_map[i].brain == NULL) {
+            g_brain_spectrum_map[i].brain = brain;
+            g_brain_spectrum_map[i].spectrum = bs;
+            grounded_language_attach_bigram_spectrum(gl, bs);
+            return bs;
+        }
+    }
+    /* Map full. Tear down — caller will see NULL and bail. */
+    bigram_spectrum_destroy(bs);
+    return NULL;
+}
+
+nimcp_status_t nimcp_brain_get_bigram_spectral_metrics(
+    nimcp_brain_t brain,
+    bigram_spectral_metrics_t* out)
+{
+    if (!out) return NIMCP_ERROR_INVALID;
+    out->peak_strength = 0.0f;
+    out->low_freq_concentration = 0.0f;
+    out->spectral_entropy = 0.0f;
+
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+
+    bigram_spectrum_t* bs =
+        _brain_get_or_create_spectrum(brain, b->grounded_lang);
+    if (!bs) return NIMCP_ERROR;
+
+    if (bigram_spectrum_compute(bs, out) != 0) return NIMCP_ERROR;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_probe_comprehend(
     nimcp_brain_t brain,
     const char* input_text,

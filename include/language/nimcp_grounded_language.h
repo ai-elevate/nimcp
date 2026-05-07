@@ -691,6 +691,25 @@ int grounded_language_learn_text_bigrams(
     float lr);
 
 /**
+ * @brief Attach a bigram-spectrum tracker (PA-4+ diagnostic).
+ *
+ * Caller owns the spectrum object. After this call, every successful
+ * (prev, next) pair processed by grounded_language_learn_text_bigrams()
+ * is forwarded to bigram_spectrum_record() on the attached spectrum.
+ *
+ * Pass NULL to detach. Default state: nothing attached → no behavior
+ * change. The pair-id used is the SNN word_pop index of each lexicon
+ * entry (form_hash % SNN_LANG_MAX_WORD_POPS), so the spectrum's
+ * vocab_cap should be ≤ SNN_LANG_MAX_WORD_POPS.
+ *
+ * @param gl        GL handle.
+ * @param spectrum  bigram_spectrum_t* opaque pointer; non-owning.
+ */
+void grounded_language_attach_bigram_spectrum(
+    grounded_language_t* gl,
+    void* spectrum);
+
+/**
  * @brief Connect to working memory — active words get pushed to the
  *        Miller-7±2 buffer with attention-derived salience, so the rest
  *        of the cognitive stack can reason over recently-grounded words.
