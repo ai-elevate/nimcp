@@ -124,7 +124,11 @@ static int engram_wiring_handler_callback(
 // CONSTANTS
 //=============================================================================
 
-#define ENGRAM_INITIAL_CAPACITY 512
+/* Initial capacity bumped from 512 -> 32K so typical training workloads
+ * skip 5-6 expand_engram_array growth events. ~67 MB up-front allocation
+ * which fits any normal brain config (we run at 15-16 GB). expand still
+ * doubles past this if active_count survives below the soft cap. */
+#define ENGRAM_INITIAL_CAPACITY 32768u
 #define ENGRAM_GROWTH_FACTOR 2.0f
 
 //=============================================================================
@@ -440,13 +444,84 @@ static bool expand_engram_array(engram_system_t* system) {
     return true;
 }
 
+/* Eviction: pick the weakest active engram and deactivate it so its
+ * slot can be reused. Selection priority:
+ *   1) any DEGRADING engram (cheapest to lose)
+ *   2) oldest LABILE engram by encoding_time_us (least invested in)
+ *   3) lowest consolidation_strength among active engrams (last resort)
+ * Never evicts CONSOLIDATED unless every other tier is empty.
+ * Returns the array index of the evicted slot, or UINT32_MAX if no
+ * candidate exists (shouldn't happen — system is genuinely full). */
+static uint32_t engram_pick_eviction_victim(engram_system_t* system) {
+    if (!system || !system->engrams) return UINT32_MAX;
+
+    uint32_t best_degrading = UINT32_MAX;
+    uint32_t best_labile = UINT32_MAX;
+    uint64_t best_labile_age = UINT64_MAX;
+    uint32_t best_other = UINT32_MAX;
+    float    best_other_strength = 1.1f;
+
+    for (uint32_t i = 0; i < system->capacity; i++) {
+        memory_engram_t* e = &system->engrams[i];
+        if (!e->active) continue;
+        if (e->state == ENGRAM_STATE_DEGRADING) {
+            best_degrading = i;
+            break;  /* first DEGRADING wins; all are equally cheap to drop */
+        }
+        if (e->state == ENGRAM_STATE_LABILE) {
+            if (e->encoding_time_us < best_labile_age) {
+                best_labile = i;
+                best_labile_age = e->encoding_time_us;
+            }
+        }
+        if (e->consolidation_strength < best_other_strength) {
+            best_other_strength = e->consolidation_strength;
+            best_other = i;
+        }
+    }
+
+    if (best_degrading != UINT32_MAX) return best_degrading;
+    if (best_labile != UINT32_MAX) return best_labile;
+    return best_other;
+}
+
+static void engram_evict_slot(engram_system_t* system, uint32_t slot) {
+    if (!system || slot >= system->capacity) return;
+    memory_engram_t* e = &system->engrams[slot];
+    /* Drop from inverted index first while neuron_ids are still valid. */
+    if (e->neuron_count > 0) {
+        engram_index_remove_engram(system, slot);
+    }
+    /* Track which counters to decrement based on prior state. */
+    if (e->active) {
+        if (system->active_count > 0) system->active_count--;
+        switch (e->state) {
+            case ENGRAM_STATE_LABILE:
+                if (system->labile_count > 0) system->labile_count--;
+                break;
+            case ENGRAM_STATE_CONSOLIDATING:
+                if (system->consolidating_count > 0) system->consolidating_count--;
+                break;
+            case ENGRAM_STATE_CONSOLIDATED:
+                if (system->consolidated_count > 0) system->consolidated_count--;
+                break;
+            default:
+                break;
+        }
+    }
+    /* Wipe slot — leaves neuron_count == 0 and bloom/active=false so
+     * the slot looks pristine to the next encode. */
+    memset(e, 0, sizeof(*e));
+    system->total_evictions++;
+}
+
 /**
  * @brief Find free engram slot
  */
 static memory_engram_t* find_free_slot(engram_system_t* system) {
     // WHAT: Locate inactive engram slot
     // WHY:  Reuse memory efficiently
-    // HOW:  Linear search, expand if needed
+    // HOW:  Linear search, expand if needed (or evict at the soft cap)
 
     if (!system) {
 
@@ -457,6 +532,20 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
         return NULL;
 
 
+    }
+
+    /* Soft-cap eviction: when we're at or above the configured cap,
+     * pick a victim and reuse its slot rather than growing the array.
+     * Cap == 0 disables the policy (legacy unbounded-grow behaviour). */
+    if (system->max_active_engrams != 0 &&
+        system->active_count >= system->max_active_engrams) {
+        uint32_t victim = engram_pick_eviction_victim(system);
+        if (victim != UINT32_MAX) {
+            engram_evict_slot(system, victim);
+            /* engram_evict_slot already decremented active_count and
+             * cleared the slot, so it now looks inactive — fall through
+             * to the inactive-slot scan below which finds it. */
+        }
     }
 
     // Try to find inactive slot
@@ -476,6 +565,13 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
             }
             return &system->engrams[i];
         }
+    }
+
+    /* All slots occupied AND no eviction freed one — try to expand.
+     * Refuse to grow past the soft cap. */
+    if (system->max_active_engrams != 0 &&
+        system->capacity >= system->max_active_engrams) {
+        return NULL;  /* at the cap */
     }
 
     // Need to expand
@@ -568,6 +664,12 @@ engram_system_t* engram_system_create(void) {
     // here is non-fatal — recall transparently falls back to the linear
     // scan if `inverted_index == NULL`.
     system->inverted_index = engram_index_create();
+
+    // Soft cap on active engrams. Default = ENGRAM_MAX_COUNT (524288).
+    // Eviction kicks in once active_count reaches this value. 0 means
+    // unbounded (legacy behaviour); set via engram_system_set_max_active.
+    system->max_active_engrams = ENGRAM_MAX_COUNT;
+    system->total_evictions = 0;
 
     // Phase 1.5: Initialize memory pool for engram allocations
     memory_pool_config_t engram_pool_config = {
@@ -1613,6 +1715,15 @@ uint32_t engram_get_active_count(const engram_system_t* system) {
 
 
     return system ? system->active_count : 0;
+}
+
+void engram_system_set_max_active(engram_system_t* system, uint32_t cap) {
+    if (!system) return;
+    system->max_active_engrams = cap;
+}
+
+uint64_t engram_get_total_evictions(const engram_system_t* system) {
+    return system ? system->total_evictions : 0;
 }
 
 void engram_get_statistics(

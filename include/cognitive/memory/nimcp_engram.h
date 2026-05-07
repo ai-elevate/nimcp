@@ -48,8 +48,14 @@ extern "C" {
 /* Maximum neurons per engram (distributed trace) */
 #define ENGRAM_MAX_NEURONS 256
 
-/* Maximum engrams tracked simultaneously */
-#define ENGRAM_MAX_COUNT 512
+/* Default soft cap on simultaneously-active engrams. The engram_system
+ * grows the engrams[] array dynamically up to this limit; once
+ * active_count crosses the cap, find_free_slot starts evicting the
+ * weakest existing engram (preferring DEGRADING, then oldest LABILE)
+ * before encoding a new one. This is a runtime-tunable default — set
+ * via engram_system_set_max_active() per-system. The constant is the
+ * compiled-in default for systems that don't override it. */
+#define ENGRAM_MAX_COUNT 524288u  /* 512K — matches the eviction-policy default */
 
 /* Consolidation time constants (seconds) */
 #define ENGRAM_SYNAPTIC_CONSOLIDATION_TIME (3600.0f * 6.0f)    /* 6 hours */
@@ -237,6 +243,15 @@ typedef struct {
     // Opaque pointer here so the public header doesn't expose the hash-
     // table implementation; full type lives in nimcp_engram.c.
     void* inverted_index;
+
+    // Soft cap on active engrams. find_free_slot evicts the weakest
+    // existing engram (DEGRADING > oldest LABILE > weakest CONSOLIDATING)
+    // before allocating a new one once active_count >= max_active_engrams.
+    // expand_engram_array refuses to grow the heap array past this cap.
+    // 0 means "unbounded" (legacy behaviour). Default at create-time:
+    // ENGRAM_MAX_COUNT (524288). Tunable via engram_system_set_max_active.
+    uint32_t max_active_engrams;
+    uint64_t total_evictions;       /**< lifetime evictions performed */
 
 } engram_system_t;
 
@@ -525,6 +540,31 @@ float engram_get_age_seconds(
  * @return Number of active engrams
  */
 uint32_t engram_get_active_count(const engram_system_t* system);
+
+/**
+ * @brief Set the soft cap on active engrams.
+ *
+ * WHAT: Update system->max_active_engrams. Once active_count >= cap,
+ *       find_free_slot evicts the weakest existing engram (DEGRADING
+ *       first, then oldest LABILE) before allocating a new slot.
+ * WHY:  The engram pool grows unbounded by default. At brain-scale
+ *       comprehend / brain_decide rates a soft cap prevents memory
+ *       runaway and keeps the inverted index lookup fast.
+ * HOW:  Pure setter; no eviction triggered by the call itself. Pass
+ *       0 to disable the cap (legacy unbounded-grow behaviour).
+ *
+ * @param system Engram system
+ * @param cap    Maximum simultaneously-active engrams; 0 disables.
+ */
+void engram_system_set_max_active(engram_system_t* system, uint32_t cap);
+
+/**
+ * @brief Get total evictions performed since system creation / reset.
+ *
+ * Eviction count is bumped each time find_free_slot drops an existing
+ * engram to make room for a new one. Useful for spotting cap pressure.
+ */
+uint64_t engram_get_total_evictions(const engram_system_t* system);
 
 /**
  * @brief Get engram statistics
