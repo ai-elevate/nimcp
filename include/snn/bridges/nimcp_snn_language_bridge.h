@@ -218,6 +218,20 @@ typedef struct {
      * min ≤ max when both are nonzero (rejected by the setter). */
     uint32_t min_produce_words;
     uint32_t max_produce_words;
+    /* TC-11 — GPU-decode scaffold flag (NOT YET IMPLEMENTED).
+     *
+     * Reserved for a future CUDA port of snn_language_bridge_decode_spikes.
+     * The decode pass currently runs on CPU; SIMD muladds + cosine
+     * normalize + GloVe blend cost ~50µs at vocab=2K, so the PCIe
+     * round-trip would dominate any GPU win until vocab grows past
+     * ~16K and the binding map past ~100K entries. Flag stays for ABI
+     * forward-compat — the decode hot path checks it, logs a one-shot
+     * warning if true, and falls through to the CPU path. When the
+     * actual kernel ships, this same flag will route to the GPU path.
+     *
+     * Default false. Setting it currently has no effect except the
+     * one-shot informational log. */
+    bool     enable_gpu_decode;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -301,6 +315,13 @@ typedef struct {
      * that exited early because the callback returned non-zero. */
     uint64_t stream_callbacks_invoked;
     uint64_t stream_aborts;
+    /* TC-11 — cumulative wallclock spent in snn_language_bridge_decode_spikes
+     * across all calls in nanoseconds. Combined with total_decode_calls,
+     * lets consumers compute average decode latency:
+     *   avg_us = (decode_total_ns / total_decode_calls) / 1000
+     * Surfaces the actual cost of the CPU decode path so operators can
+     * make a cost-benefit call on the GPU port (currently deferred). */
+    uint64_t decode_total_ns;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */

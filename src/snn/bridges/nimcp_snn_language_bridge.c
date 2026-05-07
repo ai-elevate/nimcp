@@ -156,6 +156,10 @@ struct snn_language_bridge {
     snn_lang_stream_callback_t stream_cb;
     void*                       stream_user_data;
 
+    /* TC-11 — one-shot warning sticky for enable_gpu_decode-but-no-kernel
+     * scaffold. Set on first decode call where the flag is true. */
+    bool _tc11_warned;
+
     // Statistics
     snn_lang_stats_t stats;
 };
@@ -560,6 +564,25 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
     bridge->stats.total_decode_calls++;
     *num_results = 0;
 
+    /* TC-11 — bench-first scaffold. The CUDA port of decode is deferred
+     * pending vocab growth past ~16K (PCIe round-trip dominates the math
+     * win at current scale). The flag exists for ABI forward-compat;
+     * setting it logs once and falls through to the CPU path. */
+    if (bridge->config.enable_gpu_decode && !bridge->_tc11_warned) {
+        LOG_WARN("snn_lang_bridge",
+                 "enable_gpu_decode=true but GPU decode kernel is not yet "
+                 "implemented (TC-11 scaffold); falling back to CPU path. "
+                 "This warning is one-shot per bridge.");
+        bridge->_tc11_warned = true;
+    }
+
+    /* TC-11 — wallclock timing of the CPU decode pass. Lets operators
+     * see whether decode is actually a bottleneck before anyone ports it
+     * to GPU. Resolution = clock_gettime(CLOCK_MONOTONIC), accumulated
+     * into stats.decode_total_ns. */
+    struct timespec _tc11_t0;
+    clock_gettime(CLOCK_MONOTONIC, &_tc11_t0);
+
     // Compute word activations through binding matrix
     // word_activation[w] = sum_c(concept_rates[c] * binding_weight[c,w])
     uint32_t n_words = bridge->num_word_pops;
@@ -760,6 +783,14 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
 
     nimcp_free(word_scores);
     nimcp_free(word_acts);
+
+    /* TC-11 — close the timing window + accumulate into stats. */
+    struct timespec _tc11_t1;
+    clock_gettime(CLOCK_MONOTONIC, &_tc11_t1);
+    uint64_t elapsed_ns = (uint64_t)(_tc11_t1.tv_sec - _tc11_t0.tv_sec) * 1000000000ull
+                         + (uint64_t)(_tc11_t1.tv_nsec - _tc11_t0.tv_nsec);
+    bridge->stats.decode_total_ns += elapsed_ns;
+
     return 0;
 }
 
