@@ -3721,6 +3721,50 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling_mode(
     return NIMCP_OK;
 }
 
+/* TIER1-A: configure beam-K decoding in produce(). k=1 = greedy / legacy. */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_beam_width(
+    nimcp_brain_t brain,
+    uint32_t k)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_beam_width(b->snn_lang_bridge, k);
+    if (rc != 0) return NIMCP_ERROR_INVALID;
+    return NIMCP_OK;
+}
+
+/* TIER1-B: register EOS word_pop. UINT32_MAX disables. */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_eos_word_pop(
+    nimcp_brain_t brain,
+    uint32_t pop)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_eos_word_pop(b->snn_lang_bridge, pop);
+    if (rc != 0) return NIMCP_ERROR_INVALID;
+    return NIMCP_OK;
+}
+
+/* TIER1-C: configure n-gram repetition penalty. */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_repetition_penalty(
+    nimcp_brain_t brain,
+    float penalty,
+    uint32_t window)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_repetition_penalty(b->snn_lang_bridge,
+                                                          penalty, window);
+    if (rc != 0) return NIMCP_ERROR_INVALID;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_pair(nimcp_brain_t brain,
                                                    const char* prev_word,
                                                    const char* next_word,

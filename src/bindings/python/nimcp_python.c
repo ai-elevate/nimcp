@@ -3042,6 +3042,58 @@ static PyObject* Brain_set_snn_language_bridge_sampling_mode(BrainObject* self, 
     Py_RETURN_NONE;
 }
 
+/* TIER1-A: configure beam-K produce decoding. */
+static PyObject* Brain_set_snn_language_bridge_beam_width(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    unsigned int k = 1;
+    if (!PyArg_ParseTuple(args, "I", &k)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_beam_width(
+        self->brain, (uint32_t)k);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* TIER1-B: register EOS word_pop. */
+static PyObject* Brain_set_snn_language_bridge_eos_word_pop(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    unsigned int pop = UINT32_MAX;
+    if (!PyArg_ParseTuple(args, "I", &pop)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_eos_word_pop(
+        self->brain, (uint32_t)pop);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* TIER1-C: configure n-gram repetition penalty. */
+static PyObject* Brain_set_snn_language_bridge_repetition_penalty(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float penalty = 0.0f;
+    unsigned int window = 3;
+    if (!PyArg_ParseTuple(args, "fI", &penalty, &window)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_repetition_penalty(
+        self->brain, penalty, (uint32_t)window);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11045,6 +11097,12 @@ static PyMethodDef Brain_methods[] = {
      "PA-5+: enable Poincaré hyperbolic-distance GloVe metric — set_snn_language_bridge_hyperbolic_embeddings(enabled) -> None. Default OFF; only takes effect when glove_blend > 0 + emb lookup attached."},
     {"set_snn_language_bridge_sampling_mode", (PyCFunction)Brain_set_snn_language_bridge_sampling_mode, METH_VARARGS,
      "PA-6+: select produce-time sampling mode — set_snn_language_bridge_sampling_mode(mode) -> None. 0=auto (PA-6), 1=force softmax+top-p, 2=quantum-MC MCMC sampling."},
+    {"set_snn_language_bridge_beam_width", (PyCFunction)Brain_set_snn_language_bridge_beam_width, METH_VARARGS,
+     "TIER1-A: enable beam-K decoding in produce — set_snn_language_bridge_beam_width(k) -> None. k=1 (default) = greedy / legacy. >1 enables beam search with length-normalized log-prob ranking. Capped at 16."},
+    {"set_snn_language_bridge_eos_word_pop", (PyCFunction)Brain_set_snn_language_bridge_eos_word_pop, METH_VARARGS,
+     "TIER1-B: register end-of-utterance word_pop — set_snn_language_bridge_eos_word_pop(pop) -> None. UINT32_MAX (~4294967295) disables. When sampled, produce halts cleanly without appending the EOS form."},
+    {"set_snn_language_bridge_repetition_penalty", (PyCFunction)Brain_set_snn_language_bridge_repetition_penalty, METH_VARARGS,
+     "TIER1-C: configure n-gram repetition penalty — set_snn_language_bridge_repetition_penalty(penalty, window) -> None. penalty=0 (default) disables; >0 multiplies score by (1-penalty) per match in the last `window` picks. window=0 falls back to 3 when penalty>0."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
     {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,

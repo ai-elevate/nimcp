@@ -1171,6 +1171,51 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling_mode(
 );
 
 /**
+ * @brief TIER1-A: enable / configure beam-K decoding in produce().
+ *
+ * @param k  Beam width. 1 (default) preserves greedy behavior bit-for-bit.
+ *           > 1 enables beam search with length-normalized cumulative
+ *           log-prob ranking. Capped at 16. 0 is treated as 1.
+ *
+ * @return NIMCP_OK / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_beam_width(
+    nimcp_brain_t brain,
+    uint32_t k
+);
+
+/**
+ * @brief TIER1-B: register the end-of-utterance word_pop.
+ *
+ * When sampled, snn_language_bridge_produce halts cleanly without
+ * appending the EOS form to the output text.
+ *
+ * @param pop  Word_pop index, or UINT32_MAX to disable EOS.
+ * @return NIMCP_OK / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_eos_word_pop(
+    nimcp_brain_t brain,
+    uint32_t pop
+);
+
+/**
+ * @brief TIER1-C: configure the n-gram repetition penalty.
+ *
+ * Per produce step, every candidate whose word_pop appears in the last
+ * `window` picks has its score multiplied by (1 - penalty) per match.
+ * penalty = 0 (default) disables.
+ *
+ * @param penalty  In [0, 1]. Clamped if out of range.
+ * @param window   Look-back length. 0 falls back to 3 when penalty > 0.
+ * @return NIMCP_OK / NIMCP_ERROR_INVALID / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_repetition_penalty(
+    nimcp_brain_t brain,
+    float penalty,
+    uint32_t window
+);
+
+/**
  * @brief PA-4: train the SNN language bridge on a single (prev, next) bigram
  *        via a next-token contrastive update.
  *

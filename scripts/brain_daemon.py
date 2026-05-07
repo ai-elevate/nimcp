@@ -1514,6 +1514,68 @@ class BrainService:
             return {"error": f"set_sampling_mode: {e}"}
         return {"ok": True, "mode": mode}
 
+    def _cmd_set_snn_language_bridge_beam_width(self, req):
+        """TIER1-A: enable / configure beam-K decoding in produce.
+
+        Request keys:
+          k  (int, default 1) — 1 = greedy / legacy bit-for-bit. > 1 = beam
+             search with length-normalized log-prob ranking. Capped at 16.
+        """
+        try:
+            k = int(req.get("k", 1))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_beam_width bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_beam_width(k)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_beam_width not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_beam_width: {e}"}
+        return {"ok": True, "k": k}
+
+    def _cmd_set_snn_language_bridge_eos_word_pop(self, req):
+        """TIER1-B: register end-of-utterance word_pop.
+
+        Request keys:
+          pop  (int, default 4294967295 = disabled) — word_pop index. When
+               sampled inside produce, generation halts cleanly and the EOS
+               form is NOT appended to the output text.
+        """
+        try:
+            pop = int(req.get("pop", 0xFFFFFFFF))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_eos_word_pop bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_eos_word_pop(pop)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_eos_word_pop not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_eos_word_pop: {e}"}
+        return {"ok": True, "pop": pop}
+
+    def _cmd_set_snn_language_bridge_repetition_penalty(self, req):
+        """TIER1-C: configure n-gram repetition penalty.
+
+        Request keys:
+          penalty  (float, default 0.0, in [0,1]) — 0 disables. >0 multiplies
+                   any candidate's score by (1-penalty) per match in the
+                   last `window` picks.
+          window   (int, default 3) — look-back length. 0 falls back to 3
+                   when penalty > 0.
+        """
+        try:
+            penalty = float(req.get("penalty", 0.0))
+            window  = int(req.get("window", 3))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_repetition_penalty bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_repetition_penalty(penalty, window)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_repetition_penalty not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_repetition_penalty: {e}"}
+        return {"ok": True, "penalty": penalty, "window": window}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 
