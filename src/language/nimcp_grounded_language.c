@@ -5290,6 +5290,10 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
 #define GL_MULTITURN_MAGIC_DISCOURSE  0x4C414E44u  /* 'LAND' */
 #define GL_MULTITURN_MAGIC_ANAPHORA   0x4C414E41u  /* 'LANA' */
 #define GL_MULTITURN_MAGIC_SPECTRUM   0x4C414E42u  /* 'LANB' */
+/* Audit fix: campaign feature configuration block. Persists the
+ * default-OFF runtime flags + their tunables so the trainer doesn't
+ * have to re-flip everything via daemon RPCs after each --resume. */
+#define GL_MULTITURN_MAGIC_CONFIG     0x4C414E43u  /* 'LANC' */
 #define GL_MULTITURN_VERSION          1u
 
 /* Sanity caps to defend against corrupt input. */
@@ -5329,6 +5333,81 @@ static int mt_read_floats(FILE* f, float* arr, size_t n) {
 static int mt_read_bytes(FILE* f, void* buf, size_t n) {
     if (n == 0) return 0;
     return fread(buf, 1, n, f) == n ? 0 : -1;
+}
+
+static int mt_write_f32(FILE* f, float v) {
+    return fwrite(&v, sizeof(v), 1, f) == 1 ? 0 : -1;
+}
+static int mt_read_f32(FILE* f, float* v) {
+    return fread(v, sizeof(*v), 1, f) == 1 ? 0 : -1;
+}
+
+/* Audit fix — campaign feature configuration block.
+ * Layout: magic, version,
+ *   u8  enable_negation_inversion       (TA-2 era)
+ *   u8  enable_sense_disambiguation     (Tier-2 #6)
+ *   u8  enable_speech_act_classification (TB-9)
+ *   u8  enable_sentence_segmentation    (TB-6)
+ *   u8  enable_topic_shift_detection    (TB-10)
+ *   u8  enable_reconsolidation          (TA-5)
+ *   f32 reconsolidation_decay           (TA-5 tunable)
+ *   f32 topic_shift_threshold           (TB-10 tunable)
+ *   u32 topic_shift_min_turns           (TB-10 tunable)
+ * Forward-compat: any extra fields after this set are skipped on load
+ * (the version bump signals a new layout — readers of v1 stop here).
+ * Bridge-side knobs (TA-3 enable_da_modulation, TA-4 enable_trigram_learning,
+ * TB-7 length controls, TB-8 stream callback) live on the SNN bridge
+ * and are persisted in its own sidecar (E3 work). This block only
+ * covers gl-side flags. */
+static int mt_save_config(const grounded_language_t* gl, FILE* f) {
+    if (mt_write_u32(f, GL_MULTITURN_MAGIC_CONFIG) != 0) return -1;
+    if (mt_write_u32(f, GL_MULTITURN_VERSION) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_negation_inversion ? 1u : 0u) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_sense_disambiguation ? 1u : 0u) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_speech_act_classification ? 1u : 0u) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_sentence_segmentation ? 1u : 0u) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_topic_shift_detection ? 1u : 0u) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_reconsolidation ? 1u : 0u) != 0) return -1;
+    if (mt_write_f32(f, gl->reconsolidation_decay) != 0) return -1;
+    if (mt_write_f32(f, gl->topic_shift_threshold) != 0) return -1;
+    if (mt_write_u32(f, gl->topic_shift_min_turns) != 0) return -1;
+    return 0;
+}
+
+static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
+                                    uint32_t version) {
+    if (version != GL_MULTITURN_VERSION) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_config: unsupported version=%u (runtime=%u) — "
+                 "feature flags reset to defaults", version, GL_MULTITURN_VERSION);
+        return -1;
+    }
+    uint8_t neg = 0, sense = 0, speech = 0, seg = 0, topic = 0, rec = 0;
+    float dec = 0.0f, tt = 0.0f;
+    uint32_t mt = 0;
+    if (mt_read_u8(f, &neg) != 0) return -1;
+    if (mt_read_u8(f, &sense) != 0) return -1;
+    if (mt_read_u8(f, &speech) != 0) return -1;
+    if (mt_read_u8(f, &seg) != 0) return -1;
+    if (mt_read_u8(f, &topic) != 0) return -1;
+    if (mt_read_u8(f, &rec) != 0) return -1;
+    if (mt_read_f32(f, &dec) != 0) return -1;
+    if (mt_read_f32(f, &tt) != 0) return -1;
+    if (mt_read_u32(f, &mt) != 0) return -1;
+
+    /* Apply via the public setters where available so clamping +
+     * side-effects (e.g. anaphora ring reset on disable) run consistently
+     * with normal toggle paths. */
+    gl->enable_negation_inversion        = (neg   != 0);
+    gl->enable_sense_disambiguation      = (sense != 0);
+    gl->enable_speech_act_classification = (speech != 0);
+    gl->enable_sentence_segmentation     = (seg   != 0);
+    grounded_language_set_topic_shift_enabled(gl, (topic != 0));
+    grounded_language_set_topic_shift_threshold(gl, tt);
+    if (mt > 0) gl->topic_shift_min_turns = mt;
+    grounded_language_set_reconsolidation_enabled(gl, (rec != 0));
+    grounded_language_set_reconsolidation_decay(gl, dec);
+    return 0;
 }
 
 /* Discourse-ring write. Layout: magic, version, capacity, head, count,
@@ -5687,6 +5766,11 @@ int grounded_language_save_multiturn_state(grounded_language_t* gl, FILE* fp) {
         LOG_WARN(LOG_MODULE, "save_multiturn_state: spectrum save failed");
         return -1;
     }
+    /* Audit fix: persist campaign feature flags + tunables. */
+    if (mt_save_config(gl, fp) != 0) {
+        LOG_WARN(LOG_MODULE, "save_multiturn_state: config save failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -5728,6 +5812,9 @@ int grounded_language_load_multiturn_state(grounded_language_t* gl, FILE* fp) {
                 break;
             case GL_MULTITURN_MAGIC_SPECTRUM:
                 rc = mt_load_spectrum_payload(gl, fp, version);
+                break;
+            case GL_MULTITURN_MAGIC_CONFIG:
+                rc = mt_load_config_payload(gl, fp, version);
                 break;
             default:
                 LOG_WARN(LOG_MODULE,

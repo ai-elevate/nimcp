@@ -59,6 +59,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_sentence_segmentation
     test_lang_tom_wiring
     test_lang_decode_bench
+    test_lang_config_persist
 )
 
 # Helper: register a single standalone-C test.
