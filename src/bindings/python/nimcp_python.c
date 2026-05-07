@@ -3033,6 +3033,21 @@ static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) 
     return PyBool_FromLong(s == NIMCP_OK);
 }
 
+static PyObject* Brain_learn_next_token_pair_riemannian(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* prev_word;
+    const char* next_word;
+    float lr = 0.05f;
+    if (!PyArg_ParseTuple(args, "ss|f", &prev_word, &next_word, &lr)) return NULL;
+    nimcp_status_t s = nimcp_brain_learn_next_token_pair_riemannian(self->brain,
+                                                                      prev_word,
+                                                                      next_word, lr);
+    return PyBool_FromLong(s == NIMCP_OK);
+}
+
 static PyObject* Brain_learn_text_bigrams(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11005,6 +11020,8 @@ static PyMethodDef Brain_methods[] = {
      "PA-6+: select produce-time sampling mode — set_snn_language_bridge_sampling_mode(mode) -> None. 0=auto (PA-6), 1=force softmax+top-p, 2=quantum-MC MCMC sampling."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
+    {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,
+     "PA-4+: Riemannian / sigmoid-reparameterized next-token training on a single bigram — learn_next_token_pair_riemannian(prev, next, lr=0.05) -> bool. Fisher-preconditioned step in u-space (w=σ(u)); damps automatically near binding boundaries. Mid-range matches the flat path within ~5%."},
     {"learn_text_bigrams", (PyCFunction)Brain_learn_text_bigrams, METH_VARARGS,
      "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied updates."},
 

@@ -919,6 +919,100 @@ int snn_language_bridge_strengthen_binding(snn_language_bridge_t* bridge,
     return node ? 0 : -1;
 }
 
+/* PA-4+: sigmoid reparameterization helpers for Riemannian binding update.
+ * w = σ(u) ∈ (0, 1); σ'(u) = w*(1-w). Inlined — no new utils. */
+static inline float sigmoid(float u)
+{
+    /* Numerically stable, branch-free for typical |u| < 30. */
+    if (u >= 0.0f) {
+        float z = expf(-u);
+        return 1.0f / (1.0f + z);
+    }
+    float z = expf(u);
+    return z / (1.0f + z);
+}
+
+static inline float sigmoid_prime(float w)
+{
+    /* d/du σ(u) expressed in terms of w = σ(u). Diagonal Fisher entry
+     * for a Bernoulli-like binding. Vanishes at w∈{0,1} — that's the
+     * boundary damping we want. */
+    return w * (1.0f - w);
+}
+
+/* PA-4+: Riemannian / sigmoid-reparameterized binding update.
+ *
+ * Treats `w = σ(u)` for an unconstrained latent u and applies a Fisher-
+ * preconditioned natural-gradient step in u-space, then projects back
+ * through σ:
+ *
+ *     F_uu(w) = σ'(u) = w*(1-w)         (diag Fisher for Bernoulli-like w)
+ *     Δu      = grad / (F_uu(w) + eps)  (`grad` already absorbs lr from caller)
+ *     w'      = σ( σ⁻¹(w) + Δu )        (exact, not linearized)
+ *
+ * In mid-range (w≈0.5, F_uu=0.25) the linearization
+ *   Δw ≈ σ'(u) * Δu = F_uu * (grad/F_uu) = grad
+ * recovers the flat PA-4 step `lr * grad` exactly to first order. Near
+ * the [0, 1] boundaries F_uu shrinks, so Δu blows up — but σ saturates
+ * the projection back into the valid range, so the *effective Δw stays
+ * bounded* and we never waste a step on truncation. This is the natural
+ * "boundary damping" that the flat additive path lacks.
+ *
+ * Bridge config bound `binding_w_max` still applies post-projection so
+ * an operator-tightened range is respected. */
+int snn_language_bridge_strengthen_binding_riemannian(snn_language_bridge_t* bridge,
+                                                       uint32_t concept_pop,
+                                                       uint32_t word_pop,
+                                                       float grad)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (concept_pop >= bridge->num_concept_pops) return -1;
+    if (word_pop >= bridge->num_word_pops) return -1;
+    if (!isfinite(grad)) return -1;
+
+    float w_max = bridge->config.binding_w_max > 0.0f
+                    ? bridge->config.binding_w_max : SNN_LANG_BINDING_W_MAX;
+
+    /* Floor for the diagonal Fisher metric in u-space. eps keeps the
+     * preconditioner finite when w is at a boundary; w_clamp keeps logit
+     * away from ±inf. Both are needed and not redundant. */
+    const float fisher_eps = 1e-6f;
+    const float w_clamp_eps = 1e-6f;
+
+    binding_node_t* existing = binding_find(bridge, concept_pop, word_pop);
+    if (existing) {
+        float old_w = existing->binding.weight;
+        float w_clamped = old_w;
+        if (w_clamped < w_clamp_eps)         w_clamped = w_clamp_eps;
+        if (w_clamped > 1.0f - w_clamp_eps)  w_clamped = 1.0f - w_clamp_eps;
+
+        float u       = logf(w_clamped / (1.0f - w_clamped));
+        float fisher  = sigmoid_prime(w_clamped);            /* w*(1-w) */
+        float du      = grad / (fisher + fisher_eps);
+        float new_u   = u + du;
+        float new_w   = sigmoid(new_u);
+
+        if (new_w < SNN_LANG_BINDING_W_MIN) new_w = SNN_LANG_BINDING_W_MIN;
+        if (new_w > w_max)                  new_w = w_max;
+        if (new_w != old_w) {
+            existing->binding.weight = new_w;
+            norm_update(bridge, word_pop, old_w, new_w);
+        }
+        return 0;
+    }
+
+    /* No existing binding: only create one for positive grad. To match
+     * the flat PA-4 bootstrap (weight = grad) — and avoid materializing
+     * a half-strength binding from a single small step — we seed at
+     * w_init ≈ grad clamped to w_max, identical to the flat path. The
+     * Riemannian step kicks in on the *next* call when the binding
+     * already exists. Negative grad on a non-existent binding is a no-op. */
+    if (grad <= 0.0f) return 0;
+    float new_w = (grad > w_max) ? w_max : grad;
+    binding_node_t* node = binding_insert(bridge, concept_pop, word_pop, new_w);
+    return node ? 0 : -1;
+}
+
 /* PA-6: xorshift64* — small period (~2^64) but more than enough for
  * per-word sampling. Returns a uniform float in [0, 1). */
 static inline uint64_t bridge_rng_u64(snn_language_bridge_t* bridge)

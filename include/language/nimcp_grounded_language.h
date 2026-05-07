@@ -677,6 +677,26 @@ int grounded_language_learn_next_token_pair(
     float lr);
 
 /**
+ * @brief PA-4+: Riemannian / sigmoid-reparameterized next-token update.
+ *
+ * Same contract as grounded_language_learn_next_token_pair, but each
+ * binding write is preconditioned by the diagonal Fisher metric of a
+ * Bernoulli-like binding (treating w = σ(u) for an unconstrained u).
+ * Steps near w∈{0,1} are damped naturally instead of being post-clipped.
+ * Mid-range behaviour (w≈0.5) recovers the flat path to first order.
+ *
+ * Default OFF: callers must use this variant explicitly. The flat path
+ * (grounded_language_learn_next_token_pair) remains unchanged.
+ *
+ * @return 0 on update applied, -1 on validation failure or no-op.
+ */
+int grounded_language_learn_next_token_pair_riemannian(
+    grounded_language_t* gl,
+    const char* prev_word,
+    const char* next_word,
+    float lr);
+
+/**
  * @brief PA-4: walk the bigrams of `text` and apply a next-token update
  *        for each pair. Returns the number of bigrams processed.
  *

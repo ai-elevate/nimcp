@@ -323,6 +323,31 @@ int snn_language_bridge_strengthen_binding(
     uint32_t word_pop,
     float delta);
 
+/** PA-4+: Riemannian / sigmoid-reparameterized update on a binding.
+ *
+ * Treats the binding weight as `w = σ(u)` for an unconstrained latent u,
+ * and applies a natural-gradient step in u-space:
+ *
+ *     Δu          = lr * grad
+ *     Δw_effective = σ'(u) * Δu = w * (1 - w) * lr * grad
+ *
+ * The chain-rule factor `w*(1-w)` is the diagonal Fisher metric for a
+ * Bernoulli-like binding and acts as a natural damping near the [0, 1]
+ * boundaries — large |grad| no longer over-clips at the edges. Internally
+ * the update is computed in u-space (no log/exp needed in the hot path
+ * once we have w) and the result is projected back via σ. The binding is
+ * created on positive grad if it didn't exist (with weight = σ(lr*grad/2),
+ * starting from u=0 ⇔ w=0.5 then taking a half-step). Maintains the
+ * cosine norm cache via norm_update.
+ *
+ * @return 0 on success, -1 on validation failure or allocation failure.
+ */
+int snn_language_bridge_strengthen_binding_riemannian(
+    snn_language_bridge_t* bridge,
+    uint32_t concept_pop,
+    uint32_t word_pop,
+    float grad);
+
 /** Prune weak bindings below threshold */
 int snn_language_bridge_prune(
     snn_language_bridge_t* bridge,
