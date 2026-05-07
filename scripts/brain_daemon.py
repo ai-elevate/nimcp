@@ -1609,6 +1609,30 @@ class BrainService:
             return {"error": f"get_config: {e}"}
         return {"ok": True, "config": cfg}
 
+    def _cmd_set_snn_language_bridge_rng_seed(self, req):
+        """Tier-4 #17: explicitly seed the SNN-language bridge sampling RNG.
+
+        Use this to make PA-6 / MQ-A sampling tests deterministic across
+        runs — without it, the RNG is seeded from time XOR pointer-mix.
+        seed=0 is silently remapped to 1 (xorshift64 needs nonzero state).
+
+        Request keys:
+          seed  (int, required) — uint64 seed value.
+        """
+        try:
+            seed = int(req.get("seed", 0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_rng_seed bad arg: {e}"}
+        if seed < 0:
+            return {"error": "set_rng_seed: seed must be >= 0 (uint64)"}
+        try:
+            self.brain.set_snn_language_bridge_rng_seed(seed)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_rng_seed not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_rng_seed: {e}"}
+        return {"ok": True, "seed": seed}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 

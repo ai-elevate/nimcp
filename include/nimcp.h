@@ -1233,6 +1233,22 @@ nimcp_status_t nimcp_brain_get_snn_language_bridge_config(
 );
 
 /**
+ * @brief Tier-4 #17: explicitly seed the SNN-language bridge sampling RNG
+ *        for deterministic test runs.
+ *
+ * The bridge's xorshift64* RNG is seeded at create() with
+ * (time XOR pointer-mix). This wrapper overrides that seed so PA-6 / MQ-A
+ * sampling tests can pin outcomes. seed=0 is silently remapped to 1
+ * (xorshift64 collapses to permanent zero from a zero state).
+ *
+ * @return NIMCP_OK on success, NIMCP_ERROR if no bridge attached.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_rng_seed(
+    nimcp_brain_t brain,
+    uint64_t seed
+);
+
+/**
  * @brief PA-4: train the SNN language bridge on a single (prev, next) bigram
  *        via a next-token contrastive update.
  *
