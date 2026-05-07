@@ -197,6 +197,13 @@ typedef struct {
      * snn_language_bridge_attach_snn_pop when n_neurons > bridge cap.
      * Tested by test_attach_overlarge_pop_warns_but_succeeds. */
     uint64_t attach_collision_warnings;
+    /* Tier-4 #16: produce-loop latency telemetry. produce_total_us
+     * accumulates wall-clock microseconds spent in bridge_produce across
+     * the bridge's lifetime; produce_call_count counts every entry to
+     * bridge_produce regardless of return code. Both are measured with
+     * CLOCK_MONOTONIC and zeroed by snn_language_bridge_reset_stats. */
+    uint64_t produce_total_us;
+    uint64_t produce_call_count;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -439,6 +446,15 @@ int snn_language_bridge_reset_stats(snn_language_bridge_t* bridge);
 int snn_language_bridge_get_config(
     const snn_language_bridge_t* bridge,
     snn_lang_config_t* out);
+
+/** Tier-4 #16: average wall-clock microseconds per bridge_produce call.
+ *
+ * Computed from stats.produce_total_us / stats.produce_call_count. Returns
+ * 0.0 when no produce calls have been made (or bridge is invalid) so the
+ * caller can divide blindly without a guard. The raw counters live in
+ * snn_lang_stats_t (already exposed by snn_language_bridge_get_stats). */
+float snn_language_bridge_get_avg_produce_us(
+    const snn_language_bridge_t* bridge);
 
 /** Get current spike blend factor */
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge);
