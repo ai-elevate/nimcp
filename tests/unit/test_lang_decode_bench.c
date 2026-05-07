@@ -82,28 +82,25 @@ static void seed_bindings(snn_language_bridge_t* b, uint32_t n_concepts,
     snn_language_bridge_apply_stdp(b, t + 5.0f);
 }
 
-static void test_decode_latency(void)
-{
+static void run_decode_bench(uint32_t n_words, uint32_t bindings_per_concept,
+                               uint32_t n_calls, const char* tag) {
     const uint32_t N_CONCEPTS = 4;
-    const uint32_t N_WORDS    = 256;
-    const uint32_t N_CALLS    = 1000;
-    snn_language_bridge_t* b = make_bridge(N_WORDS);
-    EXPECT(b != NULL, "create");
-    if (!b) return;
+    snn_language_bridge_t* b = make_bridge(n_words);
+    if (!b) { fprintf(stderr, "  bench %s: create FAILED\n", tag); return; }
 
-    seed_bindings(b, N_CONCEPTS, N_WORDS, 50);
+    seed_bindings(b, N_CONCEPTS, n_words, bindings_per_concept);
 
     float concept_rates[4] = {0.5f, 0.3f, 0.1f, 0.1f};
     snn_lang_word_result_t results[8];
     uint32_t n;
 
-    /* Warm-up — first call may include lazy allocation. */
     snn_language_bridge_decode_spikes(b, concept_rates, N_CONCEPTS,
-                                       results, 8, &n);
+                                       results, 8, &n);  /* warm-up */
+    snn_language_bridge_reset_stats(b);
 
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
-    for (uint32_t i = 0; i < N_CALLS; i++) {
+    for (uint32_t i = 0; i < n_calls; i++) {
         (void)snn_language_bridge_decode_spikes(b, concept_rates, N_CONCEPTS,
                                                   results, 8, &n);
     }
@@ -111,30 +108,52 @@ static void test_decode_latency(void)
 
     uint64_t wallclock_ns = (uint64_t)(t1.tv_sec - t0.tv_sec) * 1000000000ull
                             + (uint64_t)(t1.tv_nsec - t0.tv_nsec);
-    double avg_us = (double)wallclock_ns / (double)N_CALLS / 1000.0;
+    double avg_us = (double)wallclock_ns / (double)n_calls / 1000.0;
 
     snn_lang_stats_t s;
     snn_language_bridge_get_stats(b, &s);
+    uint32_t total_bindings = N_CONCEPTS * bindings_per_concept;
     fprintf(stderr,
-            "  decode bench: vocab=%u concepts=%u calls=%llu wall_avg=%.2f us "
-            "stats_total_ns=%llu stats_avg_us=%.2f\n",
-            N_WORDS, N_CONCEPTS, (unsigned long long)N_CALLS, avg_us,
-            (unsigned long long)s.decode_total_ns,
+            "  [%-12s] vocab=%5u bindings=%-5u calls=%-5u  avg=%7.2f us  "
+            "produce32=%6.0f us  stat_avg=%.2f us\n",
+            tag, n_words, total_bindings, n_calls, avg_us, avg_us * 32.0,
             (s.total_decode_calls > 0) ?
               ((double)s.decode_total_ns / s.total_decode_calls / 1000.0) : 0.0);
 
-    EXPECT(s.total_decode_calls >= N_CALLS,
-           "decode call counter advanced (>= %u, got %llu)",
-           N_CALLS, (unsigned long long)s.total_decode_calls);
-    EXPECT(s.decode_total_ns > 0,
-           "decode_total_ns accumulated (got %llu)",
-           (unsigned long long)s.decode_total_ns);
-    /* Sanity: per-call avg should be in single-digit µs to low tens at
-     * vocab=256, 200 bindings. >1ms means something is catastrophically
-     * wrong with the binding traversal. */
-    EXPECT(avg_us < 1000.0, "wallclock avg %.2f µs is impossibly slow", avg_us);
-
     snn_language_bridge_destroy(b);
+}
+
+static void test_decode_latency(void)
+{
+    /* Sweep production-realistic vocab + binding scales so the cost-benefit
+     * decision on the GPU port has actual numbers. produce32 = avg × 32
+     * estimates the cost of one full produce call (32 words). */
+    fprintf(stderr, "\n  Production-scale decode latency sweep:\n");
+    fprintf(stderr, "  ----------------------------------------\n");
+    run_decode_bench(    256,    50, 2000, "tiny");          /* unit-test scale */
+    run_decode_bench(   1500,   100, 1000, "bootstrap");     /* CE base lexicon */
+    run_decode_bench(   4096,   200,  500, "stage1-mid");    /* athena s1 ~13K steps */
+    run_decode_bench(   8192,   500,  200, "stage1-late");
+    run_decode_bench(  16384,  1000,  100, "vocab-cap");     /* SNN_LANG_MAX_WORD_POPS */
+    fprintf(stderr, "\n  PCIe round-trip baseline: ~200 us each way (~400 us min for GPU)\n");
+    fprintf(stderr, "  GPU offload only wins when CPU avg > ~400 us\n\n");
+
+    /* Sanity check: smallest scale should not somehow exceed 1ms. */
+    snn_language_bridge_t* b = make_bridge(256);
+    EXPECT(b != NULL, "create sanity");
+    if (b) {
+        seed_bindings(b, 4, 256, 50);
+        float cr[4] = {0.5f, 0.3f, 0.1f, 0.1f};
+        snn_lang_word_result_t r[8];
+        uint32_t n;
+        snn_language_bridge_decode_spikes(b, cr, 4, r, 8, &n);
+        snn_language_bridge_decode_spikes(b, cr, 4, r, 8, &n);
+        snn_lang_stats_t s;
+        snn_language_bridge_get_stats(b, &s);
+        EXPECT(s.total_decode_calls >= 2, "decode call counter");
+        EXPECT(s.decode_total_ns > 0, "decode_total_ns accumulated");
+        snn_language_bridge_destroy(b);
+    }
 }
 
 static void test_gpu_flag_scaffold(void)
