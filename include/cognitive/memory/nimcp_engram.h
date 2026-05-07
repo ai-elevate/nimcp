@@ -157,6 +157,18 @@ typedef struct {
     float recall_latency_ms;        /**< Time to retrieve */
     uint32_t successful_recalls;    /**< Count of successful retrievals */
 
+    // Recall acceleration (added with the inverted-index + bloom rework).
+    // 256-bit Bloom filter summarising which neuron_ids are members of
+    // this engram. k=4 xorshift hash functions per id; build cost is
+    // O(neuron_count) at encode, query cost is O(k) per cue neuron and
+    // never produces false negatives. Used as a fast skip-test inside
+    // engram_recall after the inverted index has narrowed the candidate
+    // set, so the expensive O(M*C) calculate_overlap call is only done
+    // on survivors. Zero when bloom_built is false (legacy / degraded
+    // engram path falls back to direct overlap calc).
+    uint64_t bloom[4];
+    bool bloom_built;
+
 } memory_engram_t;
 
 /**
@@ -213,6 +225,18 @@ typedef struct {
     // Bio-async integration
     void* bio_ctx;                  /**< bio_module_context_t pointer */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    // Recall acceleration: inverted index neuron_id -> list of engram
+    // array-indices that contain that neuron. Replaces the linear scan
+    // over `capacity` in engram_recall with a sublinear candidate-
+    // selection step. Maintained incrementally:
+    //   - engram_encode appends the new engram's array-index to each of
+    //     its 256 neuron posting lists.
+    //   - extinction / decay-to-DEGRADING removes the index from each
+    //     posting list it appears in.
+    // Opaque pointer here so the public header doesn't expose the hash-
+    // table implementation; full type lives in nimcp_engram.c.
+    void* inverted_index;
 
 } engram_system_t;
 

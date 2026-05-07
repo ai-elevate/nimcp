@@ -128,6 +128,235 @@ static int engram_wiring_handler_callback(
 #define ENGRAM_GROWTH_FACTOR 2.0f
 
 //=============================================================================
+// RECALL ACCELERATION: BLOOM FILTER + INVERTED INDEX
+//=============================================================================
+//
+// Replaces the original O(capacity * cue_count * engram_neurons) linear
+// scan in engram_recall with a two-stage candidate-narrowing pipeline.
+//
+// Stage 1 (inverted index): for each cue neuron, look up the posting
+//   list of engrams that contain it. Aggregate hit counts per candidate
+//   in a small per-call working buffer. Avoids touching engrams that
+//   share no neurons with the cue at all.
+//
+// Stage 2 (Bloom skip-test): for each surviving candidate, do an O(C*k)
+//   Bloom-membership check on the cue against the engram's pre-built
+//   filter. Cheap rejection step; if the approximate overlap is below
+//   the completion threshold, skip the expensive exact overlap calc.
+//
+// Stage 3 (exact): on candidates that pass stages 1 + 2, run the original
+//   calculate_overlap to get the bit-exact match score (no false negatives
+//   thanks to Bloom's no-false-negatives guarantee on the membership
+//   probe).
+//
+// The maintenance hooks (encode adds, extinction removes) are wired into
+// the existing functions further down the file.
+
+#define ENGRAM_BLOOM_BITS      256u
+#define ENGRAM_BLOOM_K           4u
+#define ENGRAM_INDEX_BUCKETS  4096u   /* must be power-of-2; ~64KB at 16B/entry */
+#define ENGRAM_INDEX_BUCKET_MASK (ENGRAM_INDEX_BUCKETS - 1u)
+
+/* Posting list — dynamic array of engram array-indices that contain a
+ * given neuron_id. Capacity grows by doubling. count==0 + ids==NULL is
+ * the empty-tombstone state. */
+typedef struct {
+    uint32_t  neuron_id;
+    uint32_t* engram_indices;
+    uint32_t  count;
+    uint32_t  capacity;
+} engram_posting_t;
+
+/* Open-addressing hash table neuron_id -> posting. Linear probing,
+ * power-of-2 size, empty marker is `engram_indices == NULL && capacity == 0`.
+ * neuron_id 0 is treated as empty too (engram code never uses id 0). */
+typedef struct {
+    engram_posting_t* buckets;       /* [ENGRAM_INDEX_BUCKETS] */
+    uint32_t          neuron_count;  /* distinct neurons in the index */
+} engram_inverted_index_impl_t;
+
+/* xorshift-based hash family for Bloom + index. Mixes the neuron_id
+ * with a per-hash salt so all k bits land in different positions even
+ * for tightly clustered ids. */
+static inline uint32_t engram_hash(uint32_t x, uint32_t salt) {
+    uint32_t h = x ^ salt;
+    h ^= h >> 17;
+    h *= 0xed5ad4bbu;
+    h ^= h >> 11;
+    h *= 0xac4c1b51u;
+    h ^= h >> 15;
+    h *= 0x31848babu;
+    h ^= h >> 14;
+    return h;
+}
+
+/* Bit position helpers for the 256-bit Bloom (uint64_t bloom[4]). */
+static inline void engram_bloom_set(uint64_t* bloom, uint32_t neuron_id) {
+    for (uint32_t k = 0; k < ENGRAM_BLOOM_K; k++) {
+        uint32_t bit = engram_hash(neuron_id, 0x9e3779b9u + k * 0x6a09e667u)
+                        & (ENGRAM_BLOOM_BITS - 1u);
+        bloom[bit >> 6] |= ((uint64_t)1 << (bit & 63u));
+    }
+}
+
+static inline bool engram_bloom_test(const uint64_t* bloom, uint32_t neuron_id) {
+    for (uint32_t k = 0; k < ENGRAM_BLOOM_K; k++) {
+        uint32_t bit = engram_hash(neuron_id, 0x9e3779b9u + k * 0x6a09e667u)
+                        & (ENGRAM_BLOOM_BITS - 1u);
+        if (((bloom[bit >> 6] >> (bit & 63u)) & 1u) == 0u) return false;
+    }
+    return true;
+}
+
+/* Build the Bloom filter for an engram from its full neuron list.
+ * Idempotent — safe to call on already-built engrams (just re-OR's). */
+static void engram_bloom_build(memory_engram_t* engram) {
+    if (!engram) return;
+    memset(engram->bloom, 0, sizeof(engram->bloom));
+    for (uint32_t i = 0; i < engram->neuron_count; i++) {
+        engram_bloom_set(engram->bloom, engram->neuron_ids[i]);
+    }
+    engram->bloom_built = true;
+}
+
+/* Approximate overlap via Bloom — count cue neurons whose Bloom test
+ * hits. Always >= true overlap (no false negatives), may be > true
+ * overlap (false positives). Used as a cheap pre-filter; an exact
+ * calculate_overlap follows when the bloom score crosses threshold. */
+static uint32_t engram_bloom_count_overlap(const uint64_t* bloom,
+                                             const uint32_t* cue, uint32_t cue_count) {
+    uint32_t hits = 0;
+    for (uint32_t i = 0; i < cue_count; i++) {
+        if (engram_bloom_test(bloom, cue[i])) hits++;
+    }
+    return hits;
+}
+
+/*-------------- inverted index --------------*/
+
+static engram_inverted_index_impl_t* engram_index_create(void) {
+    engram_inverted_index_impl_t* idx = (engram_inverted_index_impl_t*)
+        nimcp_calloc(1, sizeof(*idx));
+    if (!idx) return NULL;
+    idx->buckets = (engram_posting_t*)
+        nimcp_calloc(ENGRAM_INDEX_BUCKETS, sizeof(engram_posting_t));
+    if (!idx->buckets) {
+        nimcp_free(idx);
+        return NULL;
+    }
+    return idx;
+}
+
+static void engram_index_destroy(engram_inverted_index_impl_t* idx) {
+    if (!idx) return;
+    if (idx->buckets) {
+        for (uint32_t i = 0; i < ENGRAM_INDEX_BUCKETS; i++) {
+            if (idx->buckets[i].engram_indices) {
+                nimcp_free(idx->buckets[i].engram_indices);
+            }
+        }
+        nimcp_free(idx->buckets);
+    }
+    nimcp_free(idx);
+}
+
+/* Locate the bucket for `neuron_id` (linear probing). If `create_if_missing`
+ * is true and the slot is empty, claim it. Returns NULL if the table is
+ * full (only happens at >75% load — not expected at 4K buckets / typical
+ * vocab). */
+static engram_posting_t* engram_index_find_bucket(engram_inverted_index_impl_t* idx,
+                                                    uint32_t neuron_id,
+                                                    bool create_if_missing) {
+    if (!idx || neuron_id == 0) return NULL;
+    uint32_t start = engram_hash(neuron_id, 0xcafebabeu) & ENGRAM_INDEX_BUCKET_MASK;
+    for (uint32_t step = 0; step < ENGRAM_INDEX_BUCKETS; step++) {
+        uint32_t i = (start + step) & ENGRAM_INDEX_BUCKET_MASK;
+        engram_posting_t* b = &idx->buckets[i];
+        if (b->capacity == 0 && b->engram_indices == NULL) {
+            /* Empty slot. */
+            if (!create_if_missing) return NULL;
+            b->neuron_id = neuron_id;
+            b->engram_indices = (uint32_t*)nimcp_calloc(8, sizeof(uint32_t));
+            if (!b->engram_indices) return NULL;
+            b->capacity = 8;
+            b->count = 0;
+            idx->neuron_count++;
+            return b;
+        }
+        if (b->neuron_id == neuron_id) return b;
+    }
+    return NULL;
+}
+
+static void engram_index_add(engram_inverted_index_impl_t* idx,
+                              uint32_t neuron_id, uint32_t engram_idx) {
+    engram_posting_t* b = engram_index_find_bucket(idx, neuron_id, true);
+    if (!b) return;
+    /* Skip duplicate (caller is encode; same engram shouldn't be added
+     * twice for the same neuron). Linear scan; postings are tiny. */
+    for (uint32_t i = 0; i < b->count; i++) {
+        if (b->engram_indices[i] == engram_idx) return;
+    }
+    if (b->count >= b->capacity) {
+        uint32_t new_cap = b->capacity * 2;
+        uint32_t* grown = (uint32_t*)nimcp_calloc(new_cap, sizeof(uint32_t));
+        if (!grown) return;  /* leave posting alone; encode best-effort */
+        memcpy(grown, b->engram_indices, b->count * sizeof(uint32_t));
+        nimcp_free(b->engram_indices);
+        b->engram_indices = grown;
+        b->capacity = new_cap;
+    }
+    b->engram_indices[b->count++] = engram_idx;
+}
+
+static void engram_index_remove(engram_inverted_index_impl_t* idx,
+                                  uint32_t neuron_id, uint32_t engram_idx) {
+    engram_posting_t* b = engram_index_find_bucket(idx, neuron_id, false);
+    if (!b) return;
+    for (uint32_t i = 0; i < b->count; i++) {
+        if (b->engram_indices[i] == engram_idx) {
+            /* Swap-with-last (order-independent). */
+            b->engram_indices[i] = b->engram_indices[b->count - 1];
+            b->count--;
+            return;
+        }
+    }
+}
+
+/*-------------- maintenance helpers --------------*/
+
+/* Add an engram (already populated with neuron_ids) to the index +
+ * compute its Bloom filter. Idempotent: removing first then re-adding is
+ * the right way to handle a reused slot. */
+static void engram_index_add_engram(engram_system_t* system,
+                                      uint32_t engram_idx) {
+    if (!system || !system->inverted_index) return;
+    if (engram_idx >= system->capacity) return;
+    memory_engram_t* e = &system->engrams[engram_idx];
+    if (!e->active) return;
+    engram_bloom_build(e);
+    for (uint32_t i = 0; i < e->neuron_count; i++) {
+        engram_index_add((engram_inverted_index_impl_t*)system->inverted_index,
+                          e->neuron_ids[i], engram_idx);
+    }
+}
+
+static void engram_index_remove_engram(engram_system_t* system,
+                                         uint32_t engram_idx) {
+    if (!system || !system->inverted_index) return;
+    if (engram_idx >= system->capacity) return;
+    memory_engram_t* e = &system->engrams[engram_idx];
+    /* Use whatever neuron list the slot has, even if !active — we may
+     * be removing as part of teardown. */
+    for (uint32_t i = 0; i < e->neuron_count; i++) {
+        engram_index_remove((engram_inverted_index_impl_t*)system->inverted_index,
+                              e->neuron_ids[i], engram_idx);
+    }
+    e->bloom_built = false;
+    memset(e->bloom, 0, sizeof(e->bloom));
+}
+
+//=============================================================================
 // HELPER FUNCTIONS
 //=============================================================================
 
@@ -239,6 +468,12 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
         }
 
         if (!system->engrams[i].active) {
+            /* Recall acceleration: if this slot was previously occupied,
+             * its old neuron_ids may still be present and stale-indexed.
+             * Scrub the inverted index entries before encode rebuilds. */
+            if (system->engrams[i].neuron_count > 0) {
+                engram_index_remove_engram(system, i);
+            }
             return &system->engrams[i];
         }
     }
@@ -328,6 +563,11 @@ engram_system_t* engram_system_create(void) {
     system->integrate_with_sleep = true;
     system->integrate_with_emotion = true;
     system->integrate_with_consolidation = true;
+
+    // Recall acceleration: build the inverted index up front. Failure
+    // here is non-fatal — recall transparently falls back to the linear
+    // scan if `inverted_index == NULL`.
+    system->inverted_index = engram_index_create();
 
     // Phase 1.5: Initialize memory pool for engram allocations
     memory_pool_config_t engram_pool_config = {
@@ -455,6 +695,13 @@ void engram_system_destroy(engram_system_t* system) {
         memory_pool_destroy(system->engram_pool);
     }
 
+    // Recall acceleration: tear down the inverted index (frees every
+    // posting list it owns).
+    if (system->inverted_index) {
+        engram_index_destroy((engram_inverted_index_impl_t*)system->inverted_index);
+        system->inverted_index = NULL;
+    }
+
     // Unregister from bio-router
     if (system->bio_async_enabled && system->bio_ctx) {
         bio_router_unregister_module(system->bio_ctx);
@@ -490,6 +737,14 @@ void engram_system_reset(engram_system_t* system) {
 
     // Clear engrams
     memset(system->engrams, 0, system->capacity * sizeof(memory_engram_t));
+
+    // Recall acceleration: rebuild the inverted index from empty. The
+    // memset above wiped every Bloom field; the index would still point
+    // at the now-empty slots without this reset.
+    if (system->inverted_index) {
+        engram_index_destroy((engram_inverted_index_impl_t*)system->inverted_index);
+    }
+    system->inverted_index = engram_index_create();
 
     // Reset counters
     system->active_count = 0;
@@ -612,6 +867,18 @@ uint64_t engram_encode(
         memory_kg_events_get_registered_brain(),
         engram->engram_id, engram->vividness);
 
+    /* Recall acceleration: build the engram's Bloom filter and add its
+     * array-index to the inverted index for every neuron it contains.
+     * This is the on-write maintenance that lets engram_recall query
+     * the index in O(C) instead of scanning every slot. Cost is
+     * O(neuron_count * k) ≈ O(1024) hash ops per encode — small. */
+    {
+        ptrdiff_t slot = engram - system->engrams;
+        if (slot >= 0 && (uint32_t)slot < system->capacity) {
+            engram_index_add_engram(system, (uint32_t)slot);
+        }
+    }
+
     return engram->engram_id;
 }
 
@@ -646,34 +913,110 @@ uint64_t engram_recall(
     uint64_t best_engram_id = 0;
     memory_engram_t* best_engram = NULL;
 
-    // Search for best matching engram
-    for (uint32_t i = 0; i < system->capacity; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && system->capacity > 256) {
-            engram_heartbeat("engram_loop",
-                             (float)(i + 1) / (float)system->capacity);
+    /* Recall acceleration: prefer the inverted-index pipeline when it's
+     * available + populated. Falls back to the legacy linear scan when
+     * the index is missing (e.g. allocation failed at create time) or
+     * empty (no engrams encoded yet — scan is trivially cheap). */
+    engram_inverted_index_impl_t* idx =
+        (engram_inverted_index_impl_t*)system->inverted_index;
+    bool use_index_path = (idx != NULL && idx->neuron_count > 0);
+
+    if (use_index_path) {
+        /* Stage 1 — candidate selection via inverted index.
+         *
+         * For every cue neuron, look up the posting list of engrams
+         * containing it; bump a per-candidate hit counter. Candidates
+         * with zero hits never get touched at all (the whole point of
+         * the index — skip engrams that share no neurons with the cue).
+         *
+         * Working buffer: hits_count[engram_idx] keyed by array index,
+         * sized to system->capacity. A 100K-engram brain costs 400 KB
+         * here — small enough to stack-alloca for typical sizes but
+         * we heap-alloc to be safe at any scale. */
+        uint16_t* hits = (uint16_t*)nimcp_calloc(system->capacity, sizeof(uint16_t));
+        if (!hits) {
+            /* OOM on the working buffer — fall through to the linear
+             * scan below rather than fail recall outright. */
+            use_index_path = false;
+        } else {
+            for (uint32_t ci = 0; ci < cue_count; ci++) {
+                engram_posting_t* post = engram_index_find_bucket(
+                    idx, cue_neurons[ci], false);
+                if (!post) continue;
+                for (uint32_t pi = 0; pi < post->count; pi++) {
+                    uint32_t eid = post->engram_indices[pi];
+                    if (eid < system->capacity) {
+                        if (hits[eid] < UINT16_MAX) hits[eid]++;
+                    }
+                }
+            }
+
+            /* Stage 2 + 3 — Bloom skip-test then exact overlap on
+             * candidates with at least one hit. */
+            for (uint32_t i = 0; i < system->capacity; i++) {
+                if (hits[i] == 0) continue;
+                memory_engram_t* engram = &system->engrams[i];
+                if (!engram->active) continue;
+                if (engram->state == ENGRAM_STATE_DEGRADING) continue;
+                if (engram->neuron_count == 0) continue;
+
+                /* Bloom skip-test: if the Bloom-approximate overlap
+                 * can't possibly clear the threshold, skip the exact
+                 * calc. The approximate is an upper bound on the true
+                 * overlap (Bloom has no false negatives but may produce
+                 * false positives — overcounting only). So if the
+                 * upper-bound match is below threshold, the real one
+                 * definitely is too. */
+                if (engram->bloom_built) {
+                    uint32_t bloom_hits = engram_bloom_count_overlap(
+                        engram->bloom, cue_neurons, cue_count);
+                    float bloom_match = (float)bloom_hits / (float)engram->neuron_count;
+                    bloom_match *= engram->consolidation_strength;
+                    if (bloom_match <= system->completion_threshold) continue;
+                    if (bloom_match <= best_match) continue;
+                }
+
+                /* Exact overlap calc — same as the legacy path. */
+                uint32_t overlap = calculate_overlap(
+                    cue_neurons, cue_count,
+                    engram->neuron_ids, engram->neuron_count);
+                float match = (float)overlap / engram->neuron_count;
+                match *= engram->consolidation_strength;
+                if (match > system->completion_threshold && match > best_match) {
+                    best_match = match;
+                    best_engram_id = engram->engram_id;
+                    best_engram = engram;
+                }
+            }
+            nimcp_free(hits);
         }
+    }
 
-        memory_engram_t* engram = &system->engrams[i];
+    if (!use_index_path) {
+        /* Legacy linear-scan path — runs only when the index isn't
+         * available. Identical to the original implementation; kept
+         * verbatim for behavioural compatibility with engram-system
+         * configurations that disable the index. */
+        for (uint32_t i = 0; i < system->capacity; i++) {
+            if ((i & 0xFF) == 0 && system->capacity > 256) {
+                engram_heartbeat("engram_loop",
+                                 (float)(i + 1) / (float)system->capacity);
+            }
 
-        if (!engram->active) continue;
-        if (engram->state == ENGRAM_STATE_DEGRADING) continue;
+            memory_engram_t* engram = &system->engrams[i];
+            if (!engram->active) continue;
+            if (engram->state == ENGRAM_STATE_DEGRADING) continue;
 
-        // Calculate overlap
-        uint32_t overlap = calculate_overlap(
-            cue_neurons, cue_count,
-            engram->neuron_ids, engram->neuron_count);
-
-        float match = (float)overlap / engram->neuron_count;
-
-        // Boost by consolidation strength
-        match *= engram->consolidation_strength;
-
-        // Check threshold and update best
-        if (match > system->completion_threshold && match > best_match) {
-            best_match = match;
-            best_engram_id = engram->engram_id;
-            best_engram = engram;
+            uint32_t overlap = calculate_overlap(
+                cue_neurons, cue_count,
+                engram->neuron_ids, engram->neuron_count);
+            float match = (float)overlap / engram->neuron_count;
+            match *= engram->consolidation_strength;
+            if (match > system->completion_threshold && match > best_match) {
+                best_match = match;
+                best_engram_id = engram->engram_id;
+                best_engram = engram;
+            }
         }
     }
 
@@ -1038,7 +1381,14 @@ void engram_apply_decay(
 
         // Mark as degrading if very weak
         if (engram->consolidation_strength < 0.1F) {
+            bool was_already_degrading = (engram->state == ENGRAM_STATE_DEGRADING);
             engram->state = ENGRAM_STATE_DEGRADING;
+            /* Recall acceleration: drop newly-degraded engrams from the
+             * inverted index. Skip if it was already DEGRADING (avoids
+             * repeated remove on every decay tick). */
+            if (!was_already_degrading) {
+                engram_index_remove_engram(system, i);
+            }
         }
 
         // Mark as forgotten if extremely weak (but keep active for tracking)
@@ -1091,6 +1441,13 @@ void engram_extinction(
     if (engram->consolidation_strength < 0.1F) {
         engram->state = ENGRAM_STATE_DEGRADING;
         system->total_extinctions++;
+        /* Recall acceleration: degraded engrams are skipped by recall,
+         * so drop them from the index to avoid wasted candidate scoring.
+         * Bloom is left zeroed by remove. */
+        ptrdiff_t slot = engram - system->engrams;
+        if (slot >= 0 && (uint32_t)slot < system->capacity) {
+            engram_index_remove_engram(system, (uint32_t)slot);
+        }
     }
 }
 
