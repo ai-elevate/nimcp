@@ -222,6 +222,17 @@ struct grounded_language {
      * with the rest of the public stats. */
     bool                 enable_negation_inversion;
 
+    /* TA-5 — reconsolidation on contradiction. When enabled (default
+     * false; opt-in trainer knob), comprehend's negation pass also
+     * walks negate_word[] and decays the strength of every binding on
+     * the negated content word's lexicon entry by reconsolidation_decay.
+     * Models the brain's reconsolidation phase, where retrieved memories
+     * become labile and contradicting evidence weakens them. Repeated
+     * negations across turns erode bindings that no longer fit the
+     * evidence; re-asserted bindings recover via normal reinforcement. */
+    bool                 enable_reconsolidation;
+    float                reconsolidation_decay;
+
     /* Tier-2 #6 word-sense disambiguation. When enabled (default false —
      * preserves legacy behaviour), comprehend's per-binding activation is
      * weighted by cosine(intent, binding_concept_features); the most-

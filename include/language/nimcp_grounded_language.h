@@ -312,6 +312,14 @@ typedef struct {
      * immune system. */
     uint64_t immune_inspections;
     uint64_t immune_antigens_registered;
+    /* TA-5 — reconsolidation-on-contradiction telemetry. reconsolidation_events
+     * counts negation-driven decay invocations that found a lexicon entry
+     * to weaken; reconsolidation_bindings_decayed is the cumulative count
+     * of individual binding-strength decays (a single event can touch
+     * multiple bindings on a polysemous word). Both stay 0 when
+     * enable_reconsolidation is false. */
+    uint64_t reconsolidation_events;
+    uint64_t reconsolidation_bindings_decayed;
 } gl_stats_t;
 
 /**
@@ -420,6 +428,70 @@ void grounded_language_set_negation_enabled(
  */
 bool grounded_language_get_negation_enabled(
     const grounded_language_t* gl);
+
+/*=============================================================================
+ * TA-5: Reconsolidation on contradiction.
+ *
+ * In cognitive neuroscience, retrieving a memory makes it labile —
+ * contradicting evidence at recall time can re-encode the trace with
+ * weakened strength rather than just laying down a parallel new memory.
+ * For grounded language, negation in comprehend is the cheapest signal
+ * that a binding's truth is being challenged. When TA-5 is enabled, every
+ * negation-marked content word that has lexicon bindings has those
+ * bindings' strength multiplied by (1 - reconsolidation_decay) and the
+ * bumped exposure_count incremented (so re-asserted bindings recover).
+ *===========================================================================*/
+
+/** Default decay applied per reconsolidation event (5% off binding
+ *  strength). Conservative — repeated contradictions across many turns
+ *  are needed to fully erode a binding. */
+#define GL_RECONSOLIDATION_DEFAULT_DECAY  0.05f
+
+/**
+ * @brief Toggle TA-5 reconsolidation-on-contradiction. Default OFF.
+ *
+ * When ON, comprehend() walks negate_word[] after the activation pass
+ * and calls grounded_language_reconsolidate_word() on each negated
+ * content word that has at least one lexicon entry. Off by default so
+ * the trainer can opt in once the curriculum is contradiction-aware.
+ */
+void grounded_language_set_reconsolidation_enabled(
+    grounded_language_t* gl,
+    bool enabled);
+
+/** Read the current reconsolidation toggle (for telemetry / tests). */
+bool grounded_language_get_reconsolidation_enabled(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Tune the decay factor applied per reconsolidation event.
+ *
+ * Clamped to [0, 0.5]. 0 disables decay (so the toggle still fires
+ * stats events but no weight changes); 0.5 halves binding strength on
+ * every event (aggressive — only useful for explicit-contradiction
+ * RPCs). Default GL_RECONSOLIDATION_DEFAULT_DECAY (0.05).
+ */
+void grounded_language_set_reconsolidation_decay(
+    grounded_language_t* gl,
+    float decay);
+
+float grounded_language_get_reconsolidation_decay(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Apply reconsolidation decay to every binding of `word`.
+ *
+ * Multiplies each binding[i].strength by (1 - decay). decay is clamped
+ * to [0, 0.5]. decay == 0 → no-op (still bumps stats so callers can
+ * verify the path was taken). NULL-safe — returns 0 if gl/word is NULL
+ * or the word isn't in the lexicon.
+ *
+ * @return Number of bindings whose strength was decayed.
+ */
+uint32_t grounded_language_reconsolidate_word(
+    grounded_language_t* gl,
+    const char* word,
+    float decay);
 
 /*=============================================================================
  * Tier-2 #7: Multi-turn discourse state

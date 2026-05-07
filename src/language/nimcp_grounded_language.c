@@ -1443,6 +1443,11 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
      * starts empty with capacity = full GL_DISCOURSE_MAX_TURNS. */
     gl->enable_negation_inversion   = true;
     gl->enable_sense_disambiguation = false;
+    /* TA-5 — reconsolidation off by default. Trainer opts in once the
+     * curriculum is contradiction-aware. Decay seeded with the
+     * conservative default so flipping the toggle Just Works. */
+    gl->enable_reconsolidation      = false;
+    gl->reconsolidation_decay       = GL_RECONSOLIDATION_DEFAULT_DECAY;
     gl->discourse.head     = 0;
     gl->discourse.count    = 0;
     gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
@@ -2204,6 +2209,21 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     if (gl->enable_negation_inversion && any_negated) {
         gl->stats.negation_events++;
     }
+
+    /* TA-5 — reconsolidation on contradiction. For every word marked
+     * for negation, decay its lexicon-entry binding strengths so the
+     * "it isn't a fish" path eventually erodes the fish↔aquatic
+     * binding. Reads negate_word[] directly so we only fire on the
+     * already-validated content tokens (function/cue words skipped by
+     * the negation pass above). NULL-safe — reconsolidate_word is a
+     * no-op for words not in the lexicon. */
+    if (gl->enable_reconsolidation && any_negated) {
+        for (uint32_t i = 0; i < word_count; i++) {
+            if (!negate_word[i]) continue;
+            (void)grounded_language_reconsolidate_word(
+                gl, words[i], gl->reconsolidation_decay);
+        }
+    }
     if (sense_resolved_this_pass) {
         gl->stats.sense_resolutions++;
     }
@@ -2387,6 +2407,72 @@ void grounded_language_set_sense_disambiguation_enabled(grounded_language_t* gl,
                                                          bool enabled) {
     if (!gl) return;
     gl->enable_sense_disambiguation = enabled;
+}
+
+/*-----------------------------------------------------------------------------
+ * TA-5 — reconsolidation on contradiction.
+ *---------------------------------------------------------------------------*/
+
+void grounded_language_set_reconsolidation_enabled(grounded_language_t* gl,
+                                                    bool enabled) {
+    if (!gl) return;
+    gl->enable_reconsolidation = enabled;
+}
+
+bool grounded_language_get_reconsolidation_enabled(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->enable_reconsolidation;
+}
+
+void grounded_language_set_reconsolidation_decay(grounded_language_t* gl,
+                                                  float decay) {
+    if (!gl) return;
+    if (!isfinite(decay) || decay < 0.0f) decay = 0.0f;
+    if (decay > 0.5f) decay = 0.5f;
+    gl->reconsolidation_decay = decay;
+}
+
+float grounded_language_get_reconsolidation_decay(const grounded_language_t* gl) {
+    if (!gl) return 0.0f;
+    return gl->reconsolidation_decay;
+}
+
+uint32_t grounded_language_reconsolidate_word(grounded_language_t* gl,
+                                                const char* word,
+                                                float decay) {
+    if (!gl || !word) return 0;
+    /* Clamp same as the setter so direct API callers can't poison
+     * binding strengths with an out-of-range factor. */
+    if (!isfinite(decay) || decay < 0.0f) decay = 0.0f;
+    if (decay > 0.5f) decay = 0.5f;
+
+    /* lexicon_find returns const; the underlying hash table data is
+     * mutable — cast is safe here, mirrors how other writers (e.g.
+     * the ground/learn paths) reach binding strengths. */
+    gl_lexicon_entry_t* entry = (gl_lexicon_entry_t*)lexicon_find(gl, word);
+    /* Bump the path-taken counter even when the word isn't in the
+     * lexicon — the contradiction signal itself is curriculum-meaningful
+     * (mirrors the negative-grounding telemetry pattern). */
+    gl->stats.reconsolidation_events++;
+
+    if (!entry || entry->binding_count == 0) return 0;
+
+    float keep = 1.0f - decay;
+    uint32_t decayed = 0;
+    for (uint32_t b = 0; b < entry->binding_count; b++) {
+        gl_word_binding_t* bnd = &entry->bindings[b];
+        bnd->strength *= keep;
+        /* Confidence floats with strength so a contradicted binding is
+         * also flagged as less reliable — downstream sense-disambiguation
+         * already weights by strength, so confidence stays informational. */
+        bnd->confidence *= keep;
+        for (uint32_t m = 0; m < GL_MODALITY_COUNT; m++) {
+            bnd->modality_strength[m] *= keep;
+        }
+        decayed++;
+    }
+    gl->stats.reconsolidation_bindings_decayed += decayed;
+    return decayed;
 }
 
 bool grounded_language_get_sense_disambiguation_enabled(const grounded_language_t* gl) {
