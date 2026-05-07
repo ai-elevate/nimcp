@@ -55,6 +55,19 @@ uint32_t wernicke_process_bio_messages(wernicke_adapter_t* adapter,
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* Forward decls instead of pulling the full immune-bridge / orchestrator
+ * headers — keeps the tick driver decoupled. The functions are defined
+ * in src/language/bridges/nimcp_language_immune_bridge.c and
+ * src/language/nimcp_language_orchestrator_part_processing.c respectively. */
+struct language_immune_bridge;
+typedef struct language_immune_bridge language_immune_bridge_t;
+int language_immune_bridge_update(language_immune_bridge_t* bridge,
+                                    uint64_t current_time_ms);
+struct language_orchestrator;
+typedef struct language_orchestrator language_orchestrator_t;
+int language_orchestrator_update(language_orchestrator_t* orchestrator,
+                                   uint64_t current_time_ms);
+
 /* Maximum bio-router messages drained per language adapter per tick. */
 #define _LANG_BIO_BATCH 32u
 
@@ -125,4 +138,23 @@ void brain_tick_language(brain_t brain, float dt_ms)
 
     /* PA-3: bridge spike routing + activation decay. */
     brain_tick_lang_bridge_spike_routing(brain, dt_ms);
+
+    /* Tier-2 immune bridge tick — drives cytokine aging, inflammation
+     * history, recovery progress. Uses the per-brain monotonic ms
+     * accumulator already maintained by the spike-routing path. NULL-
+     * safe: if the bridge wasn't activated (immune_system disabled in
+     * brain config), this is a no-op. */
+    if (brain->language_immune_bridge) {
+        (void)language_immune_bridge_update(
+            (language_immune_bridge_t*)brain->language_immune_bridge,
+            (uint64_t)brain->lang_bridge_t_ms);
+    }
+
+    /* Orchestrator periodic update — advances state machine, drains
+     * pending input queue, refreshes bridge attachments. NULL-safe. */
+    if (brain->language_layer && brain->language_layer_enabled) {
+        (void)language_orchestrator_update(
+            (language_orchestrator_t*)brain->language_layer,
+            (uint64_t)brain->lang_bridge_t_ms);
+    }
 }

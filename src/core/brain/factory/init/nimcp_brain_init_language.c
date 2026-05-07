@@ -34,6 +34,28 @@
 #include "language/nimcp_grounded_language.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
+
+/* Forward decls of the language_immune_bridge LIFECYCLE API only —
+ * including the full header pulls in INFLAMMATION_* / APHASIA_* enums
+ * that collide with the cognitive brain_immune header already pulled
+ * in via brain_internal.h. language_immune_config_t is already in
+ * scope from nimcp_language_config.h above; we just need the bridge
+ * type + the create/connect/init/start/destroy entry points. */
+struct language_immune_bridge;
+typedef struct language_immune_bridge language_immune_bridge_t;
+language_immune_bridge_t* language_immune_bridge_create(
+    const language_immune_config_t* config);
+void language_immune_bridge_destroy(language_immune_bridge_t* bridge);
+int language_immune_bridge_init(language_immune_bridge_t* bridge);
+int language_immune_bridge_start(language_immune_bridge_t* bridge);
+int language_immune_bridge_connect_orchestrator(
+    language_immune_bridge_t* bridge, language_orchestrator_t* o);
+int language_immune_bridge_connect_brain_immune(
+    language_immune_bridge_t* bridge, brain_immune_system_t* bi);
+int language_immune_bridge_connect_wernicke(
+    language_immune_bridge_t* bridge, wernicke_adapter_t* w);
+int language_immune_bridge_connect_broca(
+    language_immune_bridge_t* bridge, broca_adapter_t* b);
 #include "core/brain/nimcp_brain_kg.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "snn/bridges/nimcp_snn_speech_bridge.h"
@@ -1049,14 +1071,44 @@ bool nimcp_brain_factory_init_language_immune_bridge(brain_t brain) {
     language_immune_config_t config;
     language_immune_default_config(&config);
 
-    /* Create immune bridge (stub for now) */
-    brain->language_immune_bridge = language_immune_bridge_create_stub(
-        brain->language_layer,
-        &config
-    );
+    /* Tier 2 activation: replace the historical NULL-returning stub with
+     * the real bridge. Connects orchestrator + brain immune system + the
+     * Wernicke / Broca region adapters so cytokine state can modulate
+     * comprehension and production downstream. Each connect call is
+     * NULL-tolerant on its second arg, so missing adapters degrade
+     * gracefully (the bridge just runs in a smaller-fanout mode). */
+    brain->language_immune_bridge = language_immune_bridge_create(&config);
 
     if (!brain->language_immune_bridge) {
-        LOG_DEBUG(LOG_MODULE, "Immune bridge not yet implemented");
+        LOG_WARN(LOG_MODULE, "language_immune_bridge_create failed; running without immune↔language coupling");
+        return true;  /* not fatal — comprehend/produce still work */
+    }
+
+    (void)language_immune_bridge_connect_orchestrator(
+        brain->language_immune_bridge, brain->language_layer);
+    (void)language_immune_bridge_connect_brain_immune(
+        brain->language_immune_bridge,
+        (brain_immune_system_t*)brain->immune_system);
+    if (brain->wernicke) {
+        (void)language_immune_bridge_connect_wernicke(
+            brain->language_immune_bridge,
+            (wernicke_adapter_t*)brain->wernicke);
+    }
+    if (brain->broca) {
+        (void)language_immune_bridge_connect_broca(
+            brain->language_immune_bridge,
+            (broca_adapter_t*)brain->broca);
+    }
+
+    /* init() is mostly bookkeeping; start() flips active=true so the
+     * tick driver in brain_tick_language can run cytokine + recovery
+     * updates. Failures are non-fatal — bridge just stays inactive. */
+    if (language_immune_bridge_init(brain->language_immune_bridge) != 0) {
+        LOG_WARN(LOG_MODULE, "language_immune_bridge_init failed");
+    } else if (language_immune_bridge_start(brain->language_immune_bridge) != 0) {
+        LOG_WARN(LOG_MODULE, "language_immune_bridge_start failed");
+    } else {
+        LOG_INFO(LOG_MODULE, "language_immune_bridge active (Tier 2)");
     }
 
     return true;
@@ -1211,6 +1263,17 @@ void nimcp_brain_factory_destroy_language_subsystem(brain_t brain) {
     if (brain->formant_synth) {
         formant_synth_destroy((formant_synth_t*)brain->formant_synth);
         brain->formant_synth = NULL;
+    }
+
+    /* Tier 2 immune bridge teardown — must run BEFORE the orchestrator
+     * is destroyed because the bridge holds a borrowed orchestrator
+     * pointer (and broca/wernicke pointers, but those are destroyed
+     * elsewhere). The bridge owns its own internal state (cytokine
+     * buffers, inflammation history); destroy frees them. */
+    if (brain->language_immune_bridge) {
+        language_immune_bridge_destroy(
+            (language_immune_bridge_t*)brain->language_immune_bridge);
+        brain->language_immune_bridge = NULL;
     }
 
     /* Destroy orchestrator */
