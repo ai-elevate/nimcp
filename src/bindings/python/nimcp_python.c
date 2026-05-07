@@ -3130,6 +3130,24 @@ static PyObject* Brain_set_grounded_engram_enabled(BrainObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
+/* IM-3 — toggle Tier-3 immune content inspection on grounded_language. */
+static PyObject* Brain_set_grounded_immune_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_grounded_immune_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "immune_system or grounded_language missing");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* Tier-4 #17: explicit RNG seed for deterministic sampling tests. */
 static PyObject* Brain_set_snn_language_bridge_rng_seed(BrainObject* self,
                                                          PyObject* args) {
@@ -11397,6 +11415,8 @@ static PyMethodDef Brain_methods[] = {
      "Tier-1 #2: toggle rule-based anaphora / pronoun resolution — set_anaphora_enabled(enabled) -> None. Default OFF; when ON, comprehend resolves he/she/it/they/... to the most-recent matching content noun."},
     {"set_grounded_engram_enabled", (PyCFunction)Brain_set_grounded_engram_enabled, METH_VARARGS,
      "EN-5: toggle read-only engram integration on grounded_language — set_grounded_engram_enabled(enabled) -> None. Default OFF; when ON, comprehend lays down EPISODIC engram traces and blends recalled neurons into activated_concepts at half-weight. Wires brain->engram_system into grounded_language automatically."},
+    {"set_grounded_immune_enabled", (PyCFunction)Brain_set_grounded_immune_enabled, METH_VARARGS,
+     "IM-3: toggle Tier-3 immune content inspection on grounded_language — set_grounded_immune_enabled(enabled) -> None. Default OFF; when ON, comprehend runs cheap read-only heuristics (NaN/Inf, statistical outliers, repetition spam, lexicon collision, negation cascades) over input + activations, damps comprehension_confidence by inflammation level, registers an antigen on inflammation > 0.5, and skips engram encode on inflammation > 0.7. Wires brain->immune_system into grounded_language automatically."},
     {"get_snn_language_bridge_config", (PyCFunction)Brain_get_snn_language_bridge_config, METH_NOARGS,
      "Tier-4 #15: get full SNN-language bridge config — get_snn_language_bridge_config() -> dict. Returns every PA/MQ knob (temperature, top_p, glove_blend, intent_persistence, word_feedback, sampling_mode, use_hyperbolic_embeddings, enable_snn_spike_routing, activation_tau_ms, etc.)."},
     {"set_snn_language_bridge_rng_seed", (PyCFunction)Brain_set_snn_language_bridge_rng_seed, METH_VARARGS,

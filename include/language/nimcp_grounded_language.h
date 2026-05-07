@@ -302,6 +302,16 @@ typedef struct {
      * output gate. Both stay 0 when no lgss is attached. */
     uint64_t lgss_inputs_blocked;
     uint64_t lgss_outputs_blocked;
+    /* IM-3 — Tier-3 immune content-inspection telemetry. Bumped only when
+     * a brain_immune_system has been attached via
+     * grounded_language_set_immune_system and integration is enabled.
+     * immune_inspections counts every comprehend pass that ran the
+     * inspection heuristics; immune_antigens_registered counts the
+     * inspections whose inflammation crossed the suspicious threshold
+     * (>0.5) and resulted in an antigen being presented to the brain
+     * immune system. */
+    uint64_t immune_inspections;
+    uint64_t immune_antigens_registered;
 } gl_stats_t;
 
 /**
@@ -1090,17 +1100,45 @@ bool grounded_language_engram_enabled(const grounded_language_t* gl);
  *       init) re-attaches after every load. NULL detaches and reverts
  *       comprehend to the legacy no-gate behavior.
  *
- * The pointer is typed `void*` here (not `lgss_context_t*`) on purpose:
- * pulling the LGSS umbrella header into language consumers cascades
- * enum collisions with cognitive/symbolic_logic/. Comprehend casts
- * internally via a forward declaration.
- *
  * @param gl    System handle (NULL → no-op)
  * @param lgss  lgss_context_t* opaque (NULL detaches)
  */
 void grounded_language_set_lgss(
     grounded_language_t* gl,
     void* lgss);
+
+/**
+ * @brief Attach the brain-level immune system for Tier-3 content
+ *        inspection on grounded_language_comprehend.
+ *
+ * WHAT: When enabled, every comprehend() pass runs a small set of
+ *       cheap, read-only heuristics over the input + activations
+ *       (NaN/Inf, statistical outliers, repetition spam, lexicon
+ *       collisions, negation cascades). The heuristics produce a
+ *       continuous inflammation level in [0..1] that:
+ *         (a) damps comprehension_confidence (×(1 - 0.5*inflammation)),
+ *         (b) registers an antigen via brain_immune_present_antigen
+ *             when inflammation > 0.5,
+ *         (c) suppresses the engram-encode hook when inflammation > 0.7
+ *             (poisoned input shouldn't lay down memory traces).
+ *
+ * @param gl                  System handle.
+ * @param brain_immune_system brain_immune_system_t* (opaque here).
+ * @param enabled             true = active, false = pointer stored
+ *                            but no-op.
+ * @return 0 on success, -1 on NULL gl.
+ */
+int grounded_language_set_immune_system(grounded_language_t* gl,
+                                          void* brain_immune_system,
+                                          bool enabled);
+
+/**
+ * @brief Query whether Tier-3 immune content inspection is currently
+ *        active.
+ *
+ * @return true if pointer is non-NULL AND enabled flag is true.
+ */
+bool grounded_language_immune_enabled(const grounded_language_t* gl);
 
 /**
  * @brief Connect Broca's area adapter — every new lexicon entry is

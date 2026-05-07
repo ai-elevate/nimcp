@@ -58,6 +58,34 @@ static inline void nimcp_fread_ignore(void* ptr, size_t sz, size_t n, FILE* f) {
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
+/* IM-3 — forward decls for the brain_immune antigen-presentation API.
+ * Pulling in cognitive/immune/nimcp_brain_immune.h would drag in BBB +
+ * BFT + swarm-immune + bio-router + microglia headers (and the
+ * INFLAMMATION_* / APHASIA_* enum cohort that has historically
+ * collided with other modules — see commit 3902f2e92 for the same
+ * pattern in brain_init_language.c). The Tier-3 inspector only needs
+ * three symbols: the opaque struct typedef, the antigen-source enum,
+ * and the present_antigen entry point. Replicating the enum locally
+ * keeps the value identical (ABI-compatible plain enum) without
+ * pulling the umbrella header. */
+struct brain_immune_system;
+typedef struct brain_immune_system brain_immune_system_t;
+typedef enum {
+    _GL_ANTIGEN_SOURCE_BBB = 0,
+    _GL_ANTIGEN_SOURCE_BFT,
+    _GL_ANTIGEN_SOURCE_ANOMALY,
+    _GL_ANTIGEN_SOURCE_SWARM,
+    _GL_ANTIGEN_SOURCE_MANUAL
+} _gl_brain_antigen_source_t;
+extern int brain_immune_present_antigen(
+    brain_immune_system_t* system,
+    _gl_brain_antigen_source_t source,
+    const uint8_t* epitope,
+    size_t epitope_len,
+    uint32_t severity,
+    uint32_t source_node,
+    uint32_t* antigen_id);
+
 /*=============================================================================
  * Internal Structures
  *
@@ -1524,6 +1552,151 @@ extern int lgss_evaluate(
     const safety_action_context_t* context,
     safety_evaluation_t* result);
 
+/* IM-3 inspection thresholds. Kept local so tuning doesn't touch the
+ * public header. Each delta sums into a [0,1]-clamped inflammation
+ * level; the targets below were picked so 2-3 simultaneous heuristic
+ * hits push past 0.5 (antigen registration) and 3-4 simultaneous hits
+ * push past 0.7 (engram skip) — the engram skip is the strongest
+ * action so it requires the most evidence. */
+#define _GL_IMM_DELTA_NAN_INF        0.30f
+#define _GL_IMM_DELTA_OUTLIER        0.20f
+#define _GL_IMM_DELTA_REPETITION     0.20f
+#define _GL_IMM_DELTA_LEX_COLLISION  0.15f
+#define _GL_IMM_DELTA_NEGATION       0.10f
+#define _GL_IMM_REPEAT_FRACTION      0.50f
+#define _GL_IMM_OOV_FRACTION         0.80f
+#define _GL_IMM_OOV_MIN_WORDS        10u
+#define _GL_IMM_OUTLIER_SIGMA        5.0f
+#define _GL_IMM_OUTLIER_MIN_SAMPLES  16u
+#define _GL_IMM_NEGATION_LONG_WORDS  4u
+#define _GL_IMM_ANTIGEN_THRESHOLD    0.5f
+#define _GL_IMM_ENGRAM_SKIP_THRESHOLD 0.7f
+
+/* Update the Welford running mean/variance. Caller passes the just-
+ * observed total_activation; we return the current sigma estimate so
+ * the caller can compare without re-reading the struct. Welford keeps
+ * the variance numerically stable across the millions of comprehend
+ * calls a long-lived training run accumulates. */
+static float _gl_imm_update_running(grounded_language_t* gl, float sample) {
+    gl->immune_act_samples++;
+    double delta = (double)sample - gl->immune_act_mean;
+    gl->immune_act_mean += delta / (double)gl->immune_act_samples;
+    double delta2 = (double)sample - gl->immune_act_mean;
+    gl->immune_act_m2 += delta * delta2;
+    if (gl->immune_act_samples < 2) return 0.0f;
+    double var = gl->immune_act_m2 / (double)(gl->immune_act_samples - 1);
+    if (var < 0.0) var = 0.0;
+    return (float)sqrt(var);
+}
+
+/* Tier-3 inspection. Read-only over inputs + activations; returns the
+ * computed inflammation level [0,1]. Callable only when both
+ * immune_enabled and immune_system are non-NULL — the caller gates the
+ * call. The caller also owns the side effects (antigen registration,
+ * confidence damp, engram skip) so this helper stays a pure analysis. */
+static float _gl_immune_inspect(grounded_language_t* gl,
+                                  char* const* words, uint32_t word_count,
+                                  const float* activation_levels,
+                                  uint32_t concept_count,
+                                  const float* semantic_vector,
+                                  uint32_t semantic_dim,
+                                  float total_activation,
+                                  uint32_t known_words, uint32_t subword_hits,
+                                  bool any_negated) {
+    float inflammation = 0.0f;
+
+    /* (1) NaN/Inf in activations OR semantic vector — fast-fail when
+     * the upstream pipeline produced non-finite values. Either bug or
+     * active poisoning. The semantic_vector is where lexicon-entry
+     * concept features land (activations are pure binding strengths,
+     * which fast_map sets to a finite constant — so a poisoned feature
+     * vector lights up here, not in activation_levels). Both are
+     * checked so either path trips. */
+    bool nonfinite = false;
+    for (uint32_t i = 0; i < concept_count; i++) {
+        float a = activation_levels[i];
+        if (!isfinite(a)) { nonfinite = true; break; }
+    }
+    if (!nonfinite && semantic_vector) {
+        for (uint32_t d = 0; d < semantic_dim; d++) {
+            if (!isfinite(semantic_vector[d])) { nonfinite = true; break; }
+        }
+    }
+    if (nonfinite || !isfinite(total_activation)) {
+        inflammation += _GL_IMM_DELTA_NAN_INF;
+    }
+
+    /* (2) Statistical outlier vs running mean (Welford). Update only
+     * with finite samples — non-finite total_activation already tripped
+     * (1), no point poisoning the running stats. We track per-word
+     * activation (avg) instead of per-call total to keep the baseline
+     * scale-invariant w.r.t. utterance length. */
+    if (isfinite(total_activation) && word_count > 0) {
+        float per_word = total_activation / (float)word_count;
+        bool was_outlier = false;
+        if (gl->immune_act_samples >= _GL_IMM_OUTLIER_MIN_SAMPLES) {
+            float sigma_estimate = (gl->immune_act_samples >= 2)
+                ? (float)sqrt(gl->immune_act_m2 /
+                              (double)(gl->immune_act_samples - 1))
+                : 0.0f;
+            float delta = per_word - (float)gl->immune_act_mean;
+            if (sigma_estimate > 1e-6f &&
+                fabsf(delta) > _GL_IMM_OUTLIER_SIGMA * sigma_estimate) {
+                was_outlier = true;
+            }
+        }
+        /* Update AFTER the outlier check so a single rare event doesn't
+         * immediately dilute its own anomaly score. */
+        (void)_gl_imm_update_running(gl, per_word);
+        if (was_outlier) inflammation += _GL_IMM_DELTA_OUTLIER;
+    }
+
+    /* (3) Repetition spam — the same lower-cased token appears > 50%
+     * of the time. Trips on flooders / loop attacks. Skip when there's
+     * only one word (fraction is trivially 1.0 with a single token). */
+    if (word_count > 1) {
+        uint32_t max_run = 0;
+        for (uint32_t i = 0; i < word_count; i++) {
+            uint32_t c = 0;
+            for (uint32_t j = 0; j < word_count; j++) {
+                if (strcmp(words[i], words[j]) == 0) c++;
+            }
+            if (c > max_run) max_run = c;
+            if (max_run > word_count) max_run = word_count;  /* defensive */
+        }
+        float frac = (float)max_run / (float)word_count;
+        if (frac > _GL_IMM_REPEAT_FRACTION) {
+            inflammation += _GL_IMM_DELTA_REPETITION;
+        }
+    }
+
+    /* (4) Lexicon collision — > 80% of words are unknown AND no subword
+     * tokens hit, on a long-enough utterance. Cheap glob/random-text
+     * detector. effective_known mirrors the comprehend confidence math
+     * (subword counts as half-known); we trip only on near-pure OOV. */
+    if (word_count >= _GL_IMM_OOV_MIN_WORDS) {
+        float effective_known = (float)known_words + 0.5f * (float)subword_hits;
+        float oov_fraction = 1.0f - (effective_known / (float)word_count);
+        if (oov_fraction > _GL_IMM_OOV_FRACTION) {
+            inflammation += _GL_IMM_DELTA_LEX_COLLISION;
+        }
+    }
+
+    /* (5) Negation cascade — input had at least one negation event
+     * (any_negated already computed by the negation pass) AND the
+     * utterance is long. Long stacked-negation chains are a known
+     * bypass / confusion vector. */
+    if (any_negated && word_count > _GL_IMM_NEGATION_LONG_WORDS) {
+        inflammation += _GL_IMM_DELTA_NEGATION;
+    }
+
+    /* Clamp to [0, 1] — prevent any future heuristic from blowing the
+     * downstream arithmetic past unity. */
+    if (inflammation < 0.0f) inflammation = 0.0f;
+    if (inflammation > 1.0f) inflammation = 1.0f;
+    return inflammation;
+}
+
 int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                   gl_comprehension_result_t* result) {
     if (!gl || !text || !result) {
@@ -1819,6 +1992,64 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                               result->activation_levels,
                               &concept_count);
 
+    /* IM-3 — Tier-3 immune content inspection. Runs cheap read-only
+     * heuristics over the input + activations and produces a continuous
+     * inflammation level in [0..1] that:
+     *   (a) damps result->comprehension_confidence (set later in this
+     *       function — we apply the multiplier once the base confidence
+     *       has been computed, below),
+     *   (b) registers an antigen with the brain immune system when the
+     *       level exceeds _GL_IMM_ANTIGEN_THRESHOLD,
+     *   (c) suppresses the engram-encode hook (next block) when the
+     *       level exceeds _GL_IMM_ENGRAM_SKIP_THRESHOLD — adversarial
+     *       input shouldn't lay down memory traces.
+     * No-op when the immune system isn't attached or the flag is off.
+     * The inflammation level is also stashed on the gl handle for
+     * diagnostics (immune_inflammation_level). */
+    float _imm_inflammation = 0.0f;
+    if (gl->immune_enabled && gl->immune_system) {
+        _imm_inflammation = _gl_immune_inspect(
+            gl, words, word_count,
+            result->activation_levels, concept_count,
+            result->semantic_vector, gl->semantic_dim,
+            total_activation, known_words, subword_hits, any_negated);
+        gl->immune_inflammation_level = _imm_inflammation;
+        gl->stats.immune_inspections++;
+
+        /* Antigen registration — fire one per inspection that crosses
+         * the threshold. Severity scales 1..10 with inflammation; the
+         * immune system clamps internally. Epitope is a tiny digest
+         * built from the first few characters of the input + the
+         * inflammation level, fitting comfortably under
+         * BRAIN_IMMUNE_EPITOPE_SIZE (64). source_node=0 means
+         * "originating in this brain" per the immune convention. */
+        if (_imm_inflammation > _GL_IMM_ANTIGEN_THRESHOLD) {
+            uint8_t epitope[64];
+            size_t epi_len = 0;
+            /* First 56 chars of input as the signature head. */
+            size_t head = strnlen(text, 56);
+            memcpy(epitope, text, head);
+            epi_len = head;
+            /* Append the inflammation level as a 4-byte little-endian
+             * encoding so duplicate text with different inflammation
+             * gets distinct epitopes. */
+            uint32_t lvl_q = (uint32_t)(_imm_inflammation * 1000000.0f);
+            for (int b = 0; b < 4 && epi_len < sizeof(epitope); b++) {
+                epitope[epi_len++] = (uint8_t)((lvl_q >> (b * 8)) & 0xff);
+            }
+            uint32_t severity = 1u +
+                (uint32_t)(_imm_inflammation * 9.0f); /* 1..10 */
+            if (severity > 10u) severity = 10u;
+            uint32_t antigen_id = 0;
+            (void)brain_immune_present_antigen(
+                (brain_immune_system_t*)gl->immune_system,
+                _GL_ANTIGEN_SOURCE_ANOMALY,
+                epitope, epi_len, severity,
+                /* source_node */ 0u, &antigen_id);
+            gl->stats.immune_antigens_registered++;
+        }
+    }
+
     /* Engram integration (read-only). Snapshot the pre-engram activated
      * set so:
      *   (a) we ENCODE only the comprehension-derived activations into a
@@ -1828,8 +2059,17 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
      *       neurons (mapped 1:1 to concept_ids by lo32 hash equivalence)
      *       into the caller-visible activated_concepts at half-weight.
      * Both stages no-op when no engram_system is attached or the flag
-     * is off. */
-    if (gl->engram_enabled && gl->engram_system && concept_count > 0) {
+     * is off.
+     *
+     * IM-3: when inflammation > _GL_IMM_ENGRAM_SKIP_THRESHOLD, skip the
+     * encode pass entirely so poisoned input doesn't lay down memory
+     * traces. The recall side stays intact — recall is read-only over
+     * the engram store and won't propagate poison forward. */
+    bool _imm_skip_engram =
+        (gl->immune_enabled && gl->immune_system &&
+         _imm_inflammation > _GL_IMM_ENGRAM_SKIP_THRESHOLD);
+    if (gl->engram_enabled && gl->engram_system && concept_count > 0 &&
+        !_imm_skip_engram) {
         /* Truncate concept_id u64 → neuron_id u32 (lower 32 bits).
          * Concept IDs are already derived from string hashes; the lo32
          * is a uniform 32-bit projection. We borrow up to 256 ids — the
@@ -1906,6 +2146,18 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
         effective_known / (float)word_count : 0.0f;
     result->novelty = (word_count > 0) ?
         1.0f - effective_known / (float)word_count : 1.0f;
+
+    /* IM-3 — apply the inflammation damp to comprehension confidence.
+     * Damp factor = (1 - 0.5 * inflammation), so a fully-inflamed
+     * inspection halves the base confidence. The downstream cortex /
+     * SNN-bridge / network-broadcast modulators apply *after* this so
+     * a damped confidence still gets the cortex/network boosts — the
+     * inflammation simply lowers the starting value. */
+    if (gl->immune_enabled && gl->immune_system) {
+        result->comprehension_confidence *= (1.0f - 0.5f * _imm_inflammation);
+        if (result->comprehension_confidence < 0.0f)
+            result->comprehension_confidence = 0.0f;
+    }
 
     /* Normalize semantic vector */
     normalize_vector(result->semantic_vector, gl->semantic_dim);

@@ -1611,6 +1611,31 @@ class BrainService:
             return {"error": f"set_grounded_engram_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_set_grounded_immune_enabled(self, req):
+        """IM-3: toggle Tier-3 immune content inspection on grounded_language.
+
+        Request keys:
+          enabled  (bool, required) — true = comprehend runs read-only
+                                      content heuristics (NaN/Inf,
+                                      statistical outliers, repetition
+                                      spam, lexicon collision, negation
+                                      cascades), damps confidence by the
+                                      computed inflammation level,
+                                      registers an antigen on inflammation
+                                      > 0.5, and skips engram encode on
+                                      inflammation > 0.7. Brain's
+                                      immune_system is wired in
+                                      automatically.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_grounded_immune_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_grounded_immune_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_grounded_immune_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
     def _cmd_get_snn_language_bridge_config(self, _req):
         """Tier-4 #15: read the full SNN-language bridge config.
 

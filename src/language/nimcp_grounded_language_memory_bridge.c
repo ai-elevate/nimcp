@@ -111,6 +111,29 @@ void grounded_language_set_lgss(grounded_language_t* gl, void* lgss) {
     gl->lgss = lgss;
 }
 
+/* IM-3 — Tier-3 immune content-inspection attach. Mirrors the engram
+ * setter: borrowed pointer + boolean flag, no allocation, NULL-safe.
+ * The hot-path check inside comprehend is `enabled && pointer`, so an
+ * enabled flag with a NULL pointer is harmless (no-op until attached). */
+int grounded_language_set_immune_system(grounded_language_t* gl,
+                                          void* brain_immune_system,
+                                          bool enabled) {
+    if (!gl) return -1;
+    gl->immune_system  = brain_immune_system;
+    gl->immune_enabled = enabled;
+    /* Reset the diagnostic level on (re-)attach so the probe doesn't
+     * report a stale post-detach reading. */
+    if (!enabled || !brain_immune_system) {
+        gl->immune_inflammation_level = 0.0f;
+    }
+    return 0;
+}
+
+bool grounded_language_immune_enabled(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->immune_enabled && gl->immune_system != NULL;
+}
+
 void grounded_language_connect_broca(grounded_language_t* gl, void* broca) {
     if (!gl) return;
     gl->broca_adapter = broca;
