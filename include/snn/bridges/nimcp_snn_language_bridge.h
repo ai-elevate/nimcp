@@ -106,6 +106,12 @@ typedef struct {
     float    temperature;
     float    top_p;
     uint32_t produce_topk;
+    /* PA-5: GloVe-aware blend.  decode_spikes ranks each word by
+     *   (1 − glove_blend) · cosine(concept_rates, binding_col[w])
+     * + glove_blend       · cosine(concept_rates[:emb_dim], glove_emb[w])
+     * when an embedding lookup callback is attached. glove_blend = 0
+     * (default) preserves Patch-A binding-only behavior. */
+    float    glove_blend;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -351,6 +357,37 @@ void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend);
  */
 int snn_language_bridge_set_sampling(snn_language_bridge_t* bridge,
                                       float temperature, float top_p);
+
+/** PA-5: word → embedding lookup callback. Caller fills `out_vec` with
+ * the embedding (length `out_dim`) for `word_form` and returns 0; returns
+ * -1 if the word is not in the embedding table. Called by decode_spikes
+ * (lazily, with caching) when glove_blend > 0. Must be thread-safe with
+ * respect to the embedding table. */
+typedef int (*snn_lang_word_emb_fn)(void* ctx,
+                                     const char* word_form,
+                                     float* out_vec,
+                                     uint32_t out_dim);
+
+/** PA-5: attach embedding lookup. Until this is called, glove_blend has
+ * no effect. emb_dim must equal the prefix length of concept_rates that
+ * carries the embedding signal (in NIMCP, semantic_dim == emb_dim, so
+ * pass gl->semantic_dim). The first call also allocates the bridge's
+ * word_emb cache (sized word_pops_capacity × emb_dim). Pass NULL fn to
+ * detach, which frees the cache. */
+int snn_language_bridge_set_embedding_lookup(snn_language_bridge_t* bridge,
+                                              snn_lang_word_emb_fn fn,
+                                              void* ctx,
+                                              uint32_t emb_dim);
+
+/** PA-5: set the GloVe blend coefficient at runtime. blend in [0, 1];
+ * 0 = binding-only (PA-1 default), 1 = embedding-only ranking.
+ * Returns -1 if bridge invalid or blend out of range. */
+int snn_language_bridge_set_glove_blend(snn_language_bridge_t* bridge,
+                                         float blend);
+
+/** PA-5: invalidate the per-word embedding cache. Call after the
+ * embedding table changes (rare — only on retraining or model swap). */
+int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge);
 
 //=============================================================================
 // Serialization

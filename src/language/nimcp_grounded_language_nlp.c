@@ -233,6 +233,24 @@ gl_word_class_t gl_morph_pos_hint(const char* word) {
  * Embedding + tokenizer connect points
  *===========================================================================*/
 
+/* PA-5: adapter that bridges call back into to look up a word's GloVe
+ * embedding by word_form. The bridge owns the lifetime; grounded_language
+ * is the source of truth. We forward into gl_nlp_embedding_lookup which
+ * already handles the word→token_id→embedding chain.
+ *
+ * Externally-visible (no `static`): called from nimcp_grounded_language.c
+ * via the `gl_word_emb_for_bridge_external` extern decl in connect_snn_bridge. */
+int gl_word_emb_for_bridge_external(void* ctx,
+                                     const char* word_form,
+                                     float* out_vec,
+                                     uint32_t out_dim)
+{
+    grounded_language_t* gl = (grounded_language_t*)ctx;
+    if (!gl || !word_form || !out_vec) return -1;
+    if (gl->emb_dim != out_dim) return -1;
+    return gl_nlp_embedding_lookup(gl, word_form, out_vec);
+}
+
 void grounded_language_connect_embeddings(grounded_language_t* gl,
                                             void* emb,
                                             uint32_t emb_dim,
@@ -243,6 +261,16 @@ void grounded_language_connect_embeddings(grounded_language_t* gl,
     gl->emb_dim       = emb_dim;
     gl->word_to_id_fn = word_to_id_fn;
     gl->word_to_id_ctx = ctx;
+
+    /* PA-5: if a bridge is already attached, push the lookup down so
+     * decode_spikes can blend cosine(intent_emb, glove_emb[w]) into the
+     * ranking. The bridge invalidates its per-word cache lazily on first
+     * decode. Caller still has to set glove_blend > 0 to actually use it. */
+    if (gl->snn_bridge) {
+        snn_language_bridge_set_embedding_lookup(gl->snn_bridge,
+                                                   gl_word_emb_for_bridge_external,
+                                                   gl, emb_dim);
+    }
 }
 
 void grounded_language_connect_tokenizer(grounded_language_t* gl, void* tok) {

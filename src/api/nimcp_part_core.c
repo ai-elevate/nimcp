@@ -3583,6 +3583,19 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling(
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_snn_language_bridge_glove_blend(
+    nimcp_brain_t brain,
+    float blend)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_glove_blend(b->snn_lang_bridge, blend);
+    if (rc != 0) return NIMCP_ERROR_INVALID;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_creative_blend(
     nimcp_brain_t brain,
     const float* vector_a,

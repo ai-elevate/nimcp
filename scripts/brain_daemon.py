@@ -1400,6 +1400,26 @@ class BrainService:
             return {"error": f"set_sampling: {e}"}
         return {"ok": True, "temperature": temperature, "top_p": top_p}
 
+    def _cmd_set_snn_language_bridge_glove_blend(self, req):
+        """PA-5: set GloVe-aware decode blend coefficient.
+
+        Request keys:
+          blend  (float, required, in [0,1]) — 0 = binding-only,
+                 1 = embedding-only. Active only when grounded_language
+                 has wired its embedding lookup down to the bridge.
+        """
+        try:
+            blend = float(req.get("blend", 0.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_glove_blend bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_glove_blend(blend)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_glove_blend not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_glove_blend: {e}"}
+        return {"ok": True, "blend": blend}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:

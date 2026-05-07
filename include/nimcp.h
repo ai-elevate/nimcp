@@ -1071,6 +1071,23 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling(
 );
 
 /**
+ * @brief Set the GloVe-aware decode blend (PA-5).
+ *
+ * decode_spikes ranks candidates by
+ *   (1−blend) · cosine_binding + blend · cosine_glove(intent, word_emb).
+ * blend = 0 (default) is binding-only; blend = 1 is embedding-only. Active
+ * only when grounded_language has wired its embedding lookup down to the
+ * bridge (automatic when both grounded_language_connect_embeddings() and
+ * grounded_language_connect_snn_bridge() have been called).
+ *
+ * @return NIMCP_OK / NIMCP_ERROR_INVALID / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_glove_blend(
+    nimcp_brain_t brain,
+    float blend
+);
+
+/**
  * @brief Generate creative text by blending two concepts
  *
  * Conceptual blending — combine two semantic vectors to create novel expression.

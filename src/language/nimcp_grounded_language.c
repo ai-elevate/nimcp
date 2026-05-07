@@ -2401,6 +2401,12 @@ void grounded_language_connect_emotional(grounded_language_t* gl, void* emo_ctx)
     gl->emotional_ctx = emo_ctx;
 }
 
+/* Forward decl — implemented in nimcp_grounded_language_nlp.c. */
+extern int gl_word_emb_for_bridge_external(void* ctx,
+                                            const char* word_form,
+                                            float* out_vec,
+                                            uint32_t out_dim);
+
 void grounded_language_connect_snn_bridge(grounded_language_t* gl,
                                            struct snn_language_bridge* bridge) {
     if (!gl) {
@@ -2409,6 +2415,15 @@ void grounded_language_connect_snn_bridge(grounded_language_t* gl,
         return;
     }
     gl->snn_bridge = bridge;
+
+    /* PA-5: if embeddings are already wired on gl, push the lookup down
+     * to the freshly-attached bridge so a later glove_blend > 0 can use
+     * the cosine-emb signal without re-attaching. */
+    if (bridge && gl->embeddings && gl->word_to_id_fn && gl->emb_dim > 0) {
+        snn_language_bridge_set_embedding_lookup(bridge,
+                                                   gl_word_emb_for_bridge_external,
+                                                   gl, gl->emb_dim);
+    }
 }
 
 uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {

@@ -92,6 +92,20 @@ struct snn_language_bridge {
      * config.temperature > 0; deterministic argmax path bypasses it. */
     uint64_t rng_state;
 
+    /* PA-5: GloVe lookup callback + lazy per-word cache. emb_dim and the
+     * cache buffers are NULL/zero until set_embedding_lookup() runs.
+     *   word_emb_cache:   word_pops_capacity * emb_dim floats, row-major.
+     *   word_emb_cached:  bool flag per word_pop — true once filled.
+     *   word_emb_norm:    cached ‖emb[w]‖ per word_pop for cosine.
+     * Cache is invalidated by snn_language_bridge_invalidate_emb_cache()
+     * (e.g. after embedding-table retrain) and by detaching the lookup. */
+    snn_lang_word_emb_fn emb_lookup_fn;
+    void*               emb_lookup_ctx;
+    uint32_t            emb_dim;
+    float*              word_emb_cache;
+    uint8_t*            word_emb_cached;
+    float*              word_emb_norm;
+
     // Connected subsystems
     struct grounded_language* grounded_lang;
     struct imagination_snn_bridge* imagination;
@@ -129,6 +143,11 @@ static binding_node_t* binding_find(snn_language_bridge_t* bridge,
     }
     return NULL;
 }
+
+/* PA-5 forward decl: lazy embedding cache filler. Defined alongside the
+ * other PA-5 helpers below; declared up here because decode_spikes uses
+ * it before its definition. */
+static inline int emb_cache_ensure(snn_language_bridge_t* bridge, uint32_t w);
 
 /* Patch A: maintain word_norm_sq[word_pop] = Σ w² across all bindings
  * touching word_pop. Δ(Σw²) = new² − old² for any single weight mutation. */
@@ -222,7 +241,10 @@ snn_lang_config_t snn_lang_config_default(void)
          * sampling some headroom over the legacy 5 without much cost. */
         .temperature = 0.0f,
         .top_p = 1.0f,
-        .produce_topk = 8
+        .produce_topk = 8,
+        /* PA-5: GloVe blend off by default. Caller sets >0 after attaching
+         * an embedding lookup with set_embedding_lookup(). */
+        .glove_blend = 0.0f
     };
     return config;
 }
@@ -314,6 +336,9 @@ void snn_language_bridge_destroy(snn_language_bridge_t* bridge)
     nimcp_free(bridge->concept_pops);
     nimcp_free(bridge->word_pops);
     nimcp_free(bridge->word_norm_sq);
+    nimcp_free(bridge->word_emb_cache);
+    nimcp_free(bridge->word_emb_cached);
+    nimcp_free(bridge->word_emb_norm);
 
     bridge->magic = 0;
     nimcp_free(bridge);
@@ -481,6 +506,24 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
         nimcp_free(word_acts);
         return -1;
     }
+
+    /* PA-5: precompute the intent-side embedding norm once if the GloVe
+     * blend is active. The embedding query is the leading emb_dim coords
+     * of concept_rates. Skip lookups entirely when blend is 0 or when no
+     * embedding callback has been attached. */
+    const float glove_blend = bridge->config.glove_blend;
+    const bool emb_active = (glove_blend > 0.0f && bridge->emb_lookup_fn &&
+                              bridge->word_emb_cache && bridge->emb_dim > 0);
+    float intent_emb_norm = 0.0f;
+    if (emb_active) {
+        uint32_t d_used = (bridge->emb_dim < num_concept_pops)
+                           ? bridge->emb_dim : num_concept_pops;
+        for (uint32_t d = 0; d < d_used; d++) {
+            intent_emb_norm += concept_rates[d] * concept_rates[d];
+        }
+        intent_emb_norm = sqrtf(intent_emb_norm + eps);
+    }
+
     for (uint32_t w = 0; w < n_words; w++) {
         if (!bridge->word_pops[w].registered) {
             word_scores[w] = -FLT_MAX;
@@ -488,7 +531,31 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
         }
         float ns = bridge->word_norm_sq ? bridge->word_norm_sq[w] : 1.0f;
         float norm = sqrtf(ns + eps);
-        word_scores[w] = word_acts[w] / norm;
+        float binding_score = word_acts[w] / norm;
+
+        /* PA-5: blend in cosine(intent_emb, word_emb[w]) when active. */
+        if (emb_active) {
+            int got = emb_cache_ensure(bridge, w);
+            if (got == 1) {
+                const float* emb = bridge->word_emb_cache + (size_t)w * bridge->emb_dim;
+                uint32_t d_used = (bridge->emb_dim < num_concept_pops)
+                                   ? bridge->emb_dim : num_concept_pops;
+                float dot = 0.0f;
+                for (uint32_t d = 0; d < d_used; d++) {
+                    dot += concept_rates[d] * emb[d];
+                }
+                float glove_score = dot / (intent_emb_norm * bridge->word_emb_norm[w]);
+                word_scores[w] = (1.0f - glove_blend) * binding_score
+                                  + glove_blend * glove_score;
+            } else {
+                /* No embedding for this word — fall back to binding-only,
+                 * scaled by (1−blend) so words with embeddings still get a
+                 * fair comparison if their glove_score is small. */
+                word_scores[w] = (1.0f - glove_blend) * binding_score;
+            }
+        } else {
+            word_scores[w] = binding_score;
+        }
     }
 
     /* Sum of positive cosine scores for confidence normalization (denominator
@@ -727,6 +794,121 @@ int snn_language_bridge_set_sampling(snn_language_bridge_t* bridge,
     bridge->config.temperature = temperature;
     bridge->config.top_p = top_p;
     return 0;
+}
+
+/* PA-5 helpers — embedding cache lifecycle. */
+static void emb_cache_free(snn_language_bridge_t* bridge)
+{
+    nimcp_free(bridge->word_emb_cache);
+    nimcp_free(bridge->word_emb_cached);
+    nimcp_free(bridge->word_emb_norm);
+    bridge->word_emb_cache  = NULL;
+    bridge->word_emb_cached = NULL;
+    bridge->word_emb_norm   = NULL;
+}
+
+static int emb_cache_alloc(snn_language_bridge_t* bridge, uint32_t emb_dim)
+{
+    size_t cap = (size_t)bridge->word_pops_capacity;
+    bridge->word_emb_cache  = nimcp_calloc(cap * emb_dim, sizeof(float));
+    bridge->word_emb_cached = nimcp_calloc(cap, sizeof(uint8_t));
+    bridge->word_emb_norm   = nimcp_calloc(cap, sizeof(float));
+    if (!bridge->word_emb_cache || !bridge->word_emb_cached ||
+        !bridge->word_emb_norm) {
+        emb_cache_free(bridge);
+        return -1;
+    }
+    return 0;
+}
+
+int snn_language_bridge_set_embedding_lookup(snn_language_bridge_t* bridge,
+                                              snn_lang_word_emb_fn fn,
+                                              void* ctx,
+                                              uint32_t emb_dim)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+
+    /* Detach: NULL fn frees the cache and zeros the lookup. */
+    if (!fn) {
+        emb_cache_free(bridge);
+        bridge->emb_lookup_fn = NULL;
+        bridge->emb_lookup_ctx = NULL;
+        bridge->emb_dim = 0;
+        return 0;
+    }
+
+    if (emb_dim == 0) return -1;
+
+    /* Reattach with different dim → realloc cache. */
+    if (bridge->word_emb_cache && bridge->emb_dim != emb_dim) {
+        emb_cache_free(bridge);
+    }
+    if (!bridge->word_emb_cache) {
+        if (emb_cache_alloc(bridge, emb_dim) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "set_embedding_lookup: failed to allocate emb cache");
+            return -1;
+        }
+    }
+    bridge->emb_lookup_fn  = fn;
+    bridge->emb_lookup_ctx = ctx;
+    bridge->emb_dim        = emb_dim;
+    return 0;
+}
+
+int snn_language_bridge_set_glove_blend(snn_language_bridge_t* bridge,
+                                         float blend)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(blend) || blend < 0.0f || blend > 1.0f) return -1;
+    bridge->config.glove_blend = blend;
+    return 0;
+}
+
+int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (bridge->word_emb_cached) {
+        memset(bridge->word_emb_cached, 0,
+               bridge->word_pops_capacity * sizeof(uint8_t));
+    }
+    if (bridge->word_emb_norm) {
+        memset(bridge->word_emb_norm, 0,
+               bridge->word_pops_capacity * sizeof(float));
+    }
+    return 0;
+}
+
+/* Lazy fill: ensure word w's embedding is cached. Returns 1 if cached
+ * (success or already filled), 0 if no embedding for this word, -1 on
+ * setup failure. After return 1, word_emb_cache[w] and word_emb_norm[w]
+ * are populated. Inline to keep the decode hot path tight. */
+static inline int emb_cache_ensure(snn_language_bridge_t* bridge, uint32_t w)
+{
+    if (!bridge->emb_lookup_fn || !bridge->word_emb_cache) return -1;
+    if (w >= bridge->word_pops_capacity) return -1;
+    if (bridge->word_emb_cached[w]) {
+        /* 1 = embedding present and cached, 2 = looked up but missing. */
+        return (bridge->word_emb_cached[w] == 1) ? 1 : 0;
+    }
+    const char* word = bridge->word_pops[w].word_form;
+    if (!word || !word[0]) {
+        bridge->word_emb_cached[w] = 2;  /* mark as missing, don't retry */
+        return 0;
+    }
+    float* row = bridge->word_emb_cache + (size_t)w * bridge->emb_dim;
+    int rc = bridge->emb_lookup_fn(bridge->emb_lookup_ctx,
+                                    word, row, bridge->emb_dim);
+    if (rc != 0) {
+        bridge->word_emb_cached[w] = 2;
+        return 0;
+    }
+    /* Compute and cache the norm so cosine in decode is one division. */
+    float n2 = 0.0f;
+    for (uint32_t d = 0; d < bridge->emb_dim; d++) n2 += row[d] * row[d];
+    bridge->word_emb_norm[w] = sqrtf(n2 + 1e-6f);
+    bridge->word_emb_cached[w] = 1;
+    return 1;
 }
 
 /* Patch A: rebuild word_norm_sq[] from current binding state. Called after
