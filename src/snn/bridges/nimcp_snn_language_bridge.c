@@ -994,6 +994,31 @@ int snn_language_bridge_attach_snn_pop(snn_language_bridge_t* bridge,
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
     if (snn_pop_id < 0 || n_neurons == 0) return -1;
 
+    /* PA-3 walkthrough fix: warn loudly if SNN pop is wider than the
+     * bridge's matching cap. neuron_idx % cap aliases distinct neurons
+     * onto the same bridge slot — at high collision counts each bridge
+     * slot accumulates spikes from many sources, which together with
+     * activation += 1.0 per spike approaches the runaway regime that
+     * already destroyed sparsity once (commit 5d47666ae). The decay in
+     * snn_language_bridge_tick keeps the activation bounded but only if
+     * tau_ms stays sane; logging the collision factor up front lets
+     * operators see the budget. */
+    {
+        uint32_t cap = (role == SNN_LANG_POP_ROLE_WORD)
+                         ? bridge->word_pops_capacity
+                         : bridge->concept_pops_capacity;
+        if (cap > 0 && n_neurons > cap) {
+            uint32_t collision_factor = (n_neurons + cap - 1u) / cap;
+            LOG_WARN(LOG_MODULE,
+                     "attach_snn_pop: pop_id=%d n_neurons=%u > bridge cap=%u "
+                     "(role=%s, collision_factor=%u). decay_tau must stay "
+                     "low enough that activation stays bounded.",
+                     snn_pop_id, n_neurons, cap,
+                     role == SNN_LANG_POP_ROLE_WORD ? "WORD" : "CONCEPT",
+                     collision_factor);
+        }
+    }
+
     /* Update existing slot if pop_id is already attached. */
     for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
         if (bridge->attached_pops[i].snn_pop_id == snn_pop_id) {
@@ -1308,7 +1333,6 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         }
         if (n_valid == 0) break;
 
-        bool found = true;
         if (temperature <= 0.0f || n_valid == 1) {
             /* Legacy hard-argmax path: pick the first valid (highest cosine). */
             word_result = topK[valid_idx[0]];
@@ -1362,6 +1386,15 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
                     }
                     if (new_sum > 0.0f) {
                         for (uint32_t i = 0; i < n_valid; i++) probs[i] /= new_sum;
+                    } else {
+                        /* PA-6 fix (walkthrough round 1): pathological top_p
+                         * (e.g. < smallest prob mass) zeroes everything. The
+                         * inverse-CDF below would deterministically pick
+                         * `n_valid - 1` (silent argmin). Fall back to argmax
+                         * — the most-likely candidate still respects the
+                         * caller's intent under "keep only the highest mass". */
+                        word_result = topK[valid_idx[order[0]]];
+                        goto sample_done;
                     }
                 }
 
@@ -1376,7 +1409,7 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
                 word_result = topK[valid_idx[chosen]];
             }
         }
-        if (!found) break;
+sample_done:;
 
         // Stop if confidence too low
         if (word_result.confidence < 0.01f && word_count > 0) break;
@@ -1642,13 +1675,18 @@ int snn_language_bridge_sleep_consolidate(snn_language_bridge_t* bridge,
         while (node) {
             snn_lang_binding_t* b = &node->binding;
 
-            // Replay: bindings with high eligibility get strengthened
+            // Replay: bindings with high eligibility get strengthened.
+            // PA-1 fix (walkthrough round 1): keep word_norm_sq cache
+            // consistent with weight updates, otherwise post-sleep cosine
+            // scores in decode_spikes go stale.
             if (b->eligibility > 0.1f) {
                 float replay_boost = consolidation_strength * b->eligibility * 0.1f;
+                float old_w = b->weight;
                 b->weight += replay_boost;
                 if (b->weight > bridge->config.binding_w_max) {
                     b->weight = bridge->config.binding_w_max;
                 }
+                norm_update(bridge, b->word_pop, old_w, b->weight);
             }
 
             // Decay eligibility traces during sleep

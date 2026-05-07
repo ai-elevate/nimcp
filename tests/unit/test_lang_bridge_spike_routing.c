@@ -199,6 +199,48 @@ static void test_tick_decays_activation(void)
     snn_language_bridge_destroy(b);
 }
 
+/* Walkthrough round 1 add: attaching a pop wider than the bridge cap is
+ * legal (modulo aliasing is intended) but should still succeed. The
+ * bridge logs a warning about the collision factor; the call must not
+ * fail or return -1. */
+static void test_attach_overlarge_pop_warns_but_succeeds(void)
+{
+    snn_language_bridge_t* b = mk_bridge(/*cap_c*/64, /*cap_w*/64);
+    EXPECT(b != NULL, "create"); if (!b) return;
+
+    /* SNN pop has 4× more neurons than bridge cap → collision_factor=4. */
+    EXPECT(snn_language_bridge_attach_snn_pop(b, /*pop_id*/42, /*n*/256,
+                                                SNN_LANG_POP_ROLE_WORD) == 0,
+            "attach with n_neurons > cap accepted (warns)");
+
+    /* Verify the registration via iterator. */
+    int found_pid = -1;
+    uint32_t found_n = 0;
+    snn_lang_pop_role_t found_role = SNN_LANG_POP_ROLE_CONCEPT;
+    for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
+        int pid = -1; uint32_t nn = 0; snn_lang_pop_role_t r;
+        snn_language_bridge_get_attached_pop(b, i, &pid, &nn, &r);
+        if (pid == 42) { found_pid = pid; found_n = nn; found_role = r; break; }
+    }
+    EXPECT(found_pid == 42 && found_n == 256
+           && found_role == SNN_LANG_POP_ROLE_WORD,
+            "stored attach has n=%u role=%d", found_n, (int)found_role);
+
+    /* Drain with overlarge spike_output: every neuron firing → modulo
+     * folds them into 64 bridge slots. Decay (with reasonable tau) keeps
+     * the resulting activations bounded — verify the call returns 0. */
+    EXPECT(snn_language_bridge_set_snn_spike_routing(b, true, 50.0f) == 0,
+            "enable routing tau=50ms");
+    float* spikes = (float*)calloc(256, sizeof(float));
+    for (int i = 0; i < 256; i++) spikes[i] = 1.0f;  /* every neuron fires */
+    EXPECT(snn_language_bridge_drain_pop_spikes(b, /*pop_id*/42,
+                                                  spikes, 256, 1.0f) == 0,
+            "drain accepts overlarge n_neurons");
+    free(spikes);
+
+    snn_language_bridge_destroy(b);
+}
+
 int main(void)
 {
     fprintf(stderr, "[PA-3] test_lang_bridge_spike_routing\n");
@@ -207,9 +249,10 @@ int main(void)
     test_attach_pop_table_capacity();
     test_drain_routes_when_enabled();
     test_tick_decays_activation();
+    test_attach_overlarge_pop_warns_but_succeeds();
 
     if (g_failures == 0) {
-        fprintf(stderr, "OK — all 5 tests passed\n");
+        fprintf(stderr, "OK — all 6 tests passed\n");
         return 0;
     } else {
         fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);

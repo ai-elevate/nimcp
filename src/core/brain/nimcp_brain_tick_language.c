@@ -66,14 +66,13 @@ static void brain_tick_lang_bridge_spike_routing(brain_t brain, float dt_ms)
 {
     if (!brain || !brain->snn_lang_bridge || !brain->snn_network) return;
 
-    /* Wallclock approximation for STDP timing — monotonic tick accumulator.
-     * SNN step runs before brain_tick_language in the global coordinator,
-     * so spike_output for this tick is fresh. The accumulator is per-call
-     * (not per-brain), which is fine because tests run a single brain at
-     * a time and the only requirement is that t_ms increases monotonically
-     * across consecutive drain calls. */
-    static float t_ms = 0.0f;
-    t_ms += dt_ms;
+    /* Wallclock approximation for STDP timing — monotonic ms accumulator
+     * stored on `brain` (one per brain, not a function-static so multiple
+     * brains in the same process don't share STDP timing). SNN step runs
+     * before brain_tick_language in the global coordinator, so spike_output
+     * for this tick is fresh. */
+    brain->lang_bridge_t_ms += dt_ms;
+    float t_ms = brain->lang_bridge_t_ms;
 
     for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
         int pop_id = -1;

@@ -258,15 +258,64 @@ static void test_emb_cache_called_once_per_word(void)
     snn_language_bridge_destroy(b);
 }
 
+/* Walkthrough round 1 add: zero-vector embedding edge case.
+ * The bridge stores ‖emb[w]‖ as sqrtf(Σ + 1e-6) — the +eps floor exists
+ * specifically to keep cosine division safe. Verify decode does not NaN
+ * or crash when a registered word's embedding is the zero vector, and
+ * that the affected word's glove_score reduces to ≈ 0 (not Inf). */
+static void test_zero_vector_embedding_safe(void)
+{
+    snn_language_bridge_t* b = make_bridge(4);
+    EXPECT(b != NULL, "bridge create");
+    if (!b) return;
+
+    for (uint32_t c = 0; c < 4; c++) register_concept(b, c, 400 + c);
+    register_word(b, 0, "A");
+    register_word(b, 1, "B");
+    snn_language_bridge_bind(b, 0, 0, 1.0f);
+    snn_language_bridge_bind(b, 0, 1, 1.0f);
+
+    mock_emb_ctx_t mock = {0};
+    /* A's embedding is the zero vector. B's is unit-aligned with intent. */
+    /* mock.emb is calloc'd zero by default → A is all zeros. */
+    mock.emb[1][0] = 1.0f;
+
+    EXPECT(snn_language_bridge_set_embedding_lookup(b, mock_lookup,
+                                                     &mock, 4) == 0,
+            "set lookup");
+    EXPECT(snn_language_bridge_set_glove_blend(b, 1.0f) == 0,
+            "blend=1 (pure GloVe ranking)");
+
+    float intent[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+    snn_lang_word_result_t r[2]; uint32_t n = 0;
+    snn_language_bridge_decode_spikes(b, intent, 4, r, 2, &n);
+
+    EXPECT(n >= 1, "decode returned results without NaN/Inf");
+    /* B has glove_score = 1 (perfect alignment); A has glove_score ≈ 0
+     * (zero-vec embedding via eps floor). B must win. */
+    EXPECT(n >= 1 && r[0].word_form && strcmp(r[0].word_form, "B") == 0,
+            "B (unit-aligned) must beat A (zero-vec) under blend=1; got %s",
+            n >= 1 && r[0].word_form ? r[0].word_form : "(null)");
+
+    /* Numerical sanity: scores must be finite. */
+    for (uint32_t i = 0; i < n; i++) {
+        EXPECT(isfinite(r[i].activation), "score[%u]=%g must be finite",
+                i, r[i].activation);
+    }
+
+    snn_language_bridge_destroy(b);
+}
+
 int main(void)
 {
     fprintf(stderr, "[PA-5] test_lang_bridge_glove_blend\n");
     test_glove_blend_zero_matches_binding_only();
     test_glove_blend_one_overrides_binding();
     test_emb_cache_called_once_per_word();
+    test_zero_vector_embedding_safe();
 
     if (g_failures == 0) {
-        fprintf(stderr, "OK — all 3 tests passed\n");
+        fprintf(stderr, "OK — all 4 tests passed\n");
         return 0;
     } else {
         fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);

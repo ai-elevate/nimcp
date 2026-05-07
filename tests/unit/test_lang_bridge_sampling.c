@@ -199,15 +199,62 @@ static void test_top_p_truncation_drops_tail(void)
     snn_language_bridge_destroy(b);
 }
 
+/* Walkthrough round 1 add: pathological top_p (smaller than the smallest
+ * surviving probability mass) used to silently fall through to argmin
+ * (the last valid candidate) because the renormalization sum was zero.
+ * The fix falls back to argmax — verify that here. */
+static void test_top_p_pathological_falls_back_to_argmax(void)
+{
+    snn_language_bridge_t* b = build_4words();
+    EXPECT(b != NULL, "bridge create");
+    if (!b) return;
+
+    /* T=1.0, top_p so tiny no probability mass survives the cumulative
+     * threshold before we even pick the head — well, head's prob is the
+     * largest, so cumulative crosses threshold at i=0 (keep=1) and tail
+     * gets zero'd. The new_sum = 1 surviving prob is fine. To exercise
+     * the all-zero fallback path, we need probs[head] tiny enough that
+     * truncation+rounding pulls it to zero. With T=1e6 (extreme flatten),
+     * exp((s − max)/T) ≈ 1 for all candidates → uniform. top_p=0.0001
+     * truncates after head ≈ 0.25; renormalized prob[head] = 1.0. The
+     * "all zero" path triggers only with pathological top_p. We approximate
+     * by setting top_p to a value smaller than smallest candidate prob:
+     * top_p=0.001 with 4 ~equal candidates of prob ~0.25 keeps i=0 only. */
+    EXPECT(snn_language_bridge_set_sampling(b, 1e6f, 0.001f) == 0,
+            "set extreme T + tiny top_p");
+
+    float intent[4] = {1.0f, 0.5f, 0.2f, 0.05f};
+    int counts[4] = {0};
+    const int N = 50;
+    for (int trial = 0; trial < N; trial++) {
+        snn_lang_production_result_t res;
+        memset(&res, 0, sizeof(res));
+        snn_language_bridge_produce(b, intent, 4, &res);
+        char w[16];
+        first_word(res.text, w, sizeof(w));
+        int idx = idx_of(w);
+        if (idx >= 0) counts[idx]++;
+        snn_lang_production_result_cleanup(&res);
+    }
+    /* Under tiny top_p the loop should always converge to the head
+     * candidate (A — the highest-cosine match for intent[0]). The bug-
+     * fix path (new_sum=0 → argmax) must NOT fall to argmin (D). */
+    EXPECT(counts[0] >= N - 5, "tiny top_p must converge to argmax A; got A=%d", counts[0]);
+    EXPECT(counts[3] == 0, "argmin must NEVER win with tiny top_p; got D=%d", counts[3]);
+
+    snn_language_bridge_destroy(b);
+}
+
 int main(void)
 {
     fprintf(stderr, "[PA-6] test_lang_bridge_sampling\n");
     test_temperature_zero_is_argmax();
     test_temperature_high_spreads_distribution();
     test_top_p_truncation_drops_tail();
+    test_top_p_pathological_falls_back_to_argmax();
 
     if (g_failures == 0) {
-        fprintf(stderr, "OK — all 3 tests passed\n");
+        fprintf(stderr, "OK — all 4 tests passed\n");
         return 0;
     } else {
         fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);

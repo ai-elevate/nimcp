@@ -1432,6 +1432,11 @@ struct brain_struct {
     // Grounded Language System (human-like word-concept binding)
     struct grounded_language* grounded_lang;                           // Grounded lexicon + production
     struct snn_language_bridge* snn_lang_bridge;                      // SNN spike-driven word-concept binding
+    /* PA-3 walkthrough fix: monotonic ms accumulator for the bridge
+     * spike-routing path (replaces a thread-unsafe `static float` in
+     * brain_tick_language). Per-brain so multiple brains in the same
+     * process don't share STDP timing. Bumped by dt_ms each call. */
+    float                       lang_bridge_t_ms;
     struct snn_speech_bridge* snn_speech_bridge;                      // SNN spike-driven speech production/comprehension
     struct formant_synth* formant_synth;                              // Formant voice synthesizer (Athena's voice)
     struct lnn_network_s* lnn_prosody;                                // LNN for prosody/F0 contour prediction
