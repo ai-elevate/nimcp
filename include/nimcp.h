@@ -1088,6 +1088,20 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_glove_blend(
 );
 
 /**
+ * @brief PA-3: configure SNN-spike → bridge STDP routing.
+ *
+ * Master gate for the path that drains Broca/Wernicke spike_output through
+ * the bridge each tick. Default OFF — must be explicitly enabled to avoid
+ * recreating the prior accumulator-runaway sparsity collapse. tau_ms is
+ * the activation decay time constant; required > 0 when enabled.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_spike_routing(
+    nimcp_brain_t brain,
+    bool enabled,
+    float tau_ms
+);
+
+/**
  * @brief PA-4: train the SNN language bridge on a single (prev, next) bigram
  *        via a next-token contrastive update.
  *

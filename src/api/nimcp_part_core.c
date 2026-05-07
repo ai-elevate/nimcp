@@ -3612,6 +3612,21 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_autoregressive(
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_snn_language_bridge_spike_routing(
+    nimcp_brain_t brain,
+    bool enabled,
+    float tau_ms)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_snn_spike_routing(b->snn_lang_bridge,
+                                                        enabled, tau_ms);
+    if (rc != 0) return NIMCP_ERROR_INVALID;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_pair(nimcp_brain_t brain,
                                                    const char* prev_word,
                                                    const char* next_word,

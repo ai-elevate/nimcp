@@ -37,6 +37,7 @@ extern "C" {
 
 #define SNN_LANG_MAX_CONCEPT_POPS     4096
 #define SNN_LANG_MAX_WORD_POPS        16384
+#define SNN_LANG_MAX_ATTACHED_POPS    8
 #define SNN_LANG_NEURONS_PER_POP      8
 #define SNN_LANG_DEFAULT_STDP_TAU     50.0f   // ms (wider than standard 20ms)
 #define SNN_LANG_DEFAULT_STDP_A_PLUS  0.008f
@@ -124,6 +125,15 @@ typedef struct {
      * of-words ranked by drifted activation). */
     float    intent_persistence;
     float    word_feedback;
+    /* PA-3: SNN-spike → bridge STDP wiring. enable_snn_spike_routing
+     * (default false) gates the entire path. When enabled, drain
+     * spike_output from attached Broca/Wernicke pops per global tick
+     * and route through concept_spike / word_spike. activation_tau_ms
+     * is the decay time constant for concept_pops[].activation and
+     * word_pops[].activation — required to be > 0 to prevent the
+     * accumulator runaway that previously drove SNN sparsity to 0.00. */
+    bool     enable_snn_spike_routing;
+    float    activation_tau_ms;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -434,6 +444,61 @@ int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge);
 int snn_language_bridge_set_autoregressive(snn_language_bridge_t* bridge,
                                             float intent_persistence,
                                             float word_feedback);
+
+/** PA-3: role of an attached SNN population. CONCEPT routes spikes through
+ * snn_language_bridge_concept_spike (Wernicke / arcuate / comprehension
+ * tier). WORD routes through snn_language_bridge_word_spike (Broca /
+ * production tier). */
+typedef enum {
+    SNN_LANG_POP_ROLE_CONCEPT = 0,
+    SNN_LANG_POP_ROLE_WORD    = 1
+} snn_lang_pop_role_t;
+
+/** PA-3: configure SNN-spike routing.
+ *
+ * @param enabled    Master gate. False (default) disables the entire path
+ *                   to prevent the previously-observed sparsity collapse.
+ * @param tau_ms     Per-tick decay time constant for activation accumulators.
+ *                   Must be > 0 when enabled is true. Suggested 200 ms.
+ * @return 0 on success; -1 if bridge invalid or tau invalid given enabled.
+ */
+int snn_language_bridge_set_snn_spike_routing(snn_language_bridge_t* bridge,
+                                               bool enabled, float tau_ms);
+
+/** PA-3: register an SNN population for spike routing through this bridge.
+ * Up to SNN_LANG_MAX_ATTACHED_POPS attached at once. Re-attaching with a
+ * known pop_id updates the role.
+ * @return 0 on success; -1 if bridge invalid or attach table full. */
+int snn_language_bridge_attach_snn_pop(snn_language_bridge_t* bridge,
+                                        int snn_pop_id,
+                                        uint32_t n_neurons,
+                                        snn_lang_pop_role_t role);
+
+/** PA-3: drain spike_output for one attached SNN pop and route each fired
+ * neuron through concept_spike or word_spike according to its registered
+ * role. Bridge-side neuron→pop mapping is `neuron_idx % MAX_*_POPS`.
+ * @param spike_output   spike_output[] from the SNN pop, length n_neurons.
+ * @param current_time_ms wallclock timestamp of the current tick (for STDP).
+ * @return 0 on success; -1 if pop_id not registered or bridge invalid. */
+int snn_language_bridge_drain_pop_spikes(snn_language_bridge_t* bridge,
+                                          int snn_pop_id,
+                                          const float* spike_output,
+                                          uint32_t n_neurons,
+                                          float current_time_ms);
+
+/** PA-3: per-tick decay on activation accumulators. Must be called once
+ * per global tick (cadence ~10 ms) when spike routing is enabled, or the
+ * activations diverge.
+ * @return 0 on success; -1 if bridge invalid. */
+int snn_language_bridge_tick(snn_language_bridge_t* bridge, float dt_ms);
+
+/** PA-3: iterate attached SNN pops. Returns -1 on invalid bridge or out-of-
+ * range index; 0 with `*pop_id < 0` indicates an empty slot to skip. */
+int snn_language_bridge_get_attached_pop(const snn_language_bridge_t* bridge,
+                                          uint32_t index,
+                                          int* out_pop_id,
+                                          uint32_t* out_n_neurons,
+                                          snn_lang_pop_role_t* out_role);
 
 //=============================================================================
 // Serialization

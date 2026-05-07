@@ -12,6 +12,7 @@
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_synapse.h"
 #include "snn/nimcp_snn_types.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 
 #include <string.h>
@@ -304,6 +305,24 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
         LOG_DEBUG(LOG_MODULE,
                   "wernicke adapter not yet created — skipping attach "
                   "(retry once adapter is initialized)");
+    }
+
+    /* PA-3: also register both pops with the SNN-language bridge so that
+     * brain_tick_language can drain spike_output → STDP. Inert until the
+     * caller flips bridge->config.enable_snn_spike_routing on. */
+    if (brain->snn_lang_bridge) {
+        if (broca_pop_id >= 0) {
+            (void)snn_language_bridge_attach_snn_pop(brain->snn_lang_bridge,
+                                                      broca_pop_id,
+                                                      LANG_BROCA_POP_NEURONS,
+                                                      SNN_LANG_POP_ROLE_WORD);
+        }
+        if (wernicke_pop_id >= 0) {
+            (void)snn_language_bridge_attach_snn_pop(brain->snn_lang_bridge,
+                                                      wernicke_pop_id,
+                                                      LANG_WERNICKE_POP_NEURONS,
+                                                      SNN_LANG_POP_ROLE_CONCEPT);
+        }
     }
 }
 

@@ -1447,6 +1447,26 @@ class BrainService:
                 "intent_persistence": intent_persistence,
                 "word_feedback":      word_feedback}
 
+    def _cmd_set_snn_language_bridge_spike_routing(self, req):
+        """PA-3: master gate for SNN-spike → bridge STDP routing.
+
+        Request keys:
+          enabled  (bool, required)
+          tau_ms   (float, default 200) — activation decay time constant.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            tau_ms = float(req.get("tau_ms", 200.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_spike_routing bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_spike_routing(enabled, tau_ms)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_spike_routing not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_spike_routing: {e}"}
+        return {"ok": True, "enabled": enabled, "tau_ms": tau_ms}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 

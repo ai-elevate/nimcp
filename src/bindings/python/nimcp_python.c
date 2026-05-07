@@ -2956,6 +2956,28 @@ static PyObject* Brain_set_snn_language_bridge_autoregressive(BrainObject* self,
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_set_snn_language_bridge_spike_routing(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    float tau_ms = 200.0f;
+    if (!PyArg_ParseTuple(args, "p|f", &enabled, &tau_ms)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_spike_routing(
+        self->brain, enabled ? true : false, tau_ms);
+    if (s == NIMCP_ERROR_INVALID) {
+        PyErr_Format(PyExc_ValueError,
+                     "set_spike_routing rejected (tau_ms must be > 0 when enabled)");
+        return NULL;
+    }
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -10936,6 +10958,8 @@ static PyMethodDef Brain_methods[] = {
      "PA-5: GloVe-aware decode blend [0,1] — set_snn_language_bridge_glove_blend(blend) -> None. 0=binding-only, 1=embedding-only."},
     {"set_snn_language_bridge_autoregressive", (PyCFunction)Brain_set_snn_language_bridge_autoregressive, METH_VARARGS,
      "PA-2: configure autoregressive decoder — set_snn_language_bridge_autoregressive(intent_persistence, word_feedback) -> None. intent_persistence=0 → legacy in-place blend; >0 keeps prompt intent present every step."},
+    {"set_snn_language_bridge_spike_routing", (PyCFunction)Brain_set_snn_language_bridge_spike_routing, METH_VARARGS,
+     "PA-3: enable/disable real SNN-spike routing through the bridge — set_snn_language_bridge_spike_routing(enabled, tau_ms=200) -> None. Default OFF; tau_ms must be > 0 when enabled (decay safeguard)."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
     {"learn_text_bigrams", (PyCFunction)Brain_learn_text_bigrams, METH_VARARGS,

@@ -106,6 +106,16 @@ struct snn_language_bridge {
     uint8_t*            word_emb_cached;
     float*              word_emb_norm;
 
+    /* PA-3: SNN-spike routing — table of attached SNN pops + their roles.
+     * Drain loop iterates this table once per tick. snn_pop_id < 0 marks
+     * an empty slot. */
+    struct {
+        int                 snn_pop_id;
+        uint32_t            n_neurons;
+        snn_lang_pop_role_t role;
+    } attached_pops[SNN_LANG_MAX_ATTACHED_POPS];
+    uint32_t                n_attached_pops;
+
     // Connected subsystems
     struct grounded_language* grounded_lang;
     struct imagination_snn_bridge* imagination;
@@ -248,7 +258,13 @@ snn_lang_config_t snn_lang_config_default(void)
         /* PA-2: autoregressive defaults match legacy 0.7/0.3 in-place blend
          * (intent_persistence = 0 → state-driven; word_feedback = 0.3). */
         .intent_persistence = 0.0f,
-        .word_feedback      = 0.3f
+        .word_feedback      = 0.3f,
+        /* PA-3: spike routing OFF by default — explicit opt-in required to
+         * avoid recreating the prior sparsity-collapse failure mode.
+         * activation_tau_ms = 200 is a safe non-zero value; ignored when
+         * the master flag is off. */
+        .enable_snn_spike_routing = false,
+        .activation_tau_ms        = 200.0f
     };
     return config;
 }
@@ -314,6 +330,12 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
     /* PA-6: seed sampling RNG. xorshift64* requires nonzero seed. */
     bridge->rng_state = (uint64_t)time(NULL) ^ ((uintptr_t)bridge * 0x9E3779B97F4A7C15ULL);
     if (bridge->rng_state == 0) bridge->rng_state = 0xDEADBEEF;
+
+    /* PA-3: empty attached-pops table (snn_pop_id < 0 = unused slot). */
+    for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
+        bridge->attached_pops[i].snn_pop_id = -1;
+    }
+    bridge->n_attached_pops = 0;
 
     bbb_register_module("snn_language_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
@@ -932,6 +954,149 @@ int snn_language_bridge_set_autoregressive(snn_language_bridge_t* bridge,
         word_feedback < 0.0f || word_feedback > 1.0f) return -1;
     bridge->config.intent_persistence = intent_persistence;
     bridge->config.word_feedback      = word_feedback;
+    return 0;
+}
+
+/* ============================================================================
+ * PA-3: SNN-spike routing.
+ *
+ * The decode/comprehend paths previously relied on synthesized spike events
+ * issued at lexicon-bind time, which caused SNN sparsity collapse — without
+ * decay on concept_pops[].activation, every accumulated spike summed forever
+ * and the attention-feedback path broadcast "attend everything" to the
+ * sensory bridges. This API re-introduces real spike routing with three
+ * mandatory safeguards:
+ *
+ *   1. Master flag (config.enable_snn_spike_routing) defaults to false.
+ *   2. activation_tau_ms must be > 0 when the flag is true (rejected here).
+ *   3. snn_language_bridge_tick() applies exponential decay every global
+ *      tick, so accumulators cannot drift unbounded even at high spike
+ *      rates.
+ * ============================================================================ */
+int snn_language_bridge_set_snn_spike_routing(snn_language_bridge_t* bridge,
+                                                bool enabled, float tau_ms)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (enabled) {
+        if (!isfinite(tau_ms) || tau_ms <= 0.0f) return -1;
+    }
+    bridge->config.enable_snn_spike_routing = enabled;
+    if (isfinite(tau_ms) && tau_ms > 0.0f) {
+        bridge->config.activation_tau_ms = tau_ms;
+    }
+    return 0;
+}
+
+int snn_language_bridge_attach_snn_pop(snn_language_bridge_t* bridge,
+                                        int snn_pop_id, uint32_t n_neurons,
+                                        snn_lang_pop_role_t role)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (snn_pop_id < 0 || n_neurons == 0) return -1;
+
+    /* Update existing slot if pop_id is already attached. */
+    for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
+        if (bridge->attached_pops[i].snn_pop_id == snn_pop_id) {
+            bridge->attached_pops[i].n_neurons = n_neurons;
+            bridge->attached_pops[i].role      = role;
+            return 0;
+        }
+    }
+    /* Otherwise grab the first free slot. */
+    for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
+        if (bridge->attached_pops[i].snn_pop_id < 0) {
+            bridge->attached_pops[i].snn_pop_id = snn_pop_id;
+            bridge->attached_pops[i].n_neurons  = n_neurons;
+            bridge->attached_pops[i].role       = role;
+            bridge->n_attached_pops++;
+            return 0;
+        }
+    }
+    return -1;  /* table full */
+}
+
+int snn_language_bridge_drain_pop_spikes(snn_language_bridge_t* bridge,
+                                           int snn_pop_id,
+                                           const float* spike_output,
+                                           uint32_t n_neurons,
+                                           float current_time_ms)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!spike_output) return -1;
+    if (!bridge->config.enable_snn_spike_routing) return 0;  /* gated off */
+
+    /* Look up role for this pop_id. */
+    snn_lang_pop_role_t role = SNN_LANG_POP_ROLE_CONCEPT;
+    bool found = false;
+    for (uint32_t i = 0; i < SNN_LANG_MAX_ATTACHED_POPS; i++) {
+        if (bridge->attached_pops[i].snn_pop_id == snn_pop_id) {
+            role = bridge->attached_pops[i].role;
+            found = true;
+            break;
+        }
+    }
+    if (!found) return -1;
+
+    bridge->current_time_ms = current_time_ms;
+
+    /* Walk spikes. neuron_idx → bridge pop index via modulo of bridge cap.
+     * Multiple SNN neurons can map to the same bridge pop (synonyms-by-
+     * collision; same pattern as the existing form_hash mirror). STDP
+     * trace updates merge near-time spikes naturally. */
+    if (role == SNN_LANG_POP_ROLE_WORD) {
+        const uint32_t cap = bridge->word_pops_capacity > 0
+                              ? bridge->word_pops_capacity
+                              : SNN_LANG_MAX_WORD_POPS;
+        for (uint32_t n = 0; n < n_neurons; n++) {
+            if (spike_output[n] > 0.5f) {
+                snn_language_bridge_word_spike(bridge, n % cap, current_time_ms);
+            }
+        }
+    } else {
+        const uint32_t cap = bridge->concept_pops_capacity > 0
+                              ? bridge->concept_pops_capacity
+                              : SNN_LANG_MAX_CONCEPT_POPS;
+        for (uint32_t n = 0; n < n_neurons; n++) {
+            if (spike_output[n] > 0.5f) {
+                snn_language_bridge_concept_spike(bridge, n % cap, current_time_ms);
+            }
+        }
+    }
+    return 0;
+}
+
+int snn_language_bridge_tick(snn_language_bridge_t* bridge, float dt_ms)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(dt_ms) || dt_ms < 0.0f) return -1;
+
+    /* Always-on decay (independent of spike-routing flag) — cheap and
+     * idempotent; keeps activations bounded even when callers synthesize
+     * spikes through other paths. */
+    float tau = bridge->config.activation_tau_ms > 0.0f
+                  ? bridge->config.activation_tau_ms : 200.0f;
+    float decay = expf(-dt_ms / tau);
+
+    for (uint32_t c = 0; c < bridge->concept_pops_capacity; c++) {
+        bridge->concept_pops[c].activation *= decay;
+    }
+    for (uint32_t w = 0; w < bridge->word_pops_capacity; w++) {
+        bridge->word_pops[w].activation *= decay;
+    }
+    return 0;
+}
+
+int snn_language_bridge_get_attached_pop(const snn_language_bridge_t* bridge,
+                                          uint32_t index,
+                                          int* out_pop_id,
+                                          uint32_t* out_n_neurons,
+                                          snn_lang_pop_role_t* out_role)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (index >= SNN_LANG_MAX_ATTACHED_POPS) return -1;
+    if (out_pop_id)     *out_pop_id     = bridge->attached_pops[index].snn_pop_id;
+    if (out_n_neurons)  *out_n_neurons  = bridge->attached_pops[index].n_neurons;
+    if (out_role)       *out_role       = bridge->attached_pops[index].role;
     return 0;
 }
 
