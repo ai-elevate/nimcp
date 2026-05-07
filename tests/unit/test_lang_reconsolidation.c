@@ -191,6 +191,52 @@ static void test_comprehend_with_negation(void)
     grounded_language_destroy(gl);
 }
 
+/* Regression: TA-5 in comprehend depends on TA-3-/Tier-2-#3 negation
+ * pass — without enable_negation_inversion the negate_word[] flags
+ * stay all-false and the reconsolidation pass has nothing to act on.
+ * Documents the dependency and verifies the no-fire case. */
+static void test_requires_negation_inversion(void)
+{
+    grounded_language_t* gl = grounded_language_create(0, NULL);
+    EXPECT(gl != NULL, "create");
+    if (!gl) return;
+
+    /* Both flags togglable. */
+    grounded_language_set_reconsolidation_enabled(gl, true);
+    grounded_language_set_reconsolidation_decay(gl, 0.2f);
+    /* Disable the negation pass — TA-5 should not fire. */
+    grounded_language_set_negation_enabled(gl, false);
+    EXPECT(!grounded_language_get_negation_enabled(gl),
+           "negation OFF");
+    EXPECT(grounded_language_get_reconsolidation_enabled(gl),
+           "reconsolidation ON");
+
+    register_word(gl, "whale", 13);
+    float s_before = get_first_binding_strength(gl, "whale");
+    EXPECT(s_before > 0.0f, "whale binding, got %.4f", s_before);
+
+    gl_comprehension_result_t r;
+    memset(&r, 0, sizeof(r));
+    int rc = grounded_language_comprehend(gl, "this is not whale", &r);
+    EXPECT(rc == 0, "comprehend rc=%d", rc);
+    gl_comprehension_result_cleanup(&r);
+
+    /* Without negation pass running, no decay. */
+    float s_after = get_first_binding_strength(gl, "whale");
+    EXPECT(fabsf(s_after - s_before) < 1e-6f,
+           "negation OFF + recon ON: binding unchanged "
+           "before=%.4f after=%.4f", s_before, s_after);
+
+    /* And no reconsolidation_events should have fired. */
+    gl_stats_t stats;
+    grounded_language_get_stats(gl, &stats);
+    EXPECT(stats.reconsolidation_events == 0,
+           "events must stay 0 when negation is OFF, got %llu",
+           (unsigned long long)stats.reconsolidation_events);
+
+    grounded_language_destroy(gl);
+}
+
 int main(void)
 {
     fprintf(stderr, "=== test_lang_reconsolidation (TA-5) ===\n");
@@ -198,6 +244,7 @@ int main(void)
     test_direct_api();
     test_decay_clamp();
     test_comprehend_with_negation();
+    test_requires_negation_inversion();
 
     if (g_failures == 0) {
         fprintf(stderr, "ALL PASS\n");

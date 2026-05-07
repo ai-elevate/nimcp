@@ -485,6 +485,14 @@ bool grounded_language_get_negation_enabled(
  * negation-marked content word that has lexicon bindings has those
  * bindings' strength multiplied by (1 - reconsolidation_decay) and the
  * bumped exposure_count incremented (so re-asserted bindings recover).
+ *
+ * DEPENDENCY: Reconsolidation reads negate_word[] from the comprehend
+ * negation pass. When enable_negation_inversion is OFF (Tier-2 #3),
+ * the negation pass never fires, negate_word[] stays all-false, and
+ * reconsolidation has nothing to act on — even if enable_reconsolidation
+ * is ON, no events fire. Both toggles must be ON together for TA-5 to
+ * have any effect. Direct calls to grounded_language_reconsolidate_word
+ * bypass this dependency and run the decay directly on the named word.
  *===========================================================================*/
 
 /** Default decay applied per reconsolidation event (5% off binding
