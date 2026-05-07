@@ -68,8 +68,23 @@ typedef struct language_orchestrator language_orchestrator_t;
 int language_orchestrator_update(language_orchestrator_t* orchestrator,
                                    uint64_t current_time_ms);
 
+/* CC-1: forward decl for the bigram-spectrum periodic refresh. Defined
+ * in src/language/nimcp_grounded_language.c. NULL-safe; returns 1 if the
+ * spectral compute ran this tick, 0 otherwise. */
+struct grounded_language;
+typedef struct grounded_language grounded_language_t;
+int grounded_language_tick_bigram_spectrum(grounded_language_t* gl,
+                                             uint64_t min_delta_events);
+
 /* Maximum bio-router messages drained per language adapter per tick. */
 #define _LANG_BIO_BATCH 32u
+
+/* CC-1: target ~1Hz for bigram-spectrum FFT refresh. brain_tick_language
+ * fires on the 16ms BRAIN_CYCLE_LANGUAGE cadence, so 62 ticks ≈ 1s. The
+ * refresh is also gated by min_delta_events on the spectrum side, so an
+ * idle brain (no new bigram events) does no work even on every tick. */
+#define _LANG_SPECTRUM_TICK_DIVISOR  62u
+#define _LANG_SPECTRUM_MIN_DELTA      8ull
 
 /* PA-3: drain Broca/Wernicke spike_output through the SNN language bridge.
  * Inert until the caller flips bridge->config.enable_snn_spike_routing on
@@ -156,5 +171,20 @@ void brain_tick_language(brain_t brain, float dt_ms)
         (void)language_orchestrator_update(
             (language_orchestrator_t*)brain->language_layer,
             (uint64_t)brain->lang_bridge_t_ms);
+    }
+
+    /* CC-1: ~1Hz periodic refresh of the attached bigram-spectrum cache.
+     * Per-brain tick counter so multi-brain processes don't share phase.
+     * The spectrum is owned by grounded_language; if none is attached
+     * the call is a no-op. min_delta_events further gates the FFT pass
+     * so idle brains don't burn cycles re-computing identical metrics. */
+    if (brain->grounded_lang) {
+        brain->lang_spectrum_tick_counter++;
+        if (brain->lang_spectrum_tick_counter >= _LANG_SPECTRUM_TICK_DIVISOR) {
+            brain->lang_spectrum_tick_counter = 0;
+            (void)grounded_language_tick_bigram_spectrum(
+                (grounded_language_t*)brain->grounded_lang,
+                _LANG_SPECTRUM_MIN_DELTA);
+        }
     }
 }

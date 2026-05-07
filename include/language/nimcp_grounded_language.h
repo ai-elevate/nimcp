@@ -955,6 +955,25 @@ void grounded_language_attach_bigram_spectrum(
     void* spectrum);
 
 /**
+ * @brief CC-1 — periodic refresh of the attached bigram-spectrum cache.
+ *
+ * Called from the BRAIN_CYCLE_LANGUAGE tick (16ms). Internally invokes
+ * bigram_spectrum_maybe_compute(), which only runs the FFT/entropy pass
+ * when at least `min_delta_events` new bigram events have been recorded
+ * since the last successful compute. NULL-safe: when no spectrum is
+ * attached, returns 0 with no side effects.
+ *
+ * @param gl                System handle (NULL → 0).
+ * @param min_delta_events  Minimum new bigram events required to refresh
+ *                          (gate against busy-spinning compute on idle).
+ * @return  1 = compute ran, 0 = skipped (no spectrum or below threshold),
+ *         -1 = compute failure.
+ */
+int grounded_language_tick_bigram_spectrum(
+    grounded_language_t* gl,
+    uint64_t min_delta_events);
+
+/**
  * @brief Walkthrough round 3 observability: how many `learn_next_token_pair`
  *        calls hit the cold-start guard (encode_word returned all-zeros)
  *        and were skipped silently. Process-global counter; useful for

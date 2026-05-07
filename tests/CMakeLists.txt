@@ -49,6 +49,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_lgss_gates
     test_lang_trigram_learning
     test_lang_immune_inspection
+    test_lang_spectrum_tick
 )
 
 # Helper: register a single standalone-C test.

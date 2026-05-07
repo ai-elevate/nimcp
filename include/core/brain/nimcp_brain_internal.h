@@ -1437,6 +1437,12 @@ struct brain_struct {
      * brain_tick_language). Per-brain so multiple brains in the same
      * process don't share STDP timing. Bumped by dt_ms each call. */
     float                       lang_bridge_t_ms;
+    /* CC-1: tick counter for the periodic bigram-spectrum FFT refresh,
+     * bumped each call to brain_tick_language. When it crosses
+     * _LANG_SPECTRUM_TICK_DIVISOR (~62 ticks @ 16ms = ~1Hz) the driver
+     * calls grounded_language_tick_bigram_spectrum. Per-brain so
+     * multi-brain processes don't share phase. */
+    uint16_t                    lang_spectrum_tick_counter;
     struct snn_speech_bridge* snn_speech_bridge;                      // SNN spike-driven speech production/comprehension
     struct formant_synth* formant_synth;                              // Formant voice synthesizer (Athena's voice)
     struct lnn_network_s* lnn_prosody;                                // LNN for prosody/F0 contour prediction

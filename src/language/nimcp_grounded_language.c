@@ -3789,6 +3789,17 @@ void grounded_language_attach_bigram_spectrum(grounded_language_t* gl,
              GL_SPECTRUM_MAP_CAP, (void*)gl);
 }
 
+int grounded_language_tick_bigram_spectrum(grounded_language_t* gl,
+                                             uint64_t min_delta_events) {
+    if (!gl) return 0;
+    bigram_spectrum_t* bs = gl_get_attached_spectrum(gl);
+    if (!bs) return 0;
+    bool ran = false;
+    int rc = bigram_spectrum_maybe_compute(bs, min_delta_events, &ran);
+    if (rc < 0) return -1;
+    return ran ? 1 : 0;
+}
+
 uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void) {
     pthread_mutex_lock(&g_spectrum_map_lock);
     uint64_t v = g_spectrum_map_overflow_warns;
