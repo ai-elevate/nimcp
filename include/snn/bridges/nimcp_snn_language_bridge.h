@@ -341,6 +341,12 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
 /** Load binding weights and configuration */
 snn_language_bridge_t* snn_language_bridge_load(const char* path);
 
+/** Recompute per-word_pop binding-weight L2 norm cache (Σ weight² per word_pop)
+ * from the current binding state. Used after bulk binding changes and on
+ * bridge load. Cosine-normalized decode_spikes consults this cache to remove
+ * binding-density rank-1 bias. Cheap O(num_bindings); idempotent. */
+int snn_language_bridge_recompute_norms(snn_language_bridge_t* bridge);
+
 //=============================================================================
 // Phase 8.5: Top-Down Binding -> Perception Attention Feedback
 //=============================================================================

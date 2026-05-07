@@ -3557,6 +3557,17 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_blend(
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_recompute_snn_language_bridge_norms(
+    nimcp_brain_t brain)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_recompute_norms(b->snn_lang_bridge);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_creative_blend(
     nimcp_brain_t brain,
     const float* vector_a,

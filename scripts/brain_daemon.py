@@ -1367,6 +1367,18 @@ class BrainService:
             return {"error": f"set_blend: {e}"}
         return {"ok": True, "blend": blend}
 
+    def _cmd_recompute_snn_language_bridge_norms(self, _req):
+        """Patch A salvage: rebuild bridge per-word_pop binding-weight L2 norm
+        cache. Use once after upgrading a pre-Patch-A daemon to seed the cache
+        from existing bindings without restart."""
+        try:
+            self.brain.recompute_snn_language_bridge_norms()
+        except AttributeError:
+            return {"error": "recompute_snn_language_bridge_norms not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"recompute_norms: {e}"}
+        return {"ok": True}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:

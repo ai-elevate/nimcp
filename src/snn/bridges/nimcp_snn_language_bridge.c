@@ -76,6 +76,15 @@ struct snn_language_bridge {
     binding_node_t* binding_buckets[BINDING_HASH_BUCKETS];
     uint32_t num_bindings;
 
+    /* Patch A: per-word_pop sum of squared binding weights, for cosine
+     * normalization in decode_spikes. Sized to word_pops_capacity. Maintained
+     * incrementally on every binding mutation (binding_insert new + max-merge,
+     * STDP weight update). decode_spikes divides word_acts[w] by sqrt(this+ε)
+     * to remove rank-1 binding-density bias. Without this, words that have
+     * accumulated more bindings (curriculum-frequent tokens) win every rank
+     * regardless of input semantic vector. */
+    float* word_norm_sq;
+
     // Connected subsystems
     struct grounded_language* grounded_lang;
     struct imagination_snn_bridge* imagination;
@@ -114,13 +123,32 @@ static binding_node_t* binding_find(snn_language_bridge_t* bridge,
     return NULL;
 }
 
+/* Patch A: maintain word_norm_sq[word_pop] = Σ w² across all bindings
+ * touching word_pop. Δ(Σw²) = new² − old² for any single weight mutation. */
+static inline void norm_update(snn_language_bridge_t* bridge,
+                                uint32_t word_pop,
+                                float old_w, float new_w)
+{
+    if (!bridge->word_norm_sq || word_pop >= bridge->word_pops_capacity) return;
+    float delta = (new_w * new_w) - (old_w * old_w);
+    bridge->word_norm_sq[word_pop] += delta;
+    if (bridge->word_norm_sq[word_pop] < 0.0f) {
+        bridge->word_norm_sq[word_pop] = 0.0f;  /* fp drift floor */
+    }
+}
+
 static binding_node_t* binding_insert(snn_language_bridge_t* bridge,
                                        uint32_t concept_pop, uint32_t word_pop,
                                        float initial_weight)
 {
     binding_node_t* existing = binding_find(bridge, concept_pop, word_pop);
     if (existing) {
-        existing->binding.weight = fmaxf(existing->binding.weight, initial_weight);
+        float old_w = existing->binding.weight;
+        float new_w = fmaxf(old_w, initial_weight);
+        if (new_w != old_w) {
+            existing->binding.weight = new_w;
+            norm_update(bridge, word_pop, old_w, new_w);
+        }
         return existing;
     }
 
@@ -141,6 +169,8 @@ static binding_node_t* binding_insert(snn_language_bridge_t* bridge,
     node->next = bridge->binding_buckets[bucket];
     bridge->binding_buckets[bucket] = node;
     bridge->num_bindings++;
+
+    norm_update(bridge, word_pop, 0.0f, initial_weight);
 
     return node;
 }
@@ -229,6 +259,19 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
         return NULL;
     }
 
+    /* Patch A: per-word_pop binding-weight L2 norm cache. Calloc → all zeros,
+     * which is the correct initial state (no bindings yet). */
+    bridge->word_norm_sq = nimcp_calloc(bridge->word_pops_capacity,
+                                         sizeof(float));
+    if (!bridge->word_norm_sq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_create: failed to allocate word_norm_sq");
+        nimcp_free(bridge->word_pops);
+        nimcp_free(bridge->concept_pops);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
     bbb_register_module("snn_language_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
     LOG_INFO(LOG_MODULE, "SNN language bridge created (concepts=%u, words=%u, blend=%.2f)",
@@ -253,6 +296,7 @@ void snn_language_bridge_destroy(snn_language_bridge_t* bridge)
 
     nimcp_free(bridge->concept_pops);
     nimcp_free(bridge->word_pops);
+    nimcp_free(bridge->word_norm_sq);
 
     bridge->magic = 0;
     nimcp_free(bridge);
@@ -405,42 +449,70 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
         }
     }
 
-    // Find top-k words by activation
+    /* Patch A: cosine-normalize. score[w] = (concept_rates · weight[*, w]) /
+     *                                       ||weight[*, w]||₂
+     * Without this, words with more bindings (or larger total binding mass)
+     * dominate top-K regardless of input direction — diagnosed live as a
+     * rank-1 collapse where the same 4 words win every produce call.
+     * concept_rates is treated as already-comparable across calls (caller
+     * passes l2-normalized intent); we only normalize the binding column. */
+    const float eps = 1e-6f;
+    float* word_scores = nimcp_calloc(n_words, sizeof(float));
+    if (!word_scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "snn_language_bridge_decode_spikes: failed to allocate word_scores");
+        nimcp_free(word_acts);
+        return -1;
+    }
+    for (uint32_t w = 0; w < n_words; w++) {
+        if (!bridge->word_pops[w].registered) {
+            word_scores[w] = -FLT_MAX;
+            continue;
+        }
+        float ns = bridge->word_norm_sq ? bridge->word_norm_sq[w] : 1.0f;
+        float norm = sqrtf(ns + eps);
+        word_scores[w] = word_acts[w] / norm;
+    }
+
+    /* Sum of positive cosine scores for confidence normalization (denominator
+     * of softmax-style attribution). Computed once across the registered set. */
+    float sum_pos = 0.0f;
+    for (uint32_t w = 0; w < n_words; w++) {
+        if (word_scores[w] > 0.0f) sum_pos += word_scores[w];
+    }
+
+    // Find top-k words by cosine score
     for (uint32_t k = 0; k < max_results && k < n_words; k++) {
-        float best_act = -FLT_MAX;
+        float best_score = -FLT_MAX;
         uint32_t best_w = 0;
         bool found = false;
 
         for (uint32_t w = 0; w < n_words; w++) {
             if (!bridge->word_pops[w].registered) continue;
-            if (word_acts[w] > best_act) {
+            if (word_scores[w] > best_score) {
                 // Check not already in results
                 bool duplicate = false;
                 for (uint32_t j = 0; j < *num_results; j++) {
                     if (results[j].word_pop == w) { duplicate = true; break; }
                 }
                 if (!duplicate) {
-                    best_act = word_acts[w];
+                    best_score = word_scores[w];
                     best_w = w;
                     found = true;
                 }
             }
         }
 
-        if (!found || best_act <= 0.0f) break;
+        if (!found || best_score <= 0.0f) break;
 
         results[*num_results].word_pop = best_w;
         results[*num_results].word_form = bridge->word_pops[best_w].word_form;
-        results[*num_results].activation = best_act;
-        // Normalize confidence: activation relative to sum
-        float sum = 0.0f;
-        for (uint32_t w = 0; w < n_words; w++) {
-            if (word_acts[w] > 0.0f) sum += word_acts[w];
-        }
-        results[*num_results].confidence = (sum > 0.0f) ? best_act / sum : 0.0f;
+        results[*num_results].activation = best_score;
+        results[*num_results].confidence = (sum_pos > 0.0f) ? best_score / sum_pos : 0.0f;
         (*num_results)++;
     }
 
+    nimcp_free(word_scores);
     nimcp_free(word_acts);
     return 0;
 }
@@ -576,9 +648,12 @@ int snn_language_bridge_apply_stdp(snn_language_bridge_t* bridge,
                     weight_change *= b->weight / w_max;
                 }
 
+                /* Patch A: keep word_norm_sq cache consistent with STDP write. */
+                float old_w = b->weight;
                 b->weight += weight_change;
                 b->weight = fmaxf(SNN_LANG_BINDING_W_MIN,
                             fminf(w_max, b->weight));
+                norm_update(bridge, b->word_pop, old_w, b->weight);
 
                 bridge->stats.total_stdp_updates++;
             }
@@ -605,6 +680,32 @@ int snn_language_bridge_bind(snn_language_bridge_t* bridge,
     binding_node_t* node = binding_insert(bridge, concept_pop, word_pop,
                                           initial_weight);
     return node ? 0 : -1;
+}
+
+/* Patch A: rebuild word_norm_sq[] from current binding state. Called after
+ * binding load (where node->binding = b overwrites the weight that
+ * binding_insert just norm-accounted), and exposed via the public API for
+ * mid-flight live salvage of brains that pre-date Patch A. */
+int snn_language_bridge_recompute_norms(snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!bridge->word_norm_sq) return -1;
+
+    memset(bridge->word_norm_sq, 0,
+           bridge->word_pops_capacity * sizeof(float));
+
+    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
+        binding_node_t* node = bridge->binding_buckets[bucket];
+        while (node) {
+            uint32_t w = node->binding.word_pop;
+            float weight = node->binding.weight;
+            if (w < bridge->word_pops_capacity) {
+                bridge->word_norm_sq[w] += weight * weight;
+            }
+            node = node->next;
+        }
+    }
+    return 0;
 }
 
 int snn_language_bridge_prune(snn_language_bridge_t* bridge, float threshold)
@@ -1188,6 +1289,11 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
             node->binding = b;
         }
     }
+
+    /* Patch A: binding_insert's incremental norm tracking races with the
+     * `node->binding = b` overwrite (the on-disk weight may differ from the
+     * initial value just inserted). Rebuild from final state. */
+    snn_language_bridge_recompute_norms(bridge);
 
     fclose(f);
     return bridge;

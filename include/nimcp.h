@@ -1039,6 +1039,20 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_blend(
 );
 
 /**
+ * @brief Recompute the SNN-language bridge per-word_pop binding-weight L2 norm
+ *        cache from the current binding state (Patch A salvage path).
+ *
+ * decode_spikes uses the cache to cosine-normalize word activations, removing
+ * the rank-1 bias caused by curriculum-frequent words accumulating many
+ * bindings. Brains that pre-date Patch A have an uninitialized cache; calling
+ * this once after upgrade reseeds it without restart. Returns NIMCP_OK or
+ * NIMCP_ERROR if no bridge is attached.
+ */
+nimcp_status_t nimcp_brain_recompute_snn_language_bridge_norms(
+    nimcp_brain_t brain
+);
+
+/**
  * @brief Generate creative text by blending two concepts
  *
  * Conceptual blending — combine two semantic vectors to create novel expression.
