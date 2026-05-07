@@ -744,6 +744,48 @@ uint64_t grounded_language_next_token_cold_start_skips(void);
  */
 uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void);
 
+/*=============================================================================
+ * Tier-1 #2: Rule-based anaphora / pronoun resolution (v1).
+ *
+ * When enabled, grounded_language_comprehend tracks recent content nouns in
+ * a small per-gl ring (8 entries) and, on encountering a pronoun
+ * (he/she/it/they/him/her/them/his/hers/their/theirs/this/that/these/those),
+ * resolves it to the most-recent referent whose gender (singular_male /
+ * singular_female / singular_neuter / plural) matches. The pronoun is then
+ * treated as if it were the referent: the referent's lexicon-entry bindings
+ * are folded into the activated_concepts list with weight 0.5.
+ *
+ * Default: OFF. Opt-in via grounded_language_set_anaphora_enabled(gl,true)
+ * (or via the brain wrapper / Python binding / daemon RPC).
+ *
+ * Limitations (v1):
+ *   - No syntactic / binding-theory constraints — pure recency match.
+ *   - Multi-referent ties are broken by recency (most-recent wins).
+ *   - Gender heuristic is naive: capitalized non-sentence-initial proper
+ *     nouns default to singular_male; any token following an explicit
+ *     "she"/"her" cue is marked singular_female; trailing 's' marks plural;
+ *     everything else is singular_neuter.
+ *===========================================================================*/
+
+/**
+ * @brief Toggle the anaphora-resolution pass inside comprehend.
+ *
+ * @param gl       System handle.
+ * @param enabled  true = resolve pronouns, false = no-op (default).
+ * @return true if the toggle was applied; false if gl is NULL or the
+ *         resolver state could not be allocated.
+ */
+bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
+                                              bool enabled);
+
+/**
+ * @brief Process-global counter of successful pronoun → referent matches.
+ *
+ * Atomic; reads from any thread are safe. Useful for verifying the pass
+ * is firing in production traffic (default state should be 0).
+ */
+uint64_t grounded_language_anaphora_resolutions(void);
+
 /**
  * @brief Connect to working memory — active words get pushed to the
  *        Miller-7±2 buffer with attention-derived salience, so the rest

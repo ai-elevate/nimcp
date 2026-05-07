@@ -3042,6 +3042,24 @@ static PyObject* Brain_set_snn_language_bridge_sampling_mode(BrainObject* self, 
     Py_RETURN_NONE;
 }
 
+/* Tier-1 #2: toggle rule-based anaphora / pronoun resolution. */
+static PyObject* Brain_set_anaphora_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_anaphora_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "no grounded_language attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11045,6 +11063,8 @@ static PyMethodDef Brain_methods[] = {
      "PA-5+: enable Poincaré hyperbolic-distance GloVe metric — set_snn_language_bridge_hyperbolic_embeddings(enabled) -> None. Default OFF; only takes effect when glove_blend > 0 + emb lookup attached."},
     {"set_snn_language_bridge_sampling_mode", (PyCFunction)Brain_set_snn_language_bridge_sampling_mode, METH_VARARGS,
      "PA-6+: select produce-time sampling mode — set_snn_language_bridge_sampling_mode(mode) -> None. 0=auto (PA-6), 1=force softmax+top-p, 2=quantum-MC MCMC sampling."},
+    {"set_anaphora_enabled", (PyCFunction)Brain_set_anaphora_enabled, METH_VARARGS,
+     "Tier-1 #2: toggle rule-based anaphora / pronoun resolution — set_anaphora_enabled(enabled) -> None. Default OFF; when ON, comprehend resolves he/she/it/they/... to the most-recent matching content noun."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
     {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,

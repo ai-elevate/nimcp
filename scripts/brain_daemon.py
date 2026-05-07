@@ -1514,6 +1514,22 @@ class BrainService:
             return {"error": f"set_sampling_mode: {e}"}
         return {"ok": True, "mode": mode}
 
+    def _cmd_set_anaphora_enabled(self, req):
+        """Tier-1 #2: toggle rule-based anaphora / pronoun resolution.
+
+        Request keys:
+          enabled  (bool, required) — true = resolve pronouns inside
+                                      grounded_language_comprehend.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_anaphora_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_anaphora_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_anaphora_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 
