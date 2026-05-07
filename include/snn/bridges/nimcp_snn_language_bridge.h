@@ -202,6 +202,22 @@ typedef struct {
      * to the default (3) when penalty > 0. Penalty clamped to [0, 1]. */
     float    repetition_penalty;
     uint32_t repetition_window;
+    /* TB-7: hard length-control on snn_language_bridge_produce.
+     *
+     * min_produce_words > 0 suppresses an EOS pick (eos_word_pop) until at
+     * least that many real words have been emitted — when EOS would
+     * otherwise win, the produce loop falls back to the next-best non-EOS
+     * candidate and bumps stats.length_min_suppressions. 0 (default) keeps
+     * EOS firing immediately as before.
+     *
+     * max_produce_words > 0 forces the produce loop to terminate cleanly
+     * once that many words have been emitted, regardless of EOS state or
+     * the legacy hard cap (32). 0 (default) keeps the legacy 32-word cap.
+     *
+     * Both clamped at runtime to [0, 1024]. Values must satisfy
+     * min ≤ max when both are nonzero (rejected by the setter). */
+    uint32_t min_produce_words;
+    uint32_t max_produce_words;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -277,6 +293,20 @@ typedef struct {
      * snn_language_bridge_reset_stats. */
     uint64_t da_gated_stdp_passes;
     float    last_da_modulation;
+    /* TB-7 — produce-time length-control telemetry.
+     *
+     * length_min_suppressions counts every produce step where EOS was the
+     * top candidate but the emission count had not yet reached
+     * config.min_produce_words, forcing the loop to fall back to the
+     * next-best non-EOS candidate. Bumped per-suppression (a single
+     * produce call may bump it more than once if EOS keeps winning).
+     *
+     * length_max_truncations counts produce calls where the loop hit
+     * config.max_produce_words and terminated cleanly because of the cap
+     * (NOT counting the legacy implicit 32-word cap or natural EOS
+     * termination). Bumped at most once per produce call. */
+    uint64_t length_min_suppressions;
+    uint64_t length_max_truncations;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -732,6 +762,39 @@ int snn_language_bridge_set_beam_width(snn_language_bridge_t* bridge,
  */
 int snn_language_bridge_set_eos_word_pop(snn_language_bridge_t* bridge,
                                           uint32_t pop);
+
+/** TB-7: hard length control on snn_language_bridge_produce.
+ *
+ * @param min_words  When > 0, EOS picks (eos_word_pop) are suppressed and
+ *                   replaced with the next-best non-EOS candidate until at
+ *                   least this many words have been emitted. Each
+ *                   suppression bumps stats.length_min_suppressions.
+ *                   0 (default) preserves legacy EOS-first behavior.
+ * @param max_words  When > 0, the produce loop terminates cleanly after
+ *                   this many words have been emitted, overriding the
+ *                   legacy implicit 32-word cap. Hitting the cap bumps
+ *                   stats.length_max_truncations once. 0 (default) keeps
+ *                   the legacy 32-word cap.
+ *
+ * Validation: NULL bridge → -1. Each value clamped to [0, 1024]. When BOTH
+ * are nonzero, min_words > max_words is rejected (-1, no state change).
+ * Either value may be 0 (disabled sentinel) regardless of the other.
+ *
+ * @return 0 on success, -1 on validation failure.
+ */
+int snn_language_bridge_set_length_control(snn_language_bridge_t* bridge,
+                                            uint32_t min_words,
+                                            uint32_t max_words);
+
+/** TB-7: read the current length-control settings.
+ *
+ * Copies config.min_produce_words / config.max_produce_words into the
+ * out-pointers (NULL out-pointers are skipped). Returns -1 on invalid
+ * bridge.
+ */
+int snn_language_bridge_get_length_control(const snn_language_bridge_t* bridge,
+                                            uint32_t* min_words,
+                                            uint32_t* max_words);
 
 /** TIER1-C: configure the n-gram repetition penalty applied per produce step.
  *

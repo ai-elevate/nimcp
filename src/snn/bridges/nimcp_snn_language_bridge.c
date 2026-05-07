@@ -302,7 +302,12 @@ snn_lang_config_t snn_lang_config_default(void)
         .eos_word_pop = UINT32_MAX,
         /* TIER1-C: repetition penalty disabled by default. */
         .repetition_penalty = 0.0f,
-        .repetition_window  = 3
+        .repetition_window  = 3,
+        /* TB-7: length-control disabled by default — sentinel 0 on both
+         * preserves the legacy 32-word implicit cap and immediate-EOS
+         * behavior bit-for-bit. */
+        .min_produce_words = 0,
+        .max_produce_words = 0
     };
     return config;
 }
@@ -1157,6 +1162,50 @@ int snn_language_bridge_set_repetition_penalty(snn_language_bridge_t* bridge,
     return 0;
 }
 
+/* TB-7: hard length-control on bridge_produce.
+ *
+ * Both arguments are clamped to [0, 1024] (anything beyond is almost
+ * certainly a config error — even a 1024-word "sentence" is far past any
+ * reasonable training example or dialog turn). Sentinel 0 keeps the
+ * corresponding side disabled.
+ *
+ * Cross-validation: when both arguments are nonzero, min must be ≤ max,
+ * otherwise the call is rejected with -1 and config is unchanged. Disabled
+ * sentinels (0 on either side) skip the cross-check so callers can flip
+ * one side at a time without first reading the other. */
+#define SNN_LANG_LENGTH_CONTROL_MAX 1024u
+
+int snn_language_bridge_set_length_control(snn_language_bridge_t* bridge,
+                                            uint32_t min_words,
+                                            uint32_t max_words)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (min_words > SNN_LANG_LENGTH_CONTROL_MAX) {
+        min_words = SNN_LANG_LENGTH_CONTROL_MAX;
+    }
+    if (max_words > SNN_LANG_LENGTH_CONTROL_MAX) {
+        max_words = SNN_LANG_LENGTH_CONTROL_MAX;
+    }
+    /* Reject min > max only when both are active. Either disabled (0) is
+     * fine — the caller may legitimately set just a min or just a max. */
+    if (min_words > 0 && max_words > 0 && min_words > max_words) {
+        return -1;
+    }
+    bridge->config.min_produce_words = min_words;
+    bridge->config.max_produce_words = max_words;
+    return 0;
+}
+
+int snn_language_bridge_get_length_control(const snn_language_bridge_t* bridge,
+                                            uint32_t* min_words,
+                                            uint32_t* max_words)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (min_words) *min_words = bridge->config.min_produce_words;
+    if (max_words) *max_words = bridge->config.max_produce_words;
+    return 0;
+}
+
 /* PA-5 helpers — embedding cache lifecycle. */
 static void emb_cache_free(snn_language_bridge_t* bridge)
 {
@@ -1616,7 +1665,14 @@ static int bridge_produce_impl(snn_language_bridge_t* bridge,
     // Iterative word production with refractory inhibition
     char text_buf[2048] = {0};
     uint32_t text_pos = 0;
-    uint32_t max_words = 32;
+    /* TB-7: max_produce_words > 0 overrides the legacy 32-word cap; 0
+     * (default) preserves it. Also clamped to a sane upper bound 1024 to
+     * keep used_words[] allocation bounded. */
+    const uint32_t max_cfg = bridge->config.max_produce_words;
+    uint32_t max_words = (max_cfg > 0) ? max_cfg : 32u;
+    if (max_words > 1024u) max_words = 1024u;
+    const uint32_t min_words_cfg = bridge->config.min_produce_words;
+    bool max_truncated = false;  /* set if the loop terminates via the cap */
     float total_confidence = 0.0f;
     uint32_t word_count = 0;
 
@@ -1859,9 +1915,41 @@ sample_done:;
          * to text_buf nor counted in word_count — production simply stops
          * at the prior word, which is the desired behavior for trainers
          * that bind EOS to "end of sentence" concept activations. Default
-         * eos_pop == UINT32_MAX never matches a valid word_pop. */
+         * eos_pop == UINT32_MAX never matches a valid word_pop.
+         *
+         * TB-7: when min_words_cfg > 0 and the current emission count is
+         * below that minimum, suppress EOS — fall back to the highest-
+         * scoring non-EOS valid candidate this step instead. Each
+         * suppression bumps stats.length_min_suppressions. If every
+         * remaining valid candidate IS the EOS pop, the suppression
+         * cannot fire (no replacement available) and the loop terminates
+         * via the legacy break. */
         if (eos_pop != UINT32_MAX && word_result.word_pop == eos_pop) {
-            break;
+            if (min_words_cfg > 0 && word_count < min_words_cfg) {
+                /* Walk valid_idx[] for the best non-EOS candidate. After
+                 * TIER1-C repetition penalty + sampling, topK[].activation
+                 * is the score we should rank by. */
+                int32_t replacement = -1;
+                float   replacement_act = -FLT_MAX;
+                for (uint32_t i = 0; i < n_valid; i++) {
+                    uint32_t cand_pop = topK[valid_idx[i]].word_pop;
+                    if (cand_pop == eos_pop) continue;
+                    float a = topK[valid_idx[i]].activation;
+                    if (a > replacement_act) {
+                        replacement_act = a;
+                        replacement = (int32_t)i;
+                    }
+                }
+                if (replacement >= 0) {
+                    word_result = topK[valid_idx[replacement]];
+                    bridge->stats.length_min_suppressions++;
+                } else {
+                    /* No non-EOS alternative — accept EOS and halt. */
+                    break;
+                }
+            } else {
+                break;
+            }
         }
 
         // Stop if confidence too low
@@ -1881,6 +1969,17 @@ sample_done:;
         used_words[word_count] = word_result.word_pop;
         total_confidence += word_result.confidence;
         word_count++;
+
+        /* TB-7: terminate cleanly once max_produce_words has been reached.
+         * Only fires when the caller explicitly enabled the cap — the
+         * sentinel-0 default lets the legacy 32-word loop bound apply
+         * without bumping the truncation counter. We set the flag and
+         * break here so the next-word recurrent-state work below is
+         * skipped (no point updating state if we won't decode again). */
+        if (max_cfg > 0 && word_count >= max_cfg) {
+            max_truncated = true;
+            break;
+        }
 
         /* PA-2: recurrent update. Evolve state from the just-picked word's
          * reverse-encoding, then rebuild concept_acts as the per-step blend
@@ -1906,6 +2005,14 @@ sample_done:;
     nimcp_free(intent);
     nimcp_free(state);
     nimcp_free(concept_acts);
+
+    /* TB-7: bump the max-truncation counter once per produce call where the
+     * caller-set cap fired. The legacy implicit 32-word cap (when max_cfg
+     * is 0) does NOT bump the counter — that path is invisible to callers
+     * who never opted into length control. */
+    if (max_truncated) {
+        bridge->stats.length_max_truncations++;
+    }
 
     /* Walkthrough round 2: clear the embedding-query override so any
      * subsequent direct caller of decode_spikes (outside this produce
