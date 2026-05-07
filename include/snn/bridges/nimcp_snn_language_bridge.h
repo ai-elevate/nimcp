@@ -36,7 +36,14 @@ extern "C" {
 //=============================================================================
 
 #define SNN_LANG_MAX_CONCEPT_POPS     4096
-#define SNN_LANG_MAX_WORD_POPS        16384
+/* Vocab cap for the SNN language bridge. Bumped 16384 → 32768 once the
+ * canonical literary corpus + active-learning grounding pushed produced
+ * vocab past the 8K-12K band. Each bridge instance allocates O(cap)
+ * arrays (word_pops, word_norm_sq, word_emb_cache, word_emb_norm), so
+ * every doubling adds ~12-16MB per bridge — trivial at single-bridge
+ * scale. Keep aligned with grounded_language's form_hash modulus —
+ * mismatches reproduce the silent-capacity-drop bug logged 2026-04-27. */
+#define SNN_LANG_MAX_WORD_POPS        32768
 #define SNN_LANG_MAX_ATTACHED_POPS    8
 #define SNN_LANG_NEURONS_PER_POP      8
 #define SNN_LANG_DEFAULT_STDP_TAU     50.0f   // ms (wider than standard 20ms)

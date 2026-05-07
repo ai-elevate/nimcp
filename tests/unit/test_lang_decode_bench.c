@@ -134,7 +134,8 @@ static void test_decode_latency(void)
     run_decode_bench(   1500,   100, 1000, "bootstrap");     /* CE base lexicon */
     run_decode_bench(   4096,   200,  500, "stage1-mid");    /* athena s1 ~13K steps */
     run_decode_bench(   8192,   500,  200, "stage1-late");
-    run_decode_bench(  16384,  1000,  100, "vocab-cap");     /* SNN_LANG_MAX_WORD_POPS */
+    run_decode_bench(  16384,  1000,  100, "old-cap");       /* pre-bump cap */
+    run_decode_bench(  32768,  2000,   60, "vocab-cap");     /* SNN_LANG_MAX_WORD_POPS post-bump */
     fprintf(stderr, "\n  PCIe round-trip baseline: ~200 us each way (~400 us min for GPU)\n");
     fprintf(stderr, "  GPU offload only wins when CPU avg > ~400 us\n\n");
 
