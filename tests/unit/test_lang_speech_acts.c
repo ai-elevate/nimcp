@@ -251,6 +251,53 @@ static void test_setter_null_safe(void)
            "NULL gl getter returns false");
 }
 
+/* Regression: post-campaign audit found that empty / whitespace-only /
+ * punctuation-only inputs fell through to the ASSERTION default and
+ * bumped speech_act_assertions, which is dishonest — there's no intent
+ * to assert when there are no content words. The fix returns UNKNOWN for
+ * those cases and skips the per-class counters. */
+static void test_empty_input_returns_unknown(void)
+{
+    grounded_language_t* gl = grounded_language_create(0, NULL);
+    EXPECT(gl != NULL, "create");
+    if (!gl) return;
+
+    grounded_language_set_speech_act_classification_enabled(gl, true);
+
+    const char* empties[] = {
+        "",         /* truly empty */
+        "   ",      /* whitespace-only */
+        "\t\n",     /* whitespace-only (mixed) */
+        ".",        /* single terminator */
+        "?!.",      /* terminator-only soup */
+        NULL
+    };
+    for (int i = 0; empties[i]; i++) {
+        gl_speech_act_t act = comprehend_get_act(gl, empties[i]);
+        EXPECT(act == GL_SPEECH_ACT_UNKNOWN,
+               "empty input %d (\"%s\") classifies as UNKNOWN, got %d",
+               i, empties[i], (int)act);
+    }
+
+    /* Counters: none of the per-class counters should have advanced. */
+    gl_stats_t stats;
+    grounded_language_get_stats(gl, &stats);
+    EXPECT(stats.speech_act_assertions == 0
+            && stats.speech_act_questions == 0
+            && stats.speech_act_imperatives == 0
+            && stats.speech_act_greetings == 0
+            && stats.speech_act_exclamations == 0,
+           "empty inputs: per-class counters stay 0 "
+           "(a=%llu q=%llu i=%llu g=%llu e=%llu)",
+           (unsigned long long)stats.speech_act_assertions,
+           (unsigned long long)stats.speech_act_questions,
+           (unsigned long long)stats.speech_act_imperatives,
+           (unsigned long long)stats.speech_act_greetings,
+           (unsigned long long)stats.speech_act_exclamations);
+
+    grounded_language_destroy(gl);
+}
+
 int main(void)
 {
     fprintf(stderr, "=== test_lang_speech_acts (TB-9) ===\n");
@@ -261,6 +308,7 @@ int main(void)
     test_assertion();
     test_exclamation();
     test_setter_null_safe();
+    test_empty_input_returns_unknown();
 
     if (g_failures == 0) {
         fprintf(stderr, "ALL PASS\n");

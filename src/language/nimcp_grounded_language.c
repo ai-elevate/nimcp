@@ -2591,8 +2591,13 @@ static bool is_first_person_pronoun(const char* w) {
 static gl_speech_act_t classify_speech_act(char* const* words,
                                             uint32_t word_count,
                                             const char* raw_text) {
-    if (!words || word_count == 0 || !raw_text) {
-        return GL_SPEECH_ACT_ASSERTION;
+    /* Empty / whitespace-only / punctuation-only input has no intent to
+     * classify. Returning UNKNOWN keeps the per-class counters honest —
+     * pre-fix, an empty utterance fell through to the ASSERTION default
+     * and bumped speech_act_assertions. Callers that get UNKNOWN can
+     * still see "we tried but the input had no content". */
+    if (!words || word_count == 0 || !raw_text || !*raw_text) {
+        return GL_SPEECH_ACT_UNKNOWN;
     }
 
     /* Walk to the last non-whitespace char of raw_text. */
