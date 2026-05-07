@@ -1762,6 +1762,112 @@ class BrainService:
             return {"error": f"set_trigram_learning_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    # =====================================================================
+    # Audit fix: campaign feature setters via daemon RPC.
+    # All persisted via mt_save_config now (LANC block) so the trainer
+    # only needs to set them once per training campaign.
+    # =====================================================================
+
+    def _cmd_set_da_modulation_enabled(self, req):
+        """TA-3: toggle dopamine-modulated STDP."""
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_da_modulation_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_da_modulation_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_da_modulation_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_da_modulation_gain(self, req):
+        """TA-3: tune the DA → LR scaling. Clamped [0, 200]."""
+        gain = float(req.get("gain", 50.0))
+        try:
+            self.brain.set_da_modulation_gain(gain)
+        except AttributeError:
+            return {"error": "set_da_modulation_gain not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_da_modulation_gain: {e}"}
+        return {"ok": True, "gain": gain}
+
+    def _cmd_set_reconsolidation_enabled(self, req):
+        """TA-5: toggle reconsolidation-on-contradiction. Default OFF."""
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_reconsolidation_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_reconsolidation_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_reconsolidation_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_reconsolidation_decay(self, req):
+        """TA-5: tune binding decay per contradiction event. Clamped [0, 0.5]."""
+        decay = float(req.get("decay", 0.05))
+        try:
+            self.brain.set_reconsolidation_decay(decay)
+        except AttributeError:
+            return {"error": "set_reconsolidation_decay not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_reconsolidation_decay: {e}"}
+        return {"ok": True, "decay": decay}
+
+    def _cmd_set_sentence_segmentation_enabled(self, req):
+        """TB-6: toggle sentence-boundary segmentation. Default OFF."""
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_sentence_segmentation_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_sentence_segmentation_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_sentence_segmentation_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_length_control(self, req):
+        """TB-7: produce length cap. min/max=0 disables that side."""
+        min_words = int(req.get("min_words", 0))
+        max_words = int(req.get("max_words", 0))
+        try:
+            self.brain.set_length_control(min_words, max_words)
+        except AttributeError:
+            return {"error": "set_length_control not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_length_control: {e}"}
+        return {"ok": True, "min_words": min_words, "max_words": max_words}
+
+    def _cmd_set_speech_act_classification_enabled(self, req):
+        """TB-9: toggle speech-act intent classification. Default OFF."""
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_speech_act_classification_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_speech_act_classification_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_speech_act_classification_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_topic_shift_enabled(self, req):
+        """TB-10: toggle topic-shift detection. Default OFF."""
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_topic_shift_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_topic_shift_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_topic_shift_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_topic_shift_threshold(self, req):
+        """TB-10: tune topic-shift cosine threshold. Clamped [0, 1]."""
+        threshold = float(req.get("threshold", 0.3))
+        try:
+            self.brain.set_topic_shift_threshold(threshold)
+        except AttributeError:
+            return {"error": "set_topic_shift_threshold not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_topic_shift_threshold: {e}"}
+        return {"ok": True, "threshold": threshold}
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 

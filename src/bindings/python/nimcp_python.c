@@ -3309,6 +3309,57 @@ static PyObject* Brain_set_trigram_learning_enabled(BrainObject* self,
     Py_RETURN_NONE;
 }
 
+/* Audit fix — campaign feature setter Python bindings. All take a single
+ * argument (bool/int/float) and return None on success or RuntimeError. */
+
+#define AUDIT_BRAIN_BOOL_SETTER(NAME, CAPI) \
+    static PyObject* Brain_##NAME(BrainObject* self, PyObject* args) { \
+        if (!self->brain) { \
+            PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; \
+        } \
+        int enabled = 0; \
+        if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL; \
+        if (CAPI(self->brain, enabled ? true : false) != NIMCP_OK) { \
+            PyErr_SetString(PyExc_RuntimeError, #NAME " failed"); return NULL; \
+        } \
+        Py_RETURN_NONE; \
+    }
+#define AUDIT_BRAIN_FLOAT_SETTER(NAME, CAPI) \
+    static PyObject* Brain_##NAME(BrainObject* self, PyObject* args) { \
+        if (!self->brain) { \
+            PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; \
+        } \
+        float v = 0.0f; \
+        if (!PyArg_ParseTuple(args, "f", &v)) return NULL; \
+        if (CAPI(self->brain, v) != NIMCP_OK) { \
+            PyErr_SetString(PyExc_RuntimeError, #NAME " failed"); return NULL; \
+        } \
+        Py_RETURN_NONE; \
+    }
+
+AUDIT_BRAIN_BOOL_SETTER(set_da_modulation_enabled,            nimcp_brain_set_da_modulation_enabled)
+AUDIT_BRAIN_FLOAT_SETTER(set_da_modulation_gain,              nimcp_brain_set_da_modulation_gain)
+AUDIT_BRAIN_BOOL_SETTER(set_reconsolidation_enabled,          nimcp_brain_set_reconsolidation_enabled)
+AUDIT_BRAIN_FLOAT_SETTER(set_reconsolidation_decay,           nimcp_brain_set_reconsolidation_decay)
+AUDIT_BRAIN_BOOL_SETTER(set_sentence_segmentation_enabled,    nimcp_brain_set_sentence_segmentation_enabled)
+AUDIT_BRAIN_BOOL_SETTER(set_speech_act_classification_enabled, nimcp_brain_set_speech_act_classification_enabled)
+AUDIT_BRAIN_BOOL_SETTER(set_topic_shift_enabled,              nimcp_brain_set_topic_shift_enabled)
+AUDIT_BRAIN_FLOAT_SETTER(set_topic_shift_threshold,           nimcp_brain_set_topic_shift_threshold)
+
+/* TB-7 length control takes two uint32 args (min, max). */
+static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int min_words = 0, max_words = 0;
+    if (!PyArg_ParseTuple(args, "II", &min_words, &max_words)) return NULL;
+    if (nimcp_brain_set_length_control(self->brain, min_words, max_words) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_length_control failed (min > max?)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* TA-4: train one (prev1, prev2, next) trigram. */
 static PyObject* Brain_learn_next_token_triple(BrainObject* self, PyObject* args) {
     if (!self->brain) {
@@ -11429,6 +11480,25 @@ static PyMethodDef Brain_methods[] = {
      "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied bigram updates. If trigram learning is enabled (set_trigram_learning_enabled), each step also walks (w_t, w_{t+1}) → w_{t+2} at half lr."},
     {"set_trigram_learning_enabled", (PyCFunction)Brain_set_trigram_learning_enabled, METH_VARARGS,
      "TA-4: toggle trigram next-token learning — set_trigram_learning_enabled(enabled: bool) -> None. Default OFF (preserves PA-4 bigram-only behavior)."},
+    /* Audit fix: campaign feature setters accessible from Python + daemon RPC. */
+    {"set_da_modulation_enabled", (PyCFunction)Brain_set_da_modulation_enabled, METH_VARARGS,
+     "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},
+    {"set_da_modulation_gain", (PyCFunction)Brain_set_da_modulation_gain, METH_VARARGS,
+     "TA-3: tune the DA → LR scaling — set_da_modulation_gain(gain: float) -> None. Clamped [0, 200]."},
+    {"set_reconsolidation_enabled", (PyCFunction)Brain_set_reconsolidation_enabled, METH_VARARGS,
+     "TA-5: toggle reconsolidation-on-contradiction — set_reconsolidation_enabled(enabled: bool) -> None. Default OFF."},
+    {"set_reconsolidation_decay", (PyCFunction)Brain_set_reconsolidation_decay, METH_VARARGS,
+     "TA-5: tune binding-decay per contradiction — set_reconsolidation_decay(decay: float) -> None. Clamped [0, 0.5]."},
+    {"set_sentence_segmentation_enabled", (PyCFunction)Brain_set_sentence_segmentation_enabled, METH_VARARGS,
+     "TB-6: toggle sentence-boundary segmentation in comprehend — set_sentence_segmentation_enabled(enabled: bool) -> None. Default OFF."},
+    {"set_length_control", (PyCFunction)Brain_set_length_control, METH_VARARGS,
+     "TB-7: produce length control — set_length_control(min_words: int, max_words: int) -> None. 0/0 = disabled (legacy)."},
+    {"set_speech_act_classification_enabled", (PyCFunction)Brain_set_speech_act_classification_enabled, METH_VARARGS,
+     "TB-9: toggle speech-act intent classification — set_speech_act_classification_enabled(enabled: bool) -> None. Default OFF."},
+    {"set_topic_shift_enabled", (PyCFunction)Brain_set_topic_shift_enabled, METH_VARARGS,
+     "TB-10: toggle topic-shift detection — set_topic_shift_enabled(enabled: bool) -> None. Default OFF."},
+    {"set_topic_shift_threshold", (PyCFunction)Brain_set_topic_shift_threshold, METH_VARARGS,
+     "TB-10: tune the topic-shift cosine threshold — set_topic_shift_threshold(t: float) -> None. Clamped [0, 1]."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,
      "TA-4: contrastive next-token training on a single (prev1, prev2) → next trigram — learn_next_token_triple(prev1, prev2, next, lr=0.025) -> bool. Context is the average of prev1 and prev2 reverse-encodings; LTP/LTD applied like the bigram path. Returns True on update applied; False on cold-start no-op (any of the three tokens without prior bindings)."},
     {"set_grounded_negation_enabled", (PyCFunction)Brain_set_grounded_negation_enabled, METH_VARARGS,

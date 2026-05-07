@@ -3900,6 +3900,90 @@ nimcp_status_t nimcp_brain_set_trigram_learning_enabled(nimcp_brain_t brain,
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/* ========== Audit fix: campaign feature setter wrappers ========== */
+
+nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    return (snn_language_bridge_set_da_modulation_enabled(
+              b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_set_da_modulation_gain(nimcp_brain_t brain, float gain) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    return (snn_language_bridge_set_da_modulation_gain(
+              b->snn_lang_bridge, gain) == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_reconsolidation_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_reconsolidation_decay(b->grounded_lang, decay);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_sentence_segmentation_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_sentence_segmentation_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_length_control(nimcp_brain_t brain,
+                                                uint32_t min_words, uint32_t max_words) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    return (snn_language_bridge_set_length_control(
+              b->snn_lang_bridge, min_words, max_words) == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_set_speech_act_classification_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_speech_act_classification_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_topic_shift_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_topic_shift_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_topic_shift_threshold(nimcp_brain_t brain, float threshold) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_topic_shift_threshold(b->grounded_lang, threshold);
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_triple(nimcp_brain_t brain,
                                                      const char* prev1,
                                                      const char* prev2,

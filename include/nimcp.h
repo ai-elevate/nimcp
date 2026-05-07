@@ -1306,6 +1306,32 @@ nimcp_status_t nimcp_brain_set_trigram_learning_enabled(
     bool enabled
 );
 
+/* Audit fix — campaign feature flag setters callable from the daemon RPC
+ * surface + Python bindings. All have default-OFF semantics; calling with
+ * enabled=false reverts to legacy behavior. */
+
+/** TA-3: dopamine-modulated STDP on the SNN language bridge. */
+nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_set_da_modulation_gain(nimcp_brain_t brain, float gain);
+
+/** TA-5: reconsolidation-on-contradiction. */
+nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);
+
+/** TB-6: sentence-boundary segmentation. */
+nimcp_status_t nimcp_brain_set_sentence_segmentation_enabled(nimcp_brain_t brain, bool enabled);
+
+/** TB-7: produce length control. min/max=0 each disable that side. */
+nimcp_status_t nimcp_brain_set_length_control(nimcp_brain_t brain,
+                                                uint32_t min_words, uint32_t max_words);
+
+/** TB-9: speech-act intent classification. */
+nimcp_status_t nimcp_brain_set_speech_act_classification_enabled(nimcp_brain_t brain, bool enabled);
+
+/** TB-10: topic-shift detection + tunables. */
+nimcp_status_t nimcp_brain_set_topic_shift_enabled(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_set_topic_shift_threshold(nimcp_brain_t brain, float threshold);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *
