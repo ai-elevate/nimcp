@@ -1238,6 +1238,17 @@ int grounded_language_tick_bigram_spectrum(
 uint64_t grounded_language_next_token_cold_start_skips(void);
 
 /**
+ * @brief TC-13 observability: how many gl events have been pushed into
+ *        the theory-of-mind module's observe pipeline since process
+ *        start (process-global counter). pushed counts successful
+ *        tom_observe() calls, dropped counts ones tom_observe rejected.
+ *        Both stay 0 when no theory-of-mind module has been attached
+ *        via grounded_language_attach_theory_of_mind().
+ */
+uint64_t nimcp_gl_tom_observations_pushed(void);
+uint64_t nimcp_gl_tom_observations_dropped(void);
+
+/**
  * @brief Walkthrough round 3 observability: how many bigram-spectrum
  *        attach calls were dropped because the global slot map was full.
  *        Helps detect mis-attached spectrums in multi-brain scenarios.

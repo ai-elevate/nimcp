@@ -39,6 +39,7 @@
 #include "language/nimcp_grounded_language.h"
 #include "nimcp_grounded_language_internal.h"
 #include "utils/logging/nimcp_logging.h"
+#include "cognitive/nimcp_theory_of_mind.h"  /* TC-13: tom_observe + tom_observation_t */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -236,12 +237,75 @@ static int _wrap_imagination(void* ctx, const gl_event_t* ev) {
     return 0;
 }
 
+/* TC-13: process-global counters for observability. ToM consumes both
+ * COMPREHENDED (external speaker → infer their state) and PRODUCED
+ * (self-utterance → update self-model template) events. The counters
+ * let tests + the eval CLI verify that gl events are actually flowing
+ * into the ToM observe pipeline. */
+static uint64_t g_tom_observations_pushed = 0;
+static uint64_t g_tom_observations_dropped = 0;
+
+uint64_t nimcp_gl_tom_observations_pushed(void) {
+    return g_tom_observations_pushed;
+}
+
+uint64_t nimcp_gl_tom_observations_dropped(void) {
+    return g_tom_observations_dropped;
+}
+
+/* Map gl_event_t.valence / arousal to a coarse tom_emotion_t. The ToM
+ * module already does its own emotion inference downstream, so this is
+ * just a hint to seed the observation with the speaker's apparent
+ * affect — wrong-but-cheap is better than UNKNOWN-but-empty here. */
+static tom_emotion_t _tom_map_emotion(float valence, float arousal) {
+    /* Joy: high valence, high arousal */
+    if (valence > 0.4f && arousal > 0.4f) return TOM_EMOTION_JOY;
+    /* Anger: low valence, high arousal */
+    if (valence < -0.3f && arousal > 0.5f) return TOM_EMOTION_ANGER;
+    /* Sadness: low valence, low arousal */
+    if (valence < -0.3f && arousal < 0.3f) return TOM_EMOTION_SADNESS;
+    /* Fear: somewhat negative + high arousal */
+    if (valence < 0.0f && arousal > 0.6f)  return TOM_EMOTION_FEAR;
+    /* Surprise: very high arousal regardless of sign */
+    if (arousal > 0.8f)                    return TOM_EMOTION_SURPRISE;
+    return TOM_EMOTION_NEUTRAL;
+}
+
 static int _wrap_theory_of_mind(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
-    if (ev->type != GL_EVENT_COMPREHENDED) return 0;
-    /* External utterance → observation about a speaker's beliefs. */
-    LOG_DEBUG(LOG_MODULE, "tom observe utterance='%s' conf=%.2f",
-               ev->text ? ev->text : "(null)", ev->confidence);
+    /* Subscribe to both inbound and outbound utterances. COMPREHENDED
+     * events are the canonical "another agent spoke" signal; PRODUCED
+     * events let ToM's self-model see what the brain just said (useful
+     * for self-narration / introspection downstream). */
+    if (ev->type != GL_EVENT_COMPREHENDED && ev->type != GL_EVENT_PRODUCED) {
+        return 0;
+    }
+
+    theory_of_mind_t tom = (theory_of_mind_t)ctx;
+
+    tom_observation_t obs;
+    memset(&obs, 0, sizeof(obs));
+    /* The semantic vector from gl is the closest analogue to an action
+     * vector — it summarizes the comprehended/produced utterance in the
+     * same gl semantic space ToM already operates in via the self-brain
+     * template. action_dim is borrowed from gl's semantic_dim, which
+     * isn't on the event payload — we fall back to 0/NULL when the
+     * vector is missing (NEW_WORD events without a vector). */
+    obs.action_vector = ev->semantic_vec;
+    obs.action_dim    = ev->semantic_vec ? GL_SEMANTIC_DIM : 0;
+    obs.verbal_context = ev->text;
+    obs.observed_emotion = _tom_map_emotion(ev->valence, ev->arousal);
+    obs.situational_context = NULL;
+    obs.context_dim = 0;
+
+    if (tom_observe(tom, &obs)) {
+        g_tom_observations_pushed++;
+    } else {
+        g_tom_observations_dropped++;
+        /* tom_observe returning false isn't fatal — it just means ToM
+         * couldn't process this observation (possibly invalid args).
+         * Bump the dropped counter so operators can spot a wedge. */
+    }
     return 0;
 }
 
