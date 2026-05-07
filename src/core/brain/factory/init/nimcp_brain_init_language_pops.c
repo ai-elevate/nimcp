@@ -284,7 +284,8 @@ static uint64_t wire_synfire_ring_intra_pop(snn_network_t* snn,
 static void attach_lang_adapters_to_substrate(brain_t brain,
                                               snn_network_t* snn,
                                               int broca_pop_id,
-                                              int wernicke_pop_id) {
+                                              int wernicke_pop_id,
+                                              int arcuate_pop_id) {
     if (!brain) return;
     if (brain->broca && broca_pop_id >= 0) {
         if (!broca_attach_snn_pop(brain->broca, snn, broca_pop_id)) {
@@ -307,9 +308,20 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
                   "(retry once adapter is initialized)");
     }
 
-    /* PA-3: also register both pops with the SNN-language bridge so that
+    /* PA-3: also register pops with the SNN-language bridge so that
      * brain_tick_language can drain spike_output → STDP. Inert until the
-     * caller flips bridge->config.enable_snn_spike_routing on. */
+     * caller flips bridge->config.enable_snn_spike_routing on.
+     *
+     * Roles:
+     *   Broca   → WORD     (production tier — spikes routed via word_spike)
+     *   Wernicke→ CONCEPT  (comprehension tier — spikes via concept_spike)
+     *   Arcuate → CONCEPT  (relay between Wernicke ↔ Broca; spike traffic
+     *                       carries comprehended-concept content forward to
+     *                       production, so concept-side routing matches the
+     *                       biological path. Tier 3 phantom-wiring activation
+     *                       — previously created + wired internally but never
+     *                       registered with the bridge, so its spikes never
+     *                       reached STDP / binding learning.) */
     if (brain->snn_lang_bridge) {
         if (broca_pop_id >= 0) {
             (void)snn_language_bridge_attach_snn_pop(brain->snn_lang_bridge,
@@ -321,6 +333,12 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
             (void)snn_language_bridge_attach_snn_pop(brain->snn_lang_bridge,
                                                       wernicke_pop_id,
                                                       LANG_WERNICKE_POP_NEURONS,
+                                                      SNN_LANG_POP_ROLE_CONCEPT);
+        }
+        if (arcuate_pop_id >= 0) {
+            (void)snn_language_bridge_attach_snn_pop(brain->snn_lang_bridge,
+                                                      arcuate_pop_id,
+                                                      LANG_ARCUATE_POP_NEURONS,
                                                       SNN_LANG_POP_ROLE_CONCEPT);
         }
     }
@@ -358,10 +376,12 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
     if (prebuilt) {
         int wid = find_pop_id_by_name(snn, LANG_WERNICKE_POP_NAME);
         int bid = find_pop_id_by_name(snn, LANG_BROCA_POP_NAME);
-        attach_lang_adapters_to_substrate(brain, snn, bid, wid);
+        int aid = find_pop_id_by_name(snn, LANG_ARCUATE_POP_NAME);
+        attach_lang_adapters_to_substrate(brain, snn, bid, wid, aid);
         LOG_INFO(LOG_MODULE,
                  "language pops already present (resume path) — skipping "
-                 "wiring; adapters rebound to broca=%d wernicke=%d", bid, wid);
+                 "wiring; adapters rebound to broca=%d wernicke=%d arcuate=%d",
+                 bid, wid, aid);
         return true;
     }
 
@@ -468,7 +488,7 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
      * MUST run AFTER finalize so the pop is wired and ready for use.
      * Safe to call even if the adapters aren't created yet (retried by
      * idempotency in subsequent init_language_pops invocations). */
-    attach_lang_adapters_to_substrate(brain, snn, broca_id, wernicke_id);
+    attach_lang_adapters_to_substrate(brain, snn, broca_id, wernicke_id, arcuate_id);
 
     LOG_INFO(LOG_MODULE,
              "language + sensorymotor pops created and wired: "
