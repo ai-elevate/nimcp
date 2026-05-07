@@ -730,6 +730,21 @@ void grounded_language_attach_bigram_spectrum(
     void* spectrum);
 
 /**
+ * @brief Walkthrough round 3 observability: how many `learn_next_token_pair`
+ *        calls hit the cold-start guard (encode_word returned all-zeros)
+ *        and were skipped silently. Process-global counter; useful for
+ *        diagnosing "training looks like a no-op" symptoms. Atomic.
+ */
+uint64_t grounded_language_next_token_cold_start_skips(void);
+
+/**
+ * @brief Walkthrough round 3 observability: how many bigram-spectrum
+ *        attach calls were dropped because the global slot map was full.
+ *        Helps detect mis-attached spectrums in multi-brain scenarios.
+ */
+uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void);
+
+/**
  * @brief Connect to working memory — active words get pushed to the
  *        Miller-7±2 buffer with attention-derived salience, so the rest
  *        of the cognitive stack can reason over recently-grounded words.

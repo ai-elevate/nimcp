@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>  /* g_spectrum_map_lock */
 
 /* Silence -Wunused-result for fread — reads are best-effort; file-format magic
  * and version checks downstream validate integrity. */
@@ -1415,8 +1416,19 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     return gl;
 }
 
+/* Walkthrough round 3 fix: forward decls for static helpers defined later
+ * in this file but called from earlier functions. */
+static void gl_detach_spectrum_for_destroy(grounded_language_t* gl);
+static void gl_next_token_cold_start_skips_inc(const char* prev, const char* next);
+
 void grounded_language_destroy(grounded_language_t* gl) {
     if (!gl) return;
+
+    /* Walkthrough round 3 fix: clear our entry from the static spectrum map
+     * BEFORE freeing the gl, so the next gl_get_attached_spectrum cannot
+     * return a spectrum bound to this freed pointer (UAF if the OS reuses
+     * this address for a fresh grounded_language). */
+    gl_detach_spectrum_for_destroy(gl);
 
     /* Free lexicon entries */
     if (gl->vocab_list) {
@@ -1611,12 +1623,26 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     /* Normalize semantic vector */
     normalize_vector(result->semantic_vector, gl->semantic_dim);
 
-    /* Update context */
-    float blend = 0.7f; /* Favor new input */
+    /* Walkthrough round 3 fix: detect all-zero semantic_vector (every word
+     * was OOV with no fallback signal). Without this guard, the context
+     * update below blends 0.7 zeros into the running context every time,
+     * decaying it toward zero and silently degrading subsequent
+     * comprehensions. Skip the blend on zero-vec so the previous context
+     * is preserved verbatim. */
+    float vec_l2 = 0.0f;
     for (uint32_t d = 0; d < gl->semantic_dim; d++) {
-        gl->context.context_vector[d] =
-            blend * result->semantic_vector[d] +
-            (1.0f - blend) * gl->context.context_vector[d];
+        vec_l2 += result->semantic_vector[d] * result->semantic_vector[d];
+    }
+    bool semantic_vec_is_zero = (vec_l2 < 1e-12f);
+
+    /* Update context — skip if vector is zero (preserve prior context). */
+    if (!semantic_vec_is_zero) {
+        float blend = 0.7f; /* Favor new input */
+        for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+            gl->context.context_vector[d] =
+                blend * result->semantic_vector[d] +
+                (1.0f - blend) * gl->context.context_vector[d];
+        }
     }
     gl->context.words_in_context += word_count;
 
@@ -2434,6 +2460,28 @@ void grounded_language_connect_snn_bridge(grounded_language_t* gl,
     }
 }
 
+/* Walkthrough round 3 fix: shared counter for the cold-start guard in both
+ * flat and Riemannian learn_next_token_pair variants. Process-global
+ * (single brain in process is the common case); guarded by atomic. */
+static _Atomic uint64_t g_next_token_cold_start_skips = 0;
+
+static void gl_next_token_cold_start_skips_inc(const char* prev, const char* next) {
+    uint64_t v = (uint64_t)__atomic_add_fetch(&g_next_token_cold_start_skips, 1,
+                                                __ATOMIC_RELAXED);
+    /* Periodic visibility: every 10000th skip emit a single line so a
+     * trainer running into "all my updates fail" sees it in the log. */
+    if ((v % 10000ULL) == 0) {
+        LOG_DEBUG(LOG_MODULE,
+                  "learn_next_token_pair cold-start skips=%llu (latest pair: '%s' → '%s')",
+                  (unsigned long long)v,
+                  prev ? prev : "(null)", next ? next : "(null)");
+    }
+}
+
+uint64_t grounded_language_next_token_cold_start_skips(void) {
+    return (uint64_t)__atomic_load_n(&g_next_token_cold_start_skips, __ATOMIC_RELAXED);
+}
+
 uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {
     if (!gl) return 0;
     if (!gl->snn_bridge) return 0;        /* no bridge attached → no-op */
@@ -2511,10 +2559,16 @@ int grounded_language_learn_next_token_pair(grounded_language_t* gl,
 
     /* Cold-start guard: prev_word has no bindings yet. Nothing to condition
      * on. The first comprehension pass for prev_word will create bindings,
-     * after which subsequent calls of this function become trainable. */
+     * after which subsequent calls of this function become trainable.
+     *
+     * Walkthrough round 3 fix: count cold-start skips so the trainer can
+     * see "all my pair updates failed silently" via a public stat instead
+     * of guessing why the model isn't learning. Periodic LOG_DEBUG every
+     * 10000 skips for in-the-loop visibility. */
     float total_act = 0.0f;
     for (uint32_t c = 0; c < n_concepts; c++) total_act += concept_acts[c];
     if (total_act <= 1e-6f) {
+        gl_next_token_cold_start_skips_inc(prev_word, next_word);
         nimcp_free(concept_acts);
         return -1;
     }
@@ -2700,12 +2754,41 @@ static struct {
     bigram_spectrum_t*   spectrum;
 } g_spectrum_map[GL_SPECTRUM_MAP_CAP] = { {0} };
 
+/* Walkthrough round 3 fix: serialize all access to g_spectrum_map. The map
+ * is accessed from training threads (learn_text_bigrams) and concurrent
+ * attach/detach from RPC handlers. Without this lock, two threads racing
+ * on insert can leave the map in an inconsistent state, and a learn-loop
+ * reader can observe a dangling slot mid-update. */
+static pthread_mutex_t g_spectrum_map_lock = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t g_spectrum_map_overflow_warns = 0;
+
 static bigram_spectrum_t* gl_get_attached_spectrum(grounded_language_t* gl) {
     if (!gl) return NULL;
+    pthread_mutex_lock(&g_spectrum_map_lock);
+    bigram_spectrum_t* found = NULL;
     for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
-        if (g_spectrum_map[i].gl == gl) return g_spectrum_map[i].spectrum;
+        if (g_spectrum_map[i].gl == gl) {
+            found = g_spectrum_map[i].spectrum;
+            break;
+        }
     }
-    return NULL;
+    pthread_mutex_unlock(&g_spectrum_map_lock);
+    return found;
+}
+
+/* Walkthrough round 3 fix: called from grounded_language_destroy so the
+ * map can never hand out a spectrum bound to a freed gl pointer (UAF
+ * if the OS later reuses the same address for a fresh gl). */
+static void gl_detach_spectrum_for_destroy(grounded_language_t* gl) {
+    if (!gl) return;
+    pthread_mutex_lock(&g_spectrum_map_lock);
+    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
+        if (g_spectrum_map[i].gl == gl) {
+            g_spectrum_map[i].gl = NULL;
+            g_spectrum_map[i].spectrum = NULL;
+        }
+    }
+    pthread_mutex_unlock(&g_spectrum_map_lock);
 }
 
 void grounded_language_attach_bigram_spectrum(grounded_language_t* gl,
@@ -2713,25 +2796,45 @@ void grounded_language_attach_bigram_spectrum(grounded_language_t* gl,
     if (!gl) return;
     bigram_spectrum_t* bs = (bigram_spectrum_t*)spectrum;
 
+    pthread_mutex_lock(&g_spectrum_map_lock);
+
     /* Replace existing entry if any. */
     for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
         if (g_spectrum_map[i].gl == gl) {
             g_spectrum_map[i].spectrum = bs;
             if (!bs) g_spectrum_map[i].gl = NULL;  /* detach */
+            pthread_mutex_unlock(&g_spectrum_map_lock);
             return;
         }
     }
-    if (!bs) return;  /* nothing to detach */
+    if (!bs) {
+        pthread_mutex_unlock(&g_spectrum_map_lock);
+        return;  /* nothing to detach */
+    }
 
     /* Insert into first free slot. */
     for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
         if (g_spectrum_map[i].gl == NULL) {
             g_spectrum_map[i].gl = gl;
             g_spectrum_map[i].spectrum = bs;
+            pthread_mutex_unlock(&g_spectrum_map_lock);
             return;
         }
     }
-    /* Map is full — silently drop to avoid impacting the trainer. */
+    /* Walkthrough round 3 fix: capacity overflow is now logged + counted
+     * (was silently dropped). Operators can see we ran out of slots. */
+    g_spectrum_map_overflow_warns++;
+    pthread_mutex_unlock(&g_spectrum_map_lock);
+    LOG_WARN(LOG_MODULE,
+             "attach_bigram_spectrum: map full (cap=%d); dropped attach for gl=%p",
+             GL_SPECTRUM_MAP_CAP, (void*)gl);
+}
+
+uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void) {
+    pthread_mutex_lock(&g_spectrum_map_lock);
+    uint64_t v = g_spectrum_map_overflow_warns;
+    pthread_mutex_unlock(&g_spectrum_map_lock);
+    return v;
 }
 
 int grounded_language_learn_text_bigrams(grounded_language_t* gl,
