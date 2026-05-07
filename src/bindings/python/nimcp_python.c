@@ -3042,6 +3042,82 @@ static PyObject* Brain_set_snn_language_bridge_sampling_mode(BrainObject* self, 
     Py_RETURN_NONE;
 }
 
+/* Tier-4 #15: consolidated config getter — returns Python dict. */
+static PyObject* Brain_get_snn_language_bridge_config(BrainObject* self,
+                                                       PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    snn_lang_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    nimcp_status_t s = nimcp_brain_get_snn_language_bridge_config(self->brain, &cfg);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+
+#define D_SET(k, obj) do { \
+    PyObject* _v = (obj); \
+    if (!_v || PyDict_SetItemString(dict, (k), _v) < 0) { \
+        Py_XDECREF(_v); Py_DECREF(dict); return NULL; \
+    } \
+    Py_DECREF(_v); \
+} while (0)
+
+    /* Capacities / shape */
+    D_SET("max_concept_pops",      PyLong_FromUnsignedLong(cfg.max_concept_pops));
+    D_SET("max_word_pops",         PyLong_FromUnsignedLong(cfg.max_word_pops));
+    D_SET("neurons_per_pop",       PyLong_FromUnsignedLong(cfg.neurons_per_pop));
+
+    /* STDP knobs */
+    D_SET("stdp_tau_plus",         PyFloat_FromDouble((double)cfg.stdp_tau_plus));
+    D_SET("stdp_tau_minus",        PyFloat_FromDouble((double)cfg.stdp_tau_minus));
+    D_SET("stdp_a_plus",           PyFloat_FromDouble((double)cfg.stdp_a_plus));
+    D_SET("stdp_a_minus",          PyFloat_FromDouble((double)cfg.stdp_a_minus));
+    D_SET("stdp_learning_rate",    PyFloat_FromDouble((double)cfg.stdp_learning_rate));
+
+    /* Bindings + decode */
+    D_SET("binding_w_max",         PyFloat_FromDouble((double)cfg.binding_w_max));
+    D_SET("decode_window_ms",      PyFloat_FromDouble((double)cfg.decode_window_ms));
+    D_SET("decay_rate",            PyFloat_FromDouble((double)cfg.decay_rate));
+    D_SET("spike_blend",           PyFloat_FromDouble((double)cfg.spike_blend));
+
+    /* DA / imagination / curiosity / sleep */
+    D_SET("enable_da_modulation",  PyBool_FromLong(cfg.enable_da_modulation));
+    D_SET("da_modulation_gain",    PyFloat_FromDouble((double)cfg.da_modulation_gain));
+    D_SET("enable_imagination",    PyBool_FromLong(cfg.enable_imagination));
+    D_SET("enable_curiosity",      PyBool_FromLong(cfg.enable_curiosity));
+    D_SET("enable_sleep_consolidation", PyBool_FromLong(cfg.enable_sleep_consolidation));
+    D_SET("prune_threshold",       PyFloat_FromDouble((double)cfg.prune_threshold));
+
+    /* PA-6 sampling */
+    D_SET("temperature",           PyFloat_FromDouble((double)cfg.temperature));
+    D_SET("top_p",                 PyFloat_FromDouble((double)cfg.top_p));
+    D_SET("produce_topk",          PyLong_FromUnsignedLong(cfg.produce_topk));
+
+    /* PA-5 GloVe blend */
+    D_SET("glove_blend",           PyFloat_FromDouble((double)cfg.glove_blend));
+
+    /* PA-2 autoregressive */
+    D_SET("intent_persistence",    PyFloat_FromDouble((double)cfg.intent_persistence));
+    D_SET("word_feedback",         PyFloat_FromDouble((double)cfg.word_feedback));
+
+    /* PA-3 spike routing */
+    D_SET("enable_snn_spike_routing", PyBool_FromLong(cfg.enable_snn_spike_routing));
+    D_SET("activation_tau_ms",     PyFloat_FromDouble((double)cfg.activation_tau_ms));
+
+    /* PA-5+ hyperbolic + PA-6+ sampling mode */
+    D_SET("use_hyperbolic_embeddings", PyBool_FromLong(cfg.use_hyperbolic_embeddings));
+    D_SET("sampling_mode",         PyLong_FromLong(cfg.sampling_mode));
+
+#undef D_SET
+    return dict;
+}
+
 static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11045,6 +11121,8 @@ static PyMethodDef Brain_methods[] = {
      "PA-5+: enable Poincaré hyperbolic-distance GloVe metric — set_snn_language_bridge_hyperbolic_embeddings(enabled) -> None. Default OFF; only takes effect when glove_blend > 0 + emb lookup attached."},
     {"set_snn_language_bridge_sampling_mode", (PyCFunction)Brain_set_snn_language_bridge_sampling_mode, METH_VARARGS,
      "PA-6+: select produce-time sampling mode — set_snn_language_bridge_sampling_mode(mode) -> None. 0=auto (PA-6), 1=force softmax+top-p, 2=quantum-MC MCMC sampling."},
+    {"get_snn_language_bridge_config", (PyCFunction)Brain_get_snn_language_bridge_config, METH_NOARGS,
+     "Tier-4 #15: get full SNN-language bridge config — get_snn_language_bridge_config() -> dict. Returns every PA/MQ knob (temperature, top_p, glove_blend, intent_persistence, word_feedback, sampling_mode, use_hyperbolic_embeddings, enable_snn_spike_routing, activation_tau_ms, etc.)."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
     {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,
