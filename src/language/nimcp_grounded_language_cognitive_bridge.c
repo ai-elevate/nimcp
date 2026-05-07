@@ -288,11 +288,22 @@ static int _wrap_theory_of_mind(void* ctx, const gl_event_t* ev) {
     /* The semantic vector from gl is the closest analogue to an action
      * vector — it summarizes the comprehended/produced utterance in the
      * same gl semantic space ToM already operates in via the self-brain
-     * template. action_dim is borrowed from gl's semantic_dim, which
-     * isn't on the event payload — we fall back to 0/NULL when the
-     * vector is missing (NEW_WORD events without a vector). */
+     * template.
+     *
+     * Caveat: gl_event_t doesn't carry the gl's semantic_dim, and the
+     * gl is created with a configurable dim (defaults to 128, callers
+     * may pass any value). Pre-fix this hardcoded GL_SEMANTIC_DIM as
+     * the dim hint, which would have over-/under-reported the vector
+     * length when the gl was created with a non-default semantic_dim.
+     *
+     * Today ToM doesn't actually read action_vector — only
+     * action_description / verbal_context drive emotion+goal inference.
+     * So we attach the pointer (future-proofing) but leave action_dim=0
+     * to signal "dim unknown to this caller". When ToM (or any future
+     * consumer) starts reading action_vector, the dim will need to come
+     * via a richer event payload. */
     obs.action_vector = ev->semantic_vec;
-    obs.action_dim    = ev->semantic_vec ? GL_SEMANTIC_DIM : 0;
+    obs.action_dim    = 0;
     obs.verbal_context = ev->text;
     obs.observed_emotion = _tom_map_emotion(ev->valence, ev->arousal);
     obs.situational_context = NULL;
