@@ -96,6 +96,16 @@ typedef struct {
     bool     enable_curiosity;     // Wire curiosity SNN to lexical exploration
     bool     enable_sleep_consolidation; // Enable binding replay during sleep
     float    prune_threshold;      // Binding weights below this are pruned
+    /* PA-6: sampling knobs for bridge_produce. temperature == 0 keeps the
+     * legacy hard-argmax behavior (every produce_word picks the top non-
+     * refractory candidate). temperature > 0 enables softmax sampling
+     * over the top-K cosine-scored candidates. top_p applies nucleus
+     * truncation (keep candidates whose cumulative probability ≥ top_p,
+     * default 1.0 = no truncation). produce_topk is the candidate pool
+     * size pulled from decode_spikes per word (default 5; max 32). */
+    float    temperature;
+    float    top_p;
+    uint32_t produce_topk;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -330,6 +340,17 @@ const char* snn_language_bridge_get_word_form(
 
 /** Set spike blend factor [0=all vector, 1=all spike] */
 void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend);
+
+/** PA-6: Configure produce-time sampling.
+ *
+ * @param temperature  0 = argmax (legacy / default). >0 = softmax sampling
+ *                     over top-K cosine-scored candidates with this T.
+ * @param top_p        Nucleus truncation in [0,1]. 1.0 = no truncation.
+ *                     Smaller values keep only the highest-probability mass.
+ * @return 0 on success; -1 if bridge invalid or args out of range.
+ */
+int snn_language_bridge_set_sampling(snn_language_bridge_t* bridge,
+                                      float temperature, float top_p);
 
 //=============================================================================
 // Serialization

@@ -1053,6 +1053,24 @@ nimcp_status_t nimcp_brain_recompute_snn_language_bridge_norms(
 );
 
 /**
+ * @brief Configure SNN-language bridge produce-time sampling (PA-6).
+ *
+ * @param brain        Brain handle.
+ * @param temperature  0 = hard-argmax (legacy / default). >0 enables softmax
+ *                     sampling over the top-K cosine-scored candidates with
+ *                     this temperature (typical: 0.5–1.5; higher = flatter).
+ * @param top_p        Nucleus truncation in (0,1]. 1.0 = no truncation.
+ *                     Smaller values keep only the highest-probability mass.
+ * @return NIMCP_OK on success, NIMCP_ERROR_INVALID for bad args, NIMCP_ERROR
+ *         if no bridge attached.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling(
+    nimcp_brain_t brain,
+    float temperature,
+    float top_p
+);
+
+/**
  * @brief Generate creative text by blending two concepts
  *
  * Conceptual blending — combine two semantic vectors to create novel expression.

@@ -2895,6 +2895,27 @@ static PyObject* Brain_recompute_snn_language_bridge_norms(BrainObject* self,
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_set_snn_language_bridge_sampling(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float temperature = 0.0f, top_p = 1.0f;
+    if (!PyArg_ParseTuple(args, "ff", &temperature, &top_p)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_sampling(
+        self->brain, temperature, top_p);
+    if (s == NIMCP_ERROR_INVALID) {
+        PyErr_Format(PyExc_ValueError,
+                     "set_sampling rejected (temperature must be ≥0, top_p in (0,1])");
+        return NULL;
+    }
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_get_immune_state(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -10836,6 +10857,8 @@ static PyMethodDef Brain_methods[] = {
      "Set SNN-language bridge blend [0,1]: set_snn_language_bridge_blend(blend) -> None"},
     {"recompute_snn_language_bridge_norms", (PyCFunction)Brain_recompute_snn_language_bridge_norms, METH_NOARGS,
      "Patch A salvage: rebuild per-word_pop binding-weight L2 norm cache from current bindings — recompute_snn_language_bridge_norms() -> None"},
+    {"set_snn_language_bridge_sampling", (PyCFunction)Brain_set_snn_language_bridge_sampling, METH_VARARGS,
+     "PA-6: configure produce-time sampling — set_snn_language_bridge_sampling(temperature, top_p) -> None. T=0 → argmax, T>0 → softmax over top-K candidates."},
 
     // Rubric (cognitive output quality evaluation)
     {"rubric", (PyCFunction)Brain_rubric, METH_NOARGS,

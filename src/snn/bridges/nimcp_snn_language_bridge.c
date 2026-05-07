@@ -19,6 +19,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
+#include <stdint.h>
 #include <float.h>
 
 #define LOG_MODULE "SNN_LANG_BRIDGE"
@@ -84,6 +86,11 @@ struct snn_language_bridge {
      * accumulated more bindings (curriculum-frequent tokens) win every rank
      * regardless of input semantic vector. */
     float* word_norm_sq;
+
+    /* PA-6: xorshift64* RNG state for produce-time softmax sampling. Seeded
+     * once at create() with time XOR pointer mix. Only consulted when
+     * config.temperature > 0; deterministic argmax path bypasses it. */
+    uint64_t rng_state;
 
     // Connected subsystems
     struct grounded_language* grounded_lang;
@@ -209,7 +216,13 @@ snn_lang_config_t snn_lang_config_default(void)
         .enable_imagination = true,
         .enable_curiosity = true,
         .enable_sleep_consolidation = true,
-        .prune_threshold = 0.005f
+        .prune_threshold = 0.005f,
+        /* PA-6: defaults preserve legacy argmax behavior. Callers explicitly
+         * set temperature > 0 to opt into sampling. produce_topk = 8 gives
+         * sampling some headroom over the legacy 5 without much cost. */
+        .temperature = 0.0f,
+        .top_p = 1.0f,
+        .produce_topk = 8
     };
     return config;
 }
@@ -271,6 +284,10 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
         nimcp_free(bridge);
         return NULL;
     }
+
+    /* PA-6: seed sampling RNG. xorshift64* requires nonzero seed. */
+    bridge->rng_state = (uint64_t)time(NULL) ^ ((uintptr_t)bridge * 0x9E3779B97F4A7C15ULL);
+    if (bridge->rng_state == 0) bridge->rng_state = 0xDEADBEEF;
 
     bbb_register_module("snn_language_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
@@ -682,6 +699,36 @@ int snn_language_bridge_bind(snn_language_bridge_t* bridge,
     return node ? 0 : -1;
 }
 
+/* PA-6: xorshift64* — small period (~2^64) but more than enough for
+ * per-word sampling. Returns a uniform float in [0, 1). */
+static inline uint64_t bridge_rng_u64(snn_language_bridge_t* bridge)
+{
+    uint64_t x = bridge->rng_state;
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    bridge->rng_state = x;
+    return x * 0x2545F4914F6CDD1DULL;
+}
+
+static inline float bridge_rng_unit(snn_language_bridge_t* bridge)
+{
+    /* 24 mantissa bits → uniform [0, 1). */
+    uint32_t bits = (uint32_t)(bridge_rng_u64(bridge) >> 40);
+    return (float)bits * (1.0f / 16777216.0f);
+}
+
+int snn_language_bridge_set_sampling(snn_language_bridge_t* bridge,
+                                      float temperature, float top_p)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(temperature) || temperature < 0.0f) return -1;
+    if (!isfinite(top_p) || top_p <= 0.0f || top_p > 1.0f) return -1;
+    bridge->config.temperature = temperature;
+    bridge->config.top_p = top_p;
+    return 0;
+}
+
 /* Patch A: rebuild word_norm_sq[] from current binding state. Called after
  * binding load (where node->binding = b overwrites the weight that
  * binding_insert just norm-accounted), and exposed via the public API for
@@ -805,29 +852,103 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         return -1;
     }
 
+    /* PA-6: pull config sampling knobs once per produce call. */
+    const float temperature = bridge->config.temperature;
+    const float top_p = (bridge->config.top_p > 0.0f) ? bridge->config.top_p : 1.0f;
+    uint32_t topk = bridge->config.produce_topk;
+    if (topk == 0)  topk = 5;
+    if (topk > 32)  topk = 32;
+
     for (uint32_t w = 0; w < max_words; w++) {
         // Get top word
         snn_lang_word_result_t word_result;
         uint32_t num_out = 0;
-        snn_lang_word_result_t top5[5];
+        snn_lang_word_result_t topK[32];
         int rc = snn_language_bridge_decode_spikes(bridge, concept_acts,
-                                                    n_concepts, top5, 5, &num_out);
+                                                    n_concepts, topK, topk, &num_out);
         if (rc != 0 || num_out == 0) break;
 
-        // Find best word not already used
-        bool found = false;
+        /* Filter out refractory (already-used) candidates. */
+        uint32_t valid_idx[32];
+        uint32_t n_valid = 0;
         for (uint32_t k = 0; k < num_out; k++) {
             bool refractory = false;
             for (uint32_t u = 0; u < word_count; u++) {
-                if (used_words[u] == top5[k].word_pop) {
+                if (used_words[u] == topK[k].word_pop) {
                     refractory = true;
                     break;
                 }
             }
-            if (!refractory) {
-                word_result = top5[k];
-                found = true;
-                break;
+            if (!refractory) valid_idx[n_valid++] = k;
+        }
+        if (n_valid == 0) break;
+
+        bool found = true;
+        if (temperature <= 0.0f || n_valid == 1) {
+            /* Legacy hard-argmax path: pick the first valid (highest cosine). */
+            word_result = topK[valid_idx[0]];
+        } else {
+            /* PA-6: softmax sample over valid candidates. Subtract max before
+             * exp() for numerical stability. Then top-p (nucleus) truncation:
+             * sort probs descending, keep until cumulative ≥ top_p, renormalize.
+             * Finally inverse-CDF sample. */
+            float scores[32];
+            float max_score = -FLT_MAX;
+            for (uint32_t i = 0; i < n_valid; i++) {
+                scores[i] = topK[valid_idx[i]].activation;  /* cosine score */
+                if (scores[i] > max_score) max_score = scores[i];
+            }
+            float probs[32];
+            float sum = 0.0f;
+            for (uint32_t i = 0; i < n_valid; i++) {
+                probs[i] = expf((scores[i] - max_score) / temperature);
+                sum += probs[i];
+            }
+            if (sum <= 0.0f) {
+                word_result = topK[valid_idx[0]];
+            } else {
+                for (uint32_t i = 0; i < n_valid; i++) probs[i] /= sum;
+
+                if (top_p < 1.0f) {
+                    /* Sort indices by descending prob (insertion sort, n≤32). */
+                    uint32_t order[32];
+                    for (uint32_t i = 0; i < n_valid; i++) order[i] = i;
+                    for (uint32_t i = 1; i < n_valid; i++) {
+                        uint32_t key = order[i];
+                        int32_t j = (int32_t)i - 1;
+                        while (j >= 0 && probs[order[j]] < probs[key]) {
+                            order[j + 1] = order[j];
+                            j--;
+                        }
+                        order[j + 1] = key;
+                    }
+                    /* Truncate tail past cumulative top_p. */
+                    float cum = 0.0f;
+                    uint32_t keep = n_valid;
+                    for (uint32_t i = 0; i < n_valid; i++) {
+                        cum += probs[order[i]];
+                        if (cum >= top_p) { keep = i + 1; break; }
+                    }
+                    /* Zero-out tail and renormalize the kept head. */
+                    float new_sum = 0.0f;
+                    for (uint32_t i = 0; i < n_valid; i++) {
+                        if (i >= keep) probs[order[i]] = 0.0f;
+                        else new_sum += probs[order[i]];
+                    }
+                    if (new_sum > 0.0f) {
+                        for (uint32_t i = 0; i < n_valid; i++) probs[i] /= new_sum;
+                    }
+                }
+
+                /* Inverse-CDF sample. */
+                float u = bridge_rng_unit(bridge);
+                float cum = 0.0f;
+                uint32_t chosen = n_valid - 1;  /* fallback to last */
+                for (uint32_t i = 0; i < n_valid; i++) {
+                    cum += probs[i];
+                    if (u < cum) { chosen = i; break; }
+                }
+                word_result = topK[valid_idx[chosen]];
             }
         }
         if (!found) break;

@@ -1379,6 +1379,27 @@ class BrainService:
             return {"error": f"recompute_norms: {e}"}
         return {"ok": True}
 
+    def _cmd_set_snn_language_bridge_sampling(self, req):
+        """PA-6: configure produce-time sampling.
+
+        Request keys:
+          temperature  (float, default 0.0) — 0 = argmax (legacy);
+                       >0 = softmax sampling over top-K candidates.
+          top_p        (float, default 1.0) — nucleus truncation in (0,1].
+        """
+        try:
+            temperature = float(req.get("temperature", 0.0))
+            top_p = float(req.get("top_p", 1.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_sampling bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_sampling(temperature, top_p)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_sampling not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_sampling: {e}"}
+        return {"ok": True, "temperature": temperature, "top_p": top_p}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:
