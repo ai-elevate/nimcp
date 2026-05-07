@@ -267,6 +267,16 @@ typedef struct {
      * snn_language_bridge_reset_stats. Reads return 0 when trigram learning
      * was never used. */
     uint64_t total_trigram_updates;
+    /* TA-3 — reward-modulated STDP telemetry. Bumped once per
+     * snn_language_bridge_apply_stdp pass that found a non-trivial DA
+     * gate (config.enable_da_modulation == true AND a neuromodulator
+     * system is connected). last_da_modulation captures the multiplier
+     * applied this pass — 1.0 when modulation is off / DA is at zero,
+     * (1 + da*gain) otherwise. Useful for verifying that dopamine is
+     * actually reaching the binding-learning loop. Zeroed by
+     * snn_language_bridge_reset_stats. */
+    uint64_t da_gated_stdp_passes;
+    float    last_da_modulation;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -585,6 +595,39 @@ bool snn_language_bridge_get_trigram_learning_enabled(
  *  pass so consumers can read total_trigram_updates from snn_lang_stats_t.
  *  No-op on NULL/invalid bridge. */
 void snn_language_bridge_inc_trigram_updates(snn_language_bridge_t* bridge);
+
+/** TA-3: toggle dopamine-modulated binding learning.
+ *
+ * When enabled AND a neuromodulator system is connected via
+ * snn_language_bridge_connect_neuromod(), every snn_language_bridge_apply_stdp
+ * pass reads the current dopamine concentration once and applies
+ *   weight_change *= 1 + dopamine * config.da_modulation_gain
+ * to every binding update in the pass. Default config has the gate ON
+ * with gain=50, so the pass amounts to identity (×1.0) when no neuromod
+ * is connected and tonic-DA modulation otherwise.
+ *
+ * Runtime-only flag (not persisted in the V3 bridge sidecar) — caller
+ * must re-enable after each load. This is intentional: DA modulation is
+ * a trainer-curriculum knob, not a bridge-state property.
+ *
+ * @return 0 on success; -1 if bridge is NULL or magic mismatched. */
+int snn_language_bridge_set_da_modulation_enabled(
+    snn_language_bridge_t* bridge,
+    bool enabled);
+
+/** TA-3: read the DA-modulation runtime flag. Returns false if bridge
+ *  is NULL/invalid. */
+bool snn_language_bridge_get_da_modulation_enabled(
+    const snn_language_bridge_t* bridge);
+
+/** TA-3: tune the DA → LR scaling.
+ *
+ * Caps gain to [0, 200] to prevent pathological multipliers when DA
+ * spikes (DA in [0,1] × gain × base_lr). gain=0 disables modulation
+ * even when the enable flag is true (multiplier is always 1.0). */
+int snn_language_bridge_set_da_modulation_gain(
+    snn_language_bridge_t* bridge,
+    float gain);
 
 /** Get current spike blend factor */
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge);

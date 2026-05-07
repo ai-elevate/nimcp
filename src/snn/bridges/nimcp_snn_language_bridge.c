@@ -17,6 +17,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include "utils/quantum/nimcp_quantum_monte_carlo.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -821,6 +822,25 @@ int snn_language_bridge_apply_stdp(snn_language_bridge_t* bridge,
     float lr = bridge->config.stdp_learning_rate;
     float w_max = bridge->config.binding_w_max;
 
+    /* TA-3 — three-factor learning gate. Read dopamine ONCE per pass
+     * (constant across all bindings this call) and fold it into the LR.
+     * Pattern matches stdp_get_da_modulation_factor: multiplier = 1 +
+     * DA × gain. Identity when modulation disabled or no neuromod
+     * connected. Tracked in stats so consumers can verify dopamine is
+     * actually reaching the binding loop. */
+    float da_modulation = 1.0f;
+    if (bridge->config.enable_da_modulation && bridge->neuromod &&
+        bridge->config.da_modulation_gain > 0.0f) {
+        float da = neuromodulator_get_level(
+            (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
+        /* Defensive: caller could feed back NaN/Inf via the system. */
+        if (isfinite(da) && da >= 0.0f) {
+            da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
+        }
+        bridge->stats.da_gated_stdp_passes++;
+    }
+    bridge->stats.last_da_modulation = da_modulation;
+
     // Iterate all bindings
     for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
         binding_node_t* node = bridge->binding_buckets[bucket];
@@ -871,8 +891,8 @@ int snn_language_bridge_apply_stdp(snn_language_bridge_t* bridge,
                 // Update eligibility trace
                 b->eligibility += fabsf(dw);
 
-                // Apply weight change with learning rate
-                float weight_change = lr * dw;
+                // Apply weight change with learning rate (TA-3: gated by dopamine)
+                float weight_change = lr * dw * da_modulation;
 
                 // Soft bounds: weight-dependent scaling
                 if (weight_change > 0.0f) {
@@ -2545,6 +2565,34 @@ void snn_language_bridge_inc_trigram_updates(snn_language_bridge_t* bridge)
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return;
     bridge->stats.total_trigram_updates++;
+}
+
+/* TA-3: dopamine-modulated binding learning runtime accessors. */
+int snn_language_bridge_set_da_modulation_enabled(
+    snn_language_bridge_t* bridge,
+    bool enabled)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->config.enable_da_modulation = enabled;
+    return 0;
+}
+
+bool snn_language_bridge_get_da_modulation_enabled(
+    const snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
+    return bridge->config.enable_da_modulation;
+}
+
+int snn_language_bridge_set_da_modulation_gain(
+    snn_language_bridge_t* bridge,
+    float gain)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(gain) || gain < 0.0f) return -1;
+    if (gain > 200.0f) gain = 200.0f;
+    bridge->config.da_modulation_gain = gain;
+    return 0;
 }
 
 void snn_lang_production_result_cleanup(snn_lang_production_result_t* result)
