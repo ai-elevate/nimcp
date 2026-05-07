@@ -150,6 +150,27 @@ typedef struct {
      * Mode 1 is auto-selected when temperature > 0 and sampling_mode == 0
      * (preserves PA-6 callers). Mode 2 must be set explicitly. */
     int      sampling_mode;
+    /* TIER1-A: optional beam-K decoding in snn_language_bridge_produce.
+     * produce_beam_width = 1 (default) preserves greedy / current behavior
+     * bit-for-bit. > 1 maintains K parallel beams (each with its own state
+     * buffer + cumulative log-prob), expands their top-V candidates per
+     * step, prunes to K best by length-normalized score
+     *   logprob / token_count^0.6
+     * and returns the highest-scoring beam's token sequence. Capped at 16. */
+    uint32_t produce_beam_width;
+    /* TIER1-B: explicit end-of-utterance token. eos_word_pop == UINT32_MAX
+     * (default) disables the mechanism. When set to a registered word_pop,
+     * sampling that pop in the produce loop halts production cleanly
+     * (without appending the EOS token to the output text). */
+    uint32_t eos_word_pop;
+    /* TIER1-C: n-gram repetition penalty. Per produce step, before
+     * sampling, multiplicatively penalize the score of any candidate
+     * whose word_pop appears in the last repetition_window picks:
+     *   score *= (1 - repetition_penalty)   per match.
+     * repetition_penalty == 0 (default) disables; window == 0 falls back
+     * to the default (3) when penalty > 0. Penalty clamped to [0, 1]. */
+    float    repetition_penalty;
+    uint32_t repetition_window;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -507,6 +528,42 @@ int snn_language_bridge_set_hyperbolic_embeddings(snn_language_bridge_t* bridge,
  */
 int snn_language_bridge_set_sampling_mode(snn_language_bridge_t* bridge,
                                             int mode);
+
+/** TIER1-A: configure optional beam-K decoding in snn_language_bridge_produce.
+ *
+ * @param k  Beam width. 1 (default) = greedy / legacy bit-for-bit. > 1 keeps
+ *           K parallel beams with cumulative log-prob and length-normalized
+ *           ranking (logprob / token_count^0.6). Capped at 16. 0 is treated
+ *           as 1.
+ *
+ * @return 0 on success, -1 if bridge invalid.
+ */
+int snn_language_bridge_set_beam_width(snn_language_bridge_t* bridge,
+                                        uint32_t k);
+
+/** TIER1-B: register the end-of-utterance word_pop. When sampled inside
+ * the produce loop, generation halts cleanly (the EOS pop itself is NOT
+ * appended to the output text).
+ *
+ * @param pop  Word_pop index, or UINT32_MAX (default) to disable EOS.
+ * @return 0 on success, -1 if bridge invalid.
+ */
+int snn_language_bridge_set_eos_word_pop(snn_language_bridge_t* bridge,
+                                          uint32_t pop);
+
+/** TIER1-C: configure the n-gram repetition penalty applied per produce step.
+ *
+ * Before scoring/sampling candidates, every candidate whose word_pop appears
+ * in the last `window` picks has its score multiplied by `(1 - penalty)` for
+ * each match. With penalty = 0 (default) the path is a no-op.
+ *
+ * @param penalty  In [0, 1]. 0 disables. Clamped if out of range.
+ * @param window   Look-back length. 0 falls back to 3 when penalty > 0.
+ * @return 0 on success, -1 if bridge invalid.
+ */
+int snn_language_bridge_set_repetition_penalty(snn_language_bridge_t* bridge,
+                                                 float penalty,
+                                                 uint32_t window);
 
 /** PA-2: configure the autoregressive recurrent decoder.
  *

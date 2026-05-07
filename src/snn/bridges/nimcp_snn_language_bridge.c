@@ -283,7 +283,14 @@ snn_lang_config_t snn_lang_config_default(void)
         /* PA-6+: 0 = legacy auto-dispatch (argmax / softmax+top-p driven
          * by temperature). Modes 1 (softmax-only) and 2 (q-MC) are
          * explicit opt-ins. */
-        .sampling_mode = 0
+        .sampling_mode = 0,
+        /* TIER1-A: beam_width = 1 = greedy / legacy bit-for-bit. */
+        .produce_beam_width = 1,
+        /* TIER1-B: EOS disabled by default. */
+        .eos_word_pop = UINT32_MAX,
+        /* TIER1-C: repetition penalty disabled by default. */
+        .repetition_penalty = 0.0f,
+        .repetition_window  = 3
     };
     return config;
 }
@@ -1056,6 +1063,40 @@ int snn_language_bridge_set_sampling_mode(snn_language_bridge_t* bridge,
     return 0;
 }
 
+/* TIER1-A: configure beam-K decoding. k=1 (or 0) means greedy; capped at 16. */
+int snn_language_bridge_set_beam_width(snn_language_bridge_t* bridge, uint32_t k)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (k == 0) k = 1;
+    if (k > 16) k = 16;
+    bridge->config.produce_beam_width = k;
+    return 0;
+}
+
+/* TIER1-B: register EOS word_pop. UINT32_MAX disables. */
+int snn_language_bridge_set_eos_word_pop(snn_language_bridge_t* bridge,
+                                          uint32_t pop)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->config.eos_word_pop = pop;
+    return 0;
+}
+
+/* TIER1-C: configure n-gram repetition penalty. */
+int snn_language_bridge_set_repetition_penalty(snn_language_bridge_t* bridge,
+                                                 float penalty,
+                                                 uint32_t window)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(penalty)) return -1;
+    if (penalty < 0.0f) penalty = 0.0f;
+    if (penalty > 1.0f) penalty = 1.0f;
+    bridge->config.repetition_penalty = penalty;
+    /* window == 0 with penalty > 0 falls back to 3 (default) inside produce. */
+    bridge->config.repetition_window = window;
+    return 0;
+}
+
 /* PA-5 helpers — embedding cache lifecycle. */
 static void emb_cache_free(snn_language_bridge_t* bridge)
 {
@@ -1448,6 +1489,15 @@ int snn_language_bridge_produce_word(snn_language_bridge_t* bridge,
     return 0;
 }
 
+/* TIER1-A forward declaration. Beam-K decoding is a separate code path that
+ * runs only when produce_beam_width > 1; greedy / beam_width <= 1 stays on
+ * the legacy single-beam loop below. Defined further down in this file. */
+static int produce_beam_search(snn_language_bridge_t* bridge,
+                                const float* semantic_intent,
+                                uint32_t intent_dim,
+                                uint32_t beam_width,
+                                snn_lang_production_result_t* result);
+
 int snn_language_bridge_produce(snn_language_bridge_t* bridge,
                                  const float* semantic_intent,
                                  uint32_t intent_dim,
@@ -1458,6 +1508,19 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "snn_language_bridge_produce: bridge, semantic_intent, or result is NULL");
         return -1;
+    }
+
+    /* TIER1-A: dispatch to beam-K decoder when configured. The beam path
+     * itself increments total_produce_calls + writes the EMA, so we return
+     * directly. beam_width = 0 or 1 falls through to the legacy greedy loop
+     * which preserves bit-for-bit prior behavior. */
+    {
+        uint32_t bw = bridge->config.produce_beam_width;
+        if (bw > 1) {
+            if (bw > 16) bw = 16;
+            return produce_beam_search(bridge, semantic_intent, intent_dim,
+                                       bw, result);
+        }
     }
 
     bridge->stats.total_produce_calls++;
@@ -1538,6 +1601,15 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     float total_entropy_conf = 0.0f;
     uint32_t entropy_steps = 0;
 
+    /* TIER1-B/C: pull EOS + repetition penalty knobs once. Default-disabled
+     * values keep the loop bit-for-bit identical to the prior path. */
+    const uint32_t eos_pop      = bridge->config.eos_word_pop;  /* UINT32_MAX = off */
+    float          rep_penalty  = bridge->config.repetition_penalty;
+    uint32_t       rep_window   = bridge->config.repetition_window;
+    if (!isfinite(rep_penalty) || rep_penalty < 0.0f) rep_penalty = 0.0f;
+    if (rep_penalty > 1.0f) rep_penalty = 1.0f;
+    if (rep_penalty > 0.0f && rep_window == 0) rep_window = 3;
+
     for (uint32_t w = 0; w < max_words; w++) {
         // Get top word
         snn_lang_word_result_t word_result;
@@ -1562,6 +1634,31 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         }
         if (n_valid == 0) break;
 
+        /* TIER1-C: apply the n-gram repetition penalty in-place to topK
+         * activations (which decode_spikes set to the cosine score). Each
+         * candidate's activation is multiplied by (1 - rep_penalty) once
+         * per occurrence in the last `rep_window` picks. With the default
+         * rep_penalty == 0 this loop is skipped entirely (legacy path). */
+        if (rep_penalty > 0.0f && rep_window > 0 && word_count > 0) {
+            uint32_t lookback_start = (word_count > rep_window)
+                                         ? (word_count - rep_window) : 0;
+            float scale_per_match = 1.0f - rep_penalty;
+            for (uint32_t i = 0; i < n_valid; i++) {
+                uint32_t cand_pop = topK[valid_idx[i]].word_pop;
+                /* Although refractory filtering already drops exact
+                 * duplicates, the window may extend over a longer history
+                 * than the refractory list when callers shorten it later.
+                 * Count matches strictly inside the window. */
+                uint32_t matches = 0;
+                for (uint32_t u = lookback_start; u < word_count; u++) {
+                    if (used_words[u] == cand_pop) matches++;
+                }
+                for (uint32_t m = 0; m < matches; m++) {
+                    topK[valid_idx[i]].activation *= scale_per_match;
+                }
+            }
+        }
+
         /* PA-6+: when sampling_mode == 0 (auto) and temperature == 0, stay
          * on argmax. Otherwise compute the softmax posterior (used by both
          * mode 1 / 2). Mode 1 & 2 require T > 0 — if caller set the mode
@@ -1571,8 +1668,23 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
             (sampling_mode == 0 && temperature > 0.0f);
 
         if (!need_posterior || n_valid == 1) {
-            /* Legacy hard-argmax path: pick the first valid (highest cosine). */
-            word_result = topK[valid_idx[0]];
+            /* Legacy hard-argmax path: pick the first valid (highest cosine).
+             * TIER1-C: when rep_penalty has scaled the activations, the
+             * highest-scoring candidate may no longer be valid_idx[0]; scan
+             * for the actual max. With rep_penalty == 0 this scan still
+             * picks valid_idx[0] because decode_spikes returns topK in
+             * descending cosine order. */
+            uint32_t best_local = 0;
+            if (rep_penalty > 0.0f && n_valid > 1) {
+                float best_act = topK[valid_idx[0]].activation;
+                for (uint32_t i = 1; i < n_valid; i++) {
+                    if (topK[valid_idx[i]].activation > best_act) {
+                        best_act = topK[valid_idx[i]].activation;
+                        best_local = i;
+                    }
+                }
+            }
+            word_result = topK[valid_idx[best_local]];
         } else {
             /* PA-6: softmax sample over valid candidates. Subtract max before
              * exp() for numerical stability. Then top-p (nucleus) truncation:
@@ -1685,6 +1797,15 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         }
 sample_done:;
 
+        /* TIER1-B: EOS halts the loop cleanly. The EOS word is NOT appended
+         * to text_buf nor counted in word_count — production simply stops
+         * at the prior word, which is the desired behavior for trainers
+         * that bind EOS to "end of sentence" concept activations. Default
+         * eos_pop == UINT32_MAX never matches a valid word_pop. */
+        if (eos_pop != UINT32_MAX && word_result.word_pop == eos_pop) {
+            break;
+        }
+
         // Stop if confidence too low
         if (word_result.confidence < 0.01f && word_count > 0) break;
 
@@ -1767,6 +1888,477 @@ sample_done:;
     }
 
     return 0;
+}
+
+/* TIER1-A: beam-K decoding. Each beam tracks its own state buffer, used-
+ * word refractory list (which doubles as the produced sequence), cumulative
+ * log-prob, total confidence, finished flag, and entropy stats. At each
+ * step, every active beam expands its top-V candidates; the union pool is
+ * pruned to K best by length-normalized cumulative score
+ *   logprob / token_count^0.6
+ * (Wu et al. length-norm). Finished beams (EOS, confidence floor, or
+ * refractory exhaustion) are preserved across steps and ranked together
+ * with the active beams at the end. The highest-scoring beam wins.
+ *
+ * Memory layout: state buffers and used_word lists are heap-allocated per
+ * beam (one block each, sized n_concepts * floats and max_words * uint32).
+ * 16 beams × 32 words × ~thousands of concepts is bounded by O(K·N) which
+ * is fine for any sane brain configuration. */
+
+#define BEAM_MAX_K        16
+#define BEAM_MAX_TOPV     8     /* per-beam expansion fanout */
+#define BEAM_MAX_WORDS    32
+
+typedef struct {
+    float*   state;             /* n_concepts */
+    float*   concept_acts;      /* n_concepts */
+    uint32_t used_words[BEAM_MAX_WORDS];
+    char     text_buf[2048];
+    uint32_t text_pos;
+    uint32_t n_used;
+    float    cum_logprob;       /* sum log(prob) along this beam */
+    float    total_confidence;
+    float    entropy_conf_sum;
+    uint32_t entropy_steps;
+    bool     finished;          /* EOS / refractory / confidence floor */
+    bool     active;            /* slot in use */
+} beam_t;
+
+/* Length-normalized score: cum_logprob / max(1, token_count)^0.6.
+ * Empty beams (token_count == 0) get -inf so they can't beat any real one. */
+static inline float beam_score(const beam_t* b)
+{
+    if (!b->active) return -FLT_MAX;
+    if (b->n_used == 0) return -FLT_MAX;
+    float n = (float)b->n_used;
+    float denom = powf(n, 0.6f);
+    if (denom < 1e-6f) denom = 1e-6f;
+    return b->cum_logprob / denom;
+}
+
+static void beam_free(beam_t* b)
+{
+    if (b->state)        nimcp_free(b->state);
+    if (b->concept_acts) nimcp_free(b->concept_acts);
+    b->state        = NULL;
+    b->concept_acts = NULL;
+    b->active       = false;
+}
+
+static int beam_init(beam_t* b, uint32_t n_concepts, const float* intent_buf)
+{
+    memset(b, 0, sizeof(*b));
+    b->state        = nimcp_calloc(n_concepts, sizeof(float));
+    b->concept_acts = nimcp_calloc(n_concepts, sizeof(float));
+    if (!b->state || !b->concept_acts) {
+        beam_free(b);
+        return -1;
+    }
+    memcpy(b->state,        intent_buf, n_concepts * sizeof(float));
+    memcpy(b->concept_acts, intent_buf, n_concepts * sizeof(float));
+    b->active = true;
+    return 0;
+}
+
+/* Deep copy: text_buf, used_words, scalars + reallocate state/concept_acts. */
+static int beam_clone(beam_t* dst, const beam_t* src, uint32_t n_concepts)
+{
+    memset(dst, 0, sizeof(*dst));
+    dst->state        = nimcp_calloc(n_concepts, sizeof(float));
+    dst->concept_acts = nimcp_calloc(n_concepts, sizeof(float));
+    if (!dst->state || !dst->concept_acts) {
+        beam_free(dst);
+        return -1;
+    }
+    memcpy(dst->state,        src->state,        n_concepts * sizeof(float));
+    memcpy(dst->concept_acts, src->concept_acts, n_concepts * sizeof(float));
+    memcpy(dst->used_words,   src->used_words,   sizeof(dst->used_words));
+    memcpy(dst->text_buf,     src->text_buf,     sizeof(dst->text_buf));
+    dst->text_pos         = src->text_pos;
+    dst->n_used           = src->n_used;
+    dst->cum_logprob      = src->cum_logprob;
+    dst->total_confidence = src->total_confidence;
+    dst->entropy_conf_sum = src->entropy_conf_sum;
+    dst->entropy_steps    = src->entropy_steps;
+    dst->finished         = src->finished;
+    dst->active           = true;
+    return 0;
+}
+
+static int produce_beam_search(snn_language_bridge_t* bridge,
+                                const float* semantic_intent,
+                                uint32_t intent_dim,
+                                uint32_t beam_width,
+                                snn_lang_production_result_t* result)
+{
+    bridge->stats.total_produce_calls++;
+    memset(result, 0, sizeof(*result));
+
+    if (beam_width < 1) beam_width = 1;
+    if (beam_width > BEAM_MAX_K) beam_width = BEAM_MAX_K;
+
+    uint32_t n_concepts = bridge->num_concept_pops;
+    if (n_concepts == 0) return -1;
+
+    /* Immutable original intent (shared across all beams). */
+    float* intent = nimcp_calloc(n_concepts, sizeof(float));
+    if (!intent) return -1;
+    uint32_t copy_dim = (intent_dim < n_concepts) ? intent_dim : n_concepts;
+    for (uint32_t i = 0; i < copy_dim; i++) {
+        intent[i] = fmaxf(0.0f, semantic_intent[i]);
+    }
+
+    /* Pin the GloVe embedding query to the immutable intent for the duration
+     * of this call, just like the greedy path. Reset on every exit. */
+    bridge->emb_query_override     = intent;
+    bridge->emb_query_override_dim = n_concepts;
+
+    /* Read recurrent + sampling knobs once. */
+    float ip = bridge->config.intent_persistence;
+    float wf = bridge->config.word_feedback;
+    if (!isfinite(ip) || ip < 0.0f) ip = 0.0f;
+    if (ip > 1.0f) ip = 1.0f;
+    if (!isfinite(wf) || wf < 0.0f) wf = 0.0f;
+    if (wf > 1.0f) wf = 1.0f;
+
+    const float temperature = bridge->config.temperature;
+    uint32_t topk = bridge->config.produce_topk;
+    if (topk == 0)  topk = 5;
+    if (topk > BEAM_MAX_TOPV) topk = BEAM_MAX_TOPV;
+
+    const uint32_t eos_pop = bridge->config.eos_word_pop;
+    float    rep_penalty = bridge->config.repetition_penalty;
+    uint32_t rep_window  = bridge->config.repetition_window;
+    if (!isfinite(rep_penalty) || rep_penalty < 0.0f) rep_penalty = 0.0f;
+    if (rep_penalty > 1.0f) rep_penalty = 1.0f;
+    if (rep_penalty > 0.0f && rep_window == 0) rep_window = 3;
+
+    /* Allocate beams. Start with a single seed beam; subsequent steps grow
+     * to beam_width via expansion. */
+    beam_t beams[BEAM_MAX_K];
+    memset(beams, 0, sizeof(beams));
+    if (beam_init(&beams[0], n_concepts, intent) != 0) {
+        nimcp_free(intent);
+        bridge->emb_query_override = NULL;
+        bridge->emb_query_override_dim = 0;
+        return -1;
+    }
+    uint32_t n_beams = 1;
+
+    /* Per-step expansion buffers. Each candidate carries: (beam_idx,
+     * word_pop, word_form, confidence, log_prob_step, entropy_step). */
+    typedef struct {
+        uint32_t    beam_idx;
+        uint32_t    word_pop;
+        const char* word_form;   /* borrowed from topK[..].word_form */
+        float       confidence;
+        float       log_prob;    /* of this candidate given its parent beam */
+        float       entropy_step;/* per-step entropy contribution */
+        bool        is_eos;
+    } cand_t;
+
+    /* Up to BEAM_MAX_K beams × BEAM_MAX_TOPV candidates each. */
+    cand_t cands[BEAM_MAX_K * BEAM_MAX_TOPV];
+
+    for (uint32_t step = 0; step < BEAM_MAX_WORDS; step++) {
+        /* If every beam is finished, stop. */
+        bool any_active = false;
+        for (uint32_t i = 0; i < n_beams; i++) {
+            if (beams[i].active && !beams[i].finished) { any_active = true; break; }
+        }
+        if (!any_active) break;
+
+        uint32_t n_cands = 0;
+
+        for (uint32_t bi = 0; bi < n_beams; bi++) {
+            beam_t* B = &beams[bi];
+            if (!B->active || B->finished) continue;
+
+            /* Decode top-V from this beam's concept_acts. */
+            snn_lang_word_result_t topV[BEAM_MAX_TOPV];
+            uint32_t num_out = 0;
+            int rc = snn_language_bridge_decode_spikes(bridge, B->concept_acts,
+                                                       n_concepts, topV, topk,
+                                                       &num_out);
+            if (rc != 0 || num_out == 0) {
+                B->finished = true;
+                continue;
+            }
+
+            /* Filter refractory + apply repetition penalty (in-place on the
+             * topV.activation cosine score). */
+            uint32_t valid_idx[BEAM_MAX_TOPV];
+            uint32_t n_valid = 0;
+            for (uint32_t k = 0; k < num_out; k++) {
+                bool refractory = false;
+                for (uint32_t u = 0; u < B->n_used; u++) {
+                    if (B->used_words[u] == topV[k].word_pop) {
+                        refractory = true; break;
+                    }
+                }
+                if (!refractory) valid_idx[n_valid++] = k;
+            }
+            if (n_valid == 0) { B->finished = true; continue; }
+
+            if (rep_penalty > 0.0f && rep_window > 0 && B->n_used > 0) {
+                uint32_t lookback_start = (B->n_used > rep_window)
+                                             ? (B->n_used - rep_window) : 0;
+                float scale_per_match = 1.0f - rep_penalty;
+                for (uint32_t i = 0; i < n_valid; i++) {
+                    uint32_t cand_pop = topV[valid_idx[i]].word_pop;
+                    uint32_t matches = 0;
+                    for (uint32_t u = lookback_start; u < B->n_used; u++) {
+                        if (B->used_words[u] == cand_pop) matches++;
+                    }
+                    for (uint32_t m = 0; m < matches; m++) {
+                        topV[valid_idx[i]].activation *= scale_per_match;
+                    }
+                }
+            }
+
+            /* Compute softmax over valid candidates → log-probs. */
+            float scores[BEAM_MAX_TOPV];
+            float max_score = -FLT_MAX;
+            for (uint32_t i = 0; i < n_valid; i++) {
+                scores[i] = topV[valid_idx[i]].activation;
+                if (scores[i] > max_score) max_score = scores[i];
+            }
+            float T = (temperature > 0.0f) ? temperature : 1.0f;
+            float sum = 0.0f;
+            float probs[BEAM_MAX_TOPV];
+            for (uint32_t i = 0; i < n_valid; i++) {
+                probs[i] = expf((scores[i] - max_score) / T);
+                sum += probs[i];
+            }
+            if (sum <= 0.0f) {
+                /* Degenerate — assign uniform. */
+                for (uint32_t i = 0; i < n_valid; i++) {
+                    probs[i] = 1.0f / (float)n_valid;
+                }
+                sum = 1.0f;
+            } else {
+                for (uint32_t i = 0; i < n_valid; i++) probs[i] /= sum;
+            }
+
+            /* Per-step entropy confidence (1 − H(p)/log K). */
+            float entropy_step = 0.0f;
+            if (n_valid > 1) {
+                float H = 0.0f;
+                for (uint32_t i = 0; i < n_valid; i++) {
+                    float p = probs[i];
+                    if (p > 1e-12f) H -= p * logf(p);
+                }
+                float Hmax = logf((float)n_valid);
+                entropy_step = (Hmax > 0.0f) ? (1.0f - H / Hmax) : 1.0f;
+                if (entropy_step < 0.0f) entropy_step = 0.0f;
+                if (entropy_step > 1.0f) entropy_step = 1.0f;
+            }
+
+            for (uint32_t i = 0; i < n_valid && n_cands < (BEAM_MAX_K * BEAM_MAX_TOPV); i++) {
+                float p = probs[i];
+                if (p <= 1e-30f) continue;
+                cand_t* C = &cands[n_cands++];
+                C->beam_idx     = bi;
+                C->word_pop     = topV[valid_idx[i]].word_pop;
+                C->word_form    = topV[valid_idx[i]].word_form;
+                C->confidence   = topV[valid_idx[i]].confidence;
+                C->log_prob     = logf(p);
+                C->entropy_step = entropy_step;
+                C->is_eos       = (eos_pop != UINT32_MAX &&
+                                    topV[valid_idx[i]].word_pop == eos_pop);
+            }
+        }
+
+        if (n_cands == 0) {
+            /* No beam produced any candidate — all finished. */
+            break;
+        }
+
+        /* Score each candidate: parent_beam.cum_logprob + cand.log_prob,
+         * then length-normalize by (parent.n_used + 1)^0.6 so candidates
+         * starting from a longer beam don't unfairly outscore short ones.
+         * EOS candidates use the parent's current length (no new token
+         * added). */
+        float cand_scores[BEAM_MAX_K * BEAM_MAX_TOPV];
+        for (uint32_t i = 0; i < n_cands; i++) {
+            const beam_t* parent = &beams[cands[i].beam_idx];
+            uint32_t newlen = parent->n_used + (cands[i].is_eos ? 0 : 1);
+            if (newlen == 0) newlen = 1;
+            float denom = powf((float)newlen, 0.6f);
+            if (denom < 1e-6f) denom = 1e-6f;
+            cand_scores[i] = (parent->cum_logprob + cands[i].log_prob) / denom;
+        }
+
+        /* Rank-K selection by cand_scores (insertion sort on indices, K
+         * small — n_cands ≤ 128). */
+        uint32_t order[BEAM_MAX_K * BEAM_MAX_TOPV];
+        for (uint32_t i = 0; i < n_cands; i++) order[i] = i;
+        for (uint32_t i = 1; i < n_cands; i++) {
+            uint32_t key = order[i];
+            int32_t j = (int32_t)i - 1;
+            while (j >= 0 && cand_scores[order[j]] < cand_scores[key]) {
+                order[j + 1] = order[j];
+                j--;
+            }
+            order[j + 1] = key;
+        }
+
+        uint32_t keep = (n_cands < beam_width) ? n_cands : beam_width;
+
+        /* Build the next-step beam roster. We need ALL previously-finished
+         * beams to be carried forward unchanged + up to keep new beams from
+         * the candidate ranking. Move existing beams into a temp buffer
+         * first so we don't clobber sources during clone. */
+        beam_t old_beams[BEAM_MAX_K];
+        memcpy(old_beams, beams, sizeof(beams));
+        memset(beams, 0, sizeof(beams));
+        uint32_t new_n_beams = 0;
+
+        /* 1) Carry already-finished beams forward (they keep their score). */
+        for (uint32_t i = 0; i < n_beams && new_n_beams < BEAM_MAX_K; i++) {
+            if (old_beams[i].active && old_beams[i].finished) {
+                /* Move ownership rather than clone — avoids extra alloc. */
+                beams[new_n_beams++] = old_beams[i];
+                memset(&old_beams[i], 0, sizeof(old_beams[i]));
+            }
+        }
+
+        /* 2) Spawn new beams from the top-K candidates. */
+        for (uint32_t r = 0; r < keep && new_n_beams < BEAM_MAX_K; r++) {
+            const cand_t* C = &cands[order[r]];
+            const beam_t* parent = &old_beams[C->beam_idx];
+            beam_t* dst = &beams[new_n_beams];
+            if (beam_clone(dst, parent, n_concepts) != 0) {
+                continue;
+            }
+
+            /* Update accumulated stats for this new beam. */
+            dst->cum_logprob      += C->log_prob;
+            dst->total_confidence += C->confidence;
+            if (C->entropy_step > 0.0f || C->entropy_step == 0.0f) {
+                /* Always include the entropy step (even 0 contributes a
+                 * sample, matching the greedy path's behavior of recording
+                 * a posterior every step where we computed one). */
+                dst->entropy_conf_sum += C->entropy_step;
+                dst->entropy_steps    += 1;
+            }
+
+            if (C->is_eos) {
+                /* EOS halts this beam cleanly: do NOT append the EOS form
+                 * to text_buf, do NOT add to used_words / n_used. */
+                dst->finished = true;
+            } else {
+                /* Append word to text. */
+                size_t wlen = strlen(C->word_form);
+                if (dst->text_pos + wlen + 2 < sizeof(dst->text_buf)) {
+                    if (dst->text_pos > 0) dst->text_buf[dst->text_pos++] = ' ';
+                    memcpy(dst->text_buf + dst->text_pos, C->word_form, wlen);
+                    dst->text_pos += wlen;
+                }
+                if (dst->n_used < BEAM_MAX_WORDS) {
+                    dst->used_words[dst->n_used++] = C->word_pop;
+                }
+
+                /* Confidence floor — match greedy semantics: stop if
+                 * confidence < 0.01 *and* this beam already has at least
+                 * one prior token. n_used has just been incremented, so
+                 * this means the beam's PRE-this-step length was ≥ 1. */
+                if (C->confidence < 0.01f && dst->n_used > 1) {
+                    dst->finished = true;
+                }
+
+                /* Recurrent state update: state = (1 - wf)*state + wf*encode(word).
+                 * Then concept_acts = ip*intent + (1-ip)*state. */
+                float* word_concepts = nimcp_calloc(n_concepts, sizeof(float));
+                if (word_concepts) {
+                    snn_language_bridge_encode_word(bridge, C->word_pop,
+                                                    word_concepts, n_concepts);
+                    float keep_w = 1.0f - wf;
+                    for (uint32_t c = 0; c < n_concepts; c++) {
+                        dst->state[c] = keep_w * dst->state[c]
+                                          + wf * word_concepts[c];
+                    }
+                    nimcp_free(word_concepts);
+                }
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    dst->concept_acts[c] = ip * intent[c]
+                                             + (1.0f - ip) * dst->state[c];
+                }
+            }
+
+            new_n_beams++;
+        }
+
+        /* 3) Free any old_beams we didn't move forward. */
+        for (uint32_t i = 0; i < n_beams; i++) {
+            if (old_beams[i].active) beam_free(&old_beams[i]);
+        }
+
+        n_beams = new_n_beams;
+
+        /* If every surviving beam is finished, stop. */
+        bool any_unfinished = false;
+        for (uint32_t i = 0; i < n_beams; i++) {
+            if (beams[i].active && !beams[i].finished) {
+                any_unfinished = true; break;
+            }
+        }
+        if (!any_unfinished) break;
+    }
+
+    /* Pick the best beam by length-normalized cum_logprob. */
+    int best = -1;
+    float best_score = -FLT_MAX;
+    for (uint32_t i = 0; i < n_beams; i++) {
+        if (!beams[i].active || beams[i].n_used == 0) continue;
+        float s = beam_score(&beams[i]);
+        if (s > best_score) {
+            best_score = s;
+            best = (int)i;
+        }
+    }
+
+    int rc_out = 0;
+    if (best < 0) {
+        rc_out = -1;
+    } else {
+        beam_t* B = &beams[best];
+        B->text_buf[B->text_pos] = '\0';
+        result->text = nimcp_malloc(B->text_pos + 1);
+        if (!result->text) {
+            rc_out = -1;
+        } else {
+            memcpy(result->text, B->text_buf, B->text_pos + 1);
+            result->word_count = B->n_used;
+            result->spike_confidence = (B->n_used > 0)
+                                          ? B->total_confidence / (float)B->n_used
+                                          : 0.0f;
+            result->fluency = fminf(1.0f, (float)B->n_used / 8.0f);
+            result->creativity = 0.0f;
+            result->entropy_confidence = (B->entropy_steps > 0)
+                                           ? B->entropy_conf_sum / (float)B->entropy_steps
+                                           : 0.0f;
+
+            /* Update running EMA on avg_word_confidence (matches greedy path). */
+            float alpha = (bridge->stats.total_produce_calls > 0)
+                ? 1.0f / (float)bridge->stats.total_produce_calls : 1.0f;
+            if (alpha < 0.05f) alpha = 0.05f;
+            bridge->stats.avg_word_confidence =
+                (1.0f - alpha) * bridge->stats.avg_word_confidence
+                + alpha * result->spike_confidence;
+        }
+    }
+
+    /* Clean up. */
+    for (uint32_t i = 0; i < n_beams; i++) {
+        if (beams[i].active) beam_free(&beams[i]);
+    }
+    nimcp_free(intent);
+
+    bridge->emb_query_override     = NULL;
+    bridge->emb_query_override_dim = 0;
+
+    return rc_out;
 }
 
 void snn_lang_production_result_cleanup(snn_lang_production_result_t* result)
