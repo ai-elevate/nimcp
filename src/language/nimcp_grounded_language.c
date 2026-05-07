@@ -4288,12 +4288,21 @@ static pthread_mutex_t g_tc12_bootstrap = PTHREAD_MUTEX_INITIALIZER;
 static void gl_tc12_lock(grounded_language_t* gl) {
     /* Lazy init protected by a process-wide bootstrap mutex so concurrent
      * first-callers don't double-initialize. After init, the per-gl mutex
-     * carries the load alone. */
-    if (!gl->tc12_lock_inited) {
+     * carries the load alone.
+     *
+     * Double-checked locking: the outer load uses __atomic_load_n with
+     * acquire ordering so that on weak-memory architectures we observe
+     * the mutex initialization that happened-before the inited flag was
+     * set. Pre-fix, the outer check read a plain bool without a memory
+     * barrier — on x86 the strong store ordering masked the bug, but on
+     * ARM a thread could see tc12_lock_inited=true while pthread_mutex_init
+     * hadn't yet propagated. The store inside the bootstrap-mutex region
+     * uses release ordering to pair with the acquire load. */
+    if (!__atomic_load_n(&gl->tc12_lock_inited, __ATOMIC_ACQUIRE)) {
         pthread_mutex_lock(&g_tc12_bootstrap);
         if (!gl->tc12_lock_inited) {
             pthread_mutex_init(&gl->tc12_lock, NULL);
-            gl->tc12_lock_inited = true;
+            __atomic_store_n(&gl->tc12_lock_inited, true, __ATOMIC_RELEASE);
         }
         pthread_mutex_unlock(&g_tc12_bootstrap);
     }
