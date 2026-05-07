@@ -49,6 +49,37 @@ extern "C" {
 #define SNN_LANG_SPIKE_BLEND_DEFAULT  0.1f    // 10% spike, 90% vector initially
 #define SNN_LANG_MAGIC                0x534C4247  // "SLBG"
 
+/* On-disk file format version markers.
+ *
+ * V2 (legacy, no version field): [magic:u32][snn_lang_config_t blob][...].
+ *   Loader detects V2 because the u32 immediately after magic is
+ *   `max_concept_pops` (a small bounded number, ≤ SNN_LANG_MAX_CONCEPT_POPS),
+ *   never the V3 sentinel.
+ *
+ * V3 (PA + MQ knobs persisted explicitly):
+ *   [magic:u32]
+ *   [SNN_LANG_BRIDGE_FILE_V3_SENTINEL:u32]
+ *   [SNN_LANG_BRIDGE_FILE_VERSION_V3:u32 = 3]
+ *   [snn_lang_config_t blob]
+ *   [ext_block_size:u32]   // size of fields below, in bytes
+ *   [temperature:f32]
+ *   [top_p:f32]
+ *   [produce_topk:u32]
+ *   [glove_blend:f32]
+ *   [intent_persistence:f32]
+ *   [word_feedback:f32]
+ *   [enable_snn_spike_routing:u8]
+ *   [activation_tau_ms:f32]
+ *   [use_hyperbolic_embeddings:u8]
+ *   [sampling_mode:i32]
+ *   [...remainder: populations, bindings...]
+ *
+ * The ext_block_size lets future readers seek past unknown trailing bytes
+ * if/when more knobs are added. */
+#define SNN_LANG_BRIDGE_FILE_V3_SENTINEL  0xFFFFFFFEu
+#define SNN_LANG_BRIDGE_FILE_VERSION_V2   2u  /* implicit: no version on disk */
+#define SNN_LANG_BRIDGE_FILE_VERSION_V3   3u
+
 //=============================================================================
 // Forward declarations
 //=============================================================================
