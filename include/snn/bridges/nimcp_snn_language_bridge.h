@@ -112,6 +112,18 @@ typedef struct {
      * when an embedding lookup callback is attached. glove_blend = 0
      * (default) preserves Patch-A binding-only behavior. */
     float    glove_blend;
+    /* PA-2: autoregressive recurrent decoder controls. Per-step:
+     *   state_t   = (1 − word_feedback) · state_{t-1} + word_feedback · w_{t-1}
+     *   concept_t = intent_persistence · intent + (1 − intent_persistence) · state_t
+     * with state_0 = intent. word_feedback = 0.3 (legacy hard-coded value)
+     * and intent_persistence = 0 (default) preserve the prior behavior
+     * exactly — concept_acts evolves entirely through state, which decays
+     * the original intent away in favor of recently-picked word reverse-
+     * encodings. Set intent_persistence > 0 to keep the prompt's intent
+     * present at every step (real autoregressive context, not just bag-
+     * of-words ranked by drifted activation). */
+    float    intent_persistence;
+    float    word_feedback;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -388,6 +400,24 @@ int snn_language_bridge_set_glove_blend(snn_language_bridge_t* bridge,
 /** PA-5: invalidate the per-word embedding cache. Call after the
  * embedding table changes (rare — only on retraining or model swap). */
 int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge);
+
+/** PA-2: configure the autoregressive recurrent decoder.
+ *
+ * @param intent_persistence  In [0, 1]. 0 (default) = legacy behavior — the
+ *                            original intent decays exponentially across
+ *                            the produce loop as state evolves toward the
+ *                            most recent words. 1 = pure non-recurrent
+ *                            (intent stays full-strength every step,
+ *                            ignoring state). Values in between blend.
+ * @param word_feedback       In [0, 1]. How aggressively each just-picked
+ *                            word reshapes the recurrent state. Default
+ *                            0.3 (matches the legacy hard-coded blend).
+ *                            Higher = stronger context dependence.
+ * @return 0 on success; -1 if bridge invalid or args out of range.
+ */
+int snn_language_bridge_set_autoregressive(snn_language_bridge_t* bridge,
+                                            float intent_persistence,
+                                            float word_feedback);
 
 //=============================================================================
 // Serialization

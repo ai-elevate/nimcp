@@ -1420,6 +1420,33 @@ class BrainService:
             return {"error": f"set_glove_blend: {e}"}
         return {"ok": True, "blend": blend}
 
+    def _cmd_set_snn_language_bridge_autoregressive(self, req):
+        """PA-2: configure autoregressive recurrent decoder.
+
+        Request keys:
+          intent_persistence  (float, default 0.0, in [0,1]) — 0 reproduces
+                              legacy 70/30 in-place blend (intent decays
+                              as state evolves). 1 keeps intent at full
+                              strength every step.
+          word_feedback       (float, default 0.3, in [0,1]) — how much
+                              each picked word reshapes the recurrent state.
+        """
+        try:
+            intent_persistence = float(req.get("intent_persistence", 0.0))
+            word_feedback      = float(req.get("word_feedback", 0.3))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_autoregressive bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_autoregressive(
+                intent_persistence, word_feedback)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_autoregressive not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_autoregressive: {e}"}
+        return {"ok": True,
+                "intent_persistence": intent_persistence,
+                "word_feedback":      word_feedback}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:

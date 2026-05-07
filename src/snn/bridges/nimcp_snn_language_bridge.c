@@ -244,7 +244,11 @@ snn_lang_config_t snn_lang_config_default(void)
         .produce_topk = 8,
         /* PA-5: GloVe blend off by default. Caller sets >0 after attaching
          * an embedding lookup with set_embedding_lookup(). */
-        .glove_blend = 0.0f
+        .glove_blend = 0.0f,
+        /* PA-2: autoregressive defaults match legacy 0.7/0.3 in-place blend
+         * (intent_persistence = 0 → state-driven; word_feedback = 0.3). */
+        .intent_persistence = 0.0f,
+        .word_feedback      = 0.3f
     };
     return config;
 }
@@ -879,6 +883,20 @@ int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge)
     return 0;
 }
 
+int snn_language_bridge_set_autoregressive(snn_language_bridge_t* bridge,
+                                            float intent_persistence,
+                                            float word_feedback)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(intent_persistence) ||
+        intent_persistence < 0.0f || intent_persistence > 1.0f) return -1;
+    if (!isfinite(word_feedback) ||
+        word_feedback < 0.0f || word_feedback > 1.0f) return -1;
+    bridge->config.intent_persistence = intent_persistence;
+    bridge->config.word_feedback      = word_feedback;
+    return 0;
+}
+
 /* Lazy fill: ensure word w's embedding is cached. Returns 1 if cached
  * (success or already filled), 0 if no embedding for this word, -1 on
  * setup failure. After return 1, word_emb_cache[w] and word_emb_norm[w]
@@ -1006,17 +1024,31 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     // Map semantic intent to concept activations
     // Use first num_concept_pops dimensions of intent (or zero-pad)
     uint32_t n_concepts = bridge->num_concept_pops;
+
+    /* PA-2: separate intent / state / concept_acts buffers. Intent stays
+     * constant across the produce loop. State evolves recurrently from
+     * picked-word reverse-encodings. concept_acts (the actual decode input)
+     * is recomputed each step as a blend of the two. The legacy in-place
+     * 70/30 update was equivalent to the special case
+     * intent_persistence = 0, word_feedback = 0.3 — which is the default. */
+    float* intent       = nimcp_calloc(n_concepts, sizeof(float));
+    float* state        = nimcp_calloc(n_concepts, sizeof(float));
     float* concept_acts = nimcp_calloc(n_concepts, sizeof(float));
-    if (!concept_acts) {
+    if (!intent || !state || !concept_acts) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "snn_language_bridge_produce: failed to allocate concept_acts");
+            "snn_language_bridge_produce: failed to allocate decode buffers");
+        nimcp_free(intent); nimcp_free(state); nimcp_free(concept_acts);
         return -1;
     }
 
     uint32_t copy_dim = (intent_dim < n_concepts) ? intent_dim : n_concepts;
     for (uint32_t i = 0; i < copy_dim; i++) {
-        concept_acts[i] = fmaxf(0.0f, semantic_intent[i]); // ReLU activation
+        intent[i] = fmaxf(0.0f, semantic_intent[i]); // ReLU activation
     }
+    /* state_0 = intent (so the first decode sees the same input as legacy
+     * regardless of intent_persistence). */
+    memcpy(state, intent, n_concepts * sizeof(float));
+    memcpy(concept_acts, intent, n_concepts * sizeof(float));
 
     // Iterative word production with refractory inhibition
     char text_buf[2048] = {0};
@@ -1030,9 +1062,17 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     if (!used_words) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
             "snn_language_bridge_produce: failed to allocate used_words");
-        nimcp_free(concept_acts);
+        nimcp_free(intent); nimcp_free(state); nimcp_free(concept_acts);
         return -1;
     }
+
+    /* PA-2: read the recurrent knobs once. Clamp defensively. */
+    float ip = bridge->config.intent_persistence;
+    float wf = bridge->config.word_feedback;
+    if (!isfinite(ip) || ip < 0.0f) ip = 0.0f;
+    if (ip > 1.0f) ip = 1.0f;
+    if (!isfinite(wf) || wf < 0.0f) wf = 0.0f;
+    if (wf > 1.0f) wf = 1.0f;
 
     /* PA-6: pull config sampling knobs once per produce call. */
     const float temperature = bridge->config.temperature;
@@ -1153,20 +1193,29 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         total_confidence += word_result.confidence;
         word_count++;
 
-        // Feed selected word back into concept activations (recurrent)
+        /* PA-2: recurrent update. Evolve state from the just-picked word's
+         * reverse-encoding, then rebuild concept_acts as the per-step blend
+         * of constant intent + evolving state. With intent_persistence = 0
+         * and word_feedback = 0.3, this reproduces the legacy single-buffer
+         * 70/30 update bit-for-bit. */
         float* word_concepts = nimcp_calloc(n_concepts, sizeof(float));
         if (word_concepts) {
             snn_language_bridge_encode_word(bridge, word_result.word_pop,
                                             word_concepts, n_concepts);
-            // Blend: 70% original intent, 30% word feedback
+            float keep = 1.0f - wf;
             for (uint32_t c = 0; c < n_concepts; c++) {
-                concept_acts[c] = 0.7f * concept_acts[c] + 0.3f * word_concepts[c];
+                state[c] = keep * state[c] + wf * word_concepts[c];
             }
             nimcp_free(word_concepts);
+        }
+        for (uint32_t c = 0; c < n_concepts; c++) {
+            concept_acts[c] = ip * intent[c] + (1.0f - ip) * state[c];
         }
     }
 
     nimcp_free(used_words);
+    nimcp_free(intent);
+    nimcp_free(state);
     nimcp_free(concept_acts);
 
     if (word_count == 0) return -1;

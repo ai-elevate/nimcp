@@ -1088,6 +1088,26 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_glove_blend(
 );
 
 /**
+ * @brief Configure the autoregressive recurrent decoder (PA-2).
+ *
+ * @param brain               Brain handle.
+ * @param intent_persistence  In [0,1]. 0 (default) reproduces legacy
+ *                            in-place 70/30 blend behavior — the original
+ *                            intent decays as state evolves toward recent
+ *                            words. 1 keeps intent at full strength every
+ *                            step (state ignored). Intermediate blends.
+ * @param word_feedback       In [0,1]. How aggressively each picked word
+ *                            reshapes the recurrent state. Default 0.3
+ *                            matches the legacy hard-coded value.
+ * @return NIMCP_OK / NIMCP_ERROR_INVALID / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_autoregressive(
+    nimcp_brain_t brain,
+    float intent_persistence,
+    float word_feedback
+);
+
+/**
  * @brief Generate creative text by blending two concepts
  *
  * Conceptual blending — combine two semantic vectors to create novel expression.
