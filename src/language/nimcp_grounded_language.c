@@ -3376,24 +3376,24 @@ static gl_anaphora_gender_t anaphora_pronoun_gender(const char* lower_word) {
 }
 
 /* Gender heuristic for content nouns. Pure recency-based; no syntactic
- * analysis. The token is the original (cased) surface form so we can
- * sniff capitalization for proper-noun → male.
- *   - Capitalized first letter (and not the first word in the sentence?
- *     we don't track that — accept the false-positive on sentence-initial
- *     capitals; v1 caveat) → singular_male.
- *   - Trailing 's' (length ≥ 4 to skip "is"/"as") → plural.
+ * analysis.
+ *   - The caller (`comprehend`) lowercases tokens before invoking this
+ *     pass, so capitalization-based proper-noun detection is impossible
+ *     here — that signal was lost upstream. Earlier versions had an
+ *     `isupper(first)` branch that returned SINGULAR_MALE; it never
+ *     fired and has been removed (INT-1 walkthrough finding).
+ *   - Trailing 's' (length ≥ 4 to skip "is"/"as", and != "ss" to skip
+ *     boss/glass) → plural.
  *   - Otherwise → singular_neuter.
- * If a recent referent is "she/her", the next non-pronoun content noun
- * inherits singular_female — handled by the caller via `pending_female`.
+ * SINGULAR_FEMALE / SINGULAR_MALE are signalled by gendered pronoun
+ * cues ("she/her/hers" or "he/him/his") propagated forward by the
+ * caller via `pending_female` / `pending_male`. So "He is Tom" and
+ * "She is Alice" both work; bare "Tom" / "Alice" mid-sentence with no
+ * cue stay neuter (v1 caveat — fixable later with a name lexicon).
  */
 static gl_anaphora_gender_t anaphora_classify_noun(const char* surface_form) {
     if (!surface_form || !surface_form[0]) return GL_GENDER_SINGULAR_NEUTER;
     size_t len = strlen(surface_form);
-
-    /* Capitalized → proper noun → default male. */
-    if (isupper((unsigned char)surface_form[0])) {
-        return GL_GENDER_SINGULAR_MALE;
-    }
 
     /* Plural detection by trailing 's' (length ≥ 4 avoids 1-letter and
      * common short stop-words like "is"/"as"). Also avoid "ss" doubling
@@ -3477,7 +3477,10 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
     }
 
     uint32_t resolved_here = 0;
-    bool pending_female = false;  /* "she/her" cue → next content noun is female */
+    bool pending_female = false;  /* "she/her/hers" cue → next content noun is female */
+    bool pending_male   = false;  /* "he/him/his"  cue → next content noun is male
+                                   * (parallel to female cue — INT-1 fix; replaces
+                                   *  dead capitalization-based MALE classification) */
 
     for (uint32_t w = 0; w < word_count; w++) {
         const char* surface = words[w];
@@ -3539,8 +3542,11 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
             /* Cue-update: a literal "she" / "her" / "hers" suggests the
              * next content noun (a NAME) refers to a female entity. We
              * propagate pending_female forward so something like
-             * "She is Alice" makes Alice female on push. */
+             * "She is Alice" makes Alice female on push. The symmetric
+             * pending_male path covers "He is Tom" — added in the INT-1
+             * fix when we removed the dead capitalization branch. */
             if (pron == GL_GENDER_SINGULAR_FEMALE) pending_female = true;
+            if (pron == GL_GENDER_SINGULAR_MALE)   pending_male   = true;
             continue;
         }
 
@@ -3558,6 +3564,10 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
         if (pending_female) {
             g = GL_GENDER_SINGULAR_FEMALE;
             pending_female = false;
+            pending_male   = false;  /* female cue wins if both somehow set */
+        } else if (pending_male) {
+            g = GL_GENDER_SINGULAR_MALE;
+            pending_male = false;
         }
         anaphora_push_referent(st, lower, g);
     }
