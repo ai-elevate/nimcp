@@ -32,6 +32,8 @@
 #ifndef NIMCP_GROUNDED_LANGUAGE_PERSISTENCE_H
 #define NIMCP_GROUNDED_LANGUAGE_PERSISTENCE_H
 
+#include <stdio.h>  /* FILE* for the multi-turn save/load API */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -71,6 +73,32 @@ int gl_persistence_save(const struct grounded_language* gl, const char* path);
  *         are invalid.
  */
 int gl_persistence_load(struct grounded_language* gl, const char* path);
+
+/**
+ * @brief TA-1 — persist multi-turn conversational state to a caller-owned
+ *        FILE*: discourse turn ring + anaphora referent ring + bigram
+ *        spectrum count matrix.
+ *
+ * Writes three magic-prefixed blocks ('LAND' / 'LANA' / 'LANB') to the
+ * supplied stream. Each block is independently versioned and self-
+ * delimiting so a future block can be appended without breaking older
+ * readers (which stop at EOF or unknown magic). Best-effort: returns 0
+ * on success, -1 on I/O / argument error. Does NOT fclose() the FILE —
+ * the caller decides durability and lifetime.
+ *
+ * Backward-compat: pre-TA-1 files / FILE handles that lack any of the
+ * three blocks return EOF on the first read; the loader tolerates that
+ * and returns 0 without restoring state.
+ *
+ * @param gl  Handle to the grounded_language module.
+ * @param fp  Open FILE* for write/read. Caller-owned.
+ * @return 0 on success, -1 on argument or I/O error.
+ */
+int grounded_language_save_multiturn_state(struct grounded_language* gl,
+                                            FILE* fp);
+
+int grounded_language_load_multiturn_state(struct grounded_language* gl,
+                                            FILE* fp);
 
 #ifdef __cplusplus
 }

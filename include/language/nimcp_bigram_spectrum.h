@@ -39,6 +39,7 @@
 #define NIMCP_BIGRAM_SPECTRUM_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -129,6 +130,61 @@ uint64_t bigram_spectrum_total_events(const bigram_spectrum_t* spectrum);
  * @brief Return the matrix side length (== vocab_cap passed at create).
  */
 uint32_t bigram_spectrum_vocab_cap(const bigram_spectrum_t* spectrum);
+
+/**
+ * @brief Read-only access to the raw uint32 count matrix for serialization.
+ *
+ * The pointer references internal storage of length vocab_cap × vocab_cap
+ * (row-major: `counts[prev_id * vocab_cap + next_id]`). The pointer is
+ * invalidated by bigram_spectrum_destroy. NOT thread-safe — callers must
+ * serialize with concurrent record/reset/compute.
+ *
+ * @return Pointer to the counts buffer, or NULL on NULL spectrum.
+ */
+const uint32_t* bigram_spectrum_counts(const bigram_spectrum_t* spectrum);
+
+/**
+ * @brief Bulk-load the count matrix and total_events from a flat buffer.
+ *
+ * Used by multi-turn persistence to restore a saved spectrum without
+ * replaying every record() call. The supplied buffer must contain exactly
+ * `cells = vocab_cap × vocab_cap` uint32 entries; `total_events` is set
+ * directly. Returns -1 if the spectrum was created at a different
+ * vocab_cap (mismatch) — caller should re-create at the right size first.
+ *
+ * @return 0 on success, -1 on NULL/size-mismatch.
+ */
+int bigram_spectrum_load_counts(bigram_spectrum_t* spectrum,
+                                 const uint32_t* counts,
+                                 uint64_t total_events);
+
+/**
+ * @brief CC-1 cycle-coordinator periodic compute. Runs compute() only
+ *        if at least `min_delta_events` new bigrams have been recorded
+ *        since the last successful compute. Caches the metrics so
+ *        external readers can grab them in O(1) via
+ *        bigram_spectrum_get_cached_metrics().
+ *
+ * Called from brain_tick_language at a 1Hz sub-rate so trend metrics
+ * stay fresh without operator-demanded compute() calls. Bounded cost:
+ * skips when delta is small.
+ *
+ * @param spectrum         Spectrum tracker.
+ * @param min_delta_events Threshold; 0 means "always recompute when
+ *                          there's any recorded data."
+ * @param out_ran_compute  Optional. Set to true if compute actually ran.
+ * @return  1 if compute ran, 0 if skipped, -1 on error.
+ */
+int bigram_spectrum_maybe_compute(bigram_spectrum_t* spectrum,
+                                    uint64_t min_delta_events,
+                                    bool* out_ran_compute);
+
+/**
+ * @brief Read the most recently cached metrics. Returns -1 if no
+ *        compute has ever run.
+ */
+int bigram_spectrum_get_cached_metrics(const bigram_spectrum_t* spectrum,
+                                         bigram_spectral_metrics_t* out);
 
 #ifdef __cplusplus
 }

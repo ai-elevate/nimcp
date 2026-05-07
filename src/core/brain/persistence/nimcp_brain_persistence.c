@@ -1153,6 +1153,30 @@ bool brain_save(brain_t brain, const char* filepath)
                 fprintf(stderr, "[WARN] gl_persistence_save failed for %s — "
                         "trained lexicon NOT persisted\n", gl_path);
             }
+
+            /* TA-1 multi-turn state sidecar: discourse ring, anaphora
+             * ring, bigram spectrum. Separate file (.gl_multiturn) so
+             * pre-TA-1 readers see EOF after their .gl_lang block. */
+            extern int grounded_language_save_multiturn_state(
+                struct grounded_language* gl, FILE* fp);
+            char mt_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(mt_path, sizeof(mt_path), "%s.gl_multiturn", filepath);
+            FILE* mt_fp = fopen(mt_path, "wb");
+            if (mt_fp) {
+                int mt_rc = grounded_language_save_multiturn_state(
+                    brain->grounded_lang, mt_fp);
+                fclose(mt_fp);
+                if (mt_rc != 0) {
+                    fprintf(stderr,
+                            "[WARN] grounded_language_save_multiturn_state "
+                            "failed for %s — multi-turn state NOT persisted\n",
+                            mt_path);
+                }
+            } else {
+                fprintf(stderr,
+                        "[WARN] could not open %s for write — multi-turn "
+                        "state NOT persisted\n", mt_path);
+            }
         }
     }
 
@@ -2290,6 +2314,30 @@ void brain_load_post_init_sidecars(brain_t brain)
         } else {
             fprintf(stderr, "[INFO] gl_persistence_load: no sidecar at %s — "
                     "lexicon starts from seeded vocabulary only\n", gl_path);
+        }
+
+        /* TA-1 multi-turn state sidecar (discourse + anaphora + bigram
+         * spectrum). Best-effort: missing file is fine on pre-TA-1
+         * checkpoints; the multi-turn ring just starts cold. */
+        extern int grounded_language_load_multiturn_state(
+            struct grounded_language* gl, FILE* fp);
+        char mt_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(mt_path, sizeof(mt_path), "%s.gl_multiturn", filepath);
+        FILE* mt_fp = fopen(mt_path, "rb");
+        if (mt_fp) {
+            int mt_rc = grounded_language_load_multiturn_state(
+                brain->grounded_lang, mt_fp);
+            fclose(mt_fp);
+            if (mt_rc == 0) {
+                fprintf(stderr, "[INFO] Restored multi-turn language state from %s\n",
+                        mt_path);
+            } else {
+                fprintf(stderr, "[WARN] grounded_language_load_multiturn_state "
+                        "failed for %s — multi-turn state lost\n", mt_path);
+            }
+        } else {
+            fprintf(stderr, "[INFO] grounded_language_load_multiturn_state: "
+                    "no sidecar at %s — multi-turn ring starts cold\n", mt_path);
         }
     }
 }

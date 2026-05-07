@@ -34,6 +34,16 @@ struct bigram_spectrum_struct {
     uint32_t   fft_size;           /* next power-of-2 ≥ vocab_cap */
     uint32_t*  counts;             /* [vocab_cap * vocab_cap] */
     uint64_t   total_events;
+    /* CC-1 cycle-coordinator periodic-compute support. The brain's
+     * BRAIN_CYCLE_LANGUAGE tick (16ms) calls
+     * bigram_spectrum_maybe_compute() at a sub-rate (1Hz) so trend
+     * metrics stay fresh without operator-demanded compute() calls.
+     * last_compute_event_count gates against repeating compute on
+     * unchanged data. cached_metrics is the most recent result; valid
+     * only when cached_metrics_valid is true. */
+    uint64_t                  last_compute_event_count;
+    bigram_spectral_metrics_t cached_metrics;
+    bool                      cached_metrics_valid;
 };
 
 /*---------------------------------------------------------------------------
@@ -110,6 +120,48 @@ int bigram_spectrum_reset(bigram_spectrum_t* spectrum) {
     size_t cells = (size_t)spectrum->vocab_cap * (size_t)spectrum->vocab_cap;
     memset(spectrum->counts, 0, cells * sizeof(uint32_t));
     spectrum->total_events = 0;
+    spectrum->last_compute_event_count = 0;
+    spectrum->cached_metrics_valid = false;
+    memset(&spectrum->cached_metrics, 0, sizeof(spectrum->cached_metrics));
+    return 0;
+}
+
+/* CC-1: thresholded periodic compute. Runs compute() only if at least
+ * `min_delta_events` new bigrams have been recorded since the last
+ * successful compute. Caches the result on the spectrum so external
+ * readers (probes / dashboards) can grab fresh metrics in O(1). Returns:
+ *   1  — compute ran, *out_ran_compute set true (if non-NULL).
+ *   0  — skipped (delta below threshold, or zero events). out_ran_compute false.
+ *  -1  — error (NULL spectrum, compute() failure). */
+int bigram_spectrum_maybe_compute(bigram_spectrum_t* spectrum,
+                                    uint64_t min_delta_events,
+                                    bool* out_ran_compute) {
+    if (out_ran_compute) *out_ran_compute = false;
+    if (!spectrum) return -1;
+    if (spectrum->total_events == 0) return 0;
+    uint64_t delta = spectrum->total_events - spectrum->last_compute_event_count;
+    if (delta < min_delta_events) return 0;
+
+    bigram_spectral_metrics_t m;
+    memset(&m, 0, sizeof(m));
+    int rc = bigram_spectrum_compute(spectrum, &m);
+    if (rc != 0) return -1;
+
+    spectrum->cached_metrics = m;
+    spectrum->cached_metrics_valid = true;
+    spectrum->last_compute_event_count = spectrum->total_events;
+    if (out_ran_compute) *out_ran_compute = true;
+    return 1;
+}
+
+/* CC-1: read the most recently cached metrics. Returns 0 on success, -1
+ * if no compute has run yet (caller can fall back to the synchronous
+ * bigram_spectrum_compute API to force one). */
+int bigram_spectrum_get_cached_metrics(const bigram_spectrum_t* spectrum,
+                                         bigram_spectral_metrics_t* out) {
+    if (!spectrum || !out) return -1;
+    if (!spectrum->cached_metrics_valid) return -1;
+    *out = spectrum->cached_metrics;
     return 0;
 }
 
@@ -125,6 +177,31 @@ uint64_t bigram_spectrum_total_events(const bigram_spectrum_t* spectrum) {
 uint32_t bigram_spectrum_vocab_cap(const bigram_spectrum_t* spectrum) {
     if (!spectrum) return 0;
     return spectrum->vocab_cap;
+}
+
+/* TA-1: read-only handle to internal counts buffer for serialization. */
+const uint32_t* bigram_spectrum_counts(const bigram_spectrum_t* spectrum) {
+    if (!spectrum) return NULL;
+    return spectrum->counts;
+}
+
+/* TA-1: bulk-load counts + total_events from a flat buffer. The buffer
+ * must contain exactly vocab_cap × vocab_cap uint32 entries; the caller
+ * is responsible for size matching (we already know vocab_cap on this
+ * spectrum, so the deserializer only needs to verify cap-equality up
+ * front and then memcpy). */
+int bigram_spectrum_load_counts(bigram_spectrum_t* spectrum,
+                                 const uint32_t* counts,
+                                 uint64_t total_events) {
+    if (!spectrum || !counts || !spectrum->counts) return -1;
+    size_t cells = (size_t)spectrum->vocab_cap * (size_t)spectrum->vocab_cap;
+    memcpy(spectrum->counts, counts, cells * sizeof(uint32_t));
+    spectrum->total_events = total_events;
+    /* Drop any cached metrics; they reflect the prior count matrix. */
+    spectrum->cached_metrics_valid = false;
+    spectrum->last_compute_event_count = 0;
+    memset(&spectrum->cached_metrics, 0, sizeof(spectrum->cached_metrics));
+    return 0;
 }
 
 /*---------------------------------------------------------------------------

@@ -9176,7 +9176,7 @@ def _save_checkpoint_sync(brain, decoder, stage, step):
                         # on resume → silent "no sidecar at..." log →
                         # trained state lost. The .gl_lang miss is what
                         # caused the lexicon to wipe on every restart.
-                        '.gl_lang', '.immune', '.kg']
+                        '.gl_lang', '.gl_multiturn', '.immune', '.kg']
         import glob as _g
         sidecar_tmps = _g.glob(snapshot_tmp + ".*")
         renamed_exts = set()

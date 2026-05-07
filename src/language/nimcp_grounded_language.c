@@ -13,6 +13,15 @@
 #include "language/nimcp_grounded_language.h"
 #include "language/nimcp_grounded_language_internal.h"
 #include "language/nimcp_bigram_spectrum.h"
+
+/* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
+ * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
+ * intentionally do NOT include the LGSS umbrella header here — that
+ * cascades into more cognitive/symbolic_logic headers and triggers
+ * enum redefinitions in unrelated translation units. lgss_evaluate is
+ * forward-declared below alongside the comprehend definition. */
+#include "cognitive/symbolic_logic/nimcp_symbolic_logic_safety_types.h"
+#include "security/nimcp_audit_log.h"
 /* PA-4+ : compile the bigram-spectrum implementation as part of this
  * translation unit. The build's source list is explicit (not GLOB) and
  * the CMakeLists.txt is outside the modify set for this change, so we
@@ -1505,6 +1514,16 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 static bool is_function_word(const char* w);
 static bool is_negation_cue(const char* w);
 
+/* TA-2 — LGSS evaluator forward decl. The full nimcp_lgss.h umbrella
+ * is intentionally NOT included (see comment at the top of the file).
+ * lgss_context_t is opaque here — comprehend just casts gl->lgss to it
+ * and hands the pointer to the evaluator. */
+typedef struct lgss_context lgss_context_t;
+extern int lgss_evaluate(
+    lgss_context_t* lgss,
+    const safety_action_context_t* context,
+    safety_evaluation_t* result);
+
 int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                   gl_comprehension_result_t* result) {
     if (!gl || !text || !result) {
@@ -1527,6 +1546,78 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
     char* words[GL_MAX_PRODUCTION_WORDS];
     uint32_t word_count = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
+
+    /* TA-2 — LGSS INPUT GATE.
+     *
+     * Mirrors the brain_decide() input validator: build a
+     * SAFETY_DOMAIN_GOVERNANCE action context describing this input
+     * (raw text + word count + source = "LANGUAGE_COMPREHEND"), call
+     * lgss_evaluate, and abort on SAFETY_ACTION_DENY.
+     *
+     * Placement: AFTER tokenization (so word_count is known and the
+     * payload is meaningful) but BEFORE lexicon lookup / spreading
+     * activation (so a denied input never touches the lexicon and
+     * never updates downstream subscribers / engram traces).
+     *
+     * No-op contract: when no LGSS is attached (gl->lgss == NULL),
+     * the gate is skipped entirely and comprehend continues with
+     * legacy behaviour. Stat lgss_inputs_blocked stays 0. */
+    if (gl->lgss) {
+        safety_action_context_t lgss_ctx;
+        memset(&lgss_ctx, 0, sizeof(lgss_ctx));
+
+        /* String fields — operation + text payload. SAFETY_MAX_VALUE_LEN
+         * caps the value width; truncate noisily by NUL-terminating. */
+        strncpy(lgss_ctx.string_fields[0].key, "operation", 63);
+        lgss_ctx.string_fields[0].key[63] = '\0';
+        strncpy(lgss_ctx.string_fields[0].value, "language_comprehend",
+                SAFETY_MAX_VALUE_LEN - 1);
+        lgss_ctx.string_fields[0].value[SAFETY_MAX_VALUE_LEN - 1] = '\0';
+
+        strncpy(lgss_ctx.string_fields[1].key, "text", 63);
+        lgss_ctx.string_fields[1].key[63] = '\0';
+        strncpy(lgss_ctx.string_fields[1].value, text,
+                SAFETY_MAX_VALUE_LEN - 1);
+        lgss_ctx.string_fields[1].value[SAFETY_MAX_VALUE_LEN - 1] = '\0';
+        lgss_ctx.num_string_fields = 2;
+
+        /* Numeric field — word count is the headline numeric for rules
+         * that want to short-circuit on suspicious input length. */
+        strncpy(lgss_ctx.numeric_fields[0].key, "word_count", 63);
+        lgss_ctx.numeric_fields[0].key[63] = '\0';
+        lgss_ctx.numeric_fields[0].value = (float)word_count;
+        lgss_ctx.num_numeric_fields = 1;
+
+        lgss_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_ctx.has_domain_hint = true;
+        snprintf(lgss_ctx.action_description,
+                 sizeof(lgss_ctx.action_description),
+                 "language_comprehend input: %u words", word_count);
+        lgss_ctx.action_description[sizeof(lgss_ctx.action_description) - 1]
+            = '\0';
+        strncpy(lgss_ctx.source, "LANGUAGE_COMPREHEND", 63);
+        lgss_ctx.source[63] = '\0';
+
+        safety_evaluation_t lgss_eval;
+        memset(&lgss_eval, 0, sizeof(lgss_eval));
+        int lgss_rc = lgss_evaluate((lgss_context_t*)gl->lgss,
+                                     &lgss_ctx, &lgss_eval);
+        if (lgss_rc == 0 && lgss_eval.action == SAFETY_ACTION_DENY) {
+            gl->stats.lgss_inputs_blocked++;
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_INPUT_REJECTED, 2,
+                "LGSS blocked language_comprehend input "
+                "(words=%u, severity=%d): %s",
+                word_count, (int)lgss_eval.max_severity,
+                lgss_eval.explanation);
+            /* Result was zeroed at function entry — comprehension_confidence
+             * is already 0, all arrays still NULL. Free the tokenizer
+             * scratch buffer and return -1 so the caller can distinguish
+             * "blocked" from "comprehended successfully". */
+            nimcp_free(buf);
+            return -1;
+        }
+    }
 
     /* Lower-case in-place so cue / function-word checks match the
      * lexicon's stored forms. The tokenizer emitted pointers into buf
@@ -4155,6 +4246,490 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
              path, gl->vocab_count, gl->phrase_count, version,
              gl->context_dialect);
     return gl;
+}
+
+/*=============================================================================
+ * TA-1 : Multi-turn state persistence (discourse + anaphora + bigram spectrum)
+ *
+ * Writes three magic-prefixed blocks to a caller-owned FILE*. Each block
+ * is independently versioned and self-delimiting so a reader missing one
+ * (e.g. a future block we didn't ship yet, or a block whose subsystem
+ * never existed for this gl) can stop cleanly without aborting the rest
+ * of the load.
+ *
+ * Block magics:
+ *   'LAND' (0x4C414E44) - discourse turn ring
+ *   'LANA' (0x4C414E41) - anaphora referent ring
+ *   'LANB' (0x4C414E42) - bigram-spectrum count matrix
+ *
+ * Wire format per block:
+ *   uint32 magic
+ *   uint32 version           (currently 1 for all three)
+ *   ...block-specific payload...
+ *
+ * The save path always emits all three magics, but each one signals
+ * "absent" via a count/cap of zero — the reader still reads the header
+ * and the zero-count payload (which is empty), so layout stays in sync.
+ *
+ * Backward-compat: pre-TA-1 sidecar files / FILE handles that lack any
+ * of the three blocks return EOF on the first read; load_multiturn_state
+ * tolerates that and returns 0 (no state restored).
+ *===========================================================================*/
+
+#define GL_MULTITURN_MAGIC_DISCOURSE  0x4C414E44u  /* 'LAND' */
+#define GL_MULTITURN_MAGIC_ANAPHORA   0x4C414E41u  /* 'LANA' */
+#define GL_MULTITURN_MAGIC_SPECTRUM   0x4C414E42u  /* 'LANB' */
+#define GL_MULTITURN_VERSION          1u
+
+/* Sanity caps to defend against corrupt input. */
+#define GL_MULTITURN_MAX_VEC_DIM      4096u
+#define GL_MULTITURN_MAX_VOCAB_CAP    4096u
+
+static int mt_write_u32(FILE* f, uint32_t v) {
+    return fwrite(&v, sizeof(v), 1, f) == 1 ? 0 : -1;
+}
+static int mt_write_u64(FILE* f, uint64_t v) {
+    return fwrite(&v, sizeof(v), 1, f) == 1 ? 0 : -1;
+}
+static int mt_write_u8(FILE* f, uint8_t v) {
+    return fwrite(&v, 1, 1, f) == 1 ? 0 : -1;
+}
+static int mt_write_floats(FILE* f, const float* arr, size_t n) {
+    if (n == 0) return 0;
+    return fwrite(arr, sizeof(float), n, f) == n ? 0 : -1;
+}
+static int mt_write_bytes(FILE* f, const void* buf, size_t n) {
+    if (n == 0) return 0;
+    return fwrite(buf, 1, n, f) == n ? 0 : -1;
+}
+static int mt_read_u32(FILE* f, uint32_t* v) {
+    return fread(v, sizeof(*v), 1, f) == 1 ? 0 : -1;
+}
+static int mt_read_u64(FILE* f, uint64_t* v) {
+    return fread(v, sizeof(*v), 1, f) == 1 ? 0 : -1;
+}
+static int mt_read_u8(FILE* f, uint8_t* v) {
+    return fread(v, 1, 1, f) == 1 ? 0 : -1;
+}
+static int mt_read_floats(FILE* f, float* arr, size_t n) {
+    if (n == 0) return 0;
+    return fread(arr, sizeof(float), n, f) == n ? 0 : -1;
+}
+static int mt_read_bytes(FILE* f, void* buf, size_t n) {
+    if (n == 0) return 0;
+    return fread(buf, 1, n, f) == n ? 0 : -1;
+}
+
+/* Discourse-ring write. Layout: magic, version, capacity, head, count,
+ * then `count` turns, each: word_count, timestamp_ms, is_user, vec_dim,
+ * float[vec_dim]. Empty turns (NULL semantic_vector) are written with
+ * vec_dim=0 so the reader doesn't allocate a placeholder vector. */
+static int mt_save_discourse(const grounded_language_t* gl, FILE* f) {
+    if (mt_write_u32(f, GL_MULTITURN_MAGIC_DISCOURSE) != 0) return -1;
+    if (mt_write_u32(f, GL_MULTITURN_VERSION) != 0) return -1;
+    if (mt_write_u32(f, (uint32_t)gl->discourse.capacity) != 0) return -1;
+    if (mt_write_u32(f, (uint32_t)gl->discourse.head) != 0) return -1;
+    if (mt_write_u32(f, (uint32_t)gl->discourse.count) != 0) return -1;
+
+    /* Walk live turns in [oldest, newest) order using discourse_idx. */
+    for (uint8_t i = 0; i < gl->discourse.count; i++) {
+        uint8_t idx = discourse_idx(&gl->discourse, i);
+        const gl_discourse_turn_t* t = &gl->discourse.turns[idx];
+        if (mt_write_u32(f, t->word_count) != 0) return -1;
+        if (mt_write_u64(f, t->timestamp_ms) != 0) return -1;
+        if (mt_write_u8(f, t->is_user ? 1u : 0u) != 0) return -1;
+        uint32_t vec_dim = (t->semantic_vector != NULL) ? gl->semantic_dim : 0u;
+        if (mt_write_u32(f, vec_dim) != 0) return -1;
+        if (vec_dim > 0) {
+            if (mt_write_floats(f, t->semantic_vector, vec_dim) != 0) return -1;
+        }
+    }
+    return 0;
+}
+
+/* Discourse-ring read. The magic is consumed by the dispatcher. Re-pushes
+ * each turn through grounded_language_push_turn so the live ring keeps
+ * its invariants (head/count semantics, recency-blend rebuild). */
+static int mt_load_discourse_payload(grounded_language_t* gl, FILE* f,
+                                     uint32_t version) {
+    if (version != GL_MULTITURN_VERSION) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_discourse: unsupported version=%u (runtime=%u) — "
+                 "skipping discourse block",
+                 version, GL_MULTITURN_VERSION);
+        return -1;
+    }
+    uint32_t capacity = 0, head = 0, count = 0;
+    if (mt_read_u32(f, &capacity) != 0) return -1;
+    if (mt_read_u32(f, &head) != 0) return -1;
+    if (mt_read_u32(f, &count) != 0) return -1;
+    if (capacity > GL_DISCOURSE_MAX_TURNS || count > GL_DISCOURSE_MAX_TURNS) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_discourse: corrupt header (cap=%u count=%u, max=%u)",
+                 capacity, count, GL_DISCOURSE_MAX_TURNS);
+        return -1;
+    }
+    /* Apply capacity first so push_turn sizes the ring correctly. */
+    if (capacity > 0) {
+        grounded_language_set_discourse_capacity(gl, (uint8_t)capacity);
+    }
+
+    /* Reset the existing ring. push_turn appends, so any pre-existing
+     * turns would shift the saved order. Free vectors and zero counters. */
+    for (uint8_t i = 0; i < GL_DISCOURSE_MAX_TURNS; i++) {
+        if (gl->discourse.turns[i].semantic_vector) {
+            nimcp_free(gl->discourse.turns[i].semantic_vector);
+            gl->discourse.turns[i].semantic_vector = NULL;
+        }
+        gl->discourse.turns[i].word_count = 0;
+        gl->discourse.turns[i].timestamp_ms = 0;
+        gl->discourse.turns[i].is_user = false;
+    }
+    gl->discourse.head = 0;
+    gl->discourse.count = 0;
+
+    float* scratch = NULL;
+    uint32_t scratch_dim = 0;
+
+    for (uint32_t i = 0; i < count; i++) {
+        uint32_t word_count = 0;
+        uint64_t timestamp_ms = 0;
+        uint8_t is_user_u8 = 0;
+        uint32_t vec_dim = 0;
+        if (mt_read_u32(f, &word_count) != 0) goto fail;
+        if (mt_read_u64(f, &timestamp_ms) != 0) goto fail;
+        if (mt_read_u8(f, &is_user_u8) != 0) goto fail;
+        if (mt_read_u32(f, &vec_dim) != 0) goto fail;
+        if (vec_dim > GL_MULTITURN_MAX_VEC_DIM) {
+            LOG_WARN(LOG_MODULE,
+                     "mt_load_discourse: vec_dim %u exceeds cap %u",
+                     vec_dim, GL_MULTITURN_MAX_VEC_DIM);
+            goto fail;
+        }
+
+        const float* push_vec = NULL;
+        if (vec_dim > 0) {
+            if (vec_dim != scratch_dim) {
+                nimcp_free(scratch);
+                scratch = (float*)nimcp_calloc(vec_dim, sizeof(float));
+                if (!scratch) goto fail;
+                scratch_dim = vec_dim;
+            }
+            if (mt_read_floats(f, scratch, vec_dim) != 0) goto fail;
+            push_vec = scratch;
+        }
+
+        /* push_turn copies push_vec into a gl-owned buffer of length
+         * gl->semantic_dim — so vec_dim mismatch is tolerated, with
+         * the saved vector clamped/padded to the live dim. */
+        if (grounded_language_push_turn(gl, push_vec, vec_dim,
+                                          word_count,
+                                          is_user_u8 != 0) != 0) {
+            LOG_WARN(LOG_MODULE,
+                     "mt_load_discourse: push_turn failed at i=%u; "
+                     "remaining turns dropped", i);
+            goto fail;
+        }
+        /* Restore the saved timestamp — push_turn stamps with current time. */
+        uint8_t newest = (uint8_t)(gl->discourse.count - 1);
+        uint8_t newest_idx = discourse_idx(&gl->discourse, newest);
+        gl->discourse.turns[newest_idx].timestamp_ms = timestamp_ms;
+    }
+
+    /* `head` from the save is informational — push_turn rebuilt the ring
+     * with head=0, count=N. The ordering is preserved (oldest-first), so
+     * functional behaviour is identical. */
+    (void)head;
+
+    nimcp_free(scratch);
+    return 0;
+
+fail:
+    nimcp_free(scratch);
+    return -1;
+}
+
+/* Anaphora-ring write. Layout: magic, version, present_flag, then if
+ * present: enabled, head, size, then GL_ANAPHORA_RING_CAP slots each
+ * (form[GL_MAX_WORD_LEN], gender(u32), timestamp_us(u64)). present_flag
+ * is 0 when no anaphora state exists for this gl in the side-map. */
+static int mt_save_anaphora(grounded_language_t* gl, FILE* f) {
+    if (mt_write_u32(f, GL_MULTITURN_MAGIC_ANAPHORA) != 0) return -1;
+    if (mt_write_u32(f, GL_MULTITURN_VERSION) != 0) return -1;
+
+    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_anaphora_state_t* st = anaphora_lookup_locked(gl);
+    uint8_t present = (st != NULL) ? 1u : 0u;
+    if (mt_write_u8(f, present) != 0) {
+        pthread_mutex_unlock(&g_anaphora_map_lock);
+        return -1;
+    }
+    if (!present) {
+        pthread_mutex_unlock(&g_anaphora_map_lock);
+        return 0;
+    }
+
+    uint8_t enabled = st->enabled ? 1u : 0u;
+    uint32_t head = st->head;
+    uint32_t size = st->size;
+    if (mt_write_u8(f, enabled) != 0) goto fail;
+    if (mt_write_u32(f, head) != 0) goto fail;
+    if (mt_write_u32(f, size) != 0) goto fail;
+
+    /* Write the entire ring (cap fixed at GL_ANAPHORA_RING_CAP) so head
+     * indexing survives the round-trip without a normalize step. */
+    for (uint32_t i = 0; i < GL_ANAPHORA_RING_CAP; i++) {
+        const gl_anaphora_referent_t* r = &st->ring[i];
+        /* form is fixed-size GL_MAX_WORD_LEN, NUL-padded. */
+        if (mt_write_bytes(f, r->form, GL_MAX_WORD_LEN) != 0) goto fail;
+        if (mt_write_u32(f, (uint32_t)r->gender) != 0) goto fail;
+        if (mt_write_u64(f, r->timestamp_us) != 0) goto fail;
+    }
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return 0;
+
+fail:
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return -1;
+}
+
+static int mt_load_anaphora_payload(grounded_language_t* gl, FILE* f,
+                                    uint32_t version) {
+    if (version != GL_MULTITURN_VERSION) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_anaphora: unsupported version=%u (runtime=%u)",
+                 version, GL_MULTITURN_VERSION);
+        return -1;
+    }
+    uint8_t present = 0;
+    if (mt_read_u8(f, &present) != 0) return -1;
+    if (!present) return 0;  /* nothing to restore */
+
+    uint8_t enabled = 0;
+    uint32_t head = 0, size = 0;
+    if (mt_read_u8(f, &enabled) != 0) return -1;
+    if (mt_read_u32(f, &head) != 0) return -1;
+    if (mt_read_u32(f, &size) != 0) return -1;
+    if (head >= GL_ANAPHORA_RING_CAP || size > GL_ANAPHORA_RING_CAP) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_anaphora: corrupt head/size (head=%u size=%u cap=%u)",
+                 head, size, (unsigned)GL_ANAPHORA_RING_CAP);
+        return -1;
+    }
+
+    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_anaphora_state_t* st = anaphora_get_or_create_locked(gl);
+    if (!st) {
+        pthread_mutex_unlock(&g_anaphora_map_lock);
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_anaphora: anaphora map full — state lost on this gl");
+        /* Still consume the payload bytes so we don't desync the file. */
+        gl_anaphora_state_t scratch;
+        memset(&scratch, 0, sizeof(scratch));
+        for (uint32_t i = 0; i < GL_ANAPHORA_RING_CAP; i++) {
+            char form_buf[GL_MAX_WORD_LEN];
+            uint32_t gender = 0;
+            uint64_t ts = 0;
+            if (mt_read_bytes(f, form_buf, GL_MAX_WORD_LEN) != 0) return -1;
+            if (mt_read_u32(f, &gender) != 0) return -1;
+            if (mt_read_u64(f, &ts) != 0) return -1;
+        }
+        return 0;
+    }
+
+    st->enabled = (enabled != 0);
+    st->head = head;
+    st->size = size;
+    for (uint32_t i = 0; i < GL_ANAPHORA_RING_CAP; i++) {
+        gl_anaphora_referent_t* r = &st->ring[i];
+        char form_buf[GL_MAX_WORD_LEN];
+        uint32_t gender = 0;
+        uint64_t ts = 0;
+        if (mt_read_bytes(f, form_buf, GL_MAX_WORD_LEN) != 0) goto fail;
+        if (mt_read_u32(f, &gender) != 0) goto fail;
+        if (mt_read_u64(f, &ts) != 0) goto fail;
+        memcpy(r->form, form_buf, GL_MAX_WORD_LEN);
+        r->form[GL_MAX_WORD_LEN - 1] = '\0';
+        /* Validate gender enum range; clamp anything else to UNKNOWN. */
+        if (gender > (uint32_t)GL_GENDER_PLURAL) gender = GL_GENDER_UNKNOWN;
+        r->gender = (gl_anaphora_gender_t)gender;
+        r->timestamp_us = ts;
+    }
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return 0;
+
+fail:
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return -1;
+}
+
+/* Bigram-spectrum write. Layout: magic, version, present_flag, then if
+ * present: vocab_cap, total_events, uint32[vocab_cap × vocab_cap].
+ * present is set when total_events > 0 (the spec says skip if no events). */
+static int mt_save_spectrum(grounded_language_t* gl, FILE* f) {
+    if (mt_write_u32(f, GL_MULTITURN_MAGIC_SPECTRUM) != 0) return -1;
+    if (mt_write_u32(f, GL_MULTITURN_VERSION) != 0) return -1;
+
+    bigram_spectrum_t* bs = gl_get_attached_spectrum(gl);
+    uint64_t total = bs ? bigram_spectrum_total_events(bs) : 0;
+    uint8_t present = (bs != NULL && total > 0) ? 1u : 0u;
+    if (mt_write_u8(f, present) != 0) return -1;
+    if (!present) return 0;
+
+    uint32_t cap = bigram_spectrum_vocab_cap(bs);
+    if (cap == 0 || cap > GL_MULTITURN_MAX_VOCAB_CAP) {
+        /* Mark as not-present after all, so the reader skips cleanly. */
+        LOG_WARN(LOG_MODULE,
+                 "mt_save_spectrum: implausible vocab_cap=%u; emitting empty",
+                 cap);
+        return -1;
+    }
+    if (mt_write_u32(f, cap) != 0) return -1;
+    if (mt_write_u64(f, total) != 0) return -1;
+    const uint32_t* counts = bigram_spectrum_counts(bs);
+    if (!counts) return -1;
+    size_t cells = (size_t)cap * (size_t)cap;
+    if (fwrite(counts, sizeof(uint32_t), cells, f) != cells) return -1;
+    return 0;
+}
+
+static int mt_load_spectrum_payload(grounded_language_t* gl, FILE* f,
+                                    uint32_t version) {
+    if (version != GL_MULTITURN_VERSION) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_spectrum: unsupported version=%u (runtime=%u)",
+                 version, GL_MULTITURN_VERSION);
+        return -1;
+    }
+    uint8_t present = 0;
+    if (mt_read_u8(f, &present) != 0) return -1;
+    if (!present) return 0;
+
+    uint32_t cap = 0;
+    uint64_t total = 0;
+    if (mt_read_u32(f, &cap) != 0) return -1;
+    if (mt_read_u64(f, &total) != 0) return -1;
+    if (cap == 0 || cap > GL_MULTITURN_MAX_VOCAB_CAP) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_spectrum: implausible vocab_cap=%u — refusing",
+                 cap);
+        return -1;
+    }
+    size_t cells = (size_t)cap * (size_t)cap;
+    uint32_t* buf = (uint32_t*)nimcp_calloc(cells, sizeof(uint32_t));
+    if (!buf) return -1;
+    if (fread(buf, sizeof(uint32_t), cells, f) != cells) {
+        nimcp_free(buf);
+        return -1;
+    }
+
+    /* Find the attached spectrum; if absent or cap-mismatched, the saved
+     * data is dropped (we don't allocate a new spectrum the trainer never
+     * asked for, and we don't resize an existing one in place). */
+    bigram_spectrum_t* bs = gl_get_attached_spectrum(gl);
+    if (!bs) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_spectrum: no spectrum attached to gl=%p — "
+                 "saved counts dropped", (void*)gl);
+        nimcp_free(buf);
+        return 0;
+    }
+    uint32_t live_cap = bigram_spectrum_vocab_cap(bs);
+    if (live_cap != cap) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_spectrum: vocab_cap mismatch (file=%u live=%u) — "
+                 "saved counts dropped", cap, live_cap);
+        nimcp_free(buf);
+        return 0;
+    }
+    if (bigram_spectrum_load_counts(bs, buf, total) != 0) {
+        LOG_WARN(LOG_MODULE,
+                 "mt_load_spectrum: bigram_spectrum_load_counts failed");
+        nimcp_free(buf);
+        return -1;
+    }
+    nimcp_free(buf);
+    return 0;
+}
+
+int grounded_language_save_multiturn_state(grounded_language_t* gl, FILE* fp) {
+    if (!gl || !fp) {
+        LOG_WARN(LOG_MODULE, "save_multiturn_state: NULL gl or fp");
+        return -1;
+    }
+    if (mt_save_discourse(gl, fp) != 0) {
+        LOG_WARN(LOG_MODULE, "save_multiturn_state: discourse save failed");
+        return -1;
+    }
+    if (mt_save_anaphora(gl, fp) != 0) {
+        LOG_WARN(LOG_MODULE, "save_multiturn_state: anaphora save failed");
+        return -1;
+    }
+    if (mt_save_spectrum(gl, fp) != 0) {
+        LOG_WARN(LOG_MODULE, "save_multiturn_state: spectrum save failed");
+        return -1;
+    }
+    return 0;
+}
+
+int grounded_language_load_multiturn_state(grounded_language_t* gl, FILE* fp) {
+    if (!gl || !fp) {
+        LOG_WARN(LOG_MODULE, "load_multiturn_state: NULL gl or fp");
+        return -1;
+    }
+
+    /* D7: suppress NEW_WORD events / synthesized SNN spike pairs while
+     * we rehydrate state. Mirrors gl_persistence_load. */
+    bool prev_loading = gl->is_loading;
+    gl->is_loading = true;
+    int blocks_loaded = 0;
+
+    /* Read magic-prefixed blocks until EOF. Unknown magics abort the
+     * load (the file is misaligned). Each successful payload increments
+     * a counter; success returns 0 even when no blocks are present. */
+    for (;;) {
+        uint32_t magic = 0;
+        if (mt_read_u32(fp, &magic) != 0) {
+            /* Clean EOF if we already loaded ≥1 block, or saw 0 (legacy). */
+            break;
+        }
+        uint32_t version = 0;
+        if (mt_read_u32(fp, &version) != 0) {
+            LOG_WARN(LOG_MODULE,
+                     "load_multiturn_state: truncated after magic 0x%08x", magic);
+            gl->is_loading = prev_loading;
+            return -1;
+        }
+        int rc;
+        switch (magic) {
+            case GL_MULTITURN_MAGIC_DISCOURSE:
+                rc = mt_load_discourse_payload(gl, fp, version);
+                break;
+            case GL_MULTITURN_MAGIC_ANAPHORA:
+                rc = mt_load_anaphora_payload(gl, fp, version);
+                break;
+            case GL_MULTITURN_MAGIC_SPECTRUM:
+                rc = mt_load_spectrum_payload(gl, fp, version);
+                break;
+            default:
+                LOG_WARN(LOG_MODULE,
+                         "load_multiturn_state: unknown magic 0x%08x — "
+                         "stopping here", magic);
+                gl->is_loading = prev_loading;
+                return blocks_loaded > 0 ? 0 : -1;
+        }
+        if (rc != 0) {
+            LOG_WARN(LOG_MODULE,
+                     "load_multiturn_state: payload load failed for magic 0x%08x",
+                     magic);
+            gl->is_loading = prev_loading;
+            return -1;
+        }
+        blocks_loaded++;
+    }
+
+    gl->is_loading = prev_loading;
+    return 0;
 }
 
 /*=============================================================================
