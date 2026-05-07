@@ -245,6 +245,14 @@ struct grounded_language {
      * after every brain init / load. Default: pointer NULL, flag false. */
     void* engram_system;
     bool  engram_enabled;
+
+    /* TA-2 LGSS attach (currently a stub field — gates not wired in
+     * comprehend yet). Borrowed pointer to brain->lgss; set via
+     * grounded_language_set_lgss(). NULL = no gates active. The full
+     * gate wiring + evaluator forward-decl lives in the comprehend
+     * function; this field exists to satisfy referencing call sites
+     * that landed ahead of the full TA-2 commit. */
+    void* lgss;
 };
 
 /**

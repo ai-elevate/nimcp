@@ -293,6 +293,13 @@ typedef struct {
      * into the result. */
     uint64_t engram_encodes;
     uint64_t engram_recalls;
+    /* TA-2 LGSS gate telemetry. Bumped when an LGSS context is attached
+     * via grounded_language_set_lgss() and a comprehend / produce call
+     * is denied. Stays 0 when no LGSS is attached. Stub fields landed
+     * ahead of the full TA-2 wiring; counters will start incrementing
+     * when the comprehend hook commits. */
+    uint64_t lgss_inputs_blocked;
+    uint64_t lgss_outputs_blocked;
 } gl_stats_t;
 
 /**
