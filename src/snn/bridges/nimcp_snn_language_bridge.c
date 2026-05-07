@@ -2008,14 +2008,14 @@ sample_done:;
         total_confidence += word_result.confidence;
         word_count++;
 
-        /* TB-7: terminate cleanly once max_produce_words has been reached. */
-        if (max_cfg > 0 && word_count >= max_cfg) {
-            max_truncated = true;
-            break;
-        }
-
-        /* TB-8: per-token streaming callback. Fire AFTER TB-7's max-cap
-         * check so the cap takes effect even when a callback is attached.
+        /* TB-8: per-token streaming callback. Fire BEFORE TB-7's max-cap
+         * break so the consumer always sees one callback per emitted word —
+         * including the very last word when max_produce_words is what
+         * terminates the loop. Pre-fix the cap-break short-circuited the
+         * callback for the cap-final word, so a consumer streaming N words
+         * to a UI saw only N-1 callbacks. The callback's own abort path
+         * still wins (returning non-zero stops emission), but a non-aborting
+         * callback always sees every emitted word.
          * Returning non-zero aborts; accumulated text stays in result->text. */
         if (bridge->stream_cb) {
             bridge->stats.stream_callbacks_invoked++;
@@ -2029,6 +2029,12 @@ sample_done:;
                 bridge->stats.stream_aborts++;
                 break;
             }
+        }
+
+        /* TB-7: terminate cleanly once max_produce_words has been reached. */
+        if (max_cfg > 0 && word_count >= max_cfg) {
+            max_truncated = true;
+            break;
         }
 
         /* PA-2: recurrent update. Evolve state from the just-picked word's

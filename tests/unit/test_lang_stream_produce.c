@@ -258,6 +258,57 @@ static void test_null_bridge_setter(void)
            "NULL bridge + NULL cb must still return -1");
 }
 
+/* Regression: pre-fix the TB-7 max-cap break short-circuited the TB-8
+ * callback for the cap-final word. A consumer producing N words via the
+ * cap saw only N-1 callbacks. Reorder fixed it so the callback fires
+ * before the cap break — every emitted word triggers exactly one
+ * callback, regardless of why the loop terminates. */
+static void test_callback_fires_for_cap_final_word(void)
+{
+    snn_language_bridge_t* b = build_4words();
+    EXPECT(b != NULL, "bridge create");
+    if (!b) return;
+
+    /* Cap at 2 words. */
+    EXPECT(snn_language_bridge_set_length_control(b, /*min*/0, /*max*/2) == 0,
+           "set_length_control(0, 2)");
+
+    cb_state_t state;
+    memset(&state, 0, sizeof(state));
+    state.abort_at_index = UINT32_MAX;  /* never abort */
+
+    EXPECT(snn_language_bridge_set_stream_callback(b, never_abort_cb, &state) == 0,
+           "set never-abort cb");
+
+    float intent[4] = {1.0f, 0.5f, 0.2f, 0.05f};
+    snn_lang_production_result_t res;
+    memset(&res, 0, sizeof(res));
+    int rc = snn_language_bridge_produce(b, intent, 4, &res);
+    EXPECT(rc == 0, "produce rc=%d", rc);
+
+    /* The cap should have fired — produce emitted exactly 2 words. */
+    EXPECT(res.word_count == 2,
+           "cap-bounded run word_count=%u (expected 2)", res.word_count);
+
+    /* And the callback should have fired exactly once per emitted word
+     * — the bug was N-1 fires; the fix is N. */
+    EXPECT(state.calls == res.word_count,
+           "cb calls=%u must equal word_count=%u after cap-truncation",
+           state.calls, res.word_count);
+
+    snn_lang_stats_t s;
+    snn_language_bridge_get_stats(b, &s);
+    EXPECT(s.stream_callbacks_invoked == state.calls,
+           "stats invoked=%llu must equal cb calls=%u",
+           (unsigned long long)s.stream_callbacks_invoked, state.calls);
+    EXPECT(s.length_max_truncations == 1,
+           "stats length_max_truncations must be 1, got %llu",
+           (unsigned long long)s.length_max_truncations);
+
+    snn_lang_production_result_cleanup(&res);
+    snn_language_bridge_destroy(b);
+}
+
 int main(void)
 {
     fprintf(stderr, "=== test_lang_stream_produce (TB-8) ===\n");
@@ -265,6 +316,7 @@ int main(void)
     test_callback_completes_full_run();
     test_callback_abort_at_index_2();
     test_null_bridge_setter();
+    test_callback_fires_for_cap_final_word();
 
     if (g_failures == 0) {
         fprintf(stderr, "ALL PASS\n");
