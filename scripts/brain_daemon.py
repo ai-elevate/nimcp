@@ -1489,6 +1489,29 @@ class BrainService:
             return {"error": f"learn_next_token_pair: {e}"}
         return {"ok": True, "applied": applied}
 
+    def _cmd_learn_next_token_pair_riemannian(self, req):
+        """PA-4+: Riemannian / sigmoid-reparameterized next-token training.
+
+        Same request shape as learn_next_token_pair (prev, next, lr).
+        Returns the same response shape ({"ok": True, "applied": bool}).
+        """
+        prev_word = req.get("prev")
+        next_word = req.get("next")
+        if not prev_word or not next_word:
+            return {"error": "learn_next_token_pair_riemannian requires 'prev' and 'next'"}
+        try:
+            lr = float(req.get("lr", 0.05))
+        except (TypeError, ValueError) as e:
+            return {"error": f"learn_next_token_pair_riemannian bad lr: {e}"}
+        try:
+            applied = bool(self.brain.learn_next_token_pair_riemannian(prev_word,
+                                                                         next_word, lr))
+        except AttributeError:
+            return {"error": "learn_next_token_pair_riemannian not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"learn_next_token_pair_riemannian: {e}"}
+        return {"ok": True, "applied": applied}
+
     def _cmd_learn_text_bigrams(self, req):
         """PA-4: walk the text's bigrams and apply next-token training.
 

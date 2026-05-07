@@ -1117,6 +1117,22 @@ nimcp_status_t nimcp_brain_learn_next_token_pair(
 );
 
 /**
+ * @brief PA-4+: Riemannian / sigmoid-reparameterized next-token training
+ *        on a single (prev, next) bigram. Same contract as the flat path
+ *        but binding updates use a Fisher-preconditioned step that damps
+ *        automatically near the [0, 1] boundaries.
+ *
+ * Returns NIMCP_OK on success (update applied), NIMCP_ERROR if the bridge
+ * is unattached or the call was a cold-start no-op.
+ */
+nimcp_status_t nimcp_brain_learn_next_token_pair_riemannian(
+    nimcp_brain_t brain,
+    const char* prev_word,
+    const char* next_word,
+    float lr
+);
+
+/**
  * @brief PA-4: walk the bigrams of `text` and apply a next-token update
  *        for each pair. Returns count via *out_count (or NULL).
  */

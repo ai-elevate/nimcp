@@ -3641,6 +3641,21 @@ nimcp_status_t nimcp_brain_learn_next_token_pair(nimcp_brain_t brain,
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_learn_next_token_pair_riemannian(nimcp_brain_t brain,
+                                                              const char* prev_word,
+                                                              const char* next_word,
+                                                              float lr)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int rc = grounded_language_learn_next_token_pair_riemannian(b->grounded_lang,
+                                                                  prev_word,
+                                                                  next_word, lr);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_learn_text_bigrams(nimcp_brain_t brain,
                                                 const char* text,
                                                 float lr,

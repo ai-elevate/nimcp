@@ -2566,6 +2566,111 @@ int grounded_language_learn_next_token_pair(grounded_language_t* gl,
     return 0;
 }
 
+/* ============================================================================
+ * PA-4+: Riemannian / sigmoid-reparameterized next-token training.
+ *
+ * Same overall contrastive structure as grounded_language_learn_next_token_pair:
+ *   1. Encode prev → concept_acts.
+ *   2. Decode top-K and find target rank.
+ *   3. LTP on (c, next_word_pop), LTD on (c, top-1 false winner).
+ *
+ * The only difference is each binding update goes through
+ * snn_language_bridge_strengthen_binding_riemannian — Fisher-preconditioned
+ * step in u-space (w = σ(u)), so binding weights near 0 or 1 are damped
+ * automatically instead of being clipped post-hoc.
+ *
+ * Default OFF: callers must invoke this *_riemannian variant explicitly.
+ * The flat learn_next_token_pair path remains bit-for-bit unchanged.
+ * ============================================================================ */
+int grounded_language_learn_next_token_pair_riemannian(grounded_language_t* gl,
+                                                        const char* prev_word,
+                                                        const char* next_word,
+                                                        float lr)
+{
+    if (!gl || !prev_word || !next_word) return -1;
+    if (!gl->snn_bridge) return -1;
+    if (!isfinite(lr) || lr <= 0.0f) return -1;
+
+    gl_lexicon_entry_t* prev_e =
+        gl_internal_lexicon_find_or_create(gl, prev_word);
+    gl_lexicon_entry_t* next_e =
+        gl_internal_lexicon_find_or_create(gl, next_word);
+    if (!prev_e || !next_e) return -1;
+
+    uint32_t prev_word_pop = prev_e->form_hash % SNN_LANG_MAX_WORD_POPS;
+    uint32_t next_word_pop = next_e->form_hash % SNN_LANG_MAX_WORD_POPS;
+
+    snn_language_bridge_register_word(gl->snn_bridge, prev_word_pop,
+                                       prev_e->form);
+    snn_language_bridge_register_word(gl->snn_bridge, next_word_pop,
+                                       next_e->form);
+
+    const uint32_t n_concepts = SNN_LANG_MAX_CONCEPT_POPS;
+    float* concept_acts = (float*)nimcp_calloc(n_concepts, sizeof(float));
+    if (!concept_acts) return -1;
+
+    if (snn_language_bridge_encode_word(gl->snn_bridge, prev_word_pop,
+                                         concept_acts, n_concepts) != 0) {
+        nimcp_free(concept_acts);
+        return -1;
+    }
+
+    float total_act = 0.0f;
+    for (uint32_t c = 0; c < n_concepts; c++) total_act += concept_acts[c];
+    if (total_act <= 1e-6f) {
+        nimcp_free(concept_acts);
+        return -1;
+    }
+
+    snn_lang_word_result_t topK[16];
+    uint32_t num_out = 0;
+    int rc = snn_language_bridge_decode_spikes(gl->snn_bridge, concept_acts,
+                                                 n_concepts, topK,
+                                                 16, &num_out);
+    if (rc != 0) {
+        nimcp_free(concept_acts);
+        return -1;
+    }
+
+    int target_rank = -1;
+    for (uint32_t k = 0; k < num_out; k++) {
+        if (topK[k].word_pop == next_word_pop) {
+            target_rank = (int)k;
+            break;
+        }
+    }
+
+    /* LTP on (c, next_word_pop) — Riemannian step. `grad` here is
+     * lr * concept_acts[c], same as the flat path's delta; the bridge
+     * function applies the Fisher preconditioner internally. */
+    const float ltp_threshold = 0.05f;
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        if (concept_acts[c] > ltp_threshold) {
+            float grad = lr * concept_acts[c];
+            snn_language_bridge_strengthen_binding_riemannian(gl->snn_bridge,
+                                                               c, next_word_pop,
+                                                               grad);
+        }
+    }
+
+    if (target_rank != 0 && num_out > 0) {
+        uint32_t false_winner = topK[0].word_pop;
+        if (false_winner != next_word_pop) {
+            float ltd_lr = -0.5f * lr;
+            for (uint32_t c = 0; c < n_concepts; c++) {
+                if (concept_acts[c] > ltp_threshold) {
+                    snn_language_bridge_strengthen_binding_riemannian(
+                        gl->snn_bridge, c, false_winner,
+                        ltd_lr * concept_acts[c]);
+                }
+            }
+        }
+    }
+
+    nimcp_free(concept_acts);
+    return 0;
+}
+
 int grounded_language_learn_text_bigrams(grounded_language_t* gl,
                                            const char* text, float lr)
 {
