@@ -285,6 +285,14 @@ typedef struct {
      * intent-cosine ranking (only bumped when sense disambiguation is
      * enabled and an entry has > 1 binding). */
     uint64_t sense_resolutions;
+    /* Engram (read-only) integration telemetry. Bumped only when an
+     * engram_system_t has been attached via grounded_language_set_engram_system
+     * and integration is enabled. encodes counts comprehend events that
+     * laid down an engram trace; recalls counts comprehend events whose
+     * cue produced a confident engram match and blended its activations
+     * into the result. */
+    uint64_t engram_encodes;
+    uint64_t engram_recalls;
 } gl_stats_t;
 
 /**
@@ -977,6 +985,43 @@ void grounded_language_connect_episodic_replay(
 void grounded_language_connect_hippocampus(
     grounded_language_t* gl,
     void* hippocampus);
+
+/**
+ * @brief Attach the brain-level engram system in read-only mode.
+ *
+ * WHAT: Lets comprehend() lay down a memory trace at the end of each
+ *       pass (encode) AND consult the engram store mid-pass to blend
+ *       recalled neurons into the activated_concepts result (recall).
+ * WHY:  Pure-bridge production today is amnesic across calls past the
+ *       8-slot discourse ring. Engram integration gives multi-turn
+ *       coherence ("what did we say about X earlier?") and primes the
+ *       output toward consistent prior context.
+ * HOW:  Borrowed pointer; not owned, not serialized. Caller (brain
+ *       init) re-attaches after every load. Default OFF — pass
+ *       enabled=false to detach without freeing.
+ *
+ * READ-ONLY mode: encode + recall blend only. Does NOT modulate
+ * lexicon binding weights, does NOT push reinforcement back into
+ * engram strengths beyond the engram_recall API's own internal
+ * timestamps. Future modes (active reinforcement, full bidirectional)
+ * are separate flags / opt-ins.
+ *
+ * @param gl       System handle
+ * @param engram_system  engram_system_t* (opaque here)
+ * @param enabled  true = active, false = pointer stored but no-op
+ * @return 0 on success, -1 on NULL gl
+ */
+int grounded_language_set_engram_system(
+    grounded_language_t* gl,
+    void* engram_system,
+    bool enabled);
+
+/**
+ * @brief Query whether engram integration is currently active.
+ *
+ * @return true if pointer is non-NULL AND enabled flag is true.
+ */
+bool grounded_language_engram_enabled(const grounded_language_t* gl);
 
 /**
  * @brief Connect Broca's area adapter — every new lexicon entry is

@@ -22,6 +22,7 @@
 #include "nimcp_bigram_spectrum.c"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
+#include "cognitive/memory/nimcp_engram.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"

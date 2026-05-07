@@ -234,6 +234,17 @@ struct grounded_language {
      * the single rolling vector — when discourse turns are pushed it gets
      * recomputed as a recency-weighted blend across the buffer. */
     gl_discourse_state_t discourse;
+
+    /* Engram integration (read-only mode). Borrowed pointer to the
+     * brain-level engram system, attached via
+     * grounded_language_set_engram_system(). When `engram_enabled` is
+     * true and the pointer is non-NULL, comprehend lays down a memory
+     * trace at the end of each pass (encode) and consults the engram
+     * store mid-pass to blend recalled activations into the result
+     * (recall). The pointer is NOT owned, NOT serialized — re-attach
+     * after every brain init / load. Default: pointer NULL, flag false. */
+    void* engram_system;
+    bool  engram_enabled;
 };
 
 /**

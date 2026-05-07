@@ -82,6 +82,24 @@ void grounded_language_connect_hippocampus(grounded_language_t* gl, void* hippoc
     gl->hippocampus = hippocampus;
 }
 
+int grounded_language_set_engram_system(grounded_language_t* gl,
+                                          void* engram_system,
+                                          bool enabled) {
+    if (!gl) return -1;
+    gl->engram_system  = engram_system;
+    /* Enabled flag is allowed to be true with NULL pointer — caller can
+     * pre-flip the flag and attach later — but the hot-path check is
+     * `enabled && pointer`, so the no-op contract is preserved either
+     * way. */
+    gl->engram_enabled = enabled;
+    return 0;
+}
+
+bool grounded_language_engram_enabled(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->engram_enabled && gl->engram_system != NULL;
+}
+
 void grounded_language_connect_broca(grounded_language_t* gl, void* broca) {
     if (!gl) return;
     gl->broca_adapter = broca;
