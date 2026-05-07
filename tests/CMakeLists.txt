@@ -55,6 +55,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_topic_shift
     test_lang_speech_acts
     test_lang_length_control
+    test_lang_stream_produce
 )
 
 # Helper: register a single standalone-C test.

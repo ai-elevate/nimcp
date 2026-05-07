@@ -149,6 +149,13 @@ struct snn_language_bridge {
      * snn_language_bridge_set_trigram_learning_enabled. */
     bool enable_trigram_learning;
 
+    /* TB-8: per-token streaming callback for snn_language_bridge_produce.
+     * Borrowed pointers — NOT persisted, NOT in config. NULL fn = no
+     * streaming (legacy behavior). Caller installs via
+     * snn_language_bridge_set_stream_callback. */
+    snn_lang_stream_callback_t stream_cb;
+    void*                       stream_user_data;
+
     // Statistics
     snn_lang_stats_t stats;
 };
@@ -1970,15 +1977,27 @@ sample_done:;
         total_confidence += word_result.confidence;
         word_count++;
 
-        /* TB-7: terminate cleanly once max_produce_words has been reached.
-         * Only fires when the caller explicitly enabled the cap — the
-         * sentinel-0 default lets the legacy 32-word loop bound apply
-         * without bumping the truncation counter. We set the flag and
-         * break here so the next-word recurrent-state work below is
-         * skipped (no point updating state if we won't decode again). */
+        /* TB-7: terminate cleanly once max_produce_words has been reached. */
         if (max_cfg > 0 && word_count >= max_cfg) {
             max_truncated = true;
             break;
+        }
+
+        /* TB-8: per-token streaming callback. Fire AFTER TB-7's max-cap
+         * check so the cap takes effect even when a callback is attached.
+         * Returning non-zero aborts; accumulated text stays in result->text. */
+        if (bridge->stream_cb) {
+            bridge->stats.stream_callbacks_invoked++;
+            int abort_rc = bridge->stream_cb(
+                /*word_index=*/word_count - 1,
+                /*word_form=*/ word_result.word_form,
+                /*word_pop=*/  word_result.word_pop,
+                /*confidence=*/word_result.confidence,
+                /*user_data=*/ bridge->stream_user_data);
+            if (abort_rc != 0) {
+                bridge->stats.stream_aborts++;
+                break;
+            }
         }
 
         /* PA-2: recurrent update. Evolve state from the just-picked word's
@@ -2662,6 +2681,21 @@ bool snn_language_bridge_get_trigram_learning_enabled(
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
     return bridge->enable_trigram_learning;
+}
+
+/* TB-8: streaming-produce callback attach/detach. cb=NULL detaches.
+ * Both cb and user_data are borrowed pointers — bridge never frees them
+ * and never persists them across save/load. Stays consistent with the
+ * other runtime-only setters (LGSS, trigram, DA modulation). */
+int snn_language_bridge_set_stream_callback(
+    snn_language_bridge_t* bridge,
+    snn_lang_stream_callback_t cb,
+    void* user_data)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->stream_cb        = cb;
+    bridge->stream_user_data = user_data;
+    return 0;
 }
 
 /* TA-4: bump the trigram-update counter. Internal helper used from

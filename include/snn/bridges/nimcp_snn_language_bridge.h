@@ -293,20 +293,14 @@ typedef struct {
      * snn_language_bridge_reset_stats. */
     uint64_t da_gated_stdp_passes;
     float    last_da_modulation;
-    /* TB-7 — produce-time length-control telemetry.
-     *
-     * length_min_suppressions counts every produce step where EOS was the
-     * top candidate but the emission count had not yet reached
-     * config.min_produce_words, forcing the loop to fall back to the
-     * next-best non-EOS candidate. Bumped per-suppression (a single
-     * produce call may bump it more than once if EOS keeps winning).
-     *
-     * length_max_truncations counts produce calls where the loop hit
-     * config.max_produce_words and terminated cleanly because of the cap
-     * (NOT counting the legacy implicit 32-word cap or natural EOS
-     * termination). Bumped at most once per produce call. */
+    /* TB-7 — produce-time length-control telemetry. */
     uint64_t length_min_suppressions;
     uint64_t length_max_truncations;
+    /* TB-8 — streaming-produce telemetry. stream_callbacks_invoked counts
+     * every per-token callback fired; stream_aborts counts produce calls
+     * that exited early because the callback returned non-zero. */
+    uint64_t stream_callbacks_invoked;
+    uint64_t stream_aborts;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -619,6 +613,42 @@ int snn_language_bridge_set_trigram_learning_enabled(
  *  is NULL/invalid (matches the "default OFF" contract). */
 bool snn_language_bridge_get_trigram_learning_enabled(
     const snn_language_bridge_t* bridge);
+
+/** TB-8: per-token streaming callback. Invoked once per emitted word
+ *  during snn_language_bridge_produce. Returning non-zero aborts the
+ *  produce loop early (text accumulated so far is preserved in
+ *  result->text on return; word_count reflects what was emitted before
+ *  the abort). user_data is passed through unchanged.
+ *
+ *  IMPORTANT: the callback is a strict observer. It MUST NOT hold the
+ *  bridge mutex (the caller already does), MUST NOT call any other
+ *  snn_language_bridge_* API, and MUST NOT free word_form (borrowed,
+ *  valid only for the duration of the call). Treat it as fire-and-
+ *  forget — pipe to TTS, log, update a UI, then return. */
+typedef int (*snn_lang_stream_callback_t)(
+    uint32_t      word_index,        /* 0-based emission index */
+    const char*   word_form,         /* borrowed; valid only during callback */
+    uint32_t      word_pop,          /* SNN word population id */
+    float         confidence,        /* per-token confidence [0,1] */
+    void*         user_data);
+
+/** TB-8: attach (or detach) a per-token streaming callback for produce.
+ *
+ * The callback + user_data are stored on the bridge as per-call runtime
+ * state — they are NOT persisted in the V3 sidecar and NOT in the
+ * config struct. Pass cb=NULL to detach. Detaching from inside a
+ * callback is safe (the next produce call sees the new state).
+ *
+ * @param bridge    Bridge handle (NULL → -1).
+ * @param cb        Streaming callback, or NULL to detach.
+ * @param user_data Opaque pointer passed through to every callback
+ *                  invocation. Bridge does not free it.
+ * @return 0 on success, -1 on invalid handle.
+ */
+int snn_language_bridge_set_stream_callback(
+    snn_language_bridge_t* bridge,
+    snn_lang_stream_callback_t cb,
+    void* user_data);
 
 /** TA-4 internal: increment the trigram-update counter. Called from
  *  grounded_language_learn_next_token_triple after a successful LTP/LTD
