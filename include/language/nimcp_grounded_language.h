@@ -334,12 +334,17 @@ typedef struct {
      * immune system. */
     uint64_t immune_inspections;
     uint64_t immune_antigens_registered;
-    /* TA-5 — reconsolidation-on-contradiction telemetry. reconsolidation_events
-     * counts negation-driven decay invocations that found a lexicon entry
-     * to weaken; reconsolidation_bindings_decayed is the cumulative count
-     * of individual binding-strength decays (a single event can touch
-     * multiple bindings on a polysemous word). Both stay 0 when
-     * enable_reconsolidation is false. */
+    /* TA-5 — reconsolidation-on-contradiction telemetry.
+     * reconsolidation_events counts every reconsolidation invocation —
+     * including invocations on words missing from the lexicon. The
+     * contradiction signal itself is curriculum-meaningful regardless of
+     * whether there's an entry to weaken (mirrors the negative-grounding
+     * telemetry pattern). reconsolidation_bindings_decayed is the
+     * cumulative count of individual binding-strength decays actually
+     * applied (a single event can touch multiple bindings on a polysemous
+     * word; a missed lookup contributes 0). The two together let
+     * operators compute "miss rate" = events − bindings_decayed_distinct.
+     * Both stay 0 when enable_reconsolidation is false. */
     uint64_t reconsolidation_events;
     uint64_t reconsolidation_bindings_decayed;
     /* TB-10 — topic-shift detection telemetry. */
