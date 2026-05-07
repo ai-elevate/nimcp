@@ -105,6 +105,7 @@
 | Brain Regions | [modules/brain-regions-roadmap.md](docs/claude/modules/brain-regions-roadmap.md) |
 | Recursive Cognition | [modules/recursive-cognition.md](docs/claude/modules/recursive-cognition.md) |
 | Imagination Engine | [modules/imagination-engine.md](docs/claude/modules/imagination-engine.md) |
+| Grounded Language | [modules/grounded-language.md](docs/claude/modules/grounded-language.md) |
 | Genius Profiles | [modules/genius-profiles.md](docs/claude/modules/genius-profiles.md) |
 | Lock Ordering | [modules/lock-ordering.md](docs/claude/modules/lock-ordering.md) |
 | Hamiltonian Neural Networks | [modules/hnn.md](docs/claude/modules/hnn.md) |

@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — full-lang-walkthrough campaign (2026-05-07)
+A 13-commit campaign covering Tier-A behaviour wiring, Tier-B production
+ergonomics, Tier-C threading + cognitive integration, plus immune (IM-3)
+and cycle-coordinator (CC-1) work. Every behaviour-changing feature
+ships behind a default-OFF runtime flag; legacy callers are bit-identical
+to pre-campaign behaviour until they opt in.
+
+**Tier A — comprehend/produce semantics**
+- **TA-1** (`4ac5e4c28`) Multi-turn state persistence: discourse turn ring
+  + anaphora referent ring + bigram-spectrum count matrix all round-trip
+  via `grounded_language_save_multiturn_state` / `_load_multiturn_state`.
+- **TA-2** (`81b8c1cb2`) LGSS gates on comprehend + bridge produce. Input
+  utterances + generated text are evaluated against the safety KB; deny
+  results bump `lgss_inputs_blocked` / `lgss_outputs_blocked` and emit
+  audit events. Closes the only previously-ungated user-facing pipeline.
+- **TA-3** (`1f6cba089`) Dopamine-modulated STDP on the SNN language
+  bridge. The pre-existing `enable_da_modulation` config knob was a
+  statue — `apply_stdp` now reads neuromodulator dopamine once per pass
+  and applies `weight_change *= 1 + DA × gain` to every binding update.
+- **TA-4** (`e1ae72b02`) Trigram next-token training. Extends PA-4 bigram
+  training to (w_t, w_{t+1}) → w_{t+2} updates at half the bigram lr.
+- **TA-5** (`0bc697e8b`) Reconsolidation on contradiction. Negation-marked
+  content words now decay their lexicon-entry binding strengths by 5%
+  (tunable, clamped [0, 0.5]). Repeated contradictions across turns
+  erode bad bindings; re-assertions recover via normal reinforcement.
+
+**Tier B — production ergonomics**
+- **TB-6** (`7f7ca8b3b`) Sentence-boundary segmentation in comprehend.
+  Multi-sentence input recursively processes each sentence so discourse
+  pushes one turn per sentence + anaphora resolves across sentences +
+  bigram learning never bridges a `.`/`!`/`?` boundary.
+- **TB-7** (`569088e3b`) Length control on bridge produce. New
+  `min_produce_words` (suppresses EOS until reached) +
+  `max_produce_words` (hard cap) config knobs with validated setter.
+- **TB-8** (`6945afa86`) Streaming produce — per-token callback fires
+  during the produce loop. Returning non-zero aborts cleanly; accumulated
+  text stays in `result->text`.
+- **TB-9** (`9f4ef98a0`) Speech-act intent classification. Rule-based
+  classifier labels every comprehend with one of: assertion / question /
+  imperative / greeting / exclamation. New `gl_speech_act_t` enum +
+  `result->speech_act` field + 5 per-class stats counters.
+- **TB-10** (`45ed33825`) Topic-shift detection in discourse. Cosine
+  similarity between latest turn vs mean of prior K turns; below
+  threshold flags a boundary, bumps `topic_shifts_detected`, exposes
+  `last_topic_shift_score` + `last_was_topic_shift` query API.
+
+**Tier C — threading + cognitive integration**
+- **TC-12** (`e30215e26`) Per-gl side-state for anaphora + spectrum.
+  Killed two global side-maps + one shared mutex that serialized every
+  resolve / spectrum-tick across all brains in the process. State now
+  lives directly on `struct grounded_language` with a per-instance
+  lazy-initialized mutex. Removes the silent 4-brain map cap.
+- **TC-13** (`ba15a2a60`) Theory-of-mind subscriber actually calls
+  `tom_observe()` instead of just logging at DEBUG. COMPREHENDED +
+  PRODUCED gl events flow into a `tom_observation_t` (semantic_vec →
+  action_vector, valence/arousal → coarse `tom_emotion_t`). New public
+  counters `nimcp_gl_tom_observations_pushed` / `_dropped`.
+
+**Cycle + immune additions**
+- **CC-1** (`77e4627d4`) Periodic bigram-spectrum FFT refresh on the
+  language tick (~1Hz, gated by min-delta-events). Replaces the pre-CC1
+  pattern where metrics only refreshed on external probe.
+- **IM-3** (`21605370f`) Tier-3 immune content inspection on
+  `grounded_language_comprehend`. Five rule-based heuristics
+  (NaN/Inf, statistical outlier via Welford running stats, repetition
+  spam, lexicon collision, negation cascade) produce a continuous
+  inflammation level that damps confidence + skips engram encode +
+  registers an antigen above 0.5.
+
+12 new unit tests under `tests/unit/test_lang_*.c` registered in
+`NIMCP_STANDALONE_LANG_TESTS`; all 12 pass cleanly. The 4 pre-existing
+lang_smoke teardown crashes (`test_lang_bridge_spike_routing`, `_latency`,
+`test_snn_lang_bridge_stdp`, `test_bulk_lexicon`) are unrelated and
+unchanged by this campaign — they print PASS then SIGABRT on shutdown.
+
 ### Added
 - **Conductance-based SNN synapses (CB migration)**: behind a runtime flag
   (`snn_tune("conductance_enabled", 1.0)`, default OFF). Solves the
