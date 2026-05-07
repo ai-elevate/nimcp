@@ -45,6 +45,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_bridge_rng_seed
     test_snn_lang_bridge_stdp
     test_bulk_lexicon
+    test_lang_trigram_learning
 )
 
 # Helper: register a single standalone-C test.

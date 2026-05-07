@@ -1701,7 +1701,10 @@ class BrainService:
         """PA-4: walk the text's bigrams and apply next-token training.
 
         Request keys: text (str), lr (float, default 0.05).
-        Returns: count of applied bigram updates.
+        Returns: count of applied bigram updates. If trigram learning is
+        on (set_trigram_learning_enabled), each step also walks
+        (w_t, w_{t+1}) → w_{t+2} at half lr; the trigram count is tracked
+        separately on the bridge stats (total_trigram_updates).
         """
         text = req.get("text")
         if not text:
@@ -1717,6 +1720,48 @@ class BrainService:
         except Exception as e:
             return {"error": f"learn_text_bigrams: {e}"}
         return {"ok": True, "applied": count}
+
+    def _cmd_set_trigram_learning_enabled(self, req):
+        """TA-4: toggle trigram next-token learning.
+
+        Request keys: enabled (bool, default false). Default OFF
+        preserves PA-4 bigram-only behavior bit-for-bit. Runtime-only;
+        not persisted across saves.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_trigram_learning_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_trigram_learning_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_trigram_learning_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_learn_next_token_triple(self, req):
+        """TA-4: contrastive next-token training on a single trigram.
+
+        Request keys: prev1 (str), prev2 (str), next (str),
+                      lr (float, default 0.025 — half the bigram default).
+        Returns: {"ok": True, "applied": bool}. False on cold-start or
+        no-bridge no-op (any of the three tokens without prior bindings).
+        """
+        prev1 = req.get("prev1")
+        prev2 = req.get("prev2")
+        next_word = req.get("next")
+        if not prev1 or not prev2 or not next_word:
+            return {"error": "learn_next_token_triple requires 'prev1', 'prev2', 'next'"}
+        try:
+            lr = float(req.get("lr", 0.025))
+        except (TypeError, ValueError) as e:
+            return {"error": f"learn_next_token_triple bad lr: {e}"}
+        try:
+            applied = bool(self.brain.learn_next_token_triple(prev1, prev2,
+                                                                next_word, lr))
+        except AttributeError:
+            return {"error": "learn_next_token_triple not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"learn_next_token_triple: {e}"}
+        return {"ok": True, "applied": applied}
 
     # ---- Tier-2 #3 / #6 / #7 grounded-language toggles + discourse buffer ----
 

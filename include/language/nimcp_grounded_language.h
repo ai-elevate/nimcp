@@ -866,14 +866,54 @@ int grounded_language_learn_next_token_pair_riemannian(
  * @brief PA-4: walk the bigrams of `text` and apply a next-token update
  *        for each pair. Returns the number of bigrams processed.
  *
+ * If the attached bridge has trigram learning enabled
+ * (snn_language_bridge_set_trigram_learning_enabled), this call ALSO
+ * walks every (w_t, w_{t+1}) → w_{t+2} trigram and applies a
+ * grounded_language_learn_next_token_triple update at half the bigram lr.
+ * Default is OFF, so PA-4 callers see bit-for-bit-unchanged behavior.
+ *
  * @param gl    GL handle.
  * @param text  utterance to learn from.
  * @param lr    per-bigram learning rate.
- * @return non-negative count, or -1 on validation failure.
+ * @return non-negative count of *bigram* updates applied, or -1 on
+ *         validation failure. Trigram updates are tracked separately on
+ *         the bridge stats (total_trigram_updates).
  */
 int grounded_language_learn_text_bigrams(
     grounded_language_t* gl,
     const char* text,
+    float lr);
+
+/**
+ * @brief TA-4: train the bridge with a single (prev1, prev2, next) trigram.
+ *
+ * Encodes prev1 and prev2 separately, builds a context vector as the
+ * arithmetic mean of the two encodings, then applies LTP/LTD on `next`'s
+ * bindings using the merged context as the conditioning prefix. Same
+ * one-step contrastive math as grounded_language_learn_next_token_pair —
+ * just driven by a 2-token prefix.
+ *
+ * Cold-start safety: skips cleanly (returns -1) when prev1 OR prev2 has
+ * no prior bridge bindings (encoded all-zero) — the merged context would
+ * be uninformative. The bridge's cold-start counter is bumped via the
+ * standard grounded_language_next_token_cold_start_skips path.
+ *
+ * On a successful update the bridge's total_trigram_updates stat is
+ * incremented by one (regardless of how many concept rows were touched).
+ *
+ * @param gl     GL handle.
+ * @param prev1  first prefix token.
+ * @param prev2  second prefix token.
+ * @param next   target next token.
+ * @param lr     per-step learning rate (typical: 0.005–0.025; usually
+ *               half the bigram lr to avoid trigram dominance).
+ * @return 0 on update applied, -1 on validation failure or no-op.
+ */
+int grounded_language_learn_next_token_triple(
+    grounded_language_t* gl,
+    const char* prev1,
+    const char* prev2,
+    const char* next,
     float lr);
 
 /**

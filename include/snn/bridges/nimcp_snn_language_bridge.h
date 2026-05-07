@@ -256,6 +256,12 @@ typedef struct {
      * CLOCK_MONOTONIC and zeroed by snn_language_bridge_reset_stats. */
     uint64_t produce_total_us;
     uint64_t produce_call_count;
+    /* TA-4: trigram next-token training counter. Incremented once per
+     * successful (a, b) → c update (only when grounded_language_learn_next_token_triple
+     * applies its LTP/LTD pass; cold-start no-ops do not count). Zeroed by
+     * snn_language_bridge_reset_stats. Reads return 0 when trigram learning
+     * was never used. */
+    uint64_t total_trigram_updates;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -521,6 +527,32 @@ float snn_language_bridge_get_avg_produce_us(
 int snn_language_bridge_set_rng_seed(
     snn_language_bridge_t* bridge,
     uint64_t seed);
+
+/** TA-4: toggle trigram next-token learning.
+ *
+ * Default OFF — preserves PA-4 bigram-only behavior bit-for-bit. When ON,
+ * grounded_language_learn_text_bigrams also walks every (w_t, w_{t+1}) → w_{t+2}
+ * trigram and applies a learn_next_token_triple update at half the bigram lr.
+ *
+ * Runtime-only flag (not persisted in the V3 bridge sidecar) — caller must
+ * re-enable after each load. This is intentional: trigram learning is a
+ * trainer-curriculum knob, not a bridge-state property.
+ *
+ * @return 0 on success; -1 if bridge is NULL or magic mismatched. */
+int snn_language_bridge_set_trigram_learning_enabled(
+    snn_language_bridge_t* bridge,
+    bool enabled);
+
+/** TA-4: read the trigram-learning runtime flag. Returns false if bridge
+ *  is NULL/invalid (matches the "default OFF" contract). */
+bool snn_language_bridge_get_trigram_learning_enabled(
+    const snn_language_bridge_t* bridge);
+
+/** TA-4 internal: increment the trigram-update counter. Called from
+ *  grounded_language_learn_next_token_triple after a successful LTP/LTD
+ *  pass so consumers can read total_trigram_updates from snn_lang_stats_t.
+ *  No-op on NULL/invalid bridge. */
+void snn_language_bridge_inc_trigram_updates(snn_language_bridge_t* bridge);
 
 /** Get current spike blend factor */
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge);

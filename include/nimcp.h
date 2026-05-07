@@ -1290,6 +1290,44 @@ nimcp_status_t nimcp_brain_learn_text_bigrams(
     int* out_count
 );
 
+/**
+ * @brief TA-4: toggle trigram next-token learning.
+ *
+ * When enabled, nimcp_brain_learn_text_bigrams also walks every
+ * (w_t, w_{t+1}) → w_{t+2} trigram at half the bigram lr. Default OFF —
+ * preserves PA-4 behavior bit-for-bit. Runtime-only flag; not persisted
+ * across saves.
+ *
+ * Returns NIMCP_OK on success, NIMCP_ERROR if no SNN-language bridge is
+ * attached.
+ */
+nimcp_status_t nimcp_brain_set_trigram_learning_enabled(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/**
+ * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
+ *
+ * Encodes prev1 and prev2 as concept-activation vectors via the bridge's
+ * existing reverse encoding, averages them into a context vector, then
+ * applies LTP/LTD on `next`'s bindings using the merged context.
+ *
+ * Cold-start: returns NIMCP_ERROR if EITHER prev1 or prev2 has no prior
+ * bindings (encoding all-zero). The flat (bigram) and Riemannian PA-4
+ * APIs remain unchanged; this trigram path is purely additive.
+ *
+ * @return NIMCP_OK on update applied, NIMCP_ERROR on cold-start, no-op,
+ *         or validation failure.
+ */
+nimcp_status_t nimcp_brain_learn_next_token_triple(
+    nimcp_brain_t brain,
+    const char* prev1,
+    const char* prev2,
+    const char* next_word,
+    float lr
+);
+
 /*=============================================================================
  * Tier-2 grounded-language toggles
  *
