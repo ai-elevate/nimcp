@@ -201,6 +201,24 @@ typedef struct {
 } gl_lexicon_entry_t;
 
 /**
+ * @brief Speech-act intent label (TB-9).
+ *
+ * Coarse pragmatic classification of an utterance: assertion, question,
+ * imperative, greeting/farewell, exclamation, or unknown (default when
+ * classification is disabled). Populated on
+ * gl_comprehension_result_t.speech_act only when the classifier is
+ * enabled via grounded_language_set_speech_act_classification_enabled().
+ */
+typedef enum {
+    GL_SPEECH_ACT_ASSERTION   = 0,
+    GL_SPEECH_ACT_QUESTION    = 1,
+    GL_SPEECH_ACT_IMPERATIVE  = 2,
+    GL_SPEECH_ACT_GREETING    = 3,
+    GL_SPEECH_ACT_EXCLAMATION = 4,
+    GL_SPEECH_ACT_UNKNOWN     = 5,
+} gl_speech_act_t;
+
+/**
  * @brief Comprehension result
  */
 typedef struct {
@@ -210,6 +228,10 @@ typedef struct {
     float*    semantic_vector;                  /**< Integrated meaning [GL_SEMANTIC_DIM] */
     float     comprehension_confidence;         /**< Overall comprehension score */
     float     novelty;                          /**< How novel the input is */
+    /* TB-9 — speech-act intent label. GL_SPEECH_ACT_UNKNOWN unless the
+     * classifier is enabled. Appended at the end so existing field
+     * offsets stay stable for ABI consumers. */
+    gl_speech_act_t speech_act;
 } gl_comprehension_result_t;
 
 /**
@@ -328,6 +350,15 @@ typedef struct {
      * enable_topic_shift_detection is false (the default). */
     uint64_t topic_shifts_evaluated;
     uint64_t topic_shifts_detected;
+    /* TB-9 — speech-act intent classification telemetry. One counter per
+     * non-UNKNOWN class, bumped on each comprehend pass that produced
+     * the corresponding label. Stay 0 when speech-act classification is
+     * disabled (the default). UNKNOWN results are not counted. */
+    uint64_t speech_act_assertions;
+    uint64_t speech_act_questions;
+    uint64_t speech_act_imperatives;
+    uint64_t speech_act_greetings;
+    uint64_t speech_act_exclamations;
 } gl_stats_t;
 
 /**
@@ -500,6 +531,41 @@ uint32_t grounded_language_reconsolidate_word(
     grounded_language_t* gl,
     const char* word,
     float decay);
+
+/*=============================================================================
+ * TB-9: Speech-act intent classification on comprehend.
+ *
+ * Cheap rule-based classifier that labels every comprehended utterance
+ * with a coarse pragmatic intent (assertion / question / imperative /
+ * greeting / exclamation). Pattern detection only — no ML, no SNN —
+ * driven by the tokenized lower-cased words plus the raw input text.
+ *
+ * Detection rules:
+ *   - QUESTION   : raw text ends with '?', OR first token is a wh-word,
+ *                  OR first token is an auxiliary.
+ *   - IMPERATIVE : first token is in a small imperative-cue set, OR text
+ *                  ends with '!' AND no first-person pronoun in the
+ *                  first 3 tokens.
+ *   - GREETING   : one of the first 2 tokens is a greeting cue.
+ *   - EXCLAMATION: text ends with '!' and didn't fit IMPERATIVE.
+ *   - ASSERTION  : default fallback (declarative).
+ *
+ * Default OFF — when disabled, comprehend leaves
+ * result->speech_act == GL_SPEECH_ACT_UNKNOWN and never bumps the
+ * speech_act_* stats counters. Per-instance runtime knob, not persisted
+ * across save/load.
+ *===========================================================================*/
+
+/**
+ * @brief Toggle TB-9 speech-act intent classification. Default OFF.
+ */
+void grounded_language_set_speech_act_classification_enabled(
+    grounded_language_t* gl,
+    bool enabled);
+
+/** Read the current speech-act classification toggle. false on NULL. */
+bool grounded_language_get_speech_act_classification_enabled(
+    const grounded_language_t* gl);
 
 /*=============================================================================
  * Tier-2 #7: Multi-turn discourse state

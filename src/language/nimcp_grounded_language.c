@@ -1462,6 +1462,12 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     gl->last_topic_shift_score       = 1.0f;
     gl->last_was_topic_shift         = false;
 
+    /* TB-9 — speech-act classification off by default. Leaving it off
+     * preserves the legacy comprehend output (speech_act stays
+     * GL_SPEECH_ACT_UNKNOWN) for callers built against the pre-TB-9
+     * struct layout. */
+    gl->enable_speech_act_classification = false;
+
     /* RNG */
     gl->rng_state = (uint64_t)time(NULL) ^ 0xDEADBEEFCAFEULL;
 
@@ -1559,6 +1565,18 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
  * can call them without reordering the file. */
 static bool is_function_word(const char* w);
 static bool is_negation_cue(const char* w);
+
+/* TB-9 forward decls — speech-act classifier helpers. Implementations
+ * live next to is_negation_cue below so all the lower-cased-token
+ * pattern tests stay colocated. */
+static bool is_wh_word(const char* w);
+static bool is_auxiliary(const char* w);
+static bool is_imperative_cue(const char* w);
+static bool is_greeting_cue(const char* w);
+static bool is_first_person_pronoun(const char* w);
+static gl_speech_act_t classify_speech_act(char* const* words,
+                                            uint32_t word_count,
+                                            const char* raw_text);
 
 /* TA-2 — LGSS evaluator forward decl. The full nimcp_lgss.h umbrella
  * is intentionally NOT included (see comment at the top of the file).
@@ -2068,6 +2086,40 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
         }
     }
 
+    /* TB-9 — speech-act intent classification. Cheap rule-based pass
+     * over the tokenized words + raw text. When the classifier is OFF
+     * we explicitly set GL_SPEECH_ACT_UNKNOWN so the "I didn't classify"
+     * sentinel is observable. When ON we run classify_speech_act and
+     * bump the per-class stats counter for any non-UNKNOWN result.
+     * Placement: after the negation pass and before the engram encode
+     * block (so the speech_act label lives on the result *before*
+     * engram traces latch). */
+    if (gl->enable_speech_act_classification) {
+        result->speech_act = classify_speech_act(words, word_count, text);
+        switch (result->speech_act) {
+            case GL_SPEECH_ACT_ASSERTION:
+                gl->stats.speech_act_assertions++;
+                break;
+            case GL_SPEECH_ACT_QUESTION:
+                gl->stats.speech_act_questions++;
+                break;
+            case GL_SPEECH_ACT_IMPERATIVE:
+                gl->stats.speech_act_imperatives++;
+                break;
+            case GL_SPEECH_ACT_GREETING:
+                gl->stats.speech_act_greetings++;
+                break;
+            case GL_SPEECH_ACT_EXCLAMATION:
+                gl->stats.speech_act_exclamations++;
+                break;
+            case GL_SPEECH_ACT_UNKNOWN:
+            default:
+                break;
+        }
+    } else {
+        result->speech_act = GL_SPEECH_ACT_UNKNOWN;
+    }
+
     /* Engram integration (read-only). Snapshot the pre-engram activated
      * set so:
      *   (a) we ENCODE only the comprehension-derived activations into a
@@ -2391,6 +2443,138 @@ static bool is_negation_cue(const char* w) {
 }
 
 /*=============================================================================
+ * TB-9 — speech-act intent classification helpers.
+ *
+ * All four cue tables are lower-case (matched against tokenized words
+ * which the comprehend path already lower-cased). The classifier sees
+ * the raw text only to peek at the trailing punctuation.
+ *===========================================================================*/
+
+static bool is_wh_word(const char* w) {
+    if (!w || !*w) return false;
+    static const char* WH[] = {
+        "what", "who", "where", "when", "why",
+        "how", "which", "whose", "whom",
+        NULL
+    };
+    for (int i = 0; WH[i]; i++) {
+        if (strcmp(w, WH[i]) == 0) return true;
+    }
+    return false;
+}
+
+static bool is_auxiliary(const char* w) {
+    if (!w || !*w) return false;
+    static const char* AUX[] = {
+        "is", "are", "was", "were",
+        "do", "does", "did",
+        "can", "could", "will", "would", "should",
+        "may", "might",
+        "has", "have", "had",
+        NULL
+    };
+    for (int i = 0; AUX[i]; i++) {
+        if (strcmp(w, AUX[i]) == 0) return true;
+    }
+    return false;
+}
+
+static bool is_imperative_cue(const char* w) {
+    if (!w || !*w) return false;
+    static const char* CUES[] = {
+        "go", "stop", "come", "look", "listen", "wait",
+        "give", "take", "tell", "show", "find", "bring",
+        "put", "please", "let",
+        NULL
+    };
+    for (int i = 0; CUES[i]; i++) {
+        if (strcmp(w, CUES[i]) == 0) return true;
+    }
+    return false;
+}
+
+static bool is_greeting_cue(const char* w) {
+    if (!w || !*w) return false;
+    static const char* CUES[] = {
+        "hello", "hi", "hey", "greetings",
+        "goodbye", "bye",
+        "morning", "afternoon", "evening",
+        NULL
+    };
+    for (int i = 0; CUES[i]; i++) {
+        if (strcmp(w, CUES[i]) == 0) return true;
+    }
+    return false;
+}
+
+static bool is_first_person_pronoun(const char* w) {
+    if (!w || !*w) return false;
+    static const char* PRONS[] = {
+        "i", "me", "we", "my", "our", "mine", "ours", "us",
+        NULL
+    };
+    for (int i = 0; PRONS[i]; i++) {
+        if (strcmp(w, PRONS[i]) == 0) return true;
+    }
+    return false;
+}
+
+static gl_speech_act_t classify_speech_act(char* const* words,
+                                            uint32_t word_count,
+                                            const char* raw_text) {
+    if (!words || word_count == 0 || !raw_text) {
+        return GL_SPEECH_ACT_ASSERTION;
+    }
+
+    /* Walk to the last non-whitespace char of raw_text. */
+    size_t n = strlen(raw_text);
+    char trailing = '\0';
+    while (n > 0) {
+        char c = raw_text[n - 1];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            n--;
+            continue;
+        }
+        trailing = c;
+        break;
+    }
+
+    /* (1) Greeting check first — beats "?" and "!". */
+    uint32_t scan = (word_count < 2) ? word_count : 2;
+    for (uint32_t i = 0; i < scan; i++) {
+        if (is_greeting_cue(words[i])) return GL_SPEECH_ACT_GREETING;
+    }
+
+    /* (2) Question — trailing '?' or wh-word/auxiliary as first token. */
+    if (trailing == '?') return GL_SPEECH_ACT_QUESTION;
+    if (is_wh_word(words[0]))     return GL_SPEECH_ACT_QUESTION;
+    if (is_auxiliary(words[0]))   return GL_SPEECH_ACT_QUESTION;
+
+    /* (3) Imperative — bare-verb cue at front. */
+    if (is_imperative_cue(words[0])) return GL_SPEECH_ACT_IMPERATIVE;
+
+    /* (4) Trailing '!' — IMPERATIVE if no first-person pronoun in the
+     * first 3 tokens AND > 1 word; otherwise EXCLAMATION. Single-token
+     * "amazing!" lands as EXCLAMATION (cannot be a command without an
+     * object); "go fetch the ball!" would already have hit IMPERATIVE
+     * via (3); "i won the game!" with first-person → EXCLAMATION. */
+    if (trailing == '!') {
+        uint32_t look = (word_count < 3) ? word_count : 3;
+        bool has_fp = false;
+        for (uint32_t i = 0; i < look; i++) {
+            if (is_first_person_pronoun(words[i])) { has_fp = true; break; }
+        }
+        if (!has_fp && word_count >= 2) {
+            return GL_SPEECH_ACT_IMPERATIVE;
+        }
+        return GL_SPEECH_ACT_EXCLAMATION;
+    }
+
+    /* (5) Default fallback. */
+    return GL_SPEECH_ACT_ASSERTION;
+}
+
+/*=============================================================================
  * Tier-2 #6 — Sense-disambiguation helper
  *
  * Picks the binding whose concept-features cosine-best aligns with the
@@ -2472,6 +2656,24 @@ void grounded_language_set_reconsolidation_decay(grounded_language_t* gl,
 float grounded_language_get_reconsolidation_decay(const grounded_language_t* gl) {
     if (!gl) return 0.0f;
     return gl->reconsolidation_decay;
+}
+
+/*-----------------------------------------------------------------------------
+ * TB-9 — speech-act intent classification toggle.
+ *---------------------------------------------------------------------------*/
+
+void grounded_language_set_speech_act_classification_enabled(
+    grounded_language_t* gl, bool enabled)
+{
+    if (!gl) return;
+    gl->enable_speech_act_classification = enabled;
+}
+
+bool grounded_language_get_speech_act_classification_enabled(
+    const grounded_language_t* gl)
+{
+    if (!gl) return false;
+    return gl->enable_speech_act_classification;
 }
 
 uint32_t grounded_language_reconsolidate_word(grounded_language_t* gl,

@@ -317,6 +317,16 @@ struct grounded_language {
     uint32_t topic_shift_min_turns;
     float    last_topic_shift_score;
     bool     last_was_topic_shift;
+
+    /* TB-9 — speech-act intent classification. When enabled (default
+     * false), comprehend runs a cheap rule-based classifier over the
+     * tokenized words + raw text after the negation pass and before
+     * engram encoding, populating result->speech_act with one of the
+     * gl_speech_act_t labels. When disabled, result->speech_act stays
+     * GL_SPEECH_ACT_UNKNOWN and the per-class stats counters never
+     * advance. Per-instance runtime knob; not persisted across
+     * save/load. */
+    bool                 enable_speech_act_classification;
 };
 
 /**
