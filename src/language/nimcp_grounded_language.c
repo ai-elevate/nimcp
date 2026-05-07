@@ -12,6 +12,14 @@
 
 #include "language/nimcp_grounded_language.h"
 #include "language/nimcp_grounded_language_internal.h"
+#include "language/nimcp_bigram_spectrum.h"
+/* PA-4+ : compile the bigram-spectrum implementation as part of this
+ * translation unit. The build's source list is explicit (not GLOB) and
+ * the CMakeLists.txt is outside the modify set for this change, so we
+ * inline-include the .c here — same pattern as nimcp.c → nimcp_part_*.c.
+ * The header (nimcp_bigram_spectrum.h) provides the public API and is
+ * included separately by the brain wrapper and the test. */
+#include "nimcp_bigram_spectrum.c"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "utils/memory/nimcp_memory.h"
@@ -2671,6 +2679,61 @@ int grounded_language_learn_next_token_pair_riemannian(grounded_language_t* gl,
     return 0;
 }
 
+/*=============================================================================
+ * PA-4+ : optional bigram-spectrum tracker
+ *
+ * The spectrum lives in caller-owned memory and is referenced from a
+ * small static side-map keyed by gl pointer. We avoid touching the
+ * grounded_language struct layout (the persistence sidecar walks it
+ * field-by-field via nimcp_grounded_language_internal.h), so an opt-in
+ * side-channel keeps the layout untouched while still letting the
+ * trainer attach a diagnostic.
+ *
+ * Cap is intentionally tiny — at most one spectrum per active brain,
+ * and brains rarely exceed two in the same process.
+ *===========================================================================*/
+
+#define GL_SPECTRUM_MAP_CAP 4
+
+static struct {
+    grounded_language_t* gl;
+    bigram_spectrum_t*   spectrum;
+} g_spectrum_map[GL_SPECTRUM_MAP_CAP] = { {0} };
+
+static bigram_spectrum_t* gl_get_attached_spectrum(grounded_language_t* gl) {
+    if (!gl) return NULL;
+    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
+        if (g_spectrum_map[i].gl == gl) return g_spectrum_map[i].spectrum;
+    }
+    return NULL;
+}
+
+void grounded_language_attach_bigram_spectrum(grounded_language_t* gl,
+                                                void* spectrum) {
+    if (!gl) return;
+    bigram_spectrum_t* bs = (bigram_spectrum_t*)spectrum;
+
+    /* Replace existing entry if any. */
+    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
+        if (g_spectrum_map[i].gl == gl) {
+            g_spectrum_map[i].spectrum = bs;
+            if (!bs) g_spectrum_map[i].gl = NULL;  /* detach */
+            return;
+        }
+    }
+    if (!bs) return;  /* nothing to detach */
+
+    /* Insert into first free slot. */
+    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
+        if (g_spectrum_map[i].gl == NULL) {
+            g_spectrum_map[i].gl = gl;
+            g_spectrum_map[i].spectrum = bs;
+            return;
+        }
+    }
+    /* Map is full — silently drop to avoid impacting the trainer. */
+}
+
 int grounded_language_learn_text_bigrams(grounded_language_t* gl,
                                            const char* text, float lr)
 {
@@ -2686,11 +2749,29 @@ int grounded_language_learn_text_bigrams(grounded_language_t* gl,
     char* words[GL_MAX_PRODUCTION_WORDS];
     uint32_t n = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
 
+    bigram_spectrum_t* spectrum = gl_get_attached_spectrum(gl);
+    uint32_t spec_cap = spectrum ? bigram_spectrum_vocab_cap(spectrum) : 0u;
+
     int processed = 0;
     for (uint32_t i = 0; i + 1 < n; i++) {
         if (grounded_language_learn_next_token_pair(gl, words[i],
                                                       words[i + 1], lr) == 0) {
             processed++;
+
+            /* PA-4+ : record the bigram into the attached spectrum.
+             * Use the lexicon form_hash modded down to spectrum's vocab
+             * cap. Out-of-range ids are silently ignored by record(). */
+            if (spectrum && spec_cap > 0) {
+                gl_lexicon_entry_t* pe =
+                    gl_internal_lexicon_find_or_create(gl, words[i]);
+                gl_lexicon_entry_t* ne =
+                    gl_internal_lexicon_find_or_create(gl, words[i + 1]);
+                if (pe && ne) {
+                    uint32_t pid = pe->form_hash % spec_cap;
+                    uint32_t nid = ne->form_hash % spec_cap;
+                    bigram_spectrum_record(spectrum, pid, nid);
+                }
+            }
         }
     }
 

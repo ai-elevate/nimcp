@@ -946,6 +946,43 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
 );
 
 /**
+ * @brief PA-4+ : FFT-based bigram spectral metrics.
+ *
+ * Diagnostic snapshot: returns the spectral structure of the bigram
+ * count matrix accumulated by grounded_language_learn_text_bigrams().
+ *
+ * On first call, lazily creates and attaches an internal bigram-spectrum
+ * tracker to the brain's grounded language module. The tracker is owned
+ * for the brain's lifetime; subsequent calls return a fresh FFT-derived
+ * snapshot of accumulated bigrams.
+ *
+ * Field semantics:
+ *   peak_strength            (max |F| - mean |F|) / std |F| over the 2D
+ *                            bigram-frequency spectrum (DC excluded).
+ *                            High under repeating/periodic structure.
+ *   low_freq_concentration   sum |F|^2 in the inner-quarter spectrum
+ *                            divided by total |F|^2. High when a few
+ *                            global hubs (function words) dominate.
+ *   spectral_entropy         -Σ p log p where p = |F|^2 / Σ|F|^2 (DC
+ *                            excluded). Low under structure.
+ *
+ * The bigram_spectral_metrics_t typedef lives in
+ *   include/language/nimcp_bigram_spectrum.h
+ * which this header includes. Callers can access the struct via either
+ * nimcp.h or the language header.
+ *
+ * @param brain   Brain handle.
+ * @param out     Output metrics struct (zeroed on error or empty matrix).
+ * @return NIMCP_OK on success.
+ */
+#include "language/nimcp_bigram_spectrum.h"
+
+nimcp_status_t nimcp_brain_get_bigram_spectral_metrics(
+    nimcp_brain_t brain,
+    bigram_spectral_metrics_t* out
+);
+
+/**
  * @brief Probe the comprehension pipeline for a single text.
  *
  * Runs grounded_language_comprehend(text) read-only and surfaces metrics

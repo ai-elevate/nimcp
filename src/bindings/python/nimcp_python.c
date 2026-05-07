@@ -2668,6 +2668,31 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
  * Grounded-language diagnostics (collapse triage)
  * ---------------------------------------------------------------- */
 
+static PyObject* Brain_get_bigram_spectral_metrics(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    bigram_spectral_metrics_t m;
+    if (nimcp_brain_get_bigram_spectral_metrics(self->brain, &m) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "bigram spectral metrics failed");
+        return NULL;
+    }
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+#define BSM_SET(k, v) do { \
+    PyObject* _v = (v); \
+    if (!_v) { Py_DECREF(dict); return NULL; } \
+    if (PyDict_SetItemString(dict, (k), _v) < 0) { Py_DECREF(_v); Py_DECREF(dict); return NULL; } \
+    Py_DECREF(_v); \
+} while (0)
+    BSM_SET("peak_strength",          PyFloat_FromDouble(m.peak_strength));
+    BSM_SET("low_freq_concentration", PyFloat_FromDouble(m.low_freq_concentration));
+    BSM_SET("spectral_entropy",       PyFloat_FromDouble(m.spectral_entropy));
+#undef BSM_SET
+    return dict;
+}
+
 static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -10996,6 +11021,8 @@ static PyMethodDef Brain_methods[] = {
     // Grounded-language diagnostics (collapse triage)
     {"get_grounded_language_diagnostics", (PyCFunction)Brain_get_grounded_language_diagnostics, METH_NOARGS,
      "Get grounded-language diagnostic snapshot: get_grounded_language_diagnostics() -> dict"},
+    {"get_bigram_spectral_metrics", (PyCFunction)Brain_get_bigram_spectral_metrics, METH_NOARGS,
+     "PA-4+ FFT-based bigram spectral diagnostics: get_bigram_spectral_metrics() -> dict {peak_strength, low_freq_concentration, spectral_entropy}"},
     {"get_top_phrases", (PyCFunction)Brain_get_top_phrases, METH_VARARGS | METH_KEYWORDS,
      "Get top-K most-frequent learned phrases: get_top_phrases(top_k=20) -> list[dict {form, frequency, component_words}]"},
     {"get_modality_counts", (PyCFunction)Brain_get_modality_counts, METH_NOARGS,

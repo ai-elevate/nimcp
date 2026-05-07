@@ -1252,6 +1252,18 @@ class BrainService:
             return {"error": f"get_grounded_language_diagnostics: {e}"}
         return {"grounded_language": d}
 
+    def _cmd_get_bigram_spectral_metrics(self, _req):
+        """PA-4+ FFT bigram spectral diagnostics — surfaces grammar
+        emergence as three scalar metrics. Returns zeros on a fresh
+        brain that hasn't yet seen any bigrams."""
+        try:
+            m = self.brain.get_bigram_spectral_metrics()
+        except AttributeError:
+            return {"error": "get_bigram_spectral_metrics not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_bigram_spectral_metrics: {e}"}
+        return {"bigram_spectral_metrics": m}
+
     def _cmd_ground_word(self, req):
         """Ground a single word in sensory features.
 
