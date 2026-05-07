@@ -1452,6 +1452,16 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     gl->discourse.count    = 0;
     gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
 
+    /* TB-10 — topic-shift detection off by default. Trainer / dialog
+     * driver opts in once the curriculum can usefully consume topic
+     * boundaries. Score initialised to 1.0 ("no shift") so callers
+     * that poll before any comprehend fires see a sane default. */
+    gl->enable_topic_shift_detection = false;
+    gl->topic_shift_threshold        = GL_TOPIC_SHIFT_DEFAULT_THRESHOLD;
+    gl->topic_shift_min_turns        = GL_TOPIC_SHIFT_DEFAULT_MIN_TURNS;
+    gl->last_topic_shift_score       = 1.0f;
+    gl->last_was_topic_shift         = false;
+
     /* RNG */
     gl->rng_state = (uint64_t)time(NULL) ^ 0xDEADBEEFCAFEULL;
 
@@ -1482,6 +1492,9 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
                                     uint64_t* activated_concepts,
                                     float* activation_levels,
                                     uint32_t* concept_count_io);
+/* TB-10 — defined later in the discourse block; called from comprehend. */
+static float gl_topic_shift_score(const grounded_language_t* gl,
+                                    uint32_t min_turns);
 
 void grounded_language_destroy(grounded_language_t* gl) {
     if (!gl) return;
@@ -2196,6 +2209,30 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     }
     gl->context.words_in_context += word_count;
 
+    /* TB-10 — topic-shift detection in discourse. Run AFTER the push so
+     * the latest turn is in the ring; compare against the prior K turns'
+     * mean. When fewer than `min_turns` priors exist, gl_topic_shift_score
+     * returns 1.0 and we leave the boundary flag false without bumping
+     * counters. Default-OFF, opt-in per system instance via the setter. */
+    if (gl->enable_topic_shift_detection && !semantic_vec_is_zero) {
+        uint32_t need_priors = gl->topic_shift_min_turns;
+        if (need_priors < 2u) need_priors = 2u;
+        if (gl->discourse.count >= (uint8_t)(need_priors + 1)) {
+            float score = gl_topic_shift_score(gl, need_priors);
+            gl->last_topic_shift_score = score;
+            gl->stats.topic_shifts_evaluated++;
+            bool shifted = (score < gl->topic_shift_threshold);
+            gl->last_was_topic_shift = shifted;
+            if (shifted) gl->stats.topic_shifts_detected++;
+        } else {
+            /* Not enough turns yet — hold the score at 1.0 ("no shift")
+             * and keep the boundary flag false. Counters do NOT bump
+             * because the detector didn't actually evaluate. */
+            gl->last_topic_shift_score = 1.0f;
+            gl->last_was_topic_shift   = false;
+        }
+    }
+
     /* Store recent concepts */
     gl->context.last_concept_count = 0;
     for (uint32_t c = 0; c < concept_count && c < 16; c++) {
@@ -2628,6 +2665,126 @@ void grounded_language_set_discourse_capacity(grounded_language_t* gl,
 
     gl->discourse.capacity = capacity;
     discourse_rebuild_context_blend(gl);
+}
+
+/*=============================================================================
+ * TB-10 — Topic-shift detection in discourse.
+ *
+ * Detector returns the cosine similarity between the *most recent*
+ * discourse turn (count-1) and the mean of the prior up-to-K turns
+ * (positions count-1-K .. count-2 in oldest→newest ordering). Returns
+ * 1.0 ("no shift") when fewer than `min_turns` prior turns are
+ * available, or when either operand has zero magnitude. Skips empty
+ * placeholder turns (NULL semantic_vector) when computing the mean.
+ *===========================================================================*/
+
+static float gl_topic_shift_score(const grounded_language_t* gl,
+                                    uint32_t min_turns) {
+    if (!gl) return 1.0f;
+    const gl_discourse_state_t* d = &gl->discourse;
+    /* Need: 1 most-recent turn + at least `min_turns` priors. */
+    if (d->count < (uint8_t)(min_turns + 1)) return 1.0f;
+    if (gl->semantic_dim == 0) return 1.0f;
+
+    /* Latest turn = newest in oldest→newest ordering, position count-1. */
+    uint8_t latest_pos = (uint8_t)(d->count - 1);
+    const gl_discourse_turn_t* latest_t =
+        &d->turns[discourse_idx(d, latest_pos)];
+    if (!latest_t->semantic_vector) return 1.0f;
+
+    /* Mean of the prior up-to-min_turns turns (positions
+     * count-1-K .. count-2). Skip empty placeholders. */
+    float mean[GL_SEMANTIC_DIM];
+    /* Defensive cap — semantic_dim should always be ≤ GL_SEMANTIC_DIM
+     * because that's the static stack-buffer ceiling, but newer
+     * embedding paths can push it higher. Stack-limit by clamping. */
+    uint32_t dim = gl->semantic_dim;
+    if (dim > GL_SEMANTIC_DIM) dim = GL_SEMANTIC_DIM;
+    memset(mean, 0, dim * sizeof(float));
+
+    uint32_t included = 0;
+    /* iterate the K priors that sit immediately before the latest. */
+    uint8_t start = (uint8_t)(d->count - 1 - min_turns);
+    for (uint8_t i = 0; i < (uint8_t)min_turns; i++) {
+        const gl_discourse_turn_t* pt =
+            &d->turns[discourse_idx(d, (uint8_t)(start + i))];
+        if (!pt->semantic_vector) continue;
+        for (uint32_t j = 0; j < dim; j++) {
+            mean[j] += pt->semantic_vector[j];
+        }
+        included++;
+    }
+    if (included == 0) return 1.0f;
+    float inv = 1.0f / (float)included;
+    for (uint32_t j = 0; j < dim; j++) mean[j] *= inv;
+
+    /* cos = dot(latest, mean) / (||latest|| * ||mean||). */
+    double dot = 0.0;
+    double n_latest = 0.0;
+    double n_mean = 0.0;
+    for (uint32_t j = 0; j < dim; j++) {
+        double a = (double)latest_t->semantic_vector[j];
+        double b = (double)mean[j];
+        dot     += a * b;
+        n_latest += a * a;
+        n_mean   += b * b;
+    }
+    if (n_latest < 1e-18 || n_mean < 1e-18) return 1.0f;
+    double cos = dot / (sqrt(n_latest) * sqrt(n_mean));
+    /* Clamp into [0, 1] — negative similarity is more-different-than-
+     * orthogonal; treating it as 0 keeps the threshold semantics intact
+     * (any negative cosine is well below any sensible threshold). */
+    if (cos < 0.0) cos = 0.0;
+    if (cos > 1.0) cos = 1.0;
+    return (float)cos;
+}
+
+void grounded_language_set_topic_shift_enabled(grounded_language_t* gl,
+                                                  bool enabled) {
+    if (!gl) return;
+    gl->enable_topic_shift_detection = enabled;
+}
+
+bool grounded_language_get_topic_shift_enabled(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->enable_topic_shift_detection;
+}
+
+void grounded_language_set_topic_shift_threshold(grounded_language_t* gl,
+                                                    float threshold) {
+    if (!gl) return;
+    if (!isfinite(threshold) || threshold < 0.0f) threshold = 0.0f;
+    if (threshold > 1.0f) threshold = 1.0f;
+    gl->topic_shift_threshold = threshold;
+}
+
+float grounded_language_get_topic_shift_threshold(const grounded_language_t* gl) {
+    if (!gl) return 0.0f;
+    return gl->topic_shift_threshold;
+}
+
+void grounded_language_set_topic_shift_min_turns(grounded_language_t* gl,
+                                                    uint32_t min_turns) {
+    if (!gl) return;
+    if (min_turns < 2u) min_turns = 2u;
+    if (min_turns > (uint32_t)GL_DISCOURSE_MAX_TURNS_PUBLIC)
+        min_turns = (uint32_t)GL_DISCOURSE_MAX_TURNS_PUBLIC;
+    gl->topic_shift_min_turns = min_turns;
+}
+
+uint32_t grounded_language_get_topic_shift_min_turns(const grounded_language_t* gl) {
+    if (!gl) return 0u;
+    return gl->topic_shift_min_turns;
+}
+
+float grounded_language_get_last_topic_shift_score(const grounded_language_t* gl) {
+    if (!gl) return 1.0f;
+    return gl->last_topic_shift_score;
+}
+
+bool grounded_language_last_was_topic_shift(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->last_was_topic_shift;
 }
 
 /*=============================================================================

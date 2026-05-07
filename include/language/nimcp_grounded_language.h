@@ -320,6 +320,14 @@ typedef struct {
      * enable_reconsolidation is false. */
     uint64_t reconsolidation_events;
     uint64_t reconsolidation_bindings_decayed;
+    /* TB-10 — topic-shift detection telemetry. topic_shifts_evaluated
+     * counts every comprehend pass that ran the detector (flag ON AND
+     * enough prior turns to compare against); topic_shifts_detected is
+     * the subset whose cosine score fell below the configured threshold
+     * — i.e. a topic boundary was flagged. Both stay 0 when
+     * enable_topic_shift_detection is false (the default). */
+    uint64_t topic_shifts_evaluated;
+    uint64_t topic_shifts_detected;
 } gl_stats_t;
 
 /**
@@ -549,6 +557,101 @@ uint8_t grounded_language_get_discourse_turn_count(
 void grounded_language_set_discourse_capacity(
     grounded_language_t* gl,
     uint8_t capacity);
+
+/*=============================================================================
+ * TB-10: Topic-shift detection in discourse.
+ *
+ * Discourse turns are pushed by every successful comprehend (TA-1 work).
+ * For dialog systems and curriculum, downstream cognition wants to *know*
+ * when the topic shifts — when the latest turn's semantic content is far
+ * from the recent average. This lets the brain refresh attention, drop
+ * stale anaphora referents, and signal a topic boundary to memory
+ * consolidation.
+ *
+ * Detection is a cheap cosine-distance check over the discourse ring:
+ * cosine(latest_turn, mean(prior up-to-K turns)). When the score falls
+ * below `topic_shift_threshold` AND we have at least
+ * `topic_shift_min_turns` prior turns to average, comprehend flags a
+ * topic boundary on the gl instance + bumps the
+ * topic_shifts_detected counter.
+ *
+ * Default OFF — preserves legacy comprehend behaviour bit-for-bit.
+ * Opt-in per system instance via
+ * grounded_language_set_topic_shift_enabled.
+ *===========================================================================*/
+
+/** Default cosine-similarity threshold below which a discourse turn
+ *  triggers a topic-shift flag. 0.3 is conservative — cosine has to drop
+ *  meaningfully (semantically distant) before the boundary fires.
+ *  Clamped to [0, 1] by the setter. */
+#define GL_TOPIC_SHIFT_DEFAULT_THRESHOLD  0.3f
+
+/** Default minimum number of prior turns required before a topic-shift
+ *  decision can be made. With < 2 priors there's no stable mean to
+ *  compare against, so the detector reports "no shift" (score 1.0) and
+ *  the evaluated/detected counters do not advance. Clamped to
+ *  [2, GL_DISCOURSE_MAX_TURNS_PUBLIC] by the setter. */
+#define GL_TOPIC_SHIFT_DEFAULT_MIN_TURNS  3u
+
+/**
+ * @brief Toggle TB-10 topic-shift detection. Default OFF.
+ *
+ * When ON, comprehend computes a cosine score between the most recent
+ * discourse turn and the mean of the prior up-to-K turns after pushing
+ * the new turn into the ring. The score + boundary flag are stashed
+ * on the gl instance and queryable via the get_last_* helpers below.
+ */
+void grounded_language_set_topic_shift_enabled(
+    grounded_language_t* gl,
+    bool enabled);
+
+/** Read the current topic-shift toggle (for telemetry / tests). */
+bool grounded_language_get_topic_shift_enabled(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Tune the cosine-similarity threshold below which a discourse
+ *        turn fires a topic-shift flag. Clamped to [0, 1]; NaN → 0.
+ *
+ * 0.0 = never fire (every turn is "the same topic"); 1.0 = always fire
+ * (every turn is a topic shift). 0.3 is the conservative default.
+ */
+void grounded_language_set_topic_shift_threshold(
+    grounded_language_t* gl,
+    float threshold);
+
+float grounded_language_get_topic_shift_threshold(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Tune the minimum number of prior discourse turns required
+ *        before a shift can fire. Clamped to
+ *        [2, GL_DISCOURSE_MAX_TURNS_PUBLIC].
+ */
+void grounded_language_set_topic_shift_min_turns(
+    grounded_language_t* gl,
+    uint32_t min_turns);
+
+uint32_t grounded_language_get_topic_shift_min_turns(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Read the most recently computed topic-shift score (cosine
+ *        similarity, [0, 1]). 1.0 = no detected shift; values below the
+ *        configured threshold indicate a topic boundary fired this
+ *        comprehend. Returns 1.0 on NULL / when no comprehend has yet
+ *        produced enough turns.
+ */
+float grounded_language_get_last_topic_shift_score(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Read whether the most recent comprehend pass flagged a topic
+ *        boundary. Returns false on NULL or when topic-shift detection
+ *        is disabled / hasn't seen enough turns yet.
+ */
+bool grounded_language_last_was_topic_shift(
+    const grounded_language_t* gl);
 
 /*=============================================================================
  * Tier-2 #6: Word-sense disambiguation (polysemy)

@@ -52,6 +52,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_spectrum_tick
     test_lang_da_modulation
     test_lang_reconsolidation
+    test_lang_topic_shift
 )
 
 # Helper: register a single standalone-C test.

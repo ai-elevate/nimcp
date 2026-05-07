@@ -298,6 +298,25 @@ struct grounded_language {
     double immune_act_mean;
     double immune_act_m2;
     uint64_t immune_act_samples;
+
+    /* TB-10 — topic-shift detection in discourse. When enabled (default
+     * OFF — preserves legacy behaviour), comprehend computes the cosine
+     * similarity between the most-recent discourse turn and the mean of
+     * the prior up-to-K turns, flags a topic boundary when the score
+     * falls below `topic_shift_threshold`, and stashes the score +
+     * boundary flag for downstream cognition (attention refresh,
+     * anaphora reset, memory consolidation). At least
+     * `topic_shift_min_turns` prior turns are required before a shift
+     * can fire — until then last_was_topic_shift stays false and
+     * last_topic_shift_score is held at 1.0 ("no shift"). All three
+     * tunables are runtime-mutable via grounded_language_set_topic_shift_*
+     * setters; threshold clamps to [0, 1] and min_turns clamps to
+     * [2, GL_DISCOURSE_MAX_TURNS]. */
+    bool     enable_topic_shift_detection;
+    float    topic_shift_threshold;
+    uint32_t topic_shift_min_turns;
+    float    last_topic_shift_score;
+    bool     last_was_topic_shift;
 };
 
 /**
