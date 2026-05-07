@@ -50,6 +50,9 @@
 
 #include "generation/nimcp_embedding.h"
 #include "generation/nimcp_tokenizer.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "GROUNDED_LANG_NLP"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -289,7 +292,19 @@ int gl_nlp_embedding_lookup(grounded_language_t* gl,
                               float* out_vec) {
     if (!gl || !word || !out_vec) return -1;
     if (!gl->embeddings || !gl->word_to_id_fn) return -1;
-    if (gl->emb_dim != gl->semantic_dim) return -1;  /* dim mismatch — skip */
+    if (gl->emb_dim != gl->semantic_dim) {
+        /* Walkthrough round 4 fix: dim mismatch was silently disabling
+         * embedding lookups in production. Log once per process so a
+         * mis-configured caller can see why blends aren't running. */
+        static _Atomic int g_emb_dim_warned = 0;
+        if (__atomic_exchange_n(&g_emb_dim_warned, 1, __ATOMIC_RELAXED) == 0) {
+            LOG_WARN(LOG_MODULE,
+                     "gl_nlp_embedding_lookup: emb_dim=%u != semantic_dim=%u — "
+                     "embedding lookups disabled until dims match",
+                     gl->emb_dim, gl->semantic_dim);
+        }
+        return -1;
+    }
 
     uint32_t token_id = gl->word_to_id_fn(gl->word_to_id_ctx, word);
     if (token_id == 0) return -1;  /* unknown to caller's vocab */

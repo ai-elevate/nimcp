@@ -50,7 +50,12 @@ extern "C" {
  * peak_strength            (max - mean) / std    — z-score of the
  *                          dominant frequency. High when bigrams form a
  *                          tight repeating pattern (grammar-like).
- * low_freq_concentration   sum |F|^2 in inner-quarter / total |F|^2.
+ * low_freq_concentration   sum |F|^2 in inner ~1/16 area (N/8 half-width
+ *                          per axis, summing all 4 corner regions of the
+ *                          DFT) / total |F|^2. (Walkthrough round 4 doc
+ *                          fix — was previously "inner-quarter" which
+ *                          implied 1/4 area; actual computed region is
+ *                          (N/4)² / N² = 1/16. Comment in .c is correct.)
  *                          High when transitions are dominated by a
  *                          few global hubs (function words, articles,
  *                          determiners — the kind of structure that
