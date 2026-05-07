@@ -3764,6 +3764,73 @@ nimcp_status_t nimcp_brain_learn_text_bigrams(nimcp_brain_t brain,
     return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/*=============================================================================
+ * Tier-2 #3 / #6 / #7 brain wrappers — toggle negation, toggle word-sense
+ * disambiguation, push a discourse turn, query / clamp the discourse buffer.
+ *
+ * All five share the _gl_diag_validate gate and return NIMCP_ERROR
+ * (rather than NIMCP_ERROR_NOT_INITIALIZED) when grounded_lang is
+ * absent — matches the existing PA-* wrapper convention so RPC clients
+ * don't need a separate error-code branch.
+ *===========================================================================*/
+
+nimcp_status_t nimcp_brain_set_grounded_negation_enabled(nimcp_brain_t brain,
+                                                           bool enabled)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_negation_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_grounded_sense_disambiguation_enabled(
+    nimcp_brain_t brain,
+    bool enabled)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_sense_disambiguation_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_grounded_push_turn(nimcp_brain_t brain,
+                                                const float* semantic_vec,
+                                                uint32_t vec_dim,
+                                                uint32_t n_words,
+                                                bool is_user)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int rc = grounded_language_push_turn(b->grounded_lang, semantic_vec,
+                                           vec_dim, n_words, is_user);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+int nimcp_brain_grounded_get_discourse_turn_count(nimcp_brain_t brain)
+{
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return -1;
+    return (int)grounded_language_get_discourse_turn_count(b->grounded_lang);
+}
+
+nimcp_status_t nimcp_brain_grounded_set_discourse_capacity(nimcp_brain_t brain,
+                                                              uint8_t capacity)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_discourse_capacity(b->grounded_lang, capacity);
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_creative_blend(
     nimcp_brain_t brain,
     const float* vector_a,

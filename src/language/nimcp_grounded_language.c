@@ -1399,6 +1399,16 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     gl->hebbian_lr = GL_HEBBIAN_LR_DEFAULT;
     gl->decay_rate = GL_DECAY_RATE_DEFAULT;
 
+    /* Tier-2 defaults: negation ON (cheap, biologically realistic),
+     * sense disambiguation OFF (opt-in — preserves legacy activation
+     * profile bit-for-bit on resume of a pre-Tier-2 brain). Discourse
+     * starts empty with capacity = full GL_DISCOURSE_MAX_TURNS. */
+    gl->enable_negation_inversion   = true;
+    gl->enable_sense_disambiguation = false;
+    gl->discourse.head     = 0;
+    gl->discourse.count    = 0;
+    gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
+
     /* RNG */
     gl->rng_state = (uint64_t)time(NULL) ^ 0xDEADBEEFCAFEULL;
 
@@ -1453,6 +1463,13 @@ void grounded_language_destroy(grounded_language_t* gl) {
         nimcp_free(gl->phrases);
     }
 
+    /* Tier-2 #7 — free per-turn semantic vectors. The turns array
+     * itself is inline in the struct, so only the heap-owned vectors
+     * need releasing. */
+    for (uint8_t t = 0; t < GL_DISCOURSE_MAX_TURNS; t++) {
+        nimcp_free(gl->discourse.turns[t].semantic_vector);
+    }
+
     nimcp_free(gl);
 }
 
@@ -1468,6 +1485,13 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 /*=============================================================================
  * Comprehension
  *===========================================================================*/
+
+/* Tier-2 forward decls — implementations live just below
+ * gl_comprehension_result_cleanup (kept colocated with the rest of the
+ * Tier-2 helpers). Forward-declared here so grounded_language_comprehend
+ * can call them without reordering the file. */
+static bool is_function_word(const char* w);
+static bool is_negation_cue(const char* w);
 
 int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                   gl_comprehension_result_t* result) {
@@ -1492,6 +1516,38 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     char* words[GL_MAX_PRODUCTION_WORDS];
     uint32_t word_count = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
 
+    /* Lower-case in-place so cue / function-word checks match the
+     * lexicon's stored forms. The tokenizer emitted pointers into buf
+     * — overwriting them here is safe (we never need the original
+     * mixed-case form again in this scope). */
+    for (uint32_t w = 0; w < word_count; w++) {
+        for (char* p = words[w]; *p; p++) {
+            *p = (char)tolower((unsigned char)*p);
+        }
+    }
+
+    /* Tier-2 #3 negation: scan for cues and mark the next non-function
+     * content word within GL_NEGATION_WINDOW for activation-sign flip.
+     * `negate_word[w]` = true means activations contributed by this
+     * word (and folded into result->activation_levels) get negated. */
+    bool negate_word[GL_MAX_PRODUCTION_WORDS];
+    memset(negate_word, 0, sizeof(negate_word));
+    bool any_negated = false;
+    if (gl->enable_negation_inversion) {
+        for (uint32_t i = 0; i < word_count; i++) {
+            if (!is_negation_cue(words[i])) continue;
+            uint32_t look_end = i + 1 + GL_NEGATION_WINDOW;
+            if (look_end > word_count) look_end = word_count;
+            for (uint32_t j = i + 1; j < look_end; j++) {
+                if (is_function_word(words[j])) continue;
+                if (is_negation_cue(words[j])) continue; /* skip stacked "not no" */
+                negate_word[j] = true;
+                any_negated = true;
+                break;
+            }
+        }
+    }
+
     /* Allocate result arrays */
     result->activated_concepts = (uint64_t*)nimcp_calloc(GL_MAX_ACTIVE_CONCEPTS, sizeof(uint64_t));
     result->activation_levels = (float*)nimcp_calloc(GL_MAX_ACTIVE_CONCEPTS, sizeof(float));
@@ -1508,6 +1564,7 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     float total_activation = 0.0f;
     uint32_t known_words = 0;
     uint32_t concept_count = 0;
+    bool sense_resolved_this_pass = false;
 
     /* #10 Active-learning curriculum signal — track the first word that
      * either misses the lexicon or has weak bindings, so we can fire a
@@ -1554,16 +1611,46 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             needy_word_conf = top_strength;
         }
 
+        /* Tier-2 #6 sense disambiguation. Default OFF — when enabled
+         * and the entry has > 1 binding, pick the binding that best
+         * aligns with the current running context vector and damp the
+         * off-sense bindings to GL_SENSE_OFF_DAMP. The chosen binding
+         * keeps weight 1.0 so its strength × weight matches legacy
+         * single-binding behaviour. The decision uses gl->context.
+         * context_vector (the running discourse blend) as the intent
+         * proxy; that vector is non-zero whenever any prior comprehend
+         * or push_turn has populated it. With an all-zero context
+         * (cold-start), disambiguate_sense returns 0 and the chosen
+         * binding is simply the first one — equivalent to legacy. */
+        uint32_t best_sense = 0;
+        bool     do_sense_weighting = false;
+        if (gl->enable_sense_disambiguation && entry->binding_count > 1) {
+            best_sense = grounded_language_disambiguate_sense(gl, entry,
+                                                                gl->context.context_vector);
+            do_sense_weighting = true;
+            sense_resolved_this_pass = true;
+        }
+
         /* Activate all bound concepts */
+        const float polarity = negate_word[w] ? -1.0f : 1.0f;
         for (uint32_t b = 0; b < entry->binding_count && concept_count < GL_MAX_ACTIVE_CONCEPTS; b++) {
             const gl_word_binding_t* binding = &entry->bindings[b];
             if (binding->strength < GL_ASSOC_PRUNE_THRESHOLD) continue;
+
+            /* Sense weight: 1.0 for the chosen binding when WSD is on,
+             * GL_SENSE_OFF_DAMP for the others; 1.0 unconditionally
+             * when WSD is off (legacy). */
+            float sense_w = 1.0f;
+            if (do_sense_weighting) {
+                sense_w = (b == best_sense) ? 1.0f : GL_SENSE_OFF_DAMP;
+            }
+            float effective = binding->strength * sense_w;
 
             /* Check if concept already activated */
             bool found = false;
             for (uint32_t c = 0; c < concept_count; c++) {
                 if (result->activated_concepts[c] == binding->concept_id) {
-                    result->activation_levels[c] += binding->strength;
+                    result->activation_levels[c] += polarity * effective;
                     found = true;
                     break;
                 }
@@ -1571,16 +1658,23 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
             if (!found) {
                 result->activated_concepts[concept_count] = binding->concept_id;
-                result->activation_levels[concept_count] = binding->strength;
+                result->activation_levels[concept_count] = polarity * effective;
                 concept_count++;
             }
 
-            total_activation += binding->strength;
+            total_activation += effective;
 
-            /* Add concept features to semantic vector */
+            /* Add concept features to semantic vector. Negation does
+             * NOT flip the semantic vector contribution — keeping the
+             * topical embedding intact while only the polarity / sign
+             * of activation_levels carries the negation signal lets
+             * downstream pipelines (cosine similarity, network
+             * broadcast) still use the vector as a topic descriptor.
+             * The activation list is the canonical "what was meant"
+             * channel and that's where the sign flip lives. */
             const float* cf = get_concept_features(gl, binding->concept_id);
             if (cf) {
-                float weight = binding->strength / (float)word_count;
+                float weight = effective / (float)word_count;
                 for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                     result->semantic_vector[d] += cf[d] * weight;
                 }
@@ -1635,14 +1729,20 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     }
     bool semantic_vec_is_zero = (vec_l2 < 1e-12f);
 
-    /* Update context — skip if vector is zero (preserve prior context). */
+    /* Update context — skip if vector is zero (preserve prior context).
+     *
+     * Tier-2 #7: auto-push this comprehension as a discourse turn.
+     * push_turn rebuilds gl->context.context_vector from the buffer's
+     * recency-weighted blend, which supersedes the legacy 0.7 blend
+     * but produces a comparable smoothed vector (geometric decay 0.6
+     * across up to capacity turns vs. the legacy 70/30 single step).
+     * Rebuilding from the buffer keeps the canonical context
+     * consistent with the per-turn breakdown — without this, the
+     * single rolling vector and the buffer would drift apart and any
+     * future coherence check would have to choose one as canonical. */
     if (!semantic_vec_is_zero) {
-        float blend = 0.7f; /* Favor new input */
-        for (uint32_t d = 0; d < gl->semantic_dim; d++) {
-            gl->context.context_vector[d] =
-                blend * result->semantic_vector[d] +
-                (1.0f - blend) * gl->context.context_vector[d];
-        }
+        grounded_language_push_turn(gl, result->semantic_vector,
+                                      gl->semantic_dim, word_count, true);
     }
     gl->context.words_in_context += word_count;
 
@@ -1654,6 +1754,14 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     }
 
     gl->stats.total_comprehensions++;
+
+    /* Tier-2 #3 / #6 telemetry — bump only on actual events. */
+    if (gl->enable_negation_inversion && any_negated) {
+        gl->stats.negation_events++;
+    }
+    if (sense_resolved_this_pass) {
+        gl->stats.sense_resolutions++;
+    }
 
     /* Dual-path: also feed through SNN bridge for spike-level comprehension */
     if (gl->snn_bridge) {
@@ -1733,6 +1841,262 @@ void gl_comprehension_result_cleanup(gl_comprehension_result_t* result) {
     nimcp_free(result->activation_levels);
     nimcp_free(result->semantic_vector);
     memset(result, 0, sizeof(*result));
+}
+
+/*=============================================================================
+ * Tier-2 #3 — Negation polarity helpers
+ *
+ * Implementation lives next to comprehend so the lookahead window
+ * constants (GL_NEGATION_WINDOW), the function-word filter, and the
+ * cue table all stay in one place. Cues are matched on the lower-cased
+ * token; the contraction list catches both the standalone form
+ * ("don't") and the n't-suffix-on-prior-token pattern handled by
+ * is_negation_cue() returning true for either.
+ *===========================================================================*/
+
+static bool is_function_word(const char* w) {
+    /* Cheap linear scan — FUNCTION_WORDS is ~70 entries and only walked
+     * during negation lookahead (not the binding loop). */
+    for (int i = 0; FUNCTION_WORDS[i]; i++) {
+        if (strcmp(w, FUNCTION_WORDS[i]) == 0) return true;
+    }
+    return false;
+}
+
+static bool is_negation_cue(const char* w) {
+    if (!w || !*w) return false;
+    /* Bare cues. */
+    static const char* CUES[] = {
+        "not", "no", "never",
+        "don't", "doesn't", "didn't",
+        "won't", "can't", "cannot",
+        "isn't", "wasn't", "aren't", "weren't",
+        "haven't", "hasn't", "hadn't",
+        "shouldn't", "wouldn't", "couldn't",
+        NULL
+    };
+    for (int i = 0; CUES[i]; i++) {
+        if (strcmp(w, CUES[i]) == 0) return true;
+    }
+    /* Suffix "n't" that survived the tokenizer (e.g. "don" / "t" got
+     * glued back via the apostrophe). The tokenizer keeps apostrophes
+     * inside words so most contractions arrive whole, but a defensive
+     * suffix check costs almost nothing and catches "shan't" / dialect
+     * forms that aren't in the table above. */
+    size_t n = strlen(w);
+    if (n >= 3 && strcmp(w + n - 3, "n't") == 0) return true;
+    return false;
+}
+
+/*=============================================================================
+ * Tier-2 #6 — Sense-disambiguation helper
+ *
+ * Picks the binding whose concept-features cosine-best aligns with the
+ * supplied intent vector. Falls back to index 0 on missing features /
+ * empty intents — deterministic so test assertions stay tight.
+ *===========================================================================*/
+
+uint32_t grounded_language_disambiguate_sense(
+    const grounded_language_t* gl,
+    const gl_lexicon_entry_t* entry,
+    const float* intent_vec)
+{
+    if (!gl || !entry || !intent_vec) return 0;
+    if (entry->binding_count == 0) return 0;
+    if (entry->binding_count == 1) return 0;
+
+    uint32_t best = 0;
+    float    best_score = -2.0f; /* cosine ∈ [-1, 1] — sentinel below the floor */
+    bool     any_scored = false;
+
+    for (uint32_t b = 0; b < entry->binding_count; b++) {
+        const float* cf = get_concept_features(gl, entry->bindings[b].concept_id);
+        if (!cf) continue;
+        float score = cosine_similarity(intent_vec, cf, gl->semantic_dim);
+        any_scored = true;
+        if (score > best_score) {
+            best_score = score;
+            best = b;
+        }
+    }
+
+    /* No binding had concept features → fall back to first binding. */
+    return any_scored ? best : 0;
+}
+
+/*=============================================================================
+ * Tier-2 #3 / #6 — config setters/getters
+ *===========================================================================*/
+
+void grounded_language_set_negation_enabled(grounded_language_t* gl, bool enabled) {
+    if (!gl) return;
+    gl->enable_negation_inversion = enabled;
+}
+
+bool grounded_language_get_negation_enabled(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->enable_negation_inversion;
+}
+
+void grounded_language_set_sense_disambiguation_enabled(grounded_language_t* gl,
+                                                         bool enabled) {
+    if (!gl) return;
+    gl->enable_sense_disambiguation = enabled;
+}
+
+bool grounded_language_get_sense_disambiguation_enabled(const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->enable_sense_disambiguation;
+}
+
+/*=============================================================================
+ * Tier-2 #7 — Multi-turn discourse buffer
+ *
+ * Implementation: small ring buffer of length capacity ≤ MAX_TURNS.
+ * push_turn copies the supplied vector (or stores NULL for empty
+ * placeholders); when the buffer is full the oldest slot is reclaimed.
+ * The legacy gl->context.context_vector is recomputed every push as a
+ * recency-weighted blend across the live turns.
+ *===========================================================================*/
+
+/* Map a logical position [0, count) where 0 = oldest, count-1 = newest
+ * into the ring index. When count < capacity the buffer hasn't wrapped
+ * and turns sit in [0, count) with head == 0; otherwise the oldest is
+ * at `head`. */
+static inline uint8_t discourse_idx(const gl_discourse_state_t* d, uint8_t pos) {
+    return (uint8_t)((d->head + pos) % (d->capacity ? d->capacity : 1));
+}
+
+/* Recompute gl->context.context_vector as a recency-weighted blend of
+ * the live discourse turns. Newest turn gets the largest weight; older
+ * turns decay geometrically by 0.6 per step. Skips empty placeholder
+ * turns (NULL semantic_vector). After the blend the vector is
+ * normalized (unit L2) so downstream cosine consumers see a stable
+ * scale. Called by push_turn; safe to call when count == 0 (no-op,
+ * leaves the prior context untouched). */
+static void discourse_rebuild_context_blend(grounded_language_t* gl) {
+    if (!gl || gl->discourse.count == 0) return;
+    if (!gl->context.context_vector) return;
+
+    float* out = gl->context.context_vector;
+    memset(out, 0, gl->semantic_dim * sizeof(float));
+
+    /* Weights from oldest → newest: 0.6^(count-1-i). */
+    float total_weight = 0.0f;
+    for (uint8_t i = 0; i < gl->discourse.count; i++) {
+        const gl_discourse_turn_t* t =
+            &gl->discourse.turns[discourse_idx(&gl->discourse, i)];
+        if (!t->semantic_vector) continue;
+        float w = 1.0f;
+        uint8_t depth = (uint8_t)(gl->discourse.count - 1 - i);
+        for (uint8_t k = 0; k < depth; k++) w *= 0.6f;
+        for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+            out[d] += t->semantic_vector[d] * w;
+        }
+        total_weight += w;
+    }
+    if (total_weight > 1e-8f) {
+        for (uint32_t d = 0; d < gl->semantic_dim; d++) out[d] /= total_weight;
+    }
+    normalize_vector(out, gl->semantic_dim);
+}
+
+int grounded_language_push_turn(grounded_language_t* gl,
+                                 const float* semantic_vec,
+                                 uint32_t vec_dim,
+                                 uint32_t n_words,
+                                 bool is_user) {
+    if (!gl) return -1;
+    if (gl->discourse.capacity == 0) gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
+
+    /* Pick the destination slot — append while not full, otherwise
+     * overwrite the oldest (at head) and advance head one step. */
+    uint8_t slot;
+    if (gl->discourse.count < gl->discourse.capacity) {
+        slot = (uint8_t)((gl->discourse.head + gl->discourse.count)
+                         % gl->discourse.capacity);
+        gl->discourse.count++;
+    } else {
+        slot = gl->discourse.head;
+        gl->discourse.head = (uint8_t)((gl->discourse.head + 1)
+                                        % gl->discourse.capacity);
+        /* Free the prior occupant's vector before overwriting. */
+        nimcp_free(gl->discourse.turns[slot].semantic_vector);
+        gl->discourse.turns[slot].semantic_vector = NULL;
+    }
+
+    gl_discourse_turn_t* t = &gl->discourse.turns[slot];
+    /* If the slot still has a stale vector from an out-of-order eviction
+     * (defensive — paths above cleared it) free it first. */
+    if (t->semantic_vector) {
+        nimcp_free(t->semantic_vector);
+        t->semantic_vector = NULL;
+    }
+    t->word_count   = n_words;
+    t->timestamp_ms = (uint64_t)time(NULL) * 1000;
+    t->is_user      = is_user;
+
+    if (semantic_vec) {
+        t->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
+        if (!t->semantic_vector) {
+            /* Roll back the slot reservation on alloc failure. */
+            if (gl->discourse.count > 0) gl->discourse.count--;
+            return -1;
+        }
+        uint32_t cmp = vec_dim < gl->semantic_dim ? vec_dim : gl->semantic_dim;
+        memcpy(t->semantic_vector, semantic_vec, cmp * sizeof(float));
+    }
+
+    discourse_rebuild_context_blend(gl);
+    return 0;
+}
+
+uint8_t grounded_language_get_discourse_turn_count(const grounded_language_t* gl) {
+    if (!gl) return 0;
+    return gl->discourse.count;
+}
+
+void grounded_language_set_discourse_capacity(grounded_language_t* gl,
+                                                uint8_t capacity) {
+    if (!gl) return;
+    if (capacity < 1) capacity = 1;
+    if (capacity > GL_DISCOURSE_MAX_TURNS) capacity = GL_DISCOURSE_MAX_TURNS;
+
+    /* Capacity reduction: evict oldest turns (free their vectors) until
+     * count fits. The newest `capacity` turns survive — copy them down
+     * into [0, count) and reset head to 0 so the layout is canonical. */
+    if (capacity < gl->discourse.capacity && gl->discourse.count > capacity) {
+        uint8_t keep = capacity;
+        gl_discourse_turn_t survivors[GL_DISCOURSE_MAX_TURNS];
+        memset(survivors, 0, sizeof(survivors));
+
+        /* Newest `keep` turns are at positions [count-keep, count). */
+        uint8_t drop = (uint8_t)(gl->discourse.count - keep);
+        for (uint8_t i = 0; i < drop; i++) {
+            uint8_t idx = discourse_idx(&gl->discourse, i);
+            nimcp_free(gl->discourse.turns[idx].semantic_vector);
+            gl->discourse.turns[idx].semantic_vector = NULL;
+        }
+        for (uint8_t i = 0; i < keep; i++) {
+            uint8_t src = discourse_idx(&gl->discourse, (uint8_t)(drop + i));
+            survivors[i] = gl->discourse.turns[src];
+            /* Defensive: if src and dst overlap and the source slot
+             * gets memset below, we'd lose the pointer. Clear the
+             * source by hand once we've copied. */
+            gl->discourse.turns[src].semantic_vector = NULL;
+        }
+        /* Wipe the whole array (all heap pointers either freed or
+         * moved to survivors[]) and reinstate the survivors at [0, keep). */
+        memset(gl->discourse.turns, 0, sizeof(gl->discourse.turns));
+        for (uint8_t i = 0; i < keep; i++) {
+            gl->discourse.turns[i] = survivors[i];
+        }
+        gl->discourse.head  = 0;
+        gl->discourse.count = keep;
+    }
+
+    gl->discourse.capacity = capacity;
+    discourse_rebuild_context_blend(gl);
 }
 
 /*=============================================================================

@@ -1580,6 +1580,91 @@ class BrainService:
             return {"error": f"learn_text_bigrams: {e}"}
         return {"ok": True, "applied": count}
 
+    # ---- Tier-2 #3 / #6 / #7 grounded-language toggles + discourse buffer ----
+
+    def _cmd_set_grounded_negation_enabled(self, req):
+        """Tier-2 #3: toggle comprehend negation polarity inversion.
+
+        Request keys: enabled (bool, required).
+        """
+        enabled = bool(req.get("enabled", True))
+        try:
+            self.brain.set_grounded_negation_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_grounded_negation_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_negation_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_grounded_sense_disambiguation_enabled(self, req):
+        """Tier-2 #6: toggle comprehend word-sense disambiguation.
+
+        Request keys: enabled (bool, required). Default false reproduces
+        legacy "every binding contributes its raw strength" behaviour.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_grounded_sense_disambiguation_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_grounded_sense_disambiguation_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_sense_disambiguation_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_grounded_push_turn(self, req):
+        """Tier-2 #7: append a turn to the discourse ring buffer.
+
+        Request keys:
+          semantic_vec  (list[float] or None) — copied; None pushes a
+                        placeholder turn with no vector content.
+          n_words       (int, default 0)
+          is_user       (bool, default true)
+        """
+        vec = req.get("semantic_vec")
+        try:
+            n_words = int(req.get("n_words", 0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"grounded_push_turn bad n_words: {e}"}
+        is_user = bool(req.get("is_user", True))
+        try:
+            self.brain.grounded_push_turn(vec, n_words, is_user)
+        except AttributeError:
+            return {"error": "grounded_push_turn not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"grounded_push_turn: {e}"}
+        try:
+            count = int(self.brain.grounded_get_discourse_turn_count())
+        except Exception:
+            count = -1
+        return {"ok": True, "turn_count": count}
+
+    def _cmd_grounded_get_discourse_turn_count(self, _req):
+        """Tier-2 #7: query populated discourse turn count."""
+        try:
+            count = int(self.brain.grounded_get_discourse_turn_count())
+        except AttributeError:
+            return {"error": "grounded_get_discourse_turn_count not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"grounded_get_discourse_turn_count: {e}"}
+        return {"ok": True, "turn_count": count}
+
+    def _cmd_grounded_set_discourse_capacity(self, req):
+        """Tier-2 #7: clamp discourse capacity (1..GL_DISCOURSE_MAX_TURNS).
+
+        Request keys: capacity (int, required, in [1, 8]).
+        """
+        try:
+            capacity = int(req.get("capacity", 8))
+        except (TypeError, ValueError) as e:
+            return {"error": f"grounded_set_discourse_capacity bad capacity: {e}"}
+        try:
+            self.brain.grounded_set_discourse_capacity(capacity)
+        except AttributeError:
+            return {"error": "grounded_set_discourse_capacity not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"grounded_set_discourse_capacity: {e}"}
+        return {"ok": True, "capacity": capacity}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:

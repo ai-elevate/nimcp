@@ -3090,6 +3090,128 @@ static PyObject* Brain_learn_text_bigrams(BrainObject* self, PyObject* args) {
     return PyLong_FromLong(count);
 }
 
+/* Tier-2 #3: toggle negation-driven activation sign inversion. */
+static PyObject* Brain_set_grounded_negation_enabled(BrainObject* self,
+                                                       PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 1;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_grounded_negation_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no grounded_language attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Tier-2 #6: toggle word-sense disambiguation in comprehend. */
+static PyObject* Brain_set_grounded_sense_disambiguation_enabled(BrainObject* self,
+                                                                    PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_grounded_sense_disambiguation_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no grounded_language attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Tier-2 #7: append a turn to the discourse ring buffer. The semantic
+ * vector is supplied as a Python sequence of floats; an empty / None
+ * sequence pushes a placeholder turn with no vector content. */
+static PyObject* Brain_grounded_push_turn(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    PyObject* vec_obj = NULL;
+    int n_words = 0;
+    int is_user = 1;
+    if (!PyArg_ParseTuple(args, "Oip", &vec_obj, &n_words, &is_user)) return NULL;
+
+    float* vec = NULL;
+    Py_ssize_t vec_len = 0;
+    if (vec_obj && vec_obj != Py_None) {
+        PyObject* fast = PySequence_Fast(vec_obj,
+            "grounded_push_turn: semantic_vector must be a sequence or None");
+        if (!fast) return NULL;
+        vec_len = PySequence_Fast_GET_SIZE(fast);
+        if (vec_len > 0) {
+            vec = (float*)malloc((size_t)vec_len * sizeof(float));
+            if (!vec) {
+                Py_DECREF(fast);
+                PyErr_NoMemory();
+                return NULL;
+            }
+            for (Py_ssize_t i = 0; i < vec_len; i++) {
+                PyObject* item = PySequence_Fast_GET_ITEM(fast, i);
+                vec[i] = (float)PyFloat_AsDouble(item);
+                if (PyErr_Occurred()) {
+                    free(vec);
+                    Py_DECREF(fast);
+                    return NULL;
+                }
+            }
+        }
+        Py_DECREF(fast);
+    }
+
+    nimcp_status_t s = nimcp_brain_grounded_push_turn(
+        self->brain, vec, (uint32_t)vec_len,
+        (uint32_t)n_words, is_user ? true : false);
+    free(vec);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "grounded_push_turn failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Tier-2 #7: read populated turn count. */
+static PyObject* Brain_grounded_get_discourse_turn_count(BrainObject* self,
+                                                            PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int n = nimcp_brain_grounded_get_discourse_turn_count(self->brain);
+    if (n < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "no grounded_language attached");
+        return NULL;
+    }
+    return PyLong_FromLong(n);
+}
+
+/* Tier-2 #7: clamp discourse capacity (1..GL_DISCOURSE_MAX_TURNS_PUBLIC). */
+static PyObject* Brain_grounded_set_discourse_capacity(BrainObject* self,
+                                                          PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int cap = 0;
+    if (!PyArg_ParseTuple(args, "i", &cap)) return NULL;
+    if (cap < 1) cap = 1;
+    if (cap > 255) cap = 255;
+    nimcp_status_t s = nimcp_brain_grounded_set_discourse_capacity(
+        self->brain, (uint8_t)cap);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no grounded_language attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_get_immune_state(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11051,6 +11173,16 @@ static PyMethodDef Brain_methods[] = {
      "PA-4+: Riemannian / sigmoid-reparameterized next-token training on a single bigram — learn_next_token_pair_riemannian(prev, next, lr=0.05) -> bool. Fisher-preconditioned step in u-space (w=σ(u)); damps automatically near binding boundaries. Mid-range matches the flat path within ~5%."},
     {"learn_text_bigrams", (PyCFunction)Brain_learn_text_bigrams, METH_VARARGS,
      "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied updates."},
+    {"set_grounded_negation_enabled", (PyCFunction)Brain_set_grounded_negation_enabled, METH_VARARGS,
+     "Tier-2 #3: toggle comprehend negation polarity (sign-flip on cue) — set_grounded_negation_enabled(enabled) -> None. Default ON."},
+    {"set_grounded_sense_disambiguation_enabled", (PyCFunction)Brain_set_grounded_sense_disambiguation_enabled, METH_VARARGS,
+     "Tier-2 #6: toggle comprehend word-sense disambiguation — set_grounded_sense_disambiguation_enabled(enabled) -> None. Default OFF (opt-in)."},
+    {"grounded_push_turn", (PyCFunction)Brain_grounded_push_turn, METH_VARARGS,
+     "Tier-2 #7: append a discourse turn — grounded_push_turn(semantic_vec_or_None, n_words, is_user) -> None. Oldest evicted at full capacity."},
+    {"grounded_get_discourse_turn_count", (PyCFunction)Brain_grounded_get_discourse_turn_count, METH_NOARGS,
+     "Tier-2 #7: query populated turn count — grounded_get_discourse_turn_count() -> int."},
+    {"grounded_set_discourse_capacity", (PyCFunction)Brain_grounded_set_discourse_capacity, METH_VARARGS,
+     "Tier-2 #7: clamp discourse capacity (1..8) — grounded_set_discourse_capacity(capacity) -> None. Reduction evicts oldest first."},
 
     // Rubric (cognitive output quality evaluation)
     {"rubric", (PyCFunction)Brain_rubric, METH_NOARGS,

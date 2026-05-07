@@ -48,6 +48,36 @@ typedef struct {
 } gl_context_t;
 
 /**
+ * @brief Multi-turn discourse state — small ring buffer of recent
+ *        conversational turns. The single rolling `gl_context_t` above
+ *        is a recency-weighted blend of these; this buffer keeps the
+ *        per-turn breakdown so future coherence / topic-shift checks
+ *        can compare individual turns rather than a smeared running
+ *        vector.
+ *
+ * `semantic_vector` is gl-owned (malloc'd at push, freed on destroy /
+ * eviction). `head` is the index of the *oldest* turn when the buffer
+ * has wrapped (count == capacity); otherwise turns occupy [0, count).
+ * Capacity is bounded by GL_DISCOURSE_MAX_TURNS at compile time and
+ * runtime-clampable via grounded_language_set_discourse_capacity.
+ */
+#define GL_DISCOURSE_MAX_TURNS 8
+
+typedef struct {
+    float*   semantic_vector;         /**< Owned [semantic_dim], NULL = empty slot */
+    uint32_t word_count;
+    uint64_t timestamp_ms;
+    bool     is_user;
+} gl_discourse_turn_t;
+
+typedef struct {
+    gl_discourse_turn_t turns[GL_DISCOURSE_MAX_TURNS];
+    uint8_t  head;                    /**< Oldest-turn index when full; 0 otherwise */
+    uint8_t  count;                   /**< Currently used slots */
+    uint8_t  capacity;                /**< 1..GL_DISCOURSE_MAX_TURNS */
+} gl_discourse_state_t;
+
+/**
  * @brief Internal state of the grounded language system.
  *
  * Layout previously lived in nimcp_grounded_language.c. Moved here so the
@@ -183,6 +213,27 @@ struct grounded_language {
      * Survives across save/load by design — the bridge keeps running
      * windowed STDP after resume. */
     float                snn_virtual_time_ms;
+
+    /* Tier-2 #3 negation polarity. When enabled (default true), comprehend
+     * detects negation cues in the tokenized text and inverts the sign of
+     * activation_levels[] for the next non-function content word within a
+     * GL_NEGATION_WINDOW lookahead. Counters (negation_events,
+     * sense_resolutions) live on gl_stats_t — getter copies them out
+     * with the rest of the public stats. */
+    bool                 enable_negation_inversion;
+
+    /* Tier-2 #6 word-sense disambiguation. When enabled (default false —
+     * preserves legacy behaviour), comprehend's per-binding activation is
+     * weighted by cosine(intent, binding_concept_features); the most-
+     * relevant sense gets the highest weight and off-sense bindings damp.
+     * Off-sense weight floor lives at GL_SENSE_OFF_DAMP. */
+    bool                 enable_sense_disambiguation;
+
+    /* Tier-2 #7 multi-turn discourse state. Backbone for future coherence
+     * / topic-shift checks. The legacy gl->context.context_vector remains
+     * the single rolling vector — when discourse turns are pushed it gets
+     * recomputed as a recency-weighted blend across the buffer. */
+    gl_discourse_state_t discourse;
 };
 
 /**

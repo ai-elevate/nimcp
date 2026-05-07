@@ -1212,6 +1212,45 @@ nimcp_status_t nimcp_brain_learn_text_bigrams(
     int* out_count
 );
 
+/*=============================================================================
+ * Tier-2 grounded-language toggles
+ *
+ * #3: comprehend negation polarity (sign-flip activation_levels on cue).
+ * #6: comprehend word-sense disambiguation (intent-cosine binding weighting).
+ * #7: multi-turn discourse buffer (push / count / capacity).
+ * Each wrapper returns NIMCP_ERROR if grounded_language is unattached.
+ *===========================================================================*/
+
+/** Toggle negation-driven activation-sign inversion (default ON). */
+nimcp_status_t nimcp_brain_set_grounded_negation_enabled(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/** Toggle word-sense disambiguation (default OFF — opt-in). */
+nimcp_status_t nimcp_brain_set_grounded_sense_disambiguation_enabled(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/** Append a turn (semantic_vec copied) to the discourse ring buffer. */
+nimcp_status_t nimcp_brain_grounded_push_turn(
+    nimcp_brain_t brain,
+    const float* semantic_vec,
+    uint32_t vec_dim,
+    uint32_t n_words,
+    bool is_user
+);
+
+/** Query current populated turn count, or -1 on bad/unattached brain. */
+int nimcp_brain_grounded_get_discourse_turn_count(nimcp_brain_t brain);
+
+/** Clamp the discourse capacity (oldest-first eviction on shrink). */
+nimcp_status_t nimcp_brain_grounded_set_discourse_capacity(
+    nimcp_brain_t brain,
+    uint8_t capacity
+);
+
 /**
  * @brief Configure the autoregressive recurrent decoder (PA-2).
  *

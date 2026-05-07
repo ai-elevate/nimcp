@@ -275,6 +275,16 @@ typedef struct {
     /* Active-learning telemetry (#10) — counts NEEDS_GROUNDING events
      * fired by comprehend on low-confidence input. */
     uint64_t total_needs_grounding;
+    /* Tier-2 #3 negation telemetry — counts the number of comprehend
+     * passes that inverted the sign of at least one activation level
+     * because a negation cue (not / no / never / n't / contractions)
+     * preceded a content word within the lookahead window. */
+    uint64_t negation_events;
+    /* Tier-2 #6 polysemy telemetry — counts the number of comprehend
+     * passes that resolved at least one polysemous word's sense via
+     * intent-cosine ranking (only bumped when sense disambiguation is
+     * enabled and an entry has > 1 binding). */
+    uint64_t sense_resolutions;
 } gl_stats_t;
 
 /**
@@ -343,6 +353,154 @@ int grounded_language_comprehend(
  * @param result Result to clean up (struct itself not freed)
  */
 void gl_comprehension_result_cleanup(gl_comprehension_result_t* result);
+
+/*=============================================================================
+ * Tier-2 #3: Negation polarity
+ *
+ * When enabled (default true), grounded_language_comprehend scans the
+ * tokenized text for negation cues — `not`, `no`, `never`, the `n't`
+ * suffix on a preceding token, and the standard contractions
+ * (`don't`, `doesn't`, `didn't`, `won't`, `can't`, `isn't`, `wasn't`,
+ * `aren't`, `weren't`, `haven't`, `hasn't`, `hadn't`, `shouldn't`,
+ * `wouldn't`, `couldn't`). The next non-function content word within a
+ * GL_NEGATION_WINDOW lookahead has the sign of its activation_levels[]
+ * entries flipped before they are recorded in the result. Each
+ * inversion bumps gl_stats_t.negation_events.
+ *
+ * Disabling reverts to the legacy "I do not like cats" / "I do like
+ * cats" producing identical activation profiles.
+ *===========================================================================*/
+
+/** Lookahead window (in tokens) for the negation cue → content-word
+ *  search. 3 captures common patterns ("do not like", "is not very
+ *  big") without spuriously flipping a content word two clauses away. */
+#define GL_NEGATION_WINDOW   3
+
+/**
+ * @brief Toggle negation-driven activation-sign inversion.
+ *
+ * @param gl       System handle (NULL → no-op)
+ * @param enabled  true (default) = invert activations on negation cue;
+ *                 false = legacy bypass.
+ */
+void grounded_language_set_negation_enabled(
+    grounded_language_t* gl,
+    bool enabled);
+
+/**
+ * @brief Read the current negation toggle (for telemetry / tests).
+ * @return false when gl is NULL or negation is disabled.
+ */
+bool grounded_language_get_negation_enabled(
+    const grounded_language_t* gl);
+
+/*=============================================================================
+ * Tier-2 #7: Multi-turn discourse state
+ *
+ * The legacy gl_context_t single rolling vector remains as the
+ * backward-compatible recency-weighted blend, but a small ring buffer
+ * of per-turn semantic vectors is now retained behind it. Turns can be
+ * pushed explicitly by callers (e.g. dialog drivers separating user
+ * vs. assistant utterances) or are auto-pushed by comprehend whenever
+ * a non-zero semantic vector is produced.
+ *
+ * GL_DISCOURSE_MAX_TURNS bounds the buffer at compile time;
+ * grounded_language_set_discourse_capacity clamps the active capacity
+ * at runtime (1..GL_DISCOURSE_MAX_TURNS). Capacity reductions evict
+ * oldest turns first.
+ *===========================================================================*/
+
+/** Public mirror of the internal cap; callers may rely on this. */
+#define GL_DISCOURSE_MAX_TURNS_PUBLIC 8
+
+/**
+ * @brief Append a turn to the discourse buffer, evicting the oldest
+ *        turn if the buffer is full. The semantic vector is copied
+ *        (gl-owned). Pass NULL `semantic_vec` to push a placeholder
+ *        with no vector content (still increments count).
+ *
+ * @param gl           System handle (NULL → no-op, returns -1)
+ * @param semantic_vec Length GL_SEMANTIC_DIM (or gl's semantic_dim);
+ *                     NULL stores an empty placeholder.
+ * @param vec_dim      Number of elements available at semantic_vec
+ *                     (clamped to gl->semantic_dim internally)
+ * @param n_words      Word count of the turn (caller-supplied)
+ * @param is_user      true = user/external turn, false = system/produced
+ * @return 0 on success, -1 on bad params / alloc failure.
+ */
+int grounded_language_push_turn(
+    grounded_language_t* gl,
+    const float* semantic_vec,
+    uint32_t vec_dim,
+    uint32_t n_words,
+    bool is_user);
+
+/** @return Current number of populated turns (0..capacity). 0 on NULL. */
+uint8_t grounded_language_get_discourse_turn_count(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Clamp the active discourse capacity. Reductions evict oldest
+ *        turns first so the most recent `capacity` turns survive.
+ *        Increases just bump the cap; existing turns are untouched.
+ *
+ * @param gl        System handle (NULL → no-op)
+ * @param capacity  Clamped to [1, GL_DISCOURSE_MAX_TURNS_PUBLIC].
+ */
+void grounded_language_set_discourse_capacity(
+    grounded_language_t* gl,
+    uint8_t capacity);
+
+/*=============================================================================
+ * Tier-2 #6: Word-sense disambiguation (polysemy)
+ *
+ * Lexicon entries already carry a `bindings` array — each binding maps
+ * the word form to a different concept (river bank vs. money bank).
+ * When sense disambiguation is enabled, comprehend weights each
+ * binding's contribution by its cosine match against the running
+ * context vector: the most-relevant sense gets the highest weight and
+ * off-sense bindings damp toward GL_SENSE_OFF_DAMP. Each
+ * disambiguation event (an entry with > 1 binding scored against the
+ * intent) bumps gl_stats_t.sense_resolutions.
+ *
+ * Default OFF — preserves the legacy "every binding contributes its
+ * raw strength" behaviour. Opt-in per system instance via
+ * grounded_language_set_sense_disambiguation_enabled.
+ *===========================================================================*/
+
+/** Floor weight for off-sense bindings when sense disambiguation is
+ *  active. Keeps the off-sense activation alive but heavily damped. */
+#define GL_SENSE_OFF_DAMP    0.1f
+
+/** Toggle word-sense disambiguation on a gl instance. NULL-safe. */
+void grounded_language_set_sense_disambiguation_enabled(
+    grounded_language_t* gl,
+    bool enabled);
+
+/** Read the sense-disambiguation toggle. false on NULL. */
+bool grounded_language_get_sense_disambiguation_enabled(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Pick the binding index whose concept features best align with
+ *        an intent vector. Returns 0 (the first binding) when the
+ *        entry has no bindings, exactly one binding, NULL features for
+ *        every binding, or when gl/entry is NULL.
+ *
+ *        Used internally by comprehend's polysemy path; exposed for
+ *        tests + callers that want to query "what sense does this
+ *        word take in *this* context?" without running the full
+ *        comprehend pipeline.
+ *
+ * @param gl          System handle (NULL → 0)
+ * @param entry       Lexicon entry (NULL → 0)
+ * @param intent_vec  Length gl->semantic_dim (NULL → 0)
+ * @return Best-matching binding index in [0, entry->binding_count).
+ */
+uint32_t grounded_language_disambiguate_sense(
+    const grounded_language_t* gl,
+    const gl_lexicon_entry_t* entry,
+    const float* intent_vec);
 
 /*=============================================================================
  * Grounding (Cross-modal binding)
