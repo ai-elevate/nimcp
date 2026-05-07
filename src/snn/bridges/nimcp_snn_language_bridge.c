@@ -2054,6 +2054,140 @@ void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend)
 // Serialization
 //=============================================================================
 
+/* Tier 2 #8: extended config block written immediately after the
+ * snn_lang_config_t blob in V3 files. Holds the PA/MQ runtime-tunable
+ * knobs in a fixed, deterministic, packed layout. The block is preceded
+ * by a u32 size field so future readers can extend without breaking
+ * parsing of existing V3 files (just seek past trailing unknown bytes).
+ *
+ * NOTE: this is intentionally redundant with the same fields in
+ * snn_lang_config_t — the explicit block is what we treat as authoritative
+ * on V3 load. The legacy struct blob still carries them for backward
+ * compatibility with consumers that memcpy the whole struct. */
+typedef struct {
+    float    temperature;
+    float    top_p;
+    uint32_t produce_topk;
+    float    glove_blend;
+    float    intent_persistence;
+    float    word_feedback;
+    uint8_t  enable_snn_spike_routing;  /* bool packed as u8 for stable layout */
+    /* 3 bytes implicit pad — DO NOT depend on, we write fields one at a time */
+    float    activation_tau_ms;
+    uint8_t  use_hyperbolic_embeddings; /* bool packed as u8 */
+    int32_t  sampling_mode;
+} snn_lang_ext_config_v3_t;
+
+/* Pack/unpack helpers (write fields one-at-a-time to avoid struct padding
+ * surprises across compilers). */
+static int write_ext_config_v3(FILE* f, const snn_lang_config_t* cfg)
+{
+    /* Compute on-the-wire byte count. */
+    const uint32_t ext_block_size =
+        sizeof(float)    /* temperature */
+      + sizeof(float)    /* top_p */
+      + sizeof(uint32_t) /* produce_topk */
+      + sizeof(float)    /* glove_blend */
+      + sizeof(float)    /* intent_persistence */
+      + sizeof(float)    /* word_feedback */
+      + sizeof(uint8_t)  /* enable_snn_spike_routing */
+      + sizeof(float)    /* activation_tau_ms */
+      + sizeof(uint8_t)  /* use_hyperbolic_embeddings */
+      + sizeof(int32_t); /* sampling_mode */
+
+    uint8_t spike_routing = cfg->enable_snn_spike_routing ? 1 : 0;
+    uint8_t hyperbolic    = cfg->use_hyperbolic_embeddings ? 1 : 0;
+    int32_t sampling_mode = cfg->sampling_mode;
+
+    if (fwrite(&ext_block_size,           sizeof(uint32_t), 1, f) != 1) return -1;
+    if (fwrite(&cfg->temperature,         sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&cfg->top_p,               sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&cfg->produce_topk,        sizeof(uint32_t), 1, f) != 1) return -1;
+    if (fwrite(&cfg->glove_blend,         sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&cfg->intent_persistence,  sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&cfg->word_feedback,       sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&spike_routing,            sizeof(uint8_t),  1, f) != 1) return -1;
+    if (fwrite(&cfg->activation_tau_ms,   sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&hyperbolic,               sizeof(uint8_t),  1, f) != 1) return -1;
+    if (fwrite(&sampling_mode,            sizeof(int32_t),  1, f) != 1) return -1;
+    return 0;
+}
+
+/* Read the V3 ext block. Reads `block_size` bytes total — known fields are
+ * decoded and any trailing bytes (future-extension fields) are skipped via
+ * fseek so we remain forward-compatible with newer V3-format files. */
+static int read_ext_config_v3(FILE* f, uint32_t block_size,
+                              snn_lang_config_t* cfg_out)
+{
+    /* Hard upper bound: refuse pathologically large blocks (corruption guard). */
+    if (block_size > 64u * 1024u) return -1;
+
+    long start_pos = ftell(f);
+    if (start_pos < 0) return -1;
+
+    /* Same field-by-field layout as write_ext_config_v3, in the same order. */
+    const uint32_t known_size =
+        sizeof(float) + sizeof(float) + sizeof(uint32_t) + sizeof(float)
+      + sizeof(float) + sizeof(float) + sizeof(uint8_t) + sizeof(float)
+      + sizeof(uint8_t) + sizeof(int32_t);
+
+    if (block_size < known_size) return -1; /* truncated / malformed */
+
+    float    temperature, top_p, glove_blend, intent_persistence;
+    float    word_feedback, activation_tau_ms;
+    uint32_t produce_topk;
+    uint8_t  spike_routing, hyperbolic;
+    int32_t  sampling_mode;
+
+    if (fread(&temperature,        sizeof(float),    1, f) != 1) return -1;
+    if (fread(&top_p,              sizeof(float),    1, f) != 1) return -1;
+    if (fread(&produce_topk,       sizeof(uint32_t), 1, f) != 1) return -1;
+    if (fread(&glove_blend,        sizeof(float),    1, f) != 1) return -1;
+    if (fread(&intent_persistence, sizeof(float),    1, f) != 1) return -1;
+    if (fread(&word_feedback,      sizeof(float),    1, f) != 1) return -1;
+    if (fread(&spike_routing,      sizeof(uint8_t),  1, f) != 1) return -1;
+    if (fread(&activation_tau_ms,  sizeof(float),    1, f) != 1) return -1;
+    if (fread(&hyperbolic,         sizeof(uint8_t),  1, f) != 1) return -1;
+    if (fread(&sampling_mode,      sizeof(int32_t),  1, f) != 1) return -1;
+
+    /* Forward-compat: skip any trailing bytes belonging to a newer V3+ writer. */
+    if (block_size > known_size) {
+        long want = start_pos + (long)block_size;
+        if (fseek(f, want, SEEK_SET) != 0) return -1;
+    }
+
+    cfg_out->temperature              = temperature;
+    cfg_out->top_p                    = top_p;
+    cfg_out->produce_topk             = produce_topk;
+    cfg_out->glove_blend              = glove_blend;
+    cfg_out->intent_persistence       = intent_persistence;
+    cfg_out->word_feedback            = word_feedback;
+    cfg_out->enable_snn_spike_routing = (spike_routing != 0);
+    cfg_out->activation_tau_ms        = activation_tau_ms;
+    cfg_out->use_hyperbolic_embeddings = (hyperbolic != 0);
+    cfg_out->sampling_mode            = sampling_mode;
+    return 0;
+}
+
+/* Reset the persisted PA/MQ knobs to their library defaults — used on V2
+ * load so we don't trust whatever the legacy struct blob had in those
+ * positions (older builds may have written zeros, garbage padding, or
+ * different field offsets). */
+static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
+{
+    snn_lang_config_t defaults = snn_lang_config_default();
+    cfg->temperature              = defaults.temperature;
+    cfg->top_p                    = defaults.top_p;
+    cfg->produce_topk             = defaults.produce_topk;
+    cfg->glove_blend              = defaults.glove_blend;
+    cfg->intent_persistence       = defaults.intent_persistence;
+    cfg->word_feedback            = defaults.word_feedback;
+    cfg->enable_snn_spike_routing = defaults.enable_snn_spike_routing;
+    cfg->activation_tau_ms        = defaults.activation_tau_ms;
+    cfg->use_hyperbolic_embeddings = defaults.use_hyperbolic_embeddings;
+    cfg->sampling_mode            = defaults.sampling_mode;
+}
+
 int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* path)
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC || !path) {
@@ -2065,9 +2199,26 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
 
-    // Magic + config
+    /* V3 header: magic, V3 sentinel, version. The sentinel disambiguates V3
+     * from V2 (where the next u32 after magic was max_concept_pops, always
+     * ≤ SNN_LANG_MAX_CONCEPT_POPS = 4096, never the 0xFFFFFFFE sentinel). */
+    const uint32_t v3_sentinel = SNN_LANG_BRIDGE_FILE_V3_SENTINEL;
+    const uint32_t version     = SNN_LANG_BRIDGE_FILE_VERSION_V3;
     fwrite(&bridge->magic, sizeof(uint32_t), 1, f);
+    fwrite(&v3_sentinel,   sizeof(uint32_t), 1, f);
+    fwrite(&version,       sizeof(uint32_t), 1, f);
+
+    /* Full snn_lang_config_t blob (preserves all existing struct fields,
+     * including the new knobs — but the explicit ext block below is what
+     * the V3 loader treats as authoritative). */
     fwrite(&bridge->config, sizeof(snn_lang_config_t), 1, f);
+
+    /* Tier 2 #8: extended config block — PA/MQ knobs in a fixed layout. */
+    if (write_ext_config_v3(f, &bridge->config) != 0) {
+        fclose(f);
+        return -1;
+    }
+
     fwrite(&bridge->num_concept_pops, sizeof(uint32_t), 1, f);
     fwrite(&bridge->num_word_pops, sizeof(uint32_t), 1, f);
 
@@ -2110,10 +2261,60 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
         return NULL;
     }
 
-    snn_lang_config_t config;
-    if (fread(&config, sizeof(snn_lang_config_t), 1, f) != 1) {
+    /* Tier 2 #8: detect V3 vs V2 by sniffing the next u32. V3 has the
+     * SNN_LANG_BRIDGE_FILE_V3_SENTINEL there; V2 has max_concept_pops
+     * (always ≤ SNN_LANG_MAX_CONCEPT_POPS, never the sentinel). */
+    uint32_t version_or_first_field;
+    if (fread(&version_or_first_field, sizeof(uint32_t), 1, f) != 1) {
         fclose(f);
         return NULL;
+    }
+
+    bool is_v3 = (version_or_first_field == SNN_LANG_BRIDGE_FILE_V3_SENTINEL);
+
+    snn_lang_config_t config;
+    uint32_t file_version = SNN_LANG_BRIDGE_FILE_VERSION_V2;
+
+    if (is_v3) {
+        /* V3: read explicit version, full config blob, and ext block. */
+        if (fread(&file_version, sizeof(uint32_t), 1, f) != 1) {
+            fclose(f);
+            return NULL;
+        }
+        if (file_version < SNN_LANG_BRIDGE_FILE_VERSION_V3) {
+            /* Sentinel said "V3+" but version u32 disagrees — corruption. */
+            fclose(f);
+            return NULL;
+        }
+        if (fread(&config, sizeof(snn_lang_config_t), 1, f) != 1) {
+            fclose(f);
+            return NULL;
+        }
+        uint32_t ext_block_size = 0;
+        if (fread(&ext_block_size, sizeof(uint32_t), 1, f) != 1) {
+            fclose(f);
+            return NULL;
+        }
+        /* Authoritative: explicit ext block overrides the struct-blob copy. */
+        if (read_ext_config_v3(f, ext_block_size, &config) != 0) {
+            fclose(f);
+            return NULL;
+        }
+    } else {
+        /* V2: rewind 4 bytes (we consumed what is actually max_concept_pops),
+         * then read the legacy config blob in-place. The PA/MQ knob slots in
+         * that legacy blob may be uninitialized/garbage on truly old builds —
+         * reset them to library defaults rather than trusting whatever the
+         * struct memcpy gave us. */
+        if (fseek(f, -((long)sizeof(uint32_t)), SEEK_CUR) != 0) {
+            fclose(f);
+            return NULL;
+        }
+        if (fread(&config, sizeof(snn_lang_config_t), 1, f) != 1) {
+            fclose(f);
+            return NULL;
+        }
+        reset_persisted_knobs_to_defaults(&config);
     }
 
     snn_language_bridge_t* bridge = snn_language_bridge_create(&config);
