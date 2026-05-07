@@ -4342,10 +4342,21 @@ void grounded_language_attach_bigram_spectrum(grounded_language_t* gl,
 int grounded_language_tick_bigram_spectrum(grounded_language_t* gl,
                                              uint64_t min_delta_events) {
     if (!gl) return 0;
-    bigram_spectrum_t* bs = gl_get_attached_spectrum(gl);
-    if (!bs) return 0;
+    /* Audit fix (TOCTOU): hold the per-gl lock for the entire compute,
+     * not just the lookup. Otherwise a concurrent attach(NULL) detach
+     * could free the spectrum mid-compute. The compute is small (~tens
+     * of µs at production vocab) so holding the lock doesn't meaningfully
+     * impact concurrency — the lock is per-gl, so other gls' ticks +
+     * comprehends remain unblocked. */
+    gl_tc12_lock(gl);
+    bigram_spectrum_t* bs = (bigram_spectrum_t*)gl->bigram_spectrum;
+    if (!bs) {
+        gl_tc12_unlock(gl);
+        return 0;
+    }
     bool ran = false;
     int rc = bigram_spectrum_maybe_compute(bs, min_delta_events, &ran);
+    gl_tc12_unlock(gl);
     if (rc < 0) return -1;
     return ran ? 1 : 0;
 }
@@ -4473,12 +4484,13 @@ bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
 }
 
 uint64_t grounded_language_anaphora_resolutions(void) {
-    /* TC-12: process-global counter, briefly serialized via the bootstrap
-     * mutex (cheaper than spinning a dedicated counter mutex for a stat). */
-    pthread_mutex_lock(&g_tc12_bootstrap);
-    uint64_t v = g_anaphora_resolutions;
-    pthread_mutex_unlock(&g_tc12_bootstrap);
-    return v;
+    /* Audit fix: lock-free atomic read; writers use __atomic_fetch_add
+     * (see anaphora_run_pass below). Was previously bumped under the
+     * per-gl tc12 lock and read under the bootstrap mutex — but two gls
+     * resolving anaphora concurrently each held DIFFERENT per-gl locks
+     * so the increments could race. Switching to __atomic_* gives a
+     * proper SMP-safe counter without serializing readers. */
+    return __atomic_load_n(&g_anaphora_resolutions, __ATOMIC_RELAXED);
 }
 
 /* Pronoun lookup — returns gender, or GL_GENDER_UNKNOWN if word is not a
@@ -4620,7 +4632,11 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
                 form_copy[cap] = '\0';
 
                 resolved_here++;
-                g_anaphora_resolutions++;
+                /* Audit fix: lock-free atomic increment — writers across
+                 * gls hold different per-gl tc12 locks, so non-atomic
+                 * increments here could race. */
+                __atomic_fetch_add(&g_anaphora_resolutions, 1,
+                                     __ATOMIC_RELAXED);
 
                 /* Fold the referent's lexicon-entry bindings (at half
                  * strength) into the caller's activated_concepts list.
@@ -4709,7 +4725,13 @@ int grounded_language_learn_text_bigrams(grounded_language_t* gl,
     char* words[GL_MAX_PRODUCTION_WORDS];
     uint32_t n = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
 
-    bigram_spectrum_t* spectrum = gl_get_attached_spectrum(gl);
+    /* Audit fix (TOCTOU): hold the per-gl lock across the entire
+     * bigram-learn loop so a concurrent attach(NULL) cannot detach the
+     * spectrum mid-iteration. All bigram_spectrum_record calls below
+     * are O(1) so the loop is short; per-gl scope means other gls are
+     * not blocked. */
+    gl_tc12_lock(gl);
+    bigram_spectrum_t* spectrum = (bigram_spectrum_t*)gl->bigram_spectrum;
     uint32_t spec_cap = spectrum ? bigram_spectrum_vocab_cap(spectrum) : 0u;
 
     /* TA-4: snapshot the trigram-learning flag once per call so a
@@ -4756,6 +4778,9 @@ int grounded_language_learn_text_bigrams(grounded_language_t* gl,
                                                               trigram_lr);
         }
     }
+
+    /* Audit fix: release per-gl lock after the loop. */
+    gl_tc12_unlock(gl);
 
     nimcp_free(buf);
     return processed;
@@ -5550,26 +5575,33 @@ static int mt_save_spectrum(grounded_language_t* gl, FILE* f) {
     if (mt_write_u32(f, GL_MULTITURN_MAGIC_SPECTRUM) != 0) return -1;
     if (mt_write_u32(f, GL_MULTITURN_VERSION) != 0) return -1;
 
-    bigram_spectrum_t* bs = gl_get_attached_spectrum(gl);
+    /* Audit fix (TOCTOU): hold the lock across the entire snapshot read.
+     * fwrite is the slow part; per-gl scope means other gls keep training. */
+    gl_tc12_lock(gl);
+    bigram_spectrum_t* bs = (bigram_spectrum_t*)gl->bigram_spectrum;
     uint64_t total = bs ? bigram_spectrum_total_events(bs) : 0;
     uint8_t present = (bs != NULL && total > 0) ? 1u : 0u;
-    if (mt_write_u8(f, present) != 0) return -1;
-    if (!present) return 0;
+    if (mt_write_u8(f, present) != 0) { gl_tc12_unlock(gl); return -1; }
+    if (!present) { gl_tc12_unlock(gl); return 0; }
 
     uint32_t cap = bigram_spectrum_vocab_cap(bs);
     if (cap == 0 || cap > GL_MULTITURN_MAX_VOCAB_CAP) {
-        /* Mark as not-present after all, so the reader skips cleanly. */
         LOG_WARN(LOG_MODULE,
                  "mt_save_spectrum: implausible vocab_cap=%u; emitting empty",
                  cap);
+        gl_tc12_unlock(gl);
         return -1;
     }
-    if (mt_write_u32(f, cap) != 0) return -1;
-    if (mt_write_u64(f, total) != 0) return -1;
+    if (mt_write_u32(f, cap) != 0) { gl_tc12_unlock(gl); return -1; }
+    if (mt_write_u64(f, total) != 0) { gl_tc12_unlock(gl); return -1; }
     const uint32_t* counts = bigram_spectrum_counts(bs);
-    if (!counts) return -1;
+    if (!counts) { gl_tc12_unlock(gl); return -1; }
     size_t cells = (size_t)cap * (size_t)cap;
-    if (fwrite(counts, sizeof(uint32_t), cells, f) != cells) return -1;
+    if (fwrite(counts, sizeof(uint32_t), cells, f) != cells) {
+        gl_tc12_unlock(gl);
+        return -1;
+    }
+    gl_tc12_unlock(gl);
     return 0;
 }
 
@@ -5605,12 +5637,15 @@ static int mt_load_spectrum_payload(grounded_language_t* gl, FILE* f,
 
     /* Find the attached spectrum; if absent or cap-mismatched, the saved
      * data is dropped (we don't allocate a new spectrum the trainer never
-     * asked for, and we don't resize an existing one in place). */
-    bigram_spectrum_t* bs = gl_get_attached_spectrum(gl);
+     * asked for, and we don't resize an existing one in place).
+     * Audit fix (TOCTOU): same per-gl lock pattern as mt_save_spectrum. */
+    gl_tc12_lock(gl);
+    bigram_spectrum_t* bs = (bigram_spectrum_t*)gl->bigram_spectrum;
     if (!bs) {
         LOG_WARN(LOG_MODULE,
                  "mt_load_spectrum: no spectrum attached to gl=%p — "
                  "saved counts dropped", (void*)gl);
+        gl_tc12_unlock(gl);
         nimcp_free(buf);
         return 0;
     }
@@ -5619,15 +5654,18 @@ static int mt_load_spectrum_payload(grounded_language_t* gl, FILE* f,
         LOG_WARN(LOG_MODULE,
                  "mt_load_spectrum: vocab_cap mismatch (file=%u live=%u) — "
                  "saved counts dropped", cap, live_cap);
+        gl_tc12_unlock(gl);
         nimcp_free(buf);
         return 0;
     }
     if (bigram_spectrum_load_counts(bs, buf, total) != 0) {
         LOG_WARN(LOG_MODULE,
                  "mt_load_spectrum: bigram_spectrum_load_counts failed");
+        gl_tc12_unlock(gl);
         nimcp_free(buf);
         return -1;
     }
+    gl_tc12_unlock(gl);
     nimcp_free(buf);
     return 0;
 }

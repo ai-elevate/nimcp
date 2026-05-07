@@ -242,15 +242,18 @@ static int _wrap_imagination(void* ctx, const gl_event_t* ev) {
  * (self-utterance → update self-model template) events. The counters
  * let tests + the eval CLI verify that gl events are actually flowing
  * into the ToM observe pipeline. */
+/* Audit fix: lock-free atomic counters. Bumped from per-gl wrapper
+ * callbacks running on whatever thread fired the event — multi-gl /
+ * multi-thread comprehend can race without proper atomicity. */
 static uint64_t g_tom_observations_pushed = 0;
 static uint64_t g_tom_observations_dropped = 0;
 
 uint64_t nimcp_gl_tom_observations_pushed(void) {
-    return g_tom_observations_pushed;
+    return __atomic_load_n(&g_tom_observations_pushed, __ATOMIC_RELAXED);
 }
 
 uint64_t nimcp_gl_tom_observations_dropped(void) {
-    return g_tom_observations_dropped;
+    return __atomic_load_n(&g_tom_observations_dropped, __ATOMIC_RELAXED);
 }
 
 /* Map gl_event_t.valence / arousal to a coarse tom_emotion_t. The ToM
@@ -310,12 +313,12 @@ static int _wrap_theory_of_mind(void* ctx, const gl_event_t* ev) {
     obs.context_dim = 0;
 
     if (tom_observe(tom, &obs)) {
-        g_tom_observations_pushed++;
+        __atomic_fetch_add(&g_tom_observations_pushed, 1, __ATOMIC_RELAXED);
     } else {
-        g_tom_observations_dropped++;
         /* tom_observe returning false isn't fatal — it just means ToM
          * couldn't process this observation (possibly invalid args).
          * Bump the dropped counter so operators can spot a wedge. */
+        __atomic_fetch_add(&g_tom_observations_dropped, 1, __ATOMIC_RELAXED);
     }
     return 0;
 }

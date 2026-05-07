@@ -589,6 +589,26 @@ bool grounded_language_get_speech_act_classification_enabled(
  * each one pushes its own discourse turn, anaphora resolves across
  * sentences, and bigram learning never bridges a sentence boundary.
  * Default OFF — preserves bit-for-bit legacy behaviour.
+ *
+ * STATS COUNTER SEMANTICS UNDER SEGMENTATION:
+ * Because segmentation re-enters comprehend once per sentence, every
+ * stats counter that bumps inside the comprehend body bumps PER
+ * SENTENCE rather than per call. A 3-sentence input pushes:
+ *   - total_comprehensions     +3  (not +1)
+ *   - negation_events          +1 per negated sentence
+ *   - engram_encodes / recalls +1 per sentence with concepts
+ *   - topic_shifts_evaluated   +1 per sentence (subject to min_turns gate)
+ *   - speech_act_*             +1 per sentence (per the per-sentence label)
+ *   - reconsolidation_events   +1 per negated content word per sentence
+ * In addition, sentences_processed bumps +N (one per sentence) and
+ * multi_sentence_inputs bumps +1 per outer call where N>1.
+ *
+ * This is intentional — per-sentence semantics are how segmentation
+ * gives downstream cognition the granularity it needs — but consumers
+ * comparing pre-TB-6 vs post-TB-6 stat snapshots will see counter
+ * inflation proportional to avg-sentences-per-input. Use
+ * sentences_processed / total_comprehensions to back-out the
+ * normalization if you need pre-TB-6-comparable numbers.
  *===========================================================================*/
 
 /** Toggle TB-6 sentence-boundary segmentation. Default OFF. */
