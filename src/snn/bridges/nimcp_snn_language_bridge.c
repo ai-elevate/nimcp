@@ -116,6 +116,16 @@ struct snn_language_bridge {
     } attached_pops[SNN_LANG_MAX_ATTACHED_POPS];
     uint32_t                n_attached_pops;
 
+    /* Walkthrough round 2: PA-2 × PA-5 interaction fix. The autoregressive
+     * decoder evolves concept_acts into binding space (state drifts toward
+     * encode_word(picked) bindings). The GloVe cosine in decode_spikes uses
+     * concept_rates[0:emb_dim] as the embedding query — which is corrupt
+     * once state diverges from intent. produce sets emb_query_override to
+     * the immutable original intent before each decode_spikes call, and
+     * resets it on exit. NULL = use concept_rates (legacy / no autoreg). */
+    const float*            emb_query_override;
+    uint32_t                emb_query_override_dim;
+
     // Connected subsystems
     struct grounded_language* grounded_lang;
     struct imagination_snn_bridge* imagination;
@@ -536,16 +546,29 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
     /* PA-5: precompute the intent-side embedding norm once if the GloVe
      * blend is active. The embedding query is the leading emb_dim coords
      * of concept_rates. Skip lookups entirely when blend is 0 or when no
-     * embedding callback has been attached. */
+     * embedding callback has been attached.
+     *
+     * Walkthrough round 2 fix (PA-2 × PA-5): when the autoregressive
+     * decoder evolves concept_acts into binding space, the GloVe cosine
+     * sees a corrupted embedding query. produce sets emb_query_override
+     * to the immutable original intent so the GloVe term remains
+     * embedding-space-coherent across the loop. NULL = no override
+     * (legacy callers + non-autoregressive produce). */
     const float glove_blend = bridge->config.glove_blend;
     const bool emb_active = (glove_blend > 0.0f && bridge->emb_lookup_fn &&
                               bridge->word_emb_cache && bridge->emb_dim > 0);
+    const float* emb_query = bridge->emb_query_override
+                               ? bridge->emb_query_override
+                               : concept_rates;
+    const uint32_t emb_query_dim = bridge->emb_query_override
+                                     ? bridge->emb_query_override_dim
+                                     : num_concept_pops;
     float intent_emb_norm = 0.0f;
     if (emb_active) {
-        uint32_t d_used = (bridge->emb_dim < num_concept_pops)
-                           ? bridge->emb_dim : num_concept_pops;
+        uint32_t d_used = (bridge->emb_dim < emb_query_dim)
+                           ? bridge->emb_dim : emb_query_dim;
         for (uint32_t d = 0; d < d_used; d++) {
-            intent_emb_norm += concept_rates[d] * concept_rates[d];
+            intent_emb_norm += emb_query[d] * emb_query[d];
         }
         intent_emb_norm = sqrtf(intent_emb_norm + eps);
     }
@@ -559,16 +582,19 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
         float norm = sqrtf(ns + eps);
         float binding_score = word_acts[w] / norm;
 
-        /* PA-5: blend in cosine(intent_emb, word_emb[w]) when active. */
+        /* PA-5: blend in cosine(intent_emb, word_emb[w]) when active.
+         * Walkthrough round 2 fix: read embedding query from emb_query
+         * (override-aware) so PA-2 autoregressive blending doesn't
+         * corrupt the GloVe term. */
         if (emb_active) {
             int got = emb_cache_ensure(bridge, w);
             if (got == 1) {
                 const float* emb = bridge->word_emb_cache + (size_t)w * bridge->emb_dim;
-                uint32_t d_used = (bridge->emb_dim < num_concept_pops)
-                                   ? bridge->emb_dim : num_concept_pops;
+                uint32_t d_used = (bridge->emb_dim < emb_query_dim)
+                                   ? bridge->emb_dim : emb_query_dim;
                 float dot = 0.0f;
                 for (uint32_t d = 0; d < d_used; d++) {
-                    dot += concept_rates[d] * emb[d];
+                    dot += emb_query[d] * emb[d];
                 }
                 float glove_score = dot / (intent_emb_norm * bridge->word_emb_norm[w]);
                 word_scores[w] = (1.0f - glove_blend) * binding_score
@@ -1016,6 +1042,7 @@ int snn_language_bridge_attach_snn_pop(snn_language_bridge_t* bridge,
                      snn_pop_id, n_neurons, cap,
                      role == SNN_LANG_POP_ROLE_WORD ? "WORD" : "CONCEPT",
                      collision_factor);
+            bridge->stats.attach_collision_warnings++;
         }
     }
 
@@ -1302,6 +1329,14 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     if (!isfinite(wf) || wf < 0.0f) wf = 0.0f;
     if (wf > 1.0f) wf = 1.0f;
 
+    /* Walkthrough round 2 (PA-2 × PA-5): pin the embedding query to the
+     * immutable original intent for every decode_spikes call inside this
+     * produce loop. Without this, PA-5's GloVe cosine reads concept_acts
+     * which PA-2 evolves into binding space — and the GloVe term would
+     * see a corrupted query. Reset on every exit path below. */
+    bridge->emb_query_override     = intent;
+    bridge->emb_query_override_dim = n_concepts;
+
     /* PA-6: pull config sampling knobs once per produce call. */
     const float temperature = bridge->config.temperature;
     const float top_p = (bridge->config.top_p > 0.0f) ? bridge->config.top_p : 1.0f;
@@ -1453,6 +1488,12 @@ sample_done:;
     nimcp_free(intent);
     nimcp_free(state);
     nimcp_free(concept_acts);
+
+    /* Walkthrough round 2: clear the embedding-query override so any
+     * subsequent direct caller of decode_spikes (outside this produce
+     * call) reverts to using concept_rates as the GloVe query. */
+    bridge->emb_query_override     = NULL;
+    bridge->emb_query_override_dim = 0;
 
     if (word_count == 0) return -1;
 

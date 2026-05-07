@@ -170,6 +170,10 @@ typedef struct {
     uint64_t curiosity_contributions;
     uint64_t sleep_consolidation_cycles;
     uint64_t bindings_pruned;
+    /* PA-3 walkthrough fix: counter for the collision warning fired by
+     * snn_language_bridge_attach_snn_pop when n_neurons > bridge cap.
+     * Tested by test_attach_overlarge_pop_warns_but_succeeds. */
+    uint64_t attach_collision_warnings;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */

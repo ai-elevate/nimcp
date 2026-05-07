@@ -199,19 +199,43 @@ static void test_tick_decays_activation(void)
     snn_language_bridge_destroy(b);
 }
 
-/* Walkthrough round 1 add: attaching a pop wider than the bridge cap is
- * legal (modulo aliasing is intended) but should still succeed. The
- * bridge logs a warning about the collision factor; the call must not
- * fail or return -1. */
+/* Walkthrough round 1 add (round 2 deepened): attaching a pop wider than
+ * the bridge cap is legal (modulo aliasing is intended) but should warn.
+ * Round 2 adds a stats counter; verify it ticks (the LOG_WARN side
+ * effect alone is hard to assert from a test, so we use the counter
+ * as proxy). */
 static void test_attach_overlarge_pop_warns_but_succeeds(void)
 {
     snn_language_bridge_t* b = mk_bridge(/*cap_c*/64, /*cap_w*/64);
     EXPECT(b != NULL, "create"); if (!b) return;
 
-    /* SNN pop has 4× more neurons than bridge cap → collision_factor=4. */
+    /* Baseline: counter starts at 0. */
+    snn_lang_stats_t s0 = {0};
+    snn_language_bridge_get_stats(b, &s0);
+    EXPECT(s0.attach_collision_warnings == 0, "baseline counter=0; got %llu",
+            (unsigned long long)s0.attach_collision_warnings);
+
+    /* SNN pop has 4× more neurons than bridge cap → collision_factor=4.
+     * The warning must fire — counter goes 0 → 1. */
     EXPECT(snn_language_bridge_attach_snn_pop(b, /*pop_id*/42, /*n*/256,
                                                 SNN_LANG_POP_ROLE_WORD) == 0,
             "attach with n_neurons > cap accepted (warns)");
+
+    snn_lang_stats_t s1 = {0};
+    snn_language_bridge_get_stats(b, &s1);
+    EXPECT(s1.attach_collision_warnings == 1,
+            "collision warning counter incremented; got %llu",
+            (unsigned long long)s1.attach_collision_warnings);
+
+    /* Within-cap attach must NOT bump the counter. */
+    EXPECT(snn_language_bridge_attach_snn_pop(b, /*pop_id*/43, /*n*/32,
+                                                SNN_LANG_POP_ROLE_WORD) == 0,
+            "within-cap attach OK");
+    snn_lang_stats_t s2 = {0};
+    snn_language_bridge_get_stats(b, &s2);
+    EXPECT(s2.attach_collision_warnings == 1,
+            "within-cap attach didn't bump counter; got %llu",
+            (unsigned long long)s2.attach_collision_warnings);
 
     /* Verify the registration via iterator. */
     int found_pid = -1;
