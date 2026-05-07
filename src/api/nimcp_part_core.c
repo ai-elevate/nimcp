@@ -3416,6 +3416,22 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
 }
 
 /*=============================================================================
+ * Tier-1 #2: Anaphora / pronoun-resolution toggle.
+ *===========================================================================*/
+
+nimcp_status_t nimcp_brain_set_anaphora_enabled(
+    nimcp_brain_t brain,
+    bool enabled)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    bool ok = grounded_language_set_anaphora_enabled(b->grounded_lang, enabled);
+    return ok ? NIMCP_OK : NIMCP_ERROR;
+}
+
+/*=============================================================================
  * PA-4+ : Bigram FFT spectral metrics
  *
  * Lazily attaches a bigram-spectrum tracker to the brain's grounded

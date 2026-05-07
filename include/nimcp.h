@@ -1297,6 +1297,22 @@ nimcp_status_t nimcp_brain_grounded_set_discourse_capacity(
 );
 
 /**
+ * @brief Tier-1 #2: toggle rule-based anaphora / pronoun resolution inside
+ *        the brain's grounded_language comprehend pass.
+ *
+ * Default: OFF. When enabled, comprehend tracks recent content nouns in
+ * a small per-gl ring and resolves singular/plural pronouns
+ * (he/she/it/they/...) to the most-recent matching referent, folding
+ * the referent's lexicon-entry bindings into the activated_concepts
+ * list at half strength. Returns NIMCP_ERROR if the brain has no
+ * grounded_language module attached.
+ */
+nimcp_status_t nimcp_brain_set_anaphora_enabled(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/**
  * @brief Configure the autoregressive recurrent decoder (PA-2).
  *
  * @param brain               Brain handle.

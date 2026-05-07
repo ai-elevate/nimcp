@@ -1430,6 +1430,15 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
  * in this file but called from earlier functions. */
 static void gl_detach_spectrum_for_destroy(grounded_language_t* gl);
 static void gl_next_token_cold_start_skips_inc(const char* prev, const char* next);
+/* Tier-1 #2: anaphora-resolver forward decls (defined later, near the
+ * spectrum side-map). */
+static void gl_detach_anaphora_for_destroy(grounded_language_t* gl);
+static uint32_t anaphora_run_pass(grounded_language_t* gl,
+                                    char** words,
+                                    uint32_t word_count,
+                                    uint64_t* activated_concepts,
+                                    float* activation_levels,
+                                    uint32_t* concept_count_io);
 
 void grounded_language_destroy(grounded_language_t* gl) {
     if (!gl) return;
@@ -1439,6 +1448,8 @@ void grounded_language_destroy(grounded_language_t* gl) {
      * return a spectrum bound to this freed pointer (UAF if the OS reuses
      * this address for a fresh grounded_language). */
     gl_detach_spectrum_for_destroy(gl);
+    /* Tier-1 #2: same UAF guard for the anaphora side-map. */
+    gl_detach_anaphora_for_destroy(gl);
 
     /* Free lexicon entries */
     if (gl->vocab_list) {
@@ -1703,6 +1714,18 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             }
         }
     }
+
+    /* Tier-1 #2: rule-based anaphora resolution. Disabled by default; opt-in
+     * via grounded_language_set_anaphora_enabled(gl,true). Walks the same
+     * token list (words[]) we just consumed, classifies each token as
+     * pronoun or content noun, pushes referents onto a per-gl ring, and
+     * folds the matched referent's lexicon-entry bindings into the
+     * activated_concepts list at half-strength. The pass is a no-op when
+     * disabled — production traffic sees zero overhead. */
+    (void)anaphora_run_pass(gl, words, word_count,
+                              result->activated_concepts,
+                              result->activation_levels,
+                              &concept_count);
 
     result->concept_count = concept_count;
     /* Subword-recognized words count as half-known: the BPE tokenizer
@@ -3199,6 +3222,348 @@ uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void) {
     uint64_t v = g_spectrum_map_overflow_warns;
     pthread_mutex_unlock(&g_spectrum_map_lock);
     return v;
+}
+
+/*=============================================================================
+ * Tier-1 #2: Rule-based anaphora / pronoun resolution (v1).
+ *
+ * Side-map keyed by gl pointer (same pattern as g_spectrum_map) so we
+ * don't perturb the grounded_language struct layout — the persistence
+ * sidecar walks that struct field-by-field via the internal header and
+ * any layout drift breaks checkpoint compatibility.
+ *
+ * Each entry holds an 8-deep referent ring + the toggle. The pronoun
+ * table itself is process-global static const data. Successful resolves
+ * bump g_anaphora_resolutions atomically.
+ *===========================================================================*/
+
+#define GL_ANAPHORA_MAP_CAP        4
+#define GL_ANAPHORA_RING_CAP       8
+
+typedef enum {
+    GL_GENDER_UNKNOWN = 0,
+    GL_GENDER_SINGULAR_MALE,
+    GL_GENDER_SINGULAR_FEMALE,
+    GL_GENDER_SINGULAR_NEUTER,
+    GL_GENDER_PLURAL,
+} gl_anaphora_gender_t;
+
+typedef struct {
+    char                   form[GL_MAX_WORD_LEN];   /* lowercased */
+    gl_anaphora_gender_t   gender;
+    uint64_t               timestamp_us;
+} gl_anaphora_referent_t;
+
+typedef struct {
+    bool                   enabled;
+    gl_anaphora_referent_t ring[GL_ANAPHORA_RING_CAP];
+    uint32_t               head;   /* next slot to write — push location */
+    uint32_t               size;   /* number of valid entries (≤ cap) */
+} gl_anaphora_state_t;
+
+/* Pronoun table — small enough that linear scan beats any hash. */
+typedef struct {
+    const char*          word;
+    gl_anaphora_gender_t gender;
+} gl_anaphora_pronoun_entry_t;
+
+static const gl_anaphora_pronoun_entry_t g_pronouns[] = {
+    { "he",     GL_GENDER_SINGULAR_MALE   },
+    { "him",    GL_GENDER_SINGULAR_MALE   },
+    { "his",    GL_GENDER_SINGULAR_MALE   },
+    { "she",    GL_GENDER_SINGULAR_FEMALE },
+    { "her",    GL_GENDER_SINGULAR_FEMALE },
+    { "hers",   GL_GENDER_SINGULAR_FEMALE },
+    { "it",     GL_GENDER_SINGULAR_NEUTER },
+    { "this",   GL_GENDER_SINGULAR_NEUTER },
+    { "that",   GL_GENDER_SINGULAR_NEUTER },
+    { "they",   GL_GENDER_PLURAL          },
+    { "them",   GL_GENDER_PLURAL          },
+    { "their",  GL_GENDER_PLURAL          },
+    { "theirs", GL_GENDER_PLURAL          },
+    { "these",  GL_GENDER_PLURAL          },
+    { "those",  GL_GENDER_PLURAL          },
+};
+#define GL_PRONOUN_COUNT (sizeof(g_pronouns) / sizeof(g_pronouns[0]))
+
+static struct {
+    grounded_language_t* gl;
+    gl_anaphora_state_t* state;
+} g_anaphora_map[GL_ANAPHORA_MAP_CAP] = { {0} };
+
+static pthread_mutex_t g_anaphora_map_lock = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t        g_anaphora_resolutions = 0;  /* lock-protected */
+
+/* Map operations. The map lock protects both the slot table AND the
+ * per-gl state's ring (we only ever touch state pointers under the
+ * lock; readers of the ring also hold the lock). */
+
+static gl_anaphora_state_t* anaphora_lookup_locked(grounded_language_t* gl) {
+    for (int i = 0; i < GL_ANAPHORA_MAP_CAP; i++) {
+        if (g_anaphora_map[i].gl == gl) return g_anaphora_map[i].state;
+    }
+    return NULL;
+}
+
+static gl_anaphora_state_t* anaphora_get_or_create_locked(grounded_language_t* gl) {
+    gl_anaphora_state_t* st = anaphora_lookup_locked(gl);
+    if (st) return st;
+    /* Insert into first free slot. */
+    for (int i = 0; i < GL_ANAPHORA_MAP_CAP; i++) {
+        if (g_anaphora_map[i].gl == NULL) {
+            st = (gl_anaphora_state_t*)nimcp_calloc(1, sizeof(*st));
+            if (!st) return NULL;
+            g_anaphora_map[i].gl = gl;
+            g_anaphora_map[i].state = st;
+            return st;
+        }
+    }
+    /* Map full — caller will see NULL and bail. */
+    return NULL;
+}
+
+static void gl_detach_anaphora_for_destroy(grounded_language_t* gl) {
+    if (!gl) return;
+    pthread_mutex_lock(&g_anaphora_map_lock);
+    for (int i = 0; i < GL_ANAPHORA_MAP_CAP; i++) {
+        if (g_anaphora_map[i].gl == gl) {
+            nimcp_free(g_anaphora_map[i].state);
+            g_anaphora_map[i].gl = NULL;
+            g_anaphora_map[i].state = NULL;
+        }
+    }
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+}
+
+bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
+                                              bool enabled) {
+    if (!gl) return false;
+    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_anaphora_state_t* st = anaphora_get_or_create_locked(gl);
+    if (!st) {
+        pthread_mutex_unlock(&g_anaphora_map_lock);
+        return false;
+    }
+    st->enabled = enabled;
+    /* Disabling clears the ring so a later re-enable doesn't carry state
+     * across an explicit OFF window. */
+    if (!enabled) {
+        st->head = 0;
+        st->size = 0;
+        memset(st->ring, 0, sizeof(st->ring));
+    }
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return true;
+}
+
+uint64_t grounded_language_anaphora_resolutions(void) {
+    pthread_mutex_lock(&g_anaphora_map_lock);
+    uint64_t v = g_anaphora_resolutions;
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return v;
+}
+
+/* Pronoun lookup — returns gender, or GL_GENDER_UNKNOWN if word is not a
+ * pronoun. Caller must already have a lowercased form. */
+static gl_anaphora_gender_t anaphora_pronoun_gender(const char* lower_word) {
+    if (!lower_word || !lower_word[0]) return GL_GENDER_UNKNOWN;
+    for (size_t i = 0; i < GL_PRONOUN_COUNT; i++) {
+        if (strcmp(g_pronouns[i].word, lower_word) == 0) {
+            return g_pronouns[i].gender;
+        }
+    }
+    return GL_GENDER_UNKNOWN;
+}
+
+/* Gender heuristic for content nouns. Pure recency-based; no syntactic
+ * analysis. The token is the original (cased) surface form so we can
+ * sniff capitalization for proper-noun → male.
+ *   - Capitalized first letter (and not the first word in the sentence?
+ *     we don't track that — accept the false-positive on sentence-initial
+ *     capitals; v1 caveat) → singular_male.
+ *   - Trailing 's' (length ≥ 4 to skip "is"/"as") → plural.
+ *   - Otherwise → singular_neuter.
+ * If a recent referent is "she/her", the next non-pronoun content noun
+ * inherits singular_female — handled by the caller via `pending_female`.
+ */
+static gl_anaphora_gender_t anaphora_classify_noun(const char* surface_form) {
+    if (!surface_form || !surface_form[0]) return GL_GENDER_SINGULAR_NEUTER;
+    size_t len = strlen(surface_form);
+
+    /* Capitalized → proper noun → default male. */
+    if (isupper((unsigned char)surface_form[0])) {
+        return GL_GENDER_SINGULAR_MALE;
+    }
+
+    /* Plural detection by trailing 's' (length ≥ 4 avoids 1-letter and
+     * common short stop-words like "is"/"as"). Also avoid "ss" doubling
+     * (boss/glass → not plural). */
+    if (len >= 4 && surface_form[len-1] == 's' && surface_form[len-2] != 's') {
+        return GL_GENDER_PLURAL;
+    }
+
+    return GL_GENDER_SINGULAR_NEUTER;
+}
+
+/* Push a referent onto the ring (caller already holds the map lock). */
+static void anaphora_push_referent(gl_anaphora_state_t* st,
+                                     const char* lower_form,
+                                     gl_anaphora_gender_t gender) {
+    if (!st || !lower_form || !lower_form[0]) return;
+    if (gender == GL_GENDER_UNKNOWN) gender = GL_GENDER_SINGULAR_NEUTER;
+
+    gl_anaphora_referent_t* slot = &st->ring[st->head];
+    memset(slot, 0, sizeof(*slot));
+    size_t cap = sizeof(slot->form) - 1;
+    strncpy(slot->form, lower_form, cap);
+    slot->form[cap] = '\0';
+    slot->gender = gender;
+    /* Microsecond-ish timestamp — we only need monotonicity for tie-break
+     * at backwards scan, and the ring index already encodes that, so
+     * this is essentially decorative. */
+    slot->timestamp_us = (uint64_t)time(NULL) * 1000000ull;
+
+    st->head = (st->head + 1) % GL_ANAPHORA_RING_CAP;
+    if (st->size < GL_ANAPHORA_RING_CAP) st->size++;
+}
+
+/* Resolve a pronoun by walking the ring backwards from most-recent.
+ * Returns the form of the matched referent (pointing into the ring,
+ * valid only while the lock is held — caller copies it out). NULL if
+ * no gender match is found. */
+static const char* anaphora_resolve_locked(gl_anaphora_state_t* st,
+                                             gl_anaphora_gender_t pronoun_gender) {
+    if (!st || st->size == 0) return NULL;
+    /* head points to NEXT write slot. Most-recent is head-1 (mod cap). */
+    for (uint32_t step = 0; step < st->size; step++) {
+        uint32_t idx = (st->head + GL_ANAPHORA_RING_CAP - 1 - step)
+                        % GL_ANAPHORA_RING_CAP;
+        if (st->ring[idx].gender == pronoun_gender) {
+            return st->ring[idx].form;
+        }
+    }
+    return NULL;
+}
+
+/* The hook called from comprehend. Walks the token list, classifies each
+ * token as pronoun or content noun, pushes referents, and (when a
+ * pronoun resolves) folds the referent's lexicon-entry bindings into the
+ * caller's activated_concepts/activation_levels arrays at half-strength.
+ *
+ * Returns the number of successful resolutions performed in this call.
+ * No-op (and returns 0) when the resolver is disabled or unallocated.
+ *
+ * NOTE: caller passes the in/out concept_count by pointer. If we resolve
+ * a pronoun but the activated_concepts array is full, we silently skip
+ * the binding-fold for that pronoun (counter is still bumped — the
+ * resolution itself succeeded; only the side-effect of activating
+ * concepts was capped).
+ */
+static uint32_t anaphora_run_pass(grounded_language_t* gl,
+                                    char** words,
+                                    uint32_t word_count,
+                                    uint64_t* activated_concepts,
+                                    float* activation_levels,
+                                    uint32_t* concept_count_io) {
+    if (!gl || !words || word_count == 0) return 0;
+
+    /* Lock-and-check enabled; if disabled, fast-path return without
+     * touching the ring. */
+    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_anaphora_state_t* st = anaphora_lookup_locked(gl);
+    if (!st || !st->enabled) {
+        pthread_mutex_unlock(&g_anaphora_map_lock);
+        return 0;
+    }
+
+    uint32_t resolved_here = 0;
+    bool pending_female = false;  /* "she/her" cue → next content noun is female */
+
+    for (uint32_t w = 0; w < word_count; w++) {
+        const char* surface = words[w];
+        if (!surface || !surface[0]) continue;
+
+        char lower[GL_MAX_WORD_LEN];
+        lowercase_word(surface, lower, GL_MAX_WORD_LEN);
+
+        gl_anaphora_gender_t pron = anaphora_pronoun_gender(lower);
+        if (pron != GL_GENDER_UNKNOWN) {
+            /* Pronoun. Try to resolve. */
+            const char* matched_form = anaphora_resolve_locked(st, pron);
+            if (matched_form) {
+                /* Copy form before unlocking the map — though we hold the
+                 * lock through the whole pass, so this is just defensive. */
+                char form_copy[GL_MAX_WORD_LEN];
+                size_t cap = sizeof(form_copy) - 1;
+                strncpy(form_copy, matched_form, cap);
+                form_copy[cap] = '\0';
+
+                resolved_here++;
+                g_anaphora_resolutions++;
+
+                /* Fold the referent's lexicon-entry bindings (at half
+                 * strength) into the caller's activated_concepts list.
+                 * lexicon_find takes a const gl* and is read-only — safe
+                 * to call while holding our lock (no overlap with the
+                 * gl's own internal state). */
+                if (activated_concepts && activation_levels && concept_count_io) {
+                    const gl_lexicon_entry_t* ref_entry = lexicon_find(gl, form_copy);
+                    if (ref_entry) {
+                        for (uint32_t b = 0;
+                             b < ref_entry->binding_count &&
+                             *concept_count_io < GL_MAX_ACTIVE_CONCEPTS;
+                             b++) {
+                            const gl_word_binding_t* bd = &ref_entry->bindings[b];
+                            if (bd->strength < GL_ASSOC_PRUNE_THRESHOLD) continue;
+
+                            float weight = 0.5f * bd->strength;
+
+                            /* Merge with existing activation if present. */
+                            bool merged = false;
+                            for (uint32_t c = 0; c < *concept_count_io; c++) {
+                                if (activated_concepts[c] == bd->concept_id) {
+                                    activation_levels[c] += weight;
+                                    merged = true;
+                                    break;
+                                }
+                            }
+                            if (!merged) {
+                                activated_concepts[*concept_count_io]  = bd->concept_id;
+                                activation_levels[*concept_count_io]   = weight;
+                                (*concept_count_io)++;
+                            }
+                        }
+                    }
+                }
+            }
+            /* Cue-update: a literal "she" / "her" / "hers" suggests the
+             * next content noun (a NAME) refers to a female entity. We
+             * propagate pending_female forward so something like
+             * "She is Alice" makes Alice female on push. */
+            if (pron == GL_GENDER_SINGULAR_FEMALE) pending_female = true;
+            continue;
+        }
+
+        /* Not a pronoun — candidate referent.
+         * Skip lexicon function words (the/a/an/of/and/...) so they
+         * don't displace real nouns from the ring. The lexicon's
+         * learned_class is a soft hint; if the entry doesn't exist
+         * we still push the surface form (any unknown noun is more
+         * useful than nothing for a recency-based v1).
+         */
+        const gl_lexicon_entry_t* ent = lexicon_find(gl, lower);
+        if (ent && ent->learned_class == GL_CLASS_FUNCTION) continue;
+
+        gl_anaphora_gender_t g = anaphora_classify_noun(surface);
+        if (pending_female) {
+            g = GL_GENDER_SINGULAR_FEMALE;
+            pending_female = false;
+        }
+        anaphora_push_referent(st, lower, g);
+    }
+
+    pthread_mutex_unlock(&g_anaphora_map_lock);
+    return resolved_here;
 }
 
 int grounded_language_learn_text_bigrams(grounded_language_t* gl,

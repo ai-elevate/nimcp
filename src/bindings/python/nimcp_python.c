@@ -3094,6 +3094,24 @@ static PyObject* Brain_set_snn_language_bridge_repetition_penalty(BrainObject* s
     Py_RETURN_NONE;
 }
 
+/* Tier-1 #2: toggle rule-based anaphora / pronoun resolution. */
+static PyObject* Brain_set_anaphora_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_anaphora_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "no grounded_language attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11225,6 +11243,8 @@ static PyMethodDef Brain_methods[] = {
      "TIER1-B: register end-of-utterance word_pop — set_snn_language_bridge_eos_word_pop(pop) -> None. UINT32_MAX (~4294967295) disables. When sampled, produce halts cleanly without appending the EOS form."},
     {"set_snn_language_bridge_repetition_penalty", (PyCFunction)Brain_set_snn_language_bridge_repetition_penalty, METH_VARARGS,
      "TIER1-C: configure n-gram repetition penalty — set_snn_language_bridge_repetition_penalty(penalty, window) -> None. penalty=0 (default) disables; >0 multiplies score by (1-penalty) per match in the last `window` picks. window=0 falls back to 3 when penalty>0."},
+    {"set_anaphora_enabled", (PyCFunction)Brain_set_anaphora_enabled, METH_VARARGS,
+     "Tier-1 #2: toggle rule-based anaphora / pronoun resolution — set_anaphora_enabled(enabled) -> None. Default OFF; when ON, comprehend resolves he/she/it/they/... to the most-recent matching content noun."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
     {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,
