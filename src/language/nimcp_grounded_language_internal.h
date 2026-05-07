@@ -246,12 +246,17 @@ struct grounded_language {
     void* engram_system;
     bool  engram_enabled;
 
-    /* TA-2 LGSS attach (currently a stub field — gates not wired in
-     * comprehend yet). Borrowed pointer to brain->lgss; set via
-     * grounded_language_set_lgss(). NULL = no gates active. The full
-     * gate wiring + evaluator forward-decl lives in the comprehend
-     * function; this field exists to satisfy referencing call sites
-     * that landed ahead of the full TA-2 commit. */
+    /* TA-2: LGSS gate. Borrowed pointer to the brain-level
+     * lgss_context_t, attached via grounded_language_set_lgss(). When
+     * the pointer is non-NULL, comprehend evaluates an input-validation
+     * action context against the safety KB before lexicon lookup — a
+     * SAFETY_ACTION_DENY result early-aborts comprehend, increments the
+     * lgss_inputs_blocked stat, and emits an LGSS_INPUT_REJECTED audit
+     * event. NOT owned, NOT serialized; re-attach after brain init /
+     * load. NULL = no-op (legacy callers see identical behavior). The
+     * type is intentionally void* to keep the heavy LGSS headers out of
+     * this internal layout — comprehend casts to lgss_context_t* via a
+     * forward declaration in the .c file. */
     void* lgss;
 };
 

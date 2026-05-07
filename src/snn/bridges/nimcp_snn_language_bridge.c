@@ -134,6 +134,11 @@ struct snn_language_bridge {
     struct curiosity_snn_bridge* curiosity;
     struct neuromodulator_system_struct* neuromod;
 
+    /* TA-2: LGSS output gate. Borrowed pointer; cast to lgss_context_t*
+     * at the call site via forward decl. NULL = no-op (legacy default,
+     * preserves behavior for callers that haven't attached one). */
+    void* lgss;
+
     // Current time
     float current_time_ms;
 
@@ -463,6 +468,22 @@ int snn_language_bridge_connect_neuromod(snn_language_bridge_t* bridge,
         return -1;
     }
     bridge->neuromod = neuromod;
+    return 0;
+}
+
+/* TA-2 LGSS output-gate attach. Stored as void* to keep the LGSS
+ * umbrella header (which drags in cognitive/symbolic_logic enums) out
+ * of the SNN bridge translation unit's exports. The produce wrapper
+ * forward-declares lgss_evaluate + safety_action_context_t locally and
+ * casts back. NULL = detach (gate becomes a no-op). */
+int snn_language_bridge_set_lgss(snn_language_bridge_t* bridge, void* lgss)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_set_lgss: bridge is NULL or invalid");
+        return -1;
+    }
+    bridge->lgss = lgss;
     return 0;
 }
 
@@ -2372,6 +2393,20 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
     return rc_out;
 }
 
+/* TA-2 — LGSS evaluator forward decl + small safety types header.
+ *
+ * Same rationale as the grounded_language side: the LGSS umbrella
+ * cascades into cognitive/symbolic_logic enum collisions, so the SNN
+ * bridge translation unit only pulls the lightweight safety_types
+ * header (POD context + enums) and forward-declares the evaluator. */
+#include "cognitive/symbolic_logic/nimcp_symbolic_logic_safety_types.h"
+#include "security/nimcp_audit_log.h"
+typedef struct lgss_context lgss_context_t;
+extern int lgss_evaluate(
+    lgss_context_t* lgss,
+    const safety_action_context_t* context,
+    safety_evaluation_t* result);
+
 /* Tier-4 #16: public wrapper — timed entry/exit. NULL guards run before
  * clock_gettime so timing only counts work that actually happened. */
 int snn_language_bridge_produce(snn_language_bridge_t* bridge,
@@ -2390,6 +2425,71 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     clock_gettime(CLOCK_MONOTONIC, &t_start);
 
     int rc = bridge_produce_impl(bridge, semantic_intent, intent_dim, result);
+
+    /* TA-2 — LGSS OUTPUT GATE.
+     *
+     * After produce_impl has constructed result->text but before the
+     * caller sees it, evaluate the produced text against the safety
+     * KB. SAFETY_ACTION_DENY blocks emission: free + zero result->text,
+     * reset word_count to 0, bump stats.lgss_outputs_blocked, and emit
+     * an LGSS_ACTION_BLOCKED audit event.
+     *
+     * Placement: only when produce_impl reported success (rc == 0) AND
+     * actually emitted text — a NULL result->text path skips the gate
+     * (nothing to block). When no LGSS is attached, the gate is a
+     * no-op and lgss_outputs_blocked stays 0. */
+    if (rc == 0 && bridge->lgss && result->text && result->text[0] != '\0') {
+        safety_action_context_t lgss_ctx;
+        memset(&lgss_ctx, 0, sizeof(lgss_ctx));
+
+        strncpy(lgss_ctx.string_fields[0].key, "operation", 63);
+        lgss_ctx.string_fields[0].key[63] = '\0';
+        strncpy(lgss_ctx.string_fields[0].value, "language_produce",
+                SAFETY_MAX_VALUE_LEN - 1);
+        lgss_ctx.string_fields[0].value[SAFETY_MAX_VALUE_LEN - 1] = '\0';
+
+        strncpy(lgss_ctx.string_fields[1].key, "text", 63);
+        lgss_ctx.string_fields[1].key[63] = '\0';
+        strncpy(lgss_ctx.string_fields[1].value, result->text,
+                SAFETY_MAX_VALUE_LEN - 1);
+        lgss_ctx.string_fields[1].value[SAFETY_MAX_VALUE_LEN - 1] = '\0';
+        lgss_ctx.num_string_fields = 2;
+
+        strncpy(lgss_ctx.numeric_fields[0].key, "word_count", 63);
+        lgss_ctx.numeric_fields[0].key[63] = '\0';
+        lgss_ctx.numeric_fields[0].value = (float)result->word_count;
+        lgss_ctx.num_numeric_fields = 1;
+
+        lgss_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_ctx.has_domain_hint = true;
+        snprintf(lgss_ctx.action_description,
+                 sizeof(lgss_ctx.action_description),
+                 "language_produce output: %u words", result->word_count);
+        lgss_ctx.action_description[sizeof(lgss_ctx.action_description) - 1]
+            = '\0';
+        strncpy(lgss_ctx.source, "LANGUAGE_PRODUCE", 63);
+        lgss_ctx.source[63] = '\0';
+
+        safety_evaluation_t lgss_eval;
+        memset(&lgss_eval, 0, sizeof(lgss_eval));
+        int lgss_rc = lgss_evaluate((lgss_context_t*)bridge->lgss,
+                                     &lgss_ctx, &lgss_eval);
+        if (lgss_rc == 0 && lgss_eval.action == SAFETY_ACTION_DENY) {
+            bridge->stats.lgss_outputs_blocked++;
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 2,
+                "LGSS blocked language_produce output "
+                "(words=%u, severity=%d): %s",
+                result->word_count, (int)lgss_eval.max_severity,
+                lgss_eval.explanation);
+            /* Free + zero produced text so the caller never sees the
+             * blocked content. Keep the result struct itself valid. */
+            nimcp_free(result->text);
+            result->text = NULL;
+            result->word_count = 0;
+            rc = -1;
+        }
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &t_end);
     /* Saturating-conservative: if the wall clock somehow steps backward

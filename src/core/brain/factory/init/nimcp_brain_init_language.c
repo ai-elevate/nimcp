@@ -577,6 +577,16 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
     );
 
     if (brain->grounded_lang) {
+        /* TA-2 — wire LGSS so comprehend gets an input gate symmetric
+         * to the brain_decide() input validator. brain->lgss is non-NULL
+         * here whenever the safety subsystem was constructed (the LGSS
+         * ctor is non-removable per CLAUDE.md). Pointer is borrowed —
+         * the gl module casts to lgss_context_t* via forward decl. */
+        if (brain->lgss) {
+            grounded_language_set_lgss(brain->grounded_lang,
+                                        (void*)brain->lgss);
+        }
+
         /* Wire cross-modal connections */
         if (brain->visual_cortex)
             grounded_language_connect_visual(brain->grounded_lang, brain->visual_cortex);
@@ -812,6 +822,14 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             if (brain->neuromodulator_system)
                 snn_language_bridge_connect_neuromod(brain->snn_lang_bridge,
                                                      brain->neuromodulator_system);
+            /* TA-2 — wire LGSS into the SNN language bridge so produce
+             * has an output gate symmetric to comprehend's input gate.
+             * Pattern matches the engram attach in nimcp_part_core.c —
+             * borrowed pointer, NULL when LGSS isn't constructed. */
+            if (brain->lgss) {
+                (void)snn_language_bridge_set_lgss(brain->snn_lang_bridge,
+                                                    (void*)brain->lgss);
+            }
             /* Wire bidirectional: GL → SNN bridge for dual-path production */
             grounded_language_connect_snn_bridge(brain->grounded_lang,
                                                   brain->snn_lang_bridge);

@@ -256,6 +256,11 @@ typedef struct {
      * CLOCK_MONOTONIC and zeroed by snn_language_bridge_reset_stats. */
     uint64_t produce_total_us;
     uint64_t produce_call_count;
+    /* TA-2 — LGSS output-gate telemetry. Bumped only when an
+     * lgss_context_t has been attached via
+     * snn_language_bridge_set_lgss() and a SAFETY_ACTION_DENY fires
+     * against the produced text. Stays 0 when no lgss is attached. */
+    uint64_t lgss_outputs_blocked;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -305,6 +310,33 @@ int snn_language_bridge_connect_curiosity(
 int snn_language_bridge_connect_neuromod(
     snn_language_bridge_t* bridge,
     struct neuromodulator_system_struct* neuromod);
+
+/**
+ * @brief Attach an LGSS context for output-gate evaluation in produce.
+ *
+ * WHAT: Wires the brain's Layered Governance Safety System (LGSS) into
+ *       snn_language_bridge_produce(). After the spike cascade has
+ *       constructed result->text but before that pointer is returned
+ *       to the caller, the bridge evaluates a SAFETY_DOMAIN_GOVERNANCE
+ *       action context against the safety KB. A SAFETY_ACTION_DENY
+ *       result blocks emission: result->text is freed + zeroed,
+ *       result->word_count is reset to 0, stats.lgss_outputs_blocked
+ *       is bumped, and an LGSS_ACTION_BLOCKED audit event is emitted.
+ * WHY:  Symmetric to the comprehend input gate on grounded_language.
+ *       Without an output gate, an attacker who poisons the lexicon or
+ *       the imagination drive could exfiltrate disallowed content via
+ *       produce even when the input gate is intact.
+ * HOW:  Borrowed pointer. NOT owned, NOT serialized. NULL detaches.
+ *       Typed void* to avoid pulling the LGSS umbrella header into
+ *       language consumers (enum collision risk).
+ *
+ * @param bridge Bridge handle (NULL → -1)
+ * @param lgss   lgss_context_t* opaque (NULL detaches)
+ * @return 0 on success, -1 on invalid handle
+ */
+int snn_language_bridge_set_lgss(
+    snn_language_bridge_t* bridge,
+    void* lgss);
 
 //=============================================================================
 // Phase 1: Spike-to-Word Decoding
