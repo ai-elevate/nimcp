@@ -342,23 +342,19 @@ typedef struct {
      * enable_reconsolidation is false. */
     uint64_t reconsolidation_events;
     uint64_t reconsolidation_bindings_decayed;
-    /* TB-10 — topic-shift detection telemetry. topic_shifts_evaluated
-     * counts every comprehend pass that ran the detector (flag ON AND
-     * enough prior turns to compare against); topic_shifts_detected is
-     * the subset whose cosine score fell below the configured threshold
-     * — i.e. a topic boundary was flagged. Both stay 0 when
-     * enable_topic_shift_detection is false (the default). */
+    /* TB-10 — topic-shift detection telemetry. */
     uint64_t topic_shifts_evaluated;
     uint64_t topic_shifts_detected;
     /* TB-9 — speech-act intent classification telemetry. One counter per
-     * non-UNKNOWN class, bumped on each comprehend pass that produced
-     * the corresponding label. Stay 0 when speech-act classification is
-     * disabled (the default). UNKNOWN results are not counted. */
+     * non-UNKNOWN class. */
     uint64_t speech_act_assertions;
     uint64_t speech_act_questions;
     uint64_t speech_act_imperatives;
     uint64_t speech_act_greetings;
     uint64_t speech_act_exclamations;
+    /* TB-6 — sentence-boundary segmentation telemetry. */
+    uint64_t sentences_processed;
+    uint64_t multi_sentence_inputs;
 } gl_stats_t;
 
 /**
@@ -565,6 +561,25 @@ void grounded_language_set_speech_act_classification_enabled(
 
 /** Read the current speech-act classification toggle. false on NULL. */
 bool grounded_language_get_speech_act_classification_enabled(
+    const grounded_language_t* gl);
+
+/*=============================================================================
+ * TB-6: Sentence-boundary segmentation in comprehend.
+ *
+ * When ON and input contains >1 sentence (terminators `.`/`!`/`?`),
+ * comprehend recursively processes each sentence in input order so
+ * each one pushes its own discourse turn, anaphora resolves across
+ * sentences, and bigram learning never bridges a sentence boundary.
+ * Default OFF — preserves bit-for-bit legacy behaviour.
+ *===========================================================================*/
+
+/** Toggle TB-6 sentence-boundary segmentation. Default OFF. */
+void grounded_language_set_sentence_segmentation_enabled(
+    grounded_language_t* gl,
+    bool enabled);
+
+/** Read the current sentence-segmentation toggle. */
+bool grounded_language_get_sentence_segmentation_enabled(
     const grounded_language_t* gl);
 
 /*=============================================================================

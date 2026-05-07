@@ -233,6 +233,17 @@ struct grounded_language {
     bool                 enable_reconsolidation;
     float                reconsolidation_decay;
 
+    /* TB-6 — sentence-boundary segmentation. When enabled (default
+     * false; opt-in trainer flag), comprehend splits the input on
+     * `.`/`!`/`?` and processes each sentence independently — each
+     * sentence gets its own discourse-turn push, its own LGSS/immune
+     * pass via recursive comprehend, and bigram learning never bridges
+     * a sentence boundary. Disabled by default to preserve bit-for-bit
+     * legacy behaviour: a single comprehend call still pushes exactly
+     * one discourse turn regardless of how many `.`s the input contains.
+     * Per-instance runtime knob; not persisted across save/load. */
+    bool                 enable_sentence_segmentation;
+
     /* Tier-2 #6 word-sense disambiguation. When enabled (default false —
      * preserves legacy behaviour), comprehend's per-binding activation is
      * weighted by cosine(intent, binding_concept_features); the most-

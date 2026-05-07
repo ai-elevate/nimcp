@@ -1448,6 +1448,11 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
      * conservative default so flipping the toggle Just Works. */
     gl->enable_reconsolidation      = false;
     gl->reconsolidation_decay       = GL_RECONSOLIDATION_DEFAULT_DECAY;
+    /* TB-6 — sentence-boundary segmentation off by default. Trainer
+     * opts in once the curriculum benefits from per-sentence discourse
+     * pushes / sentence-bounded bigram learning. Preserves bit-for-bit
+     * legacy behaviour (one comprehend call → one push_turn) until then. */
+    gl->enable_sentence_segmentation = false;
     gl->discourse.head     = 0;
     gl->discourse.count    = 0;
     gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
@@ -1566,9 +1571,7 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 static bool is_function_word(const char* w);
 static bool is_negation_cue(const char* w);
 
-/* TB-9 forward decls — speech-act classifier helpers. Implementations
- * live next to is_negation_cue below so all the lower-cased-token
- * pattern tests stay colocated. */
+/* TB-9 forward decls — speech-act classifier helpers. */
 static bool is_wh_word(const char* w);
 static bool is_auxiliary(const char* w);
 static bool is_imperative_cue(const char* w);
@@ -1577,6 +1580,10 @@ static bool is_first_person_pronoun(const char* w);
 static gl_speech_act_t classify_speech_act(char* const* words,
                                             uint32_t word_count,
                                             const char* raw_text);
+
+/* TB-6 forward decls — sentence-boundary helpers. */
+static uint32_t gl_count_sentences(const char* text);
+static const char* gl_find_sentence_terminator(const char* p);
 
 /* TA-2 — LGSS evaluator forward decl. The full nimcp_lgss.h umbrella
  * is intentionally NOT included (see comment at the top of the file).
@@ -1742,6 +1749,66 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
         return -1;
     }
     memset(result, 0, sizeof(*result));
+
+    /* TB-6 — sentence-boundary segmentation. When enabled and the input
+     * contains more than one sentence, recursively comprehend every
+     * sentence except the last, then fall through with `text` pointed at
+     * the trailing sentence so the existing single-utterance pipeline
+     * processes it as the caller-visible result. Each sub-call re-enters
+     * comprehend at the top, so per-sentence LGSS / immune / engram /
+     * push_turn all run independently — the trainer's "one discourse
+     * turn per sentence" contract is satisfied because the auto-push at
+     * the bottom of comprehend fires once per recursive call.
+     *
+     * sentences_processed is bumped once per comprehended sentence
+     * (recursive sub-calls + the final fall-through). multi_sentence_inputs
+     * is bumped exactly once on the outer call when sent_count > 1.
+     *
+     * Skipped entirely when the flag is OFF — preserves bit-for-bit
+     * legacy behaviour: a single comprehend → single push_turn. */
+    if (gl->enable_sentence_segmentation) {
+        uint32_t _tb6_sent_count = gl_count_sentences(text);
+        if (_tb6_sent_count > 1) {
+            gl->stats.multi_sentence_inputs++;
+
+            /* Walk text and dispatch each non-final sentence through a
+             * recursive comprehend. The trailing sentence becomes the
+             * caller-visible work below. */
+            const char* p = text;
+            for (uint32_t s = 0; s < _tb6_sent_count - 1; s++) {
+                const char* term = gl_find_sentence_terminator(p);
+                if (!term) break;  /* defensive — count vs find disagree */
+                /* Substring [p .. term] inclusive of the terminator. */
+                size_t slen = (size_t)(term - p) + 1u;
+                char* sub = (char*)nimcp_malloc(slen + 1);
+                if (!sub) break;  /* alloc fail → stop segmenting */
+                memcpy(sub, p, slen);
+                sub[slen] = '\0';
+
+                gl_comprehension_result_t sub_r;
+                memset(&sub_r, 0, sizeof(sub_r));
+                (void)grounded_language_comprehend(gl, sub, &sub_r);
+                gl_comprehension_result_cleanup(&sub_r);
+                nimcp_free(sub);
+
+                /* Advance past the terminator + any trailing whitespace
+                 * so the next sentence starts at its first content char. */
+                p = term + 1;
+                while (*p && isspace((unsigned char)*p)) p++;
+            }
+
+            /* `p` now points at the final sentence; the existing
+             * pipeline below processes it. gl_count_sentences on this
+             * tail returns 1, so the recursive guard does not re-enter. */
+            text = p;
+        }
+        /* Bump per-sentence processed counter once per comprehended
+         * sentence — covers single-sentence input too. Skip on truly
+         * empty input (sent_count == 0) so the counter stays meaningful. */
+        if (_tb6_sent_count >= 1) {
+            gl->stats.sentences_processed++;
+        }
+    }
 
     /* Tokenize */
     size_t text_len = strlen(text);
@@ -2575,6 +2642,38 @@ static gl_speech_act_t classify_speech_act(char* const* words,
 }
 
 /*=============================================================================
+ * TB-6 — sentence-boundary segmentation helpers.
+ *===========================================================================*/
+
+/* Count terminator-bounded sentences in `text`. */
+static uint32_t gl_count_sentences(const char* text) {
+    if (!text) return 0;
+    uint32_t count = 0;
+    bool any_word_in_current = false;
+    for (const char* p = text; *p; p++) {
+        if (*p == '.' || *p == '!' || *p == '?') {
+            if (any_word_in_current) {
+                count++;
+                any_word_in_current = false;
+            }
+        } else if (!isspace((unsigned char)*p)) {
+            any_word_in_current = true;
+        }
+    }
+    if (any_word_in_current) count++;
+    return count;
+}
+
+/* Find the first sentence-terminator (`.`, `!`, `?`) at or after `p`. */
+static const char* gl_find_sentence_terminator(const char* p) {
+    if (!p) return NULL;
+    for (; *p; p++) {
+        if (*p == '.' || *p == '!' || *p == '?') return p;
+    }
+    return NULL;
+}
+
+/*=============================================================================
  * Tier-2 #6 — Sense-disambiguation helper
  *
  * Picks the binding whose concept-features cosine-best aligns with the
@@ -2717,6 +2816,27 @@ uint32_t grounded_language_reconsolidate_word(grounded_language_t* gl,
 bool grounded_language_get_sense_disambiguation_enabled(const grounded_language_t* gl) {
     if (!gl) return false;
     return gl->enable_sense_disambiguation;
+}
+
+/*-----------------------------------------------------------------------------
+ * TB-6 — sentence-boundary segmentation toggle.
+ *
+ * Per-instance runtime knob; not persisted across save/load. Default
+ * OFF (set in grounded_language_create) so legacy "one comprehend call
+ * → one push_turn" behaviour stays bit-for-bit identical until the
+ * trainer opts in. Setter is NULL-safe.
+ *---------------------------------------------------------------------------*/
+
+void grounded_language_set_sentence_segmentation_enabled(grounded_language_t* gl,
+                                                          bool enabled) {
+    if (!gl) return;
+    gl->enable_sentence_segmentation = enabled;
+}
+
+bool grounded_language_get_sentence_segmentation_enabled(
+    const grounded_language_t* gl) {
+    if (!gl) return false;
+    return gl->enable_sentence_segmentation;
 }
 
 /*=============================================================================

@@ -56,6 +56,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_speech_acts
     test_lang_length_control
     test_lang_stream_produce
+    test_lang_sentence_segmentation
 )
 
 # Helper: register a single standalone-C test.
