@@ -270,6 +270,22 @@ int snn_language_bridge_bind(
     uint32_t word_pop,
     float initial_weight);
 
+/** PA-4: additive weight update on an existing or new binding.
+ *
+ * Unlike snn_language_bridge_bind() which takes max(old, new), this adds
+ * `delta` to the binding weight (clamped to [W_MIN, W_MAX]) and creates
+ * the binding if it did not exist. delta may be negative (LTD). Used by
+ * the next-token-loss training path to apply small contrastive updates.
+ *
+ * @return 0 on success, -1 on failure (bridge invalid, pop out of range,
+ *         or allocation failure when creating a new binding).
+ */
+int snn_language_bridge_strengthen_binding(
+    snn_language_bridge_t* bridge,
+    uint32_t concept_pop,
+    uint32_t word_pop,
+    float delta);
+
 /** Prune weak bindings below threshold */
 int snn_language_bridge_prune(
     snn_language_bridge_t* bridge,

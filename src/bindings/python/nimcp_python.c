@@ -2956,6 +2956,39 @@ static PyObject* Brain_set_snn_language_bridge_autoregressive(BrainObject* self,
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_learn_next_token_pair(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* prev_word;
+    const char* next_word;
+    float lr = 0.05f;
+    if (!PyArg_ParseTuple(args, "ss|f", &prev_word, &next_word, &lr)) return NULL;
+    nimcp_status_t s = nimcp_brain_learn_next_token_pair(self->brain,
+                                                          prev_word, next_word, lr);
+    /* NIMCP_ERROR is the cold-start / no-bridge no-op signal. Don't raise —
+     * the caller often loops over many bigrams and just wants a count. */
+    return PyBool_FromLong(s == NIMCP_OK);
+}
+
+static PyObject* Brain_learn_text_bigrams(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* text;
+    float lr = 0.05f;
+    if (!PyArg_ParseTuple(args, "s|f", &text, &lr)) return NULL;
+    int count = 0;
+    nimcp_status_t s = nimcp_brain_learn_text_bigrams(self->brain, text, lr, &count);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "learn_text_bigrams failed");
+        return NULL;
+    }
+    return PyLong_FromLong(count);
+}
+
 static PyObject* Brain_get_immune_state(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -10903,6 +10936,10 @@ static PyMethodDef Brain_methods[] = {
      "PA-5: GloVe-aware decode blend [0,1] — set_snn_language_bridge_glove_blend(blend) -> None. 0=binding-only, 1=embedding-only."},
     {"set_snn_language_bridge_autoregressive", (PyCFunction)Brain_set_snn_language_bridge_autoregressive, METH_VARARGS,
      "PA-2: configure autoregressive decoder — set_snn_language_bridge_autoregressive(intent_persistence, word_feedback) -> None. intent_persistence=0 → legacy in-place blend; >0 keeps prompt intent present every step."},
+    {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
+     "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
+    {"learn_text_bigrams", (PyCFunction)Brain_learn_text_bigrams, METH_VARARGS,
+     "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied updates."},
 
     // Rubric (cognitive output quality evaluation)
     {"rubric", (PyCFunction)Brain_rubric, METH_NOARGS,

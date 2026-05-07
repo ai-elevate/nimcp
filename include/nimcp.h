@@ -1088,6 +1088,32 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_glove_blend(
 );
 
 /**
+ * @brief PA-4: train the SNN language bridge on a single (prev, next) bigram
+ *        via a next-token contrastive update.
+ *
+ * Returns NIMCP_OK on success (update applied), NIMCP_ERROR if the bridge
+ * is unattached or the call was a cold-start no-op (prev has no encoding
+ * yet).
+ */
+nimcp_status_t nimcp_brain_learn_next_token_pair(
+    nimcp_brain_t brain,
+    const char* prev_word,
+    const char* next_word,
+    float lr
+);
+
+/**
+ * @brief PA-4: walk the bigrams of `text` and apply a next-token update
+ *        for each pair. Returns count via *out_count (or NULL).
+ */
+nimcp_status_t nimcp_brain_learn_text_bigrams(
+    nimcp_brain_t brain,
+    const char* text,
+    float lr,
+    int* out_count
+);
+
+/**
  * @brief Configure the autoregressive recurrent decoder (PA-2).
  *
  * @param brain               Brain handle.

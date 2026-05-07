@@ -1447,6 +1447,49 @@ class BrainService:
                 "intent_persistence": intent_persistence,
                 "word_feedback":      word_feedback}
 
+    def _cmd_learn_next_token_pair(self, req):
+        """PA-4: contrastive next-token training on a single bigram.
+
+        Request keys: prev (str), next (str), lr (float, default 0.05).
+        """
+        prev_word = req.get("prev")
+        next_word = req.get("next")
+        if not prev_word or not next_word:
+            return {"error": "learn_next_token_pair requires 'prev' and 'next'"}
+        try:
+            lr = float(req.get("lr", 0.05))
+        except (TypeError, ValueError) as e:
+            return {"error": f"learn_next_token_pair bad lr: {e}"}
+        try:
+            applied = bool(self.brain.learn_next_token_pair(prev_word,
+                                                              next_word, lr))
+        except AttributeError:
+            return {"error": "learn_next_token_pair not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"learn_next_token_pair: {e}"}
+        return {"ok": True, "applied": applied}
+
+    def _cmd_learn_text_bigrams(self, req):
+        """PA-4: walk the text's bigrams and apply next-token training.
+
+        Request keys: text (str), lr (float, default 0.05).
+        Returns: count of applied bigram updates.
+        """
+        text = req.get("text")
+        if not text:
+            return {"error": "learn_text_bigrams requires 'text'"}
+        try:
+            lr = float(req.get("lr", 0.05))
+        except (TypeError, ValueError) as e:
+            return {"error": f"learn_text_bigrams bad lr: {e}"}
+        try:
+            count = int(self.brain.learn_text_bigrams(text, lr))
+        except AttributeError:
+            return {"error": "learn_text_bigrams not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"learn_text_bigrams: {e}"}
+        return {"ok": True, "applied": count}
+
     def _cmd_get_alloc_stats(self, _req):
         """Allocator accounting snapshot — mallinfo2 + /proc + audit + KG."""
         try:

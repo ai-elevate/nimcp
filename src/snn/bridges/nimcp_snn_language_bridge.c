@@ -770,6 +770,44 @@ int snn_language_bridge_bind(snn_language_bridge_t* bridge,
     return node ? 0 : -1;
 }
 
+/* PA-4: additive weight update on a binding. delta may be negative (LTD).
+ * Creates the binding if it didn't exist (with weight = max(0, delta)).
+ * Maintains the cosine norm cache via norm_update. */
+int snn_language_bridge_strengthen_binding(snn_language_bridge_t* bridge,
+                                            uint32_t concept_pop,
+                                            uint32_t word_pop,
+                                            float delta)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (concept_pop >= bridge->num_concept_pops) return -1;
+    if (word_pop >= bridge->num_word_pops) return -1;
+    if (!isfinite(delta)) return -1;
+
+    float w_max = bridge->config.binding_w_max > 0.0f
+                    ? bridge->config.binding_w_max : SNN_LANG_BINDING_W_MAX;
+
+    binding_node_t* existing = binding_find(bridge, concept_pop, word_pop);
+    if (existing) {
+        float old_w = existing->binding.weight;
+        float new_w = old_w + delta;
+        if (new_w < SNN_LANG_BINDING_W_MIN) new_w = SNN_LANG_BINDING_W_MIN;
+        if (new_w > w_max)                  new_w = w_max;
+        if (new_w != old_w) {
+            existing->binding.weight = new_w;
+            norm_update(bridge, word_pop, old_w, new_w);
+        }
+        return 0;
+    }
+
+    /* No existing binding; only create one for positive delta. Negative
+     * delta on a non-existent binding is a no-op — there is nothing to
+     * weaken, and creating a zero-weight binding would just leak memory. */
+    if (delta <= 0.0f) return 0;
+    float new_w = (delta > w_max) ? w_max : delta;
+    binding_node_t* node = binding_insert(bridge, concept_pop, word_pop, new_w);
+    return node ? 0 : -1;
+}
+
 /* PA-6: xorshift64* — small period (~2^64) but more than enough for
  * per-word sampling. Returns a uniform float in [0, 1). */
 static inline uint64_t bridge_rng_u64(snn_language_bridge_t* bridge)

@@ -651,6 +651,46 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(
     grounded_language_t* gl);
 
 /**
+ * @brief PA-4: train the bridge with a single (prev, next) bigram via a
+ *        next-token contrastive update.
+ *
+ * Computes the bridge's prediction conditioned on prev_word's reverse
+ * encoding, then applies LTP toward bindings that should have produced
+ * next_word, and (mild) LTD against false-winner candidates that beat
+ * next_word. Equivalent in effect to one step of softmax cross-entropy
+ * gradient descent on the binding matrix, but without the full softmax —
+ * we only update the target row and the top-1 false-winner row.
+ *
+ * Prerequisites: bridge attached, prev_word has prior bindings (so the
+ * encoding is non-zero). When either condition fails the call is a no-op.
+ *
+ * @param gl         GL handle.
+ * @param prev_word  prefix token.
+ * @param next_word  target next token.
+ * @param lr         per-step learning rate (typical: 0.01–0.05).
+ * @return 0 on update applied, -1 on validation failure or no-op.
+ */
+int grounded_language_learn_next_token_pair(
+    grounded_language_t* gl,
+    const char* prev_word,
+    const char* next_word,
+    float lr);
+
+/**
+ * @brief PA-4: walk the bigrams of `text` and apply a next-token update
+ *        for each pair. Returns the number of bigrams processed.
+ *
+ * @param gl    GL handle.
+ * @param text  utterance to learn from.
+ * @param lr    per-bigram learning rate.
+ * @return non-negative count, or -1 on validation failure.
+ */
+int grounded_language_learn_text_bigrams(
+    grounded_language_t* gl,
+    const char* text,
+    float lr);
+
+/**
  * @brief Connect to working memory — active words get pushed to the
  *        Miller-7±2 buffer with attention-derived salience, so the rest
  *        of the cognitive stack can reason over recently-grounded words.

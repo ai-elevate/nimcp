@@ -2448,6 +2448,151 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {
     return mirrored;
 }
 
+/* ============================================================================
+ * PA-4: Next-token contrastive training on the bridge binding matrix.
+ *
+ * For each (prev, next) bigram:
+ *   1. Encode prev → concept_acts (the bridge's reverse lookup over its
+ *      existing bindings to prev_word_pop).
+ *   2. Decode top-K candidate words via the existing cosine score.
+ *   3. If next_word is not the top-1, apply LTP to bindings (c, next_word)
+ *      for active concepts c, and mild LTD to bindings (c, top_word) for
+ *      the false winner — a one-step approximation of softmax cross-entropy
+ *      gradient descent restricted to the target row and top-1 false
+ *      winner row.
+ *
+ * No-op when bridge is unattached, prev has no encoding (cold-start),
+ * lr is non-positive, or either word can't be hashed into the lexicon.
+ * ============================================================================ */
+int grounded_language_learn_next_token_pair(grounded_language_t* gl,
+                                              const char* prev_word,
+                                              const char* next_word,
+                                              float lr)
+{
+    if (!gl || !prev_word || !next_word) return -1;
+    if (!gl->snn_bridge) return -1;
+    if (!isfinite(lr) || lr <= 0.0f) return -1;
+
+    /* Find/create lexicon entries (assigns form_hash). */
+    gl_lexicon_entry_t* prev_e =
+        gl_internal_lexicon_find_or_create(gl, prev_word);
+    gl_lexicon_entry_t* next_e =
+        gl_internal_lexicon_find_or_create(gl, next_word);
+    if (!prev_e || !next_e) return -1;
+
+    uint32_t prev_word_pop = prev_e->form_hash % SNN_LANG_MAX_WORD_POPS;
+    uint32_t next_word_pop = next_e->form_hash % SNN_LANG_MAX_WORD_POPS;
+
+    /* Make sure both word_pops are registered with the bridge. */
+    snn_language_bridge_register_word(gl->snn_bridge, prev_word_pop,
+                                       prev_e->form);
+    snn_language_bridge_register_word(gl->snn_bridge, next_word_pop,
+                                       next_e->form);
+
+    /* Encode prev_word → concept_acts. Heap allocation since 4096 floats
+     * (16 KB) is too large for the stack. */
+    const uint32_t n_concepts = SNN_LANG_MAX_CONCEPT_POPS;
+    float* concept_acts = (float*)nimcp_calloc(n_concepts, sizeof(float));
+    if (!concept_acts) return -1;
+
+    if (snn_language_bridge_encode_word(gl->snn_bridge, prev_word_pop,
+                                         concept_acts, n_concepts) != 0) {
+        nimcp_free(concept_acts);
+        return -1;
+    }
+
+    /* Cold-start guard: prev_word has no bindings yet. Nothing to condition
+     * on. The first comprehension pass for prev_word will create bindings,
+     * after which subsequent calls of this function become trainable. */
+    float total_act = 0.0f;
+    for (uint32_t c = 0; c < n_concepts; c++) total_act += concept_acts[c];
+    if (total_act <= 1e-6f) {
+        nimcp_free(concept_acts);
+        return -1;
+    }
+
+    /* Decode top-K candidates given prev's encoding. */
+    snn_lang_word_result_t topK[16];
+    uint32_t num_out = 0;
+    int rc = snn_language_bridge_decode_spikes(gl->snn_bridge, concept_acts,
+                                                 n_concepts, topK,
+                                                 16, &num_out);
+    if (rc != 0) {
+        nimcp_free(concept_acts);
+        return -1;
+    }
+
+    /* Find rank of next_word_pop in the top-K (-1 if outside). */
+    int target_rank = -1;
+    for (uint32_t k = 0; k < num_out; k++) {
+        if (topK[k].word_pop == next_word_pop) {
+            target_rank = (int)k;
+            break;
+        }
+    }
+
+    /* LTP on (c, next_word_pop) — pull the target word toward the prefix's
+     * concept activation profile. Active-only: skip near-zero concepts so
+     * we don't waste a binding on noise. The activation threshold mirrors
+     * the existing 0.05 heuristic used elsewhere in the bridge. */
+    const float ltp_threshold = 0.05f;
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        if (concept_acts[c] > ltp_threshold) {
+            float delta = lr * concept_acts[c];
+            snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                    c, next_word_pop, delta);
+        }
+    }
+
+    /* LTD on (c, top-1 false winner) when target wasn't already #1. Half
+     * the LR so LTD is gentler than LTP — biology and softmax CE both
+     * prefer asymmetric updates in this direction. Skip if top-1 is the
+     * target itself (already learned correctly). */
+    if (target_rank != 0 && num_out > 0) {
+        uint32_t false_winner = topK[0].word_pop;
+        if (false_winner != next_word_pop) {
+            float ltd_lr = -0.5f * lr;
+            for (uint32_t c = 0; c < n_concepts; c++) {
+                if (concept_acts[c] > ltp_threshold) {
+                    snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                            c, false_winner,
+                                                            ltd_lr * concept_acts[c]);
+                }
+            }
+        }
+    }
+
+    nimcp_free(concept_acts);
+    return 0;
+}
+
+int grounded_language_learn_text_bigrams(grounded_language_t* gl,
+                                           const char* text, float lr)
+{
+    if (!gl || !text) return -1;
+    if (!gl->snn_bridge) return 0;  /* no bridge → no-op (count 0) */
+    if (!isfinite(lr) || lr <= 0.0f) return -1;
+
+    size_t L = strlen(text);
+    char* buf = (char*)nimcp_malloc(L + 1);
+    if (!buf) return -1;
+    memcpy(buf, text, L + 1);
+
+    char* words[GL_MAX_PRODUCTION_WORDS];
+    uint32_t n = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
+
+    int processed = 0;
+    for (uint32_t i = 0; i + 1 < n; i++) {
+        if (grounded_language_learn_next_token_pair(gl, words[i],
+                                                      words[i + 1], lr) == 0) {
+            processed++;
+        }
+    }
+
+    nimcp_free(buf);
+    return processed;
+}
+
 /*=============================================================================
  * #14 Dialect / accent conditioning
  *===========================================================================*/
