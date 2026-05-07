@@ -1510,13 +1510,15 @@ static float gl_topic_shift_score(const grounded_language_t* gl,
 void grounded_language_destroy(grounded_language_t* gl) {
     if (!gl) return;
 
-    /* Walkthrough round 3 fix: clear our entry from the static spectrum map
-     * BEFORE freeing the gl, so the next gl_get_attached_spectrum cannot
-     * return a spectrum bound to this freed pointer (UAF if the OS reuses
-     * this address for a fresh grounded_language). */
+    /* TC-12: per-gl side-state cleanup. Detach helpers null the per-gl
+     * pointers + free the anaphora ring; afterwards we destroy the
+     * tc12_lock if it was lazily initialized. */
     gl_detach_spectrum_for_destroy(gl);
-    /* Tier-1 #2: same UAF guard for the anaphora side-map. */
     gl_detach_anaphora_for_destroy(gl);
+    if (gl->tc12_lock_inited) {
+        pthread_mutex_destroy(&gl->tc12_lock);
+        gl->tc12_lock_inited = false;
+    }
 
     /* Free lexicon entries */
     if (gl->vocab_list) {
@@ -4271,87 +4273,56 @@ int grounded_language_learn_next_token_triple(grounded_language_t* gl,
  * and brains rarely exceed two in the same process.
  *===========================================================================*/
 
-#define GL_SPECTRUM_MAP_CAP 4
+/* TC-12: per-gl mutex helpers. Initialized lazily on first use so the
+ * gl create path doesn't have to know about pthread initialization
+ * ordering. tc12_lock_inited is volatile-ordered through the same
+ * lock that guards the field once initialized — race on first init is
+ * resolved by a process-wide bootstrap mutex. */
+static pthread_mutex_t g_tc12_bootstrap = PTHREAD_MUTEX_INITIALIZER;
 
-static struct {
-    grounded_language_t* gl;
-    bigram_spectrum_t*   spectrum;
-} g_spectrum_map[GL_SPECTRUM_MAP_CAP] = { {0} };
+static void gl_tc12_lock(grounded_language_t* gl) {
+    /* Lazy init protected by a process-wide bootstrap mutex so concurrent
+     * first-callers don't double-initialize. After init, the per-gl mutex
+     * carries the load alone. */
+    if (!gl->tc12_lock_inited) {
+        pthread_mutex_lock(&g_tc12_bootstrap);
+        if (!gl->tc12_lock_inited) {
+            pthread_mutex_init(&gl->tc12_lock, NULL);
+            gl->tc12_lock_inited = true;
+        }
+        pthread_mutex_unlock(&g_tc12_bootstrap);
+    }
+    pthread_mutex_lock(&gl->tc12_lock);
+}
 
-/* Walkthrough round 3 fix: serialize all access to g_spectrum_map. The map
- * is accessed from training threads (learn_text_bigrams) and concurrent
- * attach/detach from RPC handlers. Without this lock, two threads racing
- * on insert can leave the map in an inconsistent state, and a learn-loop
- * reader can observe a dangling slot mid-update. */
-static pthread_mutex_t g_spectrum_map_lock = PTHREAD_MUTEX_INITIALIZER;
-static uint64_t g_spectrum_map_overflow_warns = 0;
+static void gl_tc12_unlock(grounded_language_t* gl) {
+    pthread_mutex_unlock(&gl->tc12_lock);
+}
 
 static bigram_spectrum_t* gl_get_attached_spectrum(grounded_language_t* gl) {
     if (!gl) return NULL;
-    pthread_mutex_lock(&g_spectrum_map_lock);
-    bigram_spectrum_t* found = NULL;
-    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
-        if (g_spectrum_map[i].gl == gl) {
-            found = g_spectrum_map[i].spectrum;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&g_spectrum_map_lock);
+    gl_tc12_lock(gl);
+    bigram_spectrum_t* found = (bigram_spectrum_t*)gl->bigram_spectrum;
+    gl_tc12_unlock(gl);
     return found;
 }
 
-/* Walkthrough round 3 fix: called from grounded_language_destroy so the
- * map can never hand out a spectrum bound to a freed gl pointer (UAF
- * if the OS later reuses the same address for a fresh gl). */
+/* TC-12: per-gl detach is now part of grounded_language_destroy proper.
+ * Kept as a no-op stub so the existing destroy callsite stays unchanged
+ * (the destroy-time NULLing happens inside the new free helper below). */
 static void gl_detach_spectrum_for_destroy(grounded_language_t* gl) {
     if (!gl) return;
-    pthread_mutex_lock(&g_spectrum_map_lock);
-    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
-        if (g_spectrum_map[i].gl == gl) {
-            g_spectrum_map[i].gl = NULL;
-            g_spectrum_map[i].spectrum = NULL;
-        }
-    }
-    pthread_mutex_unlock(&g_spectrum_map_lock);
+    gl_tc12_lock(gl);
+    gl->bigram_spectrum = NULL;
+    gl_tc12_unlock(gl);
 }
 
 void grounded_language_attach_bigram_spectrum(grounded_language_t* gl,
                                                 void* spectrum) {
     if (!gl) return;
-    bigram_spectrum_t* bs = (bigram_spectrum_t*)spectrum;
-
-    pthread_mutex_lock(&g_spectrum_map_lock);
-
-    /* Replace existing entry if any. */
-    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
-        if (g_spectrum_map[i].gl == gl) {
-            g_spectrum_map[i].spectrum = bs;
-            if (!bs) g_spectrum_map[i].gl = NULL;  /* detach */
-            pthread_mutex_unlock(&g_spectrum_map_lock);
-            return;
-        }
-    }
-    if (!bs) {
-        pthread_mutex_unlock(&g_spectrum_map_lock);
-        return;  /* nothing to detach */
-    }
-
-    /* Insert into first free slot. */
-    for (int i = 0; i < GL_SPECTRUM_MAP_CAP; i++) {
-        if (g_spectrum_map[i].gl == NULL) {
-            g_spectrum_map[i].gl = gl;
-            g_spectrum_map[i].spectrum = bs;
-            pthread_mutex_unlock(&g_spectrum_map_lock);
-            return;
-        }
-    }
-    /* Walkthrough round 3 fix: capacity overflow is now logged + counted
-     * (was silently dropped). Operators can see we ran out of slots. */
-    g_spectrum_map_overflow_warns++;
-    pthread_mutex_unlock(&g_spectrum_map_lock);
-    LOG_WARN(LOG_MODULE,
-             "attach_bigram_spectrum: map full (cap=%d); dropped attach for gl=%p",
-             GL_SPECTRUM_MAP_CAP, (void*)gl);
+    gl_tc12_lock(gl);
+    gl->bigram_spectrum = spectrum;  /* NULL = detach */
+    gl_tc12_unlock(gl);
 }
 
 int grounded_language_tick_bigram_spectrum(grounded_language_t* gl,
@@ -4366,10 +4337,10 @@ int grounded_language_tick_bigram_spectrum(grounded_language_t* gl,
 }
 
 uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void) {
-    pthread_mutex_lock(&g_spectrum_map_lock);
-    uint64_t v = g_spectrum_map_overflow_warns;
-    pthread_mutex_unlock(&g_spectrum_map_lock);
-    return v;
+    /* TC-12: per-gl side-maps cannot overflow (the spectrum is stored
+     * directly on the gl), so this counter is permanently zero now.
+     * Kept for ABI continuity with pre-TC-12 callers. */
+    return 0;
 }
 
 /*=============================================================================
@@ -4385,7 +4356,8 @@ uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void) {
  * bump g_anaphora_resolutions atomically.
  *===========================================================================*/
 
-#define GL_ANAPHORA_MAP_CAP        4
+/* TC-12: GL_ANAPHORA_MAP_CAP retired — anaphora state now lives directly
+ * on each grounded_language_t, no fixed cap. */
 #define GL_ANAPHORA_RING_CAP       8
 
 typedef enum {
@@ -4434,80 +4406,64 @@ static const gl_anaphora_pronoun_entry_t g_pronouns[] = {
 };
 #define GL_PRONOUN_COUNT (sizeof(g_pronouns) / sizeof(g_pronouns[0]))
 
-static struct {
-    grounded_language_t* gl;
-    gl_anaphora_state_t* state;
-} g_anaphora_map[GL_ANAPHORA_MAP_CAP] = { {0} };
+/* TC-12: process-global resolution counter — kept as an atomic-style
+ * uint64 protected by g_tc12_bootstrap. Public API
+ * grounded_language_anaphora_resolutions() is process-wide (no gl arg)
+ * so the counter must remain global. */
+static uint64_t g_anaphora_resolutions = 0;
 
-static pthread_mutex_t g_anaphora_map_lock = PTHREAD_MUTEX_INITIALIZER;
-static uint64_t        g_anaphora_resolutions = 0;  /* lock-protected */
-
-/* Map operations. The map lock protects both the slot table AND the
- * per-gl state's ring (we only ever touch state pointers under the
- * lock; readers of the ring also hold the lock). */
+/* Per-gl helpers. The gl's tc12_lock now protects the anaphora_state
+ * pointer + its ring contents. Anaphora state is allocated lazily on
+ * first set_anaphora_enabled call and freed in destroy. */
 
 static gl_anaphora_state_t* anaphora_lookup_locked(grounded_language_t* gl) {
-    for (int i = 0; i < GL_ANAPHORA_MAP_CAP; i++) {
-        if (g_anaphora_map[i].gl == gl) return g_anaphora_map[i].state;
-    }
-    return NULL;
+    return (gl_anaphora_state_t*)gl->anaphora_state;
 }
 
 static gl_anaphora_state_t* anaphora_get_or_create_locked(grounded_language_t* gl) {
-    gl_anaphora_state_t* st = anaphora_lookup_locked(gl);
+    gl_anaphora_state_t* st = (gl_anaphora_state_t*)gl->anaphora_state;
     if (st) return st;
-    /* Insert into first free slot. */
-    for (int i = 0; i < GL_ANAPHORA_MAP_CAP; i++) {
-        if (g_anaphora_map[i].gl == NULL) {
-            st = (gl_anaphora_state_t*)nimcp_calloc(1, sizeof(*st));
-            if (!st) return NULL;
-            g_anaphora_map[i].gl = gl;
-            g_anaphora_map[i].state = st;
-            return st;
-        }
-    }
-    /* Map full — caller will see NULL and bail. */
-    return NULL;
+    st = (gl_anaphora_state_t*)nimcp_calloc(1, sizeof(*st));
+    if (!st) return NULL;
+    gl->anaphora_state = st;
+    return st;
 }
 
 static void gl_detach_anaphora_for_destroy(grounded_language_t* gl) {
     if (!gl) return;
-    pthread_mutex_lock(&g_anaphora_map_lock);
-    for (int i = 0; i < GL_ANAPHORA_MAP_CAP; i++) {
-        if (g_anaphora_map[i].gl == gl) {
-            nimcp_free(g_anaphora_map[i].state);
-            g_anaphora_map[i].gl = NULL;
-            g_anaphora_map[i].state = NULL;
-        }
+    gl_tc12_lock(gl);
+    if (gl->anaphora_state) {
+        nimcp_free(gl->anaphora_state);
+        gl->anaphora_state = NULL;
     }
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
 }
 
 bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
                                               bool enabled) {
     if (!gl) return false;
-    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_tc12_lock(gl);
     gl_anaphora_state_t* st = anaphora_get_or_create_locked(gl);
     if (!st) {
-        pthread_mutex_unlock(&g_anaphora_map_lock);
+        gl_tc12_unlock(gl);
         return false;
     }
     st->enabled = enabled;
-    /* Disabling clears the ring so a later re-enable doesn't carry state
-     * across an explicit OFF window. */
     if (!enabled) {
         st->head = 0;
         st->size = 0;
         memset(st->ring, 0, sizeof(st->ring));
     }
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
     return true;
 }
 
 uint64_t grounded_language_anaphora_resolutions(void) {
-    pthread_mutex_lock(&g_anaphora_map_lock);
+    /* TC-12: process-global counter, briefly serialized via the bootstrap
+     * mutex (cheaper than spinning a dedicated counter mutex for a stat). */
+    pthread_mutex_lock(&g_tc12_bootstrap);
     uint64_t v = g_anaphora_resolutions;
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    pthread_mutex_unlock(&g_tc12_bootstrap);
     return v;
 }
 
@@ -4617,10 +4573,10 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
 
     /* Lock-and-check enabled; if disabled, fast-path return without
      * touching the ring. */
-    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_tc12_lock(gl);
     gl_anaphora_state_t* st = anaphora_lookup_locked(gl);
     if (!st || !st->enabled) {
-        pthread_mutex_unlock(&g_anaphora_map_lock);
+        gl_tc12_unlock(gl);
         return 0;
     }
 
@@ -4720,7 +4676,7 @@ static uint32_t anaphora_run_pass(grounded_language_t* gl,
         anaphora_push_referent(st, lower, g);
     }
 
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
     return resolved_here;
 }
 
@@ -5457,15 +5413,15 @@ static int mt_save_anaphora(grounded_language_t* gl, FILE* f) {
     if (mt_write_u32(f, GL_MULTITURN_MAGIC_ANAPHORA) != 0) return -1;
     if (mt_write_u32(f, GL_MULTITURN_VERSION) != 0) return -1;
 
-    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_tc12_lock(gl);
     gl_anaphora_state_t* st = anaphora_lookup_locked(gl);
     uint8_t present = (st != NULL) ? 1u : 0u;
     if (mt_write_u8(f, present) != 0) {
-        pthread_mutex_unlock(&g_anaphora_map_lock);
+        gl_tc12_unlock(gl);
         return -1;
     }
     if (!present) {
-        pthread_mutex_unlock(&g_anaphora_map_lock);
+        gl_tc12_unlock(gl);
         return 0;
     }
 
@@ -5476,20 +5432,17 @@ static int mt_save_anaphora(grounded_language_t* gl, FILE* f) {
     if (mt_write_u32(f, head) != 0) goto fail;
     if (mt_write_u32(f, size) != 0) goto fail;
 
-    /* Write the entire ring (cap fixed at GL_ANAPHORA_RING_CAP) so head
-     * indexing survives the round-trip without a normalize step. */
     for (uint32_t i = 0; i < GL_ANAPHORA_RING_CAP; i++) {
         const gl_anaphora_referent_t* r = &st->ring[i];
-        /* form is fixed-size GL_MAX_WORD_LEN, NUL-padded. */
         if (mt_write_bytes(f, r->form, GL_MAX_WORD_LEN) != 0) goto fail;
         if (mt_write_u32(f, (uint32_t)r->gender) != 0) goto fail;
         if (mt_write_u64(f, r->timestamp_us) != 0) goto fail;
     }
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
     return 0;
 
 fail:
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
     return -1;
 }
 
@@ -5517,15 +5470,13 @@ static int mt_load_anaphora_payload(grounded_language_t* gl, FILE* f,
         return -1;
     }
 
-    pthread_mutex_lock(&g_anaphora_map_lock);
+    gl_tc12_lock(gl);
     gl_anaphora_state_t* st = anaphora_get_or_create_locked(gl);
     if (!st) {
-        pthread_mutex_unlock(&g_anaphora_map_lock);
+        gl_tc12_unlock(gl);
         LOG_WARN(LOG_MODULE,
-                 "mt_load_anaphora: anaphora map full — state lost on this gl");
+                 "mt_load_anaphora: alloc failed — state lost on this gl");
         /* Still consume the payload bytes so we don't desync the file. */
-        gl_anaphora_state_t scratch;
-        memset(&scratch, 0, sizeof(scratch));
         for (uint32_t i = 0; i < GL_ANAPHORA_RING_CAP; i++) {
             char form_buf[GL_MAX_WORD_LEN];
             uint32_t gender = 0;
@@ -5550,16 +5501,15 @@ static int mt_load_anaphora_payload(grounded_language_t* gl, FILE* f,
         if (mt_read_u64(f, &ts) != 0) goto fail;
         memcpy(r->form, form_buf, GL_MAX_WORD_LEN);
         r->form[GL_MAX_WORD_LEN - 1] = '\0';
-        /* Validate gender enum range; clamp anything else to UNKNOWN. */
         if (gender > (uint32_t)GL_GENDER_PLURAL) gender = GL_GENDER_UNKNOWN;
         r->gender = (gl_anaphora_gender_t)gender;
         r->timestamp_us = ts;
     }
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
     return 0;
 
 fail:
-    pthread_mutex_unlock(&g_anaphora_map_lock);
+    gl_tc12_unlock(gl);
     return -1;
 }
 

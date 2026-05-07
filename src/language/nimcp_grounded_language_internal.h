@@ -29,6 +29,7 @@
 #include "cognitive/memory/nimcp_semantic_memory.h"
 
 #include <stdint.h>
+#include <pthread.h>  /* TC-12: per-gl mutex for anaphora + spectrum */
 
 #ifdef __cplusplus
 extern "C" {
@@ -338,6 +339,22 @@ struct grounded_language {
      * advance. Per-instance runtime knob; not persisted across
      * save/load. */
     bool                 enable_speech_act_classification;
+
+    /* TC-12 — per-gl side-state for anaphora + bigram spectrum, replacing
+     * the legacy global side-maps (g_anaphora_map / g_spectrum_map) and
+     * their global mutex. Each map slot was capped at 4 brains in-process
+     * and serialized every reader through one lock; this layout puts the
+     * state directly on the gl with a per-instance mutex so concurrent
+     * comprehend calls across brains never contend.
+     *
+     * `anaphora_state` is owned (allocated lazily on first
+     * grounded_language_set_anaphora_enabled, freed in destroy).
+     * `bigram_spectrum` is borrowed (lifetime owned by the trainer per
+     * the public attach API contract). `tc12_lock` covers both fields. */
+    void*                anaphora_state;     /* gl_anaphora_state_t* (opaque to keep this header minimal) */
+    void*                bigram_spectrum;    /* bigram_spectrum_t* (borrowed) */
+    pthread_mutex_t      tc12_lock;
+    bool                 tc12_lock_inited;
 };
 
 /**
