@@ -4844,6 +4844,22 @@ void grounded_language_get_stats(const grounded_language_t* gl, gl_stats_t* stat
     for (int i = 0; i < 24; i++) sum24 += gl->decayed_ring[i];
     stats->entries_decayed_last_24h = sum24;
     stats->entries_decayed_all_time = gl->decayed_all_time;
+
+    /* TA-2 — mirror the bridge's lgss_outputs_blocked counter into the
+     * gl-level stats struct so callers polling get_stats see a unified
+     * view of "how often did LGSS deny something we tried to comprehend
+     * or produce". The actual write-side counter still lives on the
+     * bridge (the produce gate lives there too); this is read-mirror only.
+     * Stays 0 when no SNN bridge is attached. */
+    if (gl->snn_bridge) {
+        snn_lang_stats_t bridge_stats;
+        memset(&bridge_stats, 0, sizeof(bridge_stats));
+        if (snn_language_bridge_get_stats(
+                (const snn_language_bridge_t*)gl->snn_bridge,
+                &bridge_stats) == 0) {
+            stats->lgss_outputs_blocked = bridge_stats.lgss_outputs_blocked;
+        }
+    }
 }
 
 uint32_t grounded_language_get_semantic_dim(const grounded_language_t* gl) {

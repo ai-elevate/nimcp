@@ -318,10 +318,15 @@ typedef struct {
     /* TA-2 — LGSS gate telemetry. Bumped only when an lgss_context_t
      * has been attached via grounded_language_set_lgss() and a
      * SAFETY_ACTION_DENY result fires. lgss_inputs_blocked counts
-     * comprehend calls that were rejected by the input gate;
-     * lgss_outputs_blocked counts produce calls (driven through the
-     * SNN language bridge) whose generated text was blocked by the
-     * output gate. Both stay 0 when no lgss is attached. */
+     * comprehend calls that were rejected by the input gate.
+     *
+     * lgss_outputs_blocked is RESERVED but currently unused on this
+     * stats struct — the output gate lives on the SNN language bridge,
+     * not on the gl, so the actual produce-side block counter is on
+     * snn_lang_stats_t.lgss_outputs_blocked (read via
+     * snn_language_bridge_get_stats). This field stays at 0 to preserve
+     * the gl_stats_t ABI for callers that already serialize this struct.
+     * Future consolidation could mirror the bridge counter here. */
     uint64_t lgss_inputs_blocked;
     uint64_t lgss_outputs_blocked;
     /* IM-3 — Tier-3 immune content-inspection telemetry. Bumped only when
