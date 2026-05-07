@@ -182,3 +182,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(examples)
+
+# Standalone-C lang/SNN tests (printf+exit, no GTest dep). Optional —
+# only registers if tests/CMakeLists.txt exists. The 21 .c smoke tests
+# under tests/unit/ are wired into ctest there. Run with:
+#   ctest -R "test_lang_|test_bigram|test_snn_lang|test_bulk_lex"
+if(EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+endif()
