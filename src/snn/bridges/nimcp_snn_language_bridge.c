@@ -16,6 +16,7 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
+#include "utils/quantum/nimcp_quantum_monte_carlo.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -278,7 +279,11 @@ snn_lang_config_t snn_lang_config_default(void)
         .activation_tau_ms        = 200.0f,
         /* PA-5+: hyperbolic distance OFF by default. Switching to true
          * makes decode_spikes use 1/(1+d_H(.,.)) instead of cosine. */
-        .use_hyperbolic_embeddings = false
+        .use_hyperbolic_embeddings = false,
+        /* PA-6+: 0 = legacy auto-dispatch (argmax / softmax+top-p driven
+         * by temperature). Modes 1 (softmax-only) and 2 (q-MC) are
+         * explicit opt-ins. */
+        .sampling_mode = 0
     };
     return config;
 }
@@ -944,6 +949,19 @@ int snn_language_bridge_set_sampling(snn_language_bridge_t* bridge,
     return 0;
 }
 
+/* PA-6+: select sampling mode dispatch.
+ *   0 = legacy (argmax / softmax+top-p auto-dispatch by temperature).
+ *   1 = force softmax+top-p (PA-6).
+ *   2 = quantum-Monte-Carlo MCMC sampling. */
+int snn_language_bridge_set_sampling_mode(snn_language_bridge_t* bridge,
+                                            int mode)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (mode < 0 || mode > 2) return -1;
+    bridge->config.sampling_mode = mode;
+    return 0;
+}
+
 /* PA-5 helpers — embedding cache lifecycle. */
 static void emb_cache_free(snn_language_bridge_t* bridge)
 {
@@ -1412,12 +1430,15 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
     bridge->emb_query_override     = intent;
     bridge->emb_query_override_dim = n_concepts;
 
-    /* PA-6: pull config sampling knobs once per produce call. */
+    /* PA-6: pull config sampling knobs once per produce call.
+     * PA-6+: sampling_mode dispatch — 0 = auto, 1 = force softmax+top-p,
+     * 2 = quantum-Monte-Carlo MCMC. */
     const float temperature = bridge->config.temperature;
     const float top_p = (bridge->config.top_p > 0.0f) ? bridge->config.top_p : 1.0f;
     uint32_t topk = bridge->config.produce_topk;
     if (topk == 0)  topk = 5;
     if (topk > 32)  topk = 32;
+    const int sampling_mode = bridge->config.sampling_mode;
 
     for (uint32_t w = 0; w < max_words; w++) {
         // Get top word
@@ -1443,7 +1464,15 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
         }
         if (n_valid == 0) break;
 
-        if (temperature <= 0.0f || n_valid == 1) {
+        /* PA-6+: when sampling_mode == 0 (auto) and temperature == 0, stay
+         * on argmax. Otherwise compute the softmax posterior (used by both
+         * mode 1 / 2). Mode 1 & 2 require T > 0 — if caller set the mode
+         * with T = 0, fall back to argmax to avoid div-by-zero. */
+        const bool need_posterior =
+            (sampling_mode == 1 || sampling_mode == 2) ||
+            (sampling_mode == 0 && temperature > 0.0f);
+
+        if (!need_posterior || n_valid == 1) {
             /* Legacy hard-argmax path: pick the first valid (highest cosine). */
             word_result = topK[valid_idx[0]];
         } else {
@@ -1459,14 +1488,33 @@ int snn_language_bridge_produce(snn_language_bridge_t* bridge,
             }
             float probs[32];
             float sum = 0.0f;
+            float T = (temperature > 0.0f) ? temperature : 1.0f;
             for (uint32_t i = 0; i < n_valid; i++) {
-                probs[i] = expf((scores[i] - max_score) / temperature);
+                probs[i] = expf((scores[i] - max_score) / T);
                 sum += probs[i];
             }
             if (sum <= 0.0f) {
                 word_result = topK[valid_idx[0]];
             } else {
                 for (uint32_t i = 0; i < n_valid; i++) probs[i] /= sum;
+
+                /* PA-6+: q-MC route. Feed sqrt(probs) as quantum
+                 * amplitudes — the quantum-MC importance sampler then
+                 * draws |amp|² == probs. Single quantum measurement. */
+                if (sampling_mode == 2) {
+                    float amps[32];
+                    for (uint32_t i = 0; i < n_valid; i++) {
+                        amps[i] = sqrtf(probs[i]);
+                    }
+                    uint32_t qseed = (uint32_t)(bridge_rng_u64(bridge) & 0xFFFFFFFFu);
+                    if (qseed == 0) qseed = 1;
+                    uint32_t chosen = qmc_measure_importance(amps, n_valid,
+                                                              /*proposal=*/NULL,
+                                                              &qseed);
+                    if (chosen >= n_valid) chosen = 0;
+                    word_result = topK[valid_idx[chosen]];
+                    goto sample_done;
+                }
 
                 if (top_p < 1.0f) {
                     /* Sort indices by descending prob (insertion sort, n≤32). */

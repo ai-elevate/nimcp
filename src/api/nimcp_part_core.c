@@ -3642,6 +3642,20 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_hyperbolic_embeddings(
     return NIMCP_OK;
 }
 
+/* PA-6+: select produce-time sampling mode (0=auto, 1=softmax, 2=q-MC). */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling_mode(
+    nimcp_brain_t brain,
+    int mode)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_sampling_mode(b->snn_lang_bridge, mode);
+    if (rc != 0) return NIMCP_ERROR_INVALID;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_pair(nimcp_brain_t brain,
                                                    const char* prev_word,
                                                    const char* next_word,

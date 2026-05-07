@@ -143,6 +143,13 @@ typedef struct {
      * Poincaré ball via tanh(‖v‖)·v/‖v‖ at query-time. Default false
      * reproduces Euclidean cosine PA-5 behavior bit-for-bit. */
     bool     use_hyperbolic_embeddings;
+    /* PA-6+: produce-time sampling mode dispatch.
+     *   0 = legacy / argmax (temperature == 0 path)
+     *   1 = softmax + nucleus top-p (PA-6, default when temperature > 0)
+     *   2 = quantum-Monte-Carlo MCMC sampling over candidate scores.
+     * Mode 1 is auto-selected when temperature > 0 and sampling_mode == 0
+     * (preserves PA-6 callers). Mode 2 must be set explicitly. */
+    int      sampling_mode;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -454,6 +461,20 @@ int snn_language_bridge_invalidate_emb_cache(snn_language_bridge_t* bridge);
  */
 int snn_language_bridge_set_hyperbolic_embeddings(snn_language_bridge_t* bridge,
                                                    bool enabled);
+
+/** PA-6+: select produce-time sampling mode.
+ *
+ * @param mode  0 = legacy (argmax when temperature == 0; softmax+top-p
+ *              otherwise — equivalent to PA-6 dispatch).
+ *              1 = force softmax + nucleus top-p (PA-6).
+ *              2 = quantum-Monte-Carlo MCMC sampling (q-MC).
+ * Modes 1 and 2 require a pre-set temperature > 0 to seed the
+ * candidate distribution.
+ *
+ * @return 0 on success, -1 if bridge invalid or mode out of range.
+ */
+int snn_language_bridge_set_sampling_mode(snn_language_bridge_t* bridge,
+                                            int mode);
 
 /** PA-2: configure the autoregressive recurrent decoder.
  *

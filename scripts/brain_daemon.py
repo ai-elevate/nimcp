@@ -1482,6 +1482,26 @@ class BrainService:
             return {"error": f"set_hyperbolic_embeddings: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_set_snn_language_bridge_sampling_mode(self, req):
+        """PA-6+: select produce-time sampling mode.
+
+        Request keys:
+          mode  (int, required) — 0=auto/PA-6, 1=softmax+top-p, 2=q-MC.
+        """
+        try:
+            mode = int(req.get("mode", 0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_sampling_mode bad arg: {e}"}
+        try:
+            self.brain.set_snn_language_bridge_sampling_mode(mode)
+        except AttributeError:
+            return {"error": "set_snn_language_bridge_sampling_mode not available — rebuild nimcp.so"}
+        except ValueError as e:
+            return {"error": f"set_sampling_mode rejected: {e}"}
+        except Exception as e:
+            return {"error": f"set_sampling_mode: {e}"}
+        return {"ok": True, "mode": mode}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 

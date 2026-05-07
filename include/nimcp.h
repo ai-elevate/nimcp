@@ -1117,6 +1117,23 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_hyperbolic_embeddings(
 );
 
 /**
+ * @brief PA-6+: select produce-time sampling mode.
+ *
+ * @param mode  0 = legacy auto (argmax / softmax+top-p driven by
+ *              temperature; preserves PA-6 callers).
+ *              1 = force softmax + nucleus top-p (PA-6).
+ *              2 = quantum-Monte-Carlo MCMC sampling.
+ * Modes 1 and 2 require a pre-set temperature > 0 to seed the candidate
+ * distribution.
+ *
+ * @return NIMCP_OK / NIMCP_ERROR_INVALID / NIMCP_ERROR.
+ */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_sampling_mode(
+    nimcp_brain_t brain,
+    int mode
+);
+
+/**
  * @brief PA-4: train the SNN language bridge on a single (prev, next) bigram
  *        via a next-token contrastive update.
  *
