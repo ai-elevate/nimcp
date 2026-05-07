@@ -456,6 +456,20 @@ int snn_language_bridge_get_config(
 float snn_language_bridge_get_avg_produce_us(
     const snn_language_bridge_t* bridge);
 
+/** Tier-4 #17: explicit RNG seed for deterministic sampling tests.
+ *
+ * The bridge's xorshift64* RNG state is seeded at create() from
+ * (time XOR pointer-mix), which is fine for production but makes tests
+ * that exercise softmax/top-p/q-MC sampling flaky on slow runners. This
+ * setter writes `seed` directly into the RNG state. xorshift64 requires a
+ * non-zero state, so seed=0 is remapped to 1 (caller does not need to
+ * special-case it).
+ *
+ * @return 0 on success; -1 if bridge is NULL or magic mismatched. */
+int snn_language_bridge_set_rng_seed(
+    snn_language_bridge_t* bridge,
+    uint64_t seed);
+
 /** Get current spike blend factor */
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge);
 

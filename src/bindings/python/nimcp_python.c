@@ -3042,6 +3042,25 @@ static PyObject* Brain_set_snn_language_bridge_sampling_mode(BrainObject* self, 
     Py_RETURN_NONE;
 }
 
+/* Tier-4 #17: explicit RNG seed for deterministic sampling tests. */
+static PyObject* Brain_set_snn_language_bridge_rng_seed(BrainObject* self,
+                                                         PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    /* "K" parses Python int → unsigned long long (== uint64_t on LP64). */
+    unsigned long long seed = 0ULL;
+    if (!PyArg_ParseTuple(args, "K", &seed)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_snn_language_bridge_rng_seed(
+        self->brain, (uint64_t)seed);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN-language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* Tier-4 #15: consolidated config getter — returns Python dict. */
 static PyObject* Brain_get_snn_language_bridge_config(BrainObject* self,
                                                        PyObject* Py_UNUSED(ignored)) {
@@ -11123,6 +11142,8 @@ static PyMethodDef Brain_methods[] = {
      "PA-6+: select produce-time sampling mode — set_snn_language_bridge_sampling_mode(mode) -> None. 0=auto (PA-6), 1=force softmax+top-p, 2=quantum-MC MCMC sampling."},
     {"get_snn_language_bridge_config", (PyCFunction)Brain_get_snn_language_bridge_config, METH_NOARGS,
      "Tier-4 #15: get full SNN-language bridge config — get_snn_language_bridge_config() -> dict. Returns every PA/MQ knob (temperature, top_p, glove_blend, intent_persistence, word_feedback, sampling_mode, use_hyperbolic_embeddings, enable_snn_spike_routing, activation_tau_ms, etc.)."},
+    {"set_snn_language_bridge_rng_seed", (PyCFunction)Brain_set_snn_language_bridge_rng_seed, METH_VARARGS,
+     "Tier-4 #17: explicitly seed the bridge sampling RNG for deterministic tests — set_snn_language_bridge_rng_seed(seed: int) -> None. seed=0 is silently remapped to 1 (xorshift64 needs nonzero state)."},
     {"learn_next_token_pair", (PyCFunction)Brain_learn_next_token_pair, METH_VARARGS,
      "PA-4: contrastive next-token training on a single bigram — learn_next_token_pair(prev, next, lr=0.05) -> bool. True if the update was applied; False on cold-start no-op."},
     {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,

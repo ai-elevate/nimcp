@@ -3734,6 +3734,19 @@ nimcp_status_t nimcp_brain_get_snn_language_bridge_config(
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/* Tier-4 #17: explicit RNG seed (deterministic sampling tests). */
+nimcp_status_t nimcp_brain_set_snn_language_bridge_rng_seed(
+    nimcp_brain_t brain,
+    uint64_t seed)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_rng_seed(b->snn_lang_bridge, seed);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_pair(nimcp_brain_t brain,
                                                    const char* prev_word,
                                                    const char* next_word,

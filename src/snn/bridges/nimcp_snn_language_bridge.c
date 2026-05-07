@@ -1032,6 +1032,19 @@ static inline float bridge_rng_unit(snn_language_bridge_t* bridge)
     return (float)bits * (1.0f / 16777216.0f);
 }
 
+/* Tier-4 #17: explicit RNG seed — overrides the create()-time
+ * (time XOR pointer-mix). Sampling tests (PA-6, MQ-A) seed with a known
+ * constant to make picks reproducible across runs. xorshift64 collapses
+ * to a permanent zero on a zero state, so we remap seed=0 → 1 silently
+ * (caller need not special-case it). */
+int snn_language_bridge_set_rng_seed(snn_language_bridge_t* bridge,
+                                       uint64_t seed)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->rng_state = (seed == 0ULL) ? 1ULL : seed;
+    return 0;
+}
+
 int snn_language_bridge_set_sampling(snn_language_bridge_t* bridge,
                                       float temperature, float top_p)
 {
