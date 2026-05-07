@@ -3273,6 +3273,43 @@ static PyObject* Brain_learn_text_bigrams(BrainObject* self, PyObject* args) {
     return PyLong_FromLong(count);
 }
 
+/* TA-4: toggle trigram next-token learning (default OFF). */
+static PyObject* Brain_set_trigram_learning_enabled(BrainObject* self,
+                                                      PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_trigram_learning_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "no SNN language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* TA-4: train one (prev1, prev2, next) trigram. */
+static PyObject* Brain_learn_next_token_triple(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* prev1;
+    const char* prev2;
+    const char* next_word;
+    float lr = 0.025f;  /* default = half the bigram default (0.05) */
+    if (!PyArg_ParseTuple(args, "sss|f", &prev1, &prev2, &next_word, &lr)) return NULL;
+    nimcp_status_t s = nimcp_brain_learn_next_token_triple(self->brain,
+                                                             prev1, prev2,
+                                                             next_word, lr);
+    /* NIMCP_ERROR is the cold-start / no-bridge no-op signal (same
+     * convention as learn_next_token_pair). */
+    return PyBool_FromLong(s == NIMCP_OK);
+}
+
 /* Tier-2 #3: toggle negation-driven activation sign inversion. */
 static PyObject* Brain_set_grounded_negation_enabled(BrainObject* self,
                                                        PyObject* args) {
@@ -11369,7 +11406,11 @@ static PyMethodDef Brain_methods[] = {
     {"learn_next_token_pair_riemannian", (PyCFunction)Brain_learn_next_token_pair_riemannian, METH_VARARGS,
      "PA-4+: Riemannian / sigmoid-reparameterized next-token training on a single bigram — learn_next_token_pair_riemannian(prev, next, lr=0.05) -> bool. Fisher-preconditioned step in u-space (w=σ(u)); damps automatically near binding boundaries. Mid-range matches the flat path within ~5%."},
     {"learn_text_bigrams", (PyCFunction)Brain_learn_text_bigrams, METH_VARARGS,
-     "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied updates."},
+     "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied bigram updates. If trigram learning is enabled (set_trigram_learning_enabled), each step also walks (w_t, w_{t+1}) → w_{t+2} at half lr."},
+    {"set_trigram_learning_enabled", (PyCFunction)Brain_set_trigram_learning_enabled, METH_VARARGS,
+     "TA-4: toggle trigram next-token learning — set_trigram_learning_enabled(enabled: bool) -> None. Default OFF (preserves PA-4 bigram-only behavior)."},
+    {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,
+     "TA-4: contrastive next-token training on a single (prev1, prev2) → next trigram — learn_next_token_triple(prev1, prev2, next, lr=0.025) -> bool. Context is the average of prev1 and prev2 reverse-encodings; LTP/LTD applied like the bigram path. Returns True on update applied; False on cold-start no-op (any of the three tokens without prior bindings)."},
     {"set_grounded_negation_enabled", (PyCFunction)Brain_set_grounded_negation_enabled, METH_VARARGS,
      "Tier-2 #3: toggle comprehend negation polarity (sign-flip on cue) — set_grounded_negation_enabled(enabled) -> None. Default ON."},
     {"set_grounded_sense_disambiguation_enabled", (PyCFunction)Brain_set_grounded_sense_disambiguation_enabled, METH_VARARGS,

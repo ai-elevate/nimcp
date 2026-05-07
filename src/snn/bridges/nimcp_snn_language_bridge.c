@@ -142,6 +142,12 @@ struct snn_language_bridge {
     // Current time
     float current_time_ms;
 
+    /* TA-4: runtime-only flag (NOT persisted) gating trigram next-token
+     * training in grounded_language_learn_text_bigrams. Default false →
+     * PA-4 behavior is preserved bit-for-bit. Callers opt in via
+     * snn_language_bridge_set_trigram_learning_enabled. */
+    bool enable_trigram_learning;
+
     // Statistics
     snn_lang_stats_t stats;
 };
@@ -2512,6 +2518,33 @@ float snn_language_bridge_get_avg_produce_us(const snn_language_bridge_t* bridge
     if (bridge->stats.produce_call_count == 0) return 0.0f;
     return (float)bridge->stats.produce_total_us /
            (float)bridge->stats.produce_call_count;
+}
+
+/* TA-4: trigram-learning runtime flag accessors. */
+int snn_language_bridge_set_trigram_learning_enabled(
+    snn_language_bridge_t* bridge,
+    bool enabled)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->enable_trigram_learning = enabled;
+    return 0;
+}
+
+bool snn_language_bridge_get_trigram_learning_enabled(
+    const snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
+    return bridge->enable_trigram_learning;
+}
+
+/* TA-4: bump the trigram-update counter. Internal helper used from
+ * grounded_language_learn_next_token_triple — exposed within the bridge
+ * .c only via the snn_language_bridge_inc_trigram_updates symbol below
+ * so the counter mutation stays inside the bridge's encapsulation. */
+void snn_language_bridge_inc_trigram_updates(snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return;
+    bridge->stats.total_trigram_updates++;
 }
 
 void snn_lang_production_result_cleanup(snn_lang_production_result_t* result)

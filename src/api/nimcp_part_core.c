@@ -3869,6 +3869,34 @@ nimcp_status_t nimcp_brain_learn_text_bigrams(nimcp_brain_t brain,
     return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_set_trigram_learning_enabled(nimcp_brain_t brain,
+                                                          bool enabled)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_trigram_learning_enabled(
+        b->snn_lang_bridge, enabled);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_learn_next_token_triple(nimcp_brain_t brain,
+                                                     const char* prev1,
+                                                     const char* prev2,
+                                                     const char* next_word,
+                                                     float lr)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int rc = grounded_language_learn_next_token_triple(b->grounded_lang,
+                                                         prev1, prev2,
+                                                         next_word, lr);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /*=============================================================================
  * Tier-2 #3 / #6 / #7 brain wrappers — toggle negation, toggle word-sense
  * disambiguation, push a discourse turn, query / clamp the discourse buffer.

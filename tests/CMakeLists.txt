@@ -47,6 +47,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_bulk_lexicon
     test_lang_multiturn_persistence
     test_lang_lgss_gates
+    test_lang_trigram_learning
 )
 
 # Helper: register a single standalone-C test.

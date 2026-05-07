@@ -3290,6 +3290,156 @@ int grounded_language_learn_next_token_pair_riemannian(grounded_language_t* gl,
     return 0;
 }
 
+/* ============================================================================
+ * TA-4: Trigram next-token training.
+ *
+ * Same one-step contrastive update as learn_next_token_pair, but the
+ * conditioning prefix is the average of TWO prior tokens' reverse encodings.
+ * The merged context vector lets LTP/LTD reflect a (prev1, prev2) → next
+ * association without modifying the bridge's binding-shape (still
+ * concept_acts → word_pop bindings, just with a richer prefix).
+ *
+ * Default OFF. Activated only when the bridge's trigram-learning runtime
+ * flag is on AND callers explicitly invoke this function (or
+ * learn_text_bigrams under the flag).
+ *
+ * Cold-start: if EITHER prev1 OR prev2 encodes to all-zero (no prior
+ * bridge bindings), the merged context is too sparse to teach against,
+ * so we skip and bump the shared cold-start counter.
+ * ============================================================================ */
+int grounded_language_learn_next_token_triple(grounded_language_t* gl,
+                                                const char* prev1,
+                                                const char* prev2,
+                                                const char* next_word,
+                                                float lr)
+{
+    if (!gl || !prev1 || !prev2 || !next_word) return -1;
+    if (!gl->snn_bridge) return -1;
+    if (!isfinite(lr) || lr <= 0.0f) return -1;
+
+    /* Find/create lexicon entries for all three tokens. */
+    gl_lexicon_entry_t* p1_e =
+        gl_internal_lexicon_find_or_create(gl, prev1);
+    gl_lexicon_entry_t* p2_e =
+        gl_internal_lexicon_find_or_create(gl, prev2);
+    gl_lexicon_entry_t* next_e =
+        gl_internal_lexicon_find_or_create(gl, next_word);
+    if (!p1_e || !p2_e || !next_e) return -1;
+
+    uint32_t p1_word_pop   = p1_e->form_hash   % SNN_LANG_MAX_WORD_POPS;
+    uint32_t p2_word_pop   = p2_e->form_hash   % SNN_LANG_MAX_WORD_POPS;
+    uint32_t next_word_pop = next_e->form_hash % SNN_LANG_MAX_WORD_POPS;
+
+    /* Register all three with the bridge. */
+    snn_language_bridge_register_word(gl->snn_bridge, p1_word_pop,   p1_e->form);
+    snn_language_bridge_register_word(gl->snn_bridge, p2_word_pop,   p2_e->form);
+    snn_language_bridge_register_word(gl->snn_bridge, next_word_pop, next_e->form);
+
+    const uint32_t n_concepts = SNN_LANG_MAX_CONCEPT_POPS;
+    float* acts1 = (float*)nimcp_calloc(n_concepts, sizeof(float));
+    float* acts2 = (float*)nimcp_calloc(n_concepts, sizeof(float));
+    float* context = (float*)nimcp_calloc(n_concepts, sizeof(float));
+    if (!acts1 || !acts2 || !context) {
+        if (acts1)   nimcp_free(acts1);
+        if (acts2)   nimcp_free(acts2);
+        if (context) nimcp_free(context);
+        return -1;
+    }
+
+    int rc1 = snn_language_bridge_encode_word(gl->snn_bridge, p1_word_pop,
+                                                acts1, n_concepts);
+    int rc2 = snn_language_bridge_encode_word(gl->snn_bridge, p2_word_pop,
+                                                acts2, n_concepts);
+    if (rc1 != 0 || rc2 != 0) {
+        nimcp_free(acts1); nimcp_free(acts2); nimcp_free(context);
+        return -1;
+    }
+
+    /* Cold-start guards: BOTH prev1 and prev2 must have prior bindings.
+     * If either is uninformative the merged context collapses toward the
+     * other token's bigram-conditioned signal, which is what
+     * learn_next_token_pair already gives us — no need to redo it here. */
+    float total1 = 0.0f, total2 = 0.0f;
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        total1 += acts1[c];
+        total2 += acts2[c];
+    }
+    if (total1 <= 1e-6f || total2 <= 1e-6f) {
+        gl_next_token_cold_start_skips_inc(prev1, next_word);
+        nimcp_free(acts1); nimcp_free(acts2); nimcp_free(context);
+        return -1;
+    }
+
+    /* Merged context = arithmetic mean of the two encodings. Equal weights
+     * is the simplest baseline; positional weighting (e.g. 0.4·prev1 +
+     * 0.6·prev2) is a future TA-4+ knob. */
+    float total_ctx = 0.0f;
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        context[c] = 0.5f * (acts1[c] + acts2[c]);
+        total_ctx += context[c];
+    }
+    if (total_ctx <= 1e-6f) {
+        /* Safety net: shouldn't trigger given both totals are >ε, but
+         * floating-point cancellation could in principle reduce the sum. */
+        gl_next_token_cold_start_skips_inc(prev1, next_word);
+        nimcp_free(acts1); nimcp_free(acts2); nimcp_free(context);
+        return -1;
+    }
+
+    /* Decode top-K conditioned on merged context to find the false winner. */
+    snn_lang_word_result_t topK[16];
+    uint32_t num_out = 0;
+    int rc = snn_language_bridge_decode_spikes(gl->snn_bridge, context,
+                                                 n_concepts, topK,
+                                                 16, &num_out);
+    if (rc != 0) {
+        nimcp_free(acts1); nimcp_free(acts2); nimcp_free(context);
+        return -1;
+    }
+
+    int target_rank = -1;
+    for (uint32_t k = 0; k < num_out; k++) {
+        if (topK[k].word_pop == next_word_pop) {
+            target_rank = (int)k;
+            break;
+        }
+    }
+
+    /* LTP on (c, next_word_pop) using the merged context. Same threshold
+     * + active-only filter as the bigram path. */
+    const float ltp_threshold = 0.05f;
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        if (context[c] > ltp_threshold) {
+            float delta = lr * context[c];
+            snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                    c, next_word_pop, delta);
+        }
+    }
+
+    /* LTD on top-1 false winner, half-strength (matches bigram path). */
+    if (target_rank != 0 && num_out > 0) {
+        uint32_t false_winner = topK[0].word_pop;
+        if (false_winner != next_word_pop) {
+            float ltd_lr = -0.5f * lr;
+            for (uint32_t c = 0; c < n_concepts; c++) {
+                if (context[c] > ltp_threshold) {
+                    snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                            c, false_winner,
+                                                            ltd_lr * context[c]);
+                }
+            }
+        }
+    }
+
+    /* Bridge stat: one-trigram-update-per-call, regardless of how many
+     * concept rows were touched. Mirrors the "applied bool" semantics of
+     * the bigram path's return value. */
+    snn_language_bridge_inc_trigram_updates(gl->snn_bridge);
+
+    nimcp_free(acts1); nimcp_free(acts2); nimcp_free(context);
+    return 0;
+}
+
 /*=============================================================================
  * PA-4+ : optional bigram-spectrum tracker
  *
@@ -3764,6 +3914,15 @@ int grounded_language_learn_text_bigrams(grounded_language_t* gl,
     bigram_spectrum_t* spectrum = gl_get_attached_spectrum(gl);
     uint32_t spec_cap = spectrum ? bigram_spectrum_vocab_cap(spectrum) : 0u;
 
+    /* TA-4: snapshot the trigram-learning flag once per call so a
+     * concurrent toggle can't make us emit a half-bigram-half-trigram
+     * pass. Default OFF preserves PA-4 bit-for-bit. */
+    const bool do_trigrams =
+        snn_language_bridge_get_trigram_learning_enabled(gl->snn_bridge);
+    /* Half lr on trigram pass to avoid trigram dominance — matches the
+     * default ratio recommended in the TA-4 brief. */
+    const float trigram_lr = lr * 0.5f;
+
     int processed = 0;
     for (uint32_t i = 0; i + 1 < n; i++) {
         if (grounded_language_learn_next_token_pair(gl, words[i],
@@ -3784,6 +3943,19 @@ int grounded_language_learn_text_bigrams(grounded_language_t* gl,
                     bigram_spectrum_record(spectrum, pid, nid);
                 }
             }
+        }
+
+        /* TA-4: also walk trigrams (a, b) → c when enabled. Half lr so
+         * the bigram update remains the dominant signal. Cold-start
+         * (any of the three tokens un-encoded) cleanly returns -1 from
+         * the triple call without applying. The trigram counter on the
+         * bridge is bumped from inside the triple call. */
+        if (do_trigrams && i + 2 < n) {
+            (void)grounded_language_learn_next_token_triple(gl,
+                                                              words[i],
+                                                              words[i + 1],
+                                                              words[i + 2],
+                                                              trigram_lr);
         }
     }
 
