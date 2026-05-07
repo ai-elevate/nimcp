@@ -3450,6 +3450,25 @@ nimcp_status_t nimcp_brain_set_grounded_engram_enabled(
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/* IM-3 — Tier-3 immune content-inspection toggle on grounded_language.
+ * Wires brain->immune_system into the grounded_language pass and flips
+ * the enabled flag in one shot. brain->immune_system is created during
+ * the cognitive/safety init wave; NULL means immune is disabled in
+ * brain config or the wave hasn't run yet — return NIMCP_ERROR. */
+nimcp_status_t nimcp_brain_set_grounded_immune_enabled(
+    nimcp_brain_t brain,
+    bool enabled)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    if (!b->immune_system) return NIMCP_ERROR;
+    int rc = grounded_language_set_immune_system(b->grounded_lang,
+                                                   b->immune_system, enabled);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /*=============================================================================
  * PA-4+ : Bigram FFT spectral metrics
  *

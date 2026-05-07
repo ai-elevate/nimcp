@@ -1370,6 +1370,36 @@ nimcp_status_t nimcp_brain_set_grounded_engram_enabled(
 );
 
 /**
+ * @brief Toggle Tier-3 immune content inspection on grounded_language.
+ *
+ * When enabled, comprehend() runs cheap read-only heuristics over the
+ * input + activations on every call. The resulting inflammation level
+ * damps comprehension_confidence, registers an antigen with the brain
+ * immune system on suspicious inputs, and (for strongly inflamed
+ * inputs) skips the engram-encode hook so adversarial text doesn't
+ * lay down memory traces.
+ *
+ * Heuristics: NaN/Inf in activations, statistical outliers (>5σ vs
+ * running mean), repetition spam (>50% same token), lexicon collision
+ * (>80% OOV on long inputs), and stacked negation cascades. Each
+ * heuristic contributes a small delta to a [0..1]-clamped inflammation
+ * level. Antigen registration triggers at 0.5; engram skip at 0.7.
+ *
+ * The brain's immune_system (created during the cognitive/safety init
+ * wave) is wired in automatically; callers don't pass it. Returns
+ * NIMCP_ERROR if either grounded_language or immune_system is missing.
+ *
+ * Default OFF.
+ *
+ * @param brain    Brain handle.
+ * @param enabled  true = active, false = no-op.
+ */
+nimcp_status_t nimcp_brain_set_grounded_immune_enabled(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/**
  * @brief Configure the autoregressive recurrent decoder (PA-2).
  *
  * @param brain               Brain handle.

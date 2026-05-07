@@ -293,6 +293,16 @@ typedef struct {
      * into the result. */
     uint64_t engram_encodes;
     uint64_t engram_recalls;
+    /* IM-3 — Tier-3 immune content-inspection telemetry. Bumped only when
+     * a brain_immune_system has been attached via
+     * grounded_language_set_immune_system and integration is enabled.
+     * immune_inspections counts every comprehend pass that ran the
+     * inspection heuristics; immune_antigens_registered counts the
+     * inspections whose inflammation crossed the suspicious threshold
+     * (>0.5) and resulted in an antigen being presented to the brain
+     * immune system. */
+    uint64_t immune_inspections;
+    uint64_t immune_antigens_registered;
 } gl_stats_t;
 
 /**
@@ -1022,6 +1032,54 @@ int grounded_language_set_engram_system(
  * @return true if pointer is non-NULL AND enabled flag is true.
  */
 bool grounded_language_engram_enabled(const grounded_language_t* gl);
+
+/**
+ * @brief Attach the brain-level immune system for Tier-3 content
+ *        inspection on grounded_language_comprehend.
+ *
+ * WHAT: When enabled, every comprehend() pass runs a small set of
+ *       cheap, read-only heuristics over the input + activations
+ *       (NaN/Inf, statistical outliers, repetition spam, lexicon
+ *       collisions, negation cascades). The heuristics produce a
+ *       continuous inflammation level in [0..1] that:
+ *         (a) damps comprehension_confidence (×(1 - 0.5*inflammation)),
+ *         (b) registers an antigen via brain_immune_present_antigen
+ *             when inflammation > 0.5,
+ *         (c) suppresses the engram-encode hook when inflammation > 0.7
+ *             (poisoned input shouldn't lay down memory traces).
+ *
+ * WHY:  Today comprehend trusts every input — adversarial / poisoned
+ *       text gets the same treatment as benign text. Tier-3 content
+ *       inspection brings the brain immune system into the language
+ *       hot path so suspicious patterns are surfaced as antigens
+ *       (visible to the immune state machine) and downgraded in
+ *       confidence + skipped from memory consolidation.
+ *
+ * HOW:  Borrowed pointer; not owned, not serialized. Caller (brain
+ *       init) re-attaches after every load. Default OFF — pass
+ *       enabled=false to detach without freeing. NULL-safe — when
+ *       no immune_system is attached the inspection becomes a no-op.
+ *
+ * READ-ONLY: This pass does NOT reshape the comprehended activations.
+ * Only confidence and the engram-skip decision are affected.
+ *
+ * @param gl                  System handle.
+ * @param brain_immune_system brain_immune_system_t* (opaque here).
+ * @param enabled             true = active, false = pointer stored
+ *                            but no-op.
+ * @return 0 on success, -1 on NULL gl.
+ */
+int grounded_language_set_immune_system(grounded_language_t* gl,
+                                          void* brain_immune_system,
+                                          bool enabled);
+
+/**
+ * @brief Query whether Tier-3 immune content inspection is currently
+ *        active.
+ *
+ * @return true if pointer is non-NULL AND enabled flag is true.
+ */
+bool grounded_language_immune_enabled(const grounded_language_t* gl);
 
 /**
  * @brief Connect Broca's area adapter — every new lexicon entry is

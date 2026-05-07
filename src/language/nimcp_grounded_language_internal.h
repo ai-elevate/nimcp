@@ -245,6 +245,35 @@ struct grounded_language {
      * after every brain init / load. Default: pointer NULL, flag false. */
     void* engram_system;
     bool  engram_enabled;
+
+    /* IM-3 — Tier-3 immune content inspection. Borrowed pointer to the
+     * brain-level brain_immune_system_t, attached via
+     * grounded_language_set_immune_system(). When `immune_enabled` is
+     * true and the pointer is non-NULL, comprehend runs cheap read-only
+     * heuristics over the input + activations to detect adversarial
+     * patterns; the resulting inflammation level damps
+     * comprehension_confidence and (above thresholds) registers an
+     * antigen + skips the engram encode hook. The pointer is NOT owned,
+     * NOT serialized — re-attach after every brain init / load. Default:
+     * pointer NULL, flag false.
+     *
+     * `immune_inflammation_level` holds the most-recent inspection's
+     * computed level [0..1] for diagnostics; the field is overwritten
+     * on every inspected comprehend call. There is no per-tick decay
+     * here — the brain_immune_system tracks its own inflammation
+     * state. This field is purely a "what did the last inspection
+     * see?" probe, not the immune system's authoritative level. */
+    void* immune_system;
+    bool  immune_enabled;
+    float immune_inflammation_level;
+    /* Welford-style running mean + sum-of-squared-diffs for
+     * total_activation_per_word seen by the inspector. Used by the
+     * statistical-outlier heuristic (>5σ trips inflammation). Updated
+     * only on inspected comprehend calls, so a disabled inspector
+     * does NOT contaminate the baseline with un-checked traffic. */
+    double immune_act_mean;
+    double immune_act_m2;
+    uint64_t immune_act_samples;
 };
 
 /**
