@@ -1498,18 +1498,16 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
                                 uint32_t beam_width,
                                 snn_lang_production_result_t* result);
 
-int snn_language_bridge_produce(snn_language_bridge_t* bridge,
-                                 const float* semantic_intent,
-                                 uint32_t intent_dim,
-                                 snn_lang_production_result_t* result)
+/* Tier-4 #16: produce-loop latency telemetry — work delegated to this static
+ * impl from the public wrapper, which times the call. NULL/magic guards run
+ * in the wrapper BEFORE clock_gettime so timing only counts work that
+ * actually happened. Beam dispatch (TIER1-A) lives inside this impl so beam
+ * runs are timed too. */
+static int bridge_produce_impl(snn_language_bridge_t* bridge,
+                                const float* semantic_intent,
+                                uint32_t intent_dim,
+                                snn_lang_production_result_t* result)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
-        !semantic_intent || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-            "snn_language_bridge_produce: bridge, semantic_intent, or result is NULL");
-        return -1;
-    }
-
     /* TIER1-A: dispatch to beam-K decoder when configured. The beam path
      * itself increments total_produce_calls + writes the EMA, so we return
      * directly. beam_width = 0 or 1 falls through to the legacy greedy loop
@@ -2359,6 +2357,48 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
     bridge->emb_query_override_dim = 0;
 
     return rc_out;
+}
+
+/* Tier-4 #16: public wrapper — timed entry/exit. NULL guards run before
+ * clock_gettime so timing only counts work that actually happened. */
+int snn_language_bridge_produce(snn_language_bridge_t* bridge,
+                                 const float* semantic_intent,
+                                 uint32_t intent_dim,
+                                 snn_lang_production_result_t* result)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
+        !semantic_intent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_produce: bridge, semantic_intent, or result is NULL");
+        return -1;
+    }
+
+    struct timespec t_start, t_end;
+    clock_gettime(CLOCK_MONOTONIC, &t_start);
+
+    int rc = bridge_produce_impl(bridge, semantic_intent, intent_dim, result);
+
+    clock_gettime(CLOCK_MONOTONIC, &t_end);
+    /* Saturating-conservative: if the wall clock somehow steps backward
+     * (CLOCK_MONOTONIC shouldn't but defensively guard) skip the bump
+     * rather than wrap into a huge unsigned. */
+    int64_t elapsed_us =
+        (int64_t)(t_end.tv_sec  - t_start.tv_sec ) * 1000000LL +
+        (int64_t)(t_end.tv_nsec - t_start.tv_nsec) / 1000LL;
+    if (elapsed_us < 0) elapsed_us = 0;
+    bridge->stats.produce_total_us  += (uint64_t)elapsed_us;
+    bridge->stats.produce_call_count++;
+
+    return rc;
+}
+
+/* Tier-4 #16: derived getter for ops dashboards. */
+float snn_language_bridge_get_avg_produce_us(const snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return 0.0f;
+    if (bridge->stats.produce_call_count == 0) return 0.0f;
+    return (float)bridge->stats.produce_total_us /
+           (float)bridge->stats.produce_call_count;
 }
 
 void snn_lang_production_result_cleanup(snn_lang_production_result_t* result)
