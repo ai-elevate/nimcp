@@ -3781,6 +3781,19 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_repetition_penalty(
     return NIMCP_OK;
 }
 
+/* Tier-4 #15: consolidated config getter — copy entire snn_lang_config_t. */
+nimcp_status_t nimcp_brain_get_snn_language_bridge_config(
+    nimcp_brain_t brain,
+    snn_lang_config_t* out)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge || !out) return NIMCP_ERROR;
+    int rc = snn_language_bridge_get_config(b->snn_lang_bridge, out);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_pair(nimcp_brain_t brain,
                                                    const char* prev_word,
                                                    const char* next_word,

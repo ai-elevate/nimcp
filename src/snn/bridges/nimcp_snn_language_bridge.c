@@ -2620,6 +2620,15 @@ int snn_language_bridge_reset_stats(snn_language_bridge_t* bridge)
     return 0;
 }
 
+/* Tier-4 #15: copy entire bridge config out for introspection. */
+int snn_language_bridge_get_config(const snn_language_bridge_t* bridge,
+                                    snn_lang_config_t* out)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !out) return -1;
+    *out = bridge->config;
+    return 0;
+}
+
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge)
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return 0.0f;

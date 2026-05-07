@@ -1592,6 +1592,23 @@ class BrainService:
             return {"error": f"set_anaphora_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_get_snn_language_bridge_config(self, _req):
+        """Tier-4 #15: read the full SNN-language bridge config.
+
+        Returns every PA/MQ knob (temperature, top_p, glove_blend,
+        intent_persistence, word_feedback, sampling_mode,
+        use_hyperbolic_embeddings, enable_snn_spike_routing, activation_tau_ms,
+        STDP τ/A constants, capacities, etc.) — the consolidated read-side
+        counterpart to the per-knob setters.
+        """
+        try:
+            cfg = self.brain.get_snn_language_bridge_config()
+        except AttributeError:
+            return {"error": "get_snn_language_bridge_config not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_config: {e}"}
+        return {"ok": True, "config": cfg}
+
     def _cmd_learn_next_token_pair(self, req):
         """PA-4: contrastive next-token training on a single bigram.
 

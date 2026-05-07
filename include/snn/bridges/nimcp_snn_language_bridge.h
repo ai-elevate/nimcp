@@ -478,6 +478,20 @@ int snn_language_bridge_get_stats(
 /** Reset statistics counters */
 int snn_language_bridge_reset_stats(snn_language_bridge_t* bridge);
 
+/** Tier-4 #15: copy the entire bridge configuration into *out.
+ *
+ * Operators today have setters for every PA/MQ knob (blend, sampling,
+ * glove_blend, autoregressive, spike_routing, hyperbolic_embeddings,
+ * sampling_mode) but no consolidated getter — they must read source to
+ * answer questions like "is autoregressive enabled? what's the
+ * temperature?". This getter copies the live `snn_lang_config_t` out so
+ * RPC consumers can introspect any/all fields uniformly.
+ *
+ * @return 0 on success; -1 if bridge or out is NULL or magic mismatched. */
+int snn_language_bridge_get_config(
+    const snn_language_bridge_t* bridge,
+    snn_lang_config_t* out);
+
 /** Get current spike blend factor */
 float snn_language_bridge_get_blend(const snn_language_bridge_t* bridge);
 

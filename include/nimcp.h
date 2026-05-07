@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include "core/brain/learning/nimcp_brain_experience.h"
 #include "core/brain/factory/nimcp_brain_innate.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h" /* snn_lang_config_t / stats for #15+#16 RPCs */
 
 /* Deprecation macro for API evolution */
 #if defined(__GNUC__) || defined(__clang__)
@@ -1213,6 +1214,22 @@ nimcp_status_t nimcp_brain_set_snn_language_bridge_repetition_penalty(
     nimcp_brain_t brain,
     float penalty,
     uint32_t window
+);
+
+/**
+ * @brief Tier-4 #15: copy the entire SNN-language bridge config out for
+ *        operator introspection.
+ *
+ * Every PA/MQ knob (blend, sampling, glove_blend, autoregressive, spike-
+ * routing, hyperbolic, sampling_mode) has a setter; this is the lone
+ * consolidated reader. Useful for ops/dashboards that need to answer
+ * "what's currently configured?" without parsing setter call history.
+ *
+ * @return NIMCP_OK on success, NIMCP_ERROR if no bridge attached.
+ */
+nimcp_status_t nimcp_brain_get_snn_language_bridge_config(
+    nimcp_brain_t brain,
+    snn_lang_config_t* out
 );
 
 /**
