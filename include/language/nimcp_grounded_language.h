@@ -293,6 +293,15 @@ typedef struct {
      * into the result. */
     uint64_t engram_encodes;
     uint64_t engram_recalls;
+    /* TA-2 — LGSS gate telemetry. Bumped only when an lgss_context_t
+     * has been attached via grounded_language_set_lgss() and a
+     * SAFETY_ACTION_DENY result fires. lgss_inputs_blocked counts
+     * comprehend calls that were rejected by the input gate;
+     * lgss_outputs_blocked counts produce calls (driven through the
+     * SNN language bridge) whose generated text was blocked by the
+     * output gate. Both stay 0 when no lgss is attached. */
+    uint64_t lgss_inputs_blocked;
+    uint64_t lgss_outputs_blocked;
 } gl_stats_t;
 
 /**
@@ -1022,6 +1031,36 @@ int grounded_language_set_engram_system(
  * @return true if pointer is non-NULL AND enabled flag is true.
  */
 bool grounded_language_engram_enabled(const grounded_language_t* gl);
+
+/**
+ * @brief Attach an LGSS context for input-gate evaluation in comprehend.
+ *
+ * WHAT: Wires the brain's Layered Governance Safety System (LGSS) into
+ *       grounded_language_comprehend(). Once attached, every call to
+ *       comprehend() builds a SAFETY_DOMAIN_GOVERNANCE action context
+ *       describing the input text, evaluates it against the safety KB,
+ *       and aborts with stats->lgss_inputs_blocked++ if the result is
+ *       SAFETY_ACTION_DENY.
+ * WHY:  brain_decide() and brain_learn_vector() already gate inference
+ *       and learning through LGSS. The language pipeline is the third
+ *       major user-facing surface and was previously ungated — this
+ *       closes the gap so adversarial / disallowed inputs get the same
+ *       defense-in-depth treatment as feature-vector inputs.
+ * HOW:  Borrowed pointer. NOT owned, NOT serialized. Caller (brain
+ *       init) re-attaches after every load. NULL detaches and reverts
+ *       comprehend to the legacy no-gate behavior.
+ *
+ * The pointer is typed `void*` here (not `lgss_context_t*`) on purpose:
+ * pulling the LGSS umbrella header into language consumers cascades
+ * enum collisions with cognitive/symbolic_logic/. Comprehend casts
+ * internally via a forward declaration.
+ *
+ * @param gl    System handle (NULL → no-op)
+ * @param lgss  lgss_context_t* opaque (NULL detaches)
+ */
+void grounded_language_set_lgss(
+    grounded_language_t* gl,
+    void* lgss);
 
 /**
  * @brief Connect Broca's area adapter — every new lexicon entry is

@@ -100,6 +100,17 @@ bool grounded_language_engram_enabled(const grounded_language_t* gl) {
     return gl->engram_enabled && gl->engram_system != NULL;
 }
 
+/* TA-2 LGSS attach. Stored as void* on the gl struct to keep the LGSS
+ * umbrella header out of internal language headers (the umbrella drags
+ * in cognitive/symbolic_logic/ which causes enum collisions when
+ * included from non-LGSS modules). The comprehend hot path forward-
+ * declares lgss_evaluate / safety_action_context_t / safety_evaluation_t
+ * locally and casts back. NULL = detach, no-op gate. */
+void grounded_language_set_lgss(grounded_language_t* gl, void* lgss) {
+    if (!gl) return;
+    gl->lgss = lgss;
+}
+
 void grounded_language_connect_broca(grounded_language_t* gl, void* broca) {
     if (!gl) return;
     gl->broca_adapter = broca;

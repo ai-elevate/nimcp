@@ -13,6 +13,15 @@
 #include "language/nimcp_grounded_language.h"
 #include "language/nimcp_grounded_language_internal.h"
 #include "language/nimcp_bigram_spectrum.h"
+
+/* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
+ * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
+ * intentionally do NOT include the LGSS umbrella header here — that
+ * cascades into more cognitive/symbolic_logic headers and triggers
+ * enum redefinitions in unrelated translation units. lgss_evaluate is
+ * forward-declared below alongside the comprehend definition. */
+#include "cognitive/symbolic_logic/nimcp_symbolic_logic_safety_types.h"
+#include "security/nimcp_audit_log.h"
 /* PA-4+ : compile the bigram-spectrum implementation as part of this
  * translation unit. The build's source list is explicit (not GLOB) and
  * the CMakeLists.txt is outside the modify set for this change, so we
@@ -1505,6 +1514,16 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 static bool is_function_word(const char* w);
 static bool is_negation_cue(const char* w);
 
+/* TA-2 — LGSS evaluator forward decl. The full nimcp_lgss.h umbrella
+ * is intentionally NOT included (see comment at the top of the file).
+ * lgss_context_t is opaque here — comprehend just casts gl->lgss to it
+ * and hands the pointer to the evaluator. */
+typedef struct lgss_context lgss_context_t;
+extern int lgss_evaluate(
+    lgss_context_t* lgss,
+    const safety_action_context_t* context,
+    safety_evaluation_t* result);
+
 int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                   gl_comprehension_result_t* result) {
     if (!gl || !text || !result) {
@@ -1527,6 +1546,78 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
     char* words[GL_MAX_PRODUCTION_WORDS];
     uint32_t word_count = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
+
+    /* TA-2 — LGSS INPUT GATE.
+     *
+     * Mirrors the brain_decide() input validator: build a
+     * SAFETY_DOMAIN_GOVERNANCE action context describing this input
+     * (raw text + word count + source = "LANGUAGE_COMPREHEND"), call
+     * lgss_evaluate, and abort on SAFETY_ACTION_DENY.
+     *
+     * Placement: AFTER tokenization (so word_count is known and the
+     * payload is meaningful) but BEFORE lexicon lookup / spreading
+     * activation (so a denied input never touches the lexicon and
+     * never updates downstream subscribers / engram traces).
+     *
+     * No-op contract: when no LGSS is attached (gl->lgss == NULL),
+     * the gate is skipped entirely and comprehend continues with
+     * legacy behaviour. Stat lgss_inputs_blocked stays 0. */
+    if (gl->lgss) {
+        safety_action_context_t lgss_ctx;
+        memset(&lgss_ctx, 0, sizeof(lgss_ctx));
+
+        /* String fields — operation + text payload. SAFETY_MAX_VALUE_LEN
+         * caps the value width; truncate noisily by NUL-terminating. */
+        strncpy(lgss_ctx.string_fields[0].key, "operation", 63);
+        lgss_ctx.string_fields[0].key[63] = '\0';
+        strncpy(lgss_ctx.string_fields[0].value, "language_comprehend",
+                SAFETY_MAX_VALUE_LEN - 1);
+        lgss_ctx.string_fields[0].value[SAFETY_MAX_VALUE_LEN - 1] = '\0';
+
+        strncpy(lgss_ctx.string_fields[1].key, "text", 63);
+        lgss_ctx.string_fields[1].key[63] = '\0';
+        strncpy(lgss_ctx.string_fields[1].value, text,
+                SAFETY_MAX_VALUE_LEN - 1);
+        lgss_ctx.string_fields[1].value[SAFETY_MAX_VALUE_LEN - 1] = '\0';
+        lgss_ctx.num_string_fields = 2;
+
+        /* Numeric field — word count is the headline numeric for rules
+         * that want to short-circuit on suspicious input length. */
+        strncpy(lgss_ctx.numeric_fields[0].key, "word_count", 63);
+        lgss_ctx.numeric_fields[0].key[63] = '\0';
+        lgss_ctx.numeric_fields[0].value = (float)word_count;
+        lgss_ctx.num_numeric_fields = 1;
+
+        lgss_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
+        lgss_ctx.has_domain_hint = true;
+        snprintf(lgss_ctx.action_description,
+                 sizeof(lgss_ctx.action_description),
+                 "language_comprehend input: %u words", word_count);
+        lgss_ctx.action_description[sizeof(lgss_ctx.action_description) - 1]
+            = '\0';
+        strncpy(lgss_ctx.source, "LANGUAGE_COMPREHEND", 63);
+        lgss_ctx.source[63] = '\0';
+
+        safety_evaluation_t lgss_eval;
+        memset(&lgss_eval, 0, sizeof(lgss_eval));
+        int lgss_rc = lgss_evaluate((lgss_context_t*)gl->lgss,
+                                     &lgss_ctx, &lgss_eval);
+        if (lgss_rc == 0 && lgss_eval.action == SAFETY_ACTION_DENY) {
+            gl->stats.lgss_inputs_blocked++;
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_INPUT_REJECTED, 2,
+                "LGSS blocked language_comprehend input "
+                "(words=%u, severity=%d): %s",
+                word_count, (int)lgss_eval.max_severity,
+                lgss_eval.explanation);
+            /* Result was zeroed at function entry — comprehension_confidence
+             * is already 0, all arrays still NULL. Free the tokenizer
+             * scratch buffer and return -1 so the caller can distinguish
+             * "blocked" from "comprehended successfully". */
+            nimcp_free(buf);
+            return -1;
+        }
+    }
 
     /* Lower-case in-place so cue / function-word checks match the
      * lexicon's stored forms. The tokenizer emitted pointers into buf
