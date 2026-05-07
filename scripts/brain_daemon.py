@@ -1592,6 +1592,25 @@ class BrainService:
             return {"error": f"set_anaphora_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_set_grounded_engram_enabled(self, req):
+        """EN-5: toggle read-only engram integration on grounded_language.
+
+        Request keys:
+          enabled  (bool, required) — true = comprehend lays down engram
+                                      traces and blends recalled neurons
+                                      into activated_concepts. Brain's
+                                      engram_system is wired in
+                                      automatically.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_grounded_engram_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_grounded_engram_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_grounded_engram_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
     def _cmd_get_snn_language_bridge_config(self, _req):
         """Tier-4 #15: read the full SNN-language bridge config.
 

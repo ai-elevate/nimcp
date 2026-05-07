@@ -1346,6 +1346,30 @@ nimcp_status_t nimcp_brain_set_anaphora_enabled(
 );
 
 /**
+ * @brief Toggle read-only engram integration on grounded_language.
+ *
+ * When enabled, comprehend() lays down a memory trace on each pass
+ * (engram_encode) AND probes the engram store for related prior
+ * activations (engram_recall), blending recalled neurons into the
+ * activated_concepts result at half-weight.
+ *
+ * Read-only mode: encode + recall blend only. Does NOT modulate
+ * lexicon bindings or feed back into engram strengths beyond the
+ * engram_recall API's own internal book-keeping.
+ *
+ * The brain's engram_system (created at cognitive init) is wired in
+ * automatically; callers don't pass it. Returns NIMCP_ERROR if either
+ * grounded_language or engram_system is missing.
+ *
+ * @param brain    Brain handle.
+ * @param enabled  true = active, false = no-op.
+ */
+nimcp_status_t nimcp_brain_set_grounded_engram_enabled(
+    nimcp_brain_t brain,
+    bool enabled
+);
+
+/**
  * @brief Configure the autoregressive recurrent decoder (PA-2).
  *
  * @param brain               Brain handle.

@@ -3112,6 +3112,24 @@ static PyObject* Brain_set_anaphora_enabled(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* EN-5 — toggle read-only engram integration on grounded_language. */
+static PyObject* Brain_set_grounded_engram_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_grounded_engram_enabled(
+        self->brain, enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "engram_system or grounded_language missing");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* Tier-4 #17: explicit RNG seed for deterministic sampling tests. */
 static PyObject* Brain_set_snn_language_bridge_rng_seed(BrainObject* self,
                                                          PyObject* args) {
@@ -11340,6 +11358,8 @@ static PyMethodDef Brain_methods[] = {
      "TIER1-C: configure n-gram repetition penalty — set_snn_language_bridge_repetition_penalty(penalty, window) -> None. penalty=0 (default) disables; >0 multiplies score by (1-penalty) per match in the last `window` picks. window=0 falls back to 3 when penalty>0."},
     {"set_anaphora_enabled", (PyCFunction)Brain_set_anaphora_enabled, METH_VARARGS,
      "Tier-1 #2: toggle rule-based anaphora / pronoun resolution — set_anaphora_enabled(enabled) -> None. Default OFF; when ON, comprehend resolves he/she/it/they/... to the most-recent matching content noun."},
+    {"set_grounded_engram_enabled", (PyCFunction)Brain_set_grounded_engram_enabled, METH_VARARGS,
+     "EN-5: toggle read-only engram integration on grounded_language — set_grounded_engram_enabled(enabled) -> None. Default OFF; when ON, comprehend lays down EPISODIC engram traces and blends recalled neurons into activated_concepts at half-weight. Wires brain->engram_system into grounded_language automatically."},
     {"get_snn_language_bridge_config", (PyCFunction)Brain_get_snn_language_bridge_config, METH_NOARGS,
      "Tier-4 #15: get full SNN-language bridge config — get_snn_language_bridge_config() -> dict. Returns every PA/MQ knob (temperature, top_p, glove_blend, intent_persistence, word_feedback, sampling_mode, use_hyperbolic_embeddings, enable_snn_spike_routing, activation_tau_ms, etc.)."},
     {"set_snn_language_bridge_rng_seed", (PyCFunction)Brain_set_snn_language_bridge_rng_seed, METH_VARARGS,

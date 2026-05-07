@@ -3431,6 +3431,25 @@ nimcp_status_t nimcp_brain_set_anaphora_enabled(
     return ok ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/* EN-5 — read-only engram integration toggle. Wires the brain-level
+ * engram_system pointer into the grounded_language pass and flips the
+ * enabled flag in one shot. brain->engram_system is created by the
+ * cognitive init wave (nimcp_brain_init_cognitive.c) so it's normally
+ * non-NULL by the time this is called. NULL engram_system → NIMCP_ERROR. */
+nimcp_status_t nimcp_brain_set_grounded_engram_enabled(
+    nimcp_brain_t brain,
+    bool enabled)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    if (!b->engram_system) return NIMCP_ERROR;
+    int rc = grounded_language_set_engram_system(b->grounded_lang,
+                                                   b->engram_system, enabled);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /*=============================================================================
  * PA-4+ : Bigram FFT spectral metrics
  *

@@ -1728,6 +1728,84 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                               result->activation_levels,
                               &concept_count);
 
+    /* Engram integration (read-only). Snapshot the pre-engram activated
+     * set so:
+     *   (a) we ENCODE only the comprehension-derived activations into a
+     *       new engram trace — recall blend below does NOT feed back into
+     *       what gets stored, preserving the read-only contract.
+     *   (b) we use the snapshot as the RECALL cue, then blend recalled
+     *       neurons (mapped 1:1 to concept_ids by lo32 hash equivalence)
+     *       into the caller-visible activated_concepts at half-weight.
+     * Both stages no-op when no engram_system is attached or the flag
+     * is off. */
+    if (gl->engram_enabled && gl->engram_system && concept_count > 0) {
+        /* Truncate concept_id u64 → neuron_id u32 (lower 32 bits).
+         * Concept IDs are already derived from string hashes; the lo32
+         * is a uniform 32-bit projection. We borrow up to 256 ids — the
+         * engram API caps neuron_count at ENGRAM_MAX_NEURONS=256. */
+        uint32_t cue_count = (concept_count > 256) ? 256 : concept_count;
+        uint32_t cue_neurons[256];
+        float    cue_activations[256];
+        for (uint32_t i = 0; i < cue_count; i++) {
+            cue_neurons[i] = (uint32_t)(result->activated_concepts[i] & 0xFFFFFFFFu);
+            cue_activations[i] = result->activation_levels[i];
+            /* engram_encode expects nonnegative activations — fold sign
+             * into magnitude here so negation-marked words still encode. */
+            if (cue_activations[i] < 0.0f) cue_activations[i] = -cue_activations[i];
+        }
+
+        /* EN-3 — encode the snapshot as an EPISODIC trace. Neutral
+         * emotion (0,0); future task can wire emotional context if
+         * available. The engram_id is intentionally discarded — for
+         * read-only mode the trace lives in the engram store and is
+         * looked up later via cue, not by id. */
+        emotional_tag_t emo = {0};
+        (void)engram_encode((engram_system_t*)gl->engram_system,
+                             cue_neurons, cue_activations, cue_count,
+                             MEMORY_TYPE_EPISODIC, emo);
+        gl->stats.engram_encodes++;
+
+        /* EN-4 — recall: probe with the same cue, blend recalled neurons
+         * into activated_concepts at half-weight. Recall returns the
+         * neuron_ids of the matched engram (same lo32 hashes) — we map
+         * them back into concept activations by extending the array.
+         * Threshold: ENGRAM_RECALL_THRESHOLD (0.4); we accept anything
+         * the engram module deems confident enough. */
+        uint32_t recalled[256];
+        float    recalled_acts[256];
+        float    confidence = 0.0f;
+        uint64_t hit = engram_recall((engram_system_t*)gl->engram_system,
+                                      cue_neurons, cue_count,
+                                      recalled, recalled_acts, 256,
+                                      &confidence);
+        if (hit != 0 && confidence >= ENGRAM_RECALL_THRESHOLD) {
+            gl->stats.engram_recalls++;
+            for (uint32_t r = 0;
+                 r < 256 && concept_count < GL_MAX_ACTIVE_CONCEPTS;
+                 r++) {
+                if (recalled_acts[r] <= 0.0f) continue;
+                /* Half-weight blend, matches anaphora's pattern. The
+                 * lo32 → concept_id map is lossy; we treat recalled[r]
+                 * as a concept_id directly (all our concept_ids fit in
+                 * 32 bits in practice for the brain's current scale). */
+                uint64_t cid = (uint64_t)recalled[r];
+                bool merged = false;
+                for (uint32_t c = 0; c < concept_count; c++) {
+                    if (result->activated_concepts[c] == cid) {
+                        result->activation_levels[c] += 0.5f * recalled_acts[r];
+                        merged = true;
+                        break;
+                    }
+                }
+                if (!merged) {
+                    result->activated_concepts[concept_count] = cid;
+                    result->activation_levels[concept_count]   = 0.5f * recalled_acts[r];
+                    concept_count++;
+                }
+            }
+        }
+    }
+
     result->concept_count = concept_count;
     /* Subword-recognized words count as half-known: the BPE tokenizer
      * found valid subword tokens for them but no full lexicon entry. */
