@@ -355,6 +355,18 @@ struct grounded_language {
     void*                bigram_spectrum;    /* bigram_spectrum_t* (borrowed) */
     pthread_mutex_t      tc12_lock;
     bool                 tc12_lock_inited;
+
+    /* NLP-1 — subword OOV/morphological fallback. When the tokenizer is
+     * attached AND the flag is on, comprehend tries to bootstrap fresh
+     * lexicon entries (no bindings yet) by segmenting the word and
+     * averaging bindings from any subword pieces that already have
+     * lexicon entries. Borrowed pointer (lifetime owned by the brain
+     * tokenizer module); NULL == no fallback. */
+    void*                subword_tokenizer;
+    bool                 enable_subword_oov_fallback;
+    /* Stats counters for the fallback path. */
+    uint64_t             subword_oov_attempts;   /* unknown words encountered */
+    uint64_t             subword_oov_resolved;   /* unknown words bootstrapped from subwords */
 };
 
 /**

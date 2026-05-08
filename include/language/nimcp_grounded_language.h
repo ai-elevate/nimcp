@@ -1331,6 +1331,39 @@ bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
  *  resolver state hasn't been allocated yet (== disabled). */
 bool grounded_language_get_anaphora_enabled(const grounded_language_t* gl);
 
+/*=============================================================================
+ * NLP-1: Subword OOV / morphological fallback.
+ *
+ * Default OFF. When ON and a tokenizer is attached, comprehend bootstraps
+ * fresh-lexicon entries (no bindings) by segmenting the word via BPE and
+ * averaging bindings from any subword pieces already in the lexicon.
+ * Lets morphological variants ("running", "ran") inherit from a learned
+ * stem ("run") without explicit grounding for each surface form.
+ *
+ * Tokenizer pointer is borrowed (NOT freed by GL). Trainer must outlive
+ * the gl that's pointing at it.
+ *===========================================================================*/
+
+/* Forward decl to keep this header free of the tokenizer impl include. */
+struct nimcp_tokenizer;
+typedef struct nimcp_tokenizer nimcp_tokenizer_t;
+
+/** Attach a BPE tokenizer for OOV fallback. Pass NULL to detach. */
+void grounded_language_attach_subword_tokenizer(grounded_language_t* gl,
+                                                  struct nimcp_tokenizer* tok);
+
+/** Toggle subword OOV fallback. Default OFF. Has no effect if no
+ *  tokenizer is attached (silent — the comprehend hook short-circuits). */
+void grounded_language_set_subword_oov_fallback_enabled(
+    grounded_language_t* gl, bool enabled);
+
+bool grounded_language_get_subword_oov_fallback_enabled(
+    const grounded_language_t* gl);
+
+/** Stats accessors for lang_status. */
+uint64_t grounded_language_subword_oov_attempts(const grounded_language_t* gl);
+uint64_t grounded_language_subword_oov_resolved(const grounded_language_t* gl);
+
 /**
  * @brief Process-global counter of successful pronoun → referent matches.
  *

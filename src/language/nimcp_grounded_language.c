@@ -1965,6 +1965,21 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
     for (uint32_t w = 0; w < word_count; w++) {
         const gl_lexicon_entry_t* entry = gl_nlp_lookup_chain(gl, words[w]);
         if (!entry) {
+            /* NLP-1: First, try subword bootstrap — segment the unknown
+             * word and average bindings from any subword pieces already
+             * in the lexicon. If successful, the new entry is in the
+             * lexicon and downstream code treats it as a known word. */
+            extern gl_lexicon_entry_t* gl_try_subword_bootstrap(
+                grounded_language_t*, const char*);
+            gl_lexicon_entry_t* boot =
+                gl_try_subword_bootstrap(gl, words[w]);
+            if (boot && boot->binding_count > 0) {
+                entry = boot;
+                /* Fall through to the known-word path below — re-enter
+                 * by labeling this entry pointer and skipping the
+                 * "unknown" handling. */
+                goto _entry_resolved;
+            }
             /* Last resort: BPE subword fallback when a tokenizer is
              * connected. Doesn't yield an entry — just bumps confidence
              * and (if embeddings are wired) blends subword vectors into
@@ -1978,6 +1993,7 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             needy_word_conf = 0.0f;
             continue;
         }
+        _entry_resolved:;
 
         known_words++;
 
@@ -4521,6 +4537,127 @@ bool grounded_language_get_anaphora_enabled(const grounded_language_t* gl) {
     bool on = (st != NULL) && st->enabled;
     gl_tc12_unlock(gl_mut);
     return on;
+}
+
+/*=============================================================================
+ * NLP-1: Subword OOV / morphological fallback.
+ *===========================================================================*/
+
+void grounded_language_attach_subword_tokenizer(grounded_language_t* gl,
+                                                  struct nimcp_tokenizer* tok) {
+    if (!gl) return;
+    /* Borrowed pointer — caller owns the lifetime. NULL detaches. */
+    gl->subword_tokenizer = tok;
+}
+
+void grounded_language_set_subword_oov_fallback_enabled(grounded_language_t* gl,
+                                                          bool enabled) {
+    if (!gl) return;
+    gl->enable_subword_oov_fallback = enabled;
+}
+
+bool grounded_language_get_subword_oov_fallback_enabled(
+    const grounded_language_t* gl) {
+    return gl ? gl->enable_subword_oov_fallback : false;
+}
+
+uint64_t grounded_language_subword_oov_attempts(const grounded_language_t* gl) {
+    return gl ? gl->subword_oov_attempts : 0;
+}
+uint64_t grounded_language_subword_oov_resolved(const grounded_language_t* gl) {
+    return gl ? gl->subword_oov_resolved : 0;
+}
+
+/* NLP-1 internal helper. Called from comprehend's word-loop when a
+ * surface form has no existing lexicon entry. Creates a fresh entry,
+ * segments via the attached tokenizer, and bootstraps bindings by
+ * averaging from subword pieces already in the lexicon (at half
+ * strength — they're inherited, not earned).
+ *
+ * Returns the bootstrapped entry on success, or NULL when the
+ * fallback couldn't help (flag off, no tokenizer, single-token
+ * encoding, no binding-bearing subwords). When NULL, caller falls
+ * through to the existing subword-blend-only path (which doesn't
+ * create an entry). */
+/* Non-static so the comprehend body can forward-decl + call (the impl
+ * lives well below its caller's scope). */
+gl_lexicon_entry_t* gl_try_subword_bootstrap(grounded_language_t* gl,
+                                                const char* word) {
+    if (!gl || !word || !word[0]) return NULL;
+    if (!gl->enable_subword_oov_fallback) return NULL;
+    if (!gl->subword_tokenizer) return NULL;
+
+    /* Forward decls — keep this file independent of the tokenizer impl. */
+    extern int nimcp_tokenizer_encode(const struct nimcp_tokenizer*,
+                                        const char*, uint32_t*, uint32_t);
+    extern const char* nimcp_tokenizer_id_to_text(
+        const struct nimcp_tokenizer*, uint32_t);
+
+    gl->subword_oov_attempts++;
+
+    uint32_t ids[16] = {0};
+    int n = nimcp_tokenizer_encode(
+        (const struct nimcp_tokenizer*)gl->subword_tokenizer,
+        word, ids, 16);
+    if (n <= 1) {
+        /* 0 = encode failed; 1 = the surface is itself a single token,
+         * so segmentation gave us no new information. */
+        return NULL;
+    }
+
+    /* Probe subword pieces FIRST without mutating the lexicon —
+     * abort the bootstrap if no piece has bindings, so we don't pollute
+     * the lexicon with empty fresh entries. */
+    bool any_useful = false;
+    for (int i = 0; i < n; i++) {
+        const char* piece = nimcp_tokenizer_id_to_text(
+            (const struct nimcp_tokenizer*)gl->subword_tokenizer, ids[i]);
+        if (!piece || !piece[0]) continue;
+        const gl_lexicon_entry_t* sub = grounded_language_lookup(gl, piece);
+        if (sub && sub->binding_count > 0) { any_useful = true; break; }
+    }
+    if (!any_useful) return NULL;
+
+    /* Now create the entry and fill it. */
+    gl_lexicon_entry_t* fresh = gl_internal_lexicon_find_or_create(gl, word);
+    if (!fresh) return NULL;
+    /* If somehow the entry already had bindings (race / re-entry), don't
+     * stomp them. */
+    if (fresh->binding_count > 0) return fresh;
+
+    /* Bindings array is dynamically allocated; grow capacity if we need
+     * more slots than the initial 4. */
+    uint32_t collected = 0;
+    for (int i = 0; i < n; i++) {
+        const char* piece = nimcp_tokenizer_id_to_text(
+            (const struct nimcp_tokenizer*)gl->subword_tokenizer, ids[i]);
+        if (!piece || !piece[0]) continue;
+        const gl_lexicon_entry_t* sub = grounded_language_lookup(gl, piece);
+        if (!sub || sub->binding_count == 0) continue;
+        for (uint32_t b = 0; b < sub->binding_count; b++) {
+            if (collected >= fresh->binding_capacity) {
+                uint32_t new_cap = fresh->binding_capacity * 2;
+                if (new_cap < 8) new_cap = 8;
+                gl_word_binding_t* nb = (gl_word_binding_t*)nimcp_realloc(
+                    fresh->bindings, new_cap * sizeof(gl_word_binding_t));
+                if (!nb) goto _bootstrap_done;
+                memset(nb + fresh->binding_capacity, 0,
+                       (new_cap - fresh->binding_capacity) * sizeof(gl_word_binding_t));
+                fresh->bindings = nb;
+                fresh->binding_capacity = new_cap;
+            }
+            fresh->bindings[collected].concept_id =
+                sub->bindings[b].concept_id;
+            fresh->bindings[collected].strength =
+                sub->bindings[b].strength * 0.5f;
+            collected++;
+        }
+    }
+_bootstrap_done:
+    if (collected == 0) return NULL;
+    fresh->binding_count = collected;
+    gl->subword_oov_resolved++;
+    return fresh;
 }
 
 uint64_t grounded_language_anaphora_resolutions(void) {
