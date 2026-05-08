@@ -2185,6 +2185,18 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             default:
                 break;
         }
+        /* Audit-2 follow-up: fire SPEECH_ACT event for downstream
+         * consumers (ToM, response-strategy modules, etc.) only when a
+         * concrete label was returned. UNKNOWN is silent. */
+        if (result->speech_act != GL_SPEECH_ACT_UNKNOWN) {
+            extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+            gl_event_t ev = {0};
+            ev.type            = GL_EVENT_SPEECH_ACT;
+            ev.text            = text;
+            ev.speech_act      = result->speech_act;
+            ev.confidence      = result->comprehension_confidence;
+            gl_fire_event(gl, &ev);
+        }
     } else {
         result->speech_act = GL_SPEECH_ACT_UNKNOWN;
     }
@@ -2344,7 +2356,21 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             gl->stats.topic_shifts_evaluated++;
             bool shifted = (score < gl->topic_shift_threshold);
             gl->last_was_topic_shift = shifted;
-            if (shifted) gl->stats.topic_shifts_detected++;
+            if (shifted) {
+                gl->stats.topic_shifts_detected++;
+                /* Audit-2 follow-up: fire TOPIC_SHIFT event for downstream
+                 * consumers (engram episodic consolidation, sleep-wake
+                 * scheduler, etc.). Carries the cosine score that crossed
+                 * the threshold. */
+                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+                gl_event_t ev = {0};
+                ev.type             = GL_EVENT_TOPIC_SHIFT;
+                ev.text             = text;
+                ev.semantic_vec     = result->semantic_vector;
+                ev.topic_similarity = score;
+                ev.confidence       = result->comprehension_confidence;
+                gl_fire_event(gl, &ev);
+            }
         } else {
             /* Not enough turns yet — hold the score at 1.0 ("no shift")
              * and keep the boundary flag false. Counters do NOT bump

@@ -1857,6 +1857,16 @@ typedef enum {
      * downstream curriculum modules can register their interest in
      * grounding that word the next time it shows up in sensory input. */
     GL_EVENT_NEEDS_GROUNDING,
+    /* TB-9 follow-up — fired by comprehend after a non-UNKNOWN speech-act
+     * label is computed (only when classification is enabled). The event's
+     * `speech_act` field carries the classification. Subscribers can react
+     * (e.g., switch to question-answering mode on QUESTION). */
+    GL_EVENT_SPEECH_ACT,
+    /* TB-10 follow-up — fired by comprehend when the topic-shift detector
+     * triggers (only when detection is enabled). The event's
+     * `topic_similarity` field is the cosine value that crossed the
+     * threshold. Natural consumer: episodic memory consolidation. */
+    GL_EVENT_TOPIC_SHIFT,
 } gl_event_type_t;
 
 /**
@@ -1873,6 +1883,9 @@ typedef struct {
     float            valence;       /**< Emotional valence at event time */
     float            arousal;       /**< Emotional arousal */
     float            confidence;    /**< [0,1]; comprehension/production confidence */
+    /* Audit-2 follow-up — speech-act + topic-shift consumer surface. */
+    gl_speech_act_t  speech_act;        /**< SPEECH_ACT: classifier label, else UNKNOWN */
+    float            topic_similarity;  /**< TOPIC_SHIFT: cosine sim that crossed threshold */
 } gl_event_t;
 
 /** Subscriber callback. Return 0 to continue, non-zero to log+continue. */
@@ -1887,6 +1900,8 @@ typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
 #define GL_EVENT_MASK_COMPREHENDED      (1u << 2)
 #define GL_EVENT_MASK_PRODUCED          (1u << 3)
 #define GL_EVENT_MASK_NEEDS_GROUNDING   (1u << 4)
+#define GL_EVENT_MASK_SPEECH_ACT        (1u << 5)
+#define GL_EVENT_MASK_TOPIC_SHIFT       (1u << 6)
 #define GL_EVENT_MASK_ALL               (0xFFFFFFFFu)
 
 /** Confidence floor below which comprehend fires a NEEDS_GROUNDING
