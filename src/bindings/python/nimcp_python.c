@@ -2724,6 +2724,21 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_avg_word_confidence",    PyFloat_FromDouble(d.bridge_avg_word_confidence));
     GLD_SET("bridge_avg_binding_weight",     PyFloat_FromDouble(d.bridge_avg_binding_weight));
     GLD_SET("bridge_active_bindings",        PyLong_FromUnsignedLong(d.bridge_active_bindings));
+    /* Audit-2 follow-up: campaign flags + tunables + decode telemetry. */
+    GLD_SET("enable_negation_inversion",        PyBool_FromLong(d.enable_negation_inversion));
+    GLD_SET("enable_sense_disambiguation",      PyBool_FromLong(d.enable_sense_disambiguation));
+    GLD_SET("enable_speech_act_classification", PyBool_FromLong(d.enable_speech_act_classification));
+    GLD_SET("enable_sentence_segmentation",     PyBool_FromLong(d.enable_sentence_segmentation));
+    GLD_SET("enable_topic_shift_detection",     PyBool_FromLong(d.enable_topic_shift_detection));
+    GLD_SET("enable_reconsolidation",           PyBool_FromLong(d.enable_reconsolidation));
+    GLD_SET("enable_anaphora_resolution",       PyBool_FromLong(d.enable_anaphora_resolution));
+    GLD_SET("bridge_enable_da_modulation",      PyBool_FromLong(d.bridge_enable_da_modulation));
+    GLD_SET("bridge_enable_trigram_learning",   PyBool_FromLong(d.bridge_enable_trigram_learning));
+    GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
+    GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
+    GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
+    GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
+    GLD_SET("bridge_total_decode_calls",        PyLong_FromUnsignedLongLong(d.bridge_total_decode_calls));
 #undef GLD_SET
     return dict;
 }

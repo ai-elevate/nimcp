@@ -933,6 +933,27 @@ typedef struct {
     float    bridge_avg_word_confidence;
     float    bridge_avg_binding_weight;
     uint32_t bridge_active_bindings;
+    /* Campaign feature flags + tunables (Audit-2 follow-up: lang_status surface).
+     * Provides a single-call read of all default-OFF runtime knobs so the
+     * trainer can see "what's enabled" without 9 separate getters. */
+    uint8_t  enable_negation_inversion;
+    uint8_t  enable_sense_disambiguation;
+    uint8_t  enable_speech_act_classification;
+    uint8_t  enable_sentence_segmentation;
+    uint8_t  enable_topic_shift_detection;
+    uint8_t  enable_reconsolidation;
+    uint8_t  enable_anaphora_resolution;
+    uint8_t  bridge_enable_da_modulation;
+    uint8_t  bridge_enable_trigram_learning;
+    uint8_t  _reserved_flag_1;
+    float    reconsolidation_decay;
+    float    topic_shift_threshold;
+    uint32_t topic_shift_min_turns;
+    /* TC-11 decode telemetry — operators use these to decide if/when to
+     * invest in the GPU port. avg_decode_us = decode_total_ns / total_decode_calls
+     * is the trigger metric (>100µs at production scale = GPU port wins). */
+    uint64_t bridge_decode_total_ns;
+    uint64_t bridge_total_decode_calls;
 } nimcp_grounded_language_diagnostics_t;
 
 /**

@@ -4483,6 +4483,20 @@ bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
     return true;
 }
 
+bool grounded_language_get_anaphora_enabled(const grounded_language_t* gl) {
+    /* Audit-2 follow-up: lang_status surface needs a read side for the
+     * anaphora flag (the state struct is lazily-allocated so a missing
+     * struct == disabled). Cast away const because gl_tc12_lock is on
+     * the non-const path; the lock window is read-only. */
+    if (!gl) return false;
+    grounded_language_t* gl_mut = (grounded_language_t*)gl;
+    gl_tc12_lock(gl_mut);
+    const gl_anaphora_state_t* st = (const gl_anaphora_state_t*)gl->anaphora_state;
+    bool on = (st != NULL) && st->enabled;
+    gl_tc12_unlock(gl_mut);
+    return on;
+}
+
 uint64_t grounded_language_anaphora_resolutions(void) {
     /* Audit fix: lock-free atomic read; writers use __atomic_fetch_add
      * (see anaphora_run_pass below). Was previously bumped under the

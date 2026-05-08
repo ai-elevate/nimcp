@@ -3398,6 +3398,17 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         out->avg_binding_strength        = gls.avg_binding_strength;
         out->avg_comprehension_confidence = gls.avg_comprehension_confidence;
         out->vocabulary_growth_rate      = gls.vocabulary_growth_rate;
+        /* Audit-2 follow-up: campaign feature flag snapshot. */
+        out->enable_negation_inversion          = grounded_language_get_negation_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_sense_disambiguation        = grounded_language_get_sense_disambiguation_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_speech_act_classification   = grounded_language_get_speech_act_classification_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_sentence_segmentation       = grounded_language_get_sentence_segmentation_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_topic_shift_detection       = grounded_language_get_topic_shift_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_reconsolidation             = grounded_language_get_reconsolidation_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_anaphora_resolution         = grounded_language_get_anaphora_enabled(b->grounded_lang) ? 1u : 0u;
+        out->reconsolidation_decay              = grounded_language_get_reconsolidation_decay(b->grounded_lang);
+        out->topic_shift_threshold              = grounded_language_get_topic_shift_threshold(b->grounded_lang);
+        out->topic_shift_min_turns              = grounded_language_get_topic_shift_min_turns(b->grounded_lang);
     }
 
     if (b->snn_lang_bridge) {
@@ -3409,7 +3420,12 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
             out->bridge_avg_word_confidence = bs.avg_word_confidence;
             out->bridge_avg_binding_weight  = bs.avg_binding_weight;
             out->bridge_active_bindings     = bs.active_bindings;
+            /* Audit-2 follow-up: TC-11 decode telemetry surface. */
+            out->bridge_decode_total_ns     = bs.decode_total_ns;
+            out->bridge_total_decode_calls  = bs.total_decode_calls;
         }
+        out->bridge_enable_da_modulation        = snn_language_bridge_get_da_modulation_enabled(b->snn_lang_bridge) ? 1u : 0u;
+        out->bridge_enable_trigram_learning     = snn_language_bridge_get_trigram_learning_enabled(b->snn_lang_bridge) ? 1u : 0u;
     }
 
     return NIMCP_OK;

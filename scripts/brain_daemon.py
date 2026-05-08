@@ -1880,6 +1880,69 @@ class BrainService:
             return {"error": f"set_topic_shift_threshold: {e}"}
         return {"ok": True, "threshold": threshold}
 
+    def _cmd_lang_status(self, _req):
+        """Audit-2 follow-up: single-call summary of the entire lang surface.
+
+        Returns:
+          flags: dict of every campaign feature flag (bool) + tunables.
+          stats: vocab + comprehension + production counters.
+          decode: TC-11 latency metrics (avg µs/call, total calls, total ns).
+                  avg_decode_us > 100 is the trigger threshold for the
+                  deferred GPU decode kernel.
+
+        No flag mutations — purely a read-side aggregator. Pulls from
+        get_grounded_language_diagnostics() which now includes the
+        campaign-flag snapshot fields (audit-2 follow-up).
+        """
+        try:
+            d = self.brain.get_grounded_language_diagnostics()
+        except AttributeError:
+            return {"error": "get_grounded_language_diagnostics not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"lang_status: {e}"}
+
+        decode_calls = int(d.get("bridge_total_decode_calls", 0))
+        decode_ns = int(d.get("bridge_decode_total_ns", 0))
+        avg_us = (decode_ns / decode_calls / 1000.0) if decode_calls > 0 else 0.0
+
+        flags = {
+            "negation_inversion":         bool(d.get("enable_negation_inversion", False)),
+            "sense_disambiguation":       bool(d.get("enable_sense_disambiguation", False)),
+            "speech_act_classification":  bool(d.get("enable_speech_act_classification", False)),
+            "sentence_segmentation":      bool(d.get("enable_sentence_segmentation", False)),
+            "topic_shift_detection":      bool(d.get("enable_topic_shift_detection", False)),
+            "reconsolidation":            bool(d.get("enable_reconsolidation", False)),
+            "anaphora_resolution":        bool(d.get("enable_anaphora_resolution", False)),
+            "bridge_da_modulation":       bool(d.get("bridge_enable_da_modulation", False)),
+            "bridge_trigram_learning":    bool(d.get("bridge_enable_trigram_learning", False)),
+        }
+        tunables = {
+            "reconsolidation_decay":   float(d.get("reconsolidation_decay", 0.0)),
+            "topic_shift_threshold":   float(d.get("topic_shift_threshold", 0.0)),
+            "topic_shift_min_turns":   int(d.get("topic_shift_min_turns", 0)),
+            "snn_bridge_blend":        float(d.get("snn_bridge_blend", -1.0)),
+        }
+        stats = {
+            "vocab_size":                int(d.get("vocab_size", 0)),
+            "total_bindings":            int(d.get("total_bindings", 0)),
+            "total_groundings":          int(d.get("total_groundings", 0)),
+            "total_comprehensions":      int(d.get("total_comprehensions", 0)),
+            "total_productions":         int(d.get("total_productions", 0)),
+            "bridge_total_productions":  int(d.get("bridge_total_productions", 0)),
+            "bridge_active_bindings":    int(d.get("bridge_active_bindings", 0)),
+            "avg_binding_strength":      float(d.get("avg_binding_strength", 0.0)),
+            "avg_comprehension_confidence": float(d.get("avg_comprehension_confidence", 0.0)),
+        }
+        decode = {
+            "total_calls":          decode_calls,
+            "total_ns":             decode_ns,
+            "avg_us_per_call":      round(avg_us, 3),
+            "gpu_port_threshold_us": 100.0,
+            "above_gpu_threshold":  avg_us > 100.0,
+        }
+        return {"ok": True, "flags": flags, "tunables": tunables,
+                "stats": stats, "decode": decode}
+
     def _cmd_set_topic_shift_min_turns(self, req):
         """TB-10: tune minimum turns before topic-shift fires. Clamped to discourse cap."""
         try:

@@ -1327,6 +1327,10 @@ uint64_t grounded_language_bigram_spectrum_map_overflow_warns(void);
 bool grounded_language_set_anaphora_enabled(grounded_language_t* gl,
                                               bool enabled);
 
+/** Read-side counterpart for lang_status. Returns false when the
+ *  resolver state hasn't been allocated yet (== disabled). */
+bool grounded_language_get_anaphora_enabled(const grounded_language_t* gl);
+
 /**
  * @brief Process-global counter of successful pronoun → referent matches.
  *
