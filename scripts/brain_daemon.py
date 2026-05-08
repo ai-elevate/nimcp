@@ -1780,7 +1780,11 @@ class BrainService:
         return {"ok": True, "enabled": enabled}
 
     def _cmd_set_da_modulation_gain(self, req):
-        """TA-3: tune the DA → LR scaling. Clamped [0, 200]."""
+        """TA-3: tune the DA → LR scaling. Clamped [0, 200].
+
+        Audit-2 B4: returns the effective (post-clamp) value, not the
+        request, so callers see what actually got applied.
+        """
         try:
             gain = float(req.get("gain", 50.0))
         except (TypeError, ValueError) as e:
@@ -1791,7 +1795,13 @@ class BrainService:
             return {"error": "set_da_modulation_gain not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"set_da_modulation_gain: {e}"}
-        return {"ok": True, "gain": gain}
+        # Audit-2 B4: read back via bridge config for the effective value.
+        try:
+            cfg = self.brain.get_snn_language_bridge_config()
+            effective = float(cfg.get("da_modulation_gain", gain))
+        except Exception:
+            effective = gain
+        return {"ok": True, "gain": effective, "requested": gain}
 
     def _cmd_set_reconsolidation_enabled(self, req):
         """TA-5: toggle reconsolidation-on-contradiction. Default OFF."""
@@ -1805,7 +1815,10 @@ class BrainService:
         return {"ok": True, "enabled": enabled}
 
     def _cmd_set_reconsolidation_decay(self, req):
-        """TA-5: tune binding decay per contradiction event. Clamped [0, 0.5]."""
+        """TA-5: tune binding decay per contradiction event. Clamped [0, 0.5].
+
+        Audit-2 B4: returns the effective (post-clamp) value via diagnostics.
+        """
         try:
             decay = float(req.get("decay", 0.05))
         except (TypeError, ValueError) as e:
@@ -1816,7 +1829,12 @@ class BrainService:
             return {"error": "set_reconsolidation_decay not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"set_reconsolidation_decay: {e}"}
-        return {"ok": True, "decay": decay}
+        try:
+            d = self.brain.get_grounded_language_diagnostics()
+            effective = float(d.get("reconsolidation_decay", decay))
+        except Exception:
+            effective = decay
+        return {"ok": True, "decay": effective, "requested": decay}
 
     def _cmd_set_sentence_segmentation_enabled(self, req):
         """TB-6: toggle sentence-boundary segmentation. Default OFF."""
@@ -1867,7 +1885,10 @@ class BrainService:
         return {"ok": True, "enabled": enabled}
 
     def _cmd_set_topic_shift_threshold(self, req):
-        """TB-10: tune topic-shift cosine threshold. Clamped [0, 1]."""
+        """TB-10: tune topic-shift cosine threshold. Clamped [0, 1].
+
+        Audit-2 B4: returns the effective (post-clamp) value via diagnostics.
+        """
         try:
             threshold = float(req.get("threshold", 0.3))
         except (TypeError, ValueError) as e:
@@ -1878,7 +1899,12 @@ class BrainService:
             return {"error": "set_topic_shift_threshold not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"set_topic_shift_threshold: {e}"}
-        return {"ok": True, "threshold": threshold}
+        try:
+            d = self.brain.get_grounded_language_diagnostics()
+            effective = float(d.get("topic_shift_threshold", threshold))
+        except Exception:
+            effective = threshold
+        return {"ok": True, "threshold": effective, "requested": threshold}
 
     def _cmd_lang_status(self, _req):
         """Audit-2 follow-up: single-call summary of the entire lang surface.
@@ -1943,8 +1969,24 @@ class BrainService:
         return {"ok": True, "flags": flags, "tunables": tunables,
                 "stats": stats, "decode": decode}
 
+    def _cmd_set_dialect(self, req):
+        """Audit-2 B13: dialect / accent conditioning. None or empty clears."""
+        dialect = req.get("dialect", None)
+        if dialect is not None and not isinstance(dialect, str):
+            return {"error": f"set_dialect bad arg: dialect must be str or null, got {type(dialect).__name__}"}
+        try:
+            self.brain.set_dialect(dialect)
+        except AttributeError:
+            return {"error": "set_dialect not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_dialect: {e}"}
+        return {"ok": True, "dialect": dialect or ""}
+
     def _cmd_set_topic_shift_min_turns(self, req):
-        """TB-10: tune minimum turns before topic-shift fires. Clamped to discourse cap."""
+        """TB-10: tune minimum turns before topic-shift fires. Clamped to discourse cap.
+
+        Audit-2 B4: returns the effective (post-clamp) value via diagnostics.
+        """
         try:
             n = int(req.get("min_turns", 3))
         except (TypeError, ValueError) as e:
@@ -1955,7 +1997,12 @@ class BrainService:
             return {"error": "set_topic_shift_min_turns not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"set_topic_shift_min_turns: {e}"}
-        return {"ok": True, "min_turns": n}
+        try:
+            d = self.brain.get_grounded_language_diagnostics()
+            effective = int(d.get("topic_shift_min_turns", n))
+        except Exception:
+            effective = n
+        return {"ok": True, "min_turns": effective, "requested": n}
 
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.

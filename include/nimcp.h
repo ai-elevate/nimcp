@@ -1354,6 +1354,10 @@ nimcp_status_t nimcp_brain_set_topic_shift_enabled(nimcp_brain_t brain, bool ena
 nimcp_status_t nimcp_brain_set_topic_shift_threshold(nimcp_brain_t brain, float threshold);
 nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32_t min_turns);
 
+/** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
+ *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */
+nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *

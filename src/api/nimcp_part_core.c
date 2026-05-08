@@ -4009,6 +4009,17 @@ nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    /* NULL or empty input clears the dialect; module setter handles
+     * truncation + NUL termination. */
+    grounded_language_set_dialect(b->grounded_lang, dialect);
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_learn_next_token_triple(nimcp_brain_t brain,
                                                      const char* prev1,
                                                      const char* prev2,
