@@ -1781,7 +1781,10 @@ class BrainService:
 
     def _cmd_set_da_modulation_gain(self, req):
         """TA-3: tune the DA → LR scaling. Clamped [0, 200]."""
-        gain = float(req.get("gain", 50.0))
+        try:
+            gain = float(req.get("gain", 50.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_da_modulation_gain bad arg: {e}"}
         try:
             self.brain.set_da_modulation_gain(gain)
         except AttributeError:
@@ -1803,7 +1806,10 @@ class BrainService:
 
     def _cmd_set_reconsolidation_decay(self, req):
         """TA-5: tune binding decay per contradiction event. Clamped [0, 0.5]."""
-        decay = float(req.get("decay", 0.05))
+        try:
+            decay = float(req.get("decay", 0.05))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_reconsolidation_decay bad arg: {e}"}
         try:
             self.brain.set_reconsolidation_decay(decay)
         except AttributeError:
@@ -1825,8 +1831,11 @@ class BrainService:
 
     def _cmd_set_length_control(self, req):
         """TB-7: produce length cap. min/max=0 disables that side."""
-        min_words = int(req.get("min_words", 0))
-        max_words = int(req.get("max_words", 0))
+        try:
+            min_words = int(req.get("min_words", 0))
+            max_words = int(req.get("max_words", 0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_length_control bad arg: {e}"}
         try:
             self.brain.set_length_control(min_words, max_words)
         except AttributeError:
@@ -1859,7 +1868,10 @@ class BrainService:
 
     def _cmd_set_topic_shift_threshold(self, req):
         """TB-10: tune topic-shift cosine threshold. Clamped [0, 1]."""
-        threshold = float(req.get("threshold", 0.3))
+        try:
+            threshold = float(req.get("threshold", 0.3))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_topic_shift_threshold bad arg: {e}"}
         try:
             self.brain.set_topic_shift_threshold(threshold)
         except AttributeError:
@@ -1867,6 +1879,20 @@ class BrainService:
         except Exception as e:
             return {"error": f"set_topic_shift_threshold: {e}"}
         return {"ok": True, "threshold": threshold}
+
+    def _cmd_set_topic_shift_min_turns(self, req):
+        """TB-10: tune minimum turns before topic-shift fires. Clamped to discourse cap."""
+        try:
+            n = int(req.get("min_turns", 3))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_topic_shift_min_turns bad arg: {e}"}
+        try:
+            self.brain.set_topic_shift_min_turns(n)
+        except AttributeError:
+            return {"error": "set_topic_shift_min_turns not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_topic_shift_min_turns: {e}"}
+        return {"ok": True, "min_turns": n}
 
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.

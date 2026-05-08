@@ -200,6 +200,7 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /home/bbrelin/nimcp/include/gpu/training/nimcp_training_bridge.h \
   /home/bbrelin/nimcp/include/information/nimcp_cross_modal.h \
   /home/bbrelin/nimcp/include/information/nimcp_shannon.h \
+  /home/bbrelin/nimcp/include/language/nimcp_bigram_spectrum.h \
   /home/bbrelin/nimcp/include/lnn/nimcp_lnn.h \
   /home/bbrelin/nimcp/include/lnn/nimcp_lnn_bio_async.h \
   /home/bbrelin/nimcp/include/lnn/nimcp_lnn_config.h \
@@ -276,6 +277,7 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_python.c.o: /hom
   /home/bbrelin/nimcp/include/security/nimcp_security.h \
   /home/bbrelin/nimcp/include/security/nimcp_security_integration.h \
   /home/bbrelin/nimcp/include/security/nimcp_security_math.h \
+  /home/bbrelin/nimcp/include/snn/bridges/nimcp_snn_language_bridge.h \
   /home/bbrelin/nimcp/include/snn/nimcp_snn_batch_safe.h \
   /home/bbrelin/nimcp/include/snn/nimcp_snn_config.h \
   /home/bbrelin/nimcp/include/snn/nimcp_snn_encoding.h \
@@ -987,8 +989,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/utils/signal/nimcp_signal_filter.h:
 
-/home/bbrelin/.local/lib/python3.12/site-packages/numpy/_core/include/numpy/utils.h:
-
 /home/bbrelin/.local/lib/python3.12/site-packages/numpy/_core/include/numpy/numpyconfig.h:
 
 /home/bbrelin/.local/lib/python3.12/site-packages/numpy/_core/include/numpy/npy_common.h:
@@ -1137,6 +1137,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/statx.h:
 
+/usr/include/x86_64-linux-gnu/bits/waitstatus.h:
+
+/usr/include/x86_64-linux-gnu/bits/stat.h:
+
 /home/bbrelin/nimcp/include/plasticity/dendritic/nimcp_dendritic.h:
 
 /home/bbrelin/nimcp/include/plasticity/attention/nimcp_attention.h:
@@ -1150,8 +1154,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/nlp/nimcp_nlp.h:
 
 /home/bbrelin/nimcp/include/core/cortical_columns/nimcp_columnar_connectivity.h:
-
-/home/bbrelin/nimcp/include/plasticity/eligibility/nimcp_eligibility_trace.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
 
@@ -1282,6 +1284,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/cognitive/nimcp_cognitive_emotional.h:
 
 /usr/include/python3.12/codecs.h:
+
+/home/bbrelin/nimcp/include/language/nimcp_bigram_spectrum.h:
+
+/usr/include/ctype.h:
 
 /home/bbrelin/nimcp/include/utils/ternary/nimcp_ternary_convert.h:
 
@@ -1519,6 +1525,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /home/bbrelin/nimcp/include/api/nimcp_api_internal.h:
 
+/home/bbrelin/nimcp/include/cognitive/parietal/nimcp_financial_market.h:
+
+/usr/include/asm-generic/bitsperlong.h:
+
 /home/bbrelin/nimcp/include/lnn/nimcp_lnn_types.h:
 
 /home/bbrelin/nimcp/include/cognitive/introspection/nimcp_introspection.h:
@@ -1640,12 +1650,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /usr/include/python3.12/cpython/odictobject.h:
 
 /home/bbrelin/nimcp/include/utils/ternary/nimcp_ternary_matrix.h:
-
-/usr/include/asm-generic/bitsperlong.h:
-
-/home/bbrelin/nimcp/include/cognitive/parietal/nimcp_financial_market.h:
-
-/usr/include/ctype.h:
 
 /home/bbrelin/nimcp/include/cognitive/nimcp_remorse_regret.h:
 
@@ -1795,14 +1799,6 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/python3.12/rangeobject.h:
 
-/home/bbrelin/nimcp/include/utils/quantum/nimcp_quantum_shannon.h:
-
-/home/bbrelin/nimcp/include/cognitive/nimcp_love_loyalty_friendship.h:
-
-/home/bbrelin/nimcp/include/core/synapse_types/nimcp_synapse_types.h:
-
-/home/bbrelin/nimcp/include/constants/nimcp_dimension_constants.h:
-
 /home/bbrelin/nimcp/include/cognitive/nimcp_explanations.h:
 
 /home/bbrelin/nimcp/include/api/nimcp_alloc_stats.h:
@@ -1863,6 +1859,16 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/features-time64.h:
 
+/home/bbrelin/nimcp/include/plasticity/eligibility/nimcp_eligibility_trace.h:
+
+/home/bbrelin/nimcp/include/cognitive/nimcp_love_loyalty_friendship.h:
+
+/home/bbrelin/nimcp/include/core/synapse_types/nimcp_synapse_types.h:
+
+/home/bbrelin/nimcp/include/constants/nimcp_dimension_constants.h:
+
+/home/bbrelin/nimcp/include/utils/quantum/nimcp_quantum_shannon.h:
+
 /usr/include/python3.12/cpython/setobject.h:
 
 /usr/include/python3.12/setobject.h:
@@ -1884,6 +1890,10 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 /home/bbrelin/nimcp/include/cognitive/memory/nimcp_engram.h:
 
 /home/bbrelin/nimcp/include/security/nimcp_security_integration.h:
+
+/home/bbrelin/.local/lib/python3.12/site-packages/numpy/_core/include/numpy/utils.h:
+
+/home/bbrelin/nimcp/include/snn/bridges/nimcp_snn_language_bridge.h:
 
 /home/bbrelin/nimcp/include/swarm/nimcp_swarm_immune.h:
 
@@ -2223,6 +2233,12 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/string.h:
 
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/x86_64-linux-gnu/bits/statx-generic.h:
+
+/usr/include/wchar.h:
+
 /usr/include/python3.12/cpython/ceval.h:
 
 /usr/include/x86_64-linux-gnu/asm/types.h:
@@ -2311,14 +2327,4 @@ src/python/CMakeFiles/nimcp_python.dir/__/bindings/python/nimcp_signal_filter_py
 
 /usr/include/x86_64-linux-gnu/bits/sigstksz.h:
 
-/usr/include/x86_64-linux-gnu/bits/waitstatus.h:
-
-/usr/include/x86_64-linux-gnu/bits/stat.h:
-
 /usr/include/x86_64-linux-gnu/bits/ss_flags.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/wchar.h:
-
-/usr/include/x86_64-linux-gnu/bits/statx-generic.h:

@@ -5404,7 +5404,10 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     gl->enable_sentence_segmentation     = (seg   != 0);
     grounded_language_set_topic_shift_enabled(gl, (topic != 0));
     grounded_language_set_topic_shift_threshold(gl, tt);
-    if (mt > 0) gl->topic_shift_min_turns = mt;
+    /* Audit-2 B1: route through the clamping setter rather than direct
+     * assign — a corrupt sidecar with mt < 2 would otherwise wedge the
+     * topic-shift min_turns invariant. */
+    if (mt > 0) grounded_language_set_topic_shift_min_turns(gl, mt);
     grounded_language_set_reconsolidation_enabled(gl, (rec != 0));
     grounded_language_set_reconsolidation_decay(gl, dec);
     return 0;

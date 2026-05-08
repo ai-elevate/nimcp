@@ -3360,6 +3360,22 @@ static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
+ * gap where this was persisted in the LANC block but unreachable via
+ * Python / daemon RPC. */
+static PyObject* Brain_set_topic_shift_min_turns(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int n = 0;
+    if (!PyArg_ParseTuple(args, "I", &n)) return NULL;
+    if (nimcp_brain_set_topic_shift_min_turns(self->brain, n) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_topic_shift_min_turns failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* TA-4: train one (prev1, prev2, next) trigram. */
 static PyObject* Brain_learn_next_token_triple(BrainObject* self, PyObject* args) {
     if (!self->brain) {
@@ -11499,6 +11515,8 @@ static PyMethodDef Brain_methods[] = {
      "TB-10: toggle topic-shift detection — set_topic_shift_enabled(enabled: bool) -> None. Default OFF."},
     {"set_topic_shift_threshold", (PyCFunction)Brain_set_topic_shift_threshold, METH_VARARGS,
      "TB-10: tune the topic-shift cosine threshold — set_topic_shift_threshold(t: float) -> None. Clamped [0, 1]."},
+    {"set_topic_shift_min_turns", (PyCFunction)Brain_set_topic_shift_min_turns, METH_VARARGS,
+     "TB-10: tune the minimum turns before topic-shift detection fires — set_topic_shift_min_turns(n: int) -> None. Clamped [2, GL_DISCOURSE_MAX_TURNS_PUBLIC]."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,
      "TA-4: contrastive next-token training on a single (prev1, prev2) → next trigram — learn_next_token_triple(prev1, prev2, next, lr=0.025) -> bool. Context is the average of prev1 and prev2 reverse-encodings; LTP/LTD applied like the bigram path. Returns True on update applied; False on cold-start no-op (any of the three tokens without prior bindings)."},
     {"set_grounded_negation_enabled", (PyCFunction)Brain_set_grounded_negation_enabled, METH_VARARGS,

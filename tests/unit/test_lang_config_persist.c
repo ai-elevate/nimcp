@@ -64,6 +64,7 @@ static void test_round_trip_all_flags_on(void)
     grounded_language_set_sentence_segmentation_enabled(gl, true);
     grounded_language_set_topic_shift_enabled(gl, true);
     grounded_language_set_topic_shift_threshold(gl, 0.42f);
+    grounded_language_set_topic_shift_min_turns(gl, 7);
     grounded_language_set_reconsolidation_enabled(gl, true);
     grounded_language_set_reconsolidation_decay(gl, 0.17f);
 
@@ -113,6 +114,9 @@ static void test_round_trip_all_flags_on(void)
     EXPECT(fabsf(grounded_language_get_topic_shift_threshold(gl2) - 0.42f) < 1e-5f,
            "topic_shift threshold round-trip: got %.4f",
            grounded_language_get_topic_shift_threshold(gl2));
+    EXPECT(grounded_language_get_topic_shift_min_turns(gl2) == 7u,
+           "topic_shift min_turns round-trip: got %u",
+           grounded_language_get_topic_shift_min_turns(gl2));
     EXPECT(fabsf(grounded_language_get_reconsolidation_decay(gl2) - 0.17f) < 1e-5f,
            "reconsolidation decay round-trip: got %.4f",
            grounded_language_get_reconsolidation_decay(gl2));

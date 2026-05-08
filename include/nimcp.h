@@ -1328,9 +1328,10 @@ nimcp_status_t nimcp_brain_set_length_control(nimcp_brain_t brain,
 /** TB-9: speech-act intent classification. */
 nimcp_status_t nimcp_brain_set_speech_act_classification_enabled(nimcp_brain_t brain, bool enabled);
 
-/** TB-10: topic-shift detection + tunables. */
+/** TB-10: topic-shift detection + tunables (enabled, threshold, min_turns). */
 nimcp_status_t nimcp_brain_set_topic_shift_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_topic_shift_threshold(nimcp_brain_t brain, float threshold);
+nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32_t min_turns);
 
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
