@@ -5371,6 +5371,16 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     if (mt_write_f32(f, gl->reconsolidation_decay) != 0) return -1;
     if (mt_write_f32(f, gl->topic_shift_threshold) != 0) return -1;
     if (mt_write_u32(f, gl->topic_shift_min_turns) != 0) return -1;
+    /* Audit-2 B6: TA-4 trigram learning lives on the SNN bridge but
+     * gl is the natural persistence owner because learn_text_bigrams
+     * reads it on every call. Persist via a passthrough — load applies
+     * to the bridge if attached. Trailing field for backward-compat;
+     * pre-B6 readers stop after topic_shift_min_turns. */
+    bool trigram_on = false;
+    if (gl->snn_bridge) {
+        trigram_on = snn_language_bridge_get_trigram_learning_enabled(gl->snn_bridge);
+    }
+    if (mt_write_u8(f, trigram_on ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -5410,6 +5420,16 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     if (mt > 0) grounded_language_set_topic_shift_min_turns(gl, mt);
     grounded_language_set_reconsolidation_enabled(gl, (rec != 0));
     grounded_language_set_reconsolidation_decay(gl, dec);
+
+    /* Audit-2 B6: trailing trigram-learning byte. Optional — pre-B6
+     * sidecars stop after the reconsolidation_decay read above and
+     * mt_load_config_payload returns 0 cleanly. Use a non-fatal try-
+     * read (no error if EOF). */
+    uint8_t trigram = 0;
+    if (mt_read_u8(f, &trigram) == 0 && gl->snn_bridge) {
+        snn_language_bridge_set_trigram_learning_enabled(
+            gl->snn_bridge, (trigram != 0));
+    }
     return 0;
 }
 
