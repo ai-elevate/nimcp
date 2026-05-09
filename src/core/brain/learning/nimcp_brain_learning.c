@@ -5397,28 +5397,37 @@ int brain_enable_multi_network_training(brain_t brain)
              * + sensor_hub + cerebellum/basal_ganglia consumers. */
             (void)nimcp_brain_factory_init_language_pops(brain);
 
-            /* Create per-population FNO models for spectral dynamics prediction.
-             * Ownership lives on snn_network_t now (snn->fno_populations) so
-             * snn_network_step can call snn_fno_record_pair directly without
-             * threading the brain pointer through every call site. The brain
-             * keeps `snn_fno_populations`/`snn_fno_count` as a borrowed view
-             * of the network's array — existing readers in brain_part_core /
-             * brain_learning continue to work without modification. */
-            if (snn->n_populations > 0 && !brain->snn_fno_populations) {
-                snn_fno_config_t fno_cfg;
-                snn_fno_config_default(&fno_cfg);
-                int rc = snn_network_init_fno(snn, &fno_cfg);
-                if (rc == 0 && snn->fno_populations) {
-                    brain->snn_fno_populations = (void**)snn->fno_populations;
-                    brain->snn_fno_count = snn->fno_count;
-                } else {
-                    NIMCP_LOGGING_WARN("SNN FNO: snn_network_init_fno failed (rc=%d)", rc);
-                }
-            }
         }
     } else if (!brain->snn_network) {
         NIMCP_LOGGING_INFO("SNN skipped: requires num_inputs >= 8 and num_outputs >= 8 "
                           "(brain has %u inputs, %u outputs)", num_inputs, num_outputs);
+    }
+
+    /* Create per-population FNO models for spectral dynamics prediction.
+     *
+     * Runs OUTSIDE the `if (!brain->snn_network)` gate above because
+     * checkpoint resume restores brain->snn_network from disk, which
+     * skips the entire creation block. fno_populations is a runtime
+     * field (not in the checkpoint schema), so it's always NULL after
+     * load — we need to (re)initialize it on every brain init that has
+     * an SNN, fresh or resumed.
+     *
+     * Ownership lives on snn_network_t (snn->fno_populations) so
+     * snn_network_step can call snn_fno_record_pair without threading
+     * the brain pointer through every call site. The brain keeps
+     * `snn_fno_populations`/`snn_fno_count` as a borrowed view —
+     * existing readers in brain_part_core / brain_learning keep working. */
+    if (brain->snn_network && brain->snn_network->n_populations > 0 &&
+        !brain->snn_fno_populations) {
+        snn_fno_config_t fno_cfg;
+        snn_fno_config_default(&fno_cfg);
+        int rc = snn_network_init_fno(brain->snn_network, &fno_cfg);
+        if (rc == 0 && brain->snn_network->fno_populations) {
+            brain->snn_fno_populations = (void**)brain->snn_network->fno_populations;
+            brain->snn_fno_count = brain->snn_network->fno_count;
+        } else {
+            NIMCP_LOGGING_WARN("SNN FNO: snn_network_init_fno failed (rc=%d)", rc);
+        }
     }
 
     /* STEP 2.6: Idempotent post-load language-substrate guarantee.
