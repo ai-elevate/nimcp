@@ -663,27 +663,54 @@ check_disk_usage() {
 }
 
 #=============================================================================
-# 7. AUTO-PRUNE old athena_auto_* snapshot families (keep N newest)
-#    Each "family" is a TIMESTAMPed prefix with sibling shards
+# 7. AUTO-PRUNE old snapshot families (keep N newest per family-glob)
+#    Each "family" is a glob-prefixed snapshot with sibling shards
 #    (.bin, .bin.snn, .bin.cnn, .bin.lnn, .bin.tokenizer, .bin.cortex_*, etc.)
+#
+#    Two glob patterns are pruned with the SAME N-family retention:
+#      - athena_auto_*.bin  (daemon auto-saves, timestamped)
+#      - athena_s1_step*.bin (trainer per-step snapshots)
+#    Anything pointed at by an athena_immersive.bin* symlink is preserved
+#    so the canonical resume target is never pruned out from under us.
 #=============================================================================
-prune_local_snapshots() {
-    [ -d "$CHECKPOINT_DIR" ] || return 0
-    local freed=0 deleted=0 sz f
-
-    # Phase 1: trim canonicals to N newest, delete each victim's shards
-    local canonicals
-    canonicals=$(find "$CHECKPOINT_DIR" -maxdepth 1 -type f -name 'athena_auto_*.bin' \
+_prune_glob() {
+    # $1 = canonical glob (e.g. 'athena_auto_*.bin'), $2 = retention count.
+    # Mutates the outer-scope `freed` and `deleted` counters via `eval` —
+    # bash doesn't have proper return values for ints, and printing+capturing
+    # would lose the exit code. Phase 2 (orphan shards) walks the matching
+    # `${glob}.*` shard space and deletes any whose .bin canonical is gone.
+    local glob="$1" keep="$2" canonicals total victims canon prefix sz f canonical
+    canonicals=$(find "$CHECKPOINT_DIR" -maxdepth 1 -type f -name "$glob" \
                  -printf '%T@ %p\n' 2>/dev/null | sort -rn | awk '{print $2}')
+
+    # Build the protected-set (resume targets) — files referenced by any
+    # athena_immersive.bin* symlink. These are the canonical resume points
+    # for both the brain daemon and the trainer; pruning them would break
+    # --resume on next start.
+    local immune_targets=""
+    if [ -L "$CHECKPOINT_DIR/athena_immersive.bin" ]; then
+        immune_targets="$(readlink -f "$CHECKPOINT_DIR/athena_immersive.bin" 2>/dev/null)"
+    fi
+    for sl in "$CHECKPOINT_DIR"/athena_immersive.bin.*; do
+        [ -L "$sl" ] || continue
+        immune_targets="$immune_targets $(readlink -f "$sl" 2>/dev/null)"
+    done
+
     if [ -n "$canonicals" ]; then
-        local total
         total=$(echo "$canonicals" | wc -l)
-        if [ "$total" -gt "$SNAPSHOT_RETENTION" ]; then
-            local victims
-            victims=$(echo "$canonicals" | tail -n +$((SNAPSHOT_RETENTION + 1)))
+        if [ "$total" -gt "$keep" ]; then
+            victims=$(echo "$canonicals" | tail -n +$((keep + 1)))
             while IFS= read -r canon; do
                 [ -z "$canon" ] && continue
-                local prefix
+                # Skip if canonical OR any of its shards is the resume target.
+                local skip=0
+                for t in $immune_targets; do
+                    [ -n "$t" ] || continue
+                    case "$canon" in
+                        "$t") skip=1; break ;;
+                    esac
+                done
+                if [ "$skip" = "1" ]; then continue; fi
                 prefix="${canon%.bin}"
                 for f in "$canon" "$prefix".bin.*; do
                     [ -e "$f" ] || continue
@@ -694,22 +721,28 @@ prune_local_snapshots() {
         fi
     fi
 
-    # Phase 2: orphaned shards (any athena_auto_*.bin.* whose .bin canonical
-    # was already deleted manually). These accumulate fast — SNN shard is ~16GB.
+    # Orphan shards for this glob (any "${glob}.*" whose .bin canonical
+    # was already deleted manually). The .bin shards are fat — SNN
+    # sidecars run ~16-20 GB each.
     while IFS= read -r f; do
         [ -e "$f" ] || continue
-        # Strip the trailing ".<shard>" component to get the canonical .bin path
-        local canonical
         canonical="${f%.*}"
-        # Only treat as orphan if the canonical .bin is missing
         if [ ! -e "$canonical" ]; then
             sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
             rm -f -- "$f" && { freed=$((freed + sz)); deleted=$((deleted + 1)); }
         fi
-    done < <(find "$CHECKPOINT_DIR" -maxdepth 1 -type f -name 'athena_auto_*.bin.*' 2>/dev/null)
+    done < <(find "$CHECKPOINT_DIR" -maxdepth 1 -type f -name "${glob}.*" 2>/dev/null)
+}
+
+prune_local_snapshots() {
+    [ -d "$CHECKPOINT_DIR" ] || return 0
+    local freed=0 deleted=0
+
+    _prune_glob 'athena_auto_*.bin'    "$SNAPSHOT_RETENTION"
+    _prune_glob 'athena_s1_step*.bin'  "$SNAPSHOT_RETENTION"
 
     if [ "$deleted" -gt 0 ]; then
-        log "Local prune: deleted $deleted files ($(awk "BEGIN {printf \"%.1f\", $freed / 1073741824}")GB), kept newest $SNAPSHOT_RETENTION families + orphan shards"
+        log "Local prune: deleted $deleted files ($(awk "BEGIN {printf \"%.1f\", $freed / 1073741824}")GB), kept newest $SNAPSHOT_RETENTION per family + orphan shards (athena_auto_, athena_s1_step)"
     fi
 }
 
