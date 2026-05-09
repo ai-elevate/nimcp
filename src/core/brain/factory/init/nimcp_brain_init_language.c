@@ -622,15 +622,34 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
         if (brain->imagination)
             grounded_language_attach_imagination(brain->grounded_lang,
                                                    brain->imagination);
-        /* theory_of_mind is a struct-by-value typedef on brain_t — pass
-         * its address so the wrapper has a stable ctx pointer. */
-        grounded_language_attach_theory_of_mind(brain->grounded_lang,
-                                                  &brain->theory_of_mind);
+        /* theory_of_mind_t IS a pointer typedef
+         * (`struct theory_of_mind_s*` per nimcp_theory_of_mind.h:159), so
+         * brain->theory_of_mind is already a stable pointer.
+         *
+         * Pre-fix: this passed `&brain->theory_of_mind` (pointer-to-pointer)
+         * with a comment claiming it was a struct-by-value typedef. The
+         * wrapper at _wrap_theory_of_mind reinterpreted that as a
+         * `theory_of_mind_t` and read brain-struct memory at
+         * offsetof(theory_of_mind_s, snn_bridge), getting whatever brain
+         * field happens to live there. When that memory had a non-NULL
+         * value, `if (tom->snn_bridge)` passed and tom_snn_encode_context
+         * was called with a wild pointer → SIGSEGV in the field-access
+         * `cmp %edx,0x90(%rdi)` (= bridge->config.num_dimensions).
+         * Crashed Athena once per training cycle on the pod (2026-05-09). */
+        if (brain->theory_of_mind)
+            grounded_language_attach_theory_of_mind(brain->grounded_lang,
+                                                      brain->theory_of_mind);
         if (brain->empathetic_response_engine)
             grounded_language_attach_empathy(brain->grounded_lang,
                                                brain->empathetic_response_engine);
-        grounded_language_attach_introspection(brain->grounded_lang,
-                                                 &brain->introspection);
+        /* introspection_context_t is also a pointer typedef
+         * (`struct introspection_context_struct*` per nimcp_brain.h:108
+         * — comment in brain_internal.h:423 even says "already pointer
+         * type*"). Same fix as theory_of_mind above: pass the pointer
+         * directly, not its address. */
+        if (brain->introspection)
+            grounded_language_attach_introspection(brain->grounded_lang,
+                                                     brain->introspection);
         if (brain->analogical_transfer)
             grounded_language_attach_analogical(brain->grounded_lang,
                                                   brain->analogical_transfer);
