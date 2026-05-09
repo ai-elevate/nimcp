@@ -647,7 +647,13 @@ void snn_fno_snapshot_v_before(snn_network_t* network) {
     size_t stride = network->fno_v_prev_pop_stride;
     if (stride == 0) return;
 
-    for (uint32_t p = 0; p < network->n_populations; p++) {
+    /* Bound the loop by fno_count (size of the scratch buffer slots) AND
+     * n_populations (current SNN size). If a population was added after
+     * snn_network_init_fno ran, indexing past fno_count would write past
+     * fno_v_prev_buf — we have no slot for it, so just skip. */
+    uint32_t bound = network->n_populations;
+    if (bound > network->fno_count) bound = network->fno_count;
+    for (uint32_t p = 0; p < bound; p++) {
         snn_population_t* pop = network->populations[p];
         if (!pop || !pop->membrane_v) continue;
         const float* v = (const float*)nimcp_tensor_data_const(pop->membrane_v);
