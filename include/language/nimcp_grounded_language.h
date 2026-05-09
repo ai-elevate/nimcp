@@ -1364,6 +1364,28 @@ bool grounded_language_get_subword_oov_fallback_enabled(
 uint64_t grounded_language_subword_oov_attempts(const grounded_language_t* gl);
 uint64_t grounded_language_subword_oov_resolved(const grounded_language_t* gl);
 
+/*=============================================================================
+ * NLP-2: Coreference resolution beyond pronouns.
+ *
+ * Default OFF. When ON, comprehend tracks definite-NP head mentions
+ * (content noun preceded by "the"/"this"/"that"/"these"/"those") in a
+ * ring; on a repeat mention of the same head within the past K turns,
+ * fires GL_EVENT_COREF_RESOLVED and bumps coref_resolved.
+ *
+ * Same-surface only: this version links "the dog" ↔ "the dog" across
+ * turns, NOT "the dog" ↔ "the puppy". Semantic-vec fuzzy linking is
+ * future work — the wiring (event, stats, flag, ring) is the
+ * foundation that enables it without touching the comprehend hook.
+ *===========================================================================*/
+
+void grounded_language_set_coref_resolution_enabled(grounded_language_t* gl,
+                                                       bool enabled);
+bool grounded_language_get_coref_resolution_enabled(
+    const grounded_language_t* gl);
+
+uint64_t grounded_language_coref_attempts(const grounded_language_t* gl);
+uint64_t grounded_language_coref_resolved(const grounded_language_t* gl);
+
 /**
  * @brief Process-global counter of successful pronoun → referent matches.
  *
@@ -1900,6 +1922,12 @@ typedef enum {
      * `topic_similarity` field is the cosine value that crossed the
      * threshold. Natural consumer: episodic memory consolidation. */
     GL_EVENT_TOPIC_SHIFT,
+    /* NLP-2 — fired when a definite-NP head matches a recent prior
+     * mention. event->word is the noun head, event->text is the surface
+     * form of the input that triggered, event->topic_similarity carries
+     * a [0,1] score (1.0 == exact same surface, hooks for future
+     * semantic-vec fuzzy matching can use intermediate values). */
+    GL_EVENT_COREF_RESOLVED,
 } gl_event_type_t;
 
 /**
@@ -1935,6 +1963,7 @@ typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
 #define GL_EVENT_MASK_NEEDS_GROUNDING   (1u << 4)
 #define GL_EVENT_MASK_SPEECH_ACT        (1u << 5)
 #define GL_EVENT_MASK_TOPIC_SHIFT       (1u << 6)
+#define GL_EVENT_MASK_COREF_RESOLVED    (1u << 7)
 #define GL_EVENT_MASK_ALL               (0xFFFFFFFFu)
 
 /** Confidence floor below which comprehend fires a NEEDS_GROUNDING

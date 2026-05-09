@@ -367,6 +367,22 @@ struct grounded_language {
     /* Stats counters for the fallback path. */
     uint64_t             subword_oov_attempts;   /* unknown words encountered */
     uint64_t             subword_oov_resolved;   /* unknown words bootstrapped from subwords */
+
+    /* NLP-2 — coreference beyond pronouns.
+     *
+     * Tracks recent definite-NP head mentions (content noun preceded by
+     * "the"/"this"/"that"/"these"/"those") in a small ring. On a repeat
+     * mention of the same head within the past K turns, count a coref
+     * resolution and fire GL_EVENT_COREF_RESOLVED. Same-surface only —
+     * semantic-vec fuzzy matching ("dog" ↔ "puppy") is future work.
+     *
+     * `coref_state` is owned (gl_coref_state_t*, opaque to keep this
+     * header minimal). Lazily allocated on first set_coref_enabled.
+     * Protected by tc12_lock alongside anaphora_state. */
+    void*                coref_state;
+    bool                 enable_coref_resolution;
+    uint64_t             coref_attempts;   /* definite-NP heads observed */
+    uint64_t             coref_resolved;   /* repeat mentions matched */
 };
 
 /**

@@ -62,6 +62,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_config_persist
     test_lang_consumer_events
     test_lang_subword_oov
+    test_lang_coref
 )
 
 # Helper: register a single standalone-C test.

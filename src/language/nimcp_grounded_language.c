@@ -1742,6 +1742,13 @@ static float _gl_immune_inspect(grounded_language_t* gl,
     return inflammation;
 }
 
+/* NLP-2: forward decls for static helpers used in comprehend below.
+ * Defined later in this file. Without these, gcc would synthesize an
+ * extern decl at the call site that conflicts with the static def. */
+static void gl_tc12_lock(grounded_language_t* gl);
+static void gl_tc12_unlock(grounded_language_t* gl);
+static int  gl_coref_track_locked(grounded_language_t*, const char*, uint32_t);
+
 int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                                   gl_comprehension_result_t* result) {
     if (!gl || !text || !result) {
@@ -2423,6 +2430,52 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
             (void)grounded_language_reconsolidate_word(
                 gl, words[i], gl->reconsolidation_decay);
         }
+    }
+
+    /* NLP-2 — coref pass. Scan for "<definite> <noun>" patterns and
+     * track noun heads in the coref ring. Same-surface match within
+     * GL_COREF_MAX_TURNS counts as a coref resolution. Default OFF. */
+    if (gl->enable_coref_resolution) {
+        static const char* definite_markers[] = {
+            "the", "this", "that", "these", "those", NULL
+        };
+        gl_tc12_lock(gl);
+        for (uint32_t i = 0; i + 1 < word_count; i++) {
+            bool is_def = false;
+            for (int m = 0; definite_markers[m]; m++) {
+                if (strcmp(words[i], definite_markers[m]) == 0) {
+                    is_def = true; break;
+                }
+            }
+            if (!is_def) continue;
+            /* words[i+1] is the candidate noun head. Skip pronouns
+             * (they have their own resolver) and very short tokens. */
+            const char* head = words[i + 1];
+            if (!head || strlen(head) < 2) continue;
+            /* Use total_comprehensions as the turn idx — it advances
+             * unconditionally per comprehend (incremented above at the
+             * stats block), unlike discourse.head which only advances
+             * when push_turn fires (gated on a non-zero semantic vec).
+             * Truncate to uint32_t; overflow at 4B comprehensions is
+             * an acceptable wraparound for a 6-turn lookback window. */
+            int matched = gl_coref_track_locked(gl, head,
+                (uint32_t)gl->stats.total_comprehensions);
+            if (matched) {
+                /* Fire event outside the lock so subscribers can call
+                 * back into gl without deadlock — copy fields needed. */
+                gl_event_t ev = {0};
+                ev.type             = GL_EVENT_COREF_RESOLVED;
+                ev.word             = head;
+                ev.text             = text;
+                ev.topic_similarity = 1.0f;  /* same-surface == 1.0 */
+                ev.confidence       = result->comprehension_confidence;
+                gl_tc12_unlock(gl);
+                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+                gl_fire_event(gl, &ev);
+                gl_tc12_lock(gl);
+            }
+        }
+        gl_tc12_unlock(gl);
     }
     if (sense_resolved_this_pass) {
         gl->stats.sense_resolutions++;
@@ -4503,6 +4556,11 @@ static void gl_detach_anaphora_for_destroy(grounded_language_t* gl) {
         nimcp_free(gl->anaphora_state);
         gl->anaphora_state = NULL;
     }
+    /* NLP-2: free coref ring on the same teardown path. */
+    if (gl->coref_state) {
+        nimcp_free(gl->coref_state);
+        gl->coref_state = NULL;
+    }
     gl_tc12_unlock(gl);
 }
 
@@ -4537,6 +4595,96 @@ bool grounded_language_get_anaphora_enabled(const grounded_language_t* gl) {
     bool on = (st != NULL) && st->enabled;
     gl_tc12_unlock(gl_mut);
     return on;
+}
+
+/*=============================================================================
+ * NLP-2: Coreference beyond pronouns (same-surface, ring-based).
+ *===========================================================================*/
+
+#define GL_COREF_RING_CAP    16   /* recent definite-NP heads tracked */
+#define GL_COREF_MAX_TURNS    6   /* coref window in turns */
+
+typedef struct {
+    char     form[GL_MAX_WORD_LEN];   /* lowercased noun head */
+    uint32_t turn_idx;                 /* discourse turn at mention time */
+} gl_coref_entry_t;
+
+typedef struct {
+    gl_coref_entry_t ring[GL_COREF_RING_CAP];
+    uint32_t         head;
+    uint32_t         size;
+} gl_coref_state_t;
+
+/* Caller must hold tc12_lock. */
+static gl_coref_state_t* gl_coref_get_or_create(grounded_language_t* gl) {
+    if (!gl) return NULL;
+    if (gl->coref_state) return (gl_coref_state_t*)gl->coref_state;
+    gl_coref_state_t* st = (gl_coref_state_t*)nimcp_calloc(1, sizeof(*st));
+    if (!st) return NULL;
+    gl->coref_state = st;
+    return st;
+}
+
+void grounded_language_set_coref_resolution_enabled(grounded_language_t* gl,
+                                                       bool enabled) {
+    if (!gl) return;
+    gl->enable_coref_resolution = enabled;
+    if (!enabled && gl->coref_state) {
+        /* Clear ring on disable so re-enable starts fresh. */
+        gl_tc12_lock(gl);
+        gl_coref_state_t* st = (gl_coref_state_t*)gl->coref_state;
+        if (st) { st->head = 0; st->size = 0; memset(st->ring, 0, sizeof(st->ring)); }
+        gl_tc12_unlock(gl);
+    }
+}
+
+bool grounded_language_get_coref_resolution_enabled(
+    const grounded_language_t* gl) {
+    return gl ? gl->enable_coref_resolution : false;
+}
+
+uint64_t grounded_language_coref_attempts(const grounded_language_t* gl) {
+    return gl ? gl->coref_attempts : 0;
+}
+uint64_t grounded_language_coref_resolved(const grounded_language_t* gl) {
+    return gl ? gl->coref_resolved : 0;
+}
+
+/* Push a definite-NP head onto the ring + scan for a recent same-form
+ * match within GL_COREF_MAX_TURNS. Returns 1 if a coref hit was
+ * recorded (and bumps coref_resolved), 0 otherwise. Bumps coref_attempts
+ * unconditionally. Caller must hold tc12_lock. */
+static int gl_coref_track_locked(grounded_language_t* gl, const char* head,
+                                   uint32_t turn_idx) {
+    if (!gl || !head || !head[0]) return 0;
+    gl_coref_state_t* st = gl_coref_get_or_create(gl);
+    if (!st) return 0;
+    gl->coref_attempts++;
+
+    /* Scan ring for same form within window. */
+    int matched = 0;
+    for (uint32_t i = 0; i < st->size; i++) {
+        if (strncmp(st->ring[i].form, head, GL_MAX_WORD_LEN - 1) == 0) {
+            uint32_t dist = (turn_idx > st->ring[i].turn_idx) ?
+                            (turn_idx - st->ring[i].turn_idx) : 0;
+            if (dist > 0 && dist <= GL_COREF_MAX_TURNS) {
+                matched = 1;
+                break;
+            }
+        }
+    }
+
+    /* Always push the new mention (even without a match — future calls
+     * may match it). */
+    uint32_t slot = st->head;
+    strncpy(st->ring[slot].form, head, GL_MAX_WORD_LEN - 1);
+    st->ring[slot].form[GL_MAX_WORD_LEN - 1] = '\0';
+    st->ring[slot].turn_idx = turn_idx;
+    st->head = (st->head + 1) % GL_COREF_RING_CAP;
+    if (st->size < GL_COREF_RING_CAP) st->size++;
+
+    if (matched) gl->coref_resolved++;
+    return matched;
 }
 
 /*=============================================================================
