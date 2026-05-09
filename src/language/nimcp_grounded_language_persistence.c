@@ -534,8 +534,27 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
 
     fclose(f);
     gl->is_loading = prev_loading;  /* D7: end of rehydrate */
+
+    /* read_stats_v{1,2} above reads s->vocab_size directly from the
+     * sidecar, which represents the vocab count AT SAVE TIME. If a
+     * bulk-lexicon preload (NIMCP_BULK_LEXICON env, fired earlier in
+     * brain init) added words BEFORE this load runs, those entries
+     * are still in gl->lexicon (find_or_create doesn't remove anything)
+     * but gl->stats.vocab_size now reports the saved-checkpoint count
+     * instead of the live count. Pre-fix: pod with 29,424-word
+     * WordNet+GloVe bulk preload + 4,669-word saved checkpoint
+     * reported vocab_size=4669 — under-reported by ~25K.
+     *
+     * Reset stats.vocab_size to the live vocab_count so consumers see
+     * the actual lexicon size. The other persisted stats counters
+     * (total_bindings, total_comprehensions, etc.) are cumulative
+     * across the brain's lifetime and stay as loaded — they're
+     * intentionally history. vocab_size is current state. */
+    gl->stats.vocab_size = gl->vocab_count;
+
     LOG_INFO(LOG_MODULE,
-             "Loaded grounded language sidecar from %s (%u words, dim=%u, fmt=v%u)",
+             "Loaded grounded language sidecar from %s (%u words live, "
+             "dim=%u, fmt=v%u)",
              path, gl->vocab_count, gl->semantic_dim, version);
     return 0;
 
