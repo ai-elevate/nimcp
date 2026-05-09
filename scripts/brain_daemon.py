@@ -1779,6 +1779,22 @@ class BrainService:
             return {"error": f"set_da_modulation_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_set_comprehend_stdp_enabled(self, req):
+        """CSTDP: toggle comprehend-driven scoped STDP on the SNN language
+        bridge. When enabled, every comprehend call reinforces existing
+        strong concept↔word bindings via inline STDP — turns lexicon-side
+        training signal into bridge-weight reinforcement without a
+        separate supervised loop. Default OFF; entrenchment risk on
+        early-training brains with mostly-noise bindings."""
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_comprehend_stdp_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_comprehend_stdp_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_comprehend_stdp_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
     def _cmd_set_da_modulation_gain(self, req):
         """TA-3: tune the DA → LR scaling. Clamped [0, 200].
 

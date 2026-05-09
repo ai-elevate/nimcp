@@ -4685,6 +4685,23 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             except Exception:
                 pass
 
+        # Bridge produce exercise — every Nth cognitive call, run the
+        # full comprehend → produce roundtrip via grounded_respond. The
+        # SNN language bridge's R-STDP / DA-modulation / trigram-learning
+        # paths only fire during produce; without this hook, training
+        # accumulates concept↔word bindings via comprehend (lexicon-side
+        # only) but the bridge weights stay at initialization, leaving
+        # bridge_total_productions = 0 across the entire training run.
+        # CSTDP (comprehend-driven STDP, off by default) is the deeper
+        # fix; this periodic produce is the lighter, complementary side.
+        # Cost: ~1s/call on CPU decode, fired 1/10 of training items —
+        # negligible vs the ~13s/step training loop.
+        if target_text and self.interaction_count % 10 == 0:
+            try:
+                brain.grounded_respond(target_text or text)
+            except Exception:
+                pass
+
     def observe_response(self, result):
         """Observe what Athena's brain produced — without judging it.
 

@@ -1335,6 +1335,13 @@ nimcp_status_t nimcp_brain_set_trigram_learning_enabled(
 nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_da_modulation_gain(nimcp_brain_t brain, float gain);
 
+/** CSTDP: comprehend-driven scoped STDP on the SNN language bridge.
+ * Default OFF. When enabled, every comprehend call reinforces existing
+ * strong concept↔word bindings via inline STDP (production-direction
+ * order, scoped to the bindings actually touched by the input — bounded
+ * 256-pair touched-set, no full 1.6M-binding hash walk per call). */
+nimcp_status_t nimcp_brain_set_comprehend_stdp_enabled(nimcp_brain_t brain, bool enabled);
+
 /** TA-5: reconsolidation-on-contradiction. */
 nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);

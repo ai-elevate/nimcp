@@ -318,7 +318,16 @@ snn_lang_config_t snn_lang_config_default(void)
          * preserves the legacy 32-word implicit cap and immediate-EOS
          * behavior bit-for-bit. */
         .min_produce_words = 0,
-        .max_produce_words = 0
+        .max_produce_words = 0,
+        /* CSTDP — comprehend-driven STDP. Default OFF (legacy read-only
+         * comprehend). Min weight + activation thresholds keep the path
+         * scoped to existing strong bindings so we don't entrench noise.
+         * lr_scale dampens the LR vs the produce-side STDP since
+         * comprehend fires far more often than produce. */
+        .enable_comprehend_stdp     = false,
+        .comprehend_stdp_min_weight = 0.05f,
+        .comprehend_stdp_min_activation = 0.10f,
+        .comprehend_stdp_lr_scale   = 0.5f
     };
     return config;
 }
@@ -2804,6 +2813,16 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
     memset(concept_activations, 0, max_concepts * sizeof(float));
     *num_activated = 0;
 
+    /* CSTDP — comprehend-driven scoped STDP. Capture pointers to
+     * qualifying binding nodes during the forward walk so we can apply
+     * STDP without a second 1.6M-binding hash walk. Cap the touched-set
+     * size to keep the per-comprehend cost bounded. */
+    const bool cstdp_on = bridge->config.enable_comprehend_stdp;
+    const float cstdp_min_weight = bridge->config.comprehend_stdp_min_weight;
+    enum { CSTDP_TOUCHED_CAP = 256 };
+    binding_node_t* touched[CSTDP_TOUCHED_CAP];
+    uint32_t touched_n = 0;
+
     // Tokenize text into words (simple whitespace split)
     char text_copy[2048];
     strncpy(text_copy, text, sizeof(text_copy) - 1);
@@ -2836,6 +2855,16 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
                         concept_activations[node->binding.concept_pop] +=
                             node->binding.weight;
                         total_activation += node->binding.weight;
+                        /* CSTDP capture — keep pointer to bindings strong
+                         * enough to be worth reinforcing. The activation
+                         * threshold check happens AFTER the full word
+                         * loop so concepts touched by multiple words
+                         * accumulate before being judged. */
+                        if (cstdp_on &&
+                            node->binding.weight >= cstdp_min_weight &&
+                            touched_n < CSTDP_TOUCHED_CAP) {
+                            touched[touched_n++] = node;
+                        }
                     }
                     node = node->next;
                 }
@@ -2858,7 +2887,77 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
             total_activation / (float)word_count : 0.0f;
     }
 
+    /* CSTDP — apply scoped STDP to the bindings captured during the
+     * forward walk. This runs only when enable_comprehend_stdp is true
+     * AND at least one binding qualified by weight; the per-binding
+     * activation threshold gate fires inside the loop using the
+     * already-accumulated concept_activations[]. */
+    if (cstdp_on && touched_n > 0) {
+        const float min_act = bridge->config.comprehend_stdp_min_activation;
+        const float lr_scale = bridge->config.comprehend_stdp_lr_scale;
+        const float base_lr = bridge->config.stdp_learning_rate;
+        const float a_plus = bridge->config.stdp_a_plus;
+        const float w_max = bridge->config.binding_w_max;
+        const float tau_plus = bridge->config.stdp_tau_plus;
+
+        /* TA-3 — same DA modulation as snn_language_bridge_apply_stdp. */
+        float da_modulation = 1.0f;
+        if (bridge->config.enable_da_modulation && bridge->neuromod &&
+            bridge->config.da_modulation_gain > 0.0f) {
+            float da = neuromodulator_get_level(
+                (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
+            if (isfinite(da) && da >= 0.0f) {
+                da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
+            }
+        }
+
+        /* Production-direction LTP: concept fired before word at δ_ms
+         * separation. With Δt = -δ (negative because t_pre < t_post),
+         * the standard exp(-Δt/τ_plus) STDP kernel produces
+         * exp(δ/τ_plus). Pre-compute since δ is constant per call. */
+        const float delta_ms = 5.0f;  /* fixed pre→post lag */
+        const float ltp_kernel = expf(-delta_ms / tau_plus);
+        const float dw_per_pair = base_lr * lr_scale * a_plus *
+                                   ltp_kernel * da_modulation;
+
+        uint32_t pairs_fired = 0;
+        for (uint32_t i = 0; i < touched_n; i++) {
+            binding_node_t* node = touched[i];
+            uint32_t c = node->binding.concept_pop;
+            /* Activation gate — only reinforce bindings whose concept
+             * actually saw meaningful activation this comprehend
+             * (multi-word inputs concentrate activation on the few
+             * concepts that match across words). */
+            if (c >= max_concepts) continue;
+            if (concept_activations[c] < min_act) continue;
+
+            float new_w = node->binding.weight + dw_per_pair;
+            if (new_w > w_max) new_w = w_max;
+            node->binding.weight = new_w;
+            pairs_fired++;
+        }
+        if (pairs_fired > 0) {
+            bridge->stats.comprehend_stdp_passes++;
+            bridge->stats.comprehend_stdp_pairs_fired += pairs_fired;
+        }
+    }
+
     return 0;
+}
+
+int snn_language_bridge_set_comprehend_stdp_enabled(
+    snn_language_bridge_t* bridge, bool enabled)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->config.enable_comprehend_stdp = enabled;
+    return 0;
+}
+
+bool snn_language_bridge_get_comprehend_stdp_enabled(
+    const snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
+    return bridge->config.enable_comprehend_stdp;
 }
 
 //=============================================================================

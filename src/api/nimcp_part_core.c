@@ -3927,6 +3927,15 @@ nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool e
               b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_set_comprehend_stdp_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    return (snn_language_bridge_set_comprehend_stdp_enabled(
+              b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_set_da_modulation_gain(nimcp_brain_t brain, float gain) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);

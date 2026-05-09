@@ -239,6 +239,32 @@ typedef struct {
      * Default false. Setting it currently has no effect except the
      * one-shot informational log. */
     bool     enable_gpu_decode;
+    /* CSTDP — comprehend-driven bridge STDP. When false (default),
+     * snn_language_bridge_comprehend is the legacy read-only forward
+     * pass: tokenize → walk bindings → return concept activations. The
+     * bridge's STDP loop never fires during training-time comprehend,
+     * so bridge weights stay near initialization regardless of how
+     * many texts the trainer feeds it.
+     *
+     * When true, comprehend additionally fires concept_pop+word_pop
+     * spike pairs in production-direction order (concept first, then
+     * word δ ms later) for bindings whose pre-existing weight crosses
+     * comprehend_stdp_min_weight AND whose accumulated activation for
+     * this comprehend call crosses comprehend_stdp_min_activation,
+     * then calls a SCOPED apply_stdp variant that walks only the
+     * touched concept/word pop pairs (not the full 1.6M-binding
+     * hash). Reinforces existing strong bindings on every comprehend
+     * — turns lexicon-side training signal into bridge-weight
+     * reinforcement without a separate supervised loop.
+     *
+     * Default OFF — turn on with
+     * snn_language_bridge_set_comprehend_stdp_enabled after verifying
+     * the bridge isn't dominated by noise bindings. Stage-1 brains
+     * with mostly-noise weights would entrench noise. */
+    bool     enable_comprehend_stdp;
+    float    comprehend_stdp_min_weight;     /* default 0.05 */
+    float    comprehend_stdp_min_activation; /* default 0.10 */
+    float    comprehend_stdp_lr_scale;       /* multiplied with stdp_learning_rate, default 0.5 */
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -329,6 +355,13 @@ typedef struct {
      * Surfaces the actual cost of the CPU decode path so operators can
      * make a cost-benefit call on the GPU port (currently deferred). */
     uint64_t decode_total_ns;
+    /* CSTDP — count comprehend calls that fired comprehend-STDP and the
+     * number of (concept_pop, word_pop) spike pairs injected. Both stay
+     * 0 when enable_comprehend_stdp is false. Useful for verifying the
+     * comprehend-driven plasticity path is actually firing during a
+     * training run. */
+    uint64_t comprehend_stdp_passes;
+    uint64_t comprehend_stdp_pairs_fired;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -706,6 +739,21 @@ int snn_language_bridge_set_da_modulation_enabled(
 /** TA-3: read the DA-modulation runtime flag. Returns false if bridge
  *  is NULL/invalid. */
 bool snn_language_bridge_get_da_modulation_enabled(
+    const snn_language_bridge_t* bridge);
+
+/** CSTDP: toggle comprehend-driven bridge STDP on/off at runtime.
+ *  Default OFF. When enabled, snn_language_bridge_comprehend fires
+ *  scoped concept↔word spike pairs and applies STDP to the touched
+ *  bindings — so training-time comprehend reinforces bridge weights
+ *  rather than just doing a read-only forward pass.
+ *
+ *  Returns 0 on success, -1 if bridge is NULL/invalid. */
+int snn_language_bridge_set_comprehend_stdp_enabled(
+    snn_language_bridge_t* bridge,
+    bool enabled);
+
+/** CSTDP: read the comprehend-STDP runtime flag. */
+bool snn_language_bridge_get_comprehend_stdp_enabled(
     const snn_language_bridge_t* bridge);
 
 /** TA-3: tune the DA → LR scaling.

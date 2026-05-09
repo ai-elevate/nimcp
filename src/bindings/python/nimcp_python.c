@@ -3354,6 +3354,7 @@ static PyObject* Brain_set_trigram_learning_enabled(BrainObject* self,
 
 AUDIT_BRAIN_BOOL_SETTER(set_da_modulation_enabled,            nimcp_brain_set_da_modulation_enabled)
 AUDIT_BRAIN_FLOAT_SETTER(set_da_modulation_gain,              nimcp_brain_set_da_modulation_gain)
+AUDIT_BRAIN_BOOL_SETTER(set_comprehend_stdp_enabled,          nimcp_brain_set_comprehend_stdp_enabled)
 AUDIT_BRAIN_BOOL_SETTER(set_reconsolidation_enabled,          nimcp_brain_set_reconsolidation_enabled)
 AUDIT_BRAIN_FLOAT_SETTER(set_reconsolidation_decay,           nimcp_brain_set_reconsolidation_decay)
 AUDIT_BRAIN_BOOL_SETTER(set_sentence_segmentation_enabled,    nimcp_brain_set_sentence_segmentation_enabled)
@@ -11530,6 +11531,8 @@ static PyMethodDef Brain_methods[] = {
      "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},
     {"set_da_modulation_gain", (PyCFunction)Brain_set_da_modulation_gain, METH_VARARGS,
      "TA-3: tune the DA → LR scaling — set_da_modulation_gain(gain: float) -> None. Clamped [0, 200]."},
+    {"set_comprehend_stdp_enabled", (PyCFunction)Brain_set_comprehend_stdp_enabled, METH_VARARGS,
+     "CSTDP: toggle comprehend-driven scoped STDP — set_comprehend_stdp_enabled(enabled: bool) -> None. Default OFF; reinforces existing strong concept↔word bindings during every comprehend call instead of only during produce."},
     {"set_reconsolidation_enabled", (PyCFunction)Brain_set_reconsolidation_enabled, METH_VARARGS,
      "TA-5: toggle reconsolidation-on-contradiction — set_reconsolidation_enabled(enabled: bool) -> None. Default OFF."},
     {"set_reconsolidation_decay", (PyCFunction)Brain_set_reconsolidation_decay, METH_VARARGS,
