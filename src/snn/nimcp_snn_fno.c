@@ -7,6 +7,8 @@
  */
 
 #include "snn/nimcp_snn_fno.h"
+#include "snn/nimcp_snn_types.h"
+#include "utils/tensor/nimcp_tensor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -534,20 +536,156 @@ uint32_t snn_fno_param_count(const snn_fno_population_t* fno) {
  * Network-level FNO (placeholder — wires into snn_network_step)
  * ========================================================================= */
 
+/** Cap on FNO neurons per population — keeps memory tractable for big pops.
+ * 1024 × 4 floats × scratch buffer = 16 KB/pop for v_prev. */
+#define SNN_FNO_POPULATION_NEURON_CAP 1024u
+
 int snn_network_init_fno(snn_network_t* network, const snn_fno_config_t* config) {
     if (!network) return -1;
-    /* TODO: allocate fno_pops array for each population */
-    NIMCP_LOGGING_INFO("SNN FNO network init (placeholder)");
+    if (network->fno_populations) return 0; /* idempotent — already initialized */
+
+    uint32_t n_pops = network->n_populations;
+    if (n_pops == 0) return 0;
+
+    network->fno_populations =
+        (struct snn_fno_population_s**)nimcp_calloc(n_pops, sizeof(snn_fno_population_t*));
+    if (!network->fno_populations) return -1;
+
+    snn_fno_config_t cfg;
+    if (config) cfg = *config;
+    else snn_fno_config_default(&cfg);
+
+    /* Compute max population size for v_prev scratch stride.
+     * The stride is what we actually copy for each pop on each step. */
+    size_t max_pop_n = 0;
+    for (uint32_t p = 0; p < n_pops; p++) {
+        if (!network->populations[p]) continue;
+        uint32_t pop_n = network->populations[p]->n_neurons;
+        if (pop_n > SNN_FNO_POPULATION_NEURON_CAP) pop_n = SNN_FNO_POPULATION_NEURON_CAP;
+        if (pop_n > max_pop_n) max_pop_n = pop_n;
+    }
+
+    /* Per-population FNO models — capped at SNN_FNO_POPULATION_NEURON_CAP. */
+    for (uint32_t p = 0; p < n_pops; p++) {
+        if (!network->populations[p]) continue;
+        uint32_t pop_n = network->populations[p]->n_neurons;
+        uint32_t fno_n = (pop_n > SNN_FNO_POPULATION_NEURON_CAP)
+                       ? SNN_FNO_POPULATION_NEURON_CAP : pop_n;
+        network->fno_populations[p] = snn_fno_population_create(p, fno_n, &cfg);
+    }
+    network->fno_count = n_pops;
+
+    /* v_prev scratch — owned by network, freed in destroy_fno. */
+    if (max_pop_n > 0) {
+        network->fno_v_prev_pop_stride = max_pop_n;
+        network->fno_v_prev_buf = (float*)nimcp_calloc(
+            (size_t)n_pops * max_pop_n, sizeof(float));
+        if (!network->fno_v_prev_buf) {
+            NIMCP_LOGGING_WARN("snn_network_init_fno: v_prev scratch alloc failed "
+                               "(%zu pops × %zu floats); recording disabled",
+                               (size_t)n_pops, max_pop_n);
+            network->fno_recording_enabled = false;
+            return 0;
+        }
+        network->fno_recording_enabled = true;
+        size_t bytes = (size_t)n_pops * max_pop_n * sizeof(float);
+        NIMCP_LOGGING_INFO("snn_network_init_fno: %u FNO pops, scratch %zu KB",
+                           n_pops, bytes / 1024);
+    } else {
+        network->fno_recording_enabled = false;
+    }
     return 0;
 }
 
 int snn_network_step_fno(snn_network_t* network, float dt) {
-    if (!network) return -1;
-    /* TODO: if fno_training_mode, record pairs after LIF step
-     * if use_fno_dynamics and ready, predict instead of LIF */
+    /* Reserved for future inference-mode replacement of LIF with the trained
+     * FNO. Currently unused — recording happens transparently in
+     * snn_network_step via snn_fno_snapshot_v_before / snn_fno_record_post_step.
+     * Returns 0 to indicate "no-op success" rather than -1. */
+    (void)network; (void)dt;
     return 0;
 }
 
 void snn_network_destroy_fno(snn_network_t* network) {
-    /* TODO: destroy fno_pops */
+    if (!network) return;
+    if (network->fno_populations) {
+        for (uint32_t p = 0; p < network->fno_count; p++) {
+            if (network->fno_populations[p]) {
+                snn_fno_population_destroy(network->fno_populations[p]);
+            }
+        }
+        nimcp_free(network->fno_populations);
+        network->fno_populations = NULL;
+    }
+    network->fno_count = 0;
+    if (network->fno_v_prev_buf) {
+        nimcp_free(network->fno_v_prev_buf);
+        network->fno_v_prev_buf = NULL;
+    }
+    network->fno_v_prev_pop_stride = 0;
+    network->fno_recording_enabled = false;
+}
+
+/* =========================================================================
+ * Recording hooks called from snn_network_step
+ *
+ * snn_fno_snapshot_v_before: copy each population's V[] into the network's
+ *   per-pop scratch slot. Called at the very top of snn_network_step,
+ *   BEFORE any integration logic.
+ * snn_fno_record_post_step: read each population's V_after + spikes, pair
+ *   with the stashed v_before, and feed snn_fno_record_pair. Called at the
+ *   bottom of snn_network_step, AFTER all integration and stat updates.
+ *
+ * Both no-op when fno_recording_enabled is false or the FNO array isn't
+ * wired (legacy callers running without snn_network_init_fno).
+ * ========================================================================= */
+
+void snn_fno_snapshot_v_before(snn_network_t* network) {
+    if (!network) return;
+    if (!network->fno_recording_enabled) return;
+    if (!network->fno_v_prev_buf) return;
+    size_t stride = network->fno_v_prev_pop_stride;
+    if (stride == 0) return;
+
+    for (uint32_t p = 0; p < network->n_populations; p++) {
+        snn_population_t* pop = network->populations[p];
+        if (!pop || !pop->membrane_v) continue;
+        const float* v = (const float*)nimcp_tensor_data_const(pop->membrane_v);
+        if (!v) continue;
+        size_t n = pop->n_neurons;
+        if (n > stride) n = stride;
+        memcpy(network->fno_v_prev_buf + (size_t)p * stride, v, n * sizeof(float));
+    }
+}
+
+void snn_fno_record_post_step(snn_network_t* network) {
+    if (!network) return;
+    if (!network->fno_recording_enabled) return;
+    if (!network->fno_v_prev_buf) return;
+    if (!network->fno_populations) return;
+    size_t stride = network->fno_v_prev_pop_stride;
+    if (stride == 0) return;
+
+    uint32_t bound = network->n_populations;
+    if (bound > network->fno_count) bound = network->fno_count;
+
+    for (uint32_t p = 0; p < bound; p++) {
+        snn_fno_population_t* fno = network->fno_populations[p];
+        snn_population_t* pop = network->populations[p];
+        if (!fno || !pop || !pop->membrane_v || !pop->spike_output) continue;
+
+        const float* v_after = (const float*)nimcp_tensor_data_const(pop->membrane_v);
+        const float* spikes  = (const float*)nimcp_tensor_data_const(pop->spike_output);
+        if (!v_after || !spikes) continue;
+
+        const float* v_before = network->fno_v_prev_buf + (size_t)p * stride;
+        /* I_syn proxy: external_current is set on lightweight CSR pops; legacy
+         * pops leave it NULL and snn_fno_record_pair will zero-fill that slot.
+         * That's an acceptable v1 approximation — the FNO will still learn
+         * non-trivial dynamics from V_t alone. */
+        const float* i_syn = pop->external_current;
+
+        uint32_t n = pop->n_neurons;
+        snn_fno_record_pair(fno, v_before, i_syn, v_after, spikes, n);
+    }
 }

@@ -152,6 +152,17 @@ int snn_network_step_fno(snn_network_t* network, float dt);
 /** Destroy all population FNOs */
 void snn_network_destroy_fno(snn_network_t* network);
 
+/** Snapshot per-population membrane V into the network's v_prev scratch.
+ *  Called at the top of snn_network_step BEFORE any integration so the
+ *  matching record_post_step at the bottom can pair (V_before, V_after). */
+void snn_fno_snapshot_v_before(snn_network_t* network);
+
+/** Record (V_before, I_syn, V_after, spikes) into each population's FNO
+ *  training buffer. Called at the bottom of snn_network_step AFTER all
+ *  integration and stats updates have settled. No-op when recording is
+ *  disabled or the FNO array isn't wired. */
+void snn_fno_record_post_step(snn_network_t* network);
+
 #ifdef __cplusplus
 }
 #endif

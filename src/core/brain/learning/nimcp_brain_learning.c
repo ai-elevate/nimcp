@@ -5398,27 +5398,21 @@ int brain_enable_multi_network_training(brain_t brain)
             (void)nimcp_brain_factory_init_language_pops(brain);
 
             /* Create per-population FNO models for spectral dynamics prediction.
-             * FNO models population-level spectral dynamics — it does NOT need
-             * one dimension per neuron. Cap at 1024 to keep memory tractable:
-             * 46 pops × ~1MB each ≈ 46 MB total (vs 23 GB uncapped). */
+             * Ownership lives on snn_network_t now (snn->fno_populations) so
+             * snn_network_step can call snn_fno_record_pair directly without
+             * threading the brain pointer through every call site. The brain
+             * keeps `snn_fno_populations`/`snn_fno_count` as a borrowed view
+             * of the network's array — existing readers in brain_part_core /
+             * brain_learning continue to work without modification. */
             if (snn->n_populations > 0 && !brain->snn_fno_populations) {
-                brain->snn_fno_populations = nimcp_calloc(snn->n_populations, sizeof(void*));
-                if (brain->snn_fno_populations) {
-                    snn_fno_config_t fno_cfg;
-                    snn_fno_config_default(&fno_cfg);
-                    #define SNN_FNO_POPULATION_NEURON_CAP 1024
-                    uint32_t fno_cap = SNN_FNO_POPULATION_NEURON_CAP;
-                    for (uint32_t p = 0; p < snn->n_populations; p++) {
-                        uint32_t pop_n = snn->populations[p] ?
-                            snn->populations[p]->n_neurons : 256;
-                        uint32_t fno_n = (pop_n > fno_cap) ? fno_cap : pop_n;
-                        brain->snn_fno_populations[p] =
-                            snn_fno_population_create(p, fno_n, &fno_cfg);
-                    }
-                    brain->snn_fno_count = snn->n_populations;
-                    NIMCP_LOGGING_INFO("SNN FNO: created %u population dynamics models "
-                                       "(capped at %u neurons each)",
-                                       snn->n_populations, fno_cap);
+                snn_fno_config_t fno_cfg;
+                snn_fno_config_default(&fno_cfg);
+                int rc = snn_network_init_fno(snn, &fno_cfg);
+                if (rc == 0 && snn->fno_populations) {
+                    brain->snn_fno_populations = (void**)snn->fno_populations;
+                    brain->snn_fno_count = snn->fno_count;
+                } else {
+                    NIMCP_LOGGING_WARN("SNN FNO: snn_network_init_fno failed (rc=%d)", rc);
                 }
             }
         }

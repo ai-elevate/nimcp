@@ -850,6 +850,24 @@ struct snn_network_s {
     axon_substrate_effects_t     cached_axon_effects;
     dendrite_substrate_effects_t cached_dend_effects;
     uint32_t                     substrate_steps_since_update;
+
+    /* FNO recording — per-population FNO populations and scratch buffer
+     * for the (V_before, V_after, spikes) capture done inside
+     * snn_network_step. Owned. NULL slots are tolerated.
+     *
+     * Wired by snn_network_init_fno (called from brain init). The brain's
+     * legacy `brain->snn_fno_populations` field is now a borrowed view of
+     * `fno_populations` so existing readers keep working.
+     *
+     * fno_v_prev_buf is a flat [n_pops × fno_v_prev_pop_stride] float
+     * buffer that holds V snapshots taken at the top of snn_network_step
+     * and consumed at the bottom for the record_pair call. Stride is
+     * the max population n_neurons (capped at SNN_FNO_POPULATION_NEURON_CAP). */
+    struct snn_fno_population_s** fno_populations;
+    uint32_t fno_count;
+    float*   fno_v_prev_buf;
+    size_t   fno_v_prev_pop_stride;
+    bool     fno_recording_enabled;
 };
 
 //=============================================================================

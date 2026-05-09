@@ -23,6 +23,7 @@
 #include "snn/nimcp_snn_adaptation.h"
 #include "snn/nimcp_snn_basket.h"
 #include "snn/nimcp_snn_membrane.h"   /* CB migration: membrane integration helpers */
+#include "snn/nimcp_snn_fno.h"        /* FNO recording hooks: snapshot_v_before / record_post_step */
 #include "snn/nimcp_snn_training.h"  /* snn_tune_get_substrate_* */
 #include "core/substrate/nimcp_substrate_effects.h"  /* substrate_compute_effects, apply helpers */
 #include "gpu/snn/nimcp_snn_gpu.h"
@@ -778,6 +779,12 @@ void snn_network_destroy(snn_network_t* network) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_network_destroy: null network pointer");
         return;
     }
+
+    /* Destroy FNO populations + v_prev scratch BEFORE populations[] go away —
+     * destroy_fno only walks fno_populations[], not the SNN populations, but
+     * we order it first to keep teardown deterministic and avoid any future
+     * access of a half-freed network. */
+    snn_network_destroy_fno(network);
 
     /* Destroy populations */
     if (network->populations) {
@@ -1943,6 +1950,13 @@ int snn_network_step(snn_network_t* network, float dt) {
 
     /* Phase 8: Send heartbeat at start of network step */
     snn_network_heartbeat("snn_step", 0.0f);
+
+    /* FNO recording: snapshot V_before for every population BEFORE any
+     * integration logic (GPU CB path, GPU current-based path, CPU lightweight,
+     * CPU legacy). The matching record_post_step at the bottom pairs these
+     * with the post-integration V_after + spikes for snn_fno_record_pair.
+     * No-op when init_fno hasn't been called or recording is disabled. */
+    snn_fno_snapshot_v_before(network);
 
     float dt_ms = (dt > 0.0f) ? dt : network->config.dt;
     uint64_t dt_us = (uint64_t)(dt_ms * 1000.0f);
@@ -3412,6 +3426,12 @@ int snn_network_step(snn_network_t* network, float dt) {
             NIMCP_LOGGING_INFO("[SNN-TIER] %s", tier_summary);
         }
     }
+
+    /* FNO recording: pair the V_before snapshot taken at function entry with
+     * the now-settled V_after + spike vectors and feed snn_fno_record_pair
+     * for each population's FNO. Runs after stats so the observed state is
+     * fully consistent. No-op when recording is disabled. */
+    snn_fno_record_post_step(network);
 
     return total_spikes;
 }

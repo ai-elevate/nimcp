@@ -273,18 +273,11 @@ void brain_destroy(brain_t brain)
         brain->lnn_network = NULL;
     }
 
-    /* Destroy SNN FNO population dynamics models */
-    if (brain->snn_fno_populations && brain->snn_fno_count > 0) {
-        for (uint32_t p = 0; p < brain->snn_fno_count; p++) {
-            if (brain->snn_fno_populations[p]) {
-                snn_fno_population_destroy(
-                    (snn_fno_population_t*)brain->snn_fno_populations[p]);
-            }
-        }
-        nimcp_free(brain->snn_fno_populations);
-        brain->snn_fno_populations = NULL;
-        brain->snn_fno_count = 0;
-    }
+    /* SNN FNO populations are now owned by snn_network_t and freed inside
+     * snn_network_destroy(snn) above. The brain just held a borrowed view —
+     * clear it so stale pointers don't leak past teardown. */
+    brain->snn_fno_populations = NULL;
+    brain->snn_fno_count = 0;
 
     LOG_MODULE_DEBUG("BRAIN", "Destroying network...");
     // Phase 3: Handle network destruction with atomic reference counting

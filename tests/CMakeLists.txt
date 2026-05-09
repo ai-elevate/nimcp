@@ -63,6 +63,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_consumer_events
     test_lang_subword_oov
     test_lang_coref
+    test_snn_fno_recording
 )
 
 # Helper: register a single standalone-C test.
