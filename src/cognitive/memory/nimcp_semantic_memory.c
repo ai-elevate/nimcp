@@ -60,8 +60,23 @@ BRIDGE_BOILERPLATE(semantic_memory, MESH_ADAPTER_CATEGORY_MEMORY)
 
 #define BIO_MODULE_SEMANTIC_MEMORY 0x0331
 
-#define DEFAULT_CONCEPT_CAPACITY 2048
-#define DEFAULT_RELATION_CAPACITY 8192
+/* Concept-pool capacity. Cap chosen to fit a full WordNet+GloVe
+ * preload (29,424 words from data/lexicon/wordnet_glove_v1.bin) with
+ * runtime headroom for the trainer's lexicon growth. Must be ≥
+ * GL_MAX_VOCAB (131072) to never block grounded_language_fast_map.
+ *
+ * Pre-fix: 2048 — verified 2026-05-09 as the actual ceiling that was
+ * silently capping the production pod's vocab at ~2208 entries (the
+ * 2048 concept slots + ~150 seed-word concept-aliases). bulk_lexicon
+ * load reported "fast_map returned 0 at record 2197 — lexicon full"
+ * for months. The "lexicon full" message was misleading (lexicon cap
+ * is GL_MAX_VOCAB=131072); the real ceiling was here.
+ *
+ * Memory cost: each concept = ~600 bytes (features=128 floats +
+ * label + metadata). 131072 × 600 ≈ 80 MB — well within the brain's
+ * working set, and one-time at brain create. */
+#define DEFAULT_CONCEPT_CAPACITY 131072
+#define DEFAULT_RELATION_CAPACITY 32768
 #define DEFAULT_FEATURE_DIM 32
 
 //=============================================================================
