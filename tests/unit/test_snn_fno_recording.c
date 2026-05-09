@@ -70,7 +70,12 @@ int main(void) {
     CHECK(net->fno_populations != NULL, "fno_populations array allocated");
     CHECK(net->fno_count == net->n_populations, "fno_count matches n_populations");
     CHECK(net->fno_v_prev_buf != NULL, "v_prev scratch allocated");
-    CHECK(net->fno_recording_enabled, "recording enabled by default");
+    /* Default is OFF (opt-in) since the 2026-05-09 production wedge.
+     * Flip it on for the test — the unit test runs on CPU-only SNN
+     * so there's no GPU-sync issue. */
+    CHECK(!net->fno_recording_enabled, "recording defaults OFF");
+    snn_set_fno_recording_enabled(net, true);
+    CHECK(net->fno_recording_enabled, "recording enabled after setter");
 
     /* 3. Drive spikes into the source population — set external_current
      * high enough to make src neurons fire every step. */

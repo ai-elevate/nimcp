@@ -575,7 +575,18 @@ int snn_network_init_fno(snn_network_t* network, const snn_fno_config_t* config)
     }
     network->fno_count = n_pops;
 
-    /* v_prev scratch — owned by network, freed in destroy_fno. */
+    /* v_prev scratch — owned by network, freed in destroy_fno.
+     * Recording itself defaults to OFF: when the SNN runs on GPU
+     * (CB-GPU path), pop->membrane_v is a GPU-resident tensor and
+     * nimcp_tensor_data_const forces a host-side sync. With 64 pops ×
+     * 2 reads per snn_network_step (snapshot + record) every tick,
+     * the daemon ends up GPU-sync-bound — the production pod hit a
+     * D-state stall this way during the 2026-05-09 deploy.
+     *
+     * Wiring is left in place; flip fno_recording_enabled true via
+     * snn_set_fno_recording_enabled() to opt back in once the GPU-sync
+     * path has a proper solution (probably batched async readback into
+     * a host-pinned buffer rather than per-pop tensor_data_const). */
     if (max_pop_n > 0) {
         network->fno_v_prev_pop_stride = max_pop_n;
         network->fno_v_prev_buf = (float*)nimcp_calloc(
@@ -587,14 +598,34 @@ int snn_network_init_fno(snn_network_t* network, const snn_fno_config_t* config)
             network->fno_recording_enabled = false;
             return 0;
         }
-        network->fno_recording_enabled = true;
+        network->fno_recording_enabled = false;  /* opt-in via setter */
         size_t bytes = (size_t)n_pops * max_pop_n * sizeof(float);
-        NIMCP_LOGGING_INFO("snn_network_init_fno: %u FNO pops, scratch %zu KB",
+        NIMCP_LOGGING_INFO("snn_network_init_fno: %u FNO pops, scratch %zu KB "
+                           "(recording OFF — call snn_set_fno_recording_enabled() to enable)",
                            n_pops, bytes / 1024);
     } else {
         network->fno_recording_enabled = false;
     }
     return 0;
+}
+
+void snn_set_fno_recording_enabled(snn_network_t* network, bool enabled) {
+    if (!network) return;
+    /* Don't enable if init didn't allocate the scratch — recording would
+     * NULL-deref otherwise. Init logs the failure case, so this is just
+     * a runtime safety. */
+    if (enabled && !network->fno_v_prev_buf) {
+        NIMCP_LOGGING_WARN("snn_set_fno_recording_enabled: refused enable "
+                           "(scratch buffer not allocated)");
+        return;
+    }
+    network->fno_recording_enabled = enabled;
+    NIMCP_LOGGING_INFO("snn_set_fno_recording_enabled: %s",
+                       enabled ? "ON" : "OFF");
+}
+
+bool snn_get_fno_recording_enabled(const snn_network_t* network) {
+    return network ? network->fno_recording_enabled : false;
 }
 
 int snn_network_step_fno(snn_network_t* network, float dt) {

@@ -163,6 +163,15 @@ void snn_fno_snapshot_v_before(snn_network_t* network);
  *  disabled or the FNO array isn't wired. */
 void snn_fno_record_post_step(snn_network_t* network);
 
+/** Toggle FNO training-pair recording on/off at runtime.
+ *  Default after snn_network_init_fno is OFF — opt-in here once the
+ *  GPU-sync path is acceptable. Refused if init never allocated the
+ *  scratch buffer. */
+void snn_set_fno_recording_enabled(snn_network_t* network, bool enabled);
+
+/** Read current recording state. */
+bool snn_get_fno_recording_enabled(const snn_network_t* network);
+
 #ifdef __cplusplus
 }
 #endif
