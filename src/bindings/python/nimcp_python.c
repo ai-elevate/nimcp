@@ -3394,7 +3394,10 @@ static PyObject* Brain_echo_and_correct(BrainObject* self, PyObject* args, PyObj
     return PyLong_FromLong(pairs);
 }
 
-/* Phase 2A/B/C/D: multi-region production cascade. */
+/* Phase 2A-2D: multi-region production cascade. Returns dict with
+ * utterance + diagnostics from all stages. The diag fields (self_match,
+ * self_grammaticality, prompt_is_question, etc.) come from the
+ * sensorimotor-loop self-comprehension stage. */
 static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObject* kwargs) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
@@ -3404,20 +3407,48 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|z", kwlist, &prompt)) {
         return NULL;
     }
+
+    /* Call the diagnostic impl directly — it's defined in the cascade
+     * source and works on the internal brain pointer. */
+    extern int nimcp_brain_produce_cascade_diag_impl(
+        struct brain_struct* brain,
+        const char* prompt_or_null,
+        char* out_utterance,
+        uint32_t out_text_max,
+        uint32_t* out_word_count,
+        float* out_confidence,
+        float* out_self_match,
+        float* out_self_grammaticality,
+        int* out_prompt_is_question,
+        int* out_prompt_is_imperative,
+        int* out_wernicke_parsed);
+
     char text[2048] = {0};
     uint32_t word_count = 0;
     float confidence = 0.0f;
-    nimcp_status_t st = nimcp_brain_produce_cascade(
-        self->brain, prompt, text, sizeof(text), &word_count, &confidence);
-    if (st != NIMCP_OK) {
-        PyErr_Format(PyExc_RuntimeError, "produce_cascade failed (status=%d)", (int)st);
+    float self_match = 0.0f;
+    float self_gram = 0.0f;
+    int is_q = 0, is_imp = 0, w_parsed = 0;
+
+    int rc = nimcp_brain_produce_cascade_diag_impl(
+        self->brain->internal_brain,
+        prompt, text, sizeof(text), &word_count, &confidence,
+        &self_match, &self_gram, &is_q, &is_imp, &w_parsed);
+    if (rc != 0) {
+        PyErr_Format(PyExc_RuntimeError, "produce_cascade failed (rc=%d)", rc);
         return NULL;
     }
+
     PyObject* d = PyDict_New();
     if (!d) return NULL;
-    PyDict_SetItemString(d, "utterance",  PyUnicode_FromString(text));
-    PyDict_SetItemString(d, "word_count", PyLong_FromLong((long)word_count));
-    PyDict_SetItemString(d, "confidence", PyFloat_FromDouble((double)confidence));
+    PyDict_SetItemString(d, "utterance",          PyUnicode_FromString(text));
+    PyDict_SetItemString(d, "word_count",         PyLong_FromLong((long)word_count));
+    PyDict_SetItemString(d, "confidence",         PyFloat_FromDouble((double)confidence));
+    PyDict_SetItemString(d, "self_match",         PyFloat_FromDouble((double)self_match));
+    PyDict_SetItemString(d, "self_grammaticality",PyFloat_FromDouble((double)self_gram));
+    PyDict_SetItemString(d, "prompt_is_question", PyBool_FromLong(is_q));
+    PyDict_SetItemString(d, "prompt_is_imperative", PyBool_FromLong(is_imp));
+    PyDict_SetItemString(d, "wernicke_parsed",    PyBool_FromLong(w_parsed));
     return d;
 }
 

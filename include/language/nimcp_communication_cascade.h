@@ -44,9 +44,10 @@ typedef enum {
     CASCADE_STAGE_CONTENT       = 1u << 5,
     CASCADE_STAGE_LEXICAL       = 1u << 6,
     CASCADE_STAGE_SYNTACTIC     = 1u << 7,
-    CASCADE_STAGE_PHONOLOGICAL  = 1u << 8,
-    CASCADE_STAGE_MOTOR         = 1u << 9,
-    CASCADE_STAGE_ALL           = 0x3FF
+    CASCADE_STAGE_SELF_COMP     = 1u << 8,  /* Stage 8 (Phase 2D-B) — Wernicke validates own output */
+    CASCADE_STAGE_PHONOLOGICAL  = 1u << 9,
+    CASCADE_STAGE_MOTOR         = 1u << 10,
+    CASCADE_STAGE_ALL           = 0x7FF
 } cascade_stage_mask_t;
 
 /* Single struct accumulates stage outputs. Allocated by caller; the
@@ -108,6 +109,17 @@ typedef struct {
     uint32_t word_count;
     float    fluency;
     float    syntactic_validity;   /* 0 if Broca rejected, 1 if grammatical */
+
+    /* Stage 8 (Phase 2D-B): Wernicke validation of brain's own output —
+     * the sensorimotor loop. After Broca produces, we comprehend the
+     * utterance via Wernicke + grounded_language_comprehend and compare
+     * the derived semantic vector to content_intent. High match = the
+     * production path successfully encoded the intent. Low match = the
+     * brain said something but it's not what it meant. */
+    bool     self_parsed;             /* true if Wernicke parse_sentence succeeded */
+    float    self_complexity;         /* 0..1, syntactic complexity of own output */
+    float    self_match;              /* 0..1, cosine sim between intent and re-comprehended utterance */
+    float    self_grammaticality;     /* 0 / 0.5 / 1.0 — derived from parse + grammaticality flag */
 
     /* Diagnostics */
     uint32_t stages_completed;

@@ -1842,9 +1842,14 @@ class BrainService:
         except Exception as e:
             return {"error": f"produce_cascade: {e}"}
         return {"ok": True,
-                "utterance":  result.get("utterance",  ""),
-                "word_count": result.get("word_count", 0),
-                "confidence": result.get("confidence", 0.0)}
+                "utterance":             result.get("utterance",  ""),
+                "word_count":            result.get("word_count", 0),
+                "confidence":            result.get("confidence", 0.0),
+                "self_match":            result.get("self_match", 0.0),
+                "self_grammaticality":   result.get("self_grammaticality", 0.0),
+                "prompt_is_question":    bool(result.get("prompt_is_question", False)),
+                "prompt_is_imperative":  bool(result.get("prompt_is_imperative", False)),
+                "wernicke_parsed":       bool(result.get("wernicke_parsed", False))}
 
     def _cmd_set_da_modulation_gain(self, req):
         """TA-3: tune the DA → LR scaling. Clamped [0, 200].

@@ -70,11 +70,14 @@ static void cascade_record_fail(production_cascade_state_t* s,
     }
 }
 
-/* Stage 0 (Wernicke comprehension) lives in nimcp_communication_cascade_wernicke.c
- * because Wernicke and Broca both define phrase_type_t with overlapping enum
- * values; pulling both into one TU triggers a redeclaration error. */
+/* Stage 0 (Wernicke comprehension) and Stage 8 (Wernicke self-comprehension)
+ * live in nimcp_communication_cascade_wernicke.c because Wernicke and Broca
+ * both define phrase_type_t with overlapping enum values; pulling both into
+ * one TU triggers a redeclaration error. */
 extern int cascade_stage_wernicke(brain_t brain, const char* prompt,
                                     production_cascade_state_t* state);
+extern int cascade_stage_self_comprehension(brain_t brain,
+                                              production_cascade_state_t* state);
 /* Helper used by stage_goal to look up the Wernicke-extracted SVO words. */
 extern const gl_lexicon_entry_t* lexicon_find_internal(
     const grounded_language_t* gl, const char* word);
@@ -751,6 +754,60 @@ void cascade_state_cleanup(production_cascade_state_t* state) {
     state->episodic_retrieval.retrieval_success = false;
 }
 
+/* Phase 2D-B diagnostic impl — same as the regular impl but also writes
+ * self_match, self_grammaticality, and the Wernicke Stage-0 flags so
+ * Python callers can introspect cascade state without reinventing the
+ * orchestrator. Used by the test harness; the trainer-facing
+ * produce_cascade just calls the simpler version below. */
+int nimcp_brain_produce_cascade_diag_impl(
+    brain_t brain,
+    const char* prompt_or_null,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence,
+    float* out_self_match,
+    float* out_self_grammaticality,
+    int* out_prompt_is_question,
+    int* out_prompt_is_imperative,
+    int* out_wernicke_parsed)
+{
+    if (!brain) return -1;
+
+    production_cascade_state_t state;
+    int rc = communication_cascade_run(brain, prompt_or_null,
+                                         CASCADE_STAGE_ALL, &state);
+
+    if (rc == 0) {
+        if (out_utterance && out_text_max > 0) {
+            const char* src = state.utterance ? state.utterance : "";
+            size_t n = strlen(src);
+            if (n >= out_text_max) n = out_text_max - 1;
+            memcpy(out_utterance, src, n);
+            out_utterance[n] = '\0';
+        }
+        if (out_word_count)          *out_word_count          = state.word_count;
+        if (out_confidence)          *out_confidence          = state.content_confidence;
+        if (out_self_match)          *out_self_match          = state.self_match;
+        if (out_self_grammaticality) *out_self_grammaticality = state.self_grammaticality;
+        if (out_prompt_is_question)  *out_prompt_is_question  = state.prompt_is_question  ? 1 : 0;
+        if (out_prompt_is_imperative)*out_prompt_is_imperative= state.prompt_is_imperative? 1 : 0;
+        if (out_wernicke_parsed)     *out_wernicke_parsed     = state.wernicke_parsed     ? 1 : 0;
+    } else {
+        if (out_utterance && out_text_max > 0) out_utterance[0] = '\0';
+        if (out_word_count) *out_word_count = 0;
+        if (out_confidence) *out_confidence = 0.0f;
+        if (out_self_match) *out_self_match = 0.0f;
+        if (out_self_grammaticality) *out_self_grammaticality = 0.0f;
+        if (out_prompt_is_question)   *out_prompt_is_question   = 0;
+        if (out_prompt_is_imperative) *out_prompt_is_imperative = 0;
+        if (out_wernicke_parsed)      *out_wernicke_parsed      = 0;
+    }
+
+    cascade_state_cleanup(&state);
+    return rc;
+}
+
 /* Public API impl called from nimcp_part_core.c — fills caller-provided
  * buffers, hides the production_cascade_state_t from the public header.
  * Returns 0 on success; -1 on fatal failure. */
@@ -871,6 +928,21 @@ int communication_cascade_run(
     if (stage_mask & CASCADE_STAGE_SYNTACTIC) {
         cascade_stage_syntactic(brain, out_state);
     }
+    /* Stage 8 (Phase 2D-B): Wernicke validates the brain's own output.
+     * Closes the sensorimotor loop — the produced text gets re-comprehended
+     * and compared to the original intent vector. The match score is the
+     * cleanest available signal of "did the brain actually say what it
+     * meant?" Future training work uses this as a reward signal. */
+    if (stage_mask & CASCADE_STAGE_SELF_COMP) {
+        cascade_stage_self_comprehension(brain, out_state);
+        if (out_state->self_parsed) {
+            cascade_record_complete(out_state);
+        } else {
+            cascade_record_skip(out_state, CASCADE_STAGE_SELF_COMP,
+                                "stage_self_comp: comprehend failed or no utterance");
+        }
+    }
+
     if (stage_mask & CASCADE_STAGE_PHONOLOGICAL) {
         cascade_stage_phonological(brain, out_state);
     }

@@ -27,6 +27,7 @@
 #include "core/brain/regions/wernicke/nimcp_syntactic_comprehension.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -99,11 +100,15 @@ int cascade_stage_wernicke(brain_t brain, const char* prompt,
     state->prompt_object[0]      = '\0';
 
     if (!prompt || !prompt[0]) return 0;
-    if (!brain->wernicke || !brain->grounded_lang) return 0;
+    if (!brain->grounded_lang) return 0;
 
-    syntactic_comprehension_t* syn =
-        wernicke_get_syntactic_comprehension(brain->wernicke);
-    if (!syn) return 0;
+    /* The Wernicke parser path is optional — if the adapter is missing
+     * or its syntactic submodule wasn't initialized, we still extract
+     * speech-act + SVO heuristically from token POS. The parse adds
+     * complexity / garden-path / grammaticality on top when available. */
+    syntactic_comprehension_t* syn = brain->wernicke
+        ? wernicke_get_syntactic_comprehension(brain->wernicke)
+        : NULL;
 
     /* Tokenize prompt into syntactic_word_t array. POS comes from GL
      * lexicon's learned_class field; words not in the lexicon get
@@ -163,7 +168,33 @@ int cascade_stage_wernicke(brain_t brain, const char* prompt,
         state->prompt_is_imperative = !state->prompt_is_question;
     }
 
-    /* Run Wernicke's parser. Failure here is non-fatal. */
+    /* Heuristic SVO extraction — runs regardless of parse success.
+     * First noun = subject, first verb = verb, second noun (after the
+     * verb) = object. Phase 2D-A v2 will use Wernicke's
+     * syntactic_assign_roles for proper thematic-role extraction once
+     * the syntactic submodule is actually initialized on the brain. */
+    for (uint32_t i = 0; i < num_words; i++) {
+        if (words[i].category == SYN_CAT_NOUN &&
+            state->prompt_subject[0] == '\0') {
+            strncpy(state->prompt_subject, words[i].word,
+                    sizeof(state->prompt_subject) - 1);
+        } else if (words[i].category == SYN_CAT_VERB &&
+                    state->prompt_verb[0] == '\0') {
+            strncpy(state->prompt_verb, words[i].word,
+                    sizeof(state->prompt_verb) - 1);
+        } else if (words[i].category == SYN_CAT_NOUN &&
+                    state->prompt_subject[0] != '\0' &&
+                    state->prompt_object[0] == '\0' &&
+                    state->prompt_verb[0] != '\0') {
+            strncpy(state->prompt_object, words[i].word,
+                    sizeof(state->prompt_object) - 1);
+            break;
+        }
+    }
+
+    /* Run Wernicke's parser if available. Failure here is non-fatal —
+     * speech-act and SVO are already populated from the heuristics. */
+    if (!syn) return 0;
     syntactic_parse_t parse;
     memset(&parse, 0, sizeof(parse));
     int rc = syntactic_parse_sentence(syn, words, num_words, &parse);
@@ -173,33 +204,151 @@ int cascade_stage_wernicke(brain_t brain, const char* prompt,
         state->prompt_complexity = syntactic_compute_complexity(&parse);
         if (state->prompt_complexity > 1.0f)
             state->prompt_complexity = 1.0f;
-
-        /* Heuristic SVO extraction: first noun = subject, first verb =
-         * verb, second noun (after the verb) = object. v2 will use
-         * Wernicke's syntactic_assign_roles for proper thematic-role
-         * extraction. */
-        for (uint32_t i = 0; i < num_words; i++) {
-            if (words[i].category == SYN_CAT_NOUN &&
-                state->prompt_subject[0] == '\0') {
-                strncpy(state->prompt_subject, words[i].word,
-                        sizeof(state->prompt_subject) - 1);
-            } else if (words[i].category == SYN_CAT_VERB &&
-                        state->prompt_verb[0] == '\0') {
-                strncpy(state->prompt_verb, words[i].word,
-                        sizeof(state->prompt_verb) - 1);
-            } else if (words[i].category == SYN_CAT_NOUN &&
-                        state->prompt_subject[0] != '\0' &&
-                        state->prompt_object[0] == '\0' &&
-                        state->prompt_verb[0] != '\0') {
-                strncpy(state->prompt_object, words[i].word,
-                        sizeof(state->prompt_object) - 1);
-                break;
-            }
-        }
         syntactic_parse_free(&parse);
     }
 
     /* Stage_completed/skipped accounting is handled by the orchestrator
      * which checks state->wernicke_parsed after dispatch. */
+    return 0;
+}
+
+/*============================================================================
+ * Stage 8 (Phase 2D-B): Wernicke self-comprehension — sensorimotor loop
+ *
+ * After stages 6 (lexical) and 7 (syntactic) produce text via bridge +
+ * Broca, we feed the brain's own output BACK through Wernicke +
+ * grounded_language_comprehend and compare the re-derived semantic
+ * vector to content_intent. The match score answers: "did the brain
+ * actually say what it meant?"
+ *
+ * High match (>0.7): the production path successfully encoded the
+ * intent. The bridge's bindings + Broca's syntax produced output that
+ * means roughly the same thing as the intent that drove them.
+ *
+ * Low match (<0.3): the brain said something but it isn't what it
+ * meant. The production path was lossy. Future work (Phase 2F+) will
+ * route this match score back as a training signal — strengthen
+ * bindings on high match, weaken on low match. That's the closed loop
+ * the audit identified as the #1 architectural gap.
+ *==========================================================================*/
+
+/* Cosine similarity, defensive against zero vectors. Returns [0, 1]
+ * (we clamp negative similarity to 0 since intent vectors should be
+ * non-negative after ReLU). */
+static float vec_cosine_sim(const float* a, const float* b, uint32_t dim) {
+    if (!a || !b || dim == 0) return 0.0f;
+    double dot = 0.0, na = 0.0, nb = 0.0;
+    for (uint32_t i = 0; i < dim; i++) {
+        double ai = a[i], bi = b[i];
+        dot += ai * bi;
+        na  += ai * ai;
+        nb  += bi * bi;
+    }
+    if (na < 1e-12 || nb < 1e-12) return 0.0f;
+    double cs = dot / (sqrt(na) * sqrt(nb));
+    if (cs < 0.0) cs = 0.0;
+    if (cs > 1.0) cs = 1.0;
+    return (float)cs;
+}
+
+int cascade_stage_self_comprehension(brain_t brain,
+                                       production_cascade_state_t* state) {
+    state->self_parsed         = false;
+    state->self_complexity     = 0.0f;
+    state->self_match          = 0.0f;
+    state->self_grammaticality = 0.0f;
+
+    if (!state->utterance || !state->utterance[0]) return 0;
+    if (!brain->grounded_lang) return 0;
+
+    /* Re-comprehend the brain's own output. Uses the lexicon-side
+     * comprehend (same path that Stage 0 uses) — produces a semantic
+     * vector. We compare that to state->content_intent: the cosine
+     * similarity is the match score.
+     *
+     * NOTE: this comprehend fires GL_EVENT_COMPREHENDED on the cognitive
+     * bus, which would normally feed observers (ToM, PFC, etc.). For
+     * self-talk that's actually what we want — the brain hearing its
+     * own voice updates working memory and ToM the same way external
+     * input would. */
+    gl_comprehension_result_t self_comp;
+    memset(&self_comp, 0, sizeof(self_comp));
+    int rc = grounded_language_comprehend(brain->grounded_lang,
+                                            state->utterance, &self_comp);
+    if (rc == 0 && self_comp.semantic_vector && state->content_intent) {
+        uint32_t dim = state->content_dim;
+        uint32_t comp_dim = grounded_language_get_semantic_dim(brain->grounded_lang);
+        if (comp_dim < dim) dim = comp_dim;
+        state->self_match = vec_cosine_sim(state->content_intent,
+                                             self_comp.semantic_vector,
+                                             dim);
+        state->self_parsed = true;
+    }
+    gl_comprehension_result_cleanup(&self_comp);
+
+    /* Run Wernicke's syntactic parser on the utterance to get a
+     * grammaticality + complexity reading independent of the
+     * lexicon-side semantics. */
+    if (brain->wernicke) {
+        syntactic_comprehension_t* syn =
+            wernicke_get_syntactic_comprehension(brain->wernicke);
+        if (syn) {
+            enum { MAX_WORDS = 32 };
+            syntactic_word_t words[MAX_WORDS];
+            char dup[2048];
+            size_t ulen = strlen(state->utterance);
+            if (ulen >= sizeof(dup)) ulen = sizeof(dup) - 1;
+            memcpy(dup, state->utterance, ulen);
+            dup[ulen] = '\0';
+
+            uint32_t num_words = 0;
+            char* save = NULL;
+            char* tok = strtok_r(dup, " \t\n\r.,!?;:\"'", &save);
+            while (tok && num_words < MAX_WORDS) {
+                if (!tok[0]) {
+                    tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
+                    continue;
+                }
+                memset(&words[num_words], 0, sizeof(words[num_words]));
+                size_t tlen = strlen(tok);
+                if (tlen >= sizeof(words[num_words].word))
+                    tlen = sizeof(words[num_words].word) - 1;
+                for (size_t k = 0; k < tlen; k++) {
+                    words[num_words].word[k] = (char)tolower((unsigned char)tok[k]);
+                }
+                words[num_words].word[tlen] = '\0';
+                words[num_words].position = num_words;
+
+                const gl_lexicon_entry_t* e = lexicon_find_internal(
+                    brain->grounded_lang, words[num_words].word);
+                words[num_words].category = e
+                    ? gl_class_to_syn_cat(e->learned_class)
+                    : SYN_CAT_UNKNOWN;
+                words[num_words].category_confidence = e
+                    ? e->class_confidence : 0.0f;
+
+                num_words++;
+                tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
+            }
+
+            if (num_words > 0) {
+                syntactic_parse_t parse;
+                memset(&parse, 0, sizeof(parse));
+                if (syntactic_parse_sentence(syn, words, num_words, &parse) == 0) {
+                    state->self_complexity = syntactic_compute_complexity(&parse);
+                    if (state->self_complexity > 1.0f)
+                        state->self_complexity = 1.0f;
+                    /* Grammaticality: parse-success + parse's own
+                     * is_grammatical flag give us a 3-level signal. */
+                    state->self_grammaticality = parse.is_grammatical ? 1.0f : 0.5f;
+                    syntactic_parse_free(&parse);
+                } else {
+                    /* Parse failed — output is ungrammatical or unparseable. */
+                    state->self_grammaticality = 0.0f;
+                }
+            }
+        }
+    }
+
     return 0;
 }
