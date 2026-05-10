@@ -327,15 +327,7 @@ snn_lang_config_t snn_lang_config_default(void)
         .enable_comprehend_stdp     = false,
         .comprehend_stdp_min_weight = 0.05f,
         .comprehend_stdp_min_activation = 0.10f,
-        .comprehend_stdp_lr_scale   = 0.5f,
-        /* EOS stopping criterion — default OFF preserves bit-for-bit
-         * legacy produce-loop behavior. Caller opts in by setting
-         * enable_eos_stopping = true; thresholds are tuneable but the
-         * defaults are calibrated for unit-norm intent vectors and
-         * cosine-scored confidences (see header for rationale). */
-        .enable_eos_stopping        = false,
-        .eos_min_activation         = 0.05f,
-        .eos_min_confidence         = 0.01f
+        .comprehend_stdp_lr_scale   = 0.5f
     };
     return config;
 }
@@ -1779,20 +1771,6 @@ static int bridge_produce_impl(snn_language_bridge_t* bridge,
     if (rep_penalty > 1.0f) rep_penalty = 1.0f;
     if (rep_penalty > 0.0f && rep_window == 0) rep_window = 3;
 
-    /* EOS stopping criterion (default-OFF). Pull thresholds once. The
-     * activation threshold is compared against L2 magnitude of the
-     * post-recurrent-update concept_acts; the confidence threshold is
-     * compared against the just-emitted word's per-step confidence.
-     * Defaults: enable=false, min_act=0.05, min_conf=0.01. Defensive
-     * clamping — non-finite or negative thresholds disable the
-     * respective sub-check by setting it to -1, which can never trip. */
-    const bool  eos_stop_enabled = bridge->config.enable_eos_stopping;
-    float       eos_min_act      = bridge->config.eos_min_activation;
-    float       eos_min_conf     = bridge->config.eos_min_confidence;
-    if (!isfinite(eos_min_act)  || eos_min_act  < 0.0f) eos_min_act  = -1.0f;
-    if (!isfinite(eos_min_conf) || eos_min_conf < 0.0f) eos_min_conf = -1.0f;
-    bool eos_terminated = false;
-
     for (uint32_t w = 0; w < max_words; w++) {
         // Get top word
         snn_lang_word_result_t word_result;
@@ -2086,29 +2064,6 @@ sample_done:;
         for (uint32_t c = 0; c < n_concepts; c++) {
             concept_acts[c] = ip * intent[c] + (1.0f - ip) * state[c];
         }
-
-        /* EOS stopping criterion (opt-in via enable_eos_stopping).
-         * Evaluated after the recurrent state update so the activation
-         * sample reflects what the NEXT decode pass would see. We
-         * respect the caller's min_words_cfg floor — no early stop
-         * before the configured minimum has been emitted. With the
-         * default flag OFF, this entire block is skipped (preserves
-         * legacy behavior bit-for-bit). */
-        if (eos_stop_enabled && word_count >= min_words_cfg) {
-            /* L2 magnitude of the just-rebuilt concept_acts. */
-            float act_sq = 0.0f;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                act_sq += concept_acts[c] * concept_acts[c];
-            }
-            float act_mag = sqrtf(act_sq);
-            bool  act_undershot  = (eos_min_act  >= 0.0f) && (act_mag < eos_min_act);
-            bool  conf_undershot = (eos_min_conf >= 0.0f) &&
-                                   (word_result.confidence < eos_min_conf);
-            if (act_undershot || conf_undershot) {
-                eos_terminated = true;
-                break;
-            }
-        }
     }
 
     nimcp_free(used_words);
@@ -2122,21 +2077,6 @@ sample_done:;
      * who never opted into length control. */
     if (max_truncated) {
         bridge->stats.length_max_truncations++;
-    }
-
-    /* EOS stopping telemetry: bump symmetrical counters so callers can
-     * tell from a single stats read how each produce call terminated.
-     * total_eos_terminations bumps when the activation/confidence
-     * thresholds tripped; total_max_truncations bumps for any
-     * cap-driven exit (mirrors length_max_truncations but also covers
-     * the legacy implicit 32-word cap so consumers can compute an
-     * EOS-vs-cap ratio without a second counter). Both stay 0 when the
-     * EOS feature is unused, matching backward-compat semantics. */
-    if (eos_terminated) {
-        bridge->stats.total_eos_terminations++;
-    }
-    if (word_count >= max_words) {
-        bridge->stats.total_max_truncations++;
     }
 
     /* Walkthrough round 2: clear the embedding-query override so any
@@ -3485,12 +3425,6 @@ static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
     cfg->activation_tau_ms        = defaults.activation_tau_ms;
     cfg->use_hyperbolic_embeddings = defaults.use_hyperbolic_embeddings;
     cfg->sampling_mode            = defaults.sampling_mode;
-    /* EOS stopping fields are new — older on-disk blobs do not contain
-     * them. Reset to the library defaults so a stale V2 sidecar can't
-     * accidentally enable EOS stopping with garbage thresholds. */
-    cfg->enable_eos_stopping      = defaults.enable_eos_stopping;
-    cfg->eos_min_activation       = defaults.eos_min_activation;
-    cfg->eos_min_confidence       = defaults.eos_min_confidence;
 }
 
 int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* path)

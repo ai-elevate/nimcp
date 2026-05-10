@@ -265,31 +265,6 @@ typedef struct {
     float    comprehend_stdp_min_weight;     /* default 0.05 */
     float    comprehend_stdp_min_activation; /* default 0.10 */
     float    comprehend_stdp_lr_scale;       /* multiplied with stdp_learning_rate, default 0.5 */
-    /* EOS stopping criterion — opt-in early termination for the produce
-     * loop based on intrinsic "thought-complete" signals rather than a
-     * trained EOS token.
-     *
-     * When enable_eos_stopping is true, after each emitted word the
-     * produce loop additionally checks two thresholds and stops early
-     * (only after at least min_produce_words have been emitted, so the
-     * caller's hard length-control floor still wins):
-     *
-     *   1. Activation drop: ||concept_acts||_2 (post decay+feedback for
-     *      the next step) < eos_min_activation. Rationale: when the
-     *      original intent has been "spent" by the recurrent state
-     *      drift, the brain has nothing more to say.
-     *
-     *   2. Coherence drop: the just-emitted word's confidence
-     *      (word_result.confidence) < eos_min_confidence. Rationale:
-     *      below this, the system is just emitting noise — no clearly
-     *      preferred word for the current activation.
-     *
-     * Either threshold being undershot triggers the stop. Default OFF
-     * for backward compatibility — bit-for-bit identical output to
-     * pre-EOS behavior. */
-    bool     enable_eos_stopping;
-    float    eos_min_activation;             /* default 0.05 */
-    float    eos_min_confidence;             /* default 0.01 */
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -396,15 +371,6 @@ typedef struct {
     uint64_t echo_correct_calls;
     uint64_t echo_correct_pairs;
     uint64_t echo_correct_target_misses;
-    /* EOS stopping telemetry. total_eos_terminations bumps once per
-     * produce call where enable_eos_stopping fired (activation or
-     * confidence dropped under threshold after min_produce_words).
-     * total_max_truncations bumps once per produce call where the loop
-     * exited via the implicit/explicit max-words cap (mirrors the
-     * existing length_max_truncations counter for consumers that want
-     * a single name). Both stay 0 when EOS stopping is disabled. */
-    uint64_t total_eos_terminations;
-    uint64_t total_max_truncations;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
