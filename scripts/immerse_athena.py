@@ -4686,19 +4686,48 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 pass
 
         # Bridge produce exercise — every Nth cognitive call, run the
-        # full comprehend → produce roundtrip via grounded_respond. The
-        # SNN language bridge's R-STDP / DA-modulation / trigram-learning
-        # paths only fire during produce; without this hook, training
-        # accumulates concept↔word bindings via comprehend (lexicon-side
-        # only) but the bridge weights stay at initialization, leaving
-        # bridge_total_productions = 0 across the entire training run.
-        # CSTDP (comprehend-driven STDP, off by default) is the deeper
-        # fix; this periodic produce is the lighter, complementary side.
-        # Cost: ~1s/call on CPU decode, fired 1/10 of training items —
-        # negligible vs the ~13s/step training loop.
+        # full comprehend → produce roundtrip via grounded_respond. Keeps
+        # the produce path warm (DA modulation, decode_total_ns).
         if target_text and self.interaction_count % 10 == 0:
             try:
                 brain.grounded_respond(target_text or text)
+            except Exception:
+                pass
+
+        # Echo-and-correct — supervised production learning. For every
+        # cognitive item, pick a content word from target_text (or text)
+        # and tell the bridge "when you hear THIS, produce THAT word".
+        # This is the production-side training signal the bridge has
+        # been missing — without it, the produce path samples from
+        # uniform-random weights across 29K WordNet entries (which is
+        # why eval responses look like "pleated promiscuously thinnest"
+        # rather than real babbling: no word_pop is more probable than
+        # any other for any concept).
+        #
+        # Pick a content word: longest non-function word in the target
+        # (proxy for "most semantically loaded"). Skip if the target is
+        # empty or all-function-words.
+        sup = target_text or text
+        if sup and len(sup) > 3:
+            try:
+                # Cheap content-word heuristic: longest word, skip ≤3char
+                # function-word approximations. Caller's _ground_content_words
+                # uses similar heuristics; we don't import them to avoid
+                # cross-module coupling.
+                words = [w.strip(".,!?;:\"'()-").lower()
+                         for w in sup.split()
+                         if len(w.strip(".,!?;:\"'()-")) > 3]
+                if words:
+                    # Take longest as the "target" — most likely a noun
+                    # in narrations like "Look! A ball." or "What a tree!"
+                    target_word = max(words, key=len)
+                    pairs = brain.echo_and_correct(sup, target_word, lr_scale=1.0)
+                    # Optional: log if a target wasn't registered yet (pairs == 0
+                    # means lexicon hasn't mirrored target_word into the
+                    # bridge's word_pops). Don't spam — only every 200th call.
+                    if pairs == 0 and self.interaction_count % 200 == 0:
+                        logger.debug("echo_and_correct: %r not in bridge yet",
+                                     target_word)
             except Exception:
                 pass
 

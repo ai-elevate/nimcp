@@ -2960,6 +2960,133 @@ bool snn_language_bridge_get_comprehend_stdp_enabled(
     return bridge->config.enable_comprehend_stdp;
 }
 
+/* FNV-1a hash matching grounded_language.c::hash_word — must produce the
+ * same form_hash so word_pop = (form_hash % SNN_LANG_MAX_WORD_POPS) lands
+ * in the same slot mirror_binding_to_bridge writes to. Duplicating the
+ * helper here avoids cross-module include of the lexicon's static. */
+static uint32_t echo_correct_hash_word(const char* word) {
+    uint32_t hash = 2166136261u;
+    for (const char* p = word; *p; p++) {
+        hash ^= (uint32_t)(unsigned char)tolower((unsigned char)*p);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+int snn_language_bridge_echo_correct(
+    snn_language_bridge_t* bridge,
+    const float* intent,
+    uint32_t intent_dim,
+    const char* target_word_form,
+    float lr_scale)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!intent || intent_dim == 0 || !target_word_form ||
+        target_word_form[0] == '\0') return -1;
+    if (!isfinite(lr_scale) || lr_scale <= 0.0f) return -1;
+
+    bridge->stats.echo_correct_calls++;
+
+    /* Compute target word_pop the same way mirror_binding_to_bridge does:
+     * hash the form and modulo the max-pops cap. This sidesteps the
+     * collision-lossy linear scan over word_pops[].word_form (with 29K
+     * words mapped into 32K slots, ~10K hash collisions overwrite each
+     * other's stored forms — but the BINDINGS keyed by (concept, pop)
+     * are still at the right indices, so we can address them by hash
+     * even if the form-string in word_pops[pop] now shows some other
+     * colliding word). */
+    uint32_t form_hash = echo_correct_hash_word(target_word_form);
+    uint32_t target_word_pop = form_hash % SNN_LANG_MAX_WORD_POPS;
+    if (target_word_pop >= bridge->word_pops_capacity) {
+        bridge->stats.echo_correct_target_misses++;
+        return -2;
+    }
+    /* Register the word_form at this slot so the produce-side decoder
+     * (which skips !registered slots) can pick this word up later.
+     * Idempotent — register_word overwrites whatever colliding form
+     * was last written. With 29K words competing for 32K slots there's
+     * always a collision risk; this resets the slot to the word the
+     * trainer is currently teaching. The displaced word's bindings
+     * still exist in binding_buckets[] keyed on the same word_pop, but
+     * its form-string is overwritten. That's the same race the lexicon
+     * itself accepts during mirror_binding_to_bridge. */
+    snn_language_bridge_register_word(bridge, target_word_pop, target_word_form);
+
+    /* DA modulation — same formula as apply_stdp/CSTDP. Reads dopamine
+     * once per call so the same multiplier scales every binding update.
+     * When DA modulation is off or no neuromod is wired, multiplier is
+     * 1.0 (unchanged behaviour). */
+    float da_modulation = 1.0f;
+    if (bridge->config.enable_da_modulation && bridge->neuromod &&
+        bridge->config.da_modulation_gain > 0.0f) {
+        float da = neuromodulator_get_level(
+            (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
+        if (isfinite(da) && da >= 0.0f) {
+            da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
+        }
+    }
+
+    /* Per-binding LTP magnitude. Uses the same a_plus the produce-side
+     * apply_stdp uses, scaled by lr_scale (caller-controlled — set < 1.0
+     * during early training to avoid runaway, > 1.0 for fast supervised
+     * imprinting). The intent[i] activation acts as the per-concept
+     * weight: a strongly-activated concept during comprehend gets a
+     * proportionally larger LTP toward the target word.
+     *
+     * No activation gate: this is SUPERVISED — the caller is asserting
+     * "for this intent, produce target_word." Filtering on a noise-floor
+     * threshold would suppress the signal during early training when
+     * activations are uniformly small. CSTDP keeps its gate because
+     * it fires on every comprehend (unsupervised); echo_correct fires
+     * only when the trainer explicitly says "teach this word" so we
+     * trust the caller's correctness assertion. */
+    const float base_lr = bridge->config.stdp_learning_rate;
+    const float a_plus = bridge->config.stdp_a_plus;
+
+    /* Iterate the dimensions covered by both intent and concept_pops.
+     * Mirrors bridge_produce_impl's intent → concept_acts mapping
+     * (first num_concept_pops entries, ReLU). */
+    uint32_t copy_dim = (intent_dim < bridge->num_concept_pops)
+                        ? intent_dim : bridge->num_concept_pops;
+    uint32_t pairs_strengthened = 0;
+    for (uint32_t c = 0; c < copy_dim; c++) {
+        float act = intent[c];
+        if (!isfinite(act) || act <= 0.0f) continue;     /* ReLU only */
+        float delta = base_lr * lr_scale * a_plus * act * da_modulation;
+        if (delta <= 0.0f) continue;
+        if (snn_language_bridge_strengthen_binding(bridge, c, target_word_pop,
+                                                    delta) == 0) {
+            pairs_strengthened++;
+        }
+    }
+
+    bridge->stats.echo_correct_pairs += pairs_strengthened;
+    /* Diagnostic: helps the trainer / operator see whether the call ran
+     * to completion but found no positive activations (indicating the
+     * comprehend produced an empty semantic_vector — usually because
+     * the input text had no recognized words). */
+    if (pairs_strengthened == 0) {
+        /* Compute simple stats on the intent vector to help diagnose. */
+        float intent_max = 0.0f, intent_sum = 0.0f;
+        uint32_t intent_pos = 0;
+        uint32_t copy_dim_d = (intent_dim < bridge->num_concept_pops)
+                              ? intent_dim : bridge->num_concept_pops;
+        for (uint32_t c = 0; c < copy_dim_d; c++) {
+            float a = intent[c];
+            if (isfinite(a) && a > 0.0f) { intent_pos++; intent_sum += a; if (a > intent_max) intent_max = a; }
+        }
+        LOG_INFO("snn_lang_bridge",
+                  "echo_correct: '%s' resolved (pop=%u) but 0 pairs "
+                  "strengthened — intent_dim=%u, num_concept_pops=%u, "
+                  "intent_pos=%u/%u, max=%.4f, sum=%.4f, base_lr=%.4f a_plus=%.4f da=%.4f",
+                  target_word_form, target_word_pop,
+                  intent_dim, bridge->num_concept_pops,
+                  intent_pos, copy_dim_d, intent_max, intent_sum,
+                  base_lr, a_plus, da_modulation);
+    }
+    return (int)pairs_strengthened;
+}
+
 //=============================================================================
 // Phase 5: Creative/Imagination Integration
 //=============================================================================

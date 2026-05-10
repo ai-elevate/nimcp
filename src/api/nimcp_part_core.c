@@ -3936,6 +3936,57 @@ nimcp_status_t nimcp_brain_set_comprehend_stdp_enabled(nimcp_brain_t brain, bool
               b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_echo_and_correct(
+    nimcp_brain_t brain,
+    const char* parent_text,
+    const char* target_word,
+    float lr_scale,
+    int* out_pairs_strengthened)
+{
+    if (!brain || !parent_text || !target_word) return NIMCP_ERROR_INVALID_PARAM;
+    if (!isfinite(lr_scale) || lr_scale <= 0.0f) lr_scale = 1.0f;
+
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang || !b->snn_lang_bridge) {
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
+    /* Step 1: comprehend the parent's utterance to get the semantic
+     * vector that represents what the brain "heard". Same vector that
+     * would feed into produce — so reinforcing concept→target_word
+     * here is teaching the bridge "when this set of concepts fires,
+     * say target_word". */
+    gl_comprehension_result_t comp = {0};
+    int rc = grounded_language_comprehend(b->grounded_lang, parent_text, &comp);
+    if (rc != 0 || !comp.semantic_vector) {
+        gl_comprehension_result_cleanup(&comp);
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+
+    uint32_t semantic_dim = grounded_language_get_semantic_dim(b->grounded_lang);
+
+    /* Step 2: supervised LTP — strengthen (active concepts → target word)
+     * bindings. Returns negative on error or # bindings strengthened. */
+    int pairs = snn_language_bridge_echo_correct(
+        b->snn_lang_bridge,
+        comp.semantic_vector,
+        semantic_dim,
+        target_word,
+        lr_scale);
+
+    gl_comprehension_result_cleanup(&comp);
+
+    if (pairs < 0) {
+        if (out_pairs_strengthened) *out_pairs_strengthened = 0;
+        /* -2 = target word not registered in bridge — caller fed an
+         * unfamiliar word. Report as "operation failed" (recoverable). */
+        if (pairs == -2) return NIMCP_ERROR_OPERATION_FAILED;
+        return NIMCP_ERROR;
+    }
+    if (out_pairs_strengthened) *out_pairs_strengthened = pairs;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_set_da_modulation_gain(nimcp_brain_t brain, float gain) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);

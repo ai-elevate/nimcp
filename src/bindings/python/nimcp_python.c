@@ -3362,6 +3362,38 @@ AUDIT_BRAIN_BOOL_SETTER(set_speech_act_classification_enabled, nimcp_brain_set_s
 AUDIT_BRAIN_BOOL_SETTER(set_topic_shift_enabled,              nimcp_brain_set_topic_shift_enabled)
 AUDIT_BRAIN_FLOAT_SETTER(set_topic_shift_threshold,           nimcp_brain_set_topic_shift_threshold)
 
+/* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
+ * Returns count of bindings strengthened. Non-zero lr_scale gates the
+ * caller's per-call magnitude. */
+static PyObject* Brain_echo_and_correct(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    const char* parent_text = NULL;
+    const char* target_word = NULL;
+    float lr_scale = 1.0f;
+    static char* kwlist[] = {"parent_text", "target_word", "lr_scale", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss|f", kwlist,
+                                     &parent_text, &target_word, &lr_scale)) {
+        return NULL;
+    }
+    int pairs = 0;
+    nimcp_status_t st = nimcp_brain_echo_and_correct(
+        self->brain, parent_text, target_word, lr_scale, &pairs);
+    if (st != NIMCP_OK) {
+        /* Distinguish target-not-registered (recoverable, common during
+         * stage-1 when the lexicon hasn't seen this word yet) from
+         * other errors. nimcp_brain_echo_and_correct returns
+         * NIMCP_ERROR_OPERATION_FAILED for the not-registered case. */
+        if (st == NIMCP_ERROR_OPERATION_FAILED) {
+            return PyLong_FromLong(0);  /* zero pairs strengthened, not an exception */
+        }
+        PyErr_Format(PyExc_RuntimeError, "echo_and_correct failed (status=%d)", (int)st);
+        return NULL;
+    }
+    return PyLong_FromLong(pairs);
+}
+
 /* TB-7 length control takes two uint32 args (min, max). */
 static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
     if (!self->brain) {
@@ -11533,6 +11565,9 @@ static PyMethodDef Brain_methods[] = {
      "TA-3: tune the DA → LR scaling — set_da_modulation_gain(gain: float) -> None. Clamped [0, 200]."},
     {"set_comprehend_stdp_enabled", (PyCFunction)Brain_set_comprehend_stdp_enabled, METH_VARARGS,
      "CSTDP: toggle comprehend-driven scoped STDP — set_comprehend_stdp_enabled(enabled: bool) -> None. Default OFF; reinforces existing strong concept↔word bindings during every comprehend call instead of only during produce."},
+    {"echo_and_correct", (PyCFunction)Brain_echo_and_correct, METH_VARARGS | METH_KEYWORDS,
+     "Supervised production-side learning: comprehend(parent_text) → strengthen (active concepts → target_word) bindings.\n"
+     "echo_and_correct(parent_text: str, target_word: str, lr_scale: float = 1.0) -> int (pairs strengthened, 0 if target not registered)."},
     {"set_reconsolidation_enabled", (PyCFunction)Brain_set_reconsolidation_enabled, METH_VARARGS,
      "TA-5: toggle reconsolidation-on-contradiction — set_reconsolidation_enabled(enabled: bool) -> None. Default OFF."},
     {"set_reconsolidation_decay", (PyCFunction)Brain_set_reconsolidation_decay, METH_VARARGS,

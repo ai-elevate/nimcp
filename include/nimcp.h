@@ -1342,6 +1342,36 @@ nimcp_status_t nimcp_brain_set_da_modulation_gain(nimcp_brain_t brain, float gai
  * 256-pair touched-set, no full 1.6M-binding hash walk per call). */
 nimcp_status_t nimcp_brain_set_comprehend_stdp_enabled(nimcp_brain_t brain, bool enabled);
 
+/** Echo-correct: supervised "produce this word" learning loop.
+ *
+ * Comprehends parent_text to get the semantic vector, then strengthens
+ * each (active_concept_pop → target_word_pop) binding in the SNN
+ * language bridge. This is the production-side training signal the
+ * bridge has been missing — without it the produce path samples from
+ * uniform-random weights across the entire 29K-word lexicon.
+ *
+ * Use the trainer pattern: every Nth narration, after the brain
+ * comprehends "Look! A ball.", call:
+ *   nimcp_brain_echo_and_correct(brain, "Look! A ball.", "ball", 1.0f, NULL)
+ *
+ * The target_word must already be registered in the bridge (via the
+ * normal lexicon mirror path); unfamiliar words return
+ * NIMCP_ERROR_OPERATION_FAILED.
+ *
+ * lr_scale multiplies the bridge's stdp_learning_rate. 1.0 = use the
+ * default; lower values for cautious imprinting, higher for fast
+ * supervised correction. DA modulation rides on top when enabled.
+ *
+ * If out_pairs_strengthened is non-NULL, it gets the count of
+ * concept_pop bindings actually updated (== number of concept dims
+ * with intent[i] >= comprehend_stdp_min_activation). */
+nimcp_status_t nimcp_brain_echo_and_correct(
+    nimcp_brain_t brain,
+    const char* parent_text,
+    const char* target_word,
+    float lr_scale,
+    int* out_pairs_strengthened);
+
 /** TA-5: reconsolidation-on-contradiction. */
 nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);

@@ -362,6 +362,15 @@ typedef struct {
      * training run. */
     uint64_t comprehend_stdp_passes;
     uint64_t comprehend_stdp_pairs_fired;
+    /* Echo-correct: supervised production training. echo_correct_calls
+     * bumps on every snn_language_bridge_echo_correct() invocation;
+     * echo_correct_pairs counts the total (concept_pop, target_word_pop)
+     * bindings strengthened across all calls; echo_correct_target_misses
+     * counts calls where the target word wasn't registered in the bridge
+     * (caller fed an unfamiliar word). */
+    uint64_t echo_correct_calls;
+    uint64_t echo_correct_pairs;
+    uint64_t echo_correct_target_misses;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -514,6 +523,34 @@ int snn_language_bridge_strengthen_binding(
     uint32_t concept_pop,
     uint32_t word_pop,
     float delta);
+
+/** Echo-correct: supervised "produce this word" learning.
+ *
+ * Given an intent vector (typically the semantic_vector from a fresh
+ * comprehend) and a target word form, strengthens every (concept_pop_i →
+ * target_word_pop) binding by lr_scale * stdp_lr * intent[i] * a_plus,
+ * with optional DA modulation. The activation gate matches CSTDP — only
+ * concept_pops with intent[i] >= comprehend_stdp_min_activation get an
+ * update, so we don't reinforce on noise.
+ *
+ * This is the supervised production-side learning loop the bridge has
+ * been missing: training updates word→concept bindings (comprehend
+ * direction), but never tells the bridge "say THIS word for THAT
+ * intent". Without it the produce path samples from noise across the
+ * entire 29K-word lexicon. Calling this every Nth training item with
+ * (parent_utterance → target_content_word) closes the loop.
+ *
+ * Returns:
+ *    >= 0  number of bindings actually strengthened
+ *      -1  bridge invalid
+ *      -2  target word not registered in bridge (lexicon hasn't mirrored
+ *          this word yet — caller should ground/comprehend first) */
+int snn_language_bridge_echo_correct(
+    snn_language_bridge_t* bridge,
+    const float* intent,
+    uint32_t intent_dim,
+    const char* target_word_form,
+    float lr_scale);
 
 /** PA-4+: Riemannian / sigmoid-reparameterized update on a binding.
  *

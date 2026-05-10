@@ -1795,6 +1795,32 @@ class BrainService:
             return {"error": f"set_comprehend_stdp_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_echo_and_correct(self, req):
+        """Echo-correct: comprehend(parent_text) → strengthen
+        (active concepts → target_word) bindings. Supervised production-
+        side learning loop. Returns count of bindings strengthened
+        (0 means target_word isn't registered in the bridge yet — it
+        hasn't been mirrored from the lexicon side).
+
+        Request: {"cmd": "echo_and_correct", "parent_text": "...",
+                   "target_word": "...", "lr_scale": 1.0}
+        Response: {"ok": True, "pairs_strengthened": <int>}"""
+        parent_text = req.get("parent_text", "")
+        target_word = req.get("target_word", "")
+        try:
+            lr_scale = float(req.get("lr_scale", 1.0))
+        except (TypeError, ValueError):
+            return {"error": "echo_and_correct: lr_scale must be a number"}
+        if not parent_text or not target_word:
+            return {"error": "echo_and_correct: parent_text and target_word required"}
+        try:
+            pairs = self.brain.echo_and_correct(parent_text, target_word, lr_scale=lr_scale)
+        except AttributeError:
+            return {"error": "echo_and_correct not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"echo_and_correct: {e}"}
+        return {"ok": True, "pairs_strengthened": int(pairs)}
+
     def _cmd_set_da_modulation_gain(self, req):
         """TA-3: tune the DA → LR scaling. Clamped [0, 200].
 
