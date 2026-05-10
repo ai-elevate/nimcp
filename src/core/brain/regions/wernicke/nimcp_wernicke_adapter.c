@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
+#include "core/brain/regions/wernicke/nimcp_syntactic_comprehension.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -267,6 +268,16 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     adapter->snn = NULL;
     adapter->snn_pop_id = -1;
 
+    /* Create syntactic comprehension submodule (NULL config = defaults).
+     * Without this, wernicke_get_syntactic_comprehension() returns NULL and
+     * the language cascade Phase 2D-A/2D-B parsing path stays statue, leaving
+     * wernicke_parsed=false on every comprehension. Non-fatal: adapter still
+     * works for phonological/lexical/semantic stages even if this fails. */
+    adapter->syntactic = syntactic_comprehension_create(NULL);
+    if (!adapter->syntactic) {
+        NIMCP_LOG_WARN("wernicke", "syntactic_comprehension_create returned NULL — parsing disabled");
+    }
+
     /* Initialize statistics */
     memset(&adapter->stats, 0, sizeof(wernicke_stats_t));
 
@@ -300,6 +311,10 @@ void wernicke_destroy(wernicke_adapter_t* adapter)
 
     /* Free sub-modules when implemented */
     /* Phase 2: phonological, lexical, semantic, syntactic */
+    if (adapter->syntactic) {
+        syntactic_comprehension_destroy(adapter->syntactic);
+        adapter->syntactic = NULL;
+    }
 
     NIMCP_LOG_INFO("wernicke", "Destroyed Wernicke's area adapter");
 
