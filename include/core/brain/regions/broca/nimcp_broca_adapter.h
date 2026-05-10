@@ -71,7 +71,16 @@ typedef struct snn_network_s snn_network_t;
 #define BROCA_DEFAULT_MAX_PHONEMES       256
 #define BROCA_DEFAULT_MAX_COMMANDS       512
 #define BROCA_DEFAULT_WORKING_MEMORY_SLOTS 7
-#define BROCA_DEFAULT_LEXICON_SIZE       1000
+/* Phase 2C: bumped 1000→32768 to fit the full WordNet+GloVe lexicon
+ * (~29K entries) when the communication cascade mirrors GL's vocab
+ * into Broca. The pre-cascade default of 1000 was sized for hand-
+ * curated function-word lexicons; without the bump, the GL→Broca
+ * mirror caps at ~1000 words and Broca's CYK parser sees POS_UNKNOWN
+ * for the other ~28K words. 32768 matches the SNN bridge's word_pop
+ * capacity so both subsystems address the same hash space. Memory
+ * cost: ~256KB for the bucket array, plus ~120 bytes per registered
+ * entry — bounded around 4MB total at full WordNet load. */
+#define BROCA_DEFAULT_LEXICON_SIZE       32768
 #define BROCA_DEFAULT_PLANNING_WINDOW_MS 200.0f
 
 /**
@@ -329,6 +338,24 @@ bool broca_reset(broca_adapter_t* adapter);
  */
 bool broca_add_lexical_entry(broca_adapter_t* adapter,
                               const broca_lexical_entry_t* entry);
+
+/**
+ * @brief Phase 2C shim: add a lexical entry from individual fields.
+ *
+ * Used by the cascade's GL→Broca lexicon mirror so callers in the
+ * language subsystem don't have to include broca's full header.
+ * adapter_v is a void* aliasing broca_adapter_t* (avoids a forward decl
+ * cascade). word is copied; phonemes are left empty (Broca's
+ * phonological_processor generates them on-demand from spelling).
+ *
+ * Returns false on null/empty word, lexicon at capacity, or alloc
+ * failure. Otherwise true.
+ */
+bool broca_add_lexical_entry_v(void* adapter_v,
+                                uint32_t word_id,
+                                const char* word,
+                                uint8_t pos,
+                                float frequency);
 
 /**
  * @brief Look up word in lexicon

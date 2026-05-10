@@ -2583,6 +2583,28 @@ void grounded_language_get_modality_counts(
 uint32_t grounded_language_get_semantic_dim(
     const grounded_language_t* gl);
 
+/**
+ * @brief Phase 2C: walk gl->vocab_list and push each entry into Broca's
+ *        separate lexicon so its CYK chart parser has POS info for the
+ *        content words bridge production routes through it.
+ *
+ * Without this, every WordNet word that the bridge produces shows up
+ * to Broca as POS_UNKNOWN, no phrase rule fires, syntax_build_tree
+ * returns false, and broca_produce_from_strings rejects every input.
+ *
+ * Maps gl_word_class_t → part_of_speech_t. Uses entry->form_hash as
+ * broca's word_id so both subsystems share the same hash space.
+ * Phonemes are not pushed (Broca's phonological_processor generates
+ * them on-demand from spelling).
+ *
+ * Idempotent under broca_reset; otherwise re-running creates duplicate
+ * hash-bucket entries with no functional impact.
+ *
+ * @return Number of entries successfully mirrored.
+ */
+uint64_t grounded_language_mirror_lexicon_to_broca(
+    grounded_language_t* gl, void* broca_adapter);
+
 /*=============================================================================
  * Serialization
  *===========================================================================*/

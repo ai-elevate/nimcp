@@ -535,19 +535,115 @@ static int cascade_stage_lexical(brain_t brain,
 }
 
 /*============================================================================
- * Stage 7: Syntactic — Broca syntax processor (Phase 2A: passthrough)
+ * Stage 7: Syntactic — Broca syntax processor (Phase 2C activated)
  *==========================================================================*/
+
+#include "core/brain/regions/broca/nimcp_broca_adapter.h"
+#include "core/brain/regions/broca/nimcp_syntax_processor.h"
 
 static int cascade_stage_syntactic(brain_t brain,
                                     production_cascade_state_t* state) {
-    (void)brain;
-    /* Phase 2A: real Broca routing requires the GL→Broca lexicon mirror
-     * (Phase 2C). Until that lands, syntax_validity is unknown — record
-     * as -1 so downstream consumers can tell apart "skipped" from
-     * "validated grammatical" (1.0) from "validated ungrammatical" (0.0). */
-    state->syntactic_validity = -1.0f;
-    cascade_record_skip(state, CASCADE_STAGE_SYNTACTIC,
-                        "stage_syntactic: deferred to Phase 2C");
+    state->syntactic_validity = -1.0f;  /* unknown until we run Broca */
+
+    if (!brain->broca || !state->utterance || !state->utterance[0]) {
+        cascade_record_skip(state, CASCADE_STAGE_SYNTACTIC,
+                            "stage_syntactic: no broca or no utterance");
+        return 0;
+    }
+
+    /* Tokenize the bridge's output text into words. Same approach the
+     * Phase 1 audit experiment used — strtok_r on whitespace +
+     * punctuation, with a soft cap on token count. */
+    enum { MAX_TOKENS = 32 };
+    char dup[2048];
+    size_t ulen = strlen(state->utterance);
+    if (ulen >= sizeof(dup)) ulen = sizeof(dup) - 1;
+    memcpy(dup, state->utterance, ulen);
+    dup[ulen] = '\0';
+
+    const char* tokens[MAX_TOKENS];
+    uint32_t num_tokens = 0;
+    char* save = NULL;
+    char* tok = strtok_r(dup, " \t\n\r.,!?;:\"'", &save);
+    while (tok && num_tokens < MAX_TOKENS) {
+        if (tok[0]) tokens[num_tokens++] = tok;
+        tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
+    }
+    if (num_tokens == 0) {
+        cascade_record_skip(state, CASCADE_STAGE_SYNTACTIC,
+                            "stage_syntactic: utterance tokenized to zero words");
+        return 0;
+    }
+
+    /* Run through Broca's full pipeline: syntax_build_tree (CYK),
+     * syntax_validate_grammar (agreement check), phonological generation,
+     * motor planning. broca_produce_from_strings does all of these and
+     * returns false if any phase fails. */
+    broca_adapter_t* broca = (broca_adapter_t*)brain->broca;
+    broca_utterance_result_t br;
+    memset(&br, 0, sizeof(br));
+    bool ok = broca_produce_from_strings(broca, tokens, num_tokens, &br);
+
+    if (!ok) {
+        /* Broca rejected — likely a CYK chart-build failure on the
+         * bridge's word salad. Record as syntactic_validity = 0.0 so
+         * downstream consumers can tell "tried but failed" from "skipped".
+         * The bridge's text stays as-is in state->utterance. */
+        state->syntactic_validity = 0.0f;
+        cascade_record_fail(state,
+                            "stage_syntactic: broca rejected utterance");
+        return 0;
+    }
+
+    state->syntactic_validity = (br.syntax_valid && br.agreement_valid) ? 1.0f
+                              : (br.syntax_valid ? 0.5f : 0.0f);
+
+    /* Pull the syntactically-ordered word sequence back out of Broca's
+     * syntax processor and re-render. CYK is order-preserving for the
+     * surface forms it accepts (it builds tree structure but doesn't
+     * reorder leaf words), so the rendered text is usually identical
+     * to the input. The signal we care about is the validity flag —
+     * a successful build means the words DID form a recognized phrase
+     * structure, which is more than the bridge's raw output guarantees. */
+    syntax_processor_t* syn = broca_get_syntax_processor(broca);
+    if (syn) {
+        uint32_t unit_count = syntax_get_unit_count(syn);
+        if (unit_count > 0) {
+            char buf[2048];
+            uint32_t pos = 0;
+            uint32_t emitted = 0;
+            for (uint32_t i = 0; i < unit_count && pos < sizeof(buf) - 1; i++) {
+                syntactic_unit_t unit;
+                if (!syntax_get_unit(syn, i, &unit)) continue;
+
+                broca_lexical_entry_t entry;
+                if (!broca_lookup_word(broca, unit.word_id, NULL, &entry)) continue;
+                if (!entry.word[0]) continue;
+
+                if (emitted > 0 && pos < sizeof(buf) - 1) buf[pos++] = ' ';
+                size_t wlen = strnlen(entry.word, sizeof(entry.word));
+                size_t avail = sizeof(buf) - 1 - pos;
+                size_t copy = (wlen < avail) ? wlen : avail;
+                memcpy(buf + pos, entry.word, copy);
+                pos += (uint32_t)copy;
+                emitted++;
+            }
+            buf[pos] = '\0';
+
+            if (emitted > 0) {
+                /* Replace bridge text with Broca-rendered text. */
+                char* new_text = (char*)nimcp_calloc(pos + 1, 1);
+                if (new_text) {
+                    memcpy(new_text, buf, pos);
+                    nimcp_free(state->utterance);
+                    state->utterance = new_text;
+                    state->word_count = emitted;
+                }
+            }
+        }
+    }
+
+    cascade_record_complete(state);
     return 0;
 }
 

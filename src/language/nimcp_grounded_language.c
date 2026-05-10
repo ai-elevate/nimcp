@@ -3980,6 +3980,106 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {
     return mirrored;
 }
 
+/* Phase 2C: GL→Broca lexicon mirror.
+ *
+ * Walks gl->vocab_list[] and pushes each entry into Broca's separate
+ * lexicon via broca_add_lexical_entry. Without this, Broca's CYK chart
+ * parser sees every WordNet word as POS_UNKNOWN, no rule fires, and
+ * syntax_build_tree returns false on every input. With it, content
+ * words have proper part-of-speech tags so the chart parser can
+ * actually fire rules like S→NP VP, NP→DET N, etc.
+ *
+ * Mapping gl_word_class_t → part_of_speech_t:
+ *   GL_CLASS_NOUN       → POS_NOUN
+ *   GL_CLASS_VERB       → POS_VERB
+ *   GL_CLASS_ADJECTIVE  → POS_ADJECTIVE
+ *   GL_CLASS_ADVERB     → POS_ADVERB
+ *   GL_CLASS_PRONOUN    → POS_PRONOUN
+ *   GL_CLASS_FUNCTION   → POS_DETERMINER (most common; mismatches
+ *                                          for prep/conj are tolerated
+ *                                          since the bridge produces
+ *                                          mostly content words)
+ *   GL_CLASS_UNKNOWN    → POS_UNKNOWN
+ *
+ * Phase 2D will refine GL_CLASS_FUNCTION via a sub-category lookup
+ * table for the ~50 common function words that need precise POS.
+ *
+ * word_id: derived from form_hash, same hash space the SNN bridge
+ * mirror uses. This keeps lookups consistent across modules.
+ *
+ * Phonemes: left empty here. Broca's phonological_processor generates
+ * phonemes on-demand from spelling; the lexical entry's phoneme array
+ * is only consulted when present, so an empty array forces the
+ * fallback path. Phase 2E will add proper phoneme generation. */
+static uint8_t gl_class_to_pos(gl_word_class_t cls) {
+    /* part_of_speech_t values from nimcp_syntax_processor.h:
+     *   POS_NOUN=80, _VERB=81, _ADJECTIVE=82, _ADVERB=83, _PRONOUN=84,
+     *   _DETERMINER=87, _UNKNOWN=97. The enum is contiguous, so we
+     *   use literals here to avoid a header include in this TU. */
+    switch (cls) {
+        case GL_CLASS_NOUN:      return 1;  /* POS_NOUN */
+        case GL_CLASS_VERB:      return 2;  /* POS_VERB */
+        case GL_CLASS_ADJECTIVE: return 3;  /* POS_ADJECTIVE */
+        case GL_CLASS_ADVERB:    return 4;  /* POS_ADVERB */
+        case GL_CLASS_PRONOUN:   return 5;  /* POS_PRONOUN */
+        case GL_CLASS_FUNCTION:  return 7;  /* POS_DETERMINER */
+        case GL_CLASS_UNKNOWN:
+        default:                 return 0;  /* POS_UNKNOWN */
+    }
+}
+
+/* Forward decl to avoid pulling broca's header into this TU. We pass
+ * adapter as void* so the public API stays POD-clean; the real type
+ * matches when called via grounded_language_mirror_lexicon_to_broca. */
+extern bool broca_add_lexical_entry_v(void* adapter,
+                                       uint32_t word_id,
+                                       const char* word,
+                                       uint8_t pos,
+                                       float frequency);
+
+uint64_t grounded_language_mirror_lexicon_to_broca(grounded_language_t* gl,
+                                                     void* broca_adapter) {
+    if (!gl || !broca_adapter) return 0;
+    if (!gl->vocab_list || gl->vocab_count == 0) return 0;
+
+    uint64_t mirrored = 0;
+    uint64_t skipped  = 0;
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[i];
+        if (!e || !e->form[0]) { skipped++; continue; }
+
+        /* Frequency normalized into [0,1]. Linear scale; saturates at
+         * 1000 exposures. Phase 2D will replace with a Zipf-aware scale. */
+        float freq_norm = (float)e->frequency / 1000.0f;
+        if (freq_norm > 1.0f) freq_norm = 1.0f;
+
+        /* word_id=0 forces broca's hash table to index by hash_string(form),
+         * which is what broca_add_word does at lookup time. If we used a
+         * non-zero word_id (e.g. form_hash), entries would be inserted
+         * via hash_word_id but looked up via hash_string and collide
+         * into the wrong bucket — silent miss. Use 0 here for
+         * lookup-consistency. (Discovered after Phase 2C v1 had every
+         * broca_add_word call fail with LEXICON_MISS.) */
+        if (broca_add_lexical_entry_v(broca_adapter,
+                                        0 /* word_id — let hash_string drive */,
+                                        e->form,
+                                        gl_class_to_pos(e->learned_class),
+                                        freq_norm)) {
+            mirrored++;
+        } else {
+            skipped++;
+        }
+    }
+
+    LOG_INFO(LOG_MODULE,
+             "mirror_lexicon_to_broca: mirrored %llu words, skipped %llu "
+             "(broca lexicon now has %u-class GL words)",
+             (unsigned long long)mirrored,
+             (unsigned long long)skipped,
+             gl->vocab_count);
+    return mirrored;
+}
+
 /* ============================================================================
  * PA-4: Next-token contrastive training on the bridge binding matrix.
  *

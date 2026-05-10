@@ -631,6 +631,33 @@ bool broca_add_lexical_entry(broca_adapter_t* adapter,
     return true;
 }
 
+/* Phase 2C: thin shim used by the GL→Broca lexicon mirror. Takes
+ * individual fields instead of a struct so the caller (in the language
+ * subsystem) doesn't need to include broca's full header. Builds a
+ * broca_lexical_entry_t on the stack and forwards to broca_add_lexical_entry.
+ * Phonemes are left empty — broca's phonological_processor generates
+ * them on-demand from spelling. */
+bool broca_add_lexical_entry_v(void* adapter_v,
+                                uint32_t word_id,
+                                const char* word,
+                                uint8_t pos,
+                                float frequency)
+{
+    broca_adapter_t* adapter = (broca_adapter_t*)adapter_v;
+    if (!adapter || !word || !word[0]) return false;
+
+    broca_lexical_entry_t entry;
+    memset(&entry, 0, sizeof(entry));
+    entry.word_id = word_id;
+    strncpy(entry.word, word, sizeof(entry.word) - 1);
+    entry.word[sizeof(entry.word) - 1] = '\0';
+    entry.phoneme_count = 0;
+    entry.pos = pos;
+    entry.frequency = frequency;
+
+    return broca_add_lexical_entry(adapter, &entry);
+}
+
 bool broca_lookup_word(const broca_adapter_t* adapter,
                         uint32_t word_id,
                         const char* word,

@@ -5317,10 +5317,19 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
         extern void grounded_language_connect_wernicke(grounded_language_t*, void*);
         extern bool broca_attach_grounded_language(broca_adapter_t*, grounded_language_t*);
         extern bool wernicke_attach_grounded_language(wernicke_adapter_t*, grounded_language_t*);
+        extern uint64_t grounded_language_mirror_lexicon_to_broca(
+            grounded_language_t*, void*);
         if (b->grounded_lang && b->broca) {
             grounded_language_connect_broca(b->grounded_lang, b->broca);
             broca_attach_grounded_language((broca_adapter_t*)b->broca,
                                             (grounded_language_t*)b->grounded_lang);
+            /* Phase 2C: push GL's vocab into Broca's separate lexicon
+             * with POS info so Broca's CYK chart parser can fire phrase
+             * rules on bridge production output. Without this, every
+             * WordNet word looks like POS_UNKNOWN to Broca and
+             * syntax_build_tree fails on every input. */
+            (void)grounded_language_mirror_lexicon_to_broca(
+                (grounded_language_t*)b->grounded_lang, b->broca);
         }
         if (b->grounded_lang && b->wernicke) {
             grounded_language_connect_wernicke(b->grounded_lang, b->wernicke);
