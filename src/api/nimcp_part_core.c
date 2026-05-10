@@ -5264,6 +5264,38 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     INIT_IF_NULL(insula, nimcp_brain_factory_init_insula_subsystem);
     INIT_IF_NULL(ofc, nimcp_brain_factory_init_ofc_subsystem);
 
+    /* Phase 1 audit fix: language subsystem ran at line 5229 BEFORE broca
+     * (line 5252) and wernicke (line 5253) existed, so the
+     * `if (brain->broca) connect_broca(...)` lines inside init_language
+     * silently no-op'd. Result: gl->broca_adapter and gl->wernicke_adapter
+     * stayed NULL for the brain's lifetime, breaking every produce-side
+     * Broca path. Re-attach now that both ends exist.
+     *
+     * The connect_* funcs are idempotent pointer assignments. The
+     * broca_attach_grounded_language / wernicke_attach_grounded_language
+     * reverse-direction calls live in init_language but are also safe to
+     * re-fire if needed — they just overwrite a cached handle.
+     *
+     * TODO: this should be moved into init_language as a deferred attach
+     * pass, but for the audit experiment the placement here is sufficient
+     * and minimally invasive. */
+    {
+        extern void grounded_language_connect_broca(grounded_language_t*, void*);
+        extern void grounded_language_connect_wernicke(grounded_language_t*, void*);
+        extern bool broca_attach_grounded_language(broca_adapter_t*, grounded_language_t*);
+        extern bool wernicke_attach_grounded_language(wernicke_adapter_t*, grounded_language_t*);
+        if (b->grounded_lang && b->broca) {
+            grounded_language_connect_broca(b->grounded_lang, b->broca);
+            broca_attach_grounded_language((broca_adapter_t*)b->broca,
+                                            (grounded_language_t*)b->grounded_lang);
+        }
+        if (b->grounded_lang && b->wernicke) {
+            grounded_language_connect_wernicke(b->grounded_lang, b->wernicke);
+            wernicke_attach_grounded_language((wernicke_adapter_t*)b->wernicke,
+                                                (grounded_language_t*)b->grounded_lang);
+        }
+    }
+
     /* Monitoring & infrastructure */
     extern bool nimcp_brain_factory_init_mental_health_subsystem(brain_t);
     extern bool nimcp_brain_factory_init_core_directives_subsystem(brain_t);
