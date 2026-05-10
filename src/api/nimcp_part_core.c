@@ -3936,6 +3936,39 @@ nimcp_status_t nimcp_brain_set_comprehend_stdp_enabled(nimcp_brain_t brain, bool
               b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/* Forward decl — implementation lives in nimcp_communication_cascade.c. */
+struct production_cascade_state_s;
+typedef struct production_cascade_state_s production_cascade_state_dummy_t;
+
+nimcp_status_t nimcp_brain_produce_cascade(
+    nimcp_brain_t brain,
+    const char* prompt_or_null,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence)
+{
+    if (!brain) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    /* Pull in cascade types via a runtime cast — keeps the include
+     * graph minimal in nimcp.h while still calling through to the
+     * cascade implementation. */
+    extern int nimcp_brain_produce_cascade_impl(
+        brain_t brain,
+        const char* prompt_or_null,
+        char* out_utterance,
+        uint32_t out_text_max,
+        uint32_t* out_word_count,
+        float* out_confidence);
+
+    int rc = nimcp_brain_produce_cascade_impl(b, prompt_or_null,
+                                                out_utterance, out_text_max,
+                                                out_word_count, out_confidence);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_echo_and_correct(
     nimcp_brain_t brain,
     const char* parent_text,

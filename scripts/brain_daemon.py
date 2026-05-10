@@ -1821,6 +1821,31 @@ class BrainService:
             return {"error": f"echo_and_correct: {e}"}
         return {"ok": True, "pairs_strengthened": int(pairs)}
 
+    def _cmd_produce_cascade(self, req):
+        """Phase 2A multi-region production cascade. Walks 9 stages
+        (drive, goal, listener, episodic, content, lexical, syntactic,
+        phonological, motor) — stages 7-9 are deferred until Phase 2C/E
+        but plumbing is in place. Each cognitive module is queried for
+        real state when attached; no-ops gracefully when missing.
+
+        Request: {"cmd": "produce_cascade", "prompt": "..." (optional)}
+        Response: {"ok": True, "utterance": str, "word_count": int,
+                   "confidence": float}
+
+        prompt=None runs the cascade purely from internal state
+        (spontaneous-speech mode); prompt=str runs it as a response."""
+        prompt = req.get("prompt")
+        try:
+            result = self.brain.produce_cascade(prompt)
+        except AttributeError:
+            return {"error": "produce_cascade not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"produce_cascade: {e}"}
+        return {"ok": True,
+                "utterance":  result.get("utterance",  ""),
+                "word_count": result.get("word_count", 0),
+                "confidence": result.get("confidence", 0.0)}
+
     def _cmd_set_da_modulation_gain(self, req):
         """TA-3: tune the DA → LR scaling. Clamped [0, 200].
 

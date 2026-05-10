@@ -1372,6 +1372,39 @@ nimcp_status_t nimcp_brain_echo_and_correct(
     float lr_scale,
     int* out_pairs_strengthened);
 
+/** Phase 2A: multi-region production cascade.
+ *
+ * Reframes language production as a coordinated multi-region cascade:
+ * drive (hypothalamus) + goal (PFC + WM) + listener (ToM) + episodic
+ * retrieval (hippocampus) + content composition + lexical (bridge) +
+ * (deferred) syntactic (Broca) + phonological + motor.
+ *
+ * Each stage reads real state from its source module(s) when attached;
+ * stages no-op gracefully when their source isn't present. The cascade
+ * shapes a content_intent vector that drives the bridge — this is what
+ * makes it different from grounded_respond, which feeds the bridge the
+ * comprehend vector unmodified.
+ *
+ * Phase 2A skeleton: intent-formation stages (1-5) run with simplified
+ * combine logic; output stages 7-9 are deferred until the GL→Broca
+ * lexicon mirror lands.
+ *
+ * out_utterance / out_text_max — caller buffer for the produced text.
+ *   Truncated if too small. Pass NULL/0 to skip.
+ * out_word_count — # of words in produced utterance, optional.
+ * out_confidence — cascade confidence [0,1], optional.
+ *
+ * Returns NIMCP_OK on success, NIMCP_ERROR on fatal cascade failure.
+ * Per-stage failures are non-fatal — they're rolled into a lower
+ * cascade confidence rather than aborting. */
+nimcp_status_t nimcp_brain_produce_cascade(
+    nimcp_brain_t brain,
+    const char* prompt_or_null,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence);
+
 /** TA-5: reconsolidation-on-contradiction. */
 nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);

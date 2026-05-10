@@ -3394,6 +3394,36 @@ static PyObject* Brain_echo_and_correct(BrainObject* self, PyObject* args, PyObj
     return PyLong_FromLong(pairs);
 }
 
+/* Phase 2A: multi-region production cascade — drive + goal + listener +
+ * episodic + content composition routed into the bridge. Returns a dict
+ * with utterance + word_count + confidence so the trainer can compare
+ * cascade output to grounded_respond output side-by-side. */
+static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    const char* prompt = NULL;
+    static char* kwlist[] = {"prompt", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|z", kwlist, &prompt)) {
+        return NULL;
+    }
+    char text[2048] = {0};
+    uint32_t word_count = 0;
+    float confidence = 0.0f;
+    nimcp_status_t st = nimcp_brain_produce_cascade(
+        self->brain, prompt, text, sizeof(text), &word_count, &confidence);
+    if (st != NIMCP_OK) {
+        PyErr_Format(PyExc_RuntimeError, "produce_cascade failed (status=%d)", (int)st);
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "utterance",  PyUnicode_FromString(text));
+    PyDict_SetItemString(d, "word_count", PyLong_FromLong((long)word_count));
+    PyDict_SetItemString(d, "confidence", PyFloat_FromDouble((double)confidence));
+    return d;
+}
+
 /* TB-7 length control takes two uint32 args (min, max). */
 static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
     if (!self->brain) {
@@ -11568,6 +11598,9 @@ static PyMethodDef Brain_methods[] = {
     {"echo_and_correct", (PyCFunction)Brain_echo_and_correct, METH_VARARGS | METH_KEYWORDS,
      "Supervised production-side learning: comprehend(parent_text) → strengthen (active concepts → target_word) bindings.\n"
      "echo_and_correct(parent_text: str, target_word: str, lr_scale: float = 1.0) -> int (pairs strengthened, 0 if target not registered)."},
+    {"produce_cascade", (PyCFunction)Brain_produce_cascade, METH_VARARGS | METH_KEYWORDS,
+     "Phase 2A multi-region production cascade: drive + goal + listener + episodic → content_intent → bridge.\n"
+     "produce_cascade(prompt: str | None = None) -> dict {'utterance': str, 'word_count': int, 'confidence': float}."},
     {"set_reconsolidation_enabled", (PyCFunction)Brain_set_reconsolidation_enabled, METH_VARARGS,
      "TA-5: toggle reconsolidation-on-contradiction — set_reconsolidation_enabled(enabled: bool) -> None. Default OFF."},
     {"set_reconsolidation_decay", (PyCFunction)Brain_set_reconsolidation_decay, METH_VARARGS,

@@ -2328,6 +2328,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_network_bridge.c # Per-network bridges (LNN/CNN/FNO/ANN)
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_cognitive_bridge.c # Cognitive subscriber bus + per-module attaches
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_creative_language_bridge.c # Creative cognition → language bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_communication_cascade.c    # Multi-region production cascade (Phase 2A)
 
     # Language Layer Bridges (Phase L8: Integration bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_perception_bridge.c   # Perception integration
