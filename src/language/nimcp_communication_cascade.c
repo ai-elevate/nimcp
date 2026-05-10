@@ -70,6 +70,15 @@ static void cascade_record_fail(production_cascade_state_t* s,
     }
 }
 
+/* Stage 0 (Wernicke comprehension) lives in nimcp_communication_cascade_wernicke.c
+ * because Wernicke and Broca both define phrase_type_t with overlapping enum
+ * values; pulling both into one TU triggers a redeclaration error. */
+extern int cascade_stage_wernicke(brain_t brain, const char* prompt,
+                                    production_cascade_state_t* state);
+/* Helper used by stage_goal to look up the Wernicke-extracted SVO words. */
+extern const gl_lexicon_entry_t* lexicon_find_internal(
+    const grounded_language_t* gl, const char* word);
+
 /*============================================================================
  * Stage 1: Drive — read hypothalamus + insula + amygdala
  *==========================================================================*/
@@ -168,10 +177,17 @@ static int cascade_stage_goal(brain_t brain, const char* prompt,
     state->goal_priority = 0.5f;
     state->topic_count   = 0;
 
-    /* Phase 2A heuristic classification: prompt punctuation hints
-     * speech-act type. Real version (Phase 2B) calls
-     * pragmatics_classify_act() and uses PFC's active goal. */
-    if (prompt && prompt[0]) {
+    /* Speech-act classification. Phase 2D-A uses Wernicke's Stage 0
+     * output (wh-word / aux-inversion / parse-tree) when available;
+     * falls back to punctuation heuristic when Wernicke wasn't run.
+     * Wernicke's signal is more reliable — it catches questions
+     * without trailing '?' ("Is the dog hungry") and imperatives
+     * with no subject ("Close the door"). */
+    if (state->prompt_is_question) {
+        state->act_type = SPEECH_ACT_QUESTION;
+    } else if (state->prompt_is_imperative) {
+        state->act_type = SPEECH_ACT_COMMAND;
+    } else if (prompt && prompt[0]) {
         size_t n = strlen(prompt);
         char last = (n > 0) ? prompt[n-1] : '\0';
         if (last == '?')      state->act_type = SPEECH_ACT_QUESTION;
@@ -210,6 +226,39 @@ static int cascade_stage_goal(brain_t brain, const char* prompt,
              * Phase 2A we just count active items. Phase 2B will
              * cross-reference with semantic_memory to recover concept_ids. */
             state->topic_concept_ids[state->topic_count++] = (uint64_t)i;
+        }
+    }
+
+    /* Phase 2D-A: pull Wernicke's identified subject/verb/object as
+     * primary topic concepts. These are real content words from the
+     * prompt itself (extracted via parse tree), not array indices —
+     * stage_content uses them via GL lexicon lookup to lift the
+     * actual concept feature vectors into the intent. */
+    if (state->prompt_subject[0] && state->topic_count < 8) {
+        const gl_lexicon_entry_t* e = lexicon_find_internal(
+            brain->grounded_lang, state->prompt_subject);
+        if (e && e->binding_count > 0) {
+            state->topic_concept_ids[state->topic_count++] =
+                e->bindings[0].concept_id;
+            if (state->target_concept_id == 0) {
+                state->target_concept_id = e->bindings[0].concept_id;
+            }
+        }
+    }
+    if (state->prompt_verb[0] && state->topic_count < 8) {
+        const gl_lexicon_entry_t* e = lexicon_find_internal(
+            brain->grounded_lang, state->prompt_verb);
+        if (e && e->binding_count > 0) {
+            state->topic_concept_ids[state->topic_count++] =
+                e->bindings[0].concept_id;
+        }
+    }
+    if (state->prompt_object[0] && state->topic_count < 8) {
+        const gl_lexicon_entry_t* e = lexicon_find_internal(
+            brain->grounded_lang, state->prompt_object);
+        if (e && e->binding_count > 0) {
+            state->topic_concept_ids[state->topic_count++] =
+                e->bindings[0].concept_id;
         }
     }
 
@@ -759,6 +808,30 @@ int communication_cascade_run(
         if (grounded_language_comprehend(brain->grounded_lang, prompt_or_null,
                                           &comp) == 0 && comp.semantic_vector) {
             have_prompt = true;
+        }
+    }
+
+    /* Stage 0: Wernicke comprehension of the prompt — produces parse
+     * tree info that Stage 2 (Goal) consumes for speech-act + topic
+     * extraction. Runs only when a prompt is provided; spontaneous
+     * mode skips. The stage impl lives in a separate TU because
+     * Wernicke's syntactic_comprehension.h conflicts with Broca's
+     * syntax_processor.h (both define phrase_type_t). */
+    if ((stage_mask & CASCADE_STAGE_WERNICKE) && have_prompt) {
+        cascade_stage_wernicke(brain, prompt_or_null, out_state);
+        /* Account for skip/complete after the call since the stage
+         * function avoids touching the helpers (it doesn't include
+         * cascade.c's static helpers). Stage counts as "completed" if
+         * Wernicke either parsed successfully or at least set the
+         * speech-act flags from heuristics. */
+        if (out_state->wernicke_parsed ||
+            out_state->prompt_is_question ||
+            out_state->prompt_is_imperative ||
+            out_state->prompt_word_count > 0) {
+            cascade_record_complete(out_state);
+        } else {
+            cascade_record_skip(out_state, CASCADE_STAGE_WERNICKE,
+                                "stage_wernicke: no signal extracted");
         }
     }
 

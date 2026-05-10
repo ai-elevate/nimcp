@@ -36,22 +36,40 @@ typedef struct brain_struct* brain_t;
 
 /* Per-stage enable bits. Default (0) = all stages on. */
 typedef enum {
-    CASCADE_STAGE_DRIVE         = 1u << 0,
-    CASCADE_STAGE_GOAL          = 1u << 1,
-    CASCADE_STAGE_LISTENER      = 1u << 2,
-    CASCADE_STAGE_EPISODIC      = 1u << 3,
-    CASCADE_STAGE_CONTENT       = 1u << 4,
-    CASCADE_STAGE_LEXICAL       = 1u << 5,
-    CASCADE_STAGE_SYNTACTIC     = 1u << 6,
-    CASCADE_STAGE_PHONOLOGICAL  = 1u << 7,
-    CASCADE_STAGE_MOTOR         = 1u << 8,
-    CASCADE_STAGE_ALL           = 0x1FF
+    CASCADE_STAGE_WERNICKE      = 1u << 0,  /* Stage 0 — input comprehension */
+    CASCADE_STAGE_DRIVE         = 1u << 1,
+    CASCADE_STAGE_GOAL          = 1u << 2,
+    CASCADE_STAGE_LISTENER      = 1u << 3,
+    CASCADE_STAGE_EPISODIC      = 1u << 4,
+    CASCADE_STAGE_CONTENT       = 1u << 5,
+    CASCADE_STAGE_LEXICAL       = 1u << 6,
+    CASCADE_STAGE_SYNTACTIC     = 1u << 7,
+    CASCADE_STAGE_PHONOLOGICAL  = 1u << 8,
+    CASCADE_STAGE_MOTOR         = 1u << 9,
+    CASCADE_STAGE_ALL           = 0x3FF
 } cascade_stage_mask_t;
 
 /* Single struct accumulates stage outputs. Allocated by caller; the
  * orchestrator allocates content_intent and utterance, owns them, and
  * frees them on cleanup. */
 typedef struct {
+    /* Stage 0: Wernicke comprehension of input prompt — phrase
+     * structure analysis, speech-act classification, ambiguity detection.
+     * Empty/zero values when prompt is NULL or Wernicke isn't attached. */
+    bool     wernicke_parsed;          /* true if syntactic_parse_sentence succeeded */
+    bool     prompt_is_question;       /* derived from wh-words / aux inversion / "?" */
+    bool     prompt_is_imperative;     /* missing-subject + leading verb */
+    bool     prompt_is_garden_path;    /* set when parser flagged ambiguity */
+    uint32_t prompt_word_count;        /* # words after tokenization */
+    float    prompt_complexity;        /* 0..1, normalized syntactic complexity */
+    /* Subject / verb / object slots — populated when the parse identifies
+     * thematic roles. Each is either a tokenized word string from the
+     * prompt or "" if the role wasn't filled. Phase 2D-A v1 uses simple
+     * head-finding rather than full thematic-role assignment. */
+    char     prompt_subject[32];
+    char     prompt_verb[32];
+    char     prompt_object[32];
+
     /* Stage 1: Drive — read from hypothalamus / insula / amygdala */
     float    drive_magnitude;     /* 0..1, strength of urge to communicate */
     float    drive_valence;       /* -1..1, approach vs avoid */

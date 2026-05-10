@@ -3394,10 +3394,7 @@ static PyObject* Brain_echo_and_correct(BrainObject* self, PyObject* args, PyObj
     return PyLong_FromLong(pairs);
 }
 
-/* Phase 2A: multi-region production cascade — drive + goal + listener +
- * episodic + content composition routed into the bridge. Returns a dict
- * with utterance + word_count + confidence so the trainer can compare
- * cascade output to grounded_respond output side-by-side. */
+/* Phase 2A/B/C/D: multi-region production cascade. */
 static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObject* kwargs) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
