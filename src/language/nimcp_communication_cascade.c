@@ -759,6 +759,11 @@ void cascade_state_cleanup(production_cascade_state_t* state) {
         nimcp_free(state->utterance);
         state->utterance = NULL;
     }
+    /* Stage 10 (Item 5): free speech-repair best-candidate cache. */
+    if (state->best_utterance) {
+        nimcp_free(state->best_utterance);
+        state->best_utterance = NULL;
+    }
     /* Phase 2B: free retrieval_result_t arrays. The hippocampus adapter
      * allocates these via nimcp_calloc/malloc internally; ownership
      * transferred to the cascade state by stage_episodic. Per-memory
@@ -867,6 +872,51 @@ int nimcp_brain_produce_cascade_impl(
     return rc;
 }
 
+/*============================================================================
+ * Stage 10 (Item 5): Speech repair — perturbation-retry on low self_match.
+ *
+ * After Phase 2D-B's self-comprehension, if state->self_match falls below
+ * REPAIR_THRESHOLD, we re-run lexical+syntactic+self_comp with a small
+ * Gaussian perturbation applied to content_intent. Bounded by
+ * REPAIR_MAX_ATTEMPTS to avoid pathological retries on inherently
+ * un-encodable intents. Best-scoring utterance wins.
+ *
+ * The perturbation breaks determinism in the bridge softmax — when the
+ * argmax was a near-miss, a 5% Gaussian nudge can flip the bridge into
+ * a more accurate phrasing. When the original was already good, the
+ * retry simply confirms it (we keep the higher score).
+ *
+ * No phantom-API risk: the retry composes existing stage functions
+ * (cascade_stage_lexical, cascade_stage_syntactic,
+ * cascade_stage_self_comprehension), all known good. The
+ * speech_repair_* family of APIs in nimcp_speech_repair.h is
+ * tangentially related (disfluency detection / cleaning) but operates
+ * on text rather than intent vectors, so it doesn't fit this loop's
+ * signal path. We document the choice and move on.
+ *==========================================================================*/
+
+#define REPAIR_THRESHOLD       0.3f   /* trigger retry below this self_match */
+#define REPAIR_MAX_ATTEMPTS    2      /* hard cap on retry rounds */
+#define REPAIR_NOISE_FRAC      0.05f  /* Gaussian sigma = frac × ||intent||/sqrt(dim) */
+
+/* Box-Muller Gaussian. Cheap enough — invoked at most
+ * REPAIR_MAX_ATTEMPTS × content_dim times per cascade. */
+static float cascade_repair_gauss(void) {
+    float u1 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
+    float u2 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
+    return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)M_PI * u2);
+}
+
+/* Heap-strdup using cascade's allocator. Returns NULL on alloc failure. */
+static char* cascade_repair_strdup(const char* s) {
+    if (!s) return NULL;
+    size_t n = strlen(s);
+    char* out = (char*)nimcp_calloc(n + 1, 1);
+    if (!out) return NULL;
+    memcpy(out, s, n);
+    return out;
+}
+
 int communication_cascade_run(
     brain_t brain,
     const char* prompt_or_null,
@@ -962,6 +1012,118 @@ int communication_cascade_run(
         } else {
             cascade_record_skip(out_state, CASCADE_STAGE_SELF_COMP,
                                 "stage_self_comp: comprehend failed or no utterance");
+        }
+    }
+
+    /* Stage 10 (Item 5): Speech repair — perturbation-retry on low
+     * self_match. Bounded loop: up to REPAIR_MAX_ATTEMPTS rounds, each
+     * adds ~5% Gaussian noise to content_intent and re-runs
+     * lexical→syntactic→self_comp. Best-scoring candidate wins. The
+     * original utterance + its self_match are always preserved in
+     * "best_*" until the swap at the end. */
+    if ((stage_mask & CASCADE_STAGE_SPEECH_REPAIR) &&
+        (stage_mask & CASCADE_STAGE_SELF_COMP) &&
+        out_state->self_parsed &&
+        out_state->content_intent &&
+        out_state->utterance &&
+        out_state->self_match < REPAIR_THRESHOLD) {
+
+        /* Snapshot the original — content_intent gets perturbed in place,
+         * so we save a clean copy to restore between attempts. */
+        const uint32_t dim = out_state->content_dim;
+        float* orig_intent = (float*)nimcp_calloc(dim, sizeof(float));
+        if (orig_intent) {
+            memcpy(orig_intent, out_state->content_intent,
+                    dim * sizeof(float));
+
+            /* Magnitude estimate for noise scaling: ||intent||/sqrt(dim). */
+            float ssum = 0.0f;
+            for (uint32_t i = 0; i < dim; i++) {
+                float v = orig_intent[i];
+                ssum += v * v;
+            }
+            float magnitude = sqrtf(ssum / (float)(dim ? dim : 1));
+            if (magnitude < 1e-6f) magnitude = 1e-6f;
+            const float sigma = REPAIR_NOISE_FRAC * magnitude;
+
+            /* Initialize "best" tracking with the original. */
+            out_state->best_self_match = out_state->self_match;
+            out_state->best_utterance  = cascade_repair_strdup(out_state->utterance);
+
+            while (out_state->repair_attempts < REPAIR_MAX_ATTEMPTS &&
+                    out_state->self_match < REPAIR_THRESHOLD) {
+                out_state->repair_attempts++;
+
+                /* Restore + perturb content_intent. */
+                for (uint32_t i = 0; i < dim; i++) {
+                    out_state->content_intent[i] =
+                        orig_intent[i] + sigma * cascade_repair_gauss();
+                }
+
+                /* Free the prior utterance — stage_lexical assumes NULL
+                 * input and overwrites without freeing. (stage_syntactic
+                 * does its own free-then-replace internally.) */
+                if (out_state->utterance) {
+                    nimcp_free(out_state->utterance);
+                    out_state->utterance = NULL;
+                }
+                out_state->word_count = 0;
+                out_state->fluency = 0.0f;
+                out_state->syntactic_validity = -1.0f;
+
+                /* Re-run lexical → syntactic → self_comp. Diagnostics
+                 * (stages_completed/failed/skipped) are intentionally
+                 * not reset; the retry counts incrementally. */
+                if (cascade_stage_lexical(brain, out_state) < 0 ||
+                    !out_state->utterance || !out_state->utterance[0]) {
+                    /* Lexical failed — bail out, keep best-so-far. */
+                    break;
+                }
+                cascade_stage_syntactic(brain, out_state);
+                cascade_stage_self_comprehension(brain, out_state);
+
+                /* Track best. */
+                if (out_state->self_parsed &&
+                    out_state->self_match > out_state->best_self_match &&
+                    out_state->utterance) {
+                    out_state->best_self_match = out_state->self_match;
+                    if (out_state->best_utterance) {
+                        nimcp_free(out_state->best_utterance);
+                    }
+                    out_state->best_utterance =
+                        cascade_repair_strdup(out_state->utterance);
+                }
+            }
+
+            /* Restore intent to clean state for downstream consumers. */
+            memcpy(out_state->content_intent, orig_intent,
+                    dim * sizeof(float));
+            nimcp_free(orig_intent);
+
+            /* If a retry beat the current utterance, swap in best. */
+            if (out_state->best_utterance &&
+                out_state->best_self_match > out_state->self_match) {
+                if (out_state->utterance) nimcp_free(out_state->utterance);
+                out_state->utterance = cascade_repair_strdup(out_state->best_utterance);
+                out_state->self_match = out_state->best_self_match;
+                /* word_count: re-tokenize cheaply — count whitespace runs. */
+                uint32_t wc = 0;
+                bool in_word = false;
+                for (const char* p = out_state->utterance; p && *p; p++) {
+                    if (*p == ' ' || *p == '\t' || *p == '\n') {
+                        in_word = false;
+                    } else if (!in_word) {
+                        in_word = true;
+                        wc++;
+                    }
+                }
+                out_state->word_count = wc;
+            }
+
+            cascade_record_complete(out_state);
+        } else {
+            cascade_record_skip(out_state, CASCADE_STAGE_SPEECH_REPAIR,
+                                "stage_speech_repair: alloc failed");
         }
     }
 

@@ -47,7 +47,9 @@ typedef enum {
     CASCADE_STAGE_SELF_COMP     = 1u << 8,  /* Stage 8 (Phase 2D-B) — Wernicke validates own output */
     CASCADE_STAGE_PHONOLOGICAL  = 1u << 9,
     CASCADE_STAGE_MOTOR         = 1u << 10,
-    CASCADE_STAGE_ALL           = 0x7FF
+    /* 1u << 11 reserved for Item 8 (parallel campaign work). */
+    CASCADE_STAGE_SPEECH_REPAIR = 1u << 12, /* Stage 10 (Item 5) — perturbation-retry on low self_match */
+    CASCADE_STAGE_ALL           = 0x1FFF /* bits 0..12 */
 } cascade_stage_mask_t;
 
 /* Single struct accumulates stage outputs. Allocated by caller; the
@@ -135,6 +137,19 @@ typedef struct {
      * SPEECH_ACT_COMMAND so downstream stages produce a request-shaped
      * response rather than a literal yes/no answer. */
     bool     pragmatic_is_indirect;
+
+    /* Stage 10 (Item 5) — speech repair retry. APPENDED at end of struct
+     * to avoid ABI shift on existing fields. When self_match (Phase 2D-B)
+     * falls below a threshold, the orchestrator re-runs lexical+syntactic
+     * +self_comp with a small Gaussian perturbation to content_intent and
+     * keeps the best-scoring candidate. Diagnostics:
+     *   repair_attempts   — how many retry rounds were executed (0..N)
+     *   best_self_match   — best score seen across retries (>= original)
+     *   best_utterance    — heap-allocated copy of best-scoring utterance;
+     *                       owned by cascade state, freed in cleanup. */
+    uint32_t repair_attempts;
+    float    best_self_match;
+    char*    best_utterance;
 } production_cascade_state_t;
 
 /**
