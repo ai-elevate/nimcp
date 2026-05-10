@@ -1928,6 +1928,13 @@ typedef enum {
      * a [0,1] score (1.0 == exact same surface, hooks for future
      * semantic-vec fuzzy matching can use intermediate values). */
     GL_EVENT_COREF_RESOLVED,
+    /* Cascade Stage 9 — fired when the communication cascade writes its
+     * just-produced utterance back to working memory. Lets cognitive
+     * subscribers (inner-speech, episodic memory, ToM "self model") observe
+     * the brain's own output as a first-class event distinct from
+     * GL_EVENT_PRODUCED, which fires inside grounded_language_produce
+     * regardless of whether the output reached the cascade tail. */
+    GL_EVENT_SELF_PRODUCED,
 } gl_event_type_t;
 
 /**
@@ -1964,6 +1971,7 @@ typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
 #define GL_EVENT_MASK_SPEECH_ACT        (1u << 5)
 #define GL_EVENT_MASK_TOPIC_SHIFT       (1u << 6)
 #define GL_EVENT_MASK_COREF_RESOLVED    (1u << 7)
+#define GL_EVENT_MASK_SELF_PRODUCED     (1u << 8)
 #define GL_EVENT_MASK_ALL               (0xFFFFFFFFu)
 
 /** Confidence floor below which comprehend fires a NEEDS_GROUNDING

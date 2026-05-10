@@ -63,6 +63,7 @@ static inline uint32_t _gl_type_to_mask(gl_event_type_t t) {
         case GL_EVENT_SPEECH_ACT:      return GL_EVENT_MASK_SPEECH_ACT;
         case GL_EVENT_TOPIC_SHIFT:     return GL_EVENT_MASK_TOPIC_SHIFT;
         case GL_EVENT_COREF_RESOLVED:  return GL_EVENT_MASK_COREF_RESOLVED;
+        case GL_EVENT_SELF_PRODUCED:   return GL_EVENT_MASK_SELF_PRODUCED;
         default:                       return 0;
     }
 }

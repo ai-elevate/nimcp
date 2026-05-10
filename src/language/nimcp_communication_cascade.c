@@ -746,6 +746,93 @@ static int cascade_stage_motor(brain_t brain,
 }
 
 /*============================================================================
+ * Stage 10 (item #8): Self-feedback — write produced utterance back to WM
+ *                     and fire GL_EVENT_SELF_PRODUCED on the cognitive bus.
+ *
+ * Why: Stage 8 (self-comprehension) already tells us *whether* the brain
+ * said what it meant; this stage actually deposits the produced
+ * representation into prefrontal working memory so downstream cognition
+ * (next-turn cascade, inner speech, ToM self-model, episodic replay) can
+ * see "the thing the brain just said" as a regular working-memory item
+ * rather than reaching back into per-call state. Mirrors the way
+ * grounded_language_comprehend's GL_EVENT_COMPREHENDED already pushes
+ * input into WM via gl_dispatch_event_to_memory.
+ *
+ * The stage skips when no content_intent was built (cascade had no
+ * signal to express) or when the WM module isn't attached (minimal-init
+ * brains). Either way it always fires the bus event when grounded_lang
+ * is available, so subscribers that don't care about WM (e.g. unit
+ * tests) still get the notification.
+ *==========================================================================*/
+static int cascade_stage_self_feedback(brain_t brain,
+                                        production_cascade_state_t* state) {
+    if (!brain || !state) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_FEEDBACK,
+                            "stage_self_feedback: bad parameters");
+        return 0;
+    }
+
+    /* Without an intent vector there's nothing to write back. The cascade
+     * couldn't form one — common in minimal-init brains or when every
+     * upstream stage skipped. Record skip and return cleanly. */
+    if (!state->content_intent || state->content_dim == 0) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_FEEDBACK,
+                            "stage_self_feedback: no content_intent");
+        return 0;
+    }
+
+    bool wrote_wm = false;
+    bool fired_bus = false;
+
+    /* WM push. working_memory_add deep-copies the vector and clamps the
+     * item size to WORKING_MEMORY_MAX_ITEM_SIZE; we mirror that bound
+     * here rather than passing content_dim blindly because the cascade's
+     * semantic_dim can exceed WM's item ceiling on large brains. */
+    if (brain->working_memory) {
+        uint32_t item_size = state->content_dim;
+        if (item_size > WORKING_MEMORY_MAX_ITEM_SIZE) {
+            item_size = WORKING_MEMORY_MAX_ITEM_SIZE;
+        }
+        /* Salience derived from cascade confidence — high-confidence
+         * utterances persist in WM longer under capacity pressure. Floor
+         * at 0.1 so even low-confidence productions get a slot. */
+        float salience = state->content_confidence;
+        if (salience < 0.1f) salience = 0.1f;
+        if (salience > 1.0f) salience = 1.0f;
+        if (working_memory_add(brain->working_memory,
+                                state->content_intent,
+                                item_size,
+                                salience)) {
+            wrote_wm = true;
+        }
+    }
+
+    /* Cognitive-bus event — distinct from GL_EVENT_PRODUCED, which fires
+     * inside grounded_language_produce for every produce regardless of
+     * cascade state. SELF_PRODUCED specifically marks "the cascade
+     * completed and the result has been deposited back into WM". */
+    if (brain->grounded_lang) {
+        extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+        gl_event_t bus_ev;
+        memset(&bus_ev, 0, sizeof(bus_ev));
+        bus_ev.type         = GL_EVENT_SELF_PRODUCED;
+        bus_ev.text         = state->utterance;        /* may be NULL if lexical skipped */
+        bus_ev.semantic_vec = state->content_intent;   /* always non-NULL here */
+        bus_ev.confidence   = state->content_confidence;
+        gl_fire_event(brain->grounded_lang, &bus_ev);
+        fired_bus = true;
+    }
+
+    if (wrote_wm || fired_bus) {
+        cascade_record_complete(state);
+    } else {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_FEEDBACK,
+                            "stage_self_feedback: no WM and no GL bus");
+    }
+    return 0;
+}
+
+/*============================================================================
  * Public API
  *==========================================================================*/
 
@@ -1132,6 +1219,12 @@ int communication_cascade_run(
     }
     if (stage_mask & CASCADE_STAGE_MOTOR) {
         cascade_stage_motor(brain, out_state);
+    }
+    /* Stage 9 (item #8): write produced utterance back to working memory
+     * and fire GL_EVENT_SELF_PRODUCED. Runs last so it sees a fully
+     * populated cascade state (content_intent, utterance, confidence). */
+    if (stage_mask & CASCADE_STAGE_SELF_FEEDBACK) {
+        cascade_stage_self_feedback(brain, out_state);
     }
 
     return 0;

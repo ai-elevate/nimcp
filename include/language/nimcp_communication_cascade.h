@@ -47,7 +47,7 @@ typedef enum {
     CASCADE_STAGE_SELF_COMP     = 1u << 8,  /* Stage 8 (Phase 2D-B) — Wernicke validates own output */
     CASCADE_STAGE_PHONOLOGICAL  = 1u << 9,
     CASCADE_STAGE_MOTOR         = 1u << 10,
-    /* 1u << 11 reserved for Item 8 (parallel campaign work). */
+    CASCADE_STAGE_SELF_FEEDBACK = 1u << 11, /* Stage 9 — write produced utterance back to WM + cognitive bus */
     CASCADE_STAGE_SPEECH_REPAIR = 1u << 12, /* Stage 10 (Item 5) — perturbation-retry on low self_match */
     CASCADE_STAGE_ALL           = 0x1FFF /* bits 0..12 */
 } cascade_stage_mask_t;
