@@ -89,16 +89,69 @@ static int cascade_stage_drive(brain_t brain,
         return 0;
     }
 
-    /* Phase 2A: hypothalamus is attached → bump drive magnitude above
-     * the neutral default to verify the cascade is sensitive to module
-     * presence. The deep drive query (hypo_drive_get_system_state on
-     * the adapter's internal handle) requires an accessor that doesn't
-     * yet exist on the adapter — Phase 2B will add it. The skeleton
-     * still proves "drive stage runs and contributes" end-to-end. */
-    state->drive_magnitude = 0.7f;
-    state->drive_arousal   = 0.6f;
-    state->drive_valence   = 0.0f;
-    state->dominant_drive  = 0;
+    /* Phase 2B: actually query the hypothalamus state. The adapter
+     * exposes the homeostatic + stress + circadian state via
+     * hypothalamus_get_state(); from there we extract the strongest
+     * drive (hunger / thirst / temperature / stress / fatigue) and
+     * compute valence and arousal. The dominant_drive index is what
+     * lets downstream stages bias content toward drive-relevant
+     * concepts (Phase 2C will add concept-vocab→drive mapping). */
+    hypothalamus_state_t h;
+    memset(&h, 0, sizeof(h));
+    if (!hypothalamus_get_state(brain->hypothalamus, &h)) {
+        cascade_record_skip(state, CASCADE_STAGE_DRIVE,
+                            "stage_drive: hypothalamus_get_state failed");
+        /* Fall back to neutral defaults set above. */
+        state->drive_magnitude = 0.5f;
+        state->drive_arousal   = 0.5f;
+        return 0;
+    }
+
+    /* Cherry-pick the homeostatic drive with highest magnitude.
+     * Hunger / thirst / cortisol-stress / fatigue / temp-deviation are
+     * all in [0,1]. Whichever is loudest wins. */
+    const float hunger     = h.appetite.hunger_drive;
+    const float thirst     = h.hydration.thirst_drive;
+    const float stress     = h.hpa_axis.stress_input;
+    const float fatigue    = h.circadian.sleep_pressure;
+    const float thermal_e  = (float)fabs(h.thermoregulation.core_temp.error);
+    /* Curiosity/social/etc aren't in the homeostatic struct — they live
+     * in the drive system handle which the adapter doesn't expose yet.
+     * Phase 2C TODO: surface those via a new accessor. */
+
+    float    max_drive = hunger;
+    uint8_t  dominant  = 1; /* 1=HUNGER */
+    if (thirst    > max_drive) { max_drive = thirst;    dominant = 2; /* THIRST */ }
+    if (stress    > max_drive) { max_drive = stress;    dominant = 4; /* STRESS */ }
+    if (fatigue   > max_drive) { max_drive = fatigue;   dominant = 5; /* FATIGUE */ }
+    if (thermal_e > max_drive) { max_drive = thermal_e; dominant = 3; /* THERMAL */ }
+
+    state->drive_magnitude = max_drive;
+    state->dominant_drive  = dominant;
+
+    /* Arousal: HPA stress drives arousal up; circadian alertness too.
+     * Take max of (stress, 1 - sleep_pressure). At rest, alertness
+     * is high so arousal sits near 0.7-0.9; under stress, arousal
+     * spikes to 1.0. */
+    float alertness = 1.0f - fatigue;
+    state->drive_arousal = (stress > alertness) ? stress : alertness;
+    if (state->drive_arousal > 1.0f) state->drive_arousal = 1.0f;
+    if (state->drive_arousal < 0.0f) state->drive_arousal = 0.0f;
+
+    /* Valence: stress = strongly negative; fed/hydrated/rested = positive;
+     * neutral when no specific drive dominates. */
+    if (dominant == 4 /* STRESS */) {
+        state->drive_valence = -stress;
+    } else if (dominant == 1 /* HUNGER */ || dominant == 2 /* THIRST */) {
+        /* Aversive when high — same direction as stress but milder. */
+        state->drive_valence = -0.5f * max_drive;
+    } else if (dominant == 5 /* FATIGUE */) {
+        state->drive_valence = -0.3f * fatigue;
+    } else if (dominant == 3 /* THERMAL */) {
+        state->drive_valence = -0.4f * thermal_e;
+    } else {
+        state->drive_valence = 0.0f;
+    }
 
     cascade_record_complete(state);
     return 0;
@@ -168,6 +221,27 @@ static int cascade_stage_goal(brain_t brain, const char* prompt,
  * Stage 3: Listener model — read Theory of Mind
  *==========================================================================*/
 
+/* Map ToM emotion enum to a [-1,1] valence axis. Negative = aversive
+ * (sadness/anger/fear/disgust/anxiety/shame); positive = approach
+ * (joy/pride/calm/surprise); 0 for neutral/unknown. */
+static float tom_emotion_to_valence(tom_emotion_t e) {
+    switch (e) {
+        case TOM_EMOTION_JOY:      return  0.9f;
+        case TOM_EMOTION_PRIDE:    return  0.7f;
+        case TOM_EMOTION_CALM:     return  0.5f;
+        case TOM_EMOTION_SURPRISE: return  0.3f;
+        case TOM_EMOTION_NEUTRAL:  return  0.0f;
+        case TOM_EMOTION_SADNESS:  return -0.7f;
+        case TOM_EMOTION_ANGER:    return -0.8f;
+        case TOM_EMOTION_FEAR:     return -0.9f;
+        case TOM_EMOTION_DISGUST:  return -0.6f;
+        case TOM_EMOTION_ANXIETY:  return -0.5f;
+        case TOM_EMOTION_SHAME:    return -0.4f;
+        case TOM_EMOTION_UNKNOWN:
+        default:                   return  0.0f;
+    }
+}
+
 static int cascade_stage_listener(brain_t brain,
                                    production_cascade_state_t* state) {
     state->listener_known              = false;
@@ -181,16 +255,41 @@ static int cascade_stage_listener(brain_t brain,
         return 0;
     }
 
-    /* Phase 2A: ToM has multi-agent state but we don't yet identify
-     * which agent is the listener. Use the perspective-taking score as
-     * a proxy for "how well we model the audience". Phase 2B will
-     * track an explicit listener_id from conversation context. */
+    /* Phase 2B: query the actual listener model. Agent_id = 0 is the
+     * conventional "primary interlocutor". The cascade doesn't yet
+     * track multiple agents per conversation — that's a future
+     * enhancement once a turn-taking layer is added. The aggregate
+     * perspective-taking score still seeds audience_familiarity. */
     tom_statistics_t stats;
     memset(&stats, 0, sizeof(stats));
     if (tom_get_statistics(brain->theory_of_mind, &stats)) {
         state->audience_familiarity = stats.perspective_taking_score;
-        /* Treat any nontrivial perspective signal as "listener known". */
-        state->listener_known = (stats.perspective_taking_score > 0.1f);
+    }
+
+    /* Pull belief + emotion from the ToM module. The codebase had an
+     * tom_get_agent_state declaration with per-agent fan-out, but that
+     * function is a phantom (header-only, no impl). The two real getters
+     * are tom_get_bdi_state (no agent_id — uses the most-recently-tracked
+     * agent internally) and tom_infer_emotion. Together they give us
+     * everything we need. */
+    tom_belief_t    belief    = {0};
+    tom_desire_t    desire    = {0};
+    tom_intention_t intention = {0};
+    if (tom_get_bdi_state(brain->theory_of_mind, &belief, &desire, &intention)) {
+        state->listener_known = true;
+        state->listener_belief_confidence = belief.confidence;
+    } else if (state->audience_familiarity > 0.1f) {
+        /* No BDI record but ToM has been doing perspective work — treat
+         * as "vague listener known". */
+        state->listener_known = true;
+    }
+
+    if (state->listener_known) {
+        float emotion_conf = 0.0f;
+        tom_emotion_t emotion = tom_infer_emotion(brain->theory_of_mind,
+                                                    &emotion_conf);
+        state->listener_emotion_valence =
+            tom_emotion_to_valence(emotion) * emotion_conf;
     }
 
     cascade_record_complete(state);
@@ -218,12 +317,8 @@ static int cascade_stage_episodic(brain_t brain,
         return 0;
     }
 
-    /* Use the adapter-level cue retrieval API (the inner core's
-     * hippo_find_similar_episodes isn't reachable through the adapter
-     * boundary — Phase 2B will add an accessor if we need finer
-     * control). The retrieval_result_t allocates the memory + similarity
-     * arrays internally; caller-style cleanup matches existing
-     * hippocampus_adapter usage. */
+    /* Use the adapter-level cue retrieval API. The retrieval_result_t
+     * allocates the memory + similarity arrays internally. */
     retrieval_result_t result;
     memset(&result, 0, sizeof(result));
     if (!hippocampus_retrieve_by_cue(brain->hippocampus,
@@ -236,17 +331,28 @@ static int cascade_stage_episodic(brain_t brain,
         return 0;
     }
 
-    /* Phase 2A: store the per-memory similarities as relevances. The
-     * memories themselves stay opaque — Phase 2B will lift their
-     * concept content into the intent vector. We only have similarities
-     * here, not memory_ids in a publicly-stable form, so we use index
-     * as a deterministic stand-in. */
+    /* Phase 2B: store the actual memory_id (not just an array index) so
+     * stage_content can dereference and lift the memory's feature vector
+     * into the intent. Each retrieved memory carries a feature_count×float
+     * features array — that IS the encoded content for the past episode.
+     * Storing the memory_id lets us look it up later if needed; for the
+     * cascade we mainly need the feature vector, which we'll reach via
+     * result.memories[i].features in stage_content. We keep result alive
+     * by transferring ownership to a per-call scratch field on state. */
     for (uint32_t i = 0; i < result.count && state->episodic_count < 16; i++) {
-        state->episodic_concept_ids[state->episodic_count] = (uint64_t)i;
+        state->episodic_concept_ids[state->episodic_count] =
+            (uint64_t)result.memories[i].memory_id;
         state->episodic_relevances[state->episodic_count]  =
             result.similarities ? result.similarities[i] : 0.5f;
         state->episodic_count++;
     }
+
+    /* Stash the retrieval result on the cascade state so stage_content
+     * can lift feature vectors. We use a struct member added below — for
+     * now, just leak result.memories / similarities arrays (they're
+     * tiny and the cascade-state cleanup will free them). */
+    state->episodic_retrieval = result;  /* shallow copy — memories[] and
+                                          * similarities[] ownership transferred. */
 
     cascade_record_complete(state);
     return 0;
@@ -281,12 +387,20 @@ static int cascade_stage_content(brain_t brain,
     }
     state->content_dim = dim;
 
-    /* Weighted combine. Default weights chosen so prompt dominates when
-     * present (mimics directly responding to the question), but drive
-     * and episodic still meaningfully bias. Phase 2D will tune. */
+    /* Weighted combine. Prompt dominates when present (we're answering
+     * a question); drive / episodic / listener / goal nudge the answer
+     * without overwhelming the prompt's content. Tuning history:
+     *   Phase 2A: w_drive=0.3 — too small to flip bridge argmax
+     *   Phase 2B v1: w_drive=0.6 — too LARGE, overrode prompt in the
+     *                drive band, all prompts converged to same output
+     *   Phase 2B v2: w_drive=0.15 — small enough that prompt content
+     *                differentiates outputs, large enough to shift
+     *                argmax when prompt signal is weak (spontaneous mode) */
     const float w_prompt   = 1.0f;
-    const float w_drive    = 0.3f;
-    const float w_episodic = 0.4f;
+    const float w_drive    = 0.15f;
+    const float w_episodic = 0.3f;
+    const float w_listener = 0.1f;
+    const float w_goal     = 0.2f;
 
     /* 1. Seed from prompt comprehend (if provided). */
     if (prompt_intent && prompt_dim > 0) {
@@ -297,24 +411,74 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
-    /* 2. Drive bias: arousal scales the magnitude; valence shifts a
-     * single dimension as a "tone" hint. Phase 2A doesn't have per-
-     * concept drive embeddings yet — Phase 2B will. */
-    if (state->drive_magnitude > 0.0f && dim > 0) {
-        state->content_intent[0] += w_drive * state->drive_arousal;
-        if (dim > 1) {
-            state->content_intent[1] += w_drive * state->drive_valence;
+    /* 2. Drive bias: spread drive activity across a deterministic 16-dim
+     * band keyed by dominant drive type. Different drives hit different
+     * dimensions so the same prompt under different drive states biases
+     * the intent toward different concepts. Phase 2C will replace this
+     * deterministic mapping with a real concept↔drive lookup.
+     *
+     * Signal: max(drive_magnitude, arousal). On a state-empty fresh
+     * brain, drive_magnitude=0 but arousal≈1 (no fatigue, no stress
+     * = full alertness), so the bias still fires — "I'm alert and
+     * about to speak" is itself a valid cognitive signal. */
+    float drive_signal = state->drive_magnitude;
+    if (state->drive_arousal > drive_signal) drive_signal = state->drive_arousal;
+    if (drive_signal > 0.05f && dim >= 16) {
+        const uint32_t band_start = ((uint32_t)state->dominant_drive % 8) * 16;
+        for (uint32_t i = 0; i < 16; i++) {
+            uint32_t slot = (band_start + i) % dim;
+            /* Sign alternation: every other dim carries valence tone,
+             * the rest carry magnitude — gives the bridge multi-axis
+             * signal rather than a flat scalar bump. */
+            float sign = (i & 1) ? state->drive_valence : 1.0f;
+            state->content_intent[slot] +=
+                w_drive * drive_signal * sign;
         }
     }
 
-    /* 3. Episodic concepts: each retrieved trace's relevance adds a
-     * small bias to the intent. Phase 2A treats episode_ids as opaque,
-     * so we just spread relevance across a few dimensions deterministically.
-     * Phase 2B will lift actual concept feature vectors from each episode. */
-    for (uint32_t i = 0; i < state->episodic_count && i < dim; i++) {
-        uint32_t slot = (uint32_t)(state->episodic_concept_ids[i] % dim);
-        state->content_intent[slot] +=
-            w_episodic * state->episodic_relevances[i];
+    /* 3. Episodic concepts: lift feature vectors from each retrieved
+     * memory. Each memory.features is feature_count×float of encoded
+     * past experience — adding it to the intent is "the brain biased
+     * toward saying things related to what it remembers". */
+    for (uint32_t i = 0; i < state->episodic_count; i++) {
+        uint32_t mi = i;  /* index into result.memories aligns with
+                           * episodic_concept_ids since we filled them in
+                           * lockstep. */
+        if (mi >= state->episodic_retrieval.count) continue;
+        const hippocampus_memory_t* m = &state->episodic_retrieval.memories[mi];
+        if (!m->features || m->feature_count == 0) continue;
+        const float relevance = state->episodic_relevances[i];
+        uint32_t copy = (m->feature_count < dim) ? m->feature_count : dim;
+        for (uint32_t j = 0; j < copy; j++) {
+            float fv = m->features[j];
+            if (isfinite(fv)) {
+                state->content_intent[j] += w_episodic * relevance * fv;
+            }
+        }
+    }
+
+    /* 4. Listener bias: when ToM is engaged, valence of the listener's
+     * inferred emotion shifts the intent's tonal dimension. Subtle but
+     * deterministic — used to differentiate audience-aware vs neutral
+     * production in Phase 2D evals. */
+    if (state->listener_known && state->audience_familiarity > 0.0f && dim >= 4) {
+        state->content_intent[2] +=
+            w_listener * state->audience_familiarity *
+            state->listener_emotion_valence;
+        state->content_intent[3] +=
+            w_listener * state->audience_familiarity *
+            state->listener_belief_confidence;
+    }
+
+    /* 5. Goal-priority bias: high-priority PFC goal → broaden the
+     * intent slightly so the bridge's softmax is less peaked → more
+     * likely to express the goal-relevant concepts even at low
+     * activation. This is the "I really need to say this" effect. */
+    if (state->goal_priority > 0.0f && dim >= 8) {
+        for (uint32_t i = 0; i < state->topic_count && i < 8 && i < dim; i++) {
+            uint32_t slot = (uint32_t)(state->topic_concept_ids[i] % dim);
+            state->content_intent[slot] += w_goal * state->goal_priority;
+        }
     }
 
     /* Confidence = signal magnitude / sqrt(dim). 1.0 = strongly cohered;
@@ -425,6 +589,21 @@ void cascade_state_cleanup(production_cascade_state_t* state) {
         nimcp_free(state->utterance);
         state->utterance = NULL;
     }
+    /* Phase 2B: free retrieval_result_t arrays. The hippocampus adapter
+     * allocates these via nimcp_calloc/malloc internally; ownership
+     * transferred to the cascade state by stage_episodic. Per-memory
+     * features arrays inside hippocampus_memory_t are owned by the
+     * hippocampus core and must NOT be freed here. */
+    if (state->episodic_retrieval.memories) {
+        nimcp_free(state->episodic_retrieval.memories);
+        state->episodic_retrieval.memories = NULL;
+    }
+    if (state->episodic_retrieval.similarities) {
+        nimcp_free(state->episodic_retrieval.similarities);
+        state->episodic_retrieval.similarities = NULL;
+    }
+    state->episodic_retrieval.count = 0;
+    state->episodic_retrieval.retrieval_success = false;
 }
 
 /* Public API impl called from nimcp_part_core.c — fills caller-provided

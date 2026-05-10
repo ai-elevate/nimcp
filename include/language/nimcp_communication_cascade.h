@@ -24,6 +24,7 @@
 #include <stddef.h>
 
 #include "core/brain/regions/broca/nimcp_pragmatics_processor.h"  /* speech_act_type_t */
+#include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h" /* retrieval_result_t */
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,6 +75,10 @@ typedef struct {
     uint64_t episodic_concept_ids[16];
     float    episodic_relevances[16];
     uint32_t episodic_count;
+    /* Phase 2B: actual retrieved memories. Owned by cascade state —
+     * cascade_state_cleanup frees memories[] and similarities[] inside.
+     * Used by stage_content to lift feature vectors into the intent. */
+    retrieval_result_t episodic_retrieval;
 
     /* Stage 5: Content — combined intent vector that drives the bridge */
     float*   content_intent;       /* allocated; semantic_dim entries */
