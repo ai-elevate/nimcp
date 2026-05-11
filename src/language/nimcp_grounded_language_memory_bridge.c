@@ -176,15 +176,29 @@ void gl_mirror_new_word_to_regions(grounded_language_t* gl, const char* form) {
         (void)wernicke_add_word((wernicke_adapter_t*)gl->wernicke_adapter, &w);
     }
 
-    /* Broca production lexicon: minimum-viable seed. broca_add_word
-     * takes broca_input_word_t with id=0 + string fallback. Adapter
-     * fills in phonology + frequency on first use. */
+    /* Broca production lexicon: minimum-viable seed.
+     *
+     * Bug-6 fix: previously called broca_add_word(), which is a
+     * LOOKUP-only API — it expects the entry to already be in the
+     * lexicon and forwards to the syntax processor. Every new-word
+     * mirror hit LEXICON_MISS, so the bootstrap mirror at brain init
+     * was the only thing that ever populated Broca's lexicon, and new
+     * words acquired during training never made it in. Now we use
+     * broca_add_lexical_entry_v(), which actually inserts. word_id=0
+     * forces hash_string-based insertion (matching the lookup path,
+     * per the convention documented in the broca adapter). */
     if (gl->broca_adapter) {
-        broca_input_word_t bi;
-        memset(&bi, 0, sizeof(bi));
-        bi.word_id = 0;
-        strncpy(bi.word, form, sizeof(bi.word) - 1);
-        (void)broca_add_word((broca_adapter_t*)gl->broca_adapter, &bi);
+        (void)broca_add_lexical_entry_v(gl->broca_adapter,
+                                          0 /* word_id — hash_string drives */,
+                                          form,
+                                          0 /* pos: unknown; broca fills on use */,
+                                          0.1f /* low default frequency */);
+        /* 1-per-100 observability log so over-mirroring is detectable. */
+        static __thread uint64_t mirror_count = 0;
+        if ((mirror_count++ % 100u) == 0u) {
+            LOG_DEBUG("gl_mirror_new_word_to_regions: broca form='%s' count=%llu",
+                      form, (unsigned long long)mirror_count);
+        }
     }
 }
 

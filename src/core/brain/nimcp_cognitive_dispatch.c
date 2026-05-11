@@ -32,6 +32,7 @@
 #include "cognitive/immune/nimcp_self_heal.h"
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "snn/nimcp_snn_fno.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
 
 #include <math.h>
 #include <string.h>
@@ -755,11 +756,11 @@ static void task_decide_imagination(void* arg) {
                 imagination_end_scenario(a->brain->imagination, scenario);
             }
         }
-        /* SNN language bridge STDP — safe, only touches bridge's own state */
+        /* SNN language bridge STDP — safe, only touches bridge's own state.
+         * Return value (int) discarded; header is in scope above. */
         if (a->brain->snn_lang_bridge) {
-            extern void snn_language_bridge_apply_stdp(void*, float);
-            snn_language_bridge_apply_stdp(a->brain->snn_lang_bridge,
-                                            (float)(nimcp_time_get_ms() % 1000000));
+            (void)snn_language_bridge_apply_stdp(a->brain->snn_lang_bridge,
+                                                  (float)(nimcp_time_get_ms() % 1000000));
         }
     }
     r.elapsed_us = nimcp_time_get_us() - t0;

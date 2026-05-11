@@ -48,6 +48,9 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <time.h>
+#include <stdint.h>
 
 #define LOG_MODULE "COMM_CASCADE"
 
@@ -413,6 +416,16 @@ static int cascade_stage_episodic(brain_t brain,
                                        16 /* max_results */,
                                        &result) ||
         !result.retrieval_success || result.count == 0) {
+        /* hippocampus_retrieve_by_cue() always calloc()s memories[] and
+         * similarities[]; free them before bailing or they leak per call. */
+        if (result.memories) {
+            nimcp_free(result.memories);
+            result.memories = NULL;
+        }
+        if (result.similarities) {
+            nimcp_free(result.similarities);
+            result.similarities = NULL;
+        }
         cascade_record_skip(state, CASCADE_STAGE_EPISODIC,
                             "stage_episodic: cue retrieval empty");
         return 0;
@@ -1003,7 +1016,8 @@ static int cascade_stage_self_feedback(brain_t brain,
      * cascade state. SELF_PRODUCED specifically marks "the cascade
      * completed and the result has been deposited back into WM". */
     if (brain->grounded_lang) {
-        extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
+        /* gl_fire_event() now declared in language/nimcp_grounded_language.h
+         * (header already included at top of file). */
         gl_event_t bus_ev;
         memset(&bus_ev, 0, sizeof(bus_ev));
         bus_ev.type         = GL_EVENT_SELF_PRODUCED;
@@ -1935,10 +1949,22 @@ int nimcp_brain_produce_cascade_impl(
 #define REPAIR_NOISE_FRAC      0.05f  /* Gaussian sigma = frac × ||intent||/sqrt(dim) */
 
 /* Box-Muller Gaussian. Cheap enough — invoked at most
- * REPAIR_MAX_ATTEMPTS × content_dim times per cascade. */
+ * REPAIR_MAX_ATTEMPTS × content_dim times per cascade.
+ *
+ * Uses thread-local rand_r() seed instead of rand() because produce_cascade
+ * runs concurrently across the daemon's RO socket ThreadPool — rand() is
+ * documented MT-unsafe (process-global state). Seed initialized on first
+ * use per thread from pthread_self() XOR time(NULL). */
 static float cascade_repair_gauss(void) {
-    float u1 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
-    float u2 = ((float)rand() + 1.0f) / ((float)RAND_MAX + 2.0f);
+    static __thread unsigned int seed = 0;
+    static __thread int seed_initialized = 0;
+    if (!seed_initialized) {
+        seed = (unsigned int)((uintptr_t)pthread_self() ^ (uintptr_t)time(NULL));
+        if (seed == 0) seed = 1;  /* rand_r should not be seeded with 0 in some impls */
+        seed_initialized = 1;
+    }
+    float u1 = ((float)rand_r(&seed) + 1.0f) / ((float)RAND_MAX + 2.0f);
+    float u2 = ((float)rand_r(&seed) + 1.0f) / ((float)RAND_MAX + 2.0f);
     return sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)M_PI * u2);
 }
 

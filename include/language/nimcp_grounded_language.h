@@ -1959,6 +1959,20 @@ typedef struct {
 /** Subscriber callback. Return 0 to continue, non-zero to log+continue. */
 typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
 
+/**
+ * @brief Fire an event to all subscribers (filtered by type mask).
+ *
+ *  Internal entry-point invoked from various GL pipelines (learn,
+ *  ground, comprehend, produce, etc.). Re-entry guarded: a subscriber
+ *  that re-enters fire becomes a no-op. Safe to call with gl==NULL or
+ *  ev==NULL (no-op).
+ *
+ *  Defined in `nimcp_grounded_language_cognitive_bridge.c`. Declared
+ *  here so callers (cascade, GL pipelines) don't each inline an
+ *  `extern void` decl — those duplicates risked signature drift.
+ */
+void gl_fire_event(grounded_language_t* gl, const gl_event_t* ev);
+
 /* Event-type bitmask (#4 — per-subscriber filter). Use these to limit
  * which events a subscriber receives — the bus skips wrappers whose
  * mask doesn't match, removing the if-else boilerplate from every

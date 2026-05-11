@@ -225,7 +225,6 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
              * wernicke, hippocampus, ...) — pure noise on cold boot.
              * Live grounding events still fire normally. */
             if (!gl->is_loading) {
-                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
                 gl_event_t ev = {0};
                 ev.type = GL_EVENT_NEW_WORD;
                 ev.word = entry->form;
@@ -548,7 +547,6 @@ int gl_observe_snn_spikes(grounded_language_t* gl,
     if (best_idx < 0 || best_sim < GL_SNN_SPIKE_MATCH_THRESHOLD) return 0;
 
     /* Fire COMPREHENDED for the matched word. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type         = GL_EVENT_COMPREHENDED;
     bus_ev.word         = gl->vocab_list[best_idx]->form;
@@ -2212,7 +2210,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
          * consumers (ToM, response-strategy modules, etc.) only when a
          * concrete label was returned. UNKNOWN is silent. */
         if (result->speech_act != GL_SPEECH_ACT_UNKNOWN) {
-            extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
             gl_event_t ev = {0};
             ev.type            = GL_EVENT_SPEECH_ACT;
             ev.text            = text;
@@ -2385,7 +2382,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                  * consumers (engram episodic consolidation, sleep-wake
                  * scheduler, etc.). Carries the cosine score that crossed
                  * the threshold. */
-                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
                 gl_event_t ev = {0};
                 ev.type             = GL_EVENT_TOPIC_SHIFT;
                 ev.text             = text;
@@ -2470,7 +2466,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                 ev.topic_similarity = 1.0f;  /* same-surface == 1.0 */
                 ev.confidence       = result->comprehension_confidence;
                 gl_tc12_unlock(gl);
-                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
                 gl_fire_event(gl, &ev);
                 gl_tc12_lock(gl);
             }
@@ -2525,7 +2520,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
         result->comprehension_confidence = 1.0f;
 
     /* Fire COMPREHENDED event on the cognitive bus. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type         = GL_EVENT_COMPREHENDED;
     bus_ev.text         = text;
@@ -3268,7 +3262,6 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
         gl->stats.total_negative_groundings++;
 
         /* Fire GROUNDED with negative confidence to mark the contrast. */
-        extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
         gl_event_t bus_ev = {0};
         bus_ev.type        = GL_EVENT_GROUNDED;
         bus_ev.word        = event->word;
@@ -3331,7 +3324,6 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
     gl_dispatch_event_to_memory(gl, event, concept_id);
 
     /* Fire GROUNDED event on the cognitive bus. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type        = GL_EVENT_GROUNDED;
     bus_ev.word        = event->word;
@@ -3528,7 +3520,6 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     gl->stats.total_productions++;
 
     /* Fire PRODUCED event on the cognitive bus. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type         = GL_EVENT_PRODUCED;
     bus_ev.text         = result->text;

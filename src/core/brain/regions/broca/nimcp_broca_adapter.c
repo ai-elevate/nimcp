@@ -1160,8 +1160,14 @@ bool broca_train_word(broca_adapter_t* adapter,
     broca_lexical_entry_t entry;
     memset(&entry, 0, sizeof(broca_lexical_entry_t));
 
-    /* Generate unique word ID from hash */
-    entry.word_id = hash_string(word, 0xFFFFFFFF);
+    /* word_id MUST be 0 here. broca_add_lexical_entry() uses
+     * hash_word_id(entry->word_id, capacity) for insertion, while
+     * broca_lookup_word() uses hash_string(word, capacity) — different
+     * buckets, silent miss. Setting word_id=0 routes both through the
+     * same hash_string-based path. Same convention as the GL→Broca
+     * mirror in grounded_language.c:4056-4062 (footgun previously fixed
+     * there). */
+    entry.word_id = 0;
     strncpy(entry.word, word, sizeof(entry.word) - 1);
 
     uint32_t copy_count = (num_phonemes < 16) ? num_phonemes : 16;
