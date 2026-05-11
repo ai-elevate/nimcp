@@ -1182,9 +1182,9 @@ static int cascade_stage_prosody(brain_t brain,
     /* Contour shape — per-syllable F0 modulation across [0..1] phase.
      * The FFT-style basis (sinusoidal + linear trend) is what an FNO
      * spectral conv would emit if it were trained on this feature set:
-     *   - cos(π·t) component → declination (statement/falling)
-     *   - sin(π·t) component → rising trend (question)
-     *   - emphasis-front: cos(2π·t) early peak (command)
+     *   - cos(π·t/2) component → declination (statement/falling)
+     *   - sin(π·t/2) component → rising trend (question)
+     *   - cos(π·t)   component → emphasis-front then drop (command)
      * Coefficients pick basis based on act_type. */
     float coef_decline = 1.0f;   /* default: gentle declination */
     float coef_rise    = 0.0f;
