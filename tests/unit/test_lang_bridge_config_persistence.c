@@ -337,8 +337,12 @@ static void test_v3_format_prefix_is_distinct_from_v2(void)
         EXPECT(sentinel == SNN_LANG_BRIDGE_FILE_V3_SENTINEL,
                 "sentinel 0x%08x != V3 sentinel 0xFFFFFFFE",
                 sentinel);
-        EXPECT(version == SNN_LANG_BRIDGE_FILE_VERSION_V3,
-                "version %u != V3 (3)", version);
+        /* After EOS migration, save always writes V4. Accept V3 or V4
+         * here — both share the V3 wire prefix; the test's intent is to
+         * pin the layout, not the literal version number. */
+        EXPECT(version == SNN_LANG_BRIDGE_FILE_VERSION_V3 ||
+               version == SNN_LANG_BRIDGE_FILE_VERSION_V4,
+                "version %u not in {V3, V4}", version);
 
         /* Distinct from any plausible V2 first-field (max_concept_pops),
          * which is bounded by SNN_LANG_MAX_CONCEPT_POPS. */
@@ -352,15 +356,160 @@ static void test_v3_format_prefix_is_distinct_from_v2(void)
     unlink(path);
 }
 
+/* === Test 4: V4 round-trip — EOS knobs survive save/load through ext block. */
+static void test_v4_eos_round_trip(void)
+{
+    snn_lang_config_t custom = snn_lang_config_default();
+    custom.max_concept_pops = 8;
+    custom.max_word_pops    = 16;
+    /* Set EOS knobs to non-default values via the public config struct. */
+    custom.enable_eos_stopping = true;
+    custom.eos_min_activation  = 0.123f;
+    custom.eos_min_confidence  = 0.045f;
+
+    snn_language_bridge_t* b = snn_language_bridge_create(&custom);
+    EXPECT(b != NULL, "rebuild bridge with EOS-enabled cfg");
+    if (!b) return;
+
+    char path[256];
+    tmp_path(path, sizeof(path), "v4_eos");
+    EXPECT(snn_language_bridge_save(b, path) == 0, "save returns 0");
+    snn_language_bridge_destroy(b);
+
+    /* Verify the file declares V4. The wire layout is
+     * [magic][sentinel][version][config blob][ext_size][ext...] */
+    FILE* g = fopen(path, "rb");
+    EXPECT(g != NULL, "open V4 file");
+    if (g) {
+        uint32_t magic = 0, sentinel = 0, version = 0;
+        EXPECT(fread(&magic, sizeof(uint32_t), 1, g) == 1, "read magic");
+        EXPECT(fread(&sentinel, sizeof(uint32_t), 1, g) == 1, "read sentinel");
+        EXPECT(fread(&version, sizeof(uint32_t), 1, g) == 1, "read version");
+        EXPECT(magic == SNN_LANG_MAGIC, "magic must be SLBG");
+        EXPECT(sentinel == SNN_LANG_BRIDGE_FILE_V3_SENTINEL,
+                "sentinel must be V3+ marker");
+        EXPECT(version == SNN_LANG_BRIDGE_FILE_VERSION_V4,
+                "version must be V4 = 4; got %u", version);
+
+        /* Skip config blob, read ext_block_size, decode tail. */
+        fseek(g, sizeof(snn_lang_config_t), SEEK_CUR);
+        uint32_t bs;
+        EXPECT(fread(&bs, sizeof(uint32_t), 1, g) == 1, "read ext size");
+        /* Compute expected V4 ext block size — must exceed V3 size by
+         * 1 + 4 + 4 = 9 bytes (enable_eos_stopping:u8, two floats). */
+        size_t v3_size = 4 + 4 + 4 + 4 + 4 + 4 + 1 + 4 + 1 + 4;
+        size_t v4_size = v3_size + 1 + 4 + 4;
+        EXPECT(bs == v4_size,
+               "ext block size %u != V4 expected %zu", bs, v4_size);
+        fclose(g);
+    }
+
+    /* Now reload and confirm EOS knobs round-tripped. */
+    snn_language_bridge_t* loaded = snn_language_bridge_load(path);
+    EXPECT(loaded != NULL, "V4 reload");
+    if (loaded) {
+        snn_lang_config_t got;
+        EXPECT(snn_language_bridge_get_config(loaded, &got) == 0,
+                "get_config after V4 load");
+        EXPECT(got.enable_eos_stopping == true,
+                "enable_eos_stopping survived V4 round trip");
+        EXPECT_FLOAT_EQ(got.eos_min_activation, 0.123f, 1e-6f);
+        EXPECT_FLOAT_EQ(got.eos_min_confidence, 0.045f, 1e-6f);
+        snn_language_bridge_destroy(loaded);
+    }
+
+    unlink(path);
+}
+
+/* === Test 5: V3-format file (no EOS tail) loads under V4 reader — EOS knobs
+ *             come back at library defaults rather than garbage. === */
+static void test_v3_file_loads_with_eos_defaults(void)
+{
+    char path[256];
+    tmp_path(path, sizeof(path), "v3_no_eos_tail");
+
+    /* Hand-craft a V3-format file: magic + sentinel + version=V3 + full
+     * config blob + V3-sized ext block (10 fields, no EOS tail) +
+     * num_concept_pops=0 + num_word_pops=0 + num_bindings=0.
+     *
+     * The config struct itself has the EOS fields (this build's layout),
+     * but we deliberately set them to non-default values to confirm that
+     * the V4 reader's "raw blob is not authoritative for EOS" guard
+     * actually resets them when the on-disk ext block stops at V3. */
+    snn_lang_config_t cfg = snn_lang_config_default();
+    cfg.max_concept_pops = 8;
+    cfg.max_word_pops    = 16;
+    cfg.enable_eos_stopping = true;     /* stale value in the raw blob */
+    cfg.eos_min_activation  = 9.99f;    /* garbage */
+    cfg.eos_min_confidence  = 9.99f;    /* garbage */
+
+    FILE* f = fopen(path, "wb");
+    EXPECT(f != NULL, "open V3 tmp file");
+    if (!f) return;
+
+    uint32_t magic    = SNN_LANG_MAGIC;
+    uint32_t sentinel = SNN_LANG_BRIDGE_FILE_V3_SENTINEL;
+    uint32_t version  = SNN_LANG_BRIDGE_FILE_VERSION_V3;
+    fwrite(&magic,    sizeof(uint32_t), 1, f);
+    fwrite(&sentinel, sizeof(uint32_t), 1, f);
+    fwrite(&version,  sizeof(uint32_t), 1, f);
+    fwrite(&cfg, sizeof(snn_lang_config_t), 1, f);
+
+    /* V3-sized ext block — 10 fields, no EOS tail. */
+    uint32_t ext_size = 4 + 4 + 4 + 4 + 4 + 4 + 1 + 4 + 1 + 4;  /* 34 bytes */
+    fwrite(&ext_size, sizeof(uint32_t), 1, f);
+    float fv = 0.0f; uint32_t uv = 0; uint8_t bv = 0; int32_t iv = 0;
+    fv = cfg.temperature;        fwrite(&fv, sizeof(float),    1, f);
+    fv = cfg.top_p;              fwrite(&fv, sizeof(float),    1, f);
+    uv = cfg.produce_topk;       fwrite(&uv, sizeof(uint32_t), 1, f);
+    fv = cfg.glove_blend;        fwrite(&fv, sizeof(float),    1, f);
+    fv = cfg.intent_persistence; fwrite(&fv, sizeof(float),    1, f);
+    fv = cfg.word_feedback;      fwrite(&fv, sizeof(float),    1, f);
+    bv = cfg.enable_snn_spike_routing ? 1 : 0;
+    fwrite(&bv, sizeof(uint8_t), 1, f);
+    fv = cfg.activation_tau_ms;  fwrite(&fv, sizeof(float),    1, f);
+    bv = cfg.use_hyperbolic_embeddings ? 1 : 0;
+    fwrite(&bv, sizeof(uint8_t), 1, f);
+    iv = cfg.sampling_mode;      fwrite(&iv, sizeof(int32_t),  1, f);
+
+    uint32_t zero = 0;
+    fwrite(&zero, sizeof(uint32_t), 1, f); /* num_concept_pops = 0 */
+    fwrite(&zero, sizeof(uint32_t), 1, f); /* num_word_pops = 0 */
+    fwrite(&zero, sizeof(uint32_t), 1, f); /* num_bindings = 0 */
+    fclose(f);
+
+    /* Load through current (V4-capable) reader. */
+    snn_language_bridge_t* b = snn_language_bridge_load(path);
+    EXPECT(b != NULL, "V4 reader loads V3 file");
+    if (!b) { unlink(path); return; }
+
+    snn_lang_config_t got;
+    EXPECT(snn_language_bridge_get_config(b, &got) == 0,
+            "get_config after V3 load");
+    snn_lang_config_t defaults = snn_lang_config_default();
+    /* EOS knobs MUST be at library defaults, NOT the garbage we
+     * planted in the raw struct blob. */
+    EXPECT(got.enable_eos_stopping == defaults.enable_eos_stopping,
+            "V3 file: enable_eos_stopping reset to default; got %d",
+            (int)got.enable_eos_stopping);
+    EXPECT_FLOAT_EQ(got.eos_min_activation, defaults.eos_min_activation, 1e-6f);
+    EXPECT_FLOAT_EQ(got.eos_min_confidence, defaults.eos_min_confidence, 1e-6f);
+
+    snn_language_bridge_destroy(b);
+    unlink(path);
+}
+
 int main(void)
 {
     fprintf(stderr, "[Tier 2 #8] test_lang_bridge_config_persistence\n");
     test_v3_round_trip_all_knobs();
     test_v2_forward_compat();
     test_v3_format_prefix_is_distinct_from_v2();
+    test_v4_eos_round_trip();
+    test_v3_file_loads_with_eos_defaults();
 
     if (g_failures == 0) {
-        fprintf(stderr, "OK — all 3 tests passed\n");
+        fprintf(stderr, "OK — all 5 tests passed\n");
         return 0;
     } else {
         fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);

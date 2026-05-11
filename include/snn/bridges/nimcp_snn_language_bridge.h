@@ -81,11 +81,24 @@ extern "C" {
  *   [sampling_mode:i32]
  *   [...remainder: populations, bindings...]
  *
+ * V4 (V3 + EOS-stopping knobs persisted explicitly):
+ *   Same prefix as V3 with SNN_LANG_BRIDGE_FILE_VERSION_V4 instead of V3,
+ *   plus 3 trailing fields appended to the ext block:
+ *
+ *   [enable_eos_stopping:u8]
+ *   [eos_min_activation:f32]
+ *   [eos_min_confidence:f32]
+ *
+ *   V3 readers ignore the trailing bytes (forward-compat via ext_block_size).
+ *   V4 readers handle both V3 and V4 files — V3 files leave EOS knobs at
+ *   library defaults; V4 files decode them authoritatively.
+ *
  * The ext_block_size lets future readers seek past unknown trailing bytes
  * if/when more knobs are added. */
 #define SNN_LANG_BRIDGE_FILE_V3_SENTINEL  0xFFFFFFFEu
 #define SNN_LANG_BRIDGE_FILE_VERSION_V2   2u  /* implicit: no version on disk */
 #define SNN_LANG_BRIDGE_FILE_VERSION_V3   3u
+#define SNN_LANG_BRIDGE_FILE_VERSION_V4   4u
 
 //=============================================================================
 // Forward declarations
@@ -265,6 +278,37 @@ typedef struct {
     float    comprehend_stdp_min_weight;     /* default 0.05 */
     float    comprehend_stdp_min_activation; /* default 0.10 */
     float    comprehend_stdp_lr_scale;       /* multiplied with stdp_learning_rate, default 0.5 */
+    /* EOS stopping criterion — opt-in early termination for the produce
+     * loop based on intrinsic "thought-complete" signals rather than a
+     * trained EOS token.
+     *
+     * When enable_eos_stopping is true, after each emitted word the
+     * produce loop additionally checks two thresholds and stops early
+     * (only after at least min_produce_words have been emitted, so the
+     * caller's hard length-control floor still wins):
+     *
+     *   1. Activation drop: ||concept_acts||_2 (post decay+feedback for
+     *      the next step) < eos_min_activation. Rationale: when the
+     *      original intent has been "spent" by the recurrent state
+     *      drift, the brain has nothing more to say.
+     *
+     *   2. Coherence drop: the just-emitted word's confidence
+     *      (word_result.confidence) < eos_min_confidence. Rationale:
+     *      below this, the system is just emitting noise — no clearly
+     *      preferred word for the current activation.
+     *
+     * Either threshold being undershot triggers the stop. Default OFF
+     * for backward compatibility — bit-for-bit identical output to
+     * pre-EOS behavior.
+     *
+     * APPEND-ONLY: these fields MUST stay at the end of snn_lang_config_t
+     * — older TUs compiled against the pre-EOS layout still read/write
+     * the leading fields safely. On-disk persistence uses the explicit V4
+     * ext block (not the raw struct blob) so a stale TU + new library
+     * cannot stack-smash even if the struct grows further. */
+    bool     enable_eos_stopping;
+    float    eos_min_activation;             /* default 0.05 */
+    float    eos_min_confidence;             /* default 0.01 */
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -371,6 +415,19 @@ typedef struct {
     uint64_t echo_correct_calls;
     uint64_t echo_correct_pairs;
     uint64_t echo_correct_target_misses;
+    /* EOS stopping telemetry. total_eos_terminations bumps once per
+     * produce call where enable_eos_stopping fired (activation or
+     * confidence dropped under threshold after min_produce_words).
+     * total_max_truncations bumps once per produce call where the loop
+     * exited via the implicit/explicit max-words cap (mirrors the
+     * existing length_max_truncations counter for consumers that want
+     * a single name). Both stay 0 when EOS stopping is disabled.
+     *
+     * APPEND-ONLY: these fields MUST stay at the end of snn_lang_stats_t
+     * to preserve the offsets of every prior counter for stale-TU callers. The _Static_assert at the bottom of this header makes
+     * struct-size drift a compile-time error. */
+    uint64_t total_eos_terminations;
+    uint64_t total_max_truncations;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -1071,6 +1128,36 @@ int snn_language_bridge_predict_sensory(
     float* predicted_sensory,
     uint32_t sensory_dim
 );
+
+/* ABI size sentinels.
+ *
+ * Why: the previous EOS-stopping commit (revert 65337cdbc) crashed with
+ * "stack smashing detected" in tests that had been compiled against the
+ * pre-EOS struct layout while the library was rebuilt with the larger
+ * layout. The library wrote a larger config/stats blob into a stack-
+ * allocated caller buffer sized for the older layout (via
+ *   *out = bridge->config; *stats = bridge->stats;
+ * in snn_language_bridge_get_config / get_stats).
+ *
+ * These _Static_assert sentinels turn that runtime stack-smash into a
+ * clear compile error: any TU compiled with a stale layout will fail
+ * the static-assert at -E preprocessing and refuse to produce a .o.
+ * Bump the literal here whenever a field is appended to either struct.
+ *
+ * The numbers below are computed on x86_64 Linux gcc with -fno-pic and
+ * default struct packing (verified via build/sizecheck). Bumping a
+ * field adds the field's size (rounded up to alignment) — the matching
+ * change to the literal MUST land in the same commit so reviewers can
+ * see the ABI delta. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#include <stddef.h>
+_Static_assert(sizeof(snn_lang_config_t) == 156,
+    "snn_lang_config_t ABI: size drifted from expected 156 bytes. "
+    "Append-only on the struct; bump this literal in lockstep.");
+_Static_assert(sizeof(snn_lang_stats_t) == 256,
+    "snn_lang_stats_t ABI: size drifted from expected 256 bytes. "
+    "Append-only on the struct; bump this literal in lockstep.");
+#endif
 
 #ifdef __cplusplus
 }

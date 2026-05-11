@@ -327,7 +327,15 @@ snn_lang_config_t snn_lang_config_default(void)
         .enable_comprehend_stdp     = false,
         .comprehend_stdp_min_weight = 0.05f,
         .comprehend_stdp_min_activation = 0.10f,
-        .comprehend_stdp_lr_scale   = 0.5f
+        .comprehend_stdp_lr_scale   = 0.5f,
+        /* EOS stopping criterion — default OFF preserves bit-for-bit
+         * legacy produce-loop behavior. Caller opts in by setting
+         * enable_eos_stopping = true; thresholds are tuneable but the
+         * defaults are calibrated for unit-norm intent vectors and
+         * cosine-scored confidences (see header for rationale). */
+        .enable_eos_stopping        = false,
+        .eos_min_activation         = 0.05f,
+        .eos_min_confidence         = 0.01f
     };
     return config;
 }
@@ -1771,6 +1779,20 @@ static int bridge_produce_impl(snn_language_bridge_t* bridge,
     if (rep_penalty > 1.0f) rep_penalty = 1.0f;
     if (rep_penalty > 0.0f && rep_window == 0) rep_window = 3;
 
+    /* EOS stopping criterion (default-OFF). Pull thresholds once. The
+     * activation threshold is compared against L2 magnitude of the
+     * post-recurrent-update concept_acts; the confidence threshold is
+     * compared against the just-emitted word's per-step confidence.
+     * Defaults: enable=false, min_act=0.05, min_conf=0.01. Defensive
+     * clamping — non-finite or negative thresholds disable the
+     * respective sub-check by setting it to -1, which can never trip. */
+    const bool  eos_stop_enabled = bridge->config.enable_eos_stopping;
+    float       eos_min_act      = bridge->config.eos_min_activation;
+    float       eos_min_conf     = bridge->config.eos_min_confidence;
+    if (!isfinite(eos_min_act)  || eos_min_act  < 0.0f) eos_min_act  = -1.0f;
+    if (!isfinite(eos_min_conf) || eos_min_conf < 0.0f) eos_min_conf = -1.0f;
+    bool eos_terminated = false;
+
     for (uint32_t w = 0; w < max_words; w++) {
         // Get top word
         snn_lang_word_result_t word_result;
@@ -2064,6 +2086,29 @@ sample_done:;
         for (uint32_t c = 0; c < n_concepts; c++) {
             concept_acts[c] = ip * intent[c] + (1.0f - ip) * state[c];
         }
+
+        /* EOS stopping criterion (opt-in via enable_eos_stopping).
+         * Evaluated after the recurrent state update so the activation
+         * sample reflects what the NEXT decode pass would see. We
+         * respect the caller's min_words_cfg floor — no early stop
+         * before the configured minimum has been emitted. With the
+         * default flag OFF, this entire block is skipped (preserves
+         * legacy behavior bit-for-bit). */
+        if (eos_stop_enabled && word_count >= min_words_cfg) {
+            /* L2 magnitude of the just-rebuilt concept_acts. */
+            float act_sq = 0.0f;
+            for (uint32_t c = 0; c < n_concepts; c++) {
+                act_sq += concept_acts[c] * concept_acts[c];
+            }
+            float act_mag = sqrtf(act_sq);
+            bool  act_undershot  = (eos_min_act  >= 0.0f) && (act_mag < eos_min_act);
+            bool  conf_undershot = (eos_min_conf >= 0.0f) &&
+                                   (word_result.confidence < eos_min_conf);
+            if (act_undershot || conf_undershot) {
+                eos_terminated = true;
+                break;
+            }
+        }
     }
 
     nimcp_free(used_words);
@@ -2077,6 +2122,21 @@ sample_done:;
      * who never opted into length control. */
     if (max_truncated) {
         bridge->stats.length_max_truncations++;
+    }
+
+    /* EOS stopping telemetry: bump symmetrical counters so callers can
+     * tell from a single stats read how each produce call terminated.
+     * total_eos_terminations bumps when the activation/confidence
+     * thresholds tripped; total_max_truncations bumps for any
+     * cap-driven exit (mirrors length_max_truncations but also covers
+     * the legacy implicit 32-word cap so consumers can compute an
+     * EOS-vs-cap ratio without a second counter). Both stay 0 when the
+     * EOS feature is unused, matching backward-compat semantics. */
+    if (eos_terminated) {
+        bridge->stats.total_eos_terminations++;
+    }
+    if (word_count >= max_words) {
+        bridge->stats.total_max_truncations++;
     }
 
     /* Walkthrough round 2: clear the embedding-query override so any
@@ -3293,50 +3353,58 @@ void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend)
 // Serialization
 //=============================================================================
 
-/* Tier 2 #8: extended config block written immediately after the
- * snn_lang_config_t blob in V3 files. Holds the PA/MQ runtime-tunable
- * knobs in a fixed, deterministic, packed layout. The block is preceded
- * by a u32 size field so future readers can extend without breaking
- * parsing of existing V3 files (just seek past trailing unknown bytes).
+/* Tier 2 #8 + EOS migration: extended config block written immediately after
+ * the snn_lang_config_t blob in V3/V4 files. Holds the PA/MQ + EOS runtime-
+ * tunable knobs in a fixed, deterministic, packed layout. The block is
+ * preceded by a u32 size field so readers can both
+ *   (a) seek past trailing unknown bytes (forward-compat from V3→V4+), and
+ *   (b) leave fields at library defaults when the on-disk block is shorter
+ *       than this build expects (backward-compat from V4 reader to V3 file).
+ *
+ * Field order is APPEND-ONLY — every byte written by an older writer keeps
+ * the same meaning. New fields go at the tail.
  *
  * NOTE: this is intentionally redundant with the same fields in
  * snn_lang_config_t — the explicit block is what we treat as authoritative
- * on V3 load. The legacy struct blob still carries them for backward
- * compatibility with consumers that memcpy the whole struct. */
-typedef struct {
-    float    temperature;
-    float    top_p;
-    uint32_t produce_topk;
-    float    glove_blend;
-    float    intent_persistence;
-    float    word_feedback;
-    uint8_t  enable_snn_spike_routing;  /* bool packed as u8 for stable layout */
-    /* 3 bytes implicit pad — DO NOT depend on, we write fields one at a time */
-    float    activation_tau_ms;
-    uint8_t  use_hyperbolic_embeddings; /* bool packed as u8 */
-    int32_t  sampling_mode;
-} snn_lang_ext_config_v3_t;
+ * on load. The legacy struct blob still carries them for backward
+ * compatibility with consumers that memcpy the whole struct, but the EOS
+ * stopping knobs are NEVER read back from the raw blob — only from this
+ * ext block. That is the belt+suspenders defense against the previous
+ * "struct grew, stale-TU stack-smash" failure mode. */
+
+/* Wire-format sizes (bytes), so callers don't multiply sizeof() at three
+ * different sites and accidentally drift. */
+#define EXT_KNOWN_SIZE_V3 \
+    ( sizeof(float)    /* temperature */                \
+    + sizeof(float)    /* top_p */                      \
+    + sizeof(uint32_t) /* produce_topk */               \
+    + sizeof(float)    /* glove_blend */                \
+    + sizeof(float)    /* intent_persistence */         \
+    + sizeof(float)    /* word_feedback */              \
+    + sizeof(uint8_t)  /* enable_snn_spike_routing */   \
+    + sizeof(float)    /* activation_tau_ms */          \
+    + sizeof(uint8_t)  /* use_hyperbolic_embeddings */  \
+    + sizeof(int32_t)  /* sampling_mode */              \
+    )
+
+#define EXT_KNOWN_SIZE_V4 \
+    ( EXT_KNOWN_SIZE_V3                                 \
+    + sizeof(uint8_t)  /* enable_eos_stopping */        \
+    + sizeof(float)    /* eos_min_activation */         \
+    + sizeof(float)    /* eos_min_confidence */         \
+    )
 
 /* Pack/unpack helpers (write fields one-at-a-time to avoid struct padding
- * surprises across compilers). */
-static int write_ext_config_v3(FILE* f, const snn_lang_config_t* cfg)
+ * surprises across compilers). Always writes the V4 layout. V3 readers
+ * forward-compat skip the trailing 9 bytes via the block_size header. */
+static int write_ext_config_v4(FILE* f, const snn_lang_config_t* cfg)
 {
-    /* Compute on-the-wire byte count. */
-    const uint32_t ext_block_size =
-        sizeof(float)    /* temperature */
-      + sizeof(float)    /* top_p */
-      + sizeof(uint32_t) /* produce_topk */
-      + sizeof(float)    /* glove_blend */
-      + sizeof(float)    /* intent_persistence */
-      + sizeof(float)    /* word_feedback */
-      + sizeof(uint8_t)  /* enable_snn_spike_routing */
-      + sizeof(float)    /* activation_tau_ms */
-      + sizeof(uint8_t)  /* use_hyperbolic_embeddings */
-      + sizeof(int32_t); /* sampling_mode */
+    const uint32_t ext_block_size = (uint32_t)EXT_KNOWN_SIZE_V4;
 
     uint8_t spike_routing = cfg->enable_snn_spike_routing ? 1 : 0;
     uint8_t hyperbolic    = cfg->use_hyperbolic_embeddings ? 1 : 0;
     int32_t sampling_mode = cfg->sampling_mode;
+    uint8_t eos_enabled   = cfg->enable_eos_stopping ? 1 : 0;
 
     if (fwrite(&ext_block_size,           sizeof(uint32_t), 1, f) != 1) return -1;
     if (fwrite(&cfg->temperature,         sizeof(float),    1, f) != 1) return -1;
@@ -3349,14 +3417,21 @@ static int write_ext_config_v3(FILE* f, const snn_lang_config_t* cfg)
     if (fwrite(&cfg->activation_tau_ms,   sizeof(float),    1, f) != 1) return -1;
     if (fwrite(&hyperbolic,               sizeof(uint8_t),  1, f) != 1) return -1;
     if (fwrite(&sampling_mode,            sizeof(int32_t),  1, f) != 1) return -1;
+    /* V4 tail — EOS stopping knobs. */
+    if (fwrite(&eos_enabled,              sizeof(uint8_t),  1, f) != 1) return -1;
+    if (fwrite(&cfg->eos_min_activation,  sizeof(float),    1, f) != 1) return -1;
+    if (fwrite(&cfg->eos_min_confidence,  sizeof(float),    1, f) != 1) return -1;
     return 0;
 }
 
-/* Read the V3 ext block. Reads `block_size` bytes total — known fields are
- * decoded and any trailing bytes (future-extension fields) are skipped via
- * fseek so we remain forward-compatible with newer V3-format files. */
-static int read_ext_config_v3(FILE* f, uint32_t block_size,
-                              snn_lang_config_t* cfg_out)
+/* Read the V3/V4 ext block. Reads `block_size` bytes total — known fields
+ * are decoded based on the size hint, and any trailing bytes (future-
+ * extension fields) are skipped via fseek. Caller is expected to have
+ * pre-populated cfg_out with library defaults (or with the struct-blob
+ * contents) before calling — fields outside the on-disk block keep
+ * whatever the caller put there. */
+static int read_ext_config_v3_or_v4(FILE* f, uint32_t block_size,
+                                    snn_lang_config_t* cfg_out)
 {
     /* Hard upper bound: refuse pathologically large blocks (corruption guard). */
     if (block_size > 64u * 1024u) return -1;
@@ -3364,13 +3439,7 @@ static int read_ext_config_v3(FILE* f, uint32_t block_size,
     long start_pos = ftell(f);
     if (start_pos < 0) return -1;
 
-    /* Same field-by-field layout as write_ext_config_v3, in the same order. */
-    const uint32_t known_size =
-        sizeof(float) + sizeof(float) + sizeof(uint32_t) + sizeof(float)
-      + sizeof(float) + sizeof(float) + sizeof(uint8_t) + sizeof(float)
-      + sizeof(uint8_t) + sizeof(int32_t);
-
-    if (block_size < known_size) return -1; /* truncated / malformed */
+    if (block_size < (uint32_t)EXT_KNOWN_SIZE_V3) return -1; /* truncated */
 
     float    temperature, top_p, glove_blend, intent_persistence;
     float    word_feedback, activation_tau_ms;
@@ -3389,12 +3458,6 @@ static int read_ext_config_v3(FILE* f, uint32_t block_size,
     if (fread(&hyperbolic,         sizeof(uint8_t),  1, f) != 1) return -1;
     if (fread(&sampling_mode,      sizeof(int32_t),  1, f) != 1) return -1;
 
-    /* Forward-compat: skip any trailing bytes belonging to a newer V3+ writer. */
-    if (block_size > known_size) {
-        long want = start_pos + (long)block_size;
-        if (fseek(f, want, SEEK_SET) != 0) return -1;
-    }
-
     cfg_out->temperature              = temperature;
     cfg_out->top_p                    = top_p;
     cfg_out->produce_topk             = produce_topk;
@@ -3405,6 +3468,28 @@ static int read_ext_config_v3(FILE* f, uint32_t block_size,
     cfg_out->activation_tau_ms        = activation_tau_ms;
     cfg_out->use_hyperbolic_embeddings = (hyperbolic != 0);
     cfg_out->sampling_mode            = sampling_mode;
+
+    /* V4 tail — present when the writer emitted EOS knobs. Older V3-format
+     * writers stopped at EXT_KNOWN_SIZE_V3 — leave EOS at the library
+     * defaults the caller pre-populated. */
+    if (block_size >= (uint32_t)EXT_KNOWN_SIZE_V4) {
+        uint8_t eos_enabled;
+        float   eos_min_act, eos_min_conf;
+        if (fread(&eos_enabled,  sizeof(uint8_t), 1, f) != 1) return -1;
+        if (fread(&eos_min_act,  sizeof(float),   1, f) != 1) return -1;
+        if (fread(&eos_min_conf, sizeof(float),   1, f) != 1) return -1;
+        cfg_out->enable_eos_stopping = (eos_enabled != 0);
+        cfg_out->eos_min_activation  = eos_min_act;
+        cfg_out->eos_min_confidence  = eos_min_conf;
+    }
+
+    /* Forward-compat: skip any trailing bytes belonging to a newer writer. */
+    long want = start_pos + (long)block_size;
+    long here = ftell(f);
+    if (here < 0) return -1;
+    if (here < want) {
+        if (fseek(f, want, SEEK_SET) != 0) return -1;
+    }
     return 0;
 }
 
@@ -3425,6 +3510,14 @@ static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
     cfg->activation_tau_ms        = defaults.activation_tau_ms;
     cfg->use_hyperbolic_embeddings = defaults.use_hyperbolic_embeddings;
     cfg->sampling_mode            = defaults.sampling_mode;
+    /* EOS stopping fields are new — older V2/V3 on-disk blobs do not
+     * contain them in the ext block. Reset to library defaults so a
+     * stale sidecar can't accidentally enable EOS stopping with garbage
+     * thresholds. V4 readers overwrite these from the ext-block tail
+     * after this reset runs. */
+    cfg->enable_eos_stopping      = defaults.enable_eos_stopping;
+    cfg->eos_min_activation       = defaults.eos_min_activation;
+    cfg->eos_min_confidence       = defaults.eos_min_confidence;
 }
 
 int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* path)
@@ -3438,22 +3531,29 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
 
-    /* V3 header: magic, V3 sentinel, version. The sentinel disambiguates V3
-     * from V2 (where the next u32 after magic was max_concept_pops, always
-     * ≤ SNN_LANG_MAX_CONCEPT_POPS = 4096, never the 0xFFFFFFFE sentinel). */
+    /* V3/V4 header: magic, V3 sentinel (reused), version. The sentinel
+     * disambiguates V3+ from V2 (where the next u32 after magic was
+     * max_concept_pops, always ≤ SNN_LANG_MAX_CONCEPT_POPS = 4096, never
+     * the 0xFFFFFFFE sentinel). Bumped to V4 once the EOS-stopping ext
+     * tail was added; V3 readers handle V4 files via the ext_block_size
+     * forward-skip path. */
     const uint32_t v3_sentinel = SNN_LANG_BRIDGE_FILE_V3_SENTINEL;
-    const uint32_t version     = SNN_LANG_BRIDGE_FILE_VERSION_V3;
+    const uint32_t version     = SNN_LANG_BRIDGE_FILE_VERSION_V4;
     fwrite(&bridge->magic, sizeof(uint32_t), 1, f);
     fwrite(&v3_sentinel,   sizeof(uint32_t), 1, f);
     fwrite(&version,       sizeof(uint32_t), 1, f);
 
-    /* Full snn_lang_config_t blob (preserves all existing struct fields,
-     * including the new knobs — but the explicit ext block below is what
-     * the V3 loader treats as authoritative). */
+    /* Full snn_lang_config_t blob (preserves all existing struct fields
+     * for consumers that memcpy the whole struct). The explicit ext block
+     * below is what the loader treats as authoritative for the PA/MQ +
+     * EOS knobs — those are NEVER trusted from the raw blob, so a stale
+     * reader+writer pair cannot stack-smash even if the struct grows. */
     fwrite(&bridge->config, sizeof(snn_lang_config_t), 1, f);
 
-    /* Tier 2 #8: extended config block — PA/MQ knobs in a fixed layout. */
-    if (write_ext_config_v3(f, &bridge->config) != 0) {
+    /* Tier 2 #8 + EOS: extended config block — PA/MQ + EOS knobs in a
+     * fixed wire layout. Always writes V4 (size = EXT_KNOWN_SIZE_V4);
+     * V3 readers seek past the trailing 9 bytes. */
+    if (write_ext_config_v4(f, &bridge->config) != 0) {
         fclose(f);
         return -1;
     }
@@ -3515,7 +3615,7 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
     uint32_t file_version = SNN_LANG_BRIDGE_FILE_VERSION_V2;
 
     if (is_v3) {
-        /* V3: read explicit version, full config blob, and ext block. */
+        /* V3 or V4: read explicit version, full config blob, and ext block. */
         if (fread(&file_version, sizeof(uint32_t), 1, f) != 1) {
             fclose(f);
             return NULL;
@@ -3529,13 +3629,23 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
             fclose(f);
             return NULL;
         }
+        /* EOS knobs are NOT trusted from the raw struct blob — older V3
+         * files don't have them, and even V4 files leave the struct-blob
+         * copy redundant with the ext block. Pre-reset to defaults so a
+         * V3 file (whose ext block stops at EXT_KNOWN_SIZE_V3) leaves
+         * EOS at the library defaults, while a V4 file overwrites them
+         * authoritatively from the ext block. */
+        snn_lang_config_t cfg_defaults = snn_lang_config_default();
+        config.enable_eos_stopping = cfg_defaults.enable_eos_stopping;
+        config.eos_min_activation  = cfg_defaults.eos_min_activation;
+        config.eos_min_confidence  = cfg_defaults.eos_min_confidence;
         uint32_t ext_block_size = 0;
         if (fread(&ext_block_size, sizeof(uint32_t), 1, f) != 1) {
             fclose(f);
             return NULL;
         }
         /* Authoritative: explicit ext block overrides the struct-blob copy. */
-        if (read_ext_config_v3(f, ext_block_size, &config) != 0) {
+        if (read_ext_config_v3_or_v4(f, ext_block_size, &config) != 0) {
             fclose(f);
             return NULL;
         }
