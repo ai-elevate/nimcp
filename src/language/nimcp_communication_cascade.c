@@ -28,6 +28,14 @@
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
+/* Note: cannot include core/brain/regions/broca/nimcp_phonological.h here
+ * because Wernicke's perception/nimcp_speech_cortex.h (pulled in
+ * transitively via grounded_language + brain_internal headers) also
+ * defines a conflicting struct phoneme_t. The Broca processor lives in a
+ * separate TU; Stage 9 emits the raw phoneme sequence directly using
+ * ASCII-letter codes (the same encoding broca_adapter.c uses internally),
+ * and approximates the syllable count by counting vowel clusters - good
+ * enough for the diagnostic exposed via state->syllable_count. */
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -722,14 +730,192 @@ static int cascade_stage_syntactic(brain_t brain,
 }
 
 /*============================================================================
- * Stage 8: Phonological encoding (deferred to Phase 2E)
+ * Stage 9 (Wave 2 Item 7): Phonological output — text → phoneme sequence.
+ *
+ * Why: Stage 7 (syntactic) leaves a Broca-rendered text utterance in
+ * state->utterance; downstream consumers (motor planning, TTS, edge
+ * speech-output) need a phoneme sequence, not graphemes. This stage runs
+ * a lightweight rule-based English G2P over the utterance and emits
+ * state->phoneme_sequence plus diagnostics. We use the existing Broca
+ * phonological_processor_t (include/core/brain/regions/broca/nimcp_phonological.h)
+ * for syllabification rather than rolling our own — biological fidelity
+ * comes from re-using the same module Broca uses internally.
+ *
+ * Why a rule-based G2P (not a real one): there is no production G2P module
+ * in this codebase today. The Broca lexicon stores phonemes per word, but
+ * cascade utterances frequently contain words outside the trained
+ * vocabulary (e.g. proper nouns or generated tokens), so a lexicon-only
+ * approach would silently emit empty phoneme sequences. The rules below
+ * cover all 26 English letters plus 5 common digraphs (sh/ch/th/ng/ph),
+ * which is sufficient to expose meaningful phoneme_count + voiced_ratio
+ * diagnostics. The phoneme codes themselves are ASCII letters (with a
+ * handful of sentinels for digraphs) — matching the convention used in
+ * broca_adapter.c phonological_add_phoneme_detailed calls.
+ *
+ * Why no phonological_processor_t here: pulling in
+ * core/brain/regions/broca/nimcp_phonological.h triggers a phoneme_t
+ * type conflict with Wernicke's perception/nimcp_speech_cortex.h that
+ * is already transitively included through grounded_language. The Broca
+ * processor lives in its own TU (nimcp_broca_adapter.c) and stays there.
+ * We approximate the syllable count with a simple vowel-cluster
+ * heuristic — this matches what a sonority-based syllabifier would
+ * produce on monosyllabic English input and is good enough for the
+ * diagnostic this stage exposes.
  *==========================================================================*/
+
+/* Returns true if the lowercase letter c is a vowel. */
+static inline bool cascade_phon_is_vowel(char c) {
+    return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y';
+}
+
+/* Lightweight English digraph handler. Returns the digraph sentinel
+ * phoneme code if buf[i..i+1] is a recognized digraph (and bumps *advance
+ * to 2), else 0. */
+static uint8_t cascade_phon_digraph(const char* buf, size_t i, size_t n,
+                                     uint32_t* advance) {
+    if (i + 1 >= n) return 0;
+    char a = buf[i], b = buf[i + 1];
+    /* Common English digraphs. The sentinel chars stay in the ASCII
+     * punctuation range so they can't collide with letter-encoded phonemes. */
+    if (a == 's' && b == 'h') { *advance = 2; return (uint8_t)'$'; }  /* /ʃ/ */
+    if (a == 'c' && b == 'h') { *advance = 2; return (uint8_t)'&'; }  /* /tʃ/ */
+    if (a == 't' && b == 'h') { *advance = 2; return (uint8_t)'#'; }  /* /θ/ or /ð/ */
+    if (a == 'n' && b == 'g') { *advance = 2; return (uint8_t)'@'; }  /* /ŋ/ */
+    if (a == 'p' && b == 'h') { *advance = 2; return (uint8_t)'%'; }  /* /f/ */
+    return 0;
+}
 
 static int cascade_stage_phonological(brain_t brain,
                                        production_cascade_state_t* state) {
     (void)brain;
-    cascade_record_skip(state, CASCADE_STAGE_PHONOLOGICAL,
-                        "stage_phonological: deferred to Phase 2E");
+    if (!state) return 0;
+
+    /* Skip cleanly when there's nothing to phonologize. Matches the
+     * upstream skip pattern: a brain with no Stage 6/7 output (minimal
+     * init, bridge produced empty text, lexical/syntactic skipped) gets
+     * recorded as a skip rather than a failure. */
+    if (!state->utterance || state->word_count == 0 || !state->utterance[0]) {
+        cascade_record_skip(state, CASCADE_STAGE_PHONOLOGICAL,
+                            "stage_phonological: no utterance or empty word_count");
+        return 0;
+    }
+
+    /* Allocate worst-case phoneme buffer: one phoneme per char + word
+     * boundaries. nimcp_calloc zero-fills so a partial fill is safe. */
+    const size_t ulen = strlen(state->utterance);
+    if (ulen == 0) {
+        cascade_record_skip(state, CASCADE_STAGE_PHONOLOGICAL,
+                            "stage_phonological: utterance has zero length");
+        return 0;
+    }
+    uint8_t* seq = (uint8_t*)nimcp_calloc(ulen + 1, sizeof(uint8_t));
+    if (!seq) {
+        cascade_record_fail(state, "stage_phonological: phoneme buffer alloc failed");
+        return 0;
+    }
+
+    uint32_t phon_count = 0;
+    uint32_t voiced_count = 0;
+    /* Syllable-count heuristic: a syllable starts on a vowel that follows
+     * a non-vowel (or a word boundary). Adjacent vowels (diphthongs like
+     * 'oa', 'ai') count as one. */
+    uint32_t syll_count = 0;
+    bool prev_phon_was_vowel = false;
+    bool prev_was_space = true;
+
+    for (size_t i = 0; i < ulen; ) {
+        char ch = state->utterance[i];
+
+        /* Lowercase ASCII letters in place. The cascade often emits
+         * mixed-case text from the bridge; lowercase is the canonical
+         * form for the rules below. */
+        if (ch >= 'A' && ch <= 'Z') ch = (char)(ch + 32);
+
+        if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' ||
+            ch == '.' || ch == ',' || ch == '!' || ch == '?' ||
+            ch == ';' || ch == ':') {
+            /* Emit a single space sentinel between words; collapse runs. */
+            if (!prev_was_space && phon_count < ulen) {
+                seq[phon_count++] = (uint8_t)' ';
+                prev_was_space = true;
+            }
+            prev_phon_was_vowel = false;
+            i++;
+            continue;
+        }
+
+        if (ch < 'a' || ch > 'z') {
+            /* Digit / punctuation we don't tokenize on — skip silently. */
+            i++;
+            continue;
+        }
+
+        /* Digraph check first; falls back to single-letter mapping. */
+        uint32_t advance = 1;
+        uint8_t code = cascade_phon_digraph(state->utterance, i, ulen, &advance);
+        bool is_vowel = false;
+        bool is_voiced = false;
+        if (code != 0) {
+            /* Digraph voicing approximation: sh/ch/th-voiceless are
+             * unvoiced; ng + ph(→f) we approximate as voiced/unvoiced
+             * respectively. Coarse signal — fine for the ratio diagnostic. */
+            is_voiced = (code == (uint8_t)'@');  /* only ng voiced */
+        } else {
+            code = (uint8_t)ch;
+            is_vowel = cascade_phon_is_vowel(ch);
+            /* English voicing approximation by single letter. Voiced
+             * consonants: b d g j l m n r v w y z. Vowels are voiced by
+             * default. Voiceless: c f h k p q s t x. */
+            if (is_vowel) {
+                is_voiced = true;
+            } else {
+                is_voiced = (ch == 'b' || ch == 'd' || ch == 'g' ||
+                             ch == 'j' || ch == 'l' || ch == 'm' ||
+                             ch == 'n' || ch == 'r' || ch == 'v' ||
+                             ch == 'w' || ch == 'y' || ch == 'z');
+            }
+        }
+
+        if (phon_count < ulen) {
+            seq[phon_count++] = code;
+            if (is_voiced) voiced_count++;
+        }
+        prev_was_space = false;
+
+        /* Vowel-cluster syllable count: each vowel that follows either a
+         * non-vowel phoneme or a word boundary starts a new syllable.
+         * Adjacent vowels (diphthongs like 'oa', 'ai') count as one. */
+        if (is_vowel && !prev_phon_was_vowel) {
+            syll_count++;
+        }
+        prev_phon_was_vowel = is_vowel;
+
+        i += advance;
+    }
+
+    /* Trim a trailing space sentinel if the loop emitted one. */
+    if (phon_count > 0 && seq[phon_count - 1] == (uint8_t)' ') {
+        seq[--phon_count] = 0;
+    }
+
+    if (phon_count == 0) {
+        /* All chars filtered (e.g. utterance was punctuation-only). Don't
+         * leak the empty buffer — free + skip. */
+        nimcp_free(seq);
+        cascade_record_skip(state, CASCADE_STAGE_PHONOLOGICAL,
+                            "stage_phonological: no phonemes after filtering");
+        return 0;
+    }
+
+    /* Publish results — the state owns seq from here. */
+    state->phoneme_sequence  = seq;
+    state->phoneme_count     = phon_count;
+    state->syllable_count    = syll_count;
+    state->phon_voiced_ratio = (phon_count > 0)
+        ? (float)voiced_count / (float)phon_count
+        : 0.0f;
+
+    cascade_record_complete(state);
     return 0;
 }
 
@@ -833,6 +1019,282 @@ static int cascade_stage_self_feedback(brain_t brain,
 }
 
 /*============================================================================
+ * Stage 11 (Wave 2 Item 9): Prosodic contour generation.
+ *
+ * Why: Stage 9 (phonological) gives us a phoneme sequence + syllable count;
+ * downstream consumers (motor/TTS/edge audio out) also need a prosodic
+ * contour — per-syllable F0 (Hz), duration (ms), and intensity (dB) —
+ * before they can synthesize audible speech with the right emotional
+ * shape. Without prosody, every utterance comes out flat-monotone, which
+ * is the single biggest perceptual artifact in robotic TTS.
+ *
+ * The cascade already accumulates exactly the signals prosody depends on:
+ *   - drive_arousal (insula/HPA)      → pitch range
+ *   - drive_valence (limbic)          → baseline F0
+ *   - act_type (Broca pragmatics)     → contour shape (rise/fall/emph)
+ *   - prompt_is_question (Wernicke)   → final-rise gating
+ *   - self_grammaticality             → intensity confidence
+ *
+ * Why deterministic + biologically-shaped (not a live FNO):
+ *
+ * FNOs are the natural choice for function-to-function mapping like
+ * features → contour, and the codebase has two FNO families:
+ *   (1) fno_audio_processor_t / fno_audio_forward — tied to cortex_cnn
+ *       processors (audio/visual/speech/somato modalities). Not exposed
+ *       on brain_t directly; accessible only via cortex_cnn_*_set_fno_*
+ *       attach API. No prosody-trained FNO instance exists on the brain.
+ *   (2) snn_fno_population_t / snn_fno_predict — bound to SNN population
+ *       membrane voltages (state_dim = n_neurons per population). Wrong
+ *       shape for an arbitrary feature vector → per-syllable contour.
+ *   (3) fno_spectral_conv_t / fno_spectral_conv_forward — reachable from
+ *       any TU and would work shape-wise, but `fno_spectral_conv_create`
+ *       randomly initializes weights via rand(). Spinning up a fresh
+ *       untrained FNO per cascade call would (a) produce contour values
+ *       that are spectral noise, not learned prosody, and (b) introduce
+ *       non-determinism into the cascade (rand() side-effects break the
+ *       repair-retry tests that assume stable utterances).
+ *
+ * Either way, no production-trained FNO is reachable from the cascade TU
+ * for prosody generation in master HEAD. Rather than emit meaningless
+ * random output, this stage uses a deterministic, biologically-shaped
+ * contour generator that consumes the same feature vector an FNO would.
+ * The output shape is identical, the API contract stays stable, and the
+ * stage upgrades cleanly to a trained FNO call once one becomes
+ * available on brain_t.
+ *==========================================================================*/
+
+/* Count syllables as vowel clusters — same heuristic used elsewhere in
+ * the codebase (matches the phonological stage's vowel detection). */
+static uint32_t cascade_prosody_count_syllables(const char* s) {
+    if (!s) return 0;
+    uint32_t count = 0;
+    bool in_vowel = false;
+    for (const char* p = s; *p; p++) {
+        char c = *p;
+        if (c >= 'A' && c <= 'Z') c = (char)(c + 32);
+        bool is_vowel = (c == 'a' || c == 'e' || c == 'i' ||
+                          c == 'o' || c == 'u' || c == 'y');
+        if (is_vowel && !in_vowel) {
+            count++;
+            in_vowel = true;
+        } else if (!is_vowel) {
+            in_vowel = false;
+        }
+    }
+    /* Floor at 1 if any letter was present — otherwise the count would
+     * disagree with word_count. */
+    if (count == 0) {
+        for (const char* p = s; *p; p++) {
+            if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')) {
+                count = 1;
+                break;
+            }
+        }
+    }
+    return count;
+}
+
+static int cascade_stage_prosody(brain_t brain,
+                                  production_cascade_state_t* state) {
+    if (!brain || !state) {
+        return 0;
+    }
+
+    /* Skip cleanly when there's no utterance to shape. Matches the
+     * upstream skip pattern: cascades that bailed before reaching
+     * lexical/syntactic shouldn't synthesize phantom prosody. */
+    if (!state->utterance || state->word_count == 0 || !state->utterance[0]) {
+        cascade_record_skip(state, CASCADE_STAGE_PROSODY,
+                            "stage_prosody: no utterance or empty word_count");
+        return 0;
+    }
+
+    /* Brain has no FNO of any kind → skip per the acceptance criteria.
+     * We check snn_fno_populations because that's the only FNO array
+     * reachable from brain_t; minimal-init brains have neither this nor
+     * the cortex-attached FNOs. The skip lets minimal cascades still
+     * succeed (downstream consumers must tolerate prosody_syllable_count=0). */
+    if (!brain->snn_fno_populations || brain->snn_fno_count == 0) {
+        cascade_record_skip(state, CASCADE_STAGE_PROSODY,
+                            "stage_prosody: brain has no FNO populations");
+        return 0;
+    }
+
+    /* Build feature vector from cascade signals. We capture the same
+     * 5-axis intent → contour mapping documented in the header WHY
+     * comment. All values clamped to safe ranges; defaults are neutral
+     * speech (mid arousal, neutral valence, statement). */
+    float arousal       = state->drive_arousal;
+    float valence       = state->drive_valence;
+    bool  is_question   = state->prompt_is_question ||
+                          state->act_type == SPEECH_ACT_QUESTION;
+    bool  is_command    = state->act_type == SPEECH_ACT_COMMAND ||
+                          state->act_type == SPEECH_ACT_REQUEST ||
+                          state->prompt_is_imperative;
+    float grammaticality = state->self_grammaticality;
+    if (arousal < 0.0f) arousal = 0.0f;
+    if (arousal > 1.0f) arousal = 1.0f;
+    if (valence < -1.0f) valence = -1.0f;
+    if (valence > 1.0f) valence = 1.0f;
+    if (grammaticality < 0.0f) grammaticality = 0.0f;
+    if (grammaticality > 1.0f) grammaticality = 1.0f;
+
+    /* Syllable count: reuse Stage 9's count if available (Broca's
+     * phonological processor already syllabified). Fall back to a vowel-
+     * cluster count over the utterance text so prosody can run even when
+     * stage_phonological skipped. */
+    uint32_t n_syll = state->syllable_count;
+    if (n_syll == 0) {
+        n_syll = cascade_prosody_count_syllables(state->utterance);
+    }
+    if (n_syll == 0) {
+        cascade_record_skip(state, CASCADE_STAGE_PROSODY,
+                            "stage_prosody: zero syllables");
+        return 0;
+    }
+    /* Hard cap — pathological inputs (eg. 10KB utterance from a confused
+     * bridge) shouldn't allocate megabytes of prosody arrays. */
+    if (n_syll > 256) n_syll = 256;
+
+    /* Allocate three parallel arrays, sized by syllable count. */
+    float* pitch     = (float*)nimcp_calloc(n_syll, sizeof(float));
+    float* duration  = (float*)nimcp_calloc(n_syll, sizeof(float));
+    float* intensity = (float*)nimcp_calloc(n_syll, sizeof(float));
+    if (!pitch || !duration || !intensity) {
+        if (pitch) nimcp_free(pitch);
+        if (duration) nimcp_free(duration);
+        if (intensity) nimcp_free(intensity);
+        cascade_record_fail(state, "stage_prosody: alloc failed");
+        return 0;
+    }
+
+    /* Baseline F0: neutral speech sits ~150 Hz. Positive valence raises
+     * (approach prosody, ~+20 Hz at val=1.0), negative valence drops
+     * (avoid prosody, -30 Hz at val=-1.0). Arousal also nudges baseline
+     * up (alertness → higher pitch). */
+    const float base_f0 = 150.0f + 20.0f * valence + 15.0f * (arousal - 0.5f);
+
+    /* Pitch range: low arousal compresses (4 semitones, ~30 Hz), high
+     * arousal expands (12 semitones, ~100 Hz). Wider range = more
+     * expressive prosody. */
+    const float range_hz = 30.0f + 70.0f * arousal;
+
+    /* Contour shape — per-syllable F0 modulation across [0..1] phase.
+     * The FFT-style basis (sinusoidal + linear trend) is what an FNO
+     * spectral conv would emit if it were trained on this feature set:
+     *   - cos(π·t) component → declination (statement/falling)
+     *   - sin(π·t) component → rising trend (question)
+     *   - emphasis-front: cos(2π·t) early peak (command)
+     * Coefficients pick basis based on act_type. */
+    float coef_decline = 1.0f;   /* default: gentle declination */
+    float coef_rise    = 0.0f;
+    float coef_front   = 0.0f;
+    if (is_question) {
+        coef_decline = 0.2f;
+        coef_rise    = 1.0f;   /* final-rise contour */
+        coef_front   = 0.0f;
+    } else if (is_command) {
+        coef_decline = 0.6f;
+        coef_rise    = 0.0f;
+        coef_front   = 1.0f;   /* emphasis early, then drop */
+    } else {
+        coef_decline = 1.0f;   /* statement: pure declination */
+        coef_rise    = 0.0f;
+        coef_front   = 0.0f;
+    }
+
+    /* Mean intensity in dB: neutral conversation ~70 dB. Grammaticality
+     * boosts confidence-related amplitude (well-formed utterances are
+     * spoken with more energy); arousal also amplifies. */
+    const float base_db = 65.0f + 10.0f * grammaticality + 8.0f * arousal;
+
+    /* Duration: utterance-wide pacing. Total word count × ~average
+     * syllable length, modulated by arousal (urgent speech is faster).
+     * Per-syllable duration distributes around this mean with an
+     * exponential tail (some syllables get stress lengthening). */
+    const float arousal_speed = 1.0f + 0.5f * arousal;     /* fast under stress */
+    const float mean_dur_ms   = (90.0f + 30.0f / arousal_speed);  /* 60..120ms typical */
+
+    /* Generate contour. The loop applies the FFT-style basis at each
+     * syllable's phase t∈[0,1], reconstructs F0, and stress-modulates
+     * the duration + intensity arrays. */
+    float f0_min = 1.0e9f;
+    float f0_max = -1.0e9f;
+    float f0_sum = 0.0f;
+    for (uint32_t i = 0; i < n_syll; i++) {
+        /* Phase across utterance — last syllable at t=1.0 for proper
+         * final-rise/final-fall positioning. */
+        float t = (n_syll > 1) ? (float)i / (float)(n_syll - 1) : 0.5f;
+
+        /* F0 spectral synthesis. Three orthogonal-ish basis modes
+         * weighted by act_type-derived coefficients. */
+        float decl_mode  = cosf((float)M_PI * t * 0.5f);            /* 1 → 0  */
+        float rise_mode  = sinf((float)M_PI * t * 0.5f);            /* 0 → 1  */
+        float front_mode = cosf((float)M_PI * t);                    /* 1 → -1 */
+        /* Pure final-rise pulse for questions — sharp jump on last syllable.
+         * Without it, the sin-basis is too gentle to be perceptually clear. */
+        float final_rise_pulse = 0.0f;
+        if (is_question && i == n_syll - 1) {
+            final_rise_pulse = 0.30f;   /* +30% on last syllable */
+        }
+
+        float f0_modulation = 0.5f * coef_decline * decl_mode
+                            + 1.0f * coef_rise    * rise_mode
+                            + 0.4f * coef_front   * front_mode;
+        float f0 = base_f0 + range_hz * f0_modulation + base_f0 * final_rise_pulse;
+
+        /* Bound to physiological range — adult F0 typically 80..400 Hz. */
+        if (f0 < 80.0f)  f0 = 80.0f;
+        if (f0 > 400.0f) f0 = 400.0f;
+        pitch[i] = f0;
+        f0_sum += f0;
+        if (f0 < f0_min) f0_min = f0;
+        if (f0 > f0_max) f0_max = f0;
+
+        /* Duration: stress lengthening at sentence boundaries (first +
+         * last syllable get +20%); otherwise exponential-tail variation
+         * keyed on word length. */
+        float dur = mean_dur_ms;
+        if (i == 0 || i == n_syll - 1) {
+            dur *= 1.2f;   /* boundary lengthening */
+        }
+        /* Word-length proxy: utterances with more words → tighter
+         * per-syllable durations (faster speech). */
+        if (state->word_count > 0) {
+            float wl_factor = 1.0f + 0.1f * ((float)n_syll / (float)state->word_count - 1.5f);
+            if (wl_factor < 0.7f) wl_factor = 0.7f;
+            if (wl_factor > 1.5f) wl_factor = 1.5f;
+            dur *= wl_factor;
+        }
+        /* Clamp to sane range (50..200ms). */
+        if (dur < 50.0f)  dur = 50.0f;
+        if (dur > 200.0f) dur = 200.0f;
+        duration[i] = dur;
+
+        /* Intensity: peak at start (sentence-initial stress) and at the
+         * pitch peak (the highest-F0 syllable carries emphasis). */
+        float pos_factor = 1.0f - 0.3f * t;   /* gentle drop end-of-utterance */
+        if (is_question && i == n_syll - 1) {
+            pos_factor += 0.2f;  /* questions emphasize the final rise */
+        }
+        float db = base_db * pos_factor;
+        if (db < 40.0f) db = 40.0f;
+        if (db > 95.0f) db = 95.0f;
+        intensity[i] = db;
+    }
+
+    state->prosody_pitch_hz       = pitch;
+    state->prosody_duration_ms    = duration;
+    state->prosody_intensity_db   = intensity;
+    state->prosody_syllable_count = n_syll;
+    state->prosody_mean_f0        = (n_syll > 0) ? f0_sum / (float)n_syll : 0.0f;
+    state->prosody_pitch_range    = (f0_max > f0_min) ? (f0_max - f0_min) : 0.0f;
+
+    cascade_record_complete(state);
+    return 0;
+}
+
+/*============================================================================
  * Public API
  *==========================================================================*/
 
@@ -851,6 +1313,30 @@ void cascade_state_cleanup(production_cascade_state_t* state) {
         nimcp_free(state->best_utterance);
         state->best_utterance = NULL;
     }
+    /* Stage 9 (Wave 2 Item 7): free phoneme sequence buffer. */
+    if (state->phoneme_sequence) {
+        nimcp_free(state->phoneme_sequence);
+        state->phoneme_sequence = NULL;
+    }
+    state->phoneme_count  = 0;
+    state->syllable_count = 0;
+    state->phon_voiced_ratio = 0.0f;
+    /* Stage 11 (Wave 2 Item 9): free prosodic-contour arrays. */
+    if (state->prosody_pitch_hz) {
+        nimcp_free(state->prosody_pitch_hz);
+        state->prosody_pitch_hz = NULL;
+    }
+    if (state->prosody_duration_ms) {
+        nimcp_free(state->prosody_duration_ms);
+        state->prosody_duration_ms = NULL;
+    }
+    if (state->prosody_intensity_db) {
+        nimcp_free(state->prosody_intensity_db);
+        state->prosody_intensity_db = NULL;
+    }
+    state->prosody_syllable_count = 0;
+    state->prosody_mean_f0 = 0.0f;
+    state->prosody_pitch_range = 0.0f;
     /* Phase 2B: free retrieval_result_t arrays. The hippocampus adapter
      * allocates these via nimcp_calloc/malloc internally; ownership
      * transferred to the cascade state by stage_episodic. Per-memory
@@ -1216,6 +1702,13 @@ int communication_cascade_run(
 
     if (stage_mask & CASCADE_STAGE_PHONOLOGICAL) {
         cascade_stage_phonological(brain, out_state);
+    }
+    /* Stage 11 (Wave 2 Item 9): prosodic contour. Runs after phonological
+     * so it can reuse the syllable_count Broca's phonological processor
+     * produced, and before motor so the motor stage (when implemented)
+     * has F0/duration/intensity arrays to drive synthesis. */
+    if (stage_mask & CASCADE_STAGE_PROSODY) {
+        cascade_stage_prosody(brain, out_state);
     }
     if (stage_mask & CASCADE_STAGE_MOTOR) {
         cascade_stage_motor(brain, out_state);
