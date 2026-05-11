@@ -1658,6 +1658,155 @@ int nimcp_brain_produce_cascade_diag_impl(
     return rc;
 }
 
+/* Full diagnostic snapshot — see nimcp_cascade_diag_full_t in the header.
+ * Used by Python and daemon RPC to expose every per-stage diagnostic
+ * field plus heap-copied per-syllable / per-phoneme arrays. Caller frees
+ * the array out-pointers with nimcp_free. */
+int nimcp_brain_produce_cascade_diag_full_impl(
+    brain_t brain,
+    const char* prompt_or_null,
+    char* out_utterance,
+    uint32_t out_text_max,
+    char* out_best_utterance,
+    uint32_t out_best_max,
+    nimcp_cascade_diag_full_t* out,
+    uint8_t** out_phoneme_sequence,
+    float**   out_prosody_pitch_hz,
+    float**   out_prosody_duration_ms,
+    float**   out_prosody_intensity_db)
+{
+    if (out)                         memset(out, 0, sizeof(*out));
+    if (out_phoneme_sequence)        *out_phoneme_sequence       = NULL;
+    if (out_prosody_pitch_hz)        *out_prosody_pitch_hz       = NULL;
+    if (out_prosody_duration_ms)     *out_prosody_duration_ms    = NULL;
+    if (out_prosody_intensity_db)    *out_prosody_intensity_db   = NULL;
+    if (out_utterance && out_text_max > 0)             out_utterance[0]      = '\0';
+    if (out_best_utterance && out_best_max > 0)        out_best_utterance[0] = '\0';
+
+    if (!brain || !out) return -1;
+
+    production_cascade_state_t state;
+    int rc = communication_cascade_run(brain, prompt_or_null,
+                                         CASCADE_STAGE_ALL, &state);
+
+    if (rc == 0) {
+        if (out_utterance && out_text_max > 0) {
+            const char* src = state.utterance ? state.utterance : "";
+            size_t n = strlen(src);
+            if (n >= out_text_max) n = out_text_max - 1;
+            memcpy(out_utterance, src, n);
+            out_utterance[n] = '\0';
+        }
+        if (out_best_utterance && out_best_max > 0 && state.best_utterance) {
+            size_t n = strlen(state.best_utterance);
+            if (n >= out_best_max) n = out_best_max - 1;
+            memcpy(out_best_utterance, state.best_utterance, n);
+            out_best_utterance[n] = '\0';
+        }
+
+        /* Stage 0 — Wernicke input */
+        out->wernicke_parsed      = state.wernicke_parsed      ? 1 : 0;
+        out->prompt_is_question   = state.prompt_is_question   ? 1 : 0;
+        out->prompt_is_imperative = state.prompt_is_imperative ? 1 : 0;
+        out->prompt_is_garden_path= state.prompt_is_garden_path? 1 : 0;
+        out->prompt_word_count    = state.prompt_word_count;
+        out->prompt_complexity    = state.prompt_complexity;
+        memcpy(out->prompt_subject, state.prompt_subject, sizeof(out->prompt_subject));
+        memcpy(out->prompt_verb,    state.prompt_verb,    sizeof(out->prompt_verb));
+        memcpy(out->prompt_object,  state.prompt_object,  sizeof(out->prompt_object));
+
+        /* Stage 1 — Drive */
+        out->drive_magnitude = state.drive_magnitude;
+        out->drive_valence   = state.drive_valence;
+        out->drive_arousal   = state.drive_arousal;
+        out->dominant_drive  = state.dominant_drive;
+
+        /* Stage 2 — Goal + pragmatics */
+        out->act_type              = (uint8_t)state.act_type;
+        out->pragmatic_is_indirect = state.pragmatic_is_indirect ? 1 : 0;
+        out->topic_count           = state.topic_count;
+        out->goal_priority         = state.goal_priority;
+
+        /* Stage 3 — Listener */
+        out->listener_known              = state.listener_known ? 1 : 0;
+        out->listener_belief_confidence  = state.listener_belief_confidence;
+        out->listener_emotion_valence    = state.listener_emotion_valence;
+        out->audience_familiarity        = state.audience_familiarity;
+
+        /* Stage 4 — Episodic */
+        out->episodic_count = state.episodic_count;
+
+        /* Stage 5 — Content */
+        out->content_dim        = state.content_dim;
+        out->content_confidence = state.content_confidence;
+
+        /* Stages 6-7 */
+        out->word_count         = state.word_count;
+        out->fluency            = state.fluency;
+        out->syntactic_validity = state.syntactic_validity;
+
+        /* Stage 8 — Self-comp */
+        out->self_parsed         = state.self_parsed ? 1 : 0;
+        out->self_complexity     = state.self_complexity;
+        out->self_match          = state.self_match;
+        out->self_grammaticality = state.self_grammaticality;
+
+        /* Stage 9 — Phonological (scalar + array copy) */
+        out->phoneme_count     = state.phoneme_count;
+        out->syllable_count    = state.syllable_count;
+        out->phon_voiced_ratio = state.phon_voiced_ratio;
+        if (out_phoneme_sequence && state.phoneme_sequence && state.phoneme_count > 0) {
+            uint8_t* copy = (uint8_t*)nimcp_malloc(state.phoneme_count * sizeof(uint8_t));
+            if (copy) {
+                memcpy(copy, state.phoneme_sequence,
+                       state.phoneme_count * sizeof(uint8_t));
+                *out_phoneme_sequence = copy;
+            }
+        }
+
+        /* Stage 12 — Speech repair */
+        out->repair_attempts  = state.repair_attempts;
+        out->best_self_match  = state.best_self_match;
+
+        /* Stage 13 — Prosody (scalar + array copies) */
+        out->prosody_syllable_count = state.prosody_syllable_count;
+        out->prosody_mean_f0        = state.prosody_mean_f0;
+        out->prosody_pitch_range    = state.prosody_pitch_range;
+        if (state.prosody_syllable_count > 0) {
+            uint32_t n = state.prosody_syllable_count;
+            if (out_prosody_pitch_hz && state.prosody_pitch_hz) {
+                float* copy = (float*)nimcp_malloc(n * sizeof(float));
+                if (copy) { memcpy(copy, state.prosody_pitch_hz, n * sizeof(float));
+                            *out_prosody_pitch_hz = copy; }
+            }
+            if (out_prosody_duration_ms && state.prosody_duration_ms) {
+                float* copy = (float*)nimcp_malloc(n * sizeof(float));
+                if (copy) { memcpy(copy, state.prosody_duration_ms, n * sizeof(float));
+                            *out_prosody_duration_ms = copy; }
+            }
+            if (out_prosody_intensity_db && state.prosody_intensity_db) {
+                float* copy = (float*)nimcp_malloc(n * sizeof(float));
+                if (copy) { memcpy(copy, state.prosody_intensity_db, n * sizeof(float));
+                            *out_prosody_intensity_db = copy; }
+            }
+        }
+
+        /* Stage 14 — Self-train */
+        out->train_applied = state.train_applied ? 1 : 0;
+        out->train_reward  = state.train_reward;
+
+        /* Diagnostics */
+        out->stages_completed = state.stages_completed;
+        out->stages_failed    = state.stages_failed;
+        out->stages_skipped   = state.stages_skipped;
+        memcpy(out->failure_reason, state.failure_reason,
+               sizeof(out->failure_reason));
+    }
+
+    cascade_state_cleanup(&state);
+    return rc;
+}
+
 /* Public API impl called from nimcp_part_core.c — fills caller-provided
  * buffers, hides the production_cascade_state_t from the public header.
  * Returns 0 on success; -1 on fatal failure. */

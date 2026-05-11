@@ -332,6 +332,129 @@ int cascade_apply_self_train_reward(
     float lr_scale,
     float* out_reward);
 
+/* ---------- Full diagnostic snapshot for Python/RPC introspection. ----------
+ *
+ * The legacy diag impl exposes only 8 of ~50 cascade fields. Trainers and
+ * monitoring scripts need the rest: per-stage drives, listener inference,
+ * episodic/content state, self_match, repair retries, prosody contours,
+ * train reward, failure reasons. This struct captures ALL scalars; the
+ * companion impl ALSO malloc-copies the per-syllable / per-phoneme arrays
+ * into out-pointers that the caller frees.
+ *
+ * Field order is contiguous-by-stage for readability — it is NOT an ABI
+ * contract. Callers should access by name. New fields APPEND at the end. */
+typedef struct {
+    /* Stage 0 — Wernicke input comprehension */
+    int      wernicke_parsed;
+    int      prompt_is_question;
+    int      prompt_is_imperative;
+    int      prompt_is_garden_path;
+    uint32_t prompt_word_count;
+    float    prompt_complexity;
+    char     prompt_subject[32];
+    char     prompt_verb[32];
+    char     prompt_object[32];
+
+    /* Stage 1 — Drive */
+    float    drive_magnitude;
+    float    drive_valence;
+    float    drive_arousal;
+    uint8_t  dominant_drive;
+
+    /* Stage 2 — Goal + Pragmatics */
+    uint8_t  act_type;
+    int      pragmatic_is_indirect;
+    uint32_t topic_count;
+    float    goal_priority;
+
+    /* Stage 3 — Listener (ToM) */
+    int      listener_known;
+    float    listener_belief_confidence;
+    float    listener_emotion_valence;
+    float    audience_familiarity;
+
+    /* Stage 4 — Episodic */
+    uint32_t episodic_count;
+
+    /* Stage 5 — Content intent */
+    uint32_t content_dim;
+    float    content_confidence;
+
+    /* Stages 6-7 — Lexical + Syntactic */
+    uint32_t word_count;
+    float    fluency;
+    float    syntactic_validity;
+
+    /* Stage 8 — Self-comprehension */
+    int      self_parsed;
+    float    self_complexity;
+    float    self_match;
+    float    self_grammaticality;
+
+    /* Stage 9 — Phonological */
+    uint32_t phoneme_count;
+    uint32_t syllable_count;
+    float    phon_voiced_ratio;
+
+    /* Stage 12 — Speech repair */
+    uint32_t repair_attempts;
+    float    best_self_match;
+
+    /* Stage 13 — Prosody (scalar summaries; arrays in out-pointers below) */
+    uint32_t prosody_syllable_count;
+    float    prosody_mean_f0;
+    float    prosody_pitch_range;
+
+    /* Stage 14 — Self-train */
+    int      train_applied;
+    float    train_reward;
+
+    /* Diagnostics */
+    uint32_t stages_completed;
+    uint32_t stages_failed;
+    uint32_t stages_skipped;
+    char     failure_reason[128];
+} nimcp_cascade_diag_full_t;
+
+/**
+ * @brief Run cascade and snapshot ALL state into the diag struct + arrays.
+ *
+ * @param brain                Brain handle (internal pointer).
+ * @param prompt_or_null       Same as communication_cascade_run.
+ * @param out_utterance        Caller buffer for the final utterance text;
+ *                             may be NULL if caller doesn't need it.
+ * @param out_text_max         Capacity of out_utterance.
+ * @param out_best_utterance   Caller buffer for the speech-repair best
+ *                             candidate (NULL if no repair fired).
+ * @param out_best_max         Capacity of out_best_utterance.
+ * @param out                  Populated with all scalars on rc=0.
+ * @param out_phoneme_sequence If non-NULL, set to a heap-allocated copy
+ *                             of state->phoneme_sequence sized
+ *                             out->phoneme_count bytes. **Caller frees
+ *                             via nimcp_free**. Set to NULL when
+ *                             phoneme_count is 0.
+ * @param out_prosody_pitch_hz / out_prosody_duration_ms / out_prosody_intensity_db
+ *                             Same ownership semantics — heap-allocated
+ *                             arrays sized out->prosody_syllable_count
+ *                             floats each. **Caller frees via nimcp_free**.
+ *                             NULL when prosody_syllable_count is 0.
+ *
+ * @return 0 on success; -1 on fatal failure. On failure all out-arrays
+ *         remain NULL and the struct is zero-initialized.
+ */
+int nimcp_brain_produce_cascade_diag_full_impl(
+    brain_t brain,
+    const char* prompt_or_null,
+    char* out_utterance,
+    uint32_t out_text_max,
+    char* out_best_utterance,
+    uint32_t out_best_max,
+    nimcp_cascade_diag_full_t* out,
+    uint8_t** out_phoneme_sequence,
+    float**   out_prosody_pitch_hz,
+    float**   out_prosody_duration_ms,
+    float**   out_prosody_intensity_db);
+
 #ifdef __cplusplus
 }
 #endif

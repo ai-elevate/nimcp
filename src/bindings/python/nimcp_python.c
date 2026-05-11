@@ -3408,47 +3408,215 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
         return NULL;
     }
 
-    /* Call the diagnostic impl directly — it's defined in the cascade
-     * source and works on the internal brain pointer. */
-    extern int nimcp_brain_produce_cascade_diag_impl(
+    /* Call the FULL diagnostic impl — surfaces every cascade-state field
+     * (drives, listener, episodic, content, phoneme array, prosody arrays,
+     * speech-repair best candidate, self-train reward, stage masks, failure
+     * reason). Caller frees the heap-owned arrays the impl returns. */
+    struct nimcp_cascade_diag_full_t_fwd; /* opaque-style forward decl */
+    extern int nimcp_brain_produce_cascade_diag_full_impl(
         struct brain_struct* brain,
         const char* prompt_or_null,
-        char* out_utterance,
-        uint32_t out_text_max,
-        uint32_t* out_word_count,
-        float* out_confidence,
-        float* out_self_match,
-        float* out_self_grammaticality,
-        int* out_prompt_is_question,
-        int* out_prompt_is_imperative,
-        int* out_wernicke_parsed);
+        char* out_utterance, uint32_t out_text_max,
+        char* out_best_utterance, uint32_t out_best_max,
+        void* out_struct, /* nimcp_cascade_diag_full_t* */
+        uint8_t** out_phoneme_sequence,
+        float** out_prosody_pitch_hz,
+        float** out_prosody_duration_ms,
+        float** out_prosody_intensity_db);
+    extern void nimcp_free(void*);
+
+    /* Mirror the struct layout from nimcp_communication_cascade.h. Must
+     * stay in sync if the header struct changes — kept here to avoid
+     * pulling the full cascade header chain into the Python TU. The
+     * cascade impl will fail-compile if a static_assert catches drift;
+     * for now there isn't one but the field count is small enough that
+     * a manual mirror is tractable. */
+    typedef struct {
+        int      wernicke_parsed;
+        int      prompt_is_question;
+        int      prompt_is_imperative;
+        int      prompt_is_garden_path;
+        uint32_t prompt_word_count;
+        float    prompt_complexity;
+        char     prompt_subject[32];
+        char     prompt_verb[32];
+        char     prompt_object[32];
+        float    drive_magnitude;
+        float    drive_valence;
+        float    drive_arousal;
+        uint8_t  dominant_drive;
+        uint8_t  act_type;
+        int      pragmatic_is_indirect;
+        uint32_t topic_count;
+        float    goal_priority;
+        int      listener_known;
+        float    listener_belief_confidence;
+        float    listener_emotion_valence;
+        float    audience_familiarity;
+        uint32_t episodic_count;
+        uint32_t content_dim;
+        float    content_confidence;
+        uint32_t word_count;
+        float    fluency;
+        float    syntactic_validity;
+        int      self_parsed;
+        float    self_complexity;
+        float    self_match;
+        float    self_grammaticality;
+        uint32_t phoneme_count;
+        uint32_t syllable_count;
+        float    phon_voiced_ratio;
+        uint32_t repair_attempts;
+        float    best_self_match;
+        uint32_t prosody_syllable_count;
+        float    prosody_mean_f0;
+        float    prosody_pitch_range;
+        int      train_applied;
+        float    train_reward;
+        uint32_t stages_completed;
+        uint32_t stages_failed;
+        uint32_t stages_skipped;
+        char     failure_reason[128];
+    } nimcp_cascade_diag_full_t_local;
 
     char text[2048] = {0};
-    uint32_t word_count = 0;
-    float confidence = 0.0f;
-    float self_match = 0.0f;
-    float self_gram = 0.0f;
-    int is_q = 0, is_imp = 0, w_parsed = 0;
+    char best_text[2048] = {0};
+    nimcp_cascade_diag_full_t_local s; memset(&s, 0, sizeof(s));
+    uint8_t* phon_seq      = NULL;
+    float*   pros_pitch    = NULL;
+    float*   pros_duration = NULL;
+    float*   pros_intensity= NULL;
 
-    int rc = nimcp_brain_produce_cascade_diag_impl(
+    int rc = nimcp_brain_produce_cascade_diag_full_impl(
         self->brain->internal_brain,
-        prompt, text, sizeof(text), &word_count, &confidence,
-        &self_match, &self_gram, &is_q, &is_imp, &w_parsed);
+        prompt, text, sizeof(text),
+        best_text, sizeof(best_text),
+        &s, &phon_seq, &pros_pitch, &pros_duration, &pros_intensity);
     if (rc != 0) {
+        if (phon_seq)       nimcp_free(phon_seq);
+        if (pros_pitch)     nimcp_free(pros_pitch);
+        if (pros_duration)  nimcp_free(pros_duration);
+        if (pros_intensity) nimcp_free(pros_intensity);
         PyErr_Format(PyExc_RuntimeError, "produce_cascade failed (rc=%d)", rc);
         return NULL;
     }
 
     PyObject* d = PyDict_New();
-    if (!d) return NULL;
-    PyDict_SetItemString(d, "utterance",          PyUnicode_FromString(text));
-    PyDict_SetItemString(d, "word_count",         PyLong_FromLong((long)word_count));
-    PyDict_SetItemString(d, "confidence",         PyFloat_FromDouble((double)confidence));
-    PyDict_SetItemString(d, "self_match",         PyFloat_FromDouble((double)self_match));
-    PyDict_SetItemString(d, "self_grammaticality",PyFloat_FromDouble((double)self_gram));
-    PyDict_SetItemString(d, "prompt_is_question", PyBool_FromLong(is_q));
-    PyDict_SetItemString(d, "prompt_is_imperative", PyBool_FromLong(is_imp));
-    PyDict_SetItemString(d, "wernicke_parsed",    PyBool_FromLong(w_parsed));
+    if (!d) {
+        if (phon_seq)       nimcp_free(phon_seq);
+        if (pros_pitch)     nimcp_free(pros_pitch);
+        if (pros_duration)  nimcp_free(pros_duration);
+        if (pros_intensity) nimcp_free(pros_intensity);
+        return NULL;
+    }
+
+    /* Back-compat: keep the original 8 keys with the same names. */
+    PyDict_SetItemString(d, "utterance",            PyUnicode_FromString(text));
+    PyDict_SetItemString(d, "word_count",           PyLong_FromLong((long)s.word_count));
+    PyDict_SetItemString(d, "confidence",           PyFloat_FromDouble((double)s.content_confidence));
+    PyDict_SetItemString(d, "self_match",           PyFloat_FromDouble((double)s.self_match));
+    PyDict_SetItemString(d, "self_grammaticality",  PyFloat_FromDouble((double)s.self_grammaticality));
+    PyDict_SetItemString(d, "prompt_is_question",   PyBool_FromLong(s.prompt_is_question));
+    PyDict_SetItemString(d, "prompt_is_imperative", PyBool_FromLong(s.prompt_is_imperative));
+    PyDict_SetItemString(d, "wernicke_parsed",      PyBool_FromLong(s.wernicke_parsed));
+
+    /* Stage 0 — Wernicke extras */
+    PyDict_SetItemString(d, "prompt_is_garden_path",PyBool_FromLong(s.prompt_is_garden_path));
+    PyDict_SetItemString(d, "prompt_word_count",    PyLong_FromLong((long)s.prompt_word_count));
+    PyDict_SetItemString(d, "prompt_complexity",    PyFloat_FromDouble((double)s.prompt_complexity));
+    PyDict_SetItemString(d, "prompt_subject",       PyUnicode_FromString(s.prompt_subject));
+    PyDict_SetItemString(d, "prompt_verb",          PyUnicode_FromString(s.prompt_verb));
+    PyDict_SetItemString(d, "prompt_object",        PyUnicode_FromString(s.prompt_object));
+
+    /* Stage 1 — Drive */
+    PyDict_SetItemString(d, "drive_magnitude",      PyFloat_FromDouble((double)s.drive_magnitude));
+    PyDict_SetItemString(d, "drive_valence",        PyFloat_FromDouble((double)s.drive_valence));
+    PyDict_SetItemString(d, "drive_arousal",        PyFloat_FromDouble((double)s.drive_arousal));
+    PyDict_SetItemString(d, "dominant_drive",       PyLong_FromLong((long)s.dominant_drive));
+
+    /* Stage 2 — Goal + Pragmatics */
+    PyDict_SetItemString(d, "act_type",             PyLong_FromLong((long)s.act_type));
+    PyDict_SetItemString(d, "pragmatic_is_indirect",PyBool_FromLong(s.pragmatic_is_indirect));
+    PyDict_SetItemString(d, "topic_count",          PyLong_FromLong((long)s.topic_count));
+    PyDict_SetItemString(d, "goal_priority",        PyFloat_FromDouble((double)s.goal_priority));
+
+    /* Stage 3 — Listener */
+    PyDict_SetItemString(d, "listener_known",            PyBool_FromLong(s.listener_known));
+    PyDict_SetItemString(d, "listener_belief_confidence",PyFloat_FromDouble((double)s.listener_belief_confidence));
+    PyDict_SetItemString(d, "listener_emotion_valence",  PyFloat_FromDouble((double)s.listener_emotion_valence));
+    PyDict_SetItemString(d, "audience_familiarity",      PyFloat_FromDouble((double)s.audience_familiarity));
+
+    /* Stage 4 — Episodic */
+    PyDict_SetItemString(d, "episodic_count",       PyLong_FromLong((long)s.episodic_count));
+
+    /* Stage 5 — Content */
+    PyDict_SetItemString(d, "content_dim",          PyLong_FromLong((long)s.content_dim));
+
+    /* Stages 6-7 */
+    PyDict_SetItemString(d, "fluency",              PyFloat_FromDouble((double)s.fluency));
+    PyDict_SetItemString(d, "syntactic_validity",   PyFloat_FromDouble((double)s.syntactic_validity));
+
+    /* Stage 8 — Self-comprehension extras */
+    PyDict_SetItemString(d, "self_parsed",          PyBool_FromLong(s.self_parsed));
+    PyDict_SetItemString(d, "self_complexity",      PyFloat_FromDouble((double)s.self_complexity));
+
+    /* Stage 9 — Phonological */
+    PyDict_SetItemString(d, "phoneme_count",        PyLong_FromLong((long)s.phoneme_count));
+    PyDict_SetItemString(d, "syllable_count",       PyLong_FromLong((long)s.syllable_count));
+    PyDict_SetItemString(d, "phon_voiced_ratio",    PyFloat_FromDouble((double)s.phon_voiced_ratio));
+    if (phon_seq && s.phoneme_count > 0) {
+        PyObject* lst = PyList_New((Py_ssize_t)s.phoneme_count);
+        if (lst) {
+            for (uint32_t i = 0; i < s.phoneme_count; i++)
+                PyList_SET_ITEM(lst, i, PyLong_FromLong((long)phon_seq[i]));
+            PyDict_SetItemString(d, "phoneme_sequence", lst);
+            Py_DECREF(lst);
+        }
+    }
+
+    /* Stage 12 — Speech repair */
+    PyDict_SetItemString(d, "repair_attempts",      PyLong_FromLong((long)s.repair_attempts));
+    PyDict_SetItemString(d, "best_self_match",      PyFloat_FromDouble((double)s.best_self_match));
+    PyDict_SetItemString(d, "best_utterance",       PyUnicode_FromString(best_text));
+
+    /* Stage 13 — Prosody */
+    PyDict_SetItemString(d, "prosody_syllable_count",PyLong_FromLong((long)s.prosody_syllable_count));
+    PyDict_SetItemString(d, "prosody_mean_f0",      PyFloat_FromDouble((double)s.prosody_mean_f0));
+    PyDict_SetItemString(d, "prosody_pitch_range",  PyFloat_FromDouble((double)s.prosody_pitch_range));
+    if (s.prosody_syllable_count > 0) {
+        #define ADD_PROSODY_ARRAY(key, arr) do { \
+            if ((arr)) { \
+                PyObject* lst = PyList_New((Py_ssize_t)s.prosody_syllable_count); \
+                if (lst) { \
+                    for (uint32_t i = 0; i < s.prosody_syllable_count; i++) \
+                        PyList_SET_ITEM(lst, i, PyFloat_FromDouble((double)(arr)[i])); \
+                    PyDict_SetItemString(d, (key), lst); \
+                    Py_DECREF(lst); \
+                } \
+            } \
+        } while (0)
+        ADD_PROSODY_ARRAY("prosody_pitch_hz",      pros_pitch);
+        ADD_PROSODY_ARRAY("prosody_duration_ms",   pros_duration);
+        ADD_PROSODY_ARRAY("prosody_intensity_db",  pros_intensity);
+        #undef ADD_PROSODY_ARRAY
+    }
+
+    /* Stage 14 — Self-train */
+    PyDict_SetItemString(d, "train_applied",        PyBool_FromLong(s.train_applied));
+    PyDict_SetItemString(d, "train_reward",         PyFloat_FromDouble((double)s.train_reward));
+
+    /* Diagnostics */
+    PyDict_SetItemString(d, "stages_completed",     PyLong_FromLong((long)s.stages_completed));
+    PyDict_SetItemString(d, "stages_failed",        PyLong_FromLong((long)s.stages_failed));
+    PyDict_SetItemString(d, "stages_skipped",       PyLong_FromLong((long)s.stages_skipped));
+    PyDict_SetItemString(d, "failure_reason",       PyUnicode_FromString(s.failure_reason));
+
+    /* Free heap-owned arrays we just copied into Python lists. */
+    if (phon_seq)       nimcp_free(phon_seq);
+    if (pros_pitch)     nimcp_free(pros_pitch);
+    if (pros_duration)  nimcp_free(pros_duration);
+    if (pros_intensity) nimcp_free(pros_intensity);
+
     return d;
 }
 

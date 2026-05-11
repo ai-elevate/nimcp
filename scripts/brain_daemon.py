@@ -1822,15 +1822,16 @@ class BrainService:
         return {"ok": True, "pairs_strengthened": int(pairs)}
 
     def _cmd_produce_cascade(self, req):
-        """Phase 2A multi-region production cascade. Walks 9 stages
-        (drive, goal, listener, episodic, content, lexical, syntactic,
-        phonological, motor) — stages 7-9 are deferred until Phase 2C/E
-        but plumbing is in place. Each cognitive module is queried for
-        real state when attached; no-ops gracefully when missing.
+        """Multi-region 15-stage production cascade. Forwards the full
+        cascade diagnostic dict back to the caller — drive/goal/listener/
+        episodic/content/lexical/syntactic/self-comp/phonological/motor/
+        self-feedback/speech-repair/prosody/self-train. Each stage's
+        scalar diagnostics plus phoneme + prosody arrays surface here so
+        trainers and monitoring scripts can observe per-stage state.
 
         Request: {"cmd": "produce_cascade", "prompt": "..." (optional)}
-        Response: {"ok": True, "utterance": str, "word_count": int,
-                   "confidence": float}
+        Response: ok + every key the underlying Brain.produce_cascade dict
+                  contains (~46 fields: see nimcp_cascade_diag_full_t).
 
         prompt=None runs the cascade purely from internal state
         (spontaneous-speech mode); prompt=str runs it as a response."""
@@ -1841,15 +1842,10 @@ class BrainService:
             return {"error": "produce_cascade not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"produce_cascade: {e}"}
-        return {"ok": True,
-                "utterance":             result.get("utterance",  ""),
-                "word_count":            result.get("word_count", 0),
-                "confidence":            result.get("confidence", 0.0),
-                "self_match":            result.get("self_match", 0.0),
-                "self_grammaticality":   result.get("self_grammaticality", 0.0),
-                "prompt_is_question":    bool(result.get("prompt_is_question", False)),
-                "prompt_is_imperative":  bool(result.get("prompt_is_imperative", False)),
-                "wernicke_parsed":       bool(result.get("wernicke_parsed", False))}
+        # Forward the full dict verbatim; result is already a plain dict
+        # with JSON-serializable scalars and list[int]/list[float] arrays.
+        result["ok"] = True
+        return result
 
     def _cmd_set_da_modulation_gain(self, req):
         """TA-3: tune the DA → LR scaling. Clamped [0, 200].
