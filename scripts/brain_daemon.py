@@ -2076,6 +2076,57 @@ class BrainService:
             effective = n
         return {"ok": True, "min_turns": effective, "requested": n}
 
+    def _cmd_set_cascade_self_train_enabled(self, req):
+        """Wave 2 Item #10: enable/disable cascade Stage 14 reward-modulated bridge training.
+
+        Request: {"cmd": "set_cascade_self_train_enabled", "enabled": bool}
+        First enable installs default tunables (alpha=0.05, lr_scale=1.0).
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_cascade_self_train_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_cascade_self_train_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_cascade_self_train_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_cascade_self_train_tunables(self, req):
+        """Wave 2 Item #10: configure self-train EMA + lr_scale.
+
+        Request: {"cmd": "set_cascade_self_train_tunables",
+                  "alpha": float, "lr_scale": float}
+        alpha ∈ [0,1] (0 freezes baseline); lr_scale ∈ [0,10] (0 disables plasticity).
+        """
+        try:
+            alpha    = float(req.get("alpha", 0.05))
+            lr_scale = float(req.get("lr_scale", 1.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_cascade_self_train_tunables bad arg: {e}"}
+        try:
+            self.brain.set_cascade_self_train_tunables(alpha, lr_scale)
+        except AttributeError:
+            return {"error": "set_cascade_self_train_tunables not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_cascade_self_train_tunables: {e}"}
+        return {"ok": True, "alpha": alpha, "lr_scale": lr_scale}
+
+    def _cmd_get_cascade_self_train_state(self, req):
+        """Wave 2 Item #10: read self-train state.
+
+        Request: {"cmd": "get_cascade_self_train_state"}
+        Returns: {"enabled": bool, "baseline": float, "alpha": float, "lr_scale": float}.
+        """
+        del req
+        try:
+            d = self.brain.get_cascade_self_train_state()
+        except AttributeError:
+            return {"error": "get_cascade_self_train_state not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_cascade_self_train_state: {e}"}
+        d["ok"] = True
+        return d
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 

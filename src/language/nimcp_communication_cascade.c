@@ -1466,17 +1466,16 @@ static int cascade_stage_self_train(brain_t brain,
         return 0;
     }
 
-    /* Tunables: zero alpha → fixed baseline (set externally); zero
-     * lr_scale → no learning even when enabled (safe-off). When the brain
-     * was created via calloc both are 0; the cascade is gated on
-     * cascade_self_train_enabled which defaults false, so calloc-zero
-     * never reaches this path with a default config. The setter API
-     * enforces sane defaults (0.05 / 1.0) when the caller flips the flag
-     * via communication_cascade_set_self_train_enabled. */
+    /* Tunables: header contract permits alpha=0 (freeze baseline) and
+     * lr_scale=0 (no plasticity but EMA still updates). Only NaN/Inf
+     * and negative values are coerced to defaults; literal zero is
+     * honored. The setter API installs sane defaults (0.05/1.0) when
+     * the flag is first enabled, so calloc-zero only reaches this path
+     * if the caller explicitly cleared the tunables. */
     float alpha    = brain->cascade_self_train_alpha;
     float lr_scale = brain->cascade_self_train_lr_scale;
-    if (!isfinite(alpha) || alpha <= 0.0f)   alpha    = 0.05f;
-    if (!isfinite(lr_scale) || lr_scale <= 0.0f) lr_scale = 1.0f;
+    if (!isfinite(alpha)    || alpha    < 0.0f) alpha    = 0.05f;
+    if (!isfinite(lr_scale) || lr_scale < 0.0f) lr_scale = 1.0f;
 
     float reward_applied = 0.0f;
     int n = cascade_apply_self_train_reward(

@@ -1428,6 +1428,26 @@ nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect);
 
+/** Wave 2 Item #10 — cascade Stage 14 (self-train) control surface.
+ *  Default OFF. Flipping `enabled=true` also installs default tunables
+ *  (0.05 alpha, 1.0 lr_scale) if the caller has not set them yet. */
+nimcp_status_t nimcp_brain_set_cascade_self_train_enabled(nimcp_brain_t brain,
+                                                            bool enabled);
+nimcp_status_t nimcp_brain_get_cascade_self_train_enabled(nimcp_brain_t brain,
+                                                            bool* out_enabled);
+/** alpha in [0,1] (0 freezes baseline, 1 = no smoothing), lr_scale in [0,10]
+ *  (0 disables plasticity but EMA still updates). NaN/Inf/negative coerce
+ *  to defaults. */
+nimcp_status_t nimcp_brain_set_cascade_self_train_tunables(nimcp_brain_t brain,
+                                                             float alpha,
+                                                             float lr_scale);
+/** Snapshot all four self-train fields. Any out-pointer may be NULL. */
+nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
+                                                          bool*  out_enabled,
+                                                          float* out_baseline,
+                                                          float* out_alpha,
+                                                          float* out_lr_scale);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *

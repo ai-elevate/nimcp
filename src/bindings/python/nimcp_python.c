@@ -3466,6 +3466,55 @@ static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* Wave 2 Item #10 — cascade Stage 14 (self-train) control surface.
+ * Three small Brain methods exposing nimcp_brain_*_cascade_self_train_*. */
+static PyObject* Brain_set_cascade_self_train_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_cascade_self_train_enabled(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cascade_self_train_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_cascade_self_train_tunables(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float alpha = 0.05f, lr_scale = 1.0f;
+    if (!PyArg_ParseTuple(args, "ff", &alpha, &lr_scale)) return NULL;
+    if (nimcp_brain_set_cascade_self_train_tunables(self->brain, alpha, lr_scale) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cascade_self_train_tunables failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_cascade_self_train_state(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    float baseline = 0.0f, alpha = 0.0f, lr_scale = 0.0f;
+    if (nimcp_brain_get_cascade_self_train_state(self->brain,
+            &enabled, &baseline, &alpha, &lr_scale) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cascade_self_train_state failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "enabled",  PyBool_FromLong(enabled));
+    PyDict_SetItemString(d, "baseline", PyFloat_FromDouble((double)baseline));
+    PyDict_SetItemString(d, "alpha",    PyFloat_FromDouble((double)alpha));
+    PyDict_SetItemString(d, "lr_scale", PyFloat_FromDouble((double)lr_scale));
+    return d;
+}
+
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
  * gap where this was persisted in the LANC block but unreachable via
  * Python / daemon RPC. */
@@ -11645,6 +11694,12 @@ static PyMethodDef Brain_methods[] = {
      "TB-10: tune the topic-shift cosine threshold — set_topic_shift_threshold(t: float) -> None. Clamped [0, 1]."},
     {"set_topic_shift_min_turns", (PyCFunction)Brain_set_topic_shift_min_turns, METH_VARARGS,
      "TB-10: tune the minimum turns before topic-shift detection fires — set_topic_shift_min_turns(n: int) -> None. Clamped [2, GL_DISCOURSE_MAX_TURNS_PUBLIC]."},
+    {"set_cascade_self_train_enabled", (PyCFunction)Brain_set_cascade_self_train_enabled, METH_VARARGS,
+     "Wave 2 Item #10: enable cascade Stage 14 reward-modulated bridge training — set_cascade_self_train_enabled(enabled: bool) -> None. Default OFF. First enable installs default tunables (0.05/1.0)."},
+    {"set_cascade_self_train_tunables", (PyCFunction)Brain_set_cascade_self_train_tunables, METH_VARARGS,
+     "Wave 2 Item #10: configure self-train EMA + lr scale — set_cascade_self_train_tunables(alpha: float, lr_scale: float) -> None. alpha ∈ [0,1] (0 freezes baseline), lr_scale ∈ [0,10] (0 disables plasticity)."},
+    {"get_cascade_self_train_state", (PyCFunction)Brain_get_cascade_self_train_state, METH_NOARGS,
+     "Wave 2 Item #10: read self-train state — returns {'enabled': bool, 'baseline': float, 'alpha': float, 'lr_scale': float}."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

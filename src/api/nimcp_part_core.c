@@ -4102,6 +4102,70 @@ nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32
     return NIMCP_OK;
 }
 
+/*=============================================================================
+ * Wave 2 Item #10 — cascade self-train public surface.
+ *
+ * Four thin wrappers over communication_cascade_set/get_self_train_*
+ * so trainers can drive Stage 14 via the same brain handle they use
+ * for produce_cascade. Default OFF; flipping enabled also installs
+ * default tunables (0.05 alpha, 1.0 lr_scale) inside the cascade
+ * setter so trainers don't have to know the magic numbers.
+ *===========================================================================*/
+
+/* Forward decls — full headers in include/language/nimcp_communication_cascade.h.
+ * Inline extern keeps this TU from pulling the whole cascade header chain
+ * just for these four small wrappers (the produce_cascade wrapper uses
+ * the same inline-extern idiom). */
+extern int  communication_cascade_set_self_train_enabled(brain_t brain, bool enabled);
+extern bool communication_cascade_get_self_train_enabled(brain_t brain);
+extern int  communication_cascade_set_self_train_tunables(brain_t brain,
+                                                            float alpha,
+                                                            float lr_scale);
+
+nimcp_status_t nimcp_brain_set_cascade_self_train_enabled(nimcp_brain_t brain,
+                                                            bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (communication_cascade_set_self_train_enabled(b, enabled) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_cascade_self_train_enabled(nimcp_brain_t brain,
+                                                            bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = communication_cascade_get_self_train_enabled(b);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_cascade_self_train_tunables(nimcp_brain_t brain,
+                                                             float alpha,
+                                                             float lr_scale) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (communication_cascade_set_self_train_tunables(b, alpha, lr_scale) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
+                                                          bool*  out_enabled,
+                                                          float* out_baseline,
+                                                          float* out_alpha,
+                                                          float* out_lr_scale) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (out_enabled)  *out_enabled  = b->cascade_self_train_enabled;
+    if (out_baseline) *out_baseline = b->cascade_self_train_baseline;
+    if (out_alpha)    *out_alpha    = b->cascade_self_train_alpha;
+    if (out_lr_scale) *out_lr_scale = b->cascade_self_train_lr_scale;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);
