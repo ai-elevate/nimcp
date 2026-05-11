@@ -34,6 +34,10 @@ extern "C" {
 struct brain_struct;
 typedef struct brain_struct* brain_t;
 
+/* Forward decl — full struct lives in nimcp_snn_language_bridge.h.
+ * Cascade Stage 11 (self-train) calls the bridge's plasticity API. */
+struct snn_language_bridge;
+
 /* Per-stage enable bits. Default (0) = all stages on. */
 typedef enum {
     CASCADE_STAGE_WERNICKE      = 1u << 0,  /* Stage 0 — input comprehension */
@@ -50,7 +54,8 @@ typedef enum {
     CASCADE_STAGE_SELF_FEEDBACK = 1u << 11, /* Stage 9 — write produced utterance back to WM + cognitive bus */
     CASCADE_STAGE_SPEECH_REPAIR = 1u << 12, /* Stage 10 (Item 5) — perturbation-retry on low self_match */
     CASCADE_STAGE_PROSODY       = 1u << 13, /* Wave 2 Item 9 — FNO-shaped prosodic contour (F0/dur/intensity) */
-    CASCADE_STAGE_ALL           = 0x3FFF /* bits 0..13 */
+    CASCADE_STAGE_SELF_TRAIN    = 1u << 14, /* Stage 11 (Wave 2 Item #10) — reward-modulated bridge learning */
+    CASCADE_STAGE_ALL           = 0x7FFF /* bits 0..14 */
 } cascade_stage_mask_t;
 
 /* Single struct accumulates stage outputs. Allocated by caller; the
@@ -204,6 +209,22 @@ typedef struct {
     uint32_t prosody_syllable_count;
     float    prosody_mean_f0;
     float    prosody_pitch_range;
+
+    /* Stage 12 (Wave 2 Item #10) — reward-modulated SNN bridge training.
+     * APPENDED at end of struct to avoid ABI shift on existing fields.
+     * When the runtime flag brain->cascade_self_train_enabled is true AND
+     * stage_self_comprehension produced a valid self_match, the cascade
+     * computes reward = (self_match - baseline), updates the per-brain EMA
+     * baseline, and applies snn_language_bridge_echo_correct() to each
+     * produced word with lr_scale proportional to the reward sign and
+     * magnitude. Diagnostics surface here for trainers + tests:
+     *   train_applied — true iff the bridge plasticity hook ran.
+     *   train_reward  — the reward signal that was actually applied
+     *                   (self_match - baseline_before_update). May be
+     *                   negative when the brain underperforms its
+     *                   recent average. */
+    bool  train_applied;
+    float train_reward;
 } production_cascade_state_t;
 
 /**
@@ -232,6 +253,84 @@ int communication_cascade_run(
 
 /** Free heap-owned fields in the cascade state. */
 void cascade_state_cleanup(production_cascade_state_t* state);
+
+/**
+ * @brief Wave 2 Item #10 — toggle the cascade self-training hook.
+ *
+ * When enabled, the orchestrator runs Stage 11
+ * (cascade_stage_self_train) after Stage 8 self-comprehension and
+ * before Stage 9 self-feedback. Stage 11 calls the SNN language
+ * bridge's echo-correct plasticity API on every produced word with
+ * a learning rate proportional to (self_match - baseline), driving
+ * three-factor learning where the bridge's per-binding eligibility
+ * traces are the synaptic memory, dopamine is the bridge's optional
+ * neuromodulator gain, and (self_match - baseline) is the reward
+ * prediction error.
+ *
+ * Default OFF. Maps directly to brain->cascade_self_train_enabled.
+ * Returns 0 on success, -1 on invalid brain pointer.
+ */
+int communication_cascade_set_self_train_enabled(brain_t brain, bool enabled);
+
+/** Read the self-train flag. Returns false on NULL brain. */
+bool communication_cascade_get_self_train_enabled(brain_t brain);
+
+/**
+ * @brief Configure the self-train EMA + LR-scale tunables.
+ *
+ * @param alpha    EMA mixing rate for the running baseline; clamped to
+ *                 [0, 1]. Default 0.05 (slow averaging — ~20-call window).
+ *                 0 freezes the baseline at its current value; 1 makes
+ *                 every call its own baseline (reward becomes 0).
+ * @param lr_scale Multiplier applied to echo_correct lr_scale. Clamped
+ *                 to [0, 10]. Default 1.0. Set < 1 to attenuate early
+ *                 training, > 1 for fast imprinting (with caveats —
+ *                 large values amplify negative-reward LTD via the
+ *                 LTD branch of strengthen_binding).
+ *
+ * Returns 0 on success, -1 on invalid brain pointer.
+ */
+int communication_cascade_set_self_train_tunables(brain_t brain,
+                                                    float alpha,
+                                                    float lr_scale);
+
+/**
+ * @brief Wave 2 Item #10 — pure helper that applies the reward signal.
+ *
+ * Exposed for testability — the production cascade orchestrator calls
+ * this internally as Stage 11, but unit tests can drive it directly
+ * against a bridge + handcrafted utterance + intent. No phantom-API
+ * risk: the helper composes only existing bridge APIs
+ * (snn_language_bridge_echo_correct) plus a memory-safe tokenizer.
+ *
+ * @param bridge     SNN language bridge with concept-word bindings.
+ *                   May be NULL — returns 0 (no-op) with *out_reward=0.
+ * @param intent     Content intent vector that drove the produce.
+ * @param intent_dim Length of intent.
+ * @param utterance  Whitespace-separated produced text. NULL or empty
+ *                   skips with *out_reward=0.
+ * @param self_match Phase 2D-B re-comprehension cosine. NaN/Inf skip.
+ * @param baseline_inout  In/out EMA baseline. Read once to compute the
+ *                        reward, then updated by alpha-mixing self_match.
+ * @param alpha      EMA mixing rate, clamped to [0,1].
+ * @param lr_scale   Multiplier applied to echo_correct lr_scale.
+ * @param out_reward Optional — set to the reward signal that was applied
+ *                   (self_match - baseline_before_update). Always defined
+ *                   when the call returns; 0 when the call short-circuits.
+ *
+ * Returns the number of bindings strengthened across all produced words,
+ * or 0 when nothing fired (skip path). Never returns negative.
+ */
+int cascade_apply_self_train_reward(
+    struct snn_language_bridge* bridge,
+    const float* intent,
+    uint32_t intent_dim,
+    const char* utterance,
+    float self_match,
+    float* baseline_inout,
+    float alpha,
+    float lr_scale,
+    float* out_reward);
 
 #ifdef __cplusplus
 }

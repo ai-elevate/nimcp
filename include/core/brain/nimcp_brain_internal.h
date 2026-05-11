@@ -2774,6 +2774,37 @@ struct brain_struct {
      * Broca is disabled. APPENDED at end of brain_struct to avoid ABI
      * shift on existing fields. */
     struct pragmatics_processor* broca_pragmatics;
+
+    /* === CASCADE SELF-TRAIN (Wave 2 Item #10) ===
+     * Runtime training hook that closes the loop on the cascade's
+     * Phase 2D-B self_match signal. When enabled, every successful
+     * cascade run calls snn_language_bridge_echo_correct() on each
+     * produced word with a learning rate scaled by (self_match - baseline).
+     * The baseline is an EMA over recent self_match values, so the
+     * reward signal is roughly mean-centered — biological reward
+     * prediction error (R-PE), three-factor learning with dopamine-style
+     * gating built on top of the bridge's existing eligibility traces.
+     *
+     * Default OFF (calloc zero). Opt-in via
+     * nimcp_brain_set_cascade_self_train_enabled(). All four fields are
+     * APPENDED to brain_struct to avoid ABI shifts on existing layouts.
+     *
+     *   cascade_self_train_enabled — master gate.
+     *   cascade_self_train_baseline — EMA of self_match across calls.
+     *   cascade_self_train_alpha — EMA mixing rate (default 0.05).
+     *   cascade_self_train_lr_scale — multiplier on echo_correct lr_scale.
+     *
+     * Concurrency: the cascade orchestrator is normally called from a
+     * single thread per brain. The EMA update is a read-modify-write
+     * on a single float; if a future caller drives cascade concurrently
+     * the EMA will be slightly noisy but the training is monotonic in
+     * reward sign so it's not a correctness issue. We deliberately do
+     * NOT take a mutex here to avoid introducing a new lock ordering
+     * relative to bridge plasticity calls. */
+    bool  cascade_self_train_enabled;
+    float cascade_self_train_baseline;
+    float cascade_self_train_alpha;
+    float cascade_self_train_lr_scale;
 };
 
 //=============================================================================

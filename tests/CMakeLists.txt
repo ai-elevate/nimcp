@@ -63,6 +63,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_consumer_events
     test_lang_subword_oov
     test_lang_coref
+    test_lang_cascade_self_train
     test_snn_fno_recording
 )
 

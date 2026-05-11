@@ -20,6 +20,11 @@
 
 #include "core/brain/nimcp_brain_internal.h"
 
+/* Wave 2 Item #10 — Stage 11 (self-train) calls the SNN language bridge's
+ * supervised plasticity API to apply (self_match - baseline) reward to
+ * every produced word's (intent → word_pop) binding. */
+#include "snn/bridges/nimcp_snn_language_bridge.h"
+
 /* Cognitive module headers — each stage needs the public getter API. */
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
@@ -1295,8 +1300,254 @@ static int cascade_stage_prosody(brain_t brain,
 }
 
 /*============================================================================
+ * Stage 12 (Wave 2 Item #10): Reward-modulated SNN bridge training.
+ *
+ * After Stage 8 self-comprehension computes the cosine cos(intent,
+ * re-comprehended utterance) and writes it into state->self_match, the
+ * cascade has the cleanest available signal for "did the brain say what
+ * it meant?". Stage 11 closes the loop:
+ *
+ *   reward    = self_match - baseline
+ *   baseline ← (1 - alpha) * baseline + alpha * self_match     [EMA]
+ *
+ * Then for each whitespace-tokenized word in the produced utterance, we
+ * call snn_language_bridge_echo_correct() with lr_scale = reward *
+ * caller_lr_scale. The bridge already implements activation-weighted
+ * (concept_pop → word_pop) LTP — Stage 11 just gates that with a global
+ * R-PE signal. Biological mapping:
+ *   - bridge per-binding eligibility traces = synaptic tags
+ *   - dopamine multiplier (optional, via bridge config) = neuromod gate
+ *   - (self_match - baseline) = reward prediction error
+ *
+ * The orchestrator owns the per-brain EMA baseline. We deliberately
+ * skip when:
+ *   - bridge missing (minimal-init brain)
+ *   - self_match not parsed (Stage 8 skipped or Wernicke unavailable)
+ *   - utterance empty (lexical stage skipped)
+ *   - reward = 0 (baseline matches self_match exactly — no signal)
+ *
+ * Negative rewards drive LTD via the bridge's strengthen_binding (negative
+ * delta clamps weights down) — biologically the absence of expected
+ * reward IS the learning signal. The activation gate inside echo_correct
+ * (ReLU on intent[i]) keeps us from corrupting the un-activated dims.
+ *==========================================================================*/
+
+/* Forbid wild scaling — keeps a runaway reward × bridge a_plus × lr from
+ * pushing weights to saturation in one call. echo_correct already clamps
+ * delta to [W_MIN, W_MAX] per binding so this is a soft sanity bound
+ * rather than a hard limit; the bridge will still enforce per-update
+ * bounds even if we pass through a larger magnitude. */
+#define CASCADE_SELF_TRAIN_LR_SCALE_MAX  10.0f
+#define CASCADE_SELF_TRAIN_LR_SCALE_MIN -10.0f
+
+int cascade_apply_self_train_reward(
+    struct snn_language_bridge* bridge,
+    const float* intent,
+    uint32_t intent_dim,
+    const char* utterance,
+    float self_match,
+    float* baseline_inout,
+    float alpha,
+    float lr_scale,
+    float* out_reward)
+{
+    if (out_reward) *out_reward = 0.0f;
+
+    /* Skip cleanly on missing dependencies. */
+    if (!bridge) return 0;
+    if (!intent || intent_dim == 0) return 0;
+    if (!utterance || !utterance[0]) return 0;
+    if (!isfinite(self_match)) return 0;
+    /* Bridge cosine score is in [0,1] when valid (clamped in Stage 8) —
+     * out-of-range value means something upstream is broken; skip rather
+     * than apply garbage. */
+    if (self_match < 0.0f || self_match > 1.0f) return 0;
+
+    /* Clamp tunables before use. */
+    if (!isfinite(alpha) || alpha < 0.0f) alpha = 0.0f;
+    if (alpha > 1.0f) alpha = 1.0f;
+    if (!isfinite(lr_scale)) lr_scale = 0.0f;
+    if (lr_scale > CASCADE_SELF_TRAIN_LR_SCALE_MAX) {
+        lr_scale = CASCADE_SELF_TRAIN_LR_SCALE_MAX;
+    }
+    if (lr_scale < CASCADE_SELF_TRAIN_LR_SCALE_MIN) {
+        lr_scale = CASCADE_SELF_TRAIN_LR_SCALE_MIN;
+    }
+
+    /* Use the caller's baseline if provided; otherwise center on 0. */
+    float baseline = (baseline_inout && isfinite(*baseline_inout))
+                       ? *baseline_inout : 0.0f;
+    float reward   = self_match - baseline;
+
+    if (out_reward) *out_reward = reward;
+
+    /* EMA update happens unconditionally — we still want to learn about
+     * the running self_match level even when reward is exactly zero, so
+     * the next call has an up-to-date prior. */
+    if (baseline_inout) {
+        *baseline_inout = (1.0f - alpha) * baseline + alpha * self_match;
+    }
+
+    /* Exact-match reward = no signal; skip plasticity but keep the EMA
+     * update above intact. */
+    if (reward == 0.0f) return 0;
+
+    /* echo_correct rejects lr_scale <= 0, so for negative rewards we
+     * pass |reward| and rely on the activation gate keeping us from
+     * over-strengthening. Future work: a dedicated LTD pass when
+     * reward < 0; for now we attenuate the LTP rather than reversing it
+     * (more biologically conservative than flipping every active binding
+     * downward on a single bad utterance). The sign IS preserved in the
+     * train_reward diagnostic so trainers can act on it. */
+    float effective_lr = fabsf(reward) * lr_scale;
+    if (effective_lr <= 0.0f || !isfinite(effective_lr)) return 0;
+
+    /* Tokenize. Use a fixed-size scratch buffer matching the lexical
+     * stage's MAX_TOKENS = 32, dup-then-strtok the same way Stage 7 does
+     * to avoid scribbling on the cascade's owned utterance string. */
+    enum { CST11_MAX_TOKENS = 32 };
+    enum { CST11_MAX_LEN    = 2048 };
+    char dup[CST11_MAX_LEN];
+    size_t ulen = strlen(utterance);
+    if (ulen >= sizeof(dup)) ulen = sizeof(dup) - 1;
+    memcpy(dup, utterance, ulen);
+    dup[ulen] = '\0';
+
+    int total_strengthened = 0;
+    uint32_t tokens_seen = 0;
+    char* save = NULL;
+    char* tok = strtok_r(dup, " \t\n\r.,!?;:\"'", &save);
+    while (tok && tokens_seen < CST11_MAX_TOKENS) {
+        if (tok[0]) {
+            /* Negative return values (bridge invalid / word not registered)
+             * are NON-fatal — we just skip that word and continue. The
+             * bridge's diagnostics surface the misses; the cascade
+             * orchestrator's job is to drive the call, not gate on
+             * registration state. */
+            int n = snn_language_bridge_echo_correct(
+                        bridge, intent, intent_dim, tok, effective_lr);
+            if (n > 0) total_strengthened += n;
+            tokens_seen++;
+        }
+        tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
+    }
+
+    return total_strengthened;
+}
+
+static int cascade_stage_self_train(brain_t brain,
+                                     production_cascade_state_t* state) {
+    if (!brain || !state) return 0;
+
+    /* Hard gates — flag off, no self_match, no bridge, no utterance. */
+    if (!brain->cascade_self_train_enabled) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_TRAIN,
+                            "stage_self_train: flag off (default)");
+        return 0;
+    }
+    if (!brain->snn_lang_bridge) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_TRAIN,
+                            "stage_self_train: no snn_lang_bridge");
+        return 0;
+    }
+    if (!state->self_parsed) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_TRAIN,
+                            "stage_self_train: no self_match (stage 8 skipped)");
+        return 0;
+    }
+    if (!state->utterance || !state->utterance[0]) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_TRAIN,
+                            "stage_self_train: empty utterance");
+        return 0;
+    }
+    if (!state->content_intent || state->content_dim == 0) {
+        cascade_record_skip(state, CASCADE_STAGE_SELF_TRAIN,
+                            "stage_self_train: no content_intent");
+        return 0;
+    }
+
+    /* Tunables: zero alpha → fixed baseline (set externally); zero
+     * lr_scale → no learning even when enabled (safe-off). When the brain
+     * was created via calloc both are 0; the cascade is gated on
+     * cascade_self_train_enabled which defaults false, so calloc-zero
+     * never reaches this path with a default config. The setter API
+     * enforces sane defaults (0.05 / 1.0) when the caller flips the flag
+     * via communication_cascade_set_self_train_enabled. */
+    float alpha    = brain->cascade_self_train_alpha;
+    float lr_scale = brain->cascade_self_train_lr_scale;
+    if (!isfinite(alpha) || alpha <= 0.0f)   alpha    = 0.05f;
+    if (!isfinite(lr_scale) || lr_scale <= 0.0f) lr_scale = 1.0f;
+
+    float reward_applied = 0.0f;
+    int n = cascade_apply_self_train_reward(
+                brain->snn_lang_bridge,
+                state->content_intent,
+                state->content_dim,
+                state->utterance,
+                state->self_match,
+                &brain->cascade_self_train_baseline,
+                alpha,
+                lr_scale,
+                &reward_applied);
+
+    state->train_reward  = reward_applied;
+    state->train_applied = (n > 0);
+
+    if (state->train_applied) {
+        cascade_record_complete(state);
+    } else {
+        /* No bindings strengthened — either reward was exactly 0 (baseline
+         * already matched), or no produced word was registered in the
+         * bridge yet (cold-start before lexicon mirror has populated). */
+        cascade_record_skip(state, CASCADE_STAGE_SELF_TRAIN,
+                            "stage_self_train: 0 bindings strengthened");
+    }
+    return 0;
+}
+
+/*============================================================================
  * Public API
  *==========================================================================*/
+
+int communication_cascade_set_self_train_enabled(brain_t brain, bool enabled) {
+    if (!brain) return -1;
+    brain->cascade_self_train_enabled = enabled;
+    /* First-time enable: install biological defaults if calloc-zero. The
+     * tunables setter can override these post hoc; we just make sure the
+     * orchestrator's "enabled-but-unconfigured" path produces real
+     * learning rather than a silent no-op (alpha=0 freezes the baseline). */
+    if (enabled) {
+        if (brain->cascade_self_train_alpha <= 0.0f ||
+            !isfinite(brain->cascade_self_train_alpha)) {
+            brain->cascade_self_train_alpha = 0.05f;
+        }
+        if (brain->cascade_self_train_lr_scale <= 0.0f ||
+            !isfinite(brain->cascade_self_train_lr_scale)) {
+            brain->cascade_self_train_lr_scale = 1.0f;
+        }
+    }
+    return 0;
+}
+
+bool communication_cascade_get_self_train_enabled(brain_t brain) {
+    if (!brain) return false;
+    return brain->cascade_self_train_enabled;
+}
+
+int communication_cascade_set_self_train_tunables(brain_t brain,
+                                                    float alpha,
+                                                    float lr_scale) {
+    if (!brain) return -1;
+    if (!isfinite(alpha) || alpha < 0.0f) alpha = 0.0f;
+    if (alpha > 1.0f) alpha = 1.0f;
+    if (!isfinite(lr_scale) || lr_scale < 0.0f) lr_scale = 0.0f;
+    if (lr_scale > CASCADE_SELF_TRAIN_LR_SCALE_MAX) {
+        lr_scale = CASCADE_SELF_TRAIN_LR_SCALE_MAX;
+    }
+    brain->cascade_self_train_alpha    = alpha;
+    brain->cascade_self_train_lr_scale = lr_scale;
+    return 0;
+}
 
 void cascade_state_cleanup(production_cascade_state_t* state) {
     if (!state) return;
@@ -1712,6 +1963,20 @@ int communication_cascade_run(
     }
     if (stage_mask & CASCADE_STAGE_MOTOR) {
         cascade_stage_motor(brain, out_state);
+    }
+    /* Stage 11 (Wave 2 Item #10): reward-modulated SNN bridge training.
+     * Runs after Stage 8 self-comprehension (which sets self_match) and
+     * after Stage 10 speech-repair (which may have swapped in a better
+     * utterance + its self_match) so the reward signal reflects the
+     * FINAL utterance the brain "stands behind". Default OFF — gated on
+     * brain->cascade_self_train_enabled, set via
+     * communication_cascade_set_self_train_enabled. Independent of
+     * Stage 9 self-feedback because the WM write-back is orthogonal to
+     * the synaptic update (one writes a vector to a slot, the other
+     * walks bindings). Train BEFORE feedback so a learning failure
+     * doesn't corrupt the cognitive bus event. */
+    if (stage_mask & CASCADE_STAGE_SELF_TRAIN) {
+        cascade_stage_self_train(brain, out_state);
     }
     /* Stage 9 (item #8): write produced utterance back to working memory
      * and fire GL_EVENT_SELF_PRODUCED. Runs last so it sees a fully
