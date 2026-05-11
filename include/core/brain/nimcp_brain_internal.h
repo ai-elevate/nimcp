@@ -2762,6 +2762,18 @@ struct brain_struct {
      * NIMCP_METRICS_PATH_SIZE (= 512) matches the buffer used by the
      * sidecar load helpers in nimcp_brain_persistence.c. */
     char loaded_from_path[512];
+
+    /* === BROCA PRAGMATICS PROCESSOR (indirect speech-act detection) ===
+     * Pragmatics processor sibling of broca_adapter — created when Broca
+     * is initialized; used by the communication cascade Stage 2 (Goal) to
+     * reclassify "Can you X?" questions as REQUEST speech acts rather than
+     * literal yes/no questions. Forward-declared opaque type — full impl
+     * in src/core/brain/regions/broca/nimcp_pragmatics_processor.c.
+     * Lifetime: created in nimcp_brain_factory_init_broca_subsystem,
+     * destroyed in nimcp_brain_factory_destroy_broca_subsystem. NULL when
+     * Broca is disabled. APPENDED at end of brain_struct to avoid ABI
+     * shift on existing fields. */
+    struct pragmatics_processor* broca_pragmatics;
 };
 
 //=============================================================================

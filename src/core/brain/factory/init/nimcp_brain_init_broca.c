@@ -44,6 +44,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_broca, MESH_ADAPTER_CATEGORY_SYSTEM)
 // NOTE: Include broca_adapter.h first as brain_internal.h doesn't include it
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/broca/nimcp_broca_substrate_bridge.h"
+#include "core/brain/regions/broca/nimcp_pragmatics_processor.h"
 // NOTE: Avoid including thalamic_bridge.h directly due to type conflicts
 // We use forward declarations instead
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
@@ -194,6 +195,21 @@ bool nimcp_brain_factory_init_broca_subsystem(brain_t brain) {
     /* Connect to bio-async */
     if (!connect_broca_to_bio_async(brain)) {
         LOG_WARN(LOG_MODULE, "Broca bio-async connection failed (non-fatal)");
+    }
+
+    /* Create the pragmatics processor (indirect speech-act detection,
+     * Gricean maxim analysis). Used by the communication cascade Stage 2
+     * to reclassify "Can you pass the salt?" as REQUEST not QUESTION.
+     * Non-fatal on failure — the cascade falls back to surface-form
+     * classification when broca_pragmatics is NULL. */
+    if (!brain->broca_pragmatics) {
+        pragmatics_config_t prag_cfg = pragmatics_default_config();
+        brain->broca_pragmatics = pragmatics_create(&prag_cfg);
+        if (!brain->broca_pragmatics) {
+            LOG_WARN(LOG_MODULE, "Pragmatics processor create failed (non-fatal)");
+        } else {
+            LOG_DEBUG(LOG_MODULE, "Pragmatics processor initialized");
+        }
     }
 
     LOG_INFO(LOG_MODULE, "Broca's region initialized successfully");
@@ -448,6 +464,12 @@ void nimcp_brain_factory_destroy_broca_subsystem(brain_t brain) {
     if (brain->broca_substrate_bridge) {
         broca_substrate_bridge_destroy(brain->broca_substrate_bridge);
         brain->broca_substrate_bridge = NULL;
+    }
+
+    /* Destroy pragmatics processor (sibling of broca_adapter) */
+    if (brain->broca_pragmatics) {
+        pragmatics_destroy(brain->broca_pragmatics);
+        brain->broca_pragmatics = NULL;
     }
 
     /* Destroy Broca adapter */

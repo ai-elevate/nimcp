@@ -126,6 +126,15 @@ typedef struct {
     uint32_t stages_failed;
     uint32_t stages_skipped;       /* per-stage skip mask */
     char     failure_reason[128];
+
+    /* Pragmatics — APPENDED at end of struct to avoid ABI shift on
+     * existing fields. Set by cascade Stage 2 (Goal) when Broca's
+     * pragmatics processor classifies the prompt as an indirect speech
+     * act ("Can you pass the salt?" surface=question, indirect=REQUEST).
+     * When true, act_type is overridden to SPEECH_ACT_REQUEST or
+     * SPEECH_ACT_COMMAND so downstream stages produce a request-shaped
+     * response rather than a literal yes/no answer. */
+    bool     pragmatic_is_indirect;
 } production_cascade_state_t;
 
 /**

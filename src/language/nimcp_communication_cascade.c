@@ -198,6 +198,28 @@ static int cascade_stage_goal(brain_t brain, const char* prompt,
         else                  state->act_type = SPEECH_ACT_ASSERT;
     }
 
+    /* Pragmatics override: when the surface form is a question, ask
+     * Broca's pragmatics processor whether it's actually an INDIRECT
+     * speech act ("Can you pass the salt?" surface=QUESTION,
+     * intended=REQUEST). The processor matches a small set of indirect-
+     * request templates (modal+you, declarative-with-please, etc.) and
+     * returns is_indirect=true with primary_act=REQUEST/COMMAND. We
+     * only override on questions — direct REQUEST/COMMAND is already
+     * handled above via prompt_is_imperative. */
+    if (state->prompt_is_question &&
+        brain->broca_pragmatics &&
+        prompt && prompt[0]) {
+        speech_act_result_t prag = {0};
+        if (pragmatics_classify_speech_act(brain->broca_pragmatics,
+                                             prompt, /*speaker_id*/0, &prag) &&
+            prag.is_indirect &&
+            (prag.primary_act == SPEECH_ACT_REQUEST ||
+             prag.primary_act == SPEECH_ACT_COMMAND)) {
+            state->act_type             = SPEECH_ACT_REQUEST;
+            state->pragmatic_is_indirect = true;
+        }
+    }
+
     /* Pull top-priority goal from PFC if available. PFC goals are
      * already priority-sorted; the first one drives goal_priority for
      * the cascade. prefrontal_goal_t stores priority as an enum
