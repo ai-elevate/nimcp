@@ -218,12 +218,20 @@ void gl_fire_event(grounded_language_t* gl, const gl_event_t* event) {
 static int _wrap_inner_speech(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
     if (ev->type != GL_EVENT_NEW_WORD &&
-        ev->type != GL_EVENT_COMPREHENDED) return 0;
+        ev->type != GL_EVENT_COMPREHENDED &&
+        ev->type != GL_EVENT_SELF_PRODUCED) return 0;
     /* Inner speech rehearses new vocabulary + comprehended utterances.
-     * Receptive API not yet exposed — log so the bus is visible. */
-    LOG_DEBUG(LOG_MODULE, "inner_speech observe word='%s' text='%s'",
+     * SELF_PRODUCED: hearing yourself think is canonical — the cascade's
+     * own output is exactly what inner-speech should re-rehearse on the
+     * next tick. The semantic_vec carries the content; downstream module-
+     * native consumers wire onto this log entry, same pattern as the
+     * other wrappers (observation-only, no module hot-path call here). */
+    LOG_DEBUG(LOG_MODULE,
+               "inner_speech observe type=%d word='%s' text='%s' vec=%p",
+               (int)ev->type,
                ev->word ? ev->word : "(null)",
-               ev->text ? ev->text : "(null)");
+               ev->text ? ev->text : "(null)",
+               (const void*)ev->semantic_vec);
     return 0;
 }
 
@@ -341,10 +349,19 @@ static int _wrap_empathy(void* ctx, const gl_event_t* ev) {
 
 static int _wrap_introspection(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
-    if (ev->type != GL_EVENT_PRODUCED) return 0;
-    /* Self-narration sample. */
-    LOG_DEBUG(LOG_MODULE, "introspection record produced='%s'",
-               ev->text ? ev->text : "(null)");
+    if (ev->type != GL_EVENT_PRODUCED &&
+        ev->type != GL_EVENT_SELF_PRODUCED) return 0;
+    /* Self-narration sample. SELF_PRODUCED is the canonical introspective
+     * signal: the cascade just finished and deposited its result into WM,
+     * so reflecting on "what did I just say?" gets the full post-cascade
+     * payload (text + semantic_vec + confidence). PRODUCED still fires for
+     * any direct grounded_language_produce call that bypassed the cascade. */
+    LOG_DEBUG(LOG_MODULE,
+               "introspection record type=%d produced='%s' conf=%.2f vec=%p",
+               (int)ev->type,
+               ev->text ? ev->text : "(null)",
+               ev->confidence,
+               (const void*)ev->semantic_vec);
     return 0;
 }
 
@@ -360,10 +377,18 @@ static int _wrap_reasoning(void* ctx, const gl_event_t* ev) {
 static int _wrap_narrative(void* ctx, const gl_event_t* ev) {
     if (!ctx || !ev) return -1;
     if (ev->type != GL_EVENT_COMPREHENDED &&
-        ev->type != GL_EVENT_PRODUCED) return 0;
-    /* Append to current narrative buffer. */
-    LOG_DEBUG(LOG_MODULE, "narrative append text='%s'",
-               ev->text ? ev->text : "(null)");
+        ev->type != GL_EVENT_PRODUCED &&
+        ev->type != GL_EVENT_SELF_PRODUCED) return 0;
+    /* Append to current narrative buffer. SELF_PRODUCED is needed for
+     * continuous self-narration of behavior — the brain narrating its own
+     * outputs alongside what it heard. Without this branch, the narrative
+     * stream only contained other-utterances + naked produce() calls and
+     * was missing every cascade-driven output. */
+    LOG_DEBUG(LOG_MODULE,
+               "narrative append type=%d text='%s' vec=%p",
+               (int)ev->type,
+               ev->text ? ev->text : "(null)",
+               (const void*)ev->semantic_vec);
     return 0;
 }
 

@@ -1014,6 +1014,69 @@ static int cascade_stage_self_feedback(brain_t brain,
         fired_bus = true;
     }
 
+    /* Discourse ring push — the brain's own outputs must become discourse
+     * turns so coref/topic-shift/anaphora detection can see them on the
+     * NEXT comprehend. Without this, the discourse ring only ever held
+     * inbound (user) turns and the model couldn't notice self-references
+     * across turns.
+     *
+     * grounded_language_push_turn signature (per
+     * include/language/nimcp_grounded_language.h:657):
+     *   int grounded_language_push_turn(grounded_language_t*,
+     *                                   const float* semantic_vec,
+     *                                   uint32_t vec_dim,
+     *                                   uint32_t n_words,
+     *                                   bool is_user);
+     *
+     * Caller-level zero-vec gate (mirrors grounded_language_comprehend's
+     * existing pattern at nimcp_grounded_language.c:2362, where push_turn
+     * is skipped when semantic_vec is zero). The push_turn impl itself
+     * appends a slot regardless, but the canonical practice — followed
+     * by every existing caller — is to skip the call when the vec is
+     * effectively zero, preserving prior context blend without injecting
+     * an empty turn.
+     *
+     * Re-entry: push_turn rebuilds the context-blend internally but does
+     * NOT fire any gl event from within. Even if a future change did fire
+     * COMPREHENDED here, gl_fire_event has already returned by this point
+     * so in_fire_event is false — no recursion hazard. Stage 0 already
+     * pushed the prompt earlier in the same cascade; this push is for the
+     * response, on a separate turn slot, so the two pushes don't collide. */
+    if (brain->grounded_lang) {
+        /* Cheap zero-vec test — first non-zero scalar wins. */
+        bool vec_is_zero = true;
+        for (uint32_t i = 0; i < state->content_dim; i++) {
+            if (state->content_intent[i] != 0.0f) { vec_is_zero = false; break; }
+        }
+        if (!vec_is_zero) {
+            uint32_t n_words = state->prompt_word_count > 0
+                                  ? state->prompt_word_count
+                                  : state->word_count;
+            int push_rc = grounded_language_push_turn(brain->grounded_lang,
+                                                       state->content_intent,
+                                                       state->content_dim,
+                                                       n_words,
+                                                       /*is_user=*/false);
+            if (push_rc != 0) {
+                /* push_turn returned -1: bad params or alloc failure.
+                 * gl + dim are validated above so this is the alloc path. */
+                LOG_DEBUG(LOG_MODULE,
+                           "stage_self_feedback: push_turn rc=%d "
+                           "(dim=%u, n_words=%u)",
+                           push_rc, state->content_dim, n_words);
+            }
+        } else {
+            /* Cold-start observability — the zero-vec gate is a known
+             * cascade path on minimal-init brains where every upstream
+             * stage skipped. Log once at DEBUG so the skip is visible
+             * in production traces. */
+            LOG_DEBUG(LOG_MODULE,
+                       "stage_self_feedback: skipping push_turn — "
+                       "content_intent is all-zero (dim=%u)",
+                       state->content_dim);
+        }
+    }
+
     if (wrote_wm || fired_bus) {
         cascade_record_complete(state);
     } else {
