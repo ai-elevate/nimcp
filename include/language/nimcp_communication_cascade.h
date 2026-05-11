@@ -225,6 +225,20 @@ typedef struct {
      *                   recent average. */
     bool  train_applied;
     float train_reward;
+
+    /* Speech-repair (disfluency cleaner) — APPENDED at end of struct.
+     * The orchestrator runs Broca's speech_repair_clean() on the brain's
+     * own utterance just before Stage 8 (self-comprehension) so the
+     * self_match score reflects intended content, not production noise.
+     *   utterance_pre_repair  — heap-allocated copy of utterance BEFORE
+     *                           cleaning (NULL when no repair was applied
+     *                           or no utterance existed). Owned by the
+     *                           cascade state, freed in cleanup.
+     *   speech_repair_applied — true iff speech_repair_clean produced a
+     *                           non-identical output and state->utterance
+     *                           was replaced. */
+    char* utterance_pre_repair;
+    bool  speech_repair_applied;
 } production_cascade_state_t;
 
 /**

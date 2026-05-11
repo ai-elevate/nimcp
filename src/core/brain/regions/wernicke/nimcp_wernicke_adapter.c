@@ -12,6 +12,19 @@
 
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_syntactic_comprehension.h"
+#include "core/brain/regions/wernicke/nimcp_phonological_analyzer.h"
+#include "core/brain/regions/wernicke/nimcp_lexical_access.h"
+/* NOTE: nimcp_semantic_integrator.h cannot be included here because it
+ * redefines `thematic_role_t` (ROLE_AGENT, ROLE_GOAL, ROLE_COUNT, ...)
+ * which is already pulled in via nimcp_syntactic_comprehension.h above —
+ * both headers define the same enum with overlapping values, causing
+ * redeclaration errors. We only need the lifecycle entry points; the
+ * opaque type semantic_integrator_t is already forward-declared in the
+ * adapter header. Declare just the create/destroy functions locally. */
+typedef struct semantic_config semantic_config_t;
+extern semantic_integrator_t* semantic_create(const semantic_config_t* config);
+extern void semantic_destroy(semantic_integrator_t* sem);
+
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -268,11 +281,27 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     adapter->snn = NULL;
     adapter->snn_pop_id = -1;
 
-    /* Create syntactic comprehension submodule (NULL config = defaults).
-     * Without this, wernicke_get_syntactic_comprehension() returns NULL and
-     * the language cascade Phase 2D-A/2D-B parsing path stays statue, leaving
-     * wernicke_parsed=false on every comprehension. Non-fatal: adapter still
-     * works for phonological/lexical/semantic stages even if this fails. */
+    /* Create comprehension submodules (NULL config = each module's defaults).
+     * Without these, wernicke_get_phonological_analyzer/lexical_access/
+     * semantic_integrator/syntactic_comprehension all return NULL and the
+     * language cascade + init-time lexicon seeding stays statue.
+     * Non-fatal on individual failures — leave the field NULL and let
+     * downstream NULL-checks handle it. */
+    adapter->phonological = wernicke_phonological_create(NULL);
+    if (!adapter->phonological) {
+        NIMCP_LOG_WARN("wernicke", "wernicke_phonological_create returned NULL — phonological analysis disabled");
+    }
+
+    adapter->lexical = lexical_create(NULL);
+    if (!adapter->lexical) {
+        NIMCP_LOG_WARN("wernicke", "lexical_create returned NULL — lexical access disabled");
+    }
+
+    adapter->semantic = semantic_create(NULL);
+    if (!adapter->semantic) {
+        NIMCP_LOG_WARN("wernicke", "semantic_create returned NULL — semantic integration disabled");
+    }
+
     adapter->syntactic = syntactic_comprehension_create(NULL);
     if (!adapter->syntactic) {
         NIMCP_LOG_WARN("wernicke", "syntactic_comprehension_create returned NULL — parsing disabled");
@@ -309,8 +338,21 @@ void wernicke_destroy(wernicke_adapter_t* adapter)
         nimcp_free(adapter->phoneme_buffer.events);
     }
 
-    /* Free sub-modules when implemented */
-    /* Phase 2: phonological, lexical, semantic, syntactic */
+    /* Free sub-modules — Phase 2: phonological, lexical, semantic, syntactic.
+     * Each module's destroy() handles NULL safely; symmetric ordering with
+     * create above is not strictly required but kept for readability. */
+    if (adapter->phonological) {
+        wernicke_phonological_destroy(adapter->phonological);
+        adapter->phonological = NULL;
+    }
+    if (adapter->lexical) {
+        lexical_destroy(adapter->lexical);
+        adapter->lexical = NULL;
+    }
+    if (adapter->semantic) {
+        semantic_destroy(adapter->semantic);
+        adapter->semantic = NULL;
+    }
     if (adapter->syntactic) {
         syntactic_comprehension_destroy(adapter->syntactic);
         adapter->syntactic = NULL;

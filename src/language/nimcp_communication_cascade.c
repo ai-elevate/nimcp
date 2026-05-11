@@ -25,6 +25,11 @@
  * every produced word's (intent → word_pop) binding. */
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 
+/* Speech-repair (disfluency cleaner) — applied to brain's own utterance
+ * before Stage 8 (self-comprehension) so self_match measures intent vs.
+ * cleaned content rather than intent vs. production noise. */
+#include "core/brain/regions/broca/nimcp_speech_repair.h"
+
 /* Cognitive module headers — each stage needs the public getter API. */
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
@@ -217,21 +222,42 @@ static int cascade_stage_goal(brain_t brain, const char* prompt,
     /* Pragmatics override: when the surface form is a question, ask
      * Broca's pragmatics processor whether it's actually an INDIRECT
      * speech act ("Can you pass the salt?" surface=QUESTION,
-     * intended=REQUEST). The processor matches a small set of indirect-
-     * request templates (modal+you, declarative-with-please, etc.) and
-     * returns is_indirect=true with primary_act=REQUEST/COMMAND. We
-     * only override on questions — direct REQUEST/COMMAND is already
-     * handled above via prompt_is_imperative. */
+     * intended=REQUEST). The full pipeline (pragmatics_analyze) composes
+     * scalar implicature + Gricean maxim analysis + indirect-act detection
+     * + ironic detection. We only override on questions — direct
+     * REQUEST/COMMAND is already handled above via prompt_is_imperative.
+     *
+     * Fallback: if pragmatics_analyze fails (e.g. processor not fully
+     * initialised), fall through to the lightweight surface classifier
+     * so we still get indirect-request detection from the template path. */
     if (state->prompt_is_question &&
         brain->broca_pragmatics &&
         prompt && prompt[0]) {
-        speech_act_result_t prag = {0};
-        if (pragmatics_classify_speech_act(brain->broca_pragmatics,
-                                             prompt, /*speaker_id*/0, &prag) &&
-            prag.is_indirect &&
-            (prag.primary_act == SPEECH_ACT_REQUEST ||
-             prag.primary_act == SPEECH_ACT_COMMAND)) {
-            state->act_type             = SPEECH_ACT_REQUEST;
+        pragmatic_analysis_t analysis = {0};
+        bool got_full = pragmatics_analyze(brain->broca_pragmatics,
+                                            prompt, /*speaker_id*/0,
+                                            /*timestamp_ms*/0, &analysis);
+        speech_act_type_t primary;
+        bool is_indirect;
+        if (got_full) {
+            primary     = analysis.speech_act.primary_act;
+            is_indirect = analysis.speech_act.is_indirect;
+        } else {
+            /* Fallback to lightweight classifier */
+            speech_act_result_t prag = {0};
+            if (!pragmatics_classify_speech_act(brain->broca_pragmatics,
+                                                  prompt, /*speaker_id*/0, &prag)) {
+                primary     = SPEECH_ACT_DECLARE;
+                is_indirect = false;
+            } else {
+                primary     = prag.primary_act;
+                is_indirect = prag.is_indirect;
+            }
+        }
+        if (is_indirect &&
+            (primary == SPEECH_ACT_REQUEST ||
+             primary == SPEECH_ACT_COMMAND)) {
+            state->act_type              = SPEECH_ACT_REQUEST;
             state->pragmatic_is_indirect = true;
         }
     }
@@ -1640,6 +1666,12 @@ void cascade_state_cleanup(production_cascade_state_t* state) {
         nimcp_free(state->best_utterance);
         state->best_utterance = NULL;
     }
+    /* Disfluency cleaner: free pre-repair snapshot of utterance. */
+    if (state->utterance_pre_repair) {
+        nimcp_free(state->utterance_pre_repair);
+        state->utterance_pre_repair = NULL;
+    }
+    state->speech_repair_applied = false;
     /* Stage 9 (Wave 2 Item 7): free phoneme sequence buffer. */
     if (state->phoneme_sequence) {
         nimcp_free(state->phoneme_sequence);
@@ -2061,6 +2093,46 @@ int communication_cascade_run(
     if (stage_mask & CASCADE_STAGE_SYNTACTIC) {
         cascade_stage_syntactic(brain, out_state);
     }
+    /* Speech repair (disfluency cleaner): strip "um", "uh", repetitions
+     * and false starts from the produced utterance BEFORE Stage 8 so the
+     * self-comprehension score reflects intended content. No-ops cleanly
+     * when the processor is NULL or there is no utterance. If cleaning
+     * changes the text, the original is preserved in utterance_pre_repair
+     * and a one-shot LOG_DEBUG is emitted. */
+    if ((stage_mask & CASCADE_STAGE_SELF_COMP) &&
+        brain->speech_repair &&
+        out_state->utterance && out_state->utterance[0]) {
+        char cleaned[512];
+        cleaned[0] = '\0';
+        if (speech_repair_clean(brain->speech_repair, out_state->utterance,
+                                  cleaned, sizeof(cleaned)) &&
+            cleaned[0] && strcmp(cleaned, out_state->utterance) != 0) {
+            /* Save original for diagnostics, replace with cleaned form. */
+            if (out_state->utterance_pre_repair) {
+                nimcp_free(out_state->utterance_pre_repair);
+                out_state->utterance_pre_repair = NULL;
+            }
+            size_t orig_len = strlen(out_state->utterance);
+            out_state->utterance_pre_repair =
+                (char*)nimcp_malloc(orig_len + 1);
+            if (out_state->utterance_pre_repair) {
+                memcpy(out_state->utterance_pre_repair,
+                        out_state->utterance, orig_len + 1);
+            }
+            size_t clen = strlen(cleaned);
+            char* repl = (char*)nimcp_malloc(clen + 1);
+            if (repl) {
+                memcpy(repl, cleaned, clen + 1);
+                nimcp_free(out_state->utterance);
+                out_state->utterance = repl;
+                out_state->speech_repair_applied = true;
+                LOG_DEBUG(LOG_MODULE,
+                          "speech_repair_clean: applied (orig=\"%s\" -> cleaned=\"%s\")",
+                          out_state->utterance_pre_repair, out_state->utterance);
+            }
+        }
+    }
+
     /* Stage 8 (Phase 2D-B): Wernicke validates the brain's own output.
      * Closes the sensorimotor loop — the produced text gets re-comprehended
      * and compared to the original intent vector. The match score is the

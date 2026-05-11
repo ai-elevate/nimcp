@@ -2805,6 +2805,19 @@ struct brain_struct {
     float cascade_self_train_baseline;
     float cascade_self_train_alpha;
     float cascade_self_train_lr_scale;
+
+    /* === SPEECH REPAIR PROCESSOR (statue wiring 2026-05-11) ===
+     * Disfluency cleaner used by the communication cascade just before
+     * Stage 8 (self-comprehension). The brain's own utterance is run
+     * through speech_repair_clean() to strip filled pauses, repetitions,
+     * and false starts so the self_match score reflects the intended
+     * content, not the production noise. APPENDED at end of brain_struct
+     * to avoid ABI shift on existing layouts. Lifetime: created in
+     * nimcp_brain_factory_init_broca_subsystem alongside the pragmatics
+     * processor, destroyed in nimcp_brain_factory_destroy_broca_subsystem.
+     * NULL when Broca is disabled — the cascade tolerates NULL by simply
+     * skipping the repair step. Forward-declared opaque type. */
+    struct speech_repair* speech_repair;
 };
 
 //=============================================================================

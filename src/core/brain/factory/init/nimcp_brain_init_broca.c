@@ -45,6 +45,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_broca, MESH_ADAPTER_CATEGORY_SYSTEM)
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/broca/nimcp_broca_substrate_bridge.h"
 #include "core/brain/regions/broca/nimcp_pragmatics_processor.h"
+#include "core/brain/regions/broca/nimcp_speech_repair.h"
 // NOTE: Avoid including thalamic_bridge.h directly due to type conflicts
 // We use forward declarations instead
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
@@ -209,6 +210,21 @@ bool nimcp_brain_factory_init_broca_subsystem(brain_t brain) {
             LOG_WARN(LOG_MODULE, "Pragmatics processor create failed (non-fatal)");
         } else {
             LOG_DEBUG(LOG_MODULE, "Pragmatics processor initialized");
+        }
+    }
+
+    /* Create the speech-repair / disfluency processor. The communication
+     * cascade calls speech_repair_clean() on the brain's own utterance
+     * just before Stage 8 (self-comprehension), so the self_match score
+     * reflects the intended content rather than production noise (filled
+     * pauses, false starts, mid-word restarts). Non-fatal on failure —
+     * the cascade tolerates NULL by skipping the repair step. */
+    if (!brain->speech_repair) {
+        brain->speech_repair = speech_repair_create(NULL);
+        if (!brain->speech_repair) {
+            LOG_WARN(LOG_MODULE, "Speech-repair processor create failed (non-fatal)");
+        } else {
+            LOG_DEBUG(LOG_MODULE, "Speech-repair processor initialized");
         }
     }
 
@@ -464,6 +480,12 @@ void nimcp_brain_factory_destroy_broca_subsystem(brain_t brain) {
     if (brain->broca_substrate_bridge) {
         broca_substrate_bridge_destroy(brain->broca_substrate_bridge);
         brain->broca_substrate_bridge = NULL;
+    }
+
+    /* Destroy speech-repair processor (sibling of broca_adapter) */
+    if (brain->speech_repair) {
+        speech_repair_destroy(brain->speech_repair);
+        brain->speech_repair = NULL;
     }
 
     /* Destroy pragmatics processor (sibling of broca_adapter) */
