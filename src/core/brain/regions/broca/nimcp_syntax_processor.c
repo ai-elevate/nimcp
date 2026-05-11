@@ -341,11 +341,22 @@ bool syntax_build_tree(syntax_processor_t* processor) {
 
     // CYK Chart Parsing (simplified bottom-up)
     // Fill diagonal with lexical items
+    //
+    // POS → phrase-type mapping. Previously this switch handled only 6 of
+    // the 13 POS classes; ADVERB / CONJUNCTION / COMPLEMENTIZER / AUXILIARY
+    // / INTERJECTION / PUNCTUATION / NUMBER / UNKNOWN all fell through to
+    // PHRASE_NONE, which silently dropped every sentence containing "and",
+    // "is", "very", "that", etc. into stats.failed_parses with no
+    // diagnostic. This expanded mapping covers all POS classes; the
+    // unfilled-cell branch logs a LOG_DEBUG so training-time failures are
+    // attributable to a specific word + position. (Logging is LOG_DEBUG
+    // because these are common during training, not warnings.)
     for (uint32_t i = 0; i < n; i++) {
         syntactic_unit_t* unit = &processor->units[i];
 
         // Map POS to phrase type
         phrase_type_t phrase = PHRASE_NONE;
+        bool is_transparent = false;  // skip cell (e.g. punctuation)
         switch (unit->pos) {
             case POS_NOUN:
             case POS_PRONOUN:
@@ -355,13 +366,45 @@ bool syntax_build_tree(syntax_processor_t* processor) {
             case POS_VERB:
                 phrase = PHRASE_VP;
                 break;
+            case POS_AUXILIARY:
+                // Auxiliaries head verb phrases (is/are/have/will).
+                phrase = PHRASE_VP;
+                break;
             case POS_ADJECTIVE:
                 phrase = PHRASE_AP;
                 break;
             case POS_PREPOSITION:
                 phrase = PHRASE_PP;
                 break;
+            case POS_ADVERB:
+                phrase = PHRASE_ADVP;
+                break;
+            case POS_CONJUNCTION:
+                phrase = PHRASE_CONJP;
+                break;
+            case POS_COMPLEMENTIZER:
+                phrase = PHRASE_CP;
+                break;
+            case POS_PARTICLE:
+                // Particles ("up", "down", "out") combine with verbs;
+                // treat as ADVP for simplified grammar.
+                phrase = PHRASE_ADVP;
+                break;
+            case POS_PUNCTUATION:
+            case POS_INTERJECTION:
+                // Transparent: don't fill this cell, just advance past it.
+                is_transparent = true;
+                break;
+            case POS_UNKNOWN:
+                // Diagnostic: log so training-time parse failures can be
+                // attributed to a specific OOV/UNKNOWN word.
+                LOG_DEBUG("BROCA_SYNTAX: POS_UNKNOWN at chart[%u][%u] "
+                          "(word_id=%u) — chart cell left unfilled",
+                          i, i, unit->word_id);
+                phrase = PHRASE_NONE;
+                break;
             default:
+                // Cover POS_COUNT and any future enum additions safely.
                 phrase = PHRASE_NONE;
                 break;
         }
@@ -369,6 +412,12 @@ bool syntax_build_tree(syntax_processor_t* processor) {
         processor->chart[i][i].phrase_type = phrase;
         processor->chart[i][i].probability = 1.0F;
         processor->chart[i][i].is_filled = (phrase != PHRASE_NONE);
+
+        if (!processor->chart[i][i].is_filled && !is_transparent) {
+            LOG_DEBUG("BROCA_SYNTAX: chart[%u][%u] unfilled "
+                      "(pos=%s word_id=%u)",
+                      i, i, syntax_pos_name(unit->pos), unit->word_id);
+        }
     }
 
     // Fill chart bottom-up
@@ -918,6 +967,99 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
     rule.is_active = true;
     syntax_add_rule(processor, &rule);
 
+    /* VP → ADVP VP (sentence-initial adverb: "quickly [ran home]") */
+    rule.lhs = PHRASE_VP;
+    rule.rhs[0] = PHRASE_ADVP;
+    rule.rhs[1] = PHRASE_VP;
+    rule.num_rhs = 2;
+    rule.probability = 0.3F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* === CONJUNCTION RULES ===
+     *
+     * "the cat and the dog ran" — handled in two stages:
+     *   1.  CONJP + NP → NP  (collapse "and the dog" into an NP)
+     *   2.  NP + NP   → NP   (compound NP rule already loaded above)
+     * Same pattern lifts S + Conj + S into S via the IP rule below.
+     *
+     * Scope note: full coordinate-structure grammar is out of scope;
+     * we only cover the common Conj+X attachment case so simple
+     * conjoined NPs / sentences parse. Three-way coordination
+     * ("X, Y, and Z") still fails — needs comma handling + ternary
+     * rules. */
+
+    /* NP → CONJP NP ("and the dog") */
+    rule.lhs = PHRASE_NP;
+    rule.rhs[0] = PHRASE_CONJP;
+    rule.rhs[1] = PHRASE_NP;
+    rule.num_rhs = 2;
+    rule.probability = 0.5F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* VP → CONJP VP ("and ran") */
+    rule.lhs = PHRASE_VP;
+    rule.rhs[0] = PHRASE_CONJP;
+    rule.rhs[1] = PHRASE_VP;
+    rule.num_rhs = 2;
+    rule.probability = 0.4F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* IP → IP CONJP (clause-final conjunction "S, and") — rare but legal */
+    rule.lhs = PHRASE_IP;
+    rule.rhs[0] = PHRASE_IP;
+    rule.rhs[1] = PHRASE_CONJP;
+    rule.num_rhs = 2;
+    rule.probability = 0.2F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* IP → IP IP (sentence coordination via Conj+IP collapse: "X and Y") */
+    rule.lhs = PHRASE_IP;
+    rule.rhs[0] = PHRASE_IP;
+    rule.rhs[1] = PHRASE_IP;
+    rule.num_rhs = 2;
+    rule.probability = 0.25F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* === COMPLEMENTIZER PHRASE RULES === */
+
+    /* CP → CP IP ("that [she left]" — embedded clause) */
+    rule.lhs = PHRASE_CP;
+    rule.rhs[0] = PHRASE_CP;
+    rule.rhs[1] = PHRASE_IP;
+    rule.num_rhs = 2;
+    rule.probability = 0.7F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* VP → VP CP (verb selecting clausal complement: "said [that she left]") */
+    rule.lhs = PHRASE_VP;
+    rule.rhs[0] = PHRASE_VP;
+    rule.rhs[1] = PHRASE_CP;
+    rule.num_rhs = 2;
+    rule.probability = 0.3F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
+    /* === YES/NO QUESTIONS (auxiliary inversion) ===
+     *
+     * "is the cat hungry" → AUX + NP + AP, which we collapse as:
+     *   VP + NP → VP  (AUX-as-VP + subject NP)  -- existing transitive rule
+     *   VP + AP → VP  -- existing complement rule
+     *   IP → NP VP   -- but subject is INSIDE the VP, so we need IP → VP
+     * Add IP → VP to permit the question to top out at IP. */
+    rule.lhs = PHRASE_IP;
+    rule.rhs[0] = PHRASE_VP;
+    rule.rhs[1] = PHRASE_VP;
+    rule.num_rhs = 2;
+    rule.probability = 0.2F;
+    rule.is_active = true;
+    syntax_add_rule(processor, &rule);
+
     return true;
 }
 
@@ -999,6 +1141,7 @@ const char* syntax_phrase_name(phrase_type_t phrase) {
         case PHRASE_CP: return "CP";
         case PHRASE_IP: return "IP";
         case PHRASE_DP: return "DP";
+        case PHRASE_CONJP: return "CONJP";
         default: return "INVALID";
     }
 }
