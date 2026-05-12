@@ -1031,6 +1031,21 @@ static void mirror_binding_to_bridge(grounded_language_t* gl,
 /** Add or strengthen a binding between a word and a concept */
 static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
                         uint64_t concept_id, float strength, gl_modality_t modality) {
+    /* Walkthrough-3 part 3 fix — guard entry->bindings against concurrent
+     * realloc (Audit B HIGH #7). Pre-fix, the nimcp_realloc below could
+     * move the buffer while another thread was reading entry->bindings[i]
+     * — classic UAF.
+     *
+     * mirror_binding_to_bridge fires OUTSIDE the lock: it calls into the
+     * SNN bridge which takes its own internal locks (lock-ordering hazard
+     * if we held mutate_lock during the call). We snapshot the strength
+     * value to mirror before unlocking. */
+    gl_mutate_lock(gl);
+
+    float mirror_strength = 0.0f;
+    bool  do_mirror = false;
+    int   rc = 0;
+
     /* Check if binding already exists */
     for (uint32_t i = 0; i < entry->binding_count; i++) {
         if (entry->bindings[i].concept_id == concept_id) {
@@ -1049,8 +1064,9 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
             entry->bindings[i].confidence = 1.0f - expf(-(float)entry->bindings[i].exposure_count / 5.0f);
             entry->bindings[i].last_activation_ms = (uint64_t)time(NULL) * 1000;
             gl->stats.total_bindings++;
-            mirror_binding_to_bridge(gl, entry, concept_id, entry->bindings[i].strength);
-            return 0;
+            mirror_strength = entry->bindings[i].strength;
+            do_mirror = true;
+            goto done;
         }
     }
 
@@ -1059,7 +1075,7 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
         uint32_t new_cap = entry->binding_capacity * 2;
         gl_word_binding_t* new_bindings = (gl_word_binding_t*)nimcp_realloc(
             entry->bindings, new_cap * sizeof(gl_word_binding_t));
-        if (!new_bindings) return -1;
+        if (!new_bindings) { rc = -1; goto done; }
         memset(new_bindings + entry->binding_capacity, 0,
                (new_cap - entry->binding_capacity) * sizeof(gl_word_binding_t));
         entry->bindings = new_bindings;
@@ -1077,8 +1093,15 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
 
     entry->binding_count++;
     gl->stats.total_bindings++;
-    mirror_binding_to_bridge(gl, entry, concept_id, strength);
-    return 0;
+    mirror_strength = strength;
+    do_mirror = true;
+
+done:
+    gl_mutate_unlock(gl);
+    if (do_mirror) {
+        mirror_binding_to_bridge(gl, entry, concept_id, mirror_strength);
+    }
+    return rc;
 }
 
 /*=============================================================================
