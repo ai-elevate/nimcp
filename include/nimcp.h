@@ -1448,6 +1448,16 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
                                                           float* out_alpha,
                                                           float* out_lr_scale);
 
+/** Batch K — cascade lifetime telemetry counters. Snapshot + reset.
+ *  `out` is zeroed and populated on success. Reset zeros every counter
+ *  atomically (per-field; not transactional across fields). */
+struct nimcp_cascade_counters; /* opaque forward decl — full type in
+                                  include/language/nimcp_communication_cascade.h */
+nimcp_status_t nimcp_brain_get_cascade_counters(
+    nimcp_brain_t brain,
+    struct nimcp_cascade_counters* out);
+nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *

@@ -469,6 +469,78 @@ int nimcp_brain_produce_cascade_diag_full_impl(
     float**   out_prosody_duration_ms,
     float**   out_prosody_intensity_db);
 
+/* ----------------------------------------------------------------------
+ * Cascade telemetry counters (Batch K).
+ *
+ * The diag struct above captures a per-RUN snapshot. These counters are
+ * LIFETIME totals — flow telemetry across every cascade invocation. They
+ * answer "how often has the cascade fired" + "where does it spend its
+ * effort" + "where does it fail." Useful for trainer dashboards that
+ * cannot reasonably tap every per-run state field.
+ *
+ * The brain-owned counter block is updated in-place by the orchestrator
+ * with relaxed-order atomic increments — safe to read concurrently from
+ * the RO socket thread pool. Callers see a snapshot via the public RO
+ * API; reset zeros the whole block.
+ * ---------------------------------------------------------------------- */
+
+/* Total cascade stages. Update CASCADE_STAGE_COUNT in lockstep with the
+ * stage_mask bits in cascade_stage_mask_t. */
+#define NIMCP_CASCADE_STAGE_COUNT 15u
+
+typedef struct nimcp_cascade_counters {
+    /* Entry-point flow counters. */
+    uint64_t total_runs;
+    uint64_t runs_with_prompt;
+    uint64_t runs_spontaneous;
+    uint64_t runs_fatal_error;
+
+    /* Per-stage observability. invocations counts body-runs (post mask
+     * check); mask_skips counts mask-gated short-circuits; failures
+     * counts stages whose recorder hit cascade_record_skip with the
+     * SKIP-due-to-error path. Arrays sized to the stage count. */
+    uint64_t stage_invocations[NIMCP_CASCADE_STAGE_COUNT];
+    uint64_t stage_mask_skips[NIMCP_CASCADE_STAGE_COUNT];
+    uint64_t stage_failures[NIMCP_CASCADE_STAGE_COUNT];
+
+    /* Semantic counters surfaced by individual stages. */
+    uint64_t pragmatics_indirect_overrides;
+    uint64_t wernicke_lexicon_miss;
+    uint64_t speech_repair_applied;
+    uint64_t self_train_steps_matched;     /* train_applied == true */
+    uint64_t self_train_steps_no_bindings; /* self_train ran but no plasticity */
+    uint64_t self_produced_events_fired;
+    uint64_t discourse_ring_pushes_user;
+    uint64_t discourse_ring_pushes_self;
+} nimcp_cascade_counters_t;
+
+/**
+ * @brief Snapshot the brain's lifetime cascade counters.
+ *
+ * Lock-free via _Atomic relaxed loads. The struct is copied by value;
+ * the snapshot is consistent per-field but counters may individually
+ * have advanced between fields if another thread is running the
+ * cascade. For monitoring this is fine.
+ *
+ * @param brain Brain handle (internal pointer; NULL → -1).
+ * @param out   Caller-owned snapshot struct, zeroed and populated.
+ * @return 0 on success, -1 on invalid args.
+ */
+int nimcp_brain_get_cascade_counters_impl(
+    brain_t brain,
+    nimcp_cascade_counters_t* out);
+
+/**
+ * @brief Zero the brain's lifetime cascade counters.
+ *
+ * Atomic per-field store; the operation is not transactional across
+ * fields but every counter ends at zero.
+ *
+ * @param brain Brain handle (NULL → -1).
+ * @return 0 on success, -1 on invalid args.
+ */
+int nimcp_brain_reset_cascade_counters_impl(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

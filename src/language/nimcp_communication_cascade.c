@@ -91,6 +91,43 @@ static void cascade_record_fail(production_cascade_state_t* s,
     }
 }
 
+/* Map a single-bit cascade_stage_mask_t to a [0,14] index for the
+ * counter arrays. Returns -1 if the input is not a power of two or
+ * is out of range. The orchestrator only ever passes single-bit
+ * values here, so the helper rejects multi-bit composites. */
+static inline int cascade_stage_to_index(uint32_t stage_bit) {
+    if (stage_bit == 0) return -1;
+    /* Single-bit only. */
+    if ((stage_bit & (stage_bit - 1)) != 0) return -1;
+    int idx = 0;
+    while ((stage_bit & 1u) == 0) { stage_bit >>= 1; idx++; }
+    if (idx >= 15) return -1;
+    return idx;
+}
+
+/* Counter-bump helpers — gated on the brain pointer. relaxed-order
+ * atomic increments suffice; readers don't need program-order across
+ * different counters. */
+#include <stdatomic.h>
+static inline void cascade_counter_invoke(brain_t brain, uint32_t stage_bit) {
+    int i = cascade_stage_to_index(stage_bit);
+    if (i < 0 || !brain) return;
+    atomic_fetch_add_explicit(&brain->cascade_stage_invocations[i], 1u,
+                              memory_order_relaxed);
+}
+static inline void cascade_counter_mask_skip(brain_t brain, uint32_t stage_bit) {
+    int i = cascade_stage_to_index(stage_bit);
+    if (i < 0 || !brain) return;
+    atomic_fetch_add_explicit(&brain->cascade_stage_mask_skips[i], 1u,
+                              memory_order_relaxed);
+}
+static inline void cascade_counter_failure(brain_t brain, uint32_t stage_bit) {
+    int i = cascade_stage_to_index(stage_bit);
+    if (i < 0 || !brain) return;
+    atomic_fetch_add_explicit(&brain->cascade_stage_failures[i], 1u,
+                              memory_order_relaxed);
+}
+
 /* Stage 0 (Wernicke comprehension) and Stage 8 (Wernicke self-comprehension)
  * live in nimcp_communication_cascade_wernicke.c because Wernicke and Broca
  * both define phrase_type_t with overlapping enum values; pulling both into
@@ -1051,6 +1088,8 @@ static int cascade_stage_self_feedback(brain_t brain,
         bus_ev.semantic_vec = state->content_intent;   /* always non-NULL here */
         bus_ev.confidence   = state->content_confidence;
         gl_fire_event(brain->grounded_lang, &bus_ev);
+        atomic_fetch_add_explicit(&brain->cascade_self_produced_events_fired,
+                                  1u, memory_order_relaxed);
         fired_bus = true;
     }
 
@@ -1097,6 +1136,8 @@ static int cascade_stage_self_feedback(brain_t brain,
                                                        state->content_dim,
                                                        n_words,
                                                        /*is_user=*/false);
+            atomic_fetch_add_explicit(&brain->cascade_discourse_ring_pushes_self,
+                                      1u, memory_order_relaxed);
             if (push_rc != 0) {
                 /* push_turn returned -1: bad params or alloc failure.
                  * gl + dim are validated above so this is the alloc path. */
@@ -2021,6 +2062,26 @@ int communication_cascade_run(
 
     if (stage_mask == 0) stage_mask = CASCADE_STAGE_ALL;
 
+    /* Batch K telemetry — entry-point counters. mask-skip counters are
+     * bumped per-stage below when the stage bit is missing from mask. */
+    atomic_fetch_add_explicit(&brain->cascade_total_runs, 1u, memory_order_relaxed);
+    if (prompt_or_null && prompt_or_null[0]) {
+        atomic_fetch_add_explicit(&brain->cascade_runs_with_prompt, 1u,
+                                  memory_order_relaxed);
+    } else {
+        atomic_fetch_add_explicit(&brain->cascade_runs_spontaneous, 1u,
+                                  memory_order_relaxed);
+    }
+    /* Per-stage mask-skip counters: bump for every bit in CASCADE_STAGE_ALL
+     * that's NOT in this run's mask. Resolution at the stage call sites
+     * below would also work but this one pass is cleaner + cheaper. */
+    {
+        uint32_t missing = (uint32_t)CASCADE_STAGE_ALL & ~stage_mask;
+        for (uint32_t bit = 1u; bit != 0; bit <<= 1) {
+            if (missing & bit) cascade_counter_mask_skip(brain, bit);
+        }
+    }
+
     /* If a prompt was given, comprehend it first to seed the intent
      * vector. The comprehend itself fires GL_EVENT_COMPREHENDED on the
      * cognitive bus, so working memory + ToM see the input naturally. */
@@ -2030,6 +2091,12 @@ int communication_cascade_run(
         if (grounded_language_comprehend(brain->grounded_lang, prompt_or_null,
                                           &comp) == 0 && comp.semantic_vector) {
             have_prompt = true;
+            /* grounded_language_comprehend pushes the user turn onto the
+             * discourse ring internally (see nimcp_grounded_language.c
+             * line 2360). Bump the corresponding counter here so callers
+             * can split user vs self pushes without instrumenting GL. */
+            atomic_fetch_add_explicit(&brain->cascade_discourse_ring_pushes_user,
+                                      1u, memory_order_relaxed);
         }
     }
 
@@ -2040,6 +2107,7 @@ int communication_cascade_run(
      * Wernicke's syntactic_comprehension.h conflicts with Broca's
      * syntax_processor.h (both define phrase_type_t). */
     if ((stage_mask & CASCADE_STAGE_WERNICKE) && have_prompt) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_WERNICKE);
         cascade_stage_wernicke(brain, prompt_or_null, out_state);
         /* Account for skip/complete after the call since the stage
          * function avoids touching the helpers (it doesn't include
@@ -2060,25 +2128,41 @@ int communication_cascade_run(
     /* Stage 1-5: build content intent. Each stage records its own
      * skip/fail; only stage_content failure aborts the cascade. */
     if (stage_mask & CASCADE_STAGE_DRIVE) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_DRIVE);
         cascade_stage_drive(brain, out_state);
     }
     if (stage_mask & CASCADE_STAGE_GOAL) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_GOAL);
         cascade_stage_goal(brain, prompt_or_null, out_state);
+        /* If pragmatics flipped speech_act to an indirect form, bump the
+         * dedicated counter (the cascade_record_* helpers don't see this
+         * semantic event). */
+        if (out_state->pragmatic_is_indirect) {
+            atomic_fetch_add_explicit(
+                &brain->cascade_pragmatics_indirect_overrides,
+                1u, memory_order_relaxed);
+        }
     }
     if (stage_mask & CASCADE_STAGE_LISTENER) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_LISTENER);
         cascade_stage_listener(brain, out_state);
     }
     if (stage_mask & CASCADE_STAGE_EPISODIC) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_EPISODIC);
         cascade_stage_episodic(brain,
                                 have_prompt ? comp.semantic_vector : NULL,
                                 have_prompt ? grounded_language_get_semantic_dim(brain->grounded_lang) : 0,
                                 out_state);
     }
     if (stage_mask & CASCADE_STAGE_CONTENT) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_CONTENT);
         if (cascade_stage_content(brain,
                                     have_prompt ? comp.semantic_vector : NULL,
                                     have_prompt ? grounded_language_get_semantic_dim(brain->grounded_lang) : 0,
                                     out_state) < 0) {
+            atomic_fetch_add_explicit(&brain->cascade_runs_fatal_error, 1u,
+                                      memory_order_relaxed);
+            cascade_counter_failure(brain, CASCADE_STAGE_CONTENT);
             gl_comprehension_result_cleanup(&comp);
             return -1;
         }
@@ -2088,9 +2172,11 @@ int communication_cascade_run(
 
     /* Stages 6-9: surface the intent as language. */
     if (stage_mask & CASCADE_STAGE_LEXICAL) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_LEXICAL);
         cascade_stage_lexical(brain, out_state);
     }
     if (stage_mask & CASCADE_STAGE_SYNTACTIC) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_SYNTACTIC);
         cascade_stage_syntactic(brain, out_state);
     }
     /* Speech repair (disfluency cleaner): strip "um", "uh", repetitions
@@ -2126,6 +2212,9 @@ int communication_cascade_run(
                 nimcp_free(out_state->utterance);
                 out_state->utterance = repl;
                 out_state->speech_repair_applied = true;
+                atomic_fetch_add_explicit(
+                    &brain->cascade_speech_repair_applied,
+                    1u, memory_order_relaxed);
                 LOG_DEBUG(LOG_MODULE,
                           "speech_repair_clean: applied (orig=\"%s\" -> cleaned=\"%s\")",
                           out_state->utterance_pre_repair, out_state->utterance);
@@ -2139,6 +2228,7 @@ int communication_cascade_run(
      * cleanest available signal of "did the brain actually say what it
      * meant?" Future training work uses this as a reward signal. */
     if (stage_mask & CASCADE_STAGE_SELF_COMP) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_SELF_COMP);
         cascade_stage_self_comprehension(brain, out_state);
         if (out_state->self_parsed) {
             cascade_record_complete(out_state);
@@ -2161,6 +2251,7 @@ int communication_cascade_run(
         out_state->utterance &&
         out_state->self_match < REPAIR_THRESHOLD) {
 
+        cascade_counter_invoke(brain, CASCADE_STAGE_SPEECH_REPAIR);
         /* Snapshot the original — content_intent gets perturbed in place,
          * so we save a clean copy to restore between attempts. */
         const uint32_t dim = out_state->content_dim;
@@ -2261,6 +2352,7 @@ int communication_cascade_run(
     }
 
     if (stage_mask & CASCADE_STAGE_PHONOLOGICAL) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_PHONOLOGICAL);
         cascade_stage_phonological(brain, out_state);
     }
     /* Stage 11 (Wave 2 Item 9): prosodic contour. Runs after phonological
@@ -2268,9 +2360,11 @@ int communication_cascade_run(
      * produced, and before motor so the motor stage (when implemented)
      * has F0/duration/intensity arrays to drive synthesis. */
     if (stage_mask & CASCADE_STAGE_PROSODY) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_PROSODY);
         cascade_stage_prosody(brain, out_state);
     }
     if (stage_mask & CASCADE_STAGE_MOTOR) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_MOTOR);
         cascade_stage_motor(brain, out_state);
     }
     /* Stage 11 (Wave 2 Item #10): reward-modulated SNN bridge training.
@@ -2285,14 +2379,95 @@ int communication_cascade_run(
      * walks bindings). Train BEFORE feedback so a learning failure
      * doesn't corrupt the cognitive bus event. */
     if (stage_mask & CASCADE_STAGE_SELF_TRAIN) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_SELF_TRAIN);
         cascade_stage_self_train(brain, out_state);
+        /* Split telemetry: matched vs no-bindings. train_applied flips
+         * true only when echo_correct actually walked >=1 binding. */
+        if (out_state->train_applied) {
+            atomic_fetch_add_explicit(
+                &brain->cascade_self_train_steps_matched,
+                1u, memory_order_relaxed);
+        } else {
+            atomic_fetch_add_explicit(
+                &brain->cascade_self_train_steps_no_bindings,
+                1u, memory_order_relaxed);
+        }
     }
     /* Stage 9 (item #8): write produced utterance back to working memory
      * and fire GL_EVENT_SELF_PRODUCED. Runs last so it sees a fully
      * populated cascade state (content_intent, utterance, confidence). */
     if (stage_mask & CASCADE_STAGE_SELF_FEEDBACK) {
+        cascade_counter_invoke(brain, CASCADE_STAGE_SELF_FEEDBACK);
         cascade_stage_self_feedback(brain, out_state);
     }
 
+    return 0;
+}
+
+/*============================================================================
+ * Batch K — public RO API: snapshot + reset cascade counters.
+ *==========================================================================*/
+
+int nimcp_brain_get_cascade_counters_impl(brain_t brain,
+                                            nimcp_cascade_counters_t* out)
+{
+    if (!brain || !out) return -1;
+    memset(out, 0, sizeof(*out));
+
+    out->total_runs = atomic_load_explicit(&brain->cascade_total_runs,
+                                            memory_order_relaxed);
+    out->runs_with_prompt = atomic_load_explicit(&brain->cascade_runs_with_prompt,
+                                                  memory_order_relaxed);
+    out->runs_spontaneous = atomic_load_explicit(&brain->cascade_runs_spontaneous,
+                                                  memory_order_relaxed);
+    out->runs_fatal_error = atomic_load_explicit(&brain->cascade_runs_fatal_error,
+                                                  memory_order_relaxed);
+    for (uint32_t i = 0; i < NIMCP_CASCADE_STAGE_COUNT; i++) {
+        out->stage_invocations[i] = atomic_load_explicit(
+            &brain->cascade_stage_invocations[i], memory_order_relaxed);
+        out->stage_mask_skips[i] = atomic_load_explicit(
+            &brain->cascade_stage_mask_skips[i], memory_order_relaxed);
+        out->stage_failures[i] = atomic_load_explicit(
+            &brain->cascade_stage_failures[i], memory_order_relaxed);
+    }
+    out->pragmatics_indirect_overrides = atomic_load_explicit(
+        &brain->cascade_pragmatics_indirect_overrides, memory_order_relaxed);
+    out->wernicke_lexicon_miss = atomic_load_explicit(
+        &brain->cascade_wernicke_lexicon_miss, memory_order_relaxed);
+    out->speech_repair_applied = atomic_load_explicit(
+        &brain->cascade_speech_repair_applied, memory_order_relaxed);
+    out->self_train_steps_matched = atomic_load_explicit(
+        &brain->cascade_self_train_steps_matched, memory_order_relaxed);
+    out->self_train_steps_no_bindings = atomic_load_explicit(
+        &brain->cascade_self_train_steps_no_bindings, memory_order_relaxed);
+    out->self_produced_events_fired = atomic_load_explicit(
+        &brain->cascade_self_produced_events_fired, memory_order_relaxed);
+    out->discourse_ring_pushes_user = atomic_load_explicit(
+        &brain->cascade_discourse_ring_pushes_user, memory_order_relaxed);
+    out->discourse_ring_pushes_self = atomic_load_explicit(
+        &brain->cascade_discourse_ring_pushes_self, memory_order_relaxed);
+    return 0;
+}
+
+int nimcp_brain_reset_cascade_counters_impl(brain_t brain)
+{
+    if (!brain) return -1;
+    atomic_store_explicit(&brain->cascade_total_runs, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_runs_with_prompt, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_runs_spontaneous, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_runs_fatal_error, 0u, memory_order_relaxed);
+    for (uint32_t i = 0; i < NIMCP_CASCADE_STAGE_COUNT; i++) {
+        atomic_store_explicit(&brain->cascade_stage_invocations[i], 0u, memory_order_relaxed);
+        atomic_store_explicit(&brain->cascade_stage_mask_skips[i], 0u, memory_order_relaxed);
+        atomic_store_explicit(&brain->cascade_stage_failures[i], 0u, memory_order_relaxed);
+    }
+    atomic_store_explicit(&brain->cascade_pragmatics_indirect_overrides, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_wernicke_lexicon_miss, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_speech_repair_applied, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_self_train_steps_matched, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_self_train_steps_no_bindings, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_self_produced_events_fired, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_discourse_ring_pushes_user, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_discourse_ring_pushes_self, 0u, memory_order_relaxed);
     return 0;
 }

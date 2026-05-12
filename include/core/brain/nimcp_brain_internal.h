@@ -37,6 +37,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
@@ -2818,6 +2819,33 @@ struct brain_struct {
      * NULL when Broca is disabled — the cascade tolerates NULL by simply
      * skipping the repair step. Forward-declared opaque type. */
     struct speech_repair* speech_repair;
+
+    /* === CASCADE TELEMETRY COUNTERS (Batch K, 2026-05-12) ===
+     * Lifetime totals incremented by the cascade orchestrator. _Atomic
+     * so the RO socket thread pool can snapshot them concurrently with
+     * a running cascade. Stored inline (not heap-allocated) so the
+     * counters survive across save/load — the brain_struct itself isn't
+     * persisted, but the trainer only needs run-to-run continuity within
+     * a single daemon process.
+     *
+     * APPENDED at end of brain_struct — ABI append-only. See
+     * include/language/nimcp_communication_cascade.h for the public
+     * snapshot type nimcp_cascade_counters_t. */
+    _Atomic uint64_t cascade_total_runs;
+    _Atomic uint64_t cascade_runs_with_prompt;
+    _Atomic uint64_t cascade_runs_spontaneous;
+    _Atomic uint64_t cascade_runs_fatal_error;
+    _Atomic uint64_t cascade_stage_invocations[15];
+    _Atomic uint64_t cascade_stage_mask_skips[15];
+    _Atomic uint64_t cascade_stage_failures[15];
+    _Atomic uint64_t cascade_pragmatics_indirect_overrides;
+    _Atomic uint64_t cascade_wernicke_lexicon_miss;
+    _Atomic uint64_t cascade_speech_repair_applied;
+    _Atomic uint64_t cascade_self_train_steps_matched;
+    _Atomic uint64_t cascade_self_train_steps_no_bindings;
+    _Atomic uint64_t cascade_self_produced_events_fired;
+    _Atomic uint64_t cascade_discourse_ring_pushes_user;
+    _Atomic uint64_t cascade_discourse_ring_pushes_self;
 };
 
 //=============================================================================

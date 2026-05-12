@@ -3683,6 +3683,97 @@ static PyObject* Brain_get_cascade_self_train_state(BrainObject* self, PyObject*
     return d;
 }
 
+/* Batch K — cascade lifetime telemetry: snapshot + reset.
+ *
+ * get_cascade_counters() → dict with all atomic counters. Per-stage arrays
+ * are returned as 15-element Python lists keyed
+ *   "stage_invocations", "stage_mask_skips", "stage_failures".
+ * reset_cascade_counters() returns None on success.
+ *
+ * Mirror the cascade-counters struct layout locally — avoid including the
+ * full cascade header (which conflicts with this TU's local extern for
+ * produce_cascade_diag_full_impl above). Must stay in sync with
+ * include/language/nimcp_communication_cascade.h:nimcp_cascade_counters_t. */
+#define BK_STAGE_COUNT 15u
+typedef struct {
+    uint64_t total_runs;
+    uint64_t runs_with_prompt;
+    uint64_t runs_spontaneous;
+    uint64_t runs_fatal_error;
+    uint64_t stage_invocations[BK_STAGE_COUNT];
+    uint64_t stage_mask_skips[BK_STAGE_COUNT];
+    uint64_t stage_failures[BK_STAGE_COUNT];
+    uint64_t pragmatics_indirect_overrides;
+    uint64_t wernicke_lexicon_miss;
+    uint64_t speech_repair_applied;
+    uint64_t self_train_steps_matched;
+    uint64_t self_train_steps_no_bindings;
+    uint64_t self_produced_events_fired;
+    uint64_t discourse_ring_pushes_user;
+    uint64_t discourse_ring_pushes_self;
+} bk_cascade_counters_local_t;
+
+static PyObject* Brain_get_cascade_counters(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bk_cascade_counters_local_t c;
+    if (nimcp_brain_get_cascade_counters(self->brain,
+            (struct nimcp_cascade_counters*)&c) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cascade_counters failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "total_runs",        PyLong_FromUnsignedLongLong(c.total_runs));
+    PyDict_SetItemString(d, "runs_with_prompt",  PyLong_FromUnsignedLongLong(c.runs_with_prompt));
+    PyDict_SetItemString(d, "runs_spontaneous",  PyLong_FromUnsignedLongLong(c.runs_spontaneous));
+    PyDict_SetItemString(d, "runs_fatal_error",  PyLong_FromUnsignedLongLong(c.runs_fatal_error));
+
+    PyObject* inv = PyList_New(BK_STAGE_COUNT);
+    PyObject* msk = PyList_New(BK_STAGE_COUNT);
+    PyObject* fail= PyList_New(BK_STAGE_COUNT);
+    for (uint32_t i = 0; i < BK_STAGE_COUNT; i++) {
+        PyList_SET_ITEM(inv,  i, PyLong_FromUnsignedLongLong(c.stage_invocations[i]));
+        PyList_SET_ITEM(msk,  i, PyLong_FromUnsignedLongLong(c.stage_mask_skips[i]));
+        PyList_SET_ITEM(fail, i, PyLong_FromUnsignedLongLong(c.stage_failures[i]));
+    }
+    PyDict_SetItemString(d, "stage_invocations", inv);  Py_DECREF(inv);
+    PyDict_SetItemString(d, "stage_mask_skips",  msk);  Py_DECREF(msk);
+    PyDict_SetItemString(d, "stage_failures",    fail); Py_DECREF(fail);
+
+    PyDict_SetItemString(d, "pragmatics_indirect_overrides",
+        PyLong_FromUnsignedLongLong(c.pragmatics_indirect_overrides));
+    PyDict_SetItemString(d, "wernicke_lexicon_miss",
+        PyLong_FromUnsignedLongLong(c.wernicke_lexicon_miss));
+    PyDict_SetItemString(d, "speech_repair_applied",
+        PyLong_FromUnsignedLongLong(c.speech_repair_applied));
+    PyDict_SetItemString(d, "self_train_steps_matched",
+        PyLong_FromUnsignedLongLong(c.self_train_steps_matched));
+    PyDict_SetItemString(d, "self_train_steps_no_bindings",
+        PyLong_FromUnsignedLongLong(c.self_train_steps_no_bindings));
+    PyDict_SetItemString(d, "self_produced_events_fired",
+        PyLong_FromUnsignedLongLong(c.self_produced_events_fired));
+    PyDict_SetItemString(d, "discourse_ring_pushes_user",
+        PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_user));
+    PyDict_SetItemString(d, "discourse_ring_pushes_self",
+        PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_self));
+    return d;
+}
+
+static PyObject* Brain_reset_cascade_counters(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    if (nimcp_brain_reset_cascade_counters(self->brain) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "reset_cascade_counters failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
  * gap where this was persisted in the LANC block but unreachable via
  * Python / daemon RPC. */
@@ -11868,6 +11959,10 @@ static PyMethodDef Brain_methods[] = {
      "Wave 2 Item #10: configure self-train EMA + lr scale — set_cascade_self_train_tunables(alpha: float, lr_scale: float) -> None. alpha ∈ [0,1] (0 freezes baseline), lr_scale ∈ [0,10] (0 disables plasticity)."},
     {"get_cascade_self_train_state", (PyCFunction)Brain_get_cascade_self_train_state, METH_NOARGS,
      "Wave 2 Item #10: read self-train state — returns {'enabled': bool, 'baseline': float, 'alpha': float, 'lr_scale': float}."},
+    {"get_cascade_counters", (PyCFunction)Brain_get_cascade_counters, METH_NOARGS,
+     "Batch K: snapshot cascade lifetime counters — returns a dict with total_runs, runs_with_prompt, runs_spontaneous, runs_fatal_error, stage_invocations[15], stage_mask_skips[15], stage_failures[15], plus per-event counters (pragmatics_indirect_overrides, wernicke_lexicon_miss, speech_repair_applied, self_train_steps_matched/no_bindings, self_produced_events_fired, discourse_ring_pushes_user/_self)."},
+    {"reset_cascade_counters", (PyCFunction)Brain_reset_cascade_counters, METH_NOARGS,
+     "Batch K: zero all cascade lifetime counters atomically (per-field)."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

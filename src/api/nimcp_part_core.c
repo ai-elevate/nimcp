@@ -4166,6 +4166,30 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
+/* Batch K — cascade lifetime counters public wrappers. */
+#include "language/nimcp_communication_cascade.h"
+extern int nimcp_brain_get_cascade_counters_impl(brain_t brain,
+                                                   nimcp_cascade_counters_t* out);
+extern int nimcp_brain_reset_cascade_counters_impl(brain_t brain);
+
+nimcp_status_t nimcp_brain_get_cascade_counters(nimcp_brain_t brain,
+                                                  struct nimcp_cascade_counters* out) {
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (nimcp_brain_get_cascade_counters_impl(b, out) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (nimcp_brain_reset_cascade_counters_impl(b) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);

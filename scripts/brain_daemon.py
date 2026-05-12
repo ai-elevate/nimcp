@@ -2123,6 +2123,39 @@ class BrainService:
         d["ok"] = True
         return d
 
+    def _cmd_get_cascade_counters(self, req):
+        """Batch K: snapshot lifetime cascade telemetry counters.
+
+        Request: {"cmd": "get_cascade_counters"}
+        Returns: full counter snapshot dict (see Brain.get_cascade_counters
+        docstring for the full key list) plus "ok": True. Per-stage arrays
+        come back as 15-element lists.
+        """
+        del req
+        try:
+            d = self.brain.get_cascade_counters()
+        except AttributeError:
+            return {"error": "get_cascade_counters not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_cascade_counters: {e}"}
+        d["ok"] = True
+        return d
+
+    def _cmd_reset_cascade_counters(self, req):
+        """Batch K: zero every cascade lifetime counter.
+
+        Request: {"cmd": "reset_cascade_counters"}
+        Returns: {"ok": True}.
+        """
+        del req
+        try:
+            self.brain.reset_cascade_counters()
+        except AttributeError:
+            return {"error": "reset_cascade_counters not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"reset_cascade_counters: {e}"}
+        return {"ok": True}
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 
