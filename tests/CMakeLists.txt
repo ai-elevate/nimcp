@@ -70,6 +70,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_cascade_counters
     test_broca_lexicon_concurrency
     test_lang_self_train_persistence
+    test_lang_respond_via_cascade
     test_snn_fno_recording
 )
 

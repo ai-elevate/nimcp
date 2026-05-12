@@ -4,6 +4,7 @@
 
 #include "training/nimcp_cortex_cnn.h"
 #include "snn/nimcp_snn_types.h"
+#include "language/nimcp_communication_cascade.h"
 
 
 //=============================================================================
@@ -2772,9 +2773,62 @@ nimcp_status_t nimcp_brain_grounded_respond(
     brain_t b = brain->internal_brain;
     if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
 
+    /* Audit Cat A #1 — cascade-orchestrator path. Opt-in via
+     * b->respond_via_cascade (default OFF). When ON, run the full
+     * 15-stage cascade with the input as prompt and emit
+     * state->utterance. Falls back to the legacy bridge-passthrough
+     * if the cascade produces no usable output (preserves the
+     * "I don't know." DK-B marker semantics on dead-end inputs). */
+    if (b->respond_via_cascade) {
+        production_cascade_state_t state;
+        memset(&state, 0, sizeof(state));
+        int rc = communication_cascade_run(b, input_text,
+                                            CASCADE_STAGE_ALL, &state);
+        if (rc == 0 && state.utterance && state.utterance[0] &&
+            state.word_count > 0) {
+            strncpy(out_response, state.utterance, response_max - 1);
+            out_response[response_max - 1] = '\0';
+            if (out_confidence) {
+                /* self_match (Phase 2D-B) is the cleanest "did the brain
+                 * actually say what it meant" signal. Fluency falls back
+                 * when self_match wasn't computed. */
+                float conf = (state.self_match > 0.0f) ? state.self_match
+                                                        : state.fluency;
+                *out_confidence = conf;
+            }
+            cascade_state_cleanup(&state);
+            return NIMCP_OK;
+        }
+        cascade_state_cleanup(&state);
+        /* Fall through to the bridge passthrough below — preserves the
+         * DK-B "I don't know." path for dead-end inputs. */
+    }
+
     int rc = grounded_language_respond(b->grounded_lang, input_text,
                                        out_response, response_max, out_confidence);
     return (rc >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+/* Forward decl — definition is further down in this TU. */
+static nimcp_status_t _gl_diag_validate(nimcp_brain_t brain, brain_t* out_b);
+
+nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    b->respond_via_cascade = enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = b->respond_via_cascade;
+    return NIMCP_OK;
 }
 
 /* =================================================================
@@ -4166,8 +4220,9 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
-/* Batch K — cascade lifetime counters public wrappers. */
-#include "language/nimcp_communication_cascade.h"
+/* Batch K — cascade lifetime counters public wrappers.
+ * (Header now included at the top of the TU since the respond opt-in
+ * also uses cascade types.) */
 extern int nimcp_brain_get_cascade_counters_impl(brain_t brain,
                                                    nimcp_cascade_counters_t* out);
 extern int nimcp_brain_reset_cascade_counters_impl(brain_t brain);

@@ -2846,6 +2846,17 @@ struct brain_struct {
     _Atomic uint64_t cascade_self_produced_events_fired;
     _Atomic uint64_t cascade_discourse_ring_pushes_user;
     _Atomic uint64_t cascade_discourse_ring_pushes_self;
+
+    /* Audit Category A item 1 — route nimcp_brain_grounded_respond
+     * through the 15-stage cascade orchestrator instead of the legacy
+     * bridge-softmax passthrough. Default OFF preserves bit-for-bit
+     * legacy behavior. When ON, respond builds a cascade state with
+     * the input as prompt, runs all stages, and returns state->utterance
+     * (cleaned by speech_repair, validated by self-comprehension, etc).
+     *
+     * The cascade is significantly slower per call than the bridge-only
+     * path — opt-in by deployment as a quality-vs-latency tradeoff. */
+    bool respond_via_cascade;
 };
 
 //=============================================================================

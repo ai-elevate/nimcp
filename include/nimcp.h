@@ -1458,6 +1458,16 @@ nimcp_status_t nimcp_brain_get_cascade_counters(
     struct nimcp_cascade_counters* out);
 nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain);
 
+/** Audit Cat A #1 — toggle the cascade orchestrator path inside
+ *  nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough).
+ *  When ON, respond runs the 15-stage cascade and emits state->utterance
+ *  (with speech_repair, self_comp validation, etc). Latency cost: ~10x
+ *  vs the bridge-only path; opt-in based on the quality/latency tradeoff. */
+nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool enabled);
+nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool* out_enabled);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *
