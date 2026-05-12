@@ -534,18 +534,21 @@ static int cascade_stage_content(brain_t brain,
     if (!brain->grounded_lang) {
         cascade_record_fail(state,
                              "stage_content: grounded_lang not available");
+        cascade_counter_failure(brain, CASCADE_STAGE_CONTENT);
         return -1;
     }
 
     uint32_t dim = grounded_language_get_semantic_dim(brain->grounded_lang);
     if (dim == 0) {
         cascade_record_fail(state, "stage_content: semantic_dim is 0");
+        cascade_counter_failure(brain, CASCADE_STAGE_CONTENT);
         return -1;
     }
 
     state->content_intent = (float*)nimcp_calloc(dim, sizeof(float));
     if (!state->content_intent) {
         cascade_record_fail(state, "stage_content: alloc failed");
+        cascade_counter_failure(brain, CASCADE_STAGE_CONTENT);
         return -1;
     }
     state->content_dim = dim;
@@ -683,6 +686,7 @@ static int cascade_stage_lexical(brain_t brain,
     if (rc != 0 || !prod.text || prod.word_count == 0) {
         gl_production_result_cleanup(&prod);
         cascade_record_fail(state, "stage_lexical: bridge produce failed");
+        cascade_counter_failure(brain, CASCADE_STAGE_LEXICAL);
         return -1;
     }
 
@@ -755,6 +759,7 @@ static int cascade_stage_syntactic(brain_t brain,
         state->syntactic_validity = 0.0f;
         cascade_record_fail(state,
                             "stage_syntactic: broca rejected utterance");
+        cascade_counter_failure(brain, CASCADE_STAGE_SYNTACTIC);
         return 0;
     }
 
@@ -892,6 +897,7 @@ static int cascade_stage_phonological(brain_t brain,
     uint8_t* seq = (uint8_t*)nimcp_calloc(ulen + 1, sizeof(uint8_t));
     if (!seq) {
         cascade_record_fail(state, "stage_phonological: phoneme buffer alloc failed");
+        cascade_counter_failure(brain, CASCADE_STAGE_PHONOLOGICAL);
         return 0;
     }
 
@@ -1314,6 +1320,7 @@ static int cascade_stage_prosody(brain_t brain,
         if (duration) nimcp_free(duration);
         if (intensity) nimcp_free(intensity);
         cascade_record_fail(state, "stage_prosody: alloc failed");
+        cascade_counter_failure(brain, CASCADE_STAGE_PROSODY);
         return 0;
     }
 

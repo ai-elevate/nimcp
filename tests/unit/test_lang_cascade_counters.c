@@ -142,15 +142,37 @@ static void test_reset_zeros(void) {
     fprintf(stderr, "PASS test_reset_zeros\n");
 }
 
+/* Followup — Batch K wernicke_miss path. Run a prompt with words almost
+ * certainly absent from the minimal-brain lexicon ("zorglebox snorkflap")
+ * and verify wernicke_lexicon_miss > 0 after one cascade run. */
+static void test_wernicke_lexicon_miss(void) {
+    brain_t brain = make_brain("counters_wernicke_miss");
+    EXPECT(brain != NULL, "brain create");
+    if (!brain) return;
+    production_cascade_state_t st;
+    memset(&st, 0, sizeof(st));
+    communication_cascade_run(brain, "zorglebox snorkflap qwerflux",
+                                CASCADE_STAGE_ALL, &st);
+    cascade_state_cleanup(&st);
+    nimcp_cascade_counters_t c;
+    nimcp_brain_get_cascade_counters_impl(brain, &c);
+    EXPECT(c.wernicke_lexicon_miss > 0,
+           "wernicke_lexicon_miss > 0 after nonsense prompt; got %llu",
+           (unsigned long long)c.wernicke_lexicon_miss);
+    brain_destroy(brain);
+    fprintf(stderr, "PASS test_wernicke_lexicon_miss\n");
+}
+
 int main(void) {
     test_initial_zero();
     test_monotonic_run_counters();
     test_stage_invocations();
     test_reset_zeros();
+    test_wernicke_lexicon_miss();
     if (g_failures > 0) {
         fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);
         return 1;
     }
-    fprintf(stderr, "OK: test_lang_cascade_counters — 4 subtests pass\n");
+    fprintf(stderr, "OK: test_lang_cascade_counters — 5 subtests pass\n");
     return 0;
 }

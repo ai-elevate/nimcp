@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 /* Internal-but-non-static accessor: find a lexicon entry by lowercased
  * form. Defined in nimcp_grounded_language.c. */
@@ -149,6 +150,11 @@ int cascade_stage_wernicke(brain_t brain, const char* prompt,
         } else {
             words[num_words].category = SYN_CAT_UNKNOWN;
             words[num_words].category_confidence = 0.0f;
+            /* Batch K followup — bump the lifetime miss counter so the
+             * dashboard can spot prompts the lexicon is failing to cover.
+             * Relaxed-order matches the rest of the cascade counter wiring. */
+            atomic_fetch_add_explicit(&brain->cascade_wernicke_lexicon_miss,
+                                      1u, memory_order_relaxed);
         }
 
         num_words++;
