@@ -648,14 +648,12 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         }
     }
 
-    /* === LANG sidecar block — cascade self-train tunables ============
+    /* === LANG sidecar block — cascade self-train tunables + Cat-A flag
      *
      * Until this block existed, brain->cascade_self_train_* (set by
      * nimcp_brain_set_cascade_self_train_enabled / _tunables) was lost
-     * on every save. The 4 fields drive Stage 14 reward-modulated
-     * SNN-bridge training; losing them silently reverted the trainer
-     * to defaults (enabled=false, lr_scale=1.0, alpha=0.05) at the
-     * next daemon restart.
+     * on every save. Now extended (commit following cf7e47b29) to
+     * also round-trip respond_via_cascade.
      *
      * Wire format (self-describing, forward+backward compatible):
      *   [u32 sentinel = 'LANG' (0x4C414E47)]
@@ -664,21 +662,24 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
      *   [f32 cascade_self_train_baseline]
      *   [f32 cascade_self_train_alpha]
      *   [f32 cascade_self_train_lr_scale]
+     *   [u8  respond_via_cascade]      <-- appended 2026-05-12
      *
-     * Older readers hit EOF before the sentinel and skip cleanly —
-     * tunables stay at library defaults, preserving the prior
-     * silent-drop behavior without any new failure modes. */
+     * Older readers seek past unknown trailing bytes via block_size.
+     * Pre-LANG readers hit EOF before the sentinel and skip cleanly —
+     * fields stay at library defaults. */
     {
         const uint32_t lang_sentinel = 0x4C414E47u;  /* "LANG" */
         const uint32_t lang_block_size =
-            sizeof(uint8_t) + sizeof(float) * 3u;
+            sizeof(uint8_t) + sizeof(float) * 3u + sizeof(uint8_t);
         uint8_t st_enabled = brain->cascade_self_train_enabled ? 1u : 0u;
+        uint8_t rvc_enabled = brain->respond_via_cascade ? 1u : 0u;
         fwrite(&lang_sentinel,   sizeof(uint32_t), 1, meta_file);
         fwrite(&lang_block_size, sizeof(uint32_t), 1, meta_file);
         fwrite(&st_enabled,                            sizeof(uint8_t), 1, meta_file);
         fwrite(&brain->cascade_self_train_baseline,    sizeof(float),   1, meta_file);
         fwrite(&brain->cascade_self_train_alpha,       sizeof(float),   1, meta_file);
         fwrite(&brain->cascade_self_train_lr_scale,    sizeof(float),   1, meta_file);
+        fwrite(&rvc_enabled,                           sizeof(uint8_t), 1, meta_file);
     }
 
     fclose(meta_file);
@@ -1843,6 +1844,14 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                         brain->cascade_self_train_baseline = baseline;
                         brain->cascade_self_train_alpha    = alpha;
                         brain->cascade_self_train_lr_scale = lr_scale;
+                    }
+                }
+                /* respond_via_cascade tail (2026-05-12) — optional u8.
+                 * Pre-rvc writers stopped at the lr_scale float. */
+                if (lang_block_size >= sizeof(uint8_t) + sizeof(float) * 3u + sizeof(uint8_t)) {
+                    uint8_t rvc_enabled = 0;
+                    if (fread(&rvc_enabled, sizeof(uint8_t), 1, meta_file) == 1) {
+                        brain->respond_via_cascade = (rvc_enabled != 0);
                     }
                 }
                 /* Forward-compat: skip past any trailing bytes a newer

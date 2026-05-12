@@ -3774,6 +3774,34 @@ static PyObject* Brain_reset_cascade_counters(BrainObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
+/* Audit Cat A #1 — opt-in cascade orchestrator path in
+ * nimcp_brain_grounded_respond. set takes a bool; get returns a bool. */
+static PyObject* Brain_set_respond_via_cascade(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_respond_via_cascade(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_respond_via_cascade failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_respond_via_cascade(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_respond_via_cascade(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_respond_via_cascade failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
  * gap where this was persisted in the LANC block but unreachable via
  * Python / daemon RPC. */
@@ -11963,6 +11991,10 @@ static PyMethodDef Brain_methods[] = {
      "Batch K: snapshot cascade lifetime counters — returns a dict with total_runs, runs_with_prompt, runs_spontaneous, runs_fatal_error, stage_invocations[15], stage_mask_skips[15], stage_failures[15], plus per-event counters (pragmatics_indirect_overrides, wernicke_lexicon_miss, speech_repair_applied, self_train_steps_matched/no_bindings, self_produced_events_fired, discourse_ring_pushes_user/_self)."},
     {"reset_cascade_counters", (PyCFunction)Brain_reset_cascade_counters, METH_NOARGS,
      "Batch K: zero all cascade lifetime counters atomically (per-field)."},
+    {"set_respond_via_cascade", (PyCFunction)Brain_set_respond_via_cascade, METH_VARARGS,
+     "Audit Cat A #1: opt-in cascade orchestrator path inside nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough). When ON, respond runs the full 15-stage cascade. Latency cost ~10x vs the bridge-only path."},
+    {"get_respond_via_cascade", (PyCFunction)Brain_get_respond_via_cascade, METH_NOARGS,
+     "Read the current respond_via_cascade flag."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

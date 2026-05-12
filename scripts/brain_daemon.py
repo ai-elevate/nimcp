@@ -2156,6 +2156,33 @@ class BrainService:
             return {"error": f"reset_cascade_counters: {e}"}
         return {"ok": True}
 
+    def _cmd_set_respond_via_cascade(self, req):
+        """Audit Cat A #1: toggle the cascade orchestrator path inside
+        nimcp_brain_grounded_respond.
+
+        Request: {"cmd": "set_respond_via_cascade", "enabled": bool}
+        Returns: {"ok": True, "enabled": bool}.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_respond_via_cascade(enabled)
+        except AttributeError:
+            return {"error": "set_respond_via_cascade not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_respond_via_cascade: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_get_respond_via_cascade(self, req):
+        """Read the current respond_via_cascade flag."""
+        del req
+        try:
+            enabled = self.brain.get_respond_via_cascade()
+        except AttributeError:
+            return {"error": "get_respond_via_cascade not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_respond_via_cascade: {e}"}
+        return {"ok": True, "enabled": bool(enabled)}
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 

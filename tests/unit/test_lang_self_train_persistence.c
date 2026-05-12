@@ -68,6 +68,9 @@ static void test_roundtrip_via_public_api(void) {
     /* Manually inject a non-zero baseline — there is no public setter
      * but the metadata path must persist it. */
     b->cascade_self_train_baseline = 0.789f;
+    /* Audit Cat A #1 — respond_via_cascade flag also round-trips
+     * through the same LANG sidecar. */
+    b->respond_via_cascade = true;
 
     extern bool nimcp_brain_save_metadata(brain_t, const char*);
     extern bool nimcp_brain_load_metadata(brain_t, const char*);
@@ -89,6 +92,9 @@ static void test_roundtrip_via_public_api(void) {
             "alpha round-trip got %f", b2->cascade_self_train_alpha);
     EXPECT(fabsf(b2->cascade_self_train_lr_scale - 2.5f) < 1e-6f,
             "lr_scale round-trip got %f", b2->cascade_self_train_lr_scale);
+    EXPECT(b2->respond_via_cascade == true,
+            "respond_via_cascade round-trip got %d",
+            (int)b2->respond_via_cascade);
 
     brain_destroy(b2);
     fprintf(stderr, "PASS test_roundtrip_via_public_api\n");
