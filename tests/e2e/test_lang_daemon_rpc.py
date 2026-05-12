@@ -549,6 +549,49 @@ class SubprocessDaemonRPCTest(unittest.TestCase):
             self.assertAlmostEqual(float(cfg.get("temperature", -1)), 0.8,
                                    places=4)
 
+        # ----- Cascade self-train + counters + respond_via_cascade -----
+        # Mirror of InProcDaemonRPCTest test_14..test_20 but over the real
+        # Unix socket so we exercise the JSON-frame + length-prefix path
+        # the daemon main loop actually runs in production. Per-RPC
+        # tolerates skipTest-equivalent failures (the minimal-init brain
+        # may not have the cascade subsystem); we record but don't fail.
+        ct_resp = self._send_recv({"cmd": "set_cascade_self_train_enabled",
+                                     "enabled": True})
+        if ct_resp.get("ok"):
+            self._ok("set_cascade_self_train_tunables",
+                     alpha=0.123, lr_scale=2.5)
+            state = self._send_recv({"cmd": "get_cascade_self_train_state"})
+            self.assertTrue(state.get("ok"))
+            self.assertIs(state.get("enabled"), True)
+            self.assertAlmostEqual(float(state.get("alpha", -1)), 0.123,
+                                   places=4)
+
+        ctr_resp = self._send_recv({"cmd": "get_cascade_counters"})
+        if ctr_resp.get("ok"):
+            for key in ("total_runs", "stage_invocations",
+                        "stage_mask_skips", "stage_failures",
+                        "wernicke_lexicon_miss",
+                        "discourse_ring_pushes_self"):
+                self.assertIn(key, ctr_resp,
+                              f"get_cascade_counters missing {key}")
+            for arr_key in ("stage_invocations", "stage_mask_skips",
+                            "stage_failures"):
+                self.assertEqual(len(ctr_resp[arr_key]), 15,
+                                 f"{arr_key} != 15 stages")
+            self._ok("reset_cascade_counters")
+
+        rvc_resp = self._send_recv({"cmd": "set_respond_via_cascade",
+                                      "enabled": True})
+        if rvc_resp.get("ok"):
+            self.assertIs(rvc_resp.get("enabled"), True)
+            check = self._send_recv({"cmd": "get_respond_via_cascade"})
+            self.assertTrue(check.get("ok"))
+            self.assertIs(check.get("enabled"), True)
+            # Restore default OFF so any later test in this run isn't
+            # paying the cascade-orchestrator latency.
+            self._send_recv({"cmd": "set_respond_via_cascade",
+                             "enabled": False})
+
 
 # ---------------------------------------------------------------------------
 # Entry-point
