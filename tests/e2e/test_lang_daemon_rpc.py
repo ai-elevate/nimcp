@@ -270,6 +270,110 @@ class InProcDaemonRPCTest(unittest.TestCase):
             msg=f"top_p did not round-trip; got {cfg['top_p']}",
         )
 
+    # -- cascade self-train + counters + respond_via_cascade RPCs --
+    # Walkthrough-3 audit E flagged these as untested at the daemon
+    # dispatch layer. Each handler is in scripts/brain_daemon.py around
+    # lines 2075-2225 (cascade_self_train_*, cascade_counters_*,
+    # respond_via_cascade_*).
+
+    def test_14_set_cascade_self_train_enabled(self):
+        resp = self._dispatch("set_cascade_self_train_enabled", enabled=True)
+        # Either {"ok": True, "enabled": True} on a brain with cascade
+        # subsystem, or {"error": "..."} if the brain init skipped it.
+        # The dispatch itself MUST not raise.
+        if "error" in resp:
+            self.skipTest(f"cascade not init'd on this brain: {resp['error']}")
+        self._assert_ok(resp, "set_cascade_self_train_enabled")
+        self.assertIs(resp.get("enabled"), True)
+
+    def test_15_set_cascade_self_train_tunables(self):
+        resp = self._dispatch(
+            "set_cascade_self_train_tunables",
+            alpha=0.123, lr_scale=2.5,
+        )
+        if "error" in resp:
+            self.skipTest(f"cascade not init'd: {resp['error']}")
+        self._assert_ok(resp, "set_cascade_self_train_tunables")
+        self.assertAlmostEqual(resp.get("alpha"), 0.123, places=4)
+        self.assertAlmostEqual(resp.get("lr_scale"), 2.5, places=4)
+
+    def test_16_get_cascade_self_train_state(self):
+        # First flip the flag so the state read has something to verify.
+        prep = self._dispatch("set_cascade_self_train_enabled", enabled=True)
+        if "error" in prep:
+            self.skipTest(f"cascade not init'd: {prep['error']}")
+        resp = self._dispatch("get_cascade_self_train_state")
+        if "error" in resp:
+            self.skipTest(f"get_cascade_self_train_state unavailable: {resp['error']}")
+        self._assert_ok(resp, "get_cascade_self_train_state")
+        # Should return all 4 fields.
+        for key in ("enabled", "baseline", "alpha", "lr_scale"):
+            self.assertIn(key, resp, f"missing {key} in state dict")
+        self.assertIs(resp["enabled"], True)
+
+    def test_17_get_cascade_counters(self):
+        resp = self._dispatch("get_cascade_counters")
+        if "error" in resp:
+            self.skipTest(f"get_cascade_counters unavailable: {resp['error']}")
+        self._assert_ok(resp, "get_cascade_counters")
+        # Spot-check the documented field set.
+        required = {
+            "total_runs", "runs_with_prompt", "runs_spontaneous",
+            "runs_fatal_error",
+            "stage_invocations", "stage_mask_skips", "stage_failures",
+            "pragmatics_indirect_overrides", "wernicke_lexicon_miss",
+            "speech_repair_applied",
+            "self_train_steps_matched", "self_train_steps_no_bindings",
+            "self_produced_events_fired",
+            "discourse_ring_pushes_user", "discourse_ring_pushes_self",
+        }
+        missing = required - set(resp.keys())
+        self.assertFalse(
+            missing,
+            f"get_cascade_counters missing fields: {sorted(missing)}",
+        )
+        # Per-stage arrays must be 15-element lists.
+        for key in ("stage_invocations", "stage_mask_skips", "stage_failures"):
+            self.assertIsInstance(resp[key], list, f"{key} not a list")
+            self.assertEqual(
+                len(resp[key]), 15,
+                f"{key} length != 15 (cascade has 15 stages)",
+            )
+
+    def test_18_reset_cascade_counters(self):
+        resp = self._dispatch("reset_cascade_counters")
+        if "error" in resp:
+            self.skipTest(f"reset_cascade_counters unavailable: {resp['error']}")
+        self._assert_ok(resp, "reset_cascade_counters")
+        # After reset, the snapshot should show all-zero totals.
+        snap = self._dispatch("get_cascade_counters")
+        if "error" in snap:
+            return  # already verified the reset path
+        self.assertEqual(snap.get("total_runs"), 0)
+        self.assertEqual(snap.get("runs_with_prompt"), 0)
+        self.assertEqual(snap.get("runs_spontaneous"), 0)
+
+    def test_19_set_respond_via_cascade(self):
+        resp = self._dispatch("set_respond_via_cascade", enabled=True)
+        if "error" in resp:
+            self.skipTest(f"respond_via_cascade unavailable: {resp['error']}")
+        self._assert_ok(resp, "set_respond_via_cascade")
+        self.assertIs(resp.get("enabled"), True)
+
+    def test_20_get_respond_via_cascade(self):
+        # Set then read — verify round-trip via daemon dispatch.
+        prep = self._dispatch("set_respond_via_cascade", enabled=True)
+        if "error" in prep:
+            self.skipTest(f"set_respond_via_cascade unavailable: {prep['error']}")
+        resp = self._dispatch("get_respond_via_cascade")
+        if "error" in resp:
+            self.skipTest(f"get_respond_via_cascade unavailable: {resp['error']}")
+        self._assert_ok(resp, "get_respond_via_cascade")
+        self.assertIs(resp.get("enabled"), True)
+        # Flip back to default OFF so subsequent tests in this class run
+        # at the legacy bridge-passthrough latency.
+        self._dispatch("set_respond_via_cascade", enabled=False)
+
     # -- failure-mode coverage --
 
     def test_90_unknown_command_is_caught(self):
