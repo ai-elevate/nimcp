@@ -93,12 +93,35 @@ extern "C" {
  *   V4 readers handle both V3 and V4 files — V3 files leave EOS knobs at
  *   library defaults; V4 files decode them authoritatively.
  *
+ * V5 (V4 + beam re-rank knobs in ext block + cumulative stats trailer):
+ *   Same prefix as V4 with SNN_LANG_BRIDGE_FILE_VERSION_V5 instead of V4,
+ *   plus 3 trailing fields appended to the ext block:
+ *
+ *   [enable_beam_hnn_rerank:u8]
+ *   [beam_hnn_weight:f32]
+ *   [beam_length_norm_alpha:f32]
+ *
+ *   AND after the bindings array, a self-describing stats trailer block:
+ *
+ *   [stats_block_size:u32]
+ *   [29 × u64 cumulative counters]
+ *
+ *   The stats trailer fixes the gap where every cumulative counter
+ *   (total_produce_calls, total_eos_terminations, etc.) was lost on every
+ *   save — V4 and earlier wrote no stats at all.
+ *
+ *   V3/V4 readers on a V5 file: ignore the trailing config bytes via
+ *   ext_block_size; the stats block sits past the bindings array which
+ *   they stop reading at. V5 readers on a V3/V4 file: stats stay zero
+ *   (EOF after bindings is non-fatal).
+ *
  * The ext_block_size lets future readers seek past unknown trailing bytes
  * if/when more knobs are added. */
 #define SNN_LANG_BRIDGE_FILE_V3_SENTINEL  0xFFFFFFFEu
 #define SNN_LANG_BRIDGE_FILE_VERSION_V2   2u  /* implicit: no version on disk */
 #define SNN_LANG_BRIDGE_FILE_VERSION_V3   3u
 #define SNN_LANG_BRIDGE_FILE_VERSION_V4   4u
+#define SNN_LANG_BRIDGE_FILE_VERSION_V5   5u
 
 //=============================================================================
 // Forward declarations
@@ -309,6 +332,27 @@ typedef struct {
     bool     enable_eos_stopping;
     float    eos_min_activation;             /* default 0.05 */
     float    eos_min_confidence;             /* default 0.01 */
+    /* Beam-search re-ranking knobs.
+     *
+     * enable_beam_hnn_rerank gates an HNN energy-deviation penalty on the
+     * final beam selection step. When true and the bridge has an attached
+     * lnn_hamiltonian_net_t (via snn_language_bridge_set_hnn), each beam's
+     * length-normalized score is multiplied by
+     *   1.0 / (1.0 + beam_hnn_weight * |energy_deviation|)
+     * before picking the winner. Filters out beams whose recurrent state
+     * drift implies thermodynamic implausibility — closes the audit-item-4
+     * gap where energy_deviation was computed but never read by language.
+     *
+     * beam_length_norm_alpha is the exponent in Wu et al. length-norm:
+     *   normalized = cum_logprob / max(1, n)^alpha
+     * Default 0.6 preserves prior beam ranking bit-for-bit. Clamped at
+     * runtime to [0.1, 1.5]; out-of-range values fall back to 0.6.
+     *
+     * APPEND-ONLY: these fields stay at the end of snn_lang_config_t.
+     * On-disk persistence uses the V5 ext block tail. */
+    bool     enable_beam_hnn_rerank;
+    float    beam_hnn_weight;                /* default 1.0 */
+    float    beam_length_norm_alpha;         /* default 0.6 (Wu et al.) */
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -428,6 +472,14 @@ typedef struct {
      * struct-size drift a compile-time error. */
     uint64_t total_eos_terminations;
     uint64_t total_max_truncations;
+    /* Beam re-rank telemetry. beam_hnn_rerank_passes bumps once per
+     * produce_beam_search call where enable_beam_hnn_rerank was on AND
+     * a HNN net was attached AND the re-rank scaling was actually
+     * applied (i.e. fabsf(energy_deviation) > 0). Stays 0 in greedy
+     * mode and when the rerank is disabled.
+     *
+     * APPEND-ONLY: ABI sentinel below pins the new size. */
+    uint64_t beam_hnn_rerank_passes;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -504,6 +556,42 @@ int snn_language_bridge_connect_neuromod(
 int snn_language_bridge_set_lgss(
     snn_language_bridge_t* bridge,
     void* lgss);
+
+/**
+ * @brief Attach a Hamiltonian (HNN) network for beam re-ranking.
+ *
+ * WHAT: Borrowed pointer to an lnn_hamiltonian_net_t. When the bridge's
+ *       enable_beam_hnn_rerank config flag is true and produce_beam_search
+ *       runs, the final beam pick is scaled by
+ *         1.0 / (1.0 + beam_hnn_weight * |energy_deviation|)
+ *       penalizing beams whose recurrent drift trips the conservation
+ *       check.
+ * WHY:  Closes audit-item-4 — energy_deviation was computed every step
+ *       but never consumed by language. Treats HNN as a re-ranking filter
+ *       on already-decoded candidates, not a generation driver.
+ * HOW:  NULL detaches. Type-erased to keep the LNN header out of language
+ *       consumers' include set.
+ *
+ * @param bridge Bridge handle (NULL → -1)
+ * @param hnn    lnn_hamiltonian_net_t* (NULL detaches)
+ * @return 0 on success, -1 on invalid handle
+ */
+int snn_language_bridge_set_hnn(
+    snn_language_bridge_t* bridge,
+    void* hnn);
+
+/** Setter for beam HNN re-rank enable + weight. weight clamped [0,100];
+ * NaN/inf rejected. Returns 0 on success, -1 on invalid handle. */
+int snn_language_bridge_set_beam_hnn_rerank(
+    snn_language_bridge_t* bridge,
+    bool enabled,
+    float weight);
+
+/** Setter for beam length-norm alpha (Wu et al. exponent). alpha clamped
+ * [0.1, 1.5]; NaN/inf rejected. Returns 0 on success, -1 on invalid handle. */
+int snn_language_bridge_set_beam_length_norm_alpha(
+    snn_language_bridge_t* bridge,
+    float alpha);
 
 //=============================================================================
 // Phase 1: Spike-to-Word Decoding
@@ -1151,11 +1239,11 @@ int snn_language_bridge_predict_sensory(
  * see the ABI delta. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #include <stddef.h>
-_Static_assert(sizeof(snn_lang_config_t) == 156,
-    "snn_lang_config_t ABI: size drifted from expected 156 bytes. "
+_Static_assert(sizeof(snn_lang_config_t) == 168,
+    "snn_lang_config_t ABI: size drifted from expected 168 bytes. "
     "Append-only on the struct; bump this literal in lockstep.");
-_Static_assert(sizeof(snn_lang_stats_t) == 256,
-    "snn_lang_stats_t ABI: size drifted from expected 256 bytes. "
+_Static_assert(sizeof(snn_lang_stats_t) == 264,
+    "snn_lang_stats_t ABI: size drifted from expected 264 bytes. "
     "Append-only on the struct; bump this literal in lockstep.");
 #endif
 

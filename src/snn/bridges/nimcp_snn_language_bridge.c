@@ -140,6 +140,12 @@ struct snn_language_bridge {
      * preserves behavior for callers that haven't attached one). */
     void* lgss;
 
+    /* Beam-HNN re-rank: borrowed pointer to an lnn_hamiltonian_net_t.
+     * Used only by produce_beam_search when config.enable_beam_hnn_rerank
+     * is true. NULL = no-op, behaves identically to a disabled flag.
+     * Type-erased to keep the LNN header out of this TU. */
+    void* hnn;
+
     // Current time
     float current_time_ms;
 
@@ -335,7 +341,14 @@ snn_lang_config_t snn_lang_config_default(void)
          * cosine-scored confidences (see header for rationale). */
         .enable_eos_stopping        = false,
         .eos_min_activation         = 0.05f,
-        .eos_min_confidence         = 0.01f
+        .eos_min_confidence         = 0.01f,
+        /* Beam-HNN re-rank — default OFF preserves bit-for-bit identical
+         * beam ranking. weight = 1.0 is the natural penalty scale once
+         * caller opts in (1/(1+|dev|) maps dev=1.0 → 0.5x score). alpha
+         * = 0.6 reproduces the prior hard-coded length-norm exponent. */
+        .enable_beam_hnn_rerank     = false,
+        .beam_hnn_weight            = 1.0f,
+        .beam_length_norm_alpha     = 0.6f
     };
     return config;
 }
@@ -1190,6 +1203,39 @@ int snn_language_bridge_set_beam_width(snn_language_bridge_t* bridge, uint32_t k
     if (k == 0) k = 1;
     if (k > 16) k = 16;
     bridge->config.produce_beam_width = k;
+    return 0;
+}
+
+/* Beam-HNN re-rank attach/detach. NULL detaches. Type-erased to keep
+ * the LNN header out of this TU. */
+int snn_language_bridge_set_hnn(snn_language_bridge_t* bridge, void* hnn)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->hnn = hnn;
+    return 0;
+}
+
+int snn_language_bridge_set_beam_hnn_rerank(snn_language_bridge_t* bridge,
+                                              bool enabled,
+                                              float weight)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(weight)) return -1;
+    if (weight < 0.0f) weight = 0.0f;
+    if (weight > 100.0f) weight = 100.0f;
+    bridge->config.enable_beam_hnn_rerank = enabled;
+    bridge->config.beam_hnn_weight = weight;
+    return 0;
+}
+
+int snn_language_bridge_set_beam_length_norm_alpha(snn_language_bridge_t* bridge,
+                                                     float alpha)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(alpha)) return -1;
+    if (alpha < 0.1f) alpha = 0.1f;
+    if (alpha > 1.5f) alpha = 1.5f;
+    bridge->config.beam_length_norm_alpha = alpha;
     return 0;
 }
 
@@ -2214,14 +2260,16 @@ typedef struct {
     bool     active;            /* slot in use */
 } beam_t;
 
-/* Length-normalized score: cum_logprob / max(1, token_count)^0.6.
+/* Length-normalized score: cum_logprob / max(1, token_count)^alpha.
+ * alpha defaults to 0.6 (Wu et al.) but is configurable via
+ * config.beam_length_norm_alpha (clamped [0.1, 1.5]).
  * Empty beams (token_count == 0) get -inf so they can't beat any real one. */
-static inline float beam_score(const beam_t* b)
+static inline float beam_score_alpha(const beam_t* b, float alpha)
 {
     if (!b->active) return -FLT_MAX;
     if (b->n_used == 0) return -FLT_MAX;
     float n = (float)b->n_used;
-    float denom = powf(n, 0.6f);
+    float denom = powf(n, alpha);
     if (denom < 1e-6f) denom = 1e-6f;
     return b->cum_logprob / denom;
 }
@@ -2234,6 +2282,12 @@ static void beam_free(beam_t* b)
     b->concept_acts = NULL;
     b->active       = false;
 }
+
+/* Forward decl — HNN energy accessor. Borrowed pointer; the bridge's
+ * `void* hnn` slot is cast to this type at call sites only. Keeps the
+ * LNN header out of this TU. */
+typedef struct lnn_hamiltonian_net lnn_hamiltonian_net_t;
+extern float lnn_hamiltonian_get_energy_deviation(const lnn_hamiltonian_net_t* net);
 
 static int beam_init(beam_t* b, uint32_t n_concepts, const float* intent_buf)
 {
@@ -2286,6 +2340,19 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
 
     if (beam_width < 1) beam_width = 1;
     if (beam_width > BEAM_MAX_K) beam_width = BEAM_MAX_K;
+
+    /* Pull length-norm alpha + EOS-stop knobs once. Out-of-range / NaN
+     * length-norm alpha falls back to 0.6 (matches the pre-V5 hard-coded
+     * exponent so existing callers keep their ranking). */
+    float beam_alpha = bridge->config.beam_length_norm_alpha;
+    if (!isfinite(beam_alpha) || beam_alpha < 0.1f || beam_alpha > 1.5f) {
+        beam_alpha = 0.6f;
+    }
+    const bool     eos_stop_enabled = bridge->config.enable_eos_stopping;
+    const float    eos_min_act      = bridge->config.eos_min_activation;
+    const float    eos_min_conf     = bridge->config.eos_min_confidence;
+    const uint32_t min_words_cfg    = bridge->config.min_produce_words;
+    const uint32_t max_cfg          = bridge->config.max_produce_words;
 
     uint32_t n_concepts = bridge->num_concept_pops;
     if (n_concepts == 0) return -1;
@@ -2474,7 +2541,7 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
             const beam_t* parent = &beams[cands[i].beam_idx];
             uint32_t newlen = parent->n_used + (cands[i].is_eos ? 0 : 1);
             if (newlen == 0) newlen = 1;
-            float denom = powf((float)newlen, 0.6f);
+            float denom = powf((float)newlen, beam_alpha);
             if (denom < 1e-6f) denom = 1e-6f;
             cand_scores[i] = (parent->cum_logprob + cands[i].log_prob) / denom;
         }
@@ -2534,6 +2601,17 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
             }
 
             if (C->is_eos) {
+                /* TB-7 parity: respect min_produce_words floor — when the
+                 * beam hasn't emitted enough real words yet, don't accept
+                 * EOS. Mark this candidate slot rejected; the beam_clone
+                 * we just made is freed below to avoid a leak. Caller
+                 * sees a length_min_suppressions++ to mirror greedy
+                 * telemetry. */
+                if (min_words_cfg > 0 && dst->n_used < min_words_cfg) {
+                    bridge->stats.length_min_suppressions++;
+                    beam_free(dst);
+                    continue;
+                }
                 /* EOS halts this beam cleanly: do NOT append the EOS form
                  * to text_buf, do NOT add to used_words / n_used. */
                 dst->finished = true;
@@ -2551,9 +2629,11 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
 
                 /* Confidence floor — match greedy semantics: stop if
                  * confidence < 0.01 *and* this beam already has at least
-                 * one prior token. n_used has just been incremented, so
-                 * this means the beam's PRE-this-step length was ≥ 1. */
-                if (C->confidence < 0.01f && dst->n_used > 1) {
+                 * one prior token. Greedy uses `word_count > 0` AFTER the
+                 * increment; equivalent here is `dst->n_used > 0` since
+                 * we just incremented above. (Pre-V5 used `> 1`, which
+                 * required two prior tokens — off-by-one vs greedy.) */
+                if (C->confidence < 0.01f && dst->n_used > 0) {
                     dst->finished = true;
                 }
 
@@ -2573,6 +2653,30 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
                 for (uint32_t c = 0; c < n_concepts; c++) {
                     dst->concept_acts[c] = ip * intent[c]
                                              + (1.0f - ip) * dst->state[c];
+                }
+
+                /* EOS stopping criterion parity with greedy: when the
+                 * caller has opted in AND we're past min_produce_words,
+                 * stop this beam if the just-rebuilt activation magnitude
+                 * dropped under threshold OR the picked word's confidence
+                 * is under eos_min_confidence. Bridges audit-G item 2. */
+                if (eos_stop_enabled && dst->n_used >= min_words_cfg) {
+                    float act_sq = 0.0f;
+                    for (uint32_t c = 0; c < n_concepts; c++) {
+                        act_sq += dst->concept_acts[c] * dst->concept_acts[c];
+                    }
+                    float act_mag = sqrtf(act_sq);
+                    bool act_undershot  = (eos_min_act  >= 0.0f) && (act_mag < eos_min_act);
+                    bool conf_undershot = (eos_min_conf >= 0.0f) &&
+                                          (C->confidence < eos_min_conf);
+                    if (act_undershot || conf_undershot) {
+                        dst->finished = true;
+                    }
+                }
+
+                /* TB-7 parity: hard max-words cap. */
+                if (max_cfg > 0 && dst->n_used >= max_cfg) {
+                    dst->finished = true;
                 }
             }
 
@@ -2596,16 +2700,44 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
         if (!any_unfinished) break;
     }
 
-    /* Pick the best beam by length-normalized cum_logprob. */
+    /* Pick the best beam by length-normalized cum_logprob, optionally
+     * scaled by 1/(1+w*|energy_deviation|) when HNN re-rank is enabled.
+     * The HNN net is type-erased on the bridge struct; we cast at the
+     * single call site. Re-rank only applies when both the flag is on
+     * AND a net is attached AND |dev| > 0 — otherwise we degrade to
+     * plain length-norm scoring. */
+    bool hnn_rerank_active = bridge->config.enable_beam_hnn_rerank &&
+                              bridge->hnn != NULL;
+    float energy_dev = 0.0f;
+    if (hnn_rerank_active) {
+        energy_dev = lnn_hamiltonian_get_energy_deviation(
+            (const lnn_hamiltonian_net_t*)bridge->hnn);
+        if (!isfinite(energy_dev)) energy_dev = 0.0f;
+        if (energy_dev < 0.0f) energy_dev = -energy_dev;
+    }
     int best = -1;
     float best_score = -FLT_MAX;
     for (uint32_t i = 0; i < n_beams; i++) {
         if (!beams[i].active || beams[i].n_used == 0) continue;
-        float s = beam_score(&beams[i]);
+        float s = beam_score_alpha(&beams[i], beam_alpha);
+        if (hnn_rerank_active && energy_dev > 0.0f) {
+            float w = bridge->config.beam_hnn_weight;
+            if (!isfinite(w) || w < 0.0f) w = 0.0f;
+            float scale = 1.0f / (1.0f + w * energy_dev);
+            /* s is typically negative (log-prob / length-norm); the
+             * scaling penalizes high-deviation beams by SHRINKING the
+             * magnitude, i.e. pulling negative scores toward zero. To
+             * make penalty consistent (worse → lower), invert when s<0
+             * by dividing instead of multiplying. */
+            s = (s >= 0.0f) ? (s * scale) : (s / scale);
+        }
         if (s > best_score) {
             best_score = s;
             best = (int)i;
         }
+    }
+    if (hnn_rerank_active && energy_dev > 0.0f) {
+        bridge->stats.beam_hnn_rerank_passes++;
     }
 
     int rc_out = 0;
@@ -2613,6 +2745,16 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
         rc_out = -1;
     } else {
         beam_t* B = &beams[best];
+        /* BEAM_MAX_WORDS truncation telemetry — parity with greedy's
+         * length_max_truncations bump. Treat the picked beam as cap-
+         * truncated if it ran into the BEAM_MAX_WORDS internal cap
+         * (32) without becoming finished, OR if the caller-set max_cfg
+         * was reached. */
+        if (B->n_used >= BEAM_MAX_WORDS ||
+            (max_cfg > 0 && B->n_used >= max_cfg)) {
+            bridge->stats.length_max_truncations++;
+            bridge->stats.total_max_truncations++;
+        }
         B->text_buf[B->text_pos] = '\0';
         result->text = nimcp_malloc(B->text_pos + 1);
         if (!result->text) {
@@ -3394,17 +3536,25 @@ void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend)
     + sizeof(float)    /* eos_min_confidence */         \
     )
 
-/* Pack/unpack helpers (write fields one-at-a-time to avoid struct padding
- * surprises across compilers). Always writes the V4 layout. V3 readers
- * forward-compat skip the trailing 9 bytes via the block_size header. */
-static int write_ext_config_v4(FILE* f, const snn_lang_config_t* cfg)
-{
-    const uint32_t ext_block_size = (uint32_t)EXT_KNOWN_SIZE_V4;
+#define EXT_KNOWN_SIZE_V5 \
+    ( EXT_KNOWN_SIZE_V4                                 \
+    + sizeof(uint8_t)  /* enable_beam_hnn_rerank */     \
+    + sizeof(float)    /* beam_hnn_weight */            \
+    + sizeof(float)    /* beam_length_norm_alpha */     \
+    )
 
-    uint8_t spike_routing = cfg->enable_snn_spike_routing ? 1 : 0;
-    uint8_t hyperbolic    = cfg->use_hyperbolic_embeddings ? 1 : 0;
-    int32_t sampling_mode = cfg->sampling_mode;
-    uint8_t eos_enabled   = cfg->enable_eos_stopping ? 1 : 0;
+/* Pack/unpack helpers (write fields one-at-a-time to avoid struct padding
+ * surprises across compilers). Always writes the V5 layout. V3/V4 readers
+ * forward-compat skip the trailing bytes via the block_size header. */
+static int write_ext_config_v5(FILE* f, const snn_lang_config_t* cfg)
+{
+    const uint32_t ext_block_size = (uint32_t)EXT_KNOWN_SIZE_V5;
+
+    uint8_t spike_routing  = cfg->enable_snn_spike_routing ? 1 : 0;
+    uint8_t hyperbolic     = cfg->use_hyperbolic_embeddings ? 1 : 0;
+    int32_t sampling_mode  = cfg->sampling_mode;
+    uint8_t eos_enabled    = cfg->enable_eos_stopping ? 1 : 0;
+    uint8_t beam_rerank_en = cfg->enable_beam_hnn_rerank ? 1 : 0;
 
     if (fwrite(&ext_block_size,           sizeof(uint32_t), 1, f) != 1) return -1;
     if (fwrite(&cfg->temperature,         sizeof(float),    1, f) != 1) return -1;
@@ -3421,6 +3571,10 @@ static int write_ext_config_v4(FILE* f, const snn_lang_config_t* cfg)
     if (fwrite(&eos_enabled,              sizeof(uint8_t),  1, f) != 1) return -1;
     if (fwrite(&cfg->eos_min_activation,  sizeof(float),    1, f) != 1) return -1;
     if (fwrite(&cfg->eos_min_confidence,  sizeof(float),    1, f) != 1) return -1;
+    /* V5 tail — beam re-rank knobs. */
+    if (fwrite(&beam_rerank_en,           sizeof(uint8_t),  1, f) != 1) return -1;
+    if (fwrite(&cfg->beam_hnn_weight,        sizeof(float), 1, f) != 1) return -1;
+    if (fwrite(&cfg->beam_length_norm_alpha, sizeof(float), 1, f) != 1) return -1;
     return 0;
 }
 
@@ -3430,7 +3584,7 @@ static int write_ext_config_v4(FILE* f, const snn_lang_config_t* cfg)
  * pre-populated cfg_out with library defaults (or with the struct-blob
  * contents) before calling — fields outside the on-disk block keep
  * whatever the caller put there. */
-static int read_ext_config_v3_or_v4(FILE* f, uint32_t block_size,
+static int read_ext_config_v3_or_v4_or_v5(FILE* f, uint32_t block_size,
                                     snn_lang_config_t* cfg_out)
 {
     /* Hard upper bound: refuse pathologically large blocks (corruption guard). */
@@ -3483,6 +3637,18 @@ static int read_ext_config_v3_or_v4(FILE* f, uint32_t block_size,
         cfg_out->eos_min_confidence  = eos_min_conf;
     }
 
+    /* V5 tail — beam re-rank knobs. V3/V4 writers stop before this point. */
+    if (block_size >= (uint32_t)EXT_KNOWN_SIZE_V5) {
+        uint8_t beam_rerank;
+        float   beam_w, beam_alpha;
+        if (fread(&beam_rerank, sizeof(uint8_t), 1, f) != 1) return -1;
+        if (fread(&beam_w,      sizeof(float),   1, f) != 1) return -1;
+        if (fread(&beam_alpha,  sizeof(float),   1, f) != 1) return -1;
+        cfg_out->enable_beam_hnn_rerank = (beam_rerank != 0);
+        cfg_out->beam_hnn_weight        = beam_w;
+        cfg_out->beam_length_norm_alpha = beam_alpha;
+    }
+
     /* Forward-compat: skip any trailing bytes belonging to a newer writer. */
     long want = start_pos + (long)block_size;
     long here = ftell(f);
@@ -3518,6 +3684,131 @@ static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
     cfg->enable_eos_stopping      = defaults.enable_eos_stopping;
     cfg->eos_min_activation       = defaults.eos_min_activation;
     cfg->eos_min_confidence       = defaults.eos_min_confidence;
+    /* Beam re-rank fields — same rationale: V2/V3/V4 sidecars do not carry
+     * them. Reset to library defaults; V5 readers overwrite from the
+     * ext-block tail. */
+    cfg->enable_beam_hnn_rerank   = defaults.enable_beam_hnn_rerank;
+    cfg->beam_hnn_weight          = defaults.beam_hnn_weight;
+    cfg->beam_length_norm_alpha   = defaults.beam_length_norm_alpha;
+}
+
+/* V5 stats trailer — 29 cumulative counters written after the bindings
+ * array. Self-describing via a leading block_size so older readers can
+ * skip and newer readers can detect missing fields. Excludes gauges
+ * (active_bindings, avg_*, spike_blend_current, last_da_modulation) —
+ * those re-derive cleanly from runtime state. */
+#define STATS_BLOCK_V5_COUNT 30u  /* number of u64 fields below */
+#define STATS_BLOCK_V5_SIZE  (STATS_BLOCK_V5_COUNT * sizeof(uint64_t))
+
+static int write_stats_block_v5(FILE* f, const snn_lang_stats_t* s)
+{
+    const uint32_t block_size = (uint32_t)STATS_BLOCK_V5_SIZE;
+    if (fwrite(&block_size, sizeof(uint32_t), 1, f) != 1) return -1;
+    /* MUST stay in append-only order matching read_stats_block_v5. */
+    const uint64_t fields[STATS_BLOCK_V5_COUNT] = {
+        s->total_decode_calls,
+        s->total_encode_calls,
+        s->total_produce_calls,
+        s->total_comprehend_calls,
+        s->total_stdp_updates,
+        s->total_ltp_events,
+        s->total_ltd_events,
+        s->imagination_contributions,
+        s->curiosity_contributions,
+        s->sleep_consolidation_cycles,
+        s->bindings_pruned,
+        s->attach_collision_warnings,
+        s->produce_total_us,
+        s->produce_call_count,
+        s->lgss_outputs_blocked,
+        s->total_trigram_updates,
+        s->da_gated_stdp_passes,
+        s->length_min_suppressions,
+        s->length_max_truncations,
+        s->stream_callbacks_invoked,
+        s->stream_aborts,
+        s->decode_total_ns,
+        s->comprehend_stdp_passes,
+        s->comprehend_stdp_pairs_fired,
+        s->echo_correct_calls,
+        s->echo_correct_pairs,
+        s->echo_correct_target_misses,
+        s->total_eos_terminations,
+        s->total_max_truncations,
+        s->beam_hnn_rerank_passes
+    };
+    if (fwrite(fields, sizeof(uint64_t), STATS_BLOCK_V5_COUNT, f)
+        != STATS_BLOCK_V5_COUNT) return -1;
+    return 0;
+}
+
+/* Read a V5 stats trailer. If EOF (V3/V4 file), returns 0 with stats
+ * left zero — non-fatal. block_size > expected: skip trailing bytes
+ * (newer writer forward-compat). */
+static int read_stats_block_v5(FILE* f, snn_lang_stats_t* s_out)
+{
+    uint32_t block_size = 0;
+    size_t   got = fread(&block_size, sizeof(uint32_t), 1, f);
+    if (got != 1) {
+        /* EOF — V3/V4 file. Stats stay zero. */
+        return 0;
+    }
+    if (block_size > 64u * 1024u) return -1;  /* corruption guard */
+
+    long start_pos = ftell(f);
+    if (start_pos < 0) return -1;
+
+    /* Read up to STATS_BLOCK_V5_COUNT fields. Truncated blocks (older
+     * partial writers) leave the missing tail at zero. */
+    uint32_t to_read = (block_size < (uint32_t)STATS_BLOCK_V5_SIZE)
+        ? (block_size / (uint32_t)sizeof(uint64_t))
+        : STATS_BLOCK_V5_COUNT;
+
+    uint64_t fields[STATS_BLOCK_V5_COUNT] = {0};
+    if (to_read > 0) {
+        if (fread(fields, sizeof(uint64_t), to_read, f) != to_read) return -1;
+    }
+    uint32_t i = 0;
+    s_out->total_decode_calls         = fields[i++];
+    s_out->total_encode_calls         = fields[i++];
+    s_out->total_produce_calls        = fields[i++];
+    s_out->total_comprehend_calls     = fields[i++];
+    s_out->total_stdp_updates         = fields[i++];
+    s_out->total_ltp_events           = fields[i++];
+    s_out->total_ltd_events           = fields[i++];
+    s_out->imagination_contributions  = fields[i++];
+    s_out->curiosity_contributions    = fields[i++];
+    s_out->sleep_consolidation_cycles = fields[i++];
+    s_out->bindings_pruned            = fields[i++];
+    s_out->attach_collision_warnings  = fields[i++];
+    s_out->produce_total_us           = fields[i++];
+    s_out->produce_call_count         = fields[i++];
+    s_out->lgss_outputs_blocked       = fields[i++];
+    s_out->total_trigram_updates      = fields[i++];
+    s_out->da_gated_stdp_passes       = fields[i++];
+    s_out->length_min_suppressions    = fields[i++];
+    s_out->length_max_truncations     = fields[i++];
+    s_out->stream_callbacks_invoked   = fields[i++];
+    s_out->stream_aborts              = fields[i++];
+    s_out->decode_total_ns            = fields[i++];
+    s_out->comprehend_stdp_passes     = fields[i++];
+    s_out->comprehend_stdp_pairs_fired = fields[i++];
+    s_out->echo_correct_calls         = fields[i++];
+    s_out->echo_correct_pairs         = fields[i++];
+    s_out->echo_correct_target_misses = fields[i++];
+    s_out->total_eos_terminations     = fields[i++];
+    s_out->total_max_truncations      = fields[i++];
+    s_out->beam_hnn_rerank_passes     = fields[i++];
+    (void)i;
+
+    /* Skip any trailing bytes belonging to a newer writer. */
+    long want = start_pos + (long)block_size;
+    long here = ftell(f);
+    if (here < 0) return -1;
+    if (here < want) {
+        if (fseek(f, want, SEEK_SET) != 0) return -1;
+    }
+    return 0;
 }
 
 int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* path)
@@ -3531,14 +3822,14 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
     FILE* f = fopen(path, "wb");
     if (!f) return -1;
 
-    /* V3/V4 header: magic, V3 sentinel (reused), version. The sentinel
+    /* V3+ header: magic, V3 sentinel (reused), version. The sentinel
      * disambiguates V3+ from V2 (where the next u32 after magic was
      * max_concept_pops, always ≤ SNN_LANG_MAX_CONCEPT_POPS = 4096, never
-     * the 0xFFFFFFFE sentinel). Bumped to V4 once the EOS-stopping ext
-     * tail was added; V3 readers handle V4 files via the ext_block_size
-     * forward-skip path. */
+     * the 0xFFFFFFFE sentinel). V5 adds beam-rerank knobs to the ext
+     * block AND a cumulative stats trailer past the bindings array;
+     * V3/V4 readers forward-compat via ext_block_size + EOF tolerance. */
     const uint32_t v3_sentinel = SNN_LANG_BRIDGE_FILE_V3_SENTINEL;
-    const uint32_t version     = SNN_LANG_BRIDGE_FILE_VERSION_V4;
+    const uint32_t version     = SNN_LANG_BRIDGE_FILE_VERSION_V5;
     fwrite(&bridge->magic, sizeof(uint32_t), 1, f);
     fwrite(&v3_sentinel,   sizeof(uint32_t), 1, f);
     fwrite(&version,       sizeof(uint32_t), 1, f);
@@ -3546,14 +3837,15 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
     /* Full snn_lang_config_t blob (preserves all existing struct fields
      * for consumers that memcpy the whole struct). The explicit ext block
      * below is what the loader treats as authoritative for the PA/MQ +
-     * EOS knobs — those are NEVER trusted from the raw blob, so a stale
-     * reader+writer pair cannot stack-smash even if the struct grows. */
+     * EOS + beam-rerank knobs — those are NEVER trusted from the raw blob,
+     * so a stale reader+writer pair cannot stack-smash even if the struct
+     * grows. */
     fwrite(&bridge->config, sizeof(snn_lang_config_t), 1, f);
 
-    /* Tier 2 #8 + EOS: extended config block — PA/MQ + EOS knobs in a
-     * fixed wire layout. Always writes V4 (size = EXT_KNOWN_SIZE_V4);
-     * V3 readers seek past the trailing 9 bytes. */
-    if (write_ext_config_v4(f, &bridge->config) != 0) {
+    /* Tier 2 #8 + EOS + beam-rerank: extended config block in a fixed
+     * wire layout. Always writes V5 (size = EXT_KNOWN_SIZE_V5);
+     * V3/V4 readers seek past the trailing bytes. */
+    if (write_ext_config_v5(f, &bridge->config) != 0) {
         fclose(f);
         return -1;
     }
@@ -3577,6 +3869,14 @@ int snn_language_bridge_save(const snn_language_bridge_t* bridge, const char* pa
             fwrite(&node->binding, sizeof(snn_lang_binding_t), 1, f);
             node = node->next;
         }
+    }
+
+    /* V5 stats trailer — round-trip 30 cumulative counters. Fixes the
+     * gap where V4 and earlier wrote no stats, so every produce/decode/
+     * stdp counter reset to zero on every load. */
+    if (write_stats_block_v5(f, &bridge->stats) != 0) {
+        fclose(f);
+        return -1;
     }
 
     fclose(f);
@@ -3629,23 +3929,26 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
             fclose(f);
             return NULL;
         }
-        /* EOS knobs are NOT trusted from the raw struct blob — older V3
-         * files don't have them, and even V4 files leave the struct-blob
-         * copy redundant with the ext block. Pre-reset to defaults so a
-         * V3 file (whose ext block stops at EXT_KNOWN_SIZE_V3) leaves
-         * EOS at the library defaults, while a V4 file overwrites them
-         * authoritatively from the ext block. */
+        /* EOS + beam-rerank knobs are NOT trusted from the raw struct
+         * blob — older V3/V4 files don't have all of them, and even V5
+         * files leave the struct-blob copy redundant with the ext block.
+         * Pre-reset to defaults so a V3 file (whose ext block stops at
+         * EXT_KNOWN_SIZE_V3) leaves all new knobs at defaults; V4
+         * overwrites EOS only; V5 overwrites everything authoritatively. */
         snn_lang_config_t cfg_defaults = snn_lang_config_default();
-        config.enable_eos_stopping = cfg_defaults.enable_eos_stopping;
-        config.eos_min_activation  = cfg_defaults.eos_min_activation;
-        config.eos_min_confidence  = cfg_defaults.eos_min_confidence;
+        config.enable_eos_stopping      = cfg_defaults.enable_eos_stopping;
+        config.eos_min_activation       = cfg_defaults.eos_min_activation;
+        config.eos_min_confidence       = cfg_defaults.eos_min_confidence;
+        config.enable_beam_hnn_rerank   = cfg_defaults.enable_beam_hnn_rerank;
+        config.beam_hnn_weight          = cfg_defaults.beam_hnn_weight;
+        config.beam_length_norm_alpha   = cfg_defaults.beam_length_norm_alpha;
         uint32_t ext_block_size = 0;
         if (fread(&ext_block_size, sizeof(uint32_t), 1, f) != 1) {
             fclose(f);
             return NULL;
         }
         /* Authoritative: explicit ext block overrides the struct-blob copy. */
-        if (read_ext_config_v3_or_v4(f, ext_block_size, &config) != 0) {
+        if (read_ext_config_v3_or_v4_or_v5(f, ext_block_size, &config) != 0) {
             fclose(f);
             return NULL;
         }
@@ -3723,6 +4026,16 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
      * `node->binding = b` overwrite (the on-disk weight may differ from the
      * initial value just inserted). Rebuild from final state. */
     snn_language_bridge_recompute_norms(bridge);
+
+    /* V5 stats trailer — best-effort read. V3/V4 files have nothing here
+     * (EOF), in which case stats stay zero. V5 files round-trip 30 fields. */
+    if (file_version >= SNN_LANG_BRIDGE_FILE_VERSION_V5) {
+        if (read_stats_block_v5(f, &bridge->stats) != 0) {
+            /* Truncated/corrupt stats trailer is non-fatal — bridge data
+             * still loaded cleanly. Stats reset to zero. */
+            memset(&bridge->stats, 0, sizeof(bridge->stats));
+        }
+    }
 
     fclose(f);
     return bridge;

@@ -337,12 +337,13 @@ static void test_v3_format_prefix_is_distinct_from_v2(void)
         EXPECT(sentinel == SNN_LANG_BRIDGE_FILE_V3_SENTINEL,
                 "sentinel 0x%08x != V3 sentinel 0xFFFFFFFE",
                 sentinel);
-        /* After EOS migration, save always writes V4. Accept V3 or V4
-         * here — both share the V3 wire prefix; the test's intent is to
-         * pin the layout, not the literal version number. */
+        /* Save always writes the newest format. Accept V3 .. V5 here —
+         * all share the V3 wire prefix; the test's intent is to pin the
+         * layout, not the literal version number. */
         EXPECT(version == SNN_LANG_BRIDGE_FILE_VERSION_V3 ||
-               version == SNN_LANG_BRIDGE_FILE_VERSION_V4,
-                "version %u not in {V3, V4}", version);
+               version == SNN_LANG_BRIDGE_FILE_VERSION_V4 ||
+               version == SNN_LANG_BRIDGE_FILE_VERSION_V5,
+                "version %u not in {V3, V4, V5}", version);
 
         /* Distinct from any plausible V2 first-field (max_concept_pops),
          * which is bounded by SNN_LANG_MAX_CONCEPT_POPS. */
@@ -388,19 +389,20 @@ static void test_v4_eos_round_trip(void)
         EXPECT(magic == SNN_LANG_MAGIC, "magic must be SLBG");
         EXPECT(sentinel == SNN_LANG_BRIDGE_FILE_V3_SENTINEL,
                 "sentinel must be V3+ marker");
-        EXPECT(version == SNN_LANG_BRIDGE_FILE_VERSION_V4,
-                "version must be V4 = 4; got %u", version);
+        EXPECT(version == SNN_LANG_BRIDGE_FILE_VERSION_V5,
+                "version must be V5 = 5; got %u", version);
 
         /* Skip config blob, read ext_block_size, decode tail. */
         fseek(g, sizeof(snn_lang_config_t), SEEK_CUR);
         uint32_t bs;
         EXPECT(fread(&bs, sizeof(uint32_t), 1, g) == 1, "read ext size");
-        /* Compute expected V4 ext block size — must exceed V3 size by
-         * 1 + 4 + 4 = 9 bytes (enable_eos_stopping:u8, two floats). */
+        /* Compute expected V5 ext block size — V4 tail (9 bytes) + V5
+         * tail (1 + 4 + 4 = 9 bytes) on top of V3 prefix (43 bytes). */
         size_t v3_size = 4 + 4 + 4 + 4 + 4 + 4 + 1 + 4 + 1 + 4;
         size_t v4_size = v3_size + 1 + 4 + 4;
-        EXPECT(bs == v4_size,
-               "ext block size %u != V4 expected %zu", bs, v4_size);
+        size_t v5_size = v4_size + 1 + 4 + 4;
+        EXPECT(bs == v5_size,
+               "ext block size %u != V5 expected %zu", bs, v5_size);
         fclose(g);
     }
 
