@@ -3569,6 +3569,18 @@ void snn_language_bridge_set_blend(snn_language_bridge_t* bridge, float blend)
     + sizeof(float)    /* beam_length_norm_alpha */     \
     )
 
+/* Walkthrough-4 — defense-in-depth: invariant that newer versions must
+ * strictly extend older ones. If a future commit accidentally shrinks
+ * the V5 size (e.g., by removing a field instead of appending) the
+ * V3/V4 reader's forward-skip would underflow. _Static_assert catches
+ * it at compile time. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(EXT_KNOWN_SIZE_V5 > EXT_KNOWN_SIZE_V4,
+    "ext block versions must strictly extend — V5 size must exceed V4");
+_Static_assert(EXT_KNOWN_SIZE_V4 > EXT_KNOWN_SIZE_V3,
+    "ext block versions must strictly extend — V4 size must exceed V3");
+#endif
+
 /* Pack/unpack helpers (write fields one-at-a-time to avoid struct padding
  * surprises across compilers). Always writes the V5 layout. V3/V4 readers
  * forward-compat skip the trailing bytes via the block_size header. */
