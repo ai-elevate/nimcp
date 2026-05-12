@@ -3698,7 +3698,7 @@ static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
     cfg->beam_length_norm_alpha   = defaults.beam_length_norm_alpha;
 }
 
-/* V5 stats trailer — 29 cumulative counters written after the bindings
+/* V5 stats trailer — 30 cumulative counters written after the bindings
  * array. Self-describing via a leading block_size so older readers can
  * skip and newer readers can detect missing fields. Excludes gauges
  * (active_bindings, avg_*, spike_blend_current, last_da_modulation) —
