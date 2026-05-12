@@ -648,6 +648,39 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         }
     }
 
+    /* === LANG sidecar block — cascade self-train tunables ============
+     *
+     * Until this block existed, brain->cascade_self_train_* (set by
+     * nimcp_brain_set_cascade_self_train_enabled / _tunables) was lost
+     * on every save. The 4 fields drive Stage 14 reward-modulated
+     * SNN-bridge training; losing them silently reverted the trainer
+     * to defaults (enabled=false, lr_scale=1.0, alpha=0.05) at the
+     * next daemon restart.
+     *
+     * Wire format (self-describing, forward+backward compatible):
+     *   [u32 sentinel = 'LANG' (0x4C414E47)]
+     *   [u32 block_size_in_bytes]
+     *   [u8  cascade_self_train_enabled]
+     *   [f32 cascade_self_train_baseline]
+     *   [f32 cascade_self_train_alpha]
+     *   [f32 cascade_self_train_lr_scale]
+     *
+     * Older readers hit EOF before the sentinel and skip cleanly —
+     * tunables stay at library defaults, preserving the prior
+     * silent-drop behavior without any new failure modes. */
+    {
+        const uint32_t lang_sentinel = 0x4C414E47u;  /* "LANG" */
+        const uint32_t lang_block_size =
+            sizeof(uint8_t) + sizeof(float) * 3u;
+        uint8_t st_enabled = brain->cascade_self_train_enabled ? 1u : 0u;
+        fwrite(&lang_sentinel,   sizeof(uint32_t), 1, meta_file);
+        fwrite(&lang_block_size, sizeof(uint32_t), 1, meta_file);
+        fwrite(&st_enabled,                            sizeof(uint8_t), 1, meta_file);
+        fwrite(&brain->cascade_self_train_baseline,    sizeof(float),   1, meta_file);
+        fwrite(&brain->cascade_self_train_alpha,       sizeof(float),   1, meta_file);
+        fwrite(&brain->cascade_self_train_lr_scale,    sizeof(float),   1, meta_file);
+    }
+
     fclose(meta_file);
 
     /* Atomic rename .meta.tmp → .meta. If rename fails we have neither a
@@ -1777,6 +1810,54 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                 }
             }
         }
+    }
+
+    /* === LANG sidecar block (best-effort) =============================
+     *
+     * Mirror of the writer above. EOF here is the EXPECTED path for
+     * pre-2026-05-12 checkpoints — leave the cascade_self_train_*
+     * fields at whatever the caller's init/default set them to.
+     *
+     * Block was added 2026-05-12 (commit following a6f965029). Magic
+     * 'LANG' disambiguates it from a stray u32 = 0x4C414E47 by chance.
+     * block_size_in_bytes lets newer writers extend the block. */
+    {
+        uint32_t lang_sentinel = 0;
+        if (fread(&lang_sentinel, sizeof(uint32_t), 1, meta_file) == 1 &&
+            lang_sentinel == 0x4C414E47u) {
+            uint32_t lang_block_size = 0;
+            if (fread(&lang_block_size, sizeof(uint32_t), 1, meta_file) != 1 ||
+                lang_block_size > 64u * 1024u) {
+                /* Corrupt block size — abandon, tunables stay at defaults. */
+                NIMCP_LOGGING_WARN("LANG block: bad/missing block_size — skipping");
+            } else {
+                long start_pos = ftell(meta_file);
+                if (lang_block_size >= sizeof(uint8_t) + sizeof(float) * 3u) {
+                    uint8_t st_enabled = 0;
+                    float baseline = 0.0f, alpha = 0.0f, lr_scale = 0.0f;
+                    if (fread(&st_enabled, sizeof(uint8_t), 1, meta_file) == 1 &&
+                        fread(&baseline,   sizeof(float),   1, meta_file) == 1 &&
+                        fread(&alpha,      sizeof(float),   1, meta_file) == 1 &&
+                        fread(&lr_scale,   sizeof(float),   1, meta_file) == 1) {
+                        brain->cascade_self_train_enabled  = (st_enabled != 0);
+                        brain->cascade_self_train_baseline = baseline;
+                        brain->cascade_self_train_alpha    = alpha;
+                        brain->cascade_self_train_lr_scale = lr_scale;
+                    }
+                }
+                /* Forward-compat: skip past any trailing bytes a newer
+                 * writer added beyond what we know how to read. */
+                if (start_pos >= 0) {
+                    long want = start_pos + (long)lang_block_size;
+                    long here = ftell(meta_file);
+                    if (here >= 0 && here < want) {
+                        fseek(meta_file, want, SEEK_SET);
+                    }
+                }
+            }
+        }
+        /* Any other outcome (EOF, mismatched sentinel) leaves the
+         * tunables at their init/RPC-set defaults. */
     }
 
     fclose(meta_file);
