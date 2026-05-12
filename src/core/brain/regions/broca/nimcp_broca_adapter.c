@@ -102,6 +102,21 @@ struct broca_adapter {
     uint32_t output_count;
     uint32_t output_head;            /**< Next read position */
 
+    /* Walkthrough-3 fix — state_mutex guards working_memory[] +
+     * output_commands[] + their count/head indices.
+     *
+     * Both ring buffers are written by produce_utterance (cascade
+     * stage_lexical / stage_syntactic) and read by external
+     * consumers (broca_get_command, broca_get_commands,
+     * broca_wm_get_contents). With the cascade running on the
+     * RO socket pool concurrently with the main pool's trainer
+     * loop, the head/count writes raced.
+     *
+     * Separate from lexicon_mutex to avoid lock-ordering hazards —
+     * lexicon path doesn't touch WM/output and vice versa. NULL on
+     * alloc failure degrades to unlocked. */
+    nimcp_mutex_t* state_mutex;
+
     /* Callbacks */
     broca_lexical_callback_t lexical_callback;
     void* lexical_user_data;
@@ -394,6 +409,15 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
         }
     }
 
+    /* Walkthrough-3 — state_mutex for WM + output ring buffers.
+     * Created unconditionally (independent of lexicon/wm config flags)
+     * since the destroy path always frees it. */
+    adapter->state_mutex = nimcp_mutex_create(NULL);
+    if (!adapter->state_mutex) {
+        LOG_WARN("[%s] state_mutex create failed — running unlocked",
+                  BROCA_LOG_MODULE);
+    }
+
     /* Initialize working memory */
     if (adapter->config.enable_working_memory) {
         LOG_DEBUG("[%s] Initializing working memory (slots=%u)", BROCA_LOG_MODULE,
@@ -557,6 +581,10 @@ void broca_destroy(broca_adapter_t* adapter) {
     if (adapter->lexicon_mutex) {
         nimcp_mutex_free(adapter->lexicon_mutex);
         adapter->lexicon_mutex = NULL;
+    }
+    if (adapter->state_mutex) {
+        nimcp_mutex_free(adapter->state_mutex);
+        adapter->state_mutex = NULL;
     }
 
     /* Free working memory */
@@ -935,6 +963,9 @@ bool broca_process_utterance(broca_adapter_t* adapter,
 
     uint32_t cmd_count = max_commands;
     if (speech_motor_get_commands(adapter->motor, temp_commands, &cmd_count)) {
+        /* Walkthrough-3 — guard output ring writes against concurrent
+         * broca_get_next_command / broca_get_all_commands readers. */
+        if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
         /* Convert to output format */
         for (uint32_t i = 0; i < cmd_count && adapter->output_count < max_commands; i++) {
             broca_output_command_t* out = &adapter->output_commands[adapter->output_count];
@@ -945,10 +976,14 @@ bool broca_process_utterance(broca_adapter_t* adapter,
             out->phoneme = temp_commands[i].phoneme;
             adapter->output_count++;
         }
+        if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     }
     /* Release back to pool (Phase 1.5) */
     memory_pool_release(adapter->motor_command_pool, temp_commands);
 
+    /* Snapshot output_count for the local_result; this is a single
+     * read of an atomic-aligned u32 so torn reads aren't a concern,
+     * and command_count is advisory diagnostic data. */
     local_result.command_count = adapter->output_count;
     local_result.ready_for_articulation = (adapter->output_count > 0);
 
@@ -973,12 +1008,16 @@ bool broca_get_next_command(broca_adapter_t* adapter,
         return false;
     }
 
+    /* Walkthrough-3 — guard output ring read + head advance.
+     * Callback fires OUTSIDE the lock to avoid re-entry. */
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     if (adapter->output_head >= adapter->output_count) {
+        if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
         return false;  /* No more commands - normal end condition */
     }
-
     *command = adapter->output_commands[adapter->output_head];
     adapter->output_head++;
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
 
     /* Invoke motor callback if set */
     if (adapter->motor_callback) {
@@ -996,6 +1035,7 @@ bool broca_get_all_commands(broca_adapter_t* adapter,
         return false;
     }
 
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     uint32_t available = adapter->output_count - adapter->output_head;
     uint32_t to_copy = (*count < available) ? *count : available;
 
@@ -1004,6 +1044,7 @@ bool broca_get_all_commands(broca_adapter_t* adapter,
 
     adapter->output_head += to_copy;
     *count = to_copy;
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
 
     return true;
 }
@@ -1079,6 +1120,9 @@ bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
         return false;
     }
 
+    /* Walkthrough-3 — guard wm_head + wm_count + working_memory[]. */
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
+
     if (adapter->wm_count >= adapter->config.working_memory_slots) {
         /* WM full - overwrite oldest */
         adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
@@ -1092,6 +1136,7 @@ bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
     adapter->working_memory[idx].activation = 1.0F;
     adapter->working_memory[idx].timestamp = adapter->current_time_ms;
 
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     return true;
 }
 
@@ -1100,7 +1145,10 @@ bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_wm_pop: required parameter is NULL (adapter, word_id, adapter->working_memory)");
         return false;
     }
+
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     if (adapter->wm_count == 0) {
+        if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_wm_pop: adapter->wm_count is zero");
         return false;
     }
@@ -1109,6 +1157,7 @@ bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
     adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
     adapter->wm_count--;
 
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     return true;
 }
 
@@ -1120,6 +1169,7 @@ bool broca_wm_get_contents(const broca_adapter_t* adapter,
         return false;
     }
 
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     uint32_t to_copy = (*count < adapter->wm_count) ? *count : adapter->wm_count;
 
     for (uint32_t i = 0; i < to_copy; i++) {
@@ -1128,6 +1178,7 @@ bool broca_wm_get_contents(const broca_adapter_t* adapter,
     }
 
     *count = to_copy;
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     return true;
 }
 

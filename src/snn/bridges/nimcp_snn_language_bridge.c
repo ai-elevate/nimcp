@@ -2622,18 +2622,38 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
                     if (dst->text_pos > 0) dst->text_buf[dst->text_pos++] = ' ';
                     memcpy(dst->text_buf + dst->text_pos, C->word_form, wlen);
                     dst->text_pos += wlen;
+                } else {
+                    /* Walkthrough-3 fix — text_buf is sizeof(dst->text_buf)
+                     * bytes (currently 2048). Pre-fix, this branch silently
+                     * dropped the word from the text but still incremented
+                     * n_used + emitted it through the beam. Result: caller
+                     * saw word_count=N but the returned text was a
+                     * truncated <N-word string. Mark the beam finished so
+                     * the next pick at most expands a different beam. */
+                    dst->finished = true;
                 }
                 if (dst->n_used < BEAM_MAX_WORDS) {
                     dst->used_words[dst->n_used++] = C->word_pop;
                 }
 
                 /* Confidence floor — match greedy semantics: stop if
-                 * confidence < 0.01 *and* this beam already has at least
-                 * one prior token. Greedy uses `word_count > 0` AFTER the
-                 * increment; equivalent here is `dst->n_used > 0` since
-                 * we just incremented above. (Pre-V5 used `> 1`, which
-                 * required two prior tokens — off-by-one vs greedy.) */
-                if (C->confidence < 0.01f && dst->n_used > 0) {
+                 * confidence < 0.01 *and* there was at least one prior
+                 * emitted word.
+                 *
+                 * Greedy (line 2071): `confidence < 0.01 && word_count > 0`
+                 * is checked BEFORE word_count++ (line 2086). So at greedy's
+                 * check time, word_count = number of PRIOR words. word_count
+                 * > 0 means >= 1 prior word.
+                 *
+                 * Beam: dst->n_used has ALREADY been incremented to include
+                 * the current word (line 2627). To match greedy's "at least
+                 * one prior word", we need n_used > 1 (i.e., >= 2 total =
+                 * >= 1 prior + this one).
+                 *
+                 * Walkthrough-3 audit found this used to be `> 0` after a
+                 * previous "fix" — that incorrectly stopped beam on the
+                 * FIRST low-confidence word while greedy accepted it. */
+                if (C->confidence < 0.01f && dst->n_used > 1) {
                     dst->finished = true;
                 }
 

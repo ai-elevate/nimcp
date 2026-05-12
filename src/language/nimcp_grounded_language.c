@@ -3084,8 +3084,17 @@ int grounded_language_push_turn(grounded_language_t* gl,
         memcpy(t->semantic_vector, semantic_vec, cmp * sizeof(float));
     }
 
-    discourse_rebuild_context_blend(gl);
     gl_mutate_unlock(gl);
+
+    /* Walkthrough-3 fix — rebuild context blend OUTSIDE the lock.
+     * The function reads discourse turns (which we just locked-write
+     * above) and computes a weighted blend; once we've released the
+     * lock, any concurrent push_turn would just re-trigger another
+     * rebuild — no correctness issue since the rebuild is idempotent
+     * over the read snapshot. Keeping the critical section tight
+     * matters here: rebuild does O(dim * turns) float math that
+     * shouldn't block other comprehend calls. */
+    discourse_rebuild_context_blend(gl);
     return 0;
 }
 
