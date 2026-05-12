@@ -356,6 +356,25 @@ struct grounded_language {
     pthread_mutex_t      tc12_lock;
     bool                 tc12_lock_inited;
 
+    /* Audit walkthrough-2 fix — mutate_lock guards three mutable
+     * structures that comprehend touches:
+     *   - lexicon[] hash table + vocab_list + vocab_count
+     *     (writer: lexicon_find_or_create)
+     *   - discourse ring (head/count/turns array)
+     *     (writers: grounded_language_push_turn,
+     *      discourse_rebuild_context_blend)
+     *   - phrases[] table + phrase_count
+     *     (writer: _gl_phrase_find_or_create)
+     *
+     * Without this lock, concurrent comprehend calls (from RO socket
+     * pool + main pool) race on the hash-chain writes — same shape
+     * of bug Broca + Wernicke had before commits b1417e2a9 / a6f965029.
+     * Separate from tc12_lock to keep ownership semantics clean:
+     * tc12_lock covers anaphora + spectrum side-state; mutate_lock
+     * covers core GL state. */
+    pthread_mutex_t      mutate_lock;
+    bool                 mutate_lock_inited;
+
     /* NLP-1 — subword OOV/morphological fallback. When the tokenizer is
      * attached AND the flag is on, comprehend tries to bootstrap fresh
      * lexicon entries (no bindings yet) by segmenting the word and

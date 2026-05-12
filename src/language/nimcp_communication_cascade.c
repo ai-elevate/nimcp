@@ -2281,6 +2281,16 @@ int communication_cascade_run(
             out_state->best_self_match = out_state->self_match;
             out_state->best_utterance  = cascade_repair_strdup(out_state->utterance);
 
+            /* Audit fix — snapshot pre-retry diagnostic counts so the
+             * retry loop's internal calls to cascade_stage_syntactic /
+             * cascade_stage_self_comprehension (each of which bumps
+             * stages_completed) don't inflate the count. After the loop
+             * we restore the snapshot — repair_attempts is the dedicated
+             * counter for retry rounds, so stages_completed retains its
+             * "unique stages executed" contract. */
+            const uint32_t pre_retry_stages_completed = out_state->stages_completed;
+            const uint32_t pre_retry_stages_failed    = out_state->stages_failed;
+
             while (out_state->repair_attempts < REPAIR_MAX_ATTEMPTS &&
                     out_state->self_match < REPAIR_THRESHOLD) {
                 out_state->repair_attempts++;
@@ -2302,12 +2312,16 @@ int communication_cascade_run(
                 out_state->fluency = 0.0f;
                 out_state->syntactic_validity = -1.0f;
 
-                /* Re-run lexical → syntactic → self_comp. Diagnostics
-                 * (stages_completed/failed/skipped) are intentionally
-                 * not reset; the retry counts incrementally. */
+                /* Re-run lexical → syntactic → self_comp. stages_completed
+                 * and stages_failed are restored after the loop (see
+                 * pre_retry_* snapshot above). repair_attempts is the
+                 * dedicated retry counter. */
                 if (cascade_stage_lexical(brain, out_state) < 0 ||
                     !out_state->utterance || !out_state->utterance[0]) {
-                    /* Lexical failed — bail out, keep best-so-far. */
+                    /* Lexical failed mid-retry — bump the lifetime
+                     * failure counter so dashboards can see the retry
+                     * loop attrited, then bail out keeping best-so-far. */
+                    cascade_counter_failure(brain, CASCADE_STAGE_LEXICAL);
                     break;
                 }
                 cascade_stage_syntactic(brain, out_state);
@@ -2330,6 +2344,14 @@ int communication_cascade_run(
             memcpy(out_state->content_intent, orig_intent,
                     dim * sizeof(float));
             nimcp_free(orig_intent);
+
+            /* Audit fix — restore pre-retry stage counts. The retry
+             * loop's calls to cascade_stage_syntactic / _self_comp each
+             * bumped stages_completed; that double-counts vs the
+             * orchestrator's contract. repair_attempts already records
+             * the retry count separately. */
+            out_state->stages_completed = pre_retry_stages_completed;
+            out_state->stages_failed    = pre_retry_stages_failed;
 
             /* If a retry beat the current utterance, swap in best. */
             if (out_state->best_utterance &&

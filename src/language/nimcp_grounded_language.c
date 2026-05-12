@@ -158,12 +158,27 @@ static void normalize_vector(float* vec, uint32_t dim) {
  * Lexicon Operations
  *===========================================================================*/
 
-/** Find or create a lexicon entry for a word */
+/* Forward decls for the mutate_lock helpers — defined later in this TU. */
+static void gl_mutate_lock(grounded_language_t* gl);
+static void gl_mutate_unlock(grounded_language_t* gl);
+
+/** Find or create a lexicon entry for a word.
+ *
+ * Audit walkthrough-2 fix — the hash-table walk + insert is protected
+ * by mutate_lock. NEW_WORD event firing happens OUTSIDE the lock to
+ * avoid re-entrant deadlock if a subscriber writes back into the GL.
+ * gl_mirror_new_word_to_regions also runs outside since it takes
+ * Broca/Wernicke locks (lock-ordering hazard). */
 static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const char* word) {
     char lower[GL_MAX_WORD_LEN];
     lowercase_word(word, lower, GL_MAX_WORD_LEN);
     uint32_t h = hash_word(lower);
     uint32_t idx = h % gl->lexicon_size;
+
+    gl_mutate_lock(gl);
+
+    gl_lexicon_entry_t* result = NULL;
+    bool created_new = false;
 
     /* Linear probe to find existing entry */
     for (uint32_t probe = 0; probe < gl->lexicon_size; probe++) {
@@ -172,11 +187,15 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
             /* Empty slot - create new entry */
             if (gl->vocab_count >= GL_MAX_VOCAB) {
                 LOG_WARN(LOG_MODULE, "Lexicon full (%u words)", gl->vocab_count);
+                gl_mutate_unlock(gl);
                 return NULL;
             }
 
             gl_lexicon_entry_t* entry = (gl_lexicon_entry_t*)nimcp_calloc(1, sizeof(gl_lexicon_entry_t));
-            if (!entry) return NULL;
+            if (!entry) {
+                gl_mutate_unlock(gl);
+                return NULL;
+            }
 
             strncpy(entry->form, lower, GL_MAX_WORD_LEN - 1);
             entry->form_hash = h;
@@ -185,6 +204,7 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
                                                                 sizeof(gl_word_binding_t));
             if (!entry->bindings) {
                 nimcp_free(entry);
+                gl_mutate_unlock(gl);
                 return NULL;
             }
 
@@ -192,6 +212,7 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
             if (!entry->context_vector) {
                 nimcp_free(entry->bindings);
                 nimcp_free(entry);
+                gl_mutate_unlock(gl);
                 return NULL;
             }
 
@@ -210,37 +231,44 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
                 entry->class_confidence = 0.4f;
             }
 
-            /* Mirror the new entry into broca/wernicke region lexicons
-             * if either adapter is connected. No-op when not wired. */
-            extern void gl_mirror_new_word_to_regions(grounded_language_t*,
-                                                       const char*);
-            gl_mirror_new_word_to_regions(gl, entry->form);
-
-            /* Fire NEW_WORD event on the cognitive bus.
-             *
-             * D7: suppress during persistence rehydrate. Resume blasts
-             * ~30K NEW_WORD events to every subscriber (inner-speech,
-             * imagination, theory-of-mind, empathy, introspection,
-             * prefrontal, insula, cingulate, amygdala, ofc, broca,
-             * wernicke, hippocampus, ...) — pure noise on cold boot.
-             * Live grounding events still fire normally. */
-            if (!gl->is_loading) {
-                gl_event_t ev = {0};
-                ev.type = GL_EVENT_NEW_WORD;
-                ev.word = entry->form;
-                gl_fire_event(gl, &ev);
-            }
-
-            return entry;
+            result = entry;
+            created_new = true;
+            break;
         }
 
         if (gl->lexicon[slot]->form_hash == h &&
             strcmp(gl->lexicon[slot]->form, lower) == 0) {
-            return gl->lexicon[slot]; /* Found existing */
+            result = gl->lexicon[slot]; /* Found existing */
+            break;
         }
     }
 
-    return NULL; /* Table full (shouldn't happen with GL_MAX_VOCAB < table size) */
+    gl_mutate_unlock(gl);
+
+    /* Side effects fire OUTSIDE the lock — mirror writes into Broca /
+     * Wernicke (which have their own locks), and the bus dispatch may
+     * re-enter the GL via subscribers. Both must run unlocked. */
+    if (created_new && result) {
+        /* Mirror the new entry into broca/wernicke region lexicons
+         * if either adapter is connected. No-op when not wired. */
+        extern void gl_mirror_new_word_to_regions(grounded_language_t*,
+                                                   const char*);
+        gl_mirror_new_word_to_regions(gl, result->form);
+
+        /* Fire NEW_WORD event on the cognitive bus.
+         *
+         * D7: suppress during persistence rehydrate. Resume blasts
+         * ~30K NEW_WORD events to every subscriber — pure noise on
+         * cold boot. Live grounding events still fire normally. */
+        if (!gl->is_loading) {
+            gl_event_t ev = {0};
+            ev.type = GL_EVENT_NEW_WORD;
+            ev.word = result->form;
+            gl_fire_event(gl, &ev);
+        }
+    }
+
+    return result;
 }
 
 /** Find a lexicon entry (read-only, no create) */
@@ -313,12 +341,21 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
                                                 uint8_t component_words) {
     if (!gl || !gl->phrases || !form) return NULL;
     uint32_t h = hash_word(form);
+
+    /* Audit walkthrough-2 fix — phrase table writes + eviction are
+     * protected by mutate_lock. Pre-fix, concurrent _gl_track_phrases
+     * calls (from comprehend on multiple threads) could double-allocate
+     * the phrase_count slot and corrupt the linear scan. */
+    gl_mutate_lock(gl);
+
     /* Linear scan — N ≤ GL_MAX_PHRASES = 512. learn_from_text is
      * cold-ish and we can afford O(N) per phrase track. */
     for (uint32_t i = 0; i < gl->phrase_count; i++) {
         if (gl->phrases[i].form_hash == h &&
             strcmp(gl->phrases[i].form, form) == 0) {
-            return &gl->phrases[i];
+            gl_phrase_t* found = &gl->phrases[i];
+            gl_mutate_unlock(gl);
+            return found;
         }
     }
 
@@ -346,6 +383,7 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
         } else {
             /* Everything is freq=0 — can't reliably pick a victim.
              * Reject the new phrase rather than thrash. */
+            gl_mutate_unlock(gl);
             return NULL;
         }
     }
@@ -359,6 +397,8 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
     p->frequency = 0;
     p->semantic_vec = NULL;
     p->vec_initialized = false;
+
+    gl_mutate_unlock(gl);
     return p;
 }
 
@@ -1516,6 +1556,10 @@ void grounded_language_destroy(grounded_language_t* gl) {
     if (gl->tc12_lock_inited) {
         pthread_mutex_destroy(&gl->tc12_lock);
         gl->tc12_lock_inited = false;
+    }
+    if (gl->mutate_lock_inited) {
+        pthread_mutex_destroy(&gl->mutate_lock);
+        gl->mutate_lock_inited = false;
     }
 
     /* Free lexicon entries */
@@ -2993,6 +3037,12 @@ int grounded_language_push_turn(grounded_language_t* gl,
                                  uint32_t n_words,
                                  bool is_user) {
     if (!gl) return -1;
+
+    /* Audit walkthrough-2 fix — discourse ring writes + rebuild are
+     * protected by mutate_lock. Concurrent comprehend calls used to
+     * race on head/count + the turns array. */
+    gl_mutate_lock(gl);
+
     if (gl->discourse.capacity == 0) gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
 
     /* Pick the destination slot — append while not full, otherwise
@@ -3027,6 +3077,7 @@ int grounded_language_push_turn(grounded_language_t* gl,
         if (!t->semantic_vector) {
             /* Roll back the slot reservation on alloc failure. */
             if (gl->discourse.count > 0) gl->discourse.count--;
+            gl_mutate_unlock(gl);
             return -1;
         }
         uint32_t cmp = vec_dim < gl->semantic_dim ? vec_dim : gl->semantic_dim;
@@ -3034,6 +3085,7 @@ int grounded_language_push_turn(grounded_language_t* gl,
     }
 
     discourse_rebuild_context_blend(gl);
+    gl_mutate_unlock(gl);
     return 0;
 }
 
@@ -4497,6 +4549,29 @@ static void gl_tc12_lock(grounded_language_t* gl) {
 
 static void gl_tc12_unlock(grounded_language_t* gl) {
     pthread_mutex_unlock(&gl->tc12_lock);
+}
+
+/* Audit walkthrough-2 — mutate_lock helpers. Same lazy-init pattern as
+ * tc12_lock; separate mutex so the two locks never need to be held
+ * simultaneously (avoids lock-ordering hazards). mutate_lock covers
+ * lexicon + discourse + phrase mutations from comprehend; tc12_lock
+ * covers anaphora + spectrum. */
+static pthread_mutex_t g_mutate_bootstrap = PTHREAD_MUTEX_INITIALIZER;
+
+static void gl_mutate_lock(grounded_language_t* gl) {
+    if (!__atomic_load_n(&gl->mutate_lock_inited, __ATOMIC_ACQUIRE)) {
+        pthread_mutex_lock(&g_mutate_bootstrap);
+        if (!gl->mutate_lock_inited) {
+            pthread_mutex_init(&gl->mutate_lock, NULL);
+            __atomic_store_n(&gl->mutate_lock_inited, true, __ATOMIC_RELEASE);
+        }
+        pthread_mutex_unlock(&g_mutate_bootstrap);
+    }
+    pthread_mutex_lock(&gl->mutate_lock);
+}
+
+static void gl_mutate_unlock(grounded_language_t* gl) {
+    pthread_mutex_unlock(&gl->mutate_lock);
 }
 
 static bigram_spectrum_t* gl_get_attached_spectrum(grounded_language_t* gl) {

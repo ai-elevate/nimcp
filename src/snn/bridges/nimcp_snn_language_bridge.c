@@ -2705,13 +2705,19 @@ static int produce_beam_search(snn_language_bridge_t* bridge,
      * The HNN net is type-erased on the bridge struct; we cast at the
      * single call site. Re-rank only applies when both the flag is on
      * AND a net is attached AND |dev| > 0 — otherwise we degrade to
-     * plain length-norm scoring. */
+     * plain length-norm scoring.
+     *
+     * Audit fix — snapshot bridge->hnn ONCE at entry. A concurrent
+     * snn_language_bridge_set_hnn(bridge, NULL) call from another
+     * thread could nullify the pointer between the check and the
+     * dereference; the cached local copy is immune to that race. */
+    const lnn_hamiltonian_net_t* hnn_cached =
+        (const lnn_hamiltonian_net_t*)bridge->hnn;
     bool hnn_rerank_active = bridge->config.enable_beam_hnn_rerank &&
-                              bridge->hnn != NULL;
+                              hnn_cached != NULL;
     float energy_dev = 0.0f;
     if (hnn_rerank_active) {
-        energy_dev = lnn_hamiltonian_get_energy_deviation(
-            (const lnn_hamiltonian_net_t*)bridge->hnn);
+        energy_dev = lnn_hamiltonian_get_energy_deviation(hnn_cached);
         if (!isfinite(energy_dev)) energy_dev = 0.0f;
         if (energy_dev < 0.0f) energy_dev = -energy_dev;
     }
