@@ -33,6 +33,7 @@
 #include "training/nimcp_fno_layer.h"
 #include "utils/tensor/nimcp_tensor.h"
 
+#include "utils/logging/nimcp_logging.h"
 #include <math.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -136,16 +137,53 @@ static float _broadcast_to_cnn(grounded_language_t* gl,
 static float _broadcast_to_fno(grounded_language_t* gl,
                                  const float* vec, uint32_t dim) {
     if (!gl->fno_proc) return -1.0f;
-    /* fno_audio_forward writes embedding into a caller buffer. We
-     * use a stack scratch buffer sized to dim. The actual embedding
-     * size may differ (FNO is configured separately) — if so the
-     * forward will write beyond dim. Cap at 1024 to be safe. */
-    if (dim > 1024) return -1.0f;
+
+    /* Audit Cat A #5 — wiring fix.
+     *
+     * fno_audio_forward expects a MEL SPECTROGRAM of size `mel_size`
+     * (the FNO's configured input_size) and writes an `embed_dim`
+     * embedding into the output buffer. Pre-fix, this function passed
+     * the GL semantic_vector to fno_audio_forward as if it were a mel
+     * spec — the FNO interpreted the semantic features as DSP-shaped
+     * input and wrote a garbage embedding. The normalize_magnitude
+     * call then read `dim` floats out of the scratch buffer, but the
+     * actual valid bytes were `embed_dim` floats which could be
+     * smaller (silent partial read) or larger (truncation).
+     *
+     * The right caller for this path is gl_drive_audio_comprehension,
+     * which has actual audio-derived mel data. Text comprehend has
+     * no mel signal and should NOT exercise the audio FNO here — the
+     * skip below returns the "not attached" sentinel so the broadcast
+     * caller treats this as "no contribution" rather than mixing in
+     * a garbage confidence number.
+     *
+     * Runtime guard: input dim must match the FNO's mel_size. Output
+     * scratch buffer is sized to the FNO's embed_dim. Mismatch on
+     * either side skips with a one-shot LOG_DEBUG so a misconfigured
+     * call site is visible without spamming. */
+    fno_audio_processor_t* fno = (fno_audio_processor_t*)gl->fno_proc;
+    if (dim != fno->input_size) {
+        static int warned_once = 0;
+        if (!warned_once) {
+            LOG_DEBUG("GL_NET_BRIDGE",
+                      "_broadcast_to_fno: input dim %u != FNO mel_size %u — "
+                      "skipping (one-shot warning). This is the expected "
+                      "outcome for text comprehend; audio comprehend should "
+                      "use gl_drive_audio_comprehension directly.",
+                      dim, fno->input_size);
+            warned_once = 1;
+        }
+        return -1.0f;
+    }
+    if (fno->embed_dim == 0 || fno->embed_dim > 1024) return -1.0f;
+
     float scratch[1024];
-    int rc = fno_audio_forward(
-        (fno_audio_processor_t*)gl->fno_proc, vec, dim, scratch);
+    int rc = fno_audio_forward(fno, vec, dim, scratch);
     if (rc != 0) return -1.0f;
-    return _normalize_magnitude(scratch, dim);
+    /* Read EXACTLY embed_dim floats — the FNO's actual output size,
+     * not the input dim. Pre-fix bug: passed `dim` to
+     * _normalize_magnitude which mis-counted output bytes. */
+    return _normalize_magnitude(scratch, fno->embed_dim);
 }
 
 static float _broadcast_to_ann(grounded_language_t* gl,
