@@ -68,6 +68,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_parser_coverage
     test_snn_lang_v5_beam_rerank
     test_lang_cascade_counters
+    test_broca_lexicon_concurrency
     test_snn_fno_recording
 )
 
