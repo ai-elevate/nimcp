@@ -241,6 +241,26 @@ typedef struct {
     bool  speech_repair_applied;
 } production_cascade_state_t;
 
+/* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
+ *
+ * production_cascade_state_t and nimcp_cascade_diag_full_t /
+ * nimcp_cascade_counters are accessed BY FIELD from multiple TUs
+ * (cascade.c, cascade_wernicke.c, api/nimcp_part_core.c, the Python
+ * binding shadow struct in nimcp_python.c). A stale TU compiled
+ * against an older header offset would read garbage; cascade_state_cleanup
+ * could free past the buffer.
+ *
+ * If you append a field, recompute by adding sizeof(field) + alignment
+ * padding and bump the literal. The compiler will hard-fail any TU
+ * that disagrees, which is the entire point.
+ *
+ * Computed on x86_64 Linux gcc with default packing. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(production_cascade_state_t) == 760,
+    "production_cascade_state_t ABI: size drifted from expected 760. "
+    "Append-only on the struct; bump this literal in lockstep.");
+#endif
+
 /**
  * @brief Run the full 9-stage production cascade and produce an utterance.
  *
@@ -513,6 +533,25 @@ typedef struct nimcp_cascade_counters {
     uint64_t discourse_ring_pushes_user;
     uint64_t discourse_ring_pushes_self;
 } nimcp_cascade_counters_t;
+
+/* Walkthrough-4 audit M MEDIUM — ABI size sentinels for the two
+ * Python-binding-mirrored structs. The Python TU duplicates the
+ * cascade_counters layout locally (bk_cascade_counters_local_t in
+ * src/bindings/python/nimcp_python.c) to avoid pulling the cascade
+ * header in. If the C struct grows without the local mirror being
+ * updated, the cast at the boundary stack-smashes. Sentinel catches
+ * any drift at compile time.
+ *
+ * nimcp_cascade_diag_full_t is similarly read field-by-name from
+ * Python and the daemon RPC layer. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 384,
+    "nimcp_cascade_diag_full_t ABI: size drifted from expected 384. "
+    "Append-only; update binding shadow types in lockstep.");
+_Static_assert(sizeof(nimcp_cascade_counters_t) == 456,
+    "nimcp_cascade_counters_t ABI: size drifted from expected 456. "
+    "Append-only; update binding shadow types in lockstep.");
+#endif
 
 /**
  * @brief Snapshot the brain's lifetime cascade counters.
