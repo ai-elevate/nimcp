@@ -2034,8 +2034,19 @@ class BrainService:
             "gpu_port_threshold_us": 100.0,
             "above_gpu_threshold":  avg_us > 100.0,
         }
+        plasticity = {
+            "total_stdp_updates":          int(d.get("bridge_total_stdp_updates", 0)),
+            "total_trigram_updates":       int(d.get("bridge_total_trigram_updates", 0)),
+            "echo_correct_calls":          int(d.get("bridge_echo_correct_calls", 0)),
+            "echo_correct_pairs":          int(d.get("bridge_echo_correct_pairs", 0)),
+            "echo_correct_target_misses":  int(d.get("bridge_echo_correct_target_misses", 0)),
+            "comprehend_stdp_passes":      int(d.get("bridge_comprehend_stdp_passes", 0)),
+            "comprehend_stdp_pairs_fired": int(d.get("bridge_comprehend_stdp_pairs_fired", 0)),
+            "da_gated_stdp_passes":        int(d.get("bridge_da_gated_stdp_passes", 0)),
+            "last_da_modulation":          float(d.get("bridge_last_da_modulation", 0.0)),
+        }
         return {"ok": True, "flags": flags, "tunables": tunables,
-                "stats": stats, "decode": decode}
+                "stats": stats, "decode": decode, "plasticity": plasticity}
 
     def _cmd_set_dialect(self, req):
         """Audit-2 B13: dialect / accent conditioning. None or empty clears."""

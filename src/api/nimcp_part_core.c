@@ -3477,6 +3477,18 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
             /* Audit-2 follow-up: TC-11 decode telemetry surface. */
             out->bridge_decode_total_ns     = bs.decode_total_ns;
             out->bridge_total_decode_calls  = bs.total_decode_calls;
+            /* Plasticity-telemetry surface — lets operators verify trigram
+             * flag flips drive the counter, and discriminates self_train
+             * miss causes (no calls vs. zero pairs vs. target_misses). */
+            out->bridge_total_stdp_updates          = bs.total_stdp_updates;
+            out->bridge_total_trigram_updates       = bs.total_trigram_updates;
+            out->bridge_echo_correct_calls          = bs.echo_correct_calls;
+            out->bridge_echo_correct_pairs          = bs.echo_correct_pairs;
+            out->bridge_echo_correct_target_misses  = bs.echo_correct_target_misses;
+            out->bridge_comprehend_stdp_passes      = bs.comprehend_stdp_passes;
+            out->bridge_comprehend_stdp_pairs_fired = bs.comprehend_stdp_pairs_fired;
+            out->bridge_da_gated_stdp_passes        = bs.da_gated_stdp_passes;
+            out->bridge_last_da_modulation          = bs.last_da_modulation;
         }
         out->bridge_enable_da_modulation        = snn_language_bridge_get_da_modulation_enabled(b->snn_lang_bridge) ? 1u : 0u;
         out->bridge_enable_trigram_learning     = snn_language_bridge_get_trigram_learning_enabled(b->snn_lang_bridge) ? 1u : 0u;

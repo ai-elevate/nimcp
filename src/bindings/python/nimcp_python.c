@@ -2739,6 +2739,16 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
     GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
     GLD_SET("bridge_total_decode_calls",        PyLong_FromUnsignedLongLong(d.bridge_total_decode_calls));
+    /* Plasticity telemetry surface (gap #1 from 2026-05-13 walkthrough). */
+    GLD_SET("bridge_total_stdp_updates",        PyLong_FromUnsignedLongLong(d.bridge_total_stdp_updates));
+    GLD_SET("bridge_total_trigram_updates",     PyLong_FromUnsignedLongLong(d.bridge_total_trigram_updates));
+    GLD_SET("bridge_echo_correct_calls",        PyLong_FromUnsignedLongLong(d.bridge_echo_correct_calls));
+    GLD_SET("bridge_echo_correct_pairs",        PyLong_FromUnsignedLongLong(d.bridge_echo_correct_pairs));
+    GLD_SET("bridge_echo_correct_target_misses",PyLong_FromUnsignedLongLong(d.bridge_echo_correct_target_misses));
+    GLD_SET("bridge_comprehend_stdp_passes",    PyLong_FromUnsignedLongLong(d.bridge_comprehend_stdp_passes));
+    GLD_SET("bridge_comprehend_stdp_pairs_fired", PyLong_FromUnsignedLongLong(d.bridge_comprehend_stdp_pairs_fired));
+    GLD_SET("bridge_da_gated_stdp_passes",      PyLong_FromUnsignedLongLong(d.bridge_da_gated_stdp_passes));
+    GLD_SET("bridge_last_da_modulation",        PyFloat_FromDouble((double)d.bridge_last_da_modulation));
 #undef GLD_SET
     return dict;
 }

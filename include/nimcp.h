@@ -954,6 +954,21 @@ typedef struct {
      * is the trigger metric (>100µs at production scale = GPU port wins). */
     uint64_t bridge_decode_total_ns;
     uint64_t bridge_total_decode_calls;
+    /* Bridge plasticity telemetry surface. Lets observers verify that a
+     * flag flip (e.g. set_trigram_learning_enabled) actually drives the
+     * underlying counter, and discriminate cascade self_train misses
+     * between "lr=0" (no echo_correct calls) and "intent=0" (calls fire
+     * but zero pairs strengthened) and "word not registered"
+     * (target_misses bumps). All fields mirror snn_lang_stats_t. */
+    uint64_t bridge_total_stdp_updates;
+    uint64_t bridge_total_trigram_updates;
+    uint64_t bridge_echo_correct_calls;
+    uint64_t bridge_echo_correct_pairs;
+    uint64_t bridge_echo_correct_target_misses;
+    uint64_t bridge_comprehend_stdp_passes;
+    uint64_t bridge_comprehend_stdp_pairs_fired;
+    uint64_t bridge_da_gated_stdp_passes;
+    float    bridge_last_da_modulation;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
