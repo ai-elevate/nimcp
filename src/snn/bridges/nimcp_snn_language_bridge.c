@@ -3253,6 +3253,17 @@ int snn_language_bridge_echo_correct(
             da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
         }
     }
+    /* Surface the DA reach into echo_correct so operators can verify the
+     * cascade self_train DA-release path (cascade_stage_self_train calls
+     * neuromodulator_release_dopamine on success) is actually elevating
+     * the level the bridge sees. Without this, last_da_modulation only
+     * tracked apply_stdp's reads and stayed at 1.0 even when echo_correct
+     * was consuming non-trivial DA. The bumped multiplier replaces the
+     * existing 1.0 sentinel only when non-trivial, so apply_stdp-only
+     * operators still see the apply_stdp value on top of echo's. */
+    if (da_modulation > 1.0f) {
+        bridge->stats.last_da_modulation = da_modulation;
+    }
 
     /* Per-binding LTP magnitude. Uses the same a_plus the produce-side
      * apply_stdp uses, scaled by lr_scale (caller-controlled — set < 1.0
