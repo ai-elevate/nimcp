@@ -38,6 +38,7 @@
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 /* Note: cannot include core/brain/regions/broca/nimcp_phonological.h here
  * because Wernicke's perception/nimcp_speech_cortex.h (pulled in
  * transitively via grounded_language + brain_internal headers) also
@@ -1644,6 +1645,30 @@ static int cascade_stage_self_train(brain_t brain,
     state->train_applied = (n > 0);
 
     if (state->train_applied) {
+        /* Bonus #3: dispense phasic dopamine proportional to reward so the
+         * bridge's DA-modulation hook engages on the next plasticity pass.
+         * neuromodulator_release_dopamine treats negative RPE as zero, so
+         * only positive surprise drives the burst — matches biological VTA. */
+        if (brain->neuromodulator_system && reward_applied > 0.0f) {
+            (void)neuromodulator_release_dopamine(
+                brain->neuromodulator_system,
+                state->self_match,
+                brain->cascade_self_train_baseline);
+        }
+
+        /* Bonus #1: feed the validated own utterance back through the
+         * bigram/trigram teaching path so the bridge learns from its own
+         * good productions (closes the self-supervised loop). Gated on
+         * a moderate self_match floor so we don't reinforce garbage.
+         * trigram_lr is half of bigram_lr inside learn_text_bigrams. */
+        if (brain->grounded_lang && state->self_match >= 0.30f) {
+            float teach_lr = brain->cascade_self_train_lr_scale * 0.05f * state->self_match;
+            if (isfinite(teach_lr) && teach_lr > 0.0f) {
+                (void)grounded_language_learn_text_bigrams(
+                    brain->grounded_lang, state->utterance, teach_lr);
+            }
+        }
+
         cascade_record_complete(state);
     } else {
         /* No bindings strengthened — either reward was exactly 0 (baseline

@@ -25,6 +25,7 @@
 
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_syntactic_comprehension.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
 
 #include <ctype.h>
 #include <math.h>
@@ -196,6 +197,23 @@ int cascade_stage_wernicke(brain_t brain, const char* prompt,
                     sizeof(state->prompt_object) - 1);
             break;
         }
+    }
+
+    /* Bonus #2: drive the SNN-language bridge's comprehend path on the
+     * incoming prompt so concept-word bindings get unsupervised CSTDP
+     * reinforcement when the comprehend_stdp flag is on (default OFF).
+     * Output buffer is stack-allocated and intentionally discarded — we
+     * only need the side effect on bridge state, not the activations.
+     * Non-fatal if bridge is absent or comprehend fails. */
+    if (brain->snn_lang_bridge) {
+        enum { CASCADE_COMP_MAX_CONCEPTS = 256 };
+        float concept_acts[CASCADE_COMP_MAX_CONCEPTS];
+        uint32_t num_activated = 0;
+        float comp_confidence = 0.0f;
+        (void)snn_language_bridge_comprehend(
+            brain->snn_lang_bridge, prompt,
+            concept_acts, CASCADE_COMP_MAX_CONCEPTS,
+            &num_activated, &comp_confidence);
     }
 
     /* Run Wernicke's parser if available. Failure here is non-fatal —
