@@ -3,16 +3,22 @@
 #
 # NEVER overwrite nimcp.so while the brain daemon is running — the .so is mmap'd
 # into the process, and overwriting it causes SIGSEGV. This script enforces:
+#   0. Detect the pod's process manager (supervisord vs none)
 #   1. Bundle artifacts + upload to /tmp on pod
-#   2. Capture the running daemon's cmdline (argv) from /proc
-#   3. Send SIGTERM, wait for graceful exit (final checkpoint save)
-#   4. Swap .so + scripts atomically
-#   5. Relaunch daemon with the same argv, capture new PID
-#   6. Wait for "Brain daemon ready" + socket to appear before returning
+#   2. Stop daemon + training — supervisorctl stop when supervised (honors
+#      stopwaitsecs for the graceful checkpoint save), else SIGTERM by PID
+#   3. Swap libnimcp (/usr/local/lib + repo tree) + python wrapper + scripts
+#   4. Restart daemon + training — supervisorctl start when supervised,
+#      else nohup with the captured argv
+#   5. Wait for the socket to appear before returning
 #
-# The pod has no supervisor/systemd/cron watchdog — this script is the sole
-# mechanism that restarts the daemon. If it fails mid-way, the daemon stays
-# down until you intervene.
+# RunPod templates run athena-brain / athena-training under supervisord with
+# autorestart=true. The script detects this and drives stop/start through
+# supervisorctl — killing the daemon directly would race supervisord's own
+# autorestart (two daemons, one dies, false "daemon died" exit 6). On a pod
+# with no supervisord it falls back to direct kill + nohup. If the script
+# fails mid-way in the non-supervised path the daemon stays down until you
+# intervene; under supervisord, autorestart is the safety net.
 #
 # Usage:
 #   ./deploy_to_pod.sh                  # full deploy: .so + scripts + stimuli
@@ -122,6 +128,44 @@ if [[ "$mode" == "full" ]]; then
   $POD_SSH "POD_DIR=$POD_DIR POD_PY_SITE=$POD_PY_SITE POD_SOCKET=$POD_SOCKET POD_LOGDIR=$POD_LOGDIR POD_CKPT=$POD_CKPT POD_MIN_PRODUCE_WORDS=$POD_MIN_PRODUCE_WORDS POD_MAX_PRODUCE_WORDS=$POD_MAX_PRODUCE_WORDS bash -s" <<'REMOTE_FULL'
 set -euo pipefail
 
+# 0) Detect whether athena-brain / athena-training run under supervisord.
+# RunPod templates manage them with supervisord + autorestart=true. If we
+# kill the daemon directly, supervisord races us with its own restart — the
+# deploy's nohup copy and supervisord's copy both try to bind the socket,
+# one dies, and the script's PID tracking trips a false "daemon died" (exit
+# 6). When supervised we drive stop/start through supervisorctl: that sets
+# the program's expected state (no autorestart race) and honors
+# stopwaitsecs=300 for the graceful final-checkpoint save.
+SUPERVISED=0
+if command -v supervisorctl >/dev/null 2>&1 \
+   && supervisorctl status athena-brain >/dev/null 2>&1; then
+  SUPERVISED=1
+  echo "Process manager: supervisord (athena-brain / athena-training)"
+else
+  echo "Process manager: none detected — using direct kill + nohup"
+fi
+
+if [[ "$SUPERVISED" == "1" ]]; then
+  # supervisorctl stop is synchronous: it sends stopsignal (TERM) and blocks
+  # until the process exits or stopwaitsecs elapses. athena-brain has
+  # stopwaitsecs=300 — ample for the ~35s final-checkpoint save — and
+  # athena-training has 60s. Stopping also clears each program's expected
+  # RUNNING state so autorestart stays quiet while we swap files. Training
+  # first (it holds socket connections), then the brain.
+  echo "Stopping athena-training via supervisorctl..."
+  supervisorctl stop athena-training 2>&1 || true
+  echo "Stopping athena-brain via supervisorctl (graceful — final checkpoint save, up to 300s)..."
+  supervisorctl stop athena-brain 2>&1 || true
+  for svc in athena-brain athena-training; do
+    if supervisorctl status "$svc" 2>/dev/null | grep -qE 'RUNNING|STARTING|STOPPING'; then
+      echo "ERROR: $svc did not stop cleanly — aborting before file swap." >&2
+      supervisorctl status "$svc" >&2
+      exit 5
+    fi
+  done
+  echo "athena-brain + athena-training stopped."
+else
+
 # 1) Find running daemon + training PIDs. Match only actual python3 processes
 # (comm=python3) — bash wrappers that launched them via `bash -c "python3 ..."`
 # also appear in pgrep -f output, and their argv is shell metacharacters, not
@@ -185,6 +229,8 @@ if [[ -n "$DAEMON_PID" ]]; then
     exit 5
   fi
 fi
+
+fi  # end: SUPERVISED stop branch
 
 # Remove the socket if left behind (shouldn't happen with clean exit).
 rm -f "$POD_SOCKET"
@@ -299,41 +345,69 @@ for d in canonical_corpus math_corpus physics_corpus chemistry_corpus \
   fi
 done
 
-# 4) Relaunch daemon with the same argv (detached, stdout/stderr to log dir).
+# 4) Relaunch the daemon, then 5) wait for it to come ready.
 mkdir -p "$POD_LOGDIR" "$(dirname "$POD_SOCKET")"
 cd "$POD_DIR"
-# Rotate previous logs so the new run starts clean.
-ts="$(date +%m-%d-%H%M-deploy)"
-for f in daemon.stdout daemon.stderr training.stdout training.stderr; do
-  [[ -f "$POD_LOGDIR/$f" ]] && mv "$POD_LOGDIR/$f" "$POD_LOGDIR/$f.$ts"
-done
 
-echo "Starting daemon: python3 -u scripts/brain_daemon.py $DAEMON_ARGS"
-# shellcheck disable=SC2086
-nohup python3 -u scripts/brain_daemon.py $DAEMON_ARGS \
-    > "$POD_LOGDIR/daemon.stdout" 2> "$POD_LOGDIR/daemon.stderr" &
-NEW_DAEMON_PID=$!
-disown || true
-echo "Daemon started PID=$NEW_DAEMON_PID"
+if [[ "$SUPERVISED" == "1" ]]; then
+  # supervisord owns the process + its logs (50MB×10 rotation, brain.stderr).
+  # `supervisorctl start` blocks up to startsecs (30s) — the 2M-brain init
+  # runs far longer, so a returned "started" just means it launched OK; we
+  # still poll for the socket. A crash surfaces as FATAL/BACKOFF/EXITED.
+  echo "Starting athena-brain via supervisorctl..."
+  supervisorctl start athena-brain 2>&1 || true
+  echo "Waiting for daemon ready (socket)..."
+  for i in $(seq 1 180); do
+    if [[ -S "$POD_SOCKET" ]]; then
+      echo "Daemon socket up after ~$((i * 10))s"
+      break
+    fi
+    if supervisorctl status athena-brain 2>/dev/null | grep -qE 'FATAL|BACKOFF|EXITED'; then
+      echo "ERROR: athena-brain crashed during init:" >&2
+      supervisorctl status athena-brain >&2
+      tail -40 "$POD_LOGDIR/brain.stderr" >&2 2>/dev/null || true
+      exit 6
+    fi
+    sleep 10
+  done
+  if [[ ! -S "$POD_SOCKET" ]]; then
+    echo "WARNING: Daemon still initializing after 30 min — supervisord keeps it running."
+    echo "         Watch: supervisorctl tail -f athena-brain stderr"
+  fi
+else
+  # Rotate previous logs so the new run starts clean.
+  ts="$(date +%m-%d-%H%M-deploy)"
+  for f in daemon.stdout daemon.stderr training.stdout training.stderr; do
+    [[ -f "$POD_LOGDIR/$f" ]] && mv "$POD_LOGDIR/$f" "$POD_LOGDIR/$f.$ts"
+  done
 
-# 5) Wait for socket + "Brain daemon ready" in stderr. 2M brain init can take 15min.
-echo "Waiting for daemon ready (socket + log marker)..."
-for i in $(seq 1 120); do
-  if [[ -S "$POD_SOCKET" ]] && grep -q "Brain daemon ready" "$POD_LOGDIR/daemon.stderr" 2>/dev/null; then
-    echo "Daemon READY after ${i}*10s"
-    break
+  echo "Starting daemon: python3 -u scripts/brain_daemon.py $DAEMON_ARGS"
+  # shellcheck disable=SC2086
+  nohup python3 -u scripts/brain_daemon.py $DAEMON_ARGS \
+      > "$POD_LOGDIR/daemon.stdout" 2> "$POD_LOGDIR/daemon.stderr" &
+  NEW_DAEMON_PID=$!
+  disown || true
+  echo "Daemon started PID=$NEW_DAEMON_PID"
+
+  # 5) Wait for socket + "Brain daemon ready" in stderr. 2M brain init can take 15min.
+  echo "Waiting for daemon ready (socket + log marker)..."
+  for i in $(seq 1 120); do
+    if [[ -S "$POD_SOCKET" ]] && grep -q "Brain daemon ready" "$POD_LOGDIR/daemon.stderr" 2>/dev/null; then
+      echo "Daemon READY after ${i}*10s"
+      break
+    fi
+    # Detect early crash.
+    if ! kill -0 "$NEW_DAEMON_PID" 2>/dev/null; then
+      echo "ERROR: Daemon died during init. Tail of stderr:" >&2
+      tail -40 "$POD_LOGDIR/daemon.stderr" >&2 || true
+      exit 6
+    fi
+    sleep 10
+  done
+  if [[ ! -S "$POD_SOCKET" ]]; then
+    echo "WARNING: Daemon still initializing after 20 min — letting it continue in background"
+    echo "         Watch: tail -f $POD_LOGDIR/daemon.stderr"
   fi
-  # Detect early crash.
-  if ! kill -0 "$NEW_DAEMON_PID" 2>/dev/null; then
-    echo "ERROR: Daemon died during init. Tail of stderr:" >&2
-    tail -40 "$POD_LOGDIR/daemon.stderr" >&2 || true
-    exit 6
-  fi
-  sleep 10
-done
-if [[ ! -S "$POD_SOCKET" ]]; then
-  echo "WARNING: Daemon still initializing after 20 min — letting it continue in background"
-  echo "         Watch: tail -f $POD_LOGDIR/daemon.stderr"
 fi
 
 # 5b) Activate the SNN language-bridge produce length floor (min_produce_words)
@@ -385,8 +459,12 @@ else
   echo "set_length_control: skipped (POD_MIN_PRODUCE_WORDS=0)"
 fi
 
-# 6) Relaunch training if it was running.
-if [[ -n "$TRAIN_ARGS" ]]; then
+# 6) Relaunch training. immerse_athena.py connects to the brain socket with
+# retry, so it can start before the daemon finishes init.
+if [[ "$SUPERVISED" == "1" ]]; then
+  echo "Starting athena-training via supervisorctl..."
+  supervisorctl start athena-training 2>&1 || true
+elif [[ -n "$TRAIN_ARGS" ]]; then
   echo "Restarting training: python3 -u scripts/immerse_athena.py $TRAIN_ARGS"
   # shellcheck disable=SC2086
   nohup python3 -u scripts/immerse_athena.py $TRAIN_ARGS \
