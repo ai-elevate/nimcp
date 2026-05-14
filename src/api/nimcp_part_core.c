@@ -3463,6 +3463,9 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         out->reconsolidation_decay              = grounded_language_get_reconsolidation_decay(b->grounded_lang);
         out->topic_shift_threshold              = grounded_language_get_topic_shift_threshold(b->grounded_lang);
         out->topic_shift_min_turns              = grounded_language_get_topic_shift_min_turns(b->grounded_lang);
+        /* Process-global counter (not per-GL-instance) — surfaced so the
+         * trainer can tell trigram "stall" from "cold-start ramp". */
+        out->next_token_cold_start_skips        = grounded_language_next_token_cold_start_skips();
     }
 
     if (b->snn_lang_bridge) {

@@ -969,6 +969,14 @@ typedef struct {
     uint64_t bridge_comprehend_stdp_pairs_fired;
     uint64_t bridge_da_gated_stdp_passes;
     float    bridge_last_da_modulation;
+    /* Grounded-language next-token cold-start counter. Discriminates
+     * trigram-path "stall" from "ramp": learn_next_token_triple bails
+     * before inc_trigram_updates when either prev-word lacks a concept
+     * binding (total <= 1e-6). A climbing counter alongside a flat
+     * bridge_total_trigram_updates means the path IS reached but is
+     * cold-start-bounced (will resolve as bindings accrue); a flat
+     * counter means the path is never reached at all (labels too short). */
+    uint64_t next_token_cold_start_skips;
 } nimcp_grounded_language_diagnostics_t;
 
 /**

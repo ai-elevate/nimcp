@@ -2749,6 +2749,7 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_comprehend_stdp_pairs_fired", PyLong_FromUnsignedLongLong(d.bridge_comprehend_stdp_pairs_fired));
     GLD_SET("bridge_da_gated_stdp_passes",      PyLong_FromUnsignedLongLong(d.bridge_da_gated_stdp_passes));
     GLD_SET("bridge_last_da_modulation",        PyFloat_FromDouble((double)d.bridge_last_da_modulation));
+    GLD_SET("next_token_cold_start_skips",      PyLong_FromUnsignedLongLong(d.next_token_cold_start_skips));
 #undef GLD_SET
     return dict;
 }

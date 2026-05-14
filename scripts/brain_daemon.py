@@ -2044,6 +2044,7 @@ class BrainService:
             "comprehend_stdp_pairs_fired": int(d.get("bridge_comprehend_stdp_pairs_fired", 0)),
             "da_gated_stdp_passes":        int(d.get("bridge_da_gated_stdp_passes", 0)),
             "last_da_modulation":          float(d.get("bridge_last_da_modulation", 0.0)),
+            "next_token_cold_start_skips": int(d.get("next_token_cold_start_skips", 0)),
         }
         return {"ok": True, "flags": flags, "tunables": tunables,
                 "stats": stats, "decode": decode, "plasticity": plasticity}

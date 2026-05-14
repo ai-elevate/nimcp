@@ -354,6 +354,21 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
             (void)snn_language_bridge_set_snn_spike_routing(
                 brain->snn_lang_bridge, /*enabled=*/true, /*tau_ms=*/200.0f);
         }
+
+        /* Three-factor learning gate — connect the bridge to the brain's
+         * neuromodulator system so apply_stdp's dopamine read is live.
+         * enable_da_modulation defaults true, but without a neuromod pointer
+         * bridge->neuromod stays NULL: the DA gate is inert (da_gated_stdp_passes
+         * never increments, every STDP write runs at the unmodulated identity
+         * LR — no reward-driven consolidation of word↔concept bindings).
+         * nimcp_brain_init_language.c also calls this on the cold path, but it
+         * is gated on neuromod existing AT THAT POINT in init; the daemon's
+         * resume path reaches the bridge only through here. connect_neuromod
+         * just stores the pointer, so calling it on both paths is harmless. */
+        if (brain->neuromodulator_system) {
+            (void)snn_language_bridge_connect_neuromod(
+                brain->snn_lang_bridge, brain->neuromodulator_system);
+        }
     }
 }
 
