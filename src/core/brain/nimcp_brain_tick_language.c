@@ -129,6 +129,18 @@ static void brain_tick_lang_bridge_spike_routing(brain_t brain, float dt_ms)
     /* Always-on activation decay — cheap, idempotent, guards against runaway
      * even when other paths inject spikes through concept_spike/word_spike. */
     (void)snn_language_bridge_tick(brain->snn_lang_bridge, dt_ms);
+
+    /* Turn the spike timing just recorded by drain_pop_spikes into binding
+     * weight updates. Prior to this, apply_stdp was only ever called from
+     * brain_decide() (inference) and task_decide_imagination() — never from
+     * the training tick — so total_stdp_updates / da_gated_stdp_passes sat
+     * flat at zero through entire training runs even with pops attached and
+     * routing on. apply_stdp uses the bridge's configured stdp_learning_rate
+     * (no caller-side lr), reads dopamine once per pass for the three-factor
+     * gate, and runs once per brain_learn_vector step (~13-52s apart) so the
+     * full-bucket walk is negligible cost. t_ms is the same monotonic clock
+     * drain_pop_spikes stamped the spikes with, so STDP windows line up. */
+    (void)snn_language_bridge_apply_stdp(brain->snn_lang_bridge, t_ms);
 }
 
 void brain_tick_language(brain_t brain, float dt_ms)

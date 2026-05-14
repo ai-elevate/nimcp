@@ -325,12 +325,17 @@ snn_lang_config_t snn_lang_config_default(void)
          * behavior bit-for-bit. */
         .min_produce_words = 0,
         .max_produce_words = 0,
-        /* CSTDP — comprehend-driven STDP. Default OFF (legacy read-only
-         * comprehend). Min weight + activation thresholds keep the path
-         * scoped to existing strong bindings so we don't entrench noise.
-         * lr_scale dampens the LR vs the produce-side STDP since
-         * comprehend fires far more often than produce. */
-        .enable_comprehend_stdp     = false,
+        /* CSTDP — comprehend-driven STDP. Default ON. Min weight +
+         * activation thresholds keep the path scoped to existing strong
+         * bindings so we don't entrench noise; lr_scale dampens the LR vs
+         * the produce-side STDP since comprehend fires far more often than
+         * produce. Default ON because comprehend is the highest-frequency
+         * language signal during training — left OFF, comprehend_stdp_passes
+         * stays flat at zero for the whole run. The scoping thresholds make
+         * it reinforce-what-comprehension-agrees-with, not inject-structure,
+         * so it's safe as a default. Toggle off via
+         * snn_language_bridge_set_comprehend_stdp_enabled if needed. */
+        .enable_comprehend_stdp     = true,
         .comprehend_stdp_min_weight = 0.05f,
         .comprehend_stdp_min_activation = 0.10f,
         .comprehend_stdp_lr_scale   = 0.5f,

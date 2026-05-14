@@ -339,6 +339,17 @@ void brain_train_cognitive_subsystems_sequential(
     if (brain->grounded_lang && label && label[0]) {
         grounded_language_learn_from_text(brain->grounded_lang, label);
         grounded_language_learn_syntax(brain->grounded_lang, label);
+        /* Bridge bigram + trigram STDP. learn_from_text/learn_syntax above
+         * only touch the grounded-language lexicon (distributional context
+         * vectors + _gl_track_phrases templates) — they never reach the SNN
+         * language bridge. learn_text_bigrams walks (prev,next) and, when
+         * trigram learning is enabled, (a,b)->c triples through the bridge,
+         * which is what moves total_trigram_updates off zero during training.
+         * Pre-fix the only callers were the API and the cascade self-train
+         * path, neither of which runs in the per-step training loop. lr is
+         * deliberately small — this fires on every labelled training step. */
+        (void)grounded_language_learn_text_bigrams(brain->grounded_lang,
+                                                    label, 0.02f);
         brain->cognitive_stats.grounded_lang_steps++;
     }
 

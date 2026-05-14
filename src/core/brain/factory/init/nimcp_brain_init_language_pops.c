@@ -341,6 +341,19 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
                                                       LANG_ARCUATE_POP_NEURONS,
                                                       SNN_LANG_POP_ROLE_CONCEPT);
         }
+
+        /* Explicit opt-in for SNN spike routing. The library default stays
+         * false (see snn_lang_config_default()'s sparsity-collapse note) —
+         * but the brain's own language bridge MUST have it on, otherwise
+         * snn_language_bridge_drain_pop_spikes() is a no-op: brain_tick_language
+         * records zero spike timing and the bridge STDP pass has nothing to
+         * reinforce, so language plasticity stays flat for the whole training
+         * run. activation_tau_ms = 200 is the decay constant guarding the
+         * bridge's activation space against runaway once spikes flow. */
+        if (broca_pop_id >= 0 || wernicke_pop_id >= 0 || arcuate_pop_id >= 0) {
+            (void)snn_language_bridge_set_snn_spike_routing(
+                brain->snn_lang_bridge, /*enabled=*/true, /*tau_ms=*/200.0f);
+        }
     }
 }
 
