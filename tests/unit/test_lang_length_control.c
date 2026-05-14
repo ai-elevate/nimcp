@@ -32,6 +32,16 @@
  *        the other side nonzero.
  *      - Values above the 1024 clamp are silently capped.
  *      - Getter copies both values; NULL out-pointers tolerated.
+ *
+ *   5. test_min_words_overrides_confidence_floor:
+ *      The greedy decode loop bails on the first post-first word whose
+ *      per-step confidence drops below 0.01. That break used to ignore
+ *      min_produce_words — so an undertrained bridge (every post-first
+ *      word below 0.01) collapsed to a 1-word utterance even when the
+ *      caller asked for more. With many words sharing one concept the
+ *      per-word confidence is 1/N << 0.01; min_produce_words = 5 must
+ *      now suppress the floor break for the first 5 words and advance
+ *      length_min_suppressions, exactly as the EOS path does.
  */
 
 #include "snn/bridges/nimcp_snn_language_bridge.h"
@@ -316,6 +326,91 @@ static void test_setter_validation(void)
     snn_language_bridge_destroy(b);
 }
 
+/*--------------------------------------------------------------------------
+ * Test 5: min_produce_words overrides the low-confidence floor break.
+ *
+ * Setup: 200 words ALL bound to concept 0 with weight 1.0. Every word
+ * scores identically, so decode_spikes hands each a confidence of
+ * 1/200 = 0.005 — below the hard 0.01 floor. Without min_produce_words
+ * the greedy loop emits word 1 (the floor break is gated on
+ * word_count > 0) then breaks on word 2. With min_produce_words = 5 the
+ * break must be suppressed until 5 words are out, mirroring the EOS
+ * path's TB-7 behavior, and length_min_suppressions must advance.
+ *--------------------------------------------------------------------------*/
+static void test_min_words_overrides_confidence_floor(void)
+{
+    enum { NW = 200 };
+    const char** names = malloc(NW * sizeof(char*));
+    EXPECT(names != NULL, "names alloc");
+    if (!names) return;
+    for (uint32_t i = 0; i < NW; i++) {
+        char* nm = malloc(16);
+        snprintf(nm, 16, "w%u", i);
+        names[i] = nm;
+    }
+
+    /* Baseline: no length control — confidence floor collapses to 1 word.
+     * build_n_words binds word i ↔ concept i; we re-bind every word to
+     * concept 0 so they all share one score and the per-word confidence
+     * is 1/N. */
+    snn_language_bridge_t* b0 = build_n_words(NW, names);
+    EXPECT(b0 != NULL, "baseline bridge create");
+    if (b0) {
+        for (uint32_t i = 0; i < NW; i++) {
+            snn_language_bridge_bind(b0, /*concept_pop=*/0, /*word_pop=*/i, 1.0f);
+        }
+        float intent0[NW];
+        memset(intent0, 0, sizeof(intent0));
+        intent0[0] = 1.0f;
+        snn_lang_production_result_t r0;
+        memset(&r0, 0, sizeof(r0));
+        int rc0 = snn_language_bridge_produce(b0, intent0, NW, &r0);
+        EXPECT(rc0 == 0 && r0.text, "baseline produce rc=%d", rc0);
+        if (rc0 == 0 && r0.text) {
+            EXPECT(count_words(r0.text) == 1,
+                   "baseline (no min) collapses to 1 word; got %u text='%s'",
+                   count_words(r0.text), r0.text);
+        }
+        snn_lang_production_result_cleanup(&r0);
+        snn_language_bridge_destroy(b0);
+    }
+
+    /* With min_produce_words = 5 the floor break is suppressed. */
+    snn_language_bridge_t* b = build_n_words(NW, names);
+    EXPECT(b != NULL, "min-words bridge create");
+    if (b) {
+        for (uint32_t i = 0; i < NW; i++) {
+            snn_language_bridge_bind(b, /*concept_pop=*/0, /*word_pop=*/i, 1.0f);
+        }
+        EXPECT(snn_language_bridge_set_length_control(b, 5, 0) == 0,
+               "set min=5 max=0");
+        float intent[NW];
+        memset(intent, 0, sizeof(intent));
+        intent[0] = 1.0f;
+        snn_lang_production_result_t res;
+        memset(&res, 0, sizeof(res));
+        int rc = snn_language_bridge_produce(b, intent, NW, &res);
+        EXPECT(rc == 0 && res.text, "min-words produce rc=%d", rc);
+        if (rc == 0 && res.text) {
+            EXPECT(count_words(res.text) >= 5,
+                   "min=5 should override confidence floor; got %u text='%s'",
+                   count_words(res.text), res.text);
+            EXPECT(res.word_count >= 5,
+                   "result.word_count should be ≥5; got %u", res.word_count);
+        }
+        snn_lang_stats_t s;
+        snn_language_bridge_get_stats(b, &s);
+        EXPECT(s.length_min_suppressions >= 1,
+               "length_min_suppressions should advance; got %llu",
+               (unsigned long long)s.length_min_suppressions);
+        snn_lang_production_result_cleanup(&res);
+        snn_language_bridge_destroy(b);
+    }
+
+    for (uint32_t i = 0; i < NW; i++) free((void*)names[i]);
+    free(names);
+}
+
 int main(void)
 {
     fprintf(stderr, "[TB-7] test_lang_length_control\n");
@@ -323,9 +418,10 @@ int main(void)
     test_max_words_caps_output();
     test_min_words_suppresses_eos();
     test_setter_validation();
+    test_min_words_overrides_confidence_floor();
 
     if (g_failures == 0) {
-        fprintf(stderr, "OK — all 4 tests passed\n");
+        fprintf(stderr, "OK — all 5 tests passed\n");
         return 0;
     }
     fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);

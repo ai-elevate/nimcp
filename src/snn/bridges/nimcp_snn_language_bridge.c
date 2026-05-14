@@ -2067,8 +2067,26 @@ sample_done:;
             }
         }
 
-        // Stop if confidence too low
-        if (word_result.confidence < 0.01f && word_count > 0) break;
+        /* Stop if confidence too low — but honor the operator's
+         * min_produce_words floor, exactly as the EOS pick (line ~2042)
+         * and the beam decoder's EOS path (line ~2610) already do. TB-7
+         * taught those two stop conditions to respect the floor; this
+         * older confidence-floor break predated TB-7 and was never
+         * updated. On an undertrained bridge every post-first word sits
+         * below 0.01, so the greedy path collapsed to a 1-word utterance
+         * even when the caller explicitly asked for more — which in turn
+         * starved the cascade self-train bigram/trigram path (it needs
+         * >=2 tokens). With the default min_produce_words == 0 the guard
+         * is a no-op: the `else break` fires bit-for-bit as before. Each
+         * suppression bumps length_min_suppressions to mirror the EOS
+         * telemetry. */
+        if (word_result.confidence < 0.01f && word_count > 0) {
+            if (min_words_cfg > 0 && word_count < min_words_cfg) {
+                bridge->stats.length_min_suppressions++;
+            } else {
+                break;
+            }
+        }
 
         // Append word to text
         const char* word = word_result.word_form;
