@@ -228,14 +228,37 @@ atomic_install() {
     echo "Installed $dst"
 }
 
-# The versioned C library — daemon mmaps this at runtime. Symlinks
-# (libnimcp.so, libnimcp.so.2) are left untouched; they already point at
-# the versioned name (e.g. libnimcp.so.0.9.0). If the version tag changes
-# between builds you'll need to update them manually.
+# The versioned C library — the daemon mmaps this at runtime. It is
+# resolved via the ld.so cache from /usr/local/lib (the python wrapper's
+# RUNPATH points at a dead build-box path), so /usr/local/lib is the
+# location that ACTUALLY matters — installing only into $POD_DIR/build/lib
+# is a silent no-op that leaves the daemon on the stale library after the
+# restart. We install into both: /usr/local/lib (load path) and
+# $POD_DIR/build/lib (kept fresh for repo-tree tooling). Both the daemon
+# and any other python3 holder were confirmed stopped + unmapped in
+# steps 2 / 2b above, so overwriting the live versioned file is safe.
+# Symlinks (libnimcp.so, libnimcp.so.2) are left untouched; they already
+# point at the versioned name (e.g. libnimcp.so.0.9.0). If the version
+# tag changes between builds you'll need to update them manually.
 for f in /tmp/build/lib/libnimcp.so.*; do
     [[ -f "$f" && ! -L "$f" ]] || continue
-    atomic_install "$f" "$POD_DIR/build/lib/$(basename "$f")"
+    base="$(basename "$f")"
+    atomic_install "$f" "$POD_DIR/build/lib/$base"
+    # Sweep stale .OLD-* siblings out of /usr/local/lib first — multiple
+    # OLD copies sharing the SONAME confuse ldconfig's SONAME picker
+    # (libnimcp.so.2 → wrong file). See memory: old-symlink-trap.
+    for old in /usr/local/lib/libnimcp.so.*.OLD-* /usr/local/lib/libnimcp.*.OLD-*; do
+        if [[ -e "$old" ]]; then
+            echo "Sweeping stale $old"
+            rm -f "$old"
+        fi
+    done
+    atomic_install "$f" "/usr/local/lib/$base"
 done
+# Refresh the ld.so cache so the next daemon start resolves
+# libnimcp.so.2 → the just-installed /usr/local/lib versioned file.
+ldconfig
+echo "ldconfig refreshed: $(ldconfig -p | grep 'libnimcp.so.2' || echo 'libnimcp.so.2 NOT IN CACHE')"
 
 # The Python binding wrapper — thin .so that dlopens libnimcp.so.2.
 atomic_install /tmp/build/lib/python/nimcp.so \
