@@ -118,7 +118,8 @@ if [[ "$mode" == "full" ]]; then
   echo "=== Full deploy: stop daemon, swap, restart ==="
   # Export pod paths so the heredoc can interpolate.
   export POD_DIR POD_PY_SITE POD_SOCKET POD_LOGDIR POD_CKPT
-  $POD_SSH "POD_DIR=$POD_DIR POD_PY_SITE=$POD_PY_SITE POD_SOCKET=$POD_SOCKET POD_LOGDIR=$POD_LOGDIR POD_CKPT=$POD_CKPT bash -s" <<'REMOTE_FULL'
+  export POD_MIN_PRODUCE_WORDS POD_MAX_PRODUCE_WORDS
+  $POD_SSH "POD_DIR=$POD_DIR POD_PY_SITE=$POD_PY_SITE POD_SOCKET=$POD_SOCKET POD_LOGDIR=$POD_LOGDIR POD_CKPT=$POD_CKPT POD_MIN_PRODUCE_WORDS=$POD_MIN_PRODUCE_WORDS POD_MAX_PRODUCE_WORDS=$POD_MAX_PRODUCE_WORDS bash -s" <<'REMOTE_FULL'
 set -euo pipefail
 
 # 1) Find running daemon + training PIDs. Match only actual python3 processes
@@ -310,6 +311,55 @@ done
 if [[ ! -S "$POD_SOCKET" ]]; then
   echo "WARNING: Daemon still initializing after 20 min — letting it continue in background"
   echo "         Watch: tail -f $POD_LOGDIR/daemon.stderr"
+fi
+
+# 5b) Activate the SNN language-bridge produce length floor (min_produce_words)
+# so the cascade self-train bigram/trigram path isn't starved by the greedy
+# decoder's 1-word confidence-floor collapse (commit 0d993d656). The 2M brain
+# can take ~30min to finish init — longer than the ready-wait above — so this
+# runs as a detached poller that applies the set_length_control RPC whenever
+# the daemon socket comes live (polling up to 60min), then exits. Non-fatal:
+# a failure here only means the cascade keeps its legacy behavior until the
+# RPC is sent manually. Set POD_MIN_PRODUCE_WORDS=0 to skip entirely.
+if [[ "${POD_MIN_PRODUCE_WORDS:-0}" != "0" ]]; then
+  echo "Scheduling set_length_control(min=$POD_MIN_PRODUCE_WORDS, max=$POD_MAX_PRODUCE_WORDS) poller..."
+  cat > /tmp/apply_length_control.py <<'PYEOF'
+import socket, struct, json, sys, time, os
+sock_path, minw, maxw = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+deadline = time.time() + 3600
+while time.time() < deadline:
+    if os.path.exists(sock_path):
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(180)
+            s.connect(sock_path)
+            req = json.dumps({"cmd": "set_length_control",
+                              "min_words": minw, "max_words": maxw}).encode()
+            s.sendall(struct.pack(">I", len(req)) + req)
+            hdr = b""
+            while len(hdr) < 4:
+                hdr += s.recv(4 - len(hdr))
+            n = struct.unpack(">I", hdr)[0]
+            buf = b""
+            while len(buf) < n:
+                buf += s.recv(min(65536, n - len(buf)))
+            s.close()
+            resp = json.loads(buf.decode())
+            print(f"[apply_length_control] set_length_control -> {resp}", flush=True)
+            sys.exit(0 if resp.get("ok") else 1)
+        except Exception as e:
+            print(f"[apply_length_control] socket up but RPC retry: {e}", flush=True)
+    time.sleep(15)
+print("[apply_length_control] timed out waiting for daemon socket", flush=True)
+sys.exit(1)
+PYEOF
+  nohup python3 /tmp/apply_length_control.py "$POD_SOCKET" \
+      "$POD_MIN_PRODUCE_WORDS" "$POD_MAX_PRODUCE_WORDS" \
+      > "$POD_LOGDIR/apply_length_control.log" 2>&1 &
+  disown || true
+  echo "  poller PID=$! — log: $POD_LOGDIR/apply_length_control.log"
+else
+  echo "set_length_control: skipped (POD_MIN_PRODUCE_WORDS=0)"
 fi
 
 # 6) Relaunch training if it was running.
