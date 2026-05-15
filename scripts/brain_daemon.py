@@ -2799,6 +2799,16 @@ class BrainService:
         return {"ok": True}
 
     def _cmd_learn_language(self, req):
+        # WEDGE MITIGATION 2026-05-15: brain.learn_language() can take minutes
+        # per call at stage 2, with all 4 RPC workers blocking on self._lock.
+        # Watchdog captured the wedge in /var/log/athena/brain_traceback.log —
+        # confirmed all workers stuck inside _cmd_learn_language → learn_language.
+        # Likely root cause: grounded_language_learn_syntax → syntax_build_tree
+        # (broca errors fire in concert).
+        # Default-disabled until C-side timeout/fix is shipped. Re-enable by
+        # setting NIMCP_DISABLE_LEARN_LANGUAGE=0 in the supervisord env.
+        if os.environ.get("NIMCP_DISABLE_LEARN_LANGUAGE", "1") == "1":
+            return {"ok": True, "skipped": "learn_language disabled (wedge mitigation)"}
         if True:  # RWLock in handle()
             self.brain.learn_language(req["text"])
         return {"ok": True}
