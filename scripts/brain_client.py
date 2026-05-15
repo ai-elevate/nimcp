@@ -52,7 +52,12 @@ class BrainProxy:
     MAX_RETRIES = 5
     INITIAL_BACKOFF = 1.0       # seconds
     MAX_BACKOFF = 30.0          # seconds
-    DAEMON_WAIT_TIMEOUT = 300   # max seconds to wait for daemon restart
+    # 30 min covers a full-init brain restart (~15-25 min checkpoint load on
+    # a 2M neuron brain). The 2026-05-15 wedge was partially explained by the
+    # old 5 min ceiling: a brain SIGTERM + autorestart cycle exceeded 5 min,
+    # _wait_for_daemon raised ConnectionError, retries got burned, the
+    # trainer's caller silently swallowed the final exception.
+    DAEMON_WAIT_TIMEOUT = 1800
 
     # Transient errors worth retrying
     _TRANSIENT = (ConnectionError, BrokenPipeError,
@@ -106,12 +111,22 @@ class BrainProxy:
 
         Retries on transient socket errors (connection refused, reset, timeout,
         file not found). If the daemon socket disappears entirely, waits for
-        it to come back (systemd auto-restarts the daemon).
+        it to come back (supervisord auto-restarts the daemon).
+
+        Retry-counting policy: FileNotFoundError ("socket gone" — daemon
+        restarting) does NOT count against MAX_RETRIES. Instead it triggers
+        a single _wait_for_daemon call (up to DAEMON_WAIT_TIMEOUT). Counting
+        socket-gone against MAX_RETRIES is what made the 2026-05-15 wedge
+        unrecoverable: a brain SIGTERM + autorestart raced through 5
+        retries' worth of socket-gone events before the brain finished
+        loading. Now the retry budget is reserved for "brain is up but
+        flaky" failures (ConnectionReset, recv-timeout, etc.).
         """
         last_exc = None
         backoff = self.INITIAL_BACKOFF
+        attempt = 0
 
-        for attempt in range(1, self.MAX_RETRIES + 1):
+        while attempt < self.MAX_RETRIES:
             try:
                 resp = self._send_once(req)
                 # Success — reset failure counter
@@ -126,20 +141,29 @@ class BrainProxy:
                 self._consecutive_failures += 1
                 cmd = req.get("cmd", "?")
 
-                if attempt < self.MAX_RETRIES:
-                    # Socket gone — daemon may be restarting
-                    if isinstance(e, FileNotFoundError):
-                        print(f"  [BrainProxy] Socket gone — waiting for "
-                              f"daemon restart (attempt {attempt}/"
-                              f"{self.MAX_RETRIES})...", flush=True)
+                # Socket gone — daemon restarting. Wait for it without
+                # consuming a retry slot.
+                if isinstance(e, FileNotFoundError):
+                    print(f"  [BrainProxy] Socket gone — waiting for "
+                          f"daemon restart (up to "
+                          f"{self.DAEMON_WAIT_TIMEOUT}s)...", flush=True)
+                    try:
                         self._wait_for_daemon()
                         backoff = self.INITIAL_BACKOFF  # reset after wait
-                    else:
-                        print(f"  [BrainProxy] {type(e).__name__} on "
-                              f"'{cmd}' — retry {attempt}/{self.MAX_RETRIES} "
-                              f"in {backoff:.1f}s", flush=True)
-                        time.sleep(backoff)
-                        backoff = min(backoff * 2, self.MAX_BACKOFF)
+                        continue  # retry without bumping attempt
+                    except ConnectionError:
+                        # Daemon didn't come back within DAEMON_WAIT_TIMEOUT
+                        # — raise and let caller decide.
+                        raise
+
+                # Brain reachable but flaky — count against MAX_RETRIES.
+                attempt += 1
+                if attempt < self.MAX_RETRIES:
+                    print(f"  [BrainProxy] {type(e).__name__} on "
+                          f"'{cmd}' — retry {attempt}/{self.MAX_RETRIES} "
+                          f"in {backoff:.1f}s", flush=True)
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, self.MAX_BACKOFF)
 
         # All retries exhausted
         raise last_exc

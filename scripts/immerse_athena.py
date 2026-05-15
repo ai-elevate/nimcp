@@ -1909,11 +1909,20 @@ class MiniBatchTrainer:
     for more stable gradients and better GPU utilization.
     """
 
+    # Crash after this many consecutive flush() failures — supervisord
+    # restarts the trainer rather than letting it silently "train" forever
+    # at loss=0.0. The old bare-except pattern masked a 3-hour wedge in
+    # 2026-05-15 (brain SIGTERM → trainer kept calling learn_vector_batch
+    # which kept raising ConnectionError → caught silently → buffer cleared
+    # → repeat). 50 × ~5s per batch ≈ 4 min of grace before crashing out.
+    MAX_CONSECUTIVE_FLUSH_FAILURES = 50
+
     def __init__(self, brain, batch_size=8):
         self.brain = brain
         self.batch_size = batch_size
         self._buffer = []  # list of (features, target, label, confidence, lr)
         self._last_avg_loss = 0.0
+        self._consecutive_flush_failures = 0
 
     def learn(self, features, target, label="", confidence=0.5, learning_rate=None):
         """Buffer a sample. Returns estimated loss (batch average when flushed)."""
@@ -1931,12 +1940,24 @@ class MiniBatchTrainer:
         pairs = [(f, t) for f, t, _, _, _ in self._buffer]
         lrs = [lr for _, _, _, _, lr in self._buffer if lr is not None]
         avg_lr = sum(lrs) / len(lrs) if lrs else None
+        # Track whether ANY learn call this flush actually reached the brain.
+        # Old code silently treated every-call-failed as loss=0.0; that masked
+        # the 2026-05-15 wedge for 3 hours. We now log the first failure of
+        # each streak and crash out after MAX_CONSECUTIVE_FLUSH_FAILURES so
+        # supervisord can recover the trainer.
+        flush_ok = False
         try:
             lr_kw = {"learning_rate": avg_lr} if avg_lr is not None else {}
             avg_loss = self.brain.learn_vector_batch(pairs, **lr_kw)
             self._last_avg_loss = avg_loss if avg_loss is not None and avg_loss >= 0 else 0.0
-        except Exception:
-            # Fallback: per-sample
+            flush_ok = True
+        except Exception as e:
+            # Fallback: per-sample. We still log the batch-path failure
+            # because it's the canary — the per-sample loop usually fails
+            # the same way (brain unreachable, etc.).
+            if self._consecutive_flush_failures == 0:
+                logger.warning("BatchedTrainer.learn_vector_batch failed (%s) — "
+                               "falling back to per-sample", type(e).__name__)
             losses = []
             for f, t, lbl, conf, lr in self._buffer:
                 lr_kw = {"learning_rate": lr} if lr is not None else {}
@@ -1944,11 +1965,30 @@ class MiniBatchTrainer:
                     loss = self.brain.learn_vector(f, t, label=lbl,
                                                    confidence=conf, **lr_kw)
                     losses.append(loss if loss is not None and loss >= 0 else 0.0)
+                    flush_ok = True
                 except Exception:
                     losses.append(0.0)
             self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
 
         self._buffer.clear()
+
+        if flush_ok:
+            if self._consecutive_flush_failures > 0:
+                logger.warning("BatchedTrainer recovered after %d consecutive "
+                               "flush failures", self._consecutive_flush_failures)
+            self._consecutive_flush_failures = 0
+        else:
+            self._consecutive_flush_failures += 1
+            if self._consecutive_flush_failures % 10 == 1:
+                logger.error("BatchedTrainer flush failed %d consecutive times "
+                             "— brain unreachable? (will crash at %d)",
+                             self._consecutive_flush_failures,
+                             self.MAX_CONSECUTIVE_FLUSH_FAILURES)
+            if self._consecutive_flush_failures >= self.MAX_CONSECUTIVE_FLUSH_FAILURES:
+                raise RuntimeError(
+                    f"BatchedTrainer: {self._consecutive_flush_failures} "
+                    f"consecutive flush failures — brain appears unreachable; "
+                    f"raising to let supervisord restart the trainer")
         return self._last_avg_loss
 
 
