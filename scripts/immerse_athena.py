@@ -9045,17 +9045,16 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
 
     Deletes oldest snapshots AND ALL their sidecars (including the big .snn
     which is ~12-17 GB). Disk-constrained pods cannot keep multiple snapshots.
+
+    Sidecar discovery is glob-based, not whitelist-based: the C library has
+    grown sidecar extensions over time (.gl_lang, .gl_multiturn, .temperature
+    were silently leaking ~40 GB of orphans on the production pod before this
+    fix — every cycle, the prune deleted the .bin but left these orphaned).
+    `snap + "*"` matches the .bin plus every sidecar — safe because sibling
+    snapshots differ in their step number BEFORE `.bin`, so the glob cannot
+    overmatch another snapshot's files.
     """
     import glob as glob_mod
-    # All sidecar extensions written by brain.save() — the C library writes
-    # these via snn_network_save, lnn_network_save, cnn_trainer_save,
-    # cortex_cnn_save, and metadata save in nimcp_brain_persistence.c
-    sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive',
-                '.snn', '.cnn', '.lnn',
-                '.cortex_visual', '.cortex_audio',
-                '.cortex_speech', '.cortex_somato',
-                '.knowledge', '.pink_noise',  # finding #5: were missing
-                '.cb_rescaled']  # CB marker — clean up so we don't leak orphan markers
     pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
     all_files = glob_mod.glob(pattern + "*")
 
@@ -9074,18 +9073,19 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
 
     to_remove = snapshots[:len(snapshots) - max_snapshots]
     freed = 0
+    sidecar_count = 0
     for snap in to_remove:
-        for ext in [''] + sidecars:
-            f = snap + ext if ext else snap
-            if os.path.exists(f):
-                try:
-                    freed += os.path.getsize(f)
-                    os.remove(f)
-                except OSError:
-                    pass
+        for f in glob_mod.glob(snap + "*"):
+            try:
+                freed += os.path.getsize(f)
+                os.remove(f)
+                if f != snap:
+                    sidecar_count += 1
+            except OSError:
+                pass
     if freed > 0:
-        logger.info("Pruned %d old snapshots (freed %.1f GB)",
-                    len(to_remove), freed / 1e9)
+        logger.info("Pruned %d old snapshots (+%d sidecars, freed %.1f GB)",
+                    len(to_remove), sidecar_count, freed / 1e9)
 
 
 def _save_checkpoint_sync(brain, decoder, stage, step):
