@@ -4301,6 +4301,37 @@ class SnnRecoveryPlateauDetector:
 # Main
 # ---------------------------------------------------------------------------
 
+def _install_wedge_watchdog(traceback_path="/var/log/athena/brain_traceback.log",
+                             interval_sec=120):
+    """Periodic all-thread stack dump for debugging compute wedges.
+
+    When the brain locks up with one thread monopolizing the GIL/CPU,
+    py-spy and gdb are typically blocked by container ptrace restrictions
+    (CAP_SYS_PTRACE missing, ptrace_scope=1, read-only /proc/sys). This
+    watchdog dumps every thread's Python stack to disk on a recurring
+    timer — runs in-process so it doesn't need ptrace, and the timer
+    fires from a separate thread so the GIL-holding hot thread can't
+    suppress it (Python releases the GIL periodically; the watchdog
+    thread eventually gets scheduled).
+
+    Output appends to traceback_path with a timestamp header per dump,
+    so post-mortem grep for the wedge window shows exactly where the
+    hot thread was. Cost is negligible (~5ms per dump, every 2 min).
+    """
+    import faulthandler
+    try:
+        os.makedirs(os.path.dirname(traceback_path), exist_ok=True)
+    except OSError:
+        pass
+    try:
+        f = open(traceback_path, "a", buffering=1)
+        faulthandler.dump_traceback_later(interval_sec, repeat=True, file=f)
+        logger.info("Wedge watchdog installed: dumping all-thread stacks "
+                    "to %s every %ds", traceback_path, interval_sec)
+    except Exception as e:
+        logger.warning("Wedge watchdog install failed: %s", e)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Athena Brain Daemon — persistent brain server")
@@ -4362,6 +4393,11 @@ def main():
         format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
         handlers=log_handlers,
     )
+
+    # Wedge watchdog — periodic all-thread stack dump for diagnosing
+    # compute-bound hangs when ptrace is unavailable (container
+    # restriction on the pod, 2026-05-15). See _install_wedge_watchdog.
+    _install_wedge_watchdog()
 
     # Stale PID cleanup disabled — supervisord/systemd manages process lifecycle.
     # The pgrep-based approach killed sibling restarts, causing FATAL loops.
