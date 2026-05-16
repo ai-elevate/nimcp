@@ -56,6 +56,19 @@ static inline void nimcp_fread_ignore(void* ptr, size_t sz, size_t n, FILE* f) {
 
 #define LOG_MODULE "GROUNDED_LANG"
 
+/* 2026-05-16 cross-bind wedge structural fix: cap-at-insertion.
+ *
+ * Without this, content-content cross-binding in
+ * grounded_language_learn_from_text accumulates new (entry_j, concept)
+ * pairs unboundedly as training varies. The function-word source guard
+ * stops the closed-class leak, but each content word's binding_count
+ * still grows linearly with corpus exposure. At B=~1000/word and
+ * sentence-scale N=20-30, learn_from_text wedges at 10-60+ sec per
+ * call. lexicon_bind now enforces B <= GL_MAX_BINDINGS_PER_WORD by
+ * evicting the weakest binding when full; new bindings weaker than
+ * the current floor are skipped entirely. */
+#define GL_MAX_BINDINGS_PER_WORD 128
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
 /* IM-3 — forward decls for the brain_immune antigen-presentation API.
@@ -1086,9 +1099,44 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
         }
     }
 
+    /* Cap-at-insertion: if at GL_MAX_BINDINGS_PER_WORD, evict the weakest
+     * binding if the new one is stronger; otherwise skip the insert.
+     * Bounds B by construction so the cross-bind loop's per-call cost
+     * stays O(N²·K) regardless of training history. */
+    if (entry->binding_count >= GL_MAX_BINDINGS_PER_WORD) {
+        uint32_t weakest_idx = 0;
+        float weakest = entry->bindings[0].strength;
+        for (uint32_t i = 1; i < entry->binding_count; i++) {
+            if (entry->bindings[i].strength < weakest) {
+                weakest = entry->bindings[i].strength;
+                weakest_idx = i;
+            }
+        }
+        if (strength <= weakest) {
+            /* New binding wouldn't survive eviction — skip both insert
+             * and mirror. No-op return so the caller's loop continues. */
+            rc = 0;
+            goto done;
+        }
+        /* Evict weakest in place. */
+        gl_word_binding_t* b = &entry->bindings[weakest_idx];
+        memset(b, 0, sizeof(*b));
+        b->concept_id = concept_id;
+        b->strength = strength;
+        b->modality_strength[modality] = strength;
+        b->exposure_count = 1;
+        b->confidence = 0.2f;
+        b->last_activation_ms = (uint64_t)time(NULL) * 1000;
+        gl->stats.total_bindings++;
+        mirror_strength = strength;
+        do_mirror = true;
+        goto done;
+    }
+
     /* New binding - grow array if needed */
     if (entry->binding_count >= entry->binding_capacity) {
         uint32_t new_cap = entry->binding_capacity * 2;
+        if (new_cap > GL_MAX_BINDINGS_PER_WORD) new_cap = GL_MAX_BINDINGS_PER_WORD;
         gl_word_binding_t* new_bindings = (gl_word_binding_t*)nimcp_realloc(
             entry->bindings, new_cap * sizeof(gl_word_binding_t));
         if (!new_bindings) { rc = -1; goto done; }
