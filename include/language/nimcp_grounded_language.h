@@ -882,6 +882,22 @@ uint64_t grounded_language_fast_map(
     uint32_t feature_dim,
     uint32_t category);
 
+/**
+ * @brief One-shot prune: keep top-K bindings per word by strength.
+ *
+ * Intended as a maintenance sweep after the 2026-05-15 cross-bind wedge fix to
+ * reclaim binding_count that accumulated under the prior function-word leak.
+ * Sorts each entry's bindings descending by strength and truncates to
+ * @p max_bindings_per_word.
+ *
+ * @param gl                       System handle
+ * @param max_bindings_per_word    K, the per-word cap (suggested 128)
+ * @return Total bindings dropped across the lexicon.
+ */
+uint64_t grounded_language_prune_bindings(
+    grounded_language_t* gl,
+    uint32_t max_bindings_per_word);
+
 /*=============================================================================
  * Production (Broca's pathway)
  *===========================================================================*/

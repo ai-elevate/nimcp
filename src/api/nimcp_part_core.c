@@ -3500,6 +3500,21 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_prune_lang_bindings(
+    nimcp_brain_t brain,
+    uint32_t max_bindings_per_word,
+    uint64_t* dropped_out)
+{
+    if (!brain || max_bindings_per_word == 0) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR;
+
+    uint64_t dropped = grounded_language_prune_bindings(b->grounded_lang,
+                                                       max_bindings_per_word);
+    if (dropped_out) *dropped_out = dropped;
+    return NIMCP_OK;
+}
+
 /*=============================================================================
  * Tier-1 #2: Anaphora / pronoun-resolution toggle.
  *===========================================================================*/

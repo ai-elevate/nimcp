@@ -1014,6 +1014,22 @@ const gl_lexicon_entry_t* lexicon_find_fuzzy_external(const grounded_language_t*
  * works; weights stay at the initial mirror-pushed values until the
  * proper SNN-spike wiring lands.
  */
+/* 2026-05-16 wedge diagnosis instrumentation. Process-global counters
+ * + per-call timing of grounded_language_learn_from_text. Cost: ~3
+ * clock_gettime calls + one LOG_INFO per learn_language RPC. The kill
+ * switch keeps this dormant in normal training — only fires when an
+ * operator explicitly re-enables NIMCP_DISABLE_LEARN_LANGUAGE=0. Once
+ * the root cause is fixed we'll remove or gate behind a build flag.
+ * Declared early so lexicon_bind can sample the counter. */
+static _Atomic uint64_t g_gl_mirror_call_count = 0;
+static _Atomic uint64_t g_gl_mirror_total_ns = 0;
+
+static inline uint64_t gl_profile_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+}
+
 static void mirror_binding_to_bridge(grounded_language_t* gl,
                                       const gl_lexicon_entry_t* entry,
                                       uint64_t concept_id,
@@ -1099,7 +1115,11 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
 done:
     gl_mutate_unlock(gl);
     if (do_mirror) {
+        uint64_t mt0 = gl_profile_ns();
         mirror_binding_to_bridge(gl, entry, concept_id, mirror_strength);
+        uint64_t mt1 = gl_profile_ns();
+        __atomic_fetch_add(&g_gl_mirror_call_count, 1ULL, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&g_gl_mirror_total_ns,  mt1 - mt0, __ATOMIC_RELAXED);
     }
     return rc;
 }
@@ -3429,6 +3449,10 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
         return -1;
     }
 
+    uint64_t t_start = gl_profile_ns();
+    uint64_t mc_before = __atomic_load_n(&g_gl_mirror_call_count, __ATOMIC_RELAXED);
+    uint64_t mn_before = __atomic_load_n(&g_gl_mirror_total_ns,  __ATOMIC_RELAXED);
+
     size_t text_len = strlen(text);
     char* buf = (char*)nimcp_malloc(text_len + 1);
     if (!buf) {
@@ -3496,10 +3520,20 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
         updates++;
     }
 
+    uint64_t t_after_distrib = gl_profile_ns();
+
     /* Cross-bind words in same sentence to each other's concepts (distributional grounding) */
+    uint64_t crossbind_iterations = 0;
     for (uint32_t i = 0; i < word_count; i++) {
         const gl_lexicon_entry_t* entry_i = lexicon_find(gl, words[i]);
         if (!entry_i) continue;
+        /* Skip closed-class words as a SOURCE — their accumulated bindings co-occur
+         * with everything, so propagating them to content words smears noise and
+         * causes B to grow without bound (the 2026-05-15 wedge). Receive-side
+         * guard below already blocks closed-class targets; this mirrors that on
+         * the source side, matching the pattern at lines ~3930/3951. */
+        if (entry_i->learned_class == GL_CLASS_FUNCTION ||
+            entry_i->learned_class == GL_CLASS_PRONOUN) continue;
 
         for (uint32_t b = 0; b < entry_i->binding_count; b++) {
             uint64_t concept = entry_i->bindings[b].concept_id;
@@ -3513,12 +3547,34 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
                 if (entry_j->learned_class == GL_CLASS_FUNCTION) continue; /* Skip function words */
 
                 lexicon_bind(gl, entry_j, concept, strength * 0.05f, GL_MODALITY_LINGUISTIC);
+                crossbind_iterations++;
             }
         }
     }
 
+    uint64_t t_after_crossbind = gl_profile_ns();
+
     /* #9 Compositional templates — track frequent bigrams + trigrams. */
     _gl_track_phrases(gl, words, word_count);
+
+    uint64_t t_end = gl_profile_ns();
+    uint64_t mc_after = __atomic_load_n(&g_gl_mirror_call_count, __ATOMIC_RELAXED);
+    uint64_t mn_after = __atomic_load_n(&g_gl_mirror_total_ns,  __ATOMIC_RELAXED);
+    /* Direct fprintf — the LOG_INFO macro signature mishandles printf-style
+     * format strings when LOG_MODULE is passed as the first arg, so the actual
+     * format gets dropped. fprintf+fflush is guaranteed to reach stderr. */
+    fprintf(stderr,
+        "[gl_profile] N=%u total_ms=%.3f distrib_ms=%.3f crossbind_ms=%.3f "
+        "phrases_ms=%.3f crossbind_iters=%llu mirror_calls=%llu mirror_ms=%.3f\n",
+        word_count,
+        (double)(t_end - t_start) / 1e6,
+        (double)(t_after_distrib - t_start) / 1e6,
+        (double)(t_after_crossbind - t_after_distrib) / 1e6,
+        (double)(t_end - t_after_crossbind) / 1e6,
+        (unsigned long long)crossbind_iterations,
+        (unsigned long long)(mc_after - mc_before),
+        (double)(mn_after - mn_before) / 1e6);
+    fflush(stderr);
 
     nimcp_free(buf);
     return updates;
@@ -3627,6 +3683,47 @@ int grounded_language_describe_concept(grounded_language_t* gl, uint64_t concept
 
     return grounded_language_produce(gl, features, gl->semantic_dim,
                                       GL_PRODUCE_DESCRIBE, result);
+}
+
+/* Comparator for descending-strength sort in grounded_language_prune_bindings. */
+static int gl_binding_strength_desc_cmp(const void* a, const void* b) {
+    float sa = ((const gl_word_binding_t*)a)->strength;
+    float sb = ((const gl_word_binding_t*)b)->strength;
+    if (sa > sb) return -1;
+    if (sa < sb) return 1;
+    return 0;
+}
+
+/* One-shot reclaim: for each lexicon entry, keep the top max_bindings_per_word
+ * bindings by strength and drop the rest. Intended as a single-call sweep at
+ * boot or via maintenance RPC after the 2026-05-15 wedge fix, to reclaim B
+ * accumulated under the prior leak. Returns total bindings dropped. */
+uint64_t grounded_language_prune_bindings(grounded_language_t* gl,
+                                          uint32_t max_bindings_per_word) {
+    if (!gl || !gl->lexicon || max_bindings_per_word == 0) return 0;
+
+    uint64_t dropped_total = 0;
+    uint32_t entries_pruned = 0;
+
+    for (uint32_t slot = 0; slot < gl->lexicon_size; slot++) {
+        gl_lexicon_entry_t* e = gl->lexicon[slot];
+        if (!e || !e->bindings) continue;
+        if (e->binding_count <= max_bindings_per_word) continue;
+
+        qsort(e->bindings, e->binding_count, sizeof(gl_word_binding_t),
+              gl_binding_strength_desc_cmp);
+        uint32_t before = e->binding_count;
+        e->binding_count = max_bindings_per_word;
+        dropped_total += (uint64_t)(before - max_bindings_per_word);
+        entries_pruned++;
+    }
+
+    fprintf(stderr,
+        "[gl_prune] max_per_word=%u entries_pruned=%u total_dropped=%llu\n",
+        max_bindings_per_word, entries_pruned,
+        (unsigned long long)dropped_total);
+    fflush(stderr);
+    return dropped_total;
 }
 
 int grounded_language_blend(grounded_language_t* gl,

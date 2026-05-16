@@ -1,10 +1,37 @@
 # NIMCP Project Reference
 
 **Version**: 0.9.0-beta (tag 2.7.0 — glial + substrate + SNN lightweight campaign)
-**Last Updated**: 2026-04-23
+**Last Updated**: 2026-05-16
 **Path**: `/home/bbrelin/nimcp`
 
 **Recent release highlights** (see `CHANGELOG.md` for the full entry):
+- **SNN language-bridge plasticity wired into training loop
+  (2026-05-14/15, unreleased)** — `brain_learn_vector` now drives
+  bridge STDP (via `apply_stdp` in `brain_tick_lang_bridge_spike_routing`),
+  trigram learning (`grounded_language_learn_text_bigrams` at `lr=0.02`),
+  and comprehend-STDP (default flipped TRUE). The bridge is opted into
+  SNN spike routing inside `attach_lang_adapters_to_substrate`, and
+  `connect_neuromod` is called on the same path so the DA three-factor
+  gate is live on resume — pre-fix the counters sat flat through entire
+  runs. New `lang_status.plasticity.next_token_cold_start_skips`
+  telemetry discriminates cold-start ramp from genuine stall.
+  Greedy `produce` confidence-floor break now honors `min_produce_words`
+  (4-of-4 stop conditions consistent). Commits `0d993d656`, `ac47802b0`,
+  `6364a1468`, `378bc6109`. Detail: `docs/claude/modules/grounded-language.md`.
+- **Wedge mitigation + watchdog (2026-05-15)** — `_cmd_learn_language` RPC
+  defaults to a no-op via `NIMCP_DISABLE_LEARN_LANGUAGE=1` (re-enable
+  with `"0"` in supervisord env). Stage-2 wedge root-caused via
+  in-process `faulthandler.dump_traceback_later` (120s, appends to
+  `/var/log/athena/brain_traceback.log`) — all 4 RPC workers blocked on
+  the shared lock inside `grounded_language_learn_from_text`'s
+  O(N² × B²) cross-bind loop. Trainer hardened: `MiniBatchTrainer.flush`
+  surfaces silent learning failures, crashes after 50 consecutive
+  flush failures, and `brain_client._send` no longer counts
+  `FileNotFoundError` against `MAX_RETRIES` (`DAEMON_WAIT_TIMEOUT`
+  300s → 1800s). Training-loop language learning is unaffected — the
+  kill switch only no-ops the out-of-band `brain.learn_language(text)`
+  RPC, not the in-C `learn_from_text` calls from `brain_learn_vector`.
+  Commits `6dc8f6339`, `85d18d45c`, `d1d404cd2`.
 - **Conductance-based SNN synapses (CB migration, unreleased)** — runtime
   flag `conductance_enabled` (default OFF) routes synaptic input through
   per-neuron `g_exc`/`g_inh` arrays with reversal-potential driving force,

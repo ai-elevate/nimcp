@@ -7,6 +7,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — SNN language-bridge plasticity + decode + trainer (2026-05-14/15)
+
+Verified call-graph trace showed `brain_learn_vector` never reaching the
+bridge STDP / trigram / comprehend-STDP paths — the plasticity counters
+sat flat at zero through entire training runs. The functions were wired
+only to inference (`brain_decide`), the API, and the cascade, none of
+which run in the per-step training loop. Three independent gaps closed,
+plus a decode-stop-condition inconsistency and trainer / deploy
+follow-ups.
+
+- **SNN bridge plasticity into the training loop** (`ac47802b0`) — three
+  changes wire `brain_learn_vector` into the bridge:
+  - `attach_lang_adapters_to_substrate`
+    (`src/core/brain/factory/init/nimcp_brain_init_language_pops.c:354`)
+    opts the brain's own bridge into spike routing via
+    `snn_language_bridge_set_snn_spike_routing(enabled=true,
+    tau_ms=200)`. The library default for the flag stays FALSE (see
+    sparsity-collapse note in `snn_lang_config_default`); the brain
+    overrides per-instance. Without this, `drain_pop_spikes` is a
+    no-op and STDP has nothing to reinforce.
+  - `brain_tick_lang_bridge_spike_routing`
+    (`src/core/brain/nimcp_brain_tick_language.c:143`) now calls
+    `snn_language_bridge_apply_stdp` after the drain+tick, turning
+    recorded spike timing into binding weight updates once per learn
+    step. Drives `total_stdp_updates` + `da_gated_stdp_passes`.
+  - `brain_learn_vector`
+    (`src/core/brain/learning/nimcp_brain_learning.c:351`) calls
+    `grounded_language_learn_text_bigrams(label, 0.02f)` alongside
+    `learn_from_text` + `learn_syntax`. Walks `(prev,next)` bigrams and
+    (when `enable_trigram_learning` is on) `(a,b)→c` triples through
+    the bridge — the one path that moves `total_trigram_updates` off
+    zero. lr is deliberately small (fires on every labelled step).
+  - `enable_comprehend_stdp` config default flipped FALSE → TRUE.
+    Comprehend is the highest-frequency language signal during training
+    and is scoped to bindings that already cleared activation threshold.
+- **DA-gate live on resume** (`6364a1468`) — `attach_lang_adapters_to_substrate`
+  now also calls `snn_language_bridge_connect_neuromod`. The cold path
+  in `nimcp_brain_init_language.c:842` is gated on the neuromod system
+  existing at that earlier init point; the daemon's resume path reaches
+  the bridge only through `attach_lang_adapters_to_substrate`, so
+  `bridge->neuromod` stayed NULL on resume and `da_gated_stdp_passes`
+  was stuck at 0 despite billions of `apply_stdp` updates.
+  `connect_neuromod` is idempotent (pointer store), so calling on both
+  paths is harmless.
+- **Cold-start telemetry** (`6364a1468`) — new
+  `lang_status.plasticity.next_token_cold_start_skips` (uint64).
+  Process-global counter of times `grounded_language_learn_next_token_triple`
+  returned early because prev-words lacked concept bindings
+  (binding total ≤ 1e-6). Climbing counter alongside flat
+  `total_trigram_updates` = cold-start ramp; flat counter alongside
+  flat updates = genuine stall (input labels too short to tokenize to
+  3 tokens). Plumbed through `nimcp.h` struct → `nimcp_part_core.c`
+  populate → python binding → `brain_daemon._cmd_lang_status`.
+- **Greedy decode confidence-floor break honors `min_produce_words`**
+  (`0d993d656`) — `snn_language_bridge_produce`'s confidence-floor break
+  (line ~2088) bailed on the first post-first word below the hard 0.01
+  confidence floor. That break predated TB-7 and, unlike the EOS pick
+  and the beam decoder's EOS path, ignored the operator's length floor.
+  On an undertrained bridge every post-first word sits below 0.01 →
+  greedy collapsed to 1-word utterances → starved the cascade self-train
+  bigram/trigram path (needs ≥2 tokens). The break now suppresses while
+  `word_count < min_produce_words` and bumps
+  `bridge->stats.length_min_suppressions` to mirror EOS telemetry.
+  Default `min_produce_words == 0` keeps the guard a no-op. All four
+  decode stop-conditions (EOS pick / beam EOS / confidence floor / hard
+  max) now respect the floor.
+- **Auto-apply length floor on deploy** (`378bc6109`) —
+  `deploy_to_pod.sh` step 5b drops a detached pod-side poller that
+  waits up to 60 min for the daemon socket then calls
+  `set_length_control(min=POD_MIN_PRODUCE_WORDS, max=POD_MAX_PRODUCE_WORDS)`
+  (defaults 3 / 0). Non-fatal — poller failure only means the legacy
+  1-word-collapse persists until set manually. `POD_MIN_PRODUCE_WORDS=0`
+  skips activation.
+
+### Added — wedge defenses (2026-05-15)
+
+- **Wedge watchdog on `brain_daemon`** (`85d18d45c`) —
+  `_install_wedge_watchdog` calls
+  `faulthandler.dump_traceback_later(120s, repeat=True)` at startup and
+  appends all-thread Python stacks to `/var/log/athena/brain_traceback.log`.
+  Diagnostic mechanism for compute / GIL / lock wedges in pod containers
+  where `py-spy` and `gdb` are blocked by ptrace restrictions
+  (`CAP_SYS_PTRACE` missing, `kernel.yama.ptrace_scope=1` read-only).
+  The dumping thread is separate from the GIL-holding hot thread so even
+  a fully-wedged hot thread eventually gives up the GIL long enough for
+  the watchdog to fire. ~5ms per dump every 2 min.
+- **`_cmd_learn_language` kill switch** (`6dc8f6339`) — `_cmd_learn_language`
+  RPC defaults to a no-op via `NIMCP_DISABLE_LEARN_LANGUAGE=1`. The
+  2026-05-15 stage-2 wedge was root-caused (via the watchdog above) to
+  all 4 RPC workers blocked on the shared `BrainService._lock` with
+  the lock-holder inside `grounded_language_learn_from_text` — an
+  O(N² × B²) cross-bind loop (lines 3500-3518) over lexicon entries ×
+  bindings per entry. At stage 2 the extra `learn_language` callers
+  (`sibling_dialog`, `socratic_qa`, `failure_replay`, `music_rhythm`)
+  saturated the worker pool so even `ping` timed out. The kill switch
+  is defensive — training continues via `learn_vector_batch` (the
+  primary path, which calls `learn_from_text` directly inside the C
+  library, bypassing the daemon RPC layer entirely); only the
+  out-of-band `brain.learn_language(text)` RPC is suppressed. Re-enable
+  with `NIMCP_DISABLE_LEARN_LANGUAGE=0` in the supervisord env once a
+  C-side cap / per-call deadline lands.
+
+### Changed — trainer hardening (2026-05-15, `d1d404cd2`)
+
+- `MiniBatchTrainer.flush()` (`scripts/immerse_athena.py:1934`) no longer
+  swallows learn failures into loss=0.0. Logs first failure of every
+  streak, errors every 10th, and crashes after 50 consecutive flush
+  failures (`MAX_CONSECUTIVE_FLUSH_FAILURES`) so supervisord restarts
+  the trainer. Recovery log on first success after a failing streak.
+  Pre-fix the bare-except masked a 3-hour wedge where the brain was
+  SIGTERM'd and every learn RPC raised `ConnectionError` — buffer
+  cleared, loss reported as 0.0, brain step counter pinned at 10 for
+  3 hours with no exception ever escaping.
+- `brain_client._send`: `FileNotFoundError` ("socket gone" — daemon
+  restarting) no longer counts against `MAX_RETRIES=5`; it triggers
+  `_wait_for_daemon` instead. The retry budget is now reserved for
+  "brain up but flaky" cases.
+- `brain_client.DAEMON_WAIT_TIMEOUT` 300s → 1800s — the old 5 min
+  ceiling didn't cover the 15-25 min full-init resume of a 2M-neuron
+  checkpoint after a brain SIGKILL.
+- `_prune_checkpoint_snapshots` (`098ee061a`) replaces a hard-coded
+  sidecar-extension whitelist with `glob(snap + "*")`. Three sidecars
+  added recently (`.gl_lang`, `.gl_multiturn`, `.temperature`) were
+  silently orphaned every prune cycle and had accumulated ~1030 files
+  (~41 GB) on the production pod before the checkpoint-quota tripped.
+
 ### Added — full-lang-walkthrough campaign (2026-05-07)
 A 13-commit campaign covering Tier-A behaviour wiring, Tier-B production
 ergonomics, Tier-C threading + cognitive integration, plus immune (IM-3)

@@ -2693,6 +2693,32 @@ static PyObject* Brain_get_bigram_spectral_metrics(BrainObject* self, PyObject* 
     return dict;
 }
 
+static PyObject* Brain_prune_lang_bindings(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    unsigned int max_per_word = 128;
+    static char* kwlist[] = {"max_bindings_per_word", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|I", kwlist, &max_per_word)) {
+        return NULL;
+    }
+    if (max_per_word == 0) {
+        PyErr_SetString(PyExc_ValueError, "max_bindings_per_word must be > 0");
+        return NULL;
+    }
+    uint64_t dropped = 0;
+    nimcp_status_t s = nimcp_brain_prune_lang_bindings(self->brain,
+                                                       (uint32_t)max_per_word,
+                                                       &dropped);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "prune_lang_bindings failed (no grounded_lang attached?)");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLongLong((unsigned long long)dropped);
+}
+
 static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -11915,6 +11941,8 @@ static PyMethodDef Brain_methods[] = {
     // Grounded-language diagnostics (collapse triage)
     {"get_grounded_language_diagnostics", (PyCFunction)Brain_get_grounded_language_diagnostics, METH_NOARGS,
      "Get grounded-language diagnostic snapshot: get_grounded_language_diagnostics() -> dict"},
+    {"prune_lang_bindings", (PyCFunction)Brain_prune_lang_bindings, METH_VARARGS | METH_KEYWORDS,
+     "One-shot maintenance: keep top-K bindings per word by strength: prune_lang_bindings(max_bindings_per_word=128) -> int dropped"},
     {"get_bigram_spectral_metrics", (PyCFunction)Brain_get_bigram_spectral_metrics, METH_NOARGS,
      "PA-4+ FFT-based bigram spectral diagnostics: get_bigram_spectral_metrics() -> dict {peak_strength, low_freq_concentration, spectral_entropy}"},
     {"get_top_phrases", (PyCFunction)Brain_get_top_phrases, METH_VARARGS | METH_KEYWORDS,

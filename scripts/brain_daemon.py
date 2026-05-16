@@ -1170,6 +1170,25 @@ class BrainService:
             out["result"] = result
         return out
 
+    def _cmd_prune_lang_bindings(self, req):
+        """One-shot top-K prune of grounded-language bindings.
+
+        Trim B per word after the 2026-05-16 cross-bind wedge fix to reclaim
+        accumulated bindings from the prior function-word leak. Destructive —
+        bindings below the per-word top-K are dropped permanently.
+        """
+        k = int(req.get("max_bindings_per_word", 128))
+        if k <= 0:
+            return {"error": "max_bindings_per_word must be > 0"}
+        try:
+            dropped = self.brain.prune_lang_bindings(max_bindings_per_word=k)
+        except AttributeError:
+            return {"error": "prune_lang_bindings not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"prune_lang_bindings: {e}"}
+        logger.warning("prune_lang_bindings(K=%d) dropped %d bindings", k, dropped)
+        return {"ok": True, "dropped": int(dropped), "max_bindings_per_word": k}
+
     # -- LNN --
 
     def _cmd_lnn_forward_step(self, req):
@@ -2806,12 +2825,34 @@ class BrainService:
         # Likely root cause: grounded_language_learn_syntax → syntax_build_tree
         # (broca errors fire in concert).
         # Default-disabled until C-side timeout/fix is shipped. Re-enable by
-        # setting NIMCP_DISABLE_LEARN_LANGUAGE=0 in the supervisord env.
-        if os.environ.get("NIMCP_DISABLE_LEARN_LANGUAGE", "1") == "1":
+        # setting NIMCP_DISABLE_LEARN_LANGUAGE=0 in the supervisord env, OR
+        # by calling the runtime `_cmd_set_learn_language_enabled` RPC for
+        # time-bounded profiling windows (no daemon restart needed).
+        if not getattr(self, "_learn_language_enabled", None):
+            # Fall back to env var on first call (initialization).
+            self._learn_language_enabled = (
+                os.environ.get("NIMCP_DISABLE_LEARN_LANGUAGE", "1") != "1"
+            )
+        if not self._learn_language_enabled:
             return {"ok": True, "skipped": "learn_language disabled (wedge mitigation)"}
         if True:  # RWLock in handle()
             self.brain.learn_language(req["text"])
         return {"ok": True}
+
+    def _cmd_set_learn_language_enabled(self, req):
+        """Runtime toggle for the learn_language wedge kill switch.
+
+        Used for time-bounded profiling: enable briefly, capture
+        gl_profile log lines from brain stderr, disable. No daemon
+        restart needed. Watchdog at /var/log/athena/brain_traceback.log
+        catches any wedge during the window.
+        """
+        enabled = bool(req.get("enabled", False))
+        prev = getattr(self, "_learn_language_enabled", False)
+        self._learn_language_enabled = enabled
+        logger.warning("learn_language runtime toggle: %s -> %s",
+                       prev, enabled)
+        return {"ok": True, "previous": prev, "enabled": enabled}
 
     # -- Reasoning --
 

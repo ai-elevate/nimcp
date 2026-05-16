@@ -991,6 +991,31 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
 );
 
 /**
+ * @brief One-shot maintenance sweep: prune accumulated grounded-language
+ * bindings to top-K per word.
+ *
+ * Wraps grounded_language_prune_bindings. Intended as a single call after the
+ * 2026-05-16 cross-bind wedge fix to reclaim B per content word from the
+ * function-word leak. For each lexicon entry, sorts bindings descending by
+ * strength and truncates to @p max_bindings_per_word.
+ *
+ * Destructive — bindings dropped are not recoverable without checkpoint
+ * rollback. Suggested K=128 retains the strongest bindings while bounding
+ * cross-bind cost.
+ *
+ * @param brain                    Brain handle (must have grounded_lang)
+ * @param max_bindings_per_word    K, the per-word cap (must be > 0)
+ * @param dropped_out              Optional: total bindings dropped is written here
+ * @return NIMCP_OK on success, NIMCP_ERROR_INVALID on bad input,
+ *         NIMCP_ERROR if grounded_lang not attached.
+ */
+nimcp_status_t nimcp_brain_prune_lang_bindings(
+    nimcp_brain_t brain,
+    uint32_t max_bindings_per_word,
+    uint64_t* dropped_out
+);
+
+/**
  * @brief PA-4+ : FFT-based bigram spectral metrics.
  *
  * Diagnostic snapshot: returns the spectral structure of the bigram
