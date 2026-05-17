@@ -1189,6 +1189,22 @@ class BrainService:
         logger.warning("prune_lang_bindings(K=%d) dropped %d bindings", k, dropped)
         return {"ok": True, "dropped": int(dropped), "max_bindings_per_word": k}
 
+    def _cmd_connect_lang_bridge_neuromod(self, _req):
+        """Runtime fix for bridge->neuromod NULL state.
+
+        If bridge_da_gated_stdp_passes is stuck at 0 even with DA enabled,
+        the bridge probably came up before the neuromodulator system was
+        created (init order race). This re-connects them.
+        """
+        try:
+            self.brain.connect_lang_bridge_neuromod()
+        except AttributeError:
+            return {"error": "connect_lang_bridge_neuromod not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"connect_lang_bridge_neuromod: {e}"}
+        logger.warning("bridge->neuromod re-connected at runtime")
+        return {"ok": True}
+
     # -- LNN --
 
     def _cmd_lnn_forward_step(self, req):

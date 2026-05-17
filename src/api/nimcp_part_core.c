@@ -4,6 +4,7 @@
 
 #include "training/nimcp_cortex_cnn.h"
 #include "snn/nimcp_snn_types.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "language/nimcp_communication_cascade.h"
 
 
@@ -3524,6 +3525,28 @@ nimcp_status_t nimcp_brain_prune_lang_bindings(
     return NIMCP_OK;
 }
 
+/* Runtime fix for bridge->neuromod NULL state. The SNN language bridge's
+ * DA gate (snn_language_bridge.c:910) is conditioned on bridge->neuromod
+ * being non-NULL. Both init paths (nimcp_brain_init_language.c:841 and
+ * nimcp_brain_init_language_pops.c:370) are gated on
+ * brain->neuromodulator_system existing AT THE TIME those init waves
+ * run. If init order puts the bridge first, bridge->neuromod stays NULL
+ * forever — bridge_da_gated_stdp_passes never increments. This RPC lets
+ * an operator re-connect them at runtime once both exist. Just stores
+ * a pointer, no concurrency hazard. */
+nimcp_status_t nimcp_brain_connect_lang_bridge_neuromod(nimcp_brain_t brain)
+{
+    if (!brain) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    if (!b->neuromodulator_system) return NIMCP_ERROR;
+
+    int rc = snn_language_bridge_connect_neuromod(
+        b->snn_lang_bridge, b->neuromodulator_system);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /*=============================================================================
  * Tier-1 #2: Anaphora / pronoun-resolution toggle.
  *===========================================================================*/
@@ -4430,6 +4453,20 @@ nimcp_status_t nimcp_brain_train_cognitive(
     if (b->grounded_lang) {
         int updates = grounded_language_learn_from_text(b->grounded_lang, text);
         grounded_language_learn_syntax(b->grounded_lang, text);
+        /* Drive bridge bigram + trigram STDP from real-text learning.
+         * Mirrors the fix in nimcp_brain_learn_language. Trainer calls
+         * train_cognitive every cognitive injection — this is the hot
+         * path that actually fires per step. Without this, the bridge's
+         * trigram path (the only LTD-on-false-winner mechanism) stays
+         * dormant and mode-collapsed word_pops at weight=1.0 never
+         * get pulled down. */
+        (void)grounded_language_learn_text_bigrams(b->grounded_lang, text, 0.02f);
+        /* Also feed target_text if provided — pairs are often {prompt,
+         * answer} where the answer has the supervised content. */
+        if (target_text && target_text != text) {
+            (void)grounded_language_learn_text_bigrams(b->grounded_lang,
+                                                        target_text, 0.02f);
+        }
         if (updates > 0) {
             total_loss += 1.0f / (float)updates;
             modules_trained++;

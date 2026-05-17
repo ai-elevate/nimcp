@@ -1016,6 +1016,25 @@ nimcp_status_t nimcp_brain_prune_lang_bindings(
 );
 
 /**
+ * @brief Runtime fix for bridge->neuromod NULL state.
+ *
+ * The SNN language bridge's DA gate is conditioned on
+ * bridge->neuromod != NULL. Both init paths
+ * (nimcp_brain_init_language.c:841 and
+ * nimcp_brain_init_language_pops.c:370) connect it only if
+ * brain->neuromodulator_system already exists at the time the
+ * language init wave runs. If init order puts the bridge first,
+ * bridge->neuromod stays NULL forever — bridge_da_gated_stdp_passes
+ * never increments. This API lets an operator re-connect them at
+ * runtime once both exist (just stores a pointer, no concurrency
+ * hazard).
+ *
+ * Returns NIMCP_OK on success, NIMCP_ERROR if the bridge or
+ * neuromod system is missing.
+ */
+nimcp_status_t nimcp_brain_connect_lang_bridge_neuromod(nimcp_brain_t brain);
+
+/**
  * @brief PA-4+ : FFT-based bigram spectral metrics.
  *
  * Diagnostic snapshot: returns the spectral structure of the bigram
