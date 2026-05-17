@@ -457,6 +457,26 @@ brain_t brain_create_custom(const brain_config_t* config)
                     }
                 }
 
+                /* Neuromodulator system isn't persisted in the checkpoint and
+                 * brain_load() doesn't recreate it. Without this, the SNN
+                 * language bridge's DA gate stays inert forever on resume
+                 * (bridge_da_gated_stdp_passes=0) because
+                 * snn_language_bridge_connect_neuromod() is gated on
+                 * brain->neuromodulator_system != NULL. The fresh-brain path
+                 * gets it via parallel-init Wave 2; the resume path skipped
+                 * the entire factory orchestration, so we restore it here
+                 * before returning the loaded brain. */
+                if (!loaded_brain->neuromodulator_system) {
+                    extern bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain);
+                    if (!nimcp_brain_factory_init_neuromodulator_system(loaded_brain)) {
+                        LOG_WARN(LOG_MODULE,
+                            "Resume: neuromod system init failed — DA gate will stay inert");
+                    } else {
+                        LOG_INFO(LOG_MODULE,
+                            "Resume: neuromod system created on loaded brain");
+                    }
+                }
+
                 return loaded_brain;
             }
             LOG_WARN(LOG_MODULE, "Failed to load checkpoint from '%s', creating fresh brain",

@@ -304,6 +304,22 @@ class BrainProxy:
         resp = self._send({"cmd": "grounded_respond", "text": text})
         return resp.get("result", {})
 
+    def echo_and_correct(self, parent_text, target_word, lr_scale=1.0):
+        """Supervised production-training pulse for the SNN language bridge.
+
+        Strengthens (active_concept_pop → target_word_pop) bindings inside
+        the bridge so produce stops emitting uniform-random WordNet words.
+        Returns the number of pairs strengthened (0 if target_word not in
+        bridge's mirrored word_pops yet).
+        """
+        resp = self._send({
+            "cmd": "echo_and_correct",
+            "parent_text": parent_text,
+            "target_word": target_word,
+            "lr_scale": float(lr_scale),
+        })
+        return int(resp.get("pairs_strengthened", 0))
+
     def ground_word(self, word, features, modality=5, attention=0.7,
                      valence=0.0, arousal=0.0):
         """Ground a word in sensory features. Returns True on success."""

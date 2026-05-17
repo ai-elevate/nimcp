@@ -2684,6 +2684,15 @@ nimcp_status_t nimcp_brain_learn_language(
 
     int updates = grounded_language_learn_from_text(b->grounded_lang, text);
     grounded_language_learn_syntax(b->grounded_lang, text);
+    /* Drive bridge bigram + trigram STDP from real-text learning. Pre-fix the
+     * only callers of learn_text_bigrams were brain_cognitive_learning_step
+     * (which passes the cognitive LABEL — 1-2 tokens, too short for trigrams)
+     * and the cascade self-train path (own production, gated on confidence).
+     * Real user/training text never reached the bridge's trigram path, so
+     * bridge_total_trigram_updates stayed at 0 even with the flag enabled.
+     * LTD on top-1 false winner (inside learn_next_token_triple) is the
+     * only mechanism that can pull saturated dominant word_pops down. */
+    (void)grounded_language_learn_text_bigrams(b->grounded_lang, text, 0.02f);
 
     if (out_loss) *out_loss = (updates > 0) ? 1.0f / (float)updates : 1.0f;
     return (updates >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;

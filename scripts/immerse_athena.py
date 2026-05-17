@@ -409,6 +409,23 @@ def submit_multimodal(brain, description):
     """
     import sys
     print(f"[SMM-TRACE] submit_multimodal called: desc='{str(description)[:40]}'", file=sys.stderr, flush=True)
+
+    # Echo-and-correct — supervised production training signal. Fires per
+    # submit_multimodal call regardless of which stage code path invoked
+    # us (run_stage_2 main loop, parent teaching, developmental imitation,
+    # etc.). This is the production-side training pulse the bridge needs
+    # to escape mode collapse.
+    if description and len(description) > 3:
+        try:
+            words = [w.strip(".,!?;:\"'()-").lower()
+                     for w in description.split()
+                     if len(w.strip(".,!?;:\"'()-")) > 3]
+            if words:
+                target_word = max(words, key=len)
+                brain.echo_and_correct(description, target_word, lr_scale=8.0)
+        except Exception:
+            pass
+
     desc_lower = description.lower()
 
     # Prepare all sensory data locally, then submit in a single batched call.
@@ -3065,6 +3082,26 @@ def _inject_cognitive_training(brain, composer, step, learning_rate,
                 brain.learn_language_pair(text, answer, learning_rate=0.05)
         except Exception:
             pass
+        # Echo-and-correct — supervised production training signal. Without
+        # this, bridge weights stay uniform-random across 29K WordNet
+        # word_pops and produce emits gibberish (the 2026-05-16 mode-
+        # collapse symptom: "ptolemaic bundling compression ..." × 49/50).
+        # _train_cognitive has the same block at line ~4737; this is
+        # the per-step injection mirror. Safe to call here only after
+        # cap-at-insertion bounds lexicon_bind cost (commit 13045d312) —
+        # the earlier attempt without the cap caused writer-lock
+        # starvation when B was unbounded.
+        sup = answer or text
+        if sup and len(sup) > 3:
+            try:
+                words = [w.strip(".,!?;:\"'()-").lower()
+                         for w in sup.split()
+                         if len(w.strip(".,!?;:\"'()-")) > 3]
+                if words:
+                    target_word = max(words, key=len)
+                    brain.echo_and_correct(sup, target_word, lr_scale=8.0)
+            except Exception:
+                pass
         if curriculum:
             curriculum.record_loss(loss if loss else 0, item.get('domain', ''))
             curriculum.check_escalation()
@@ -4761,7 +4798,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                     # Take longest as the "target" — most likely a noun
                     # in narrations like "Look! A ball." or "What a tree!"
                     target_word = max(words, key=len)
-                    pairs = brain.echo_and_correct(sup, target_word, lr_scale=1.0)
+                    pairs = brain.echo_and_correct(sup, target_word, lr_scale=8.0)
                     # Optional: log if a target wasn't registered yet (pairs == 0
                     # means lexicon hasn't mirrored target_word into the
                     # bridge's word_pops). Don't spam — only every 200th call.
@@ -7549,6 +7586,16 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Stage sensory data for cortex CNN training (visual/audio/speech).
         # Without this, cortex CNNs get zero forward steps in stage 2.
         submit_multimodal(brain, description)
+
+        # Echo-and-correct — supervised production training signal, fired on
+        # every trainer-step (NOT gated by curriculum/spectral splitter).
+        # The earlier placement inside _inject_cognitive_training was filtered
+        # out by k-fold test holdout + curriculum tier locks, dropping rate
+        # to ~3 successful calls/hour. Bridge needs many more per minute to
+        # overcome uniform-random word_pop weights (mode-collapse symptom).
+        # Echo-and-correct fires inside submit_multimodal() above — no need
+        # to repeat it here. Left intentionally empty so the run_stage_2
+        # main loop doesn't double-fire.
 
         # Athena experiences the stimulus and learns from it.
         # Apply LR spike if fast collapse detector is in recovery mode.
