@@ -3136,13 +3136,19 @@ nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);
     if (s != NIMCP_OK) return s;
-    out->enabled             = b->cerebellar_correction_enabled ? 1 : 0;
-    out->strength            = b->cerebellar_correction_strength;
-    out->correction_pending  = b->cerebellar_correction_pending ? 1 : 0;
-    out->pe_threshold        = b->cerebellar_pe_threshold;
-    out->predictions_made    = b->cerebellar_predictions_made;
-    out->corrections_applied = b->cerebellar_corrections_applied;
-    out->last_pe_norm        = b->cerebellar_last_pe_norm;
+    out->enabled                    = b->cerebellar_correction_enabled ? 1 : 0;
+    out->strength                   = b->cerebellar_correction_strength;
+    out->correction_pending         = b->cerebellar_correction_pending ? 1 : 0;
+    out->pe_threshold               = b->cerebellar_pe_threshold;
+    out->predictions_made           = b->cerebellar_predictions_made;
+    /* S7-H3: corrections_applied + correction_stages_applied are aliases —
+     * same underlying counter (stages that ran while pending=true). The
+     * dedicated iter counter is bumped once per recurrent iter from the
+     * recurrent loop tail. */
+    out->corrections_applied        = b->cerebellar_corrections_applied;
+    out->correction_stages_applied  = b->cerebellar_corrections_applied;
+    out->correction_iters_applied   = b->cerebellar_correction_iters_applied;
+    out->last_pe_norm               = b->cerebellar_last_pe_norm;
     return NIMCP_OK;
 }
 

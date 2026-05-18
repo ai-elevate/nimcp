@@ -3862,6 +3862,15 @@ int communication_cascade_run_recurrent(brain_t brain,
             float thresh = brain->cerebellar_pe_threshold;
             if (!isfinite(thresh) || thresh <= 0.0f) thresh = 0.20f;
             brain->cerebellar_correction_pending = (accum_pe > thresh);
+
+            /* S7-H3 fix (2026-05-19): bump the iter counter exactly once if
+             * EITHER stage applied a correction this iter. Disambiguates
+             * iter-with-correction from stage-with-correction (the latter
+             * stays in cerebellar_corrections_applied — see brain_internal.h
+             * for the rename). */
+            if (out_state->cereb_correction_applied) {
+                brain->cerebellar_correction_iters_applied++;
+            }
         }
 
         /* Save this iteration's outputs to compare against the next.

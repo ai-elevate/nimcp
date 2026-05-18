@@ -1796,7 +1796,20 @@ typedef struct {
     float    pe_threshold;             /* current PE threshold */
     /* Lifetime totals — incremented by the cascade. */
     uint64_t predictions_made;
-    uint64_t corrections_applied;
+    /* S7-H3 fix (2026-05-19): corrections_applied semantics disambiguated.
+     * Pre-fix this counted STAGE invocations with correction_pending=true;
+     * a recurrent iter with motor+prosody both correcting bumped it by 2,
+     * which consumers reading "iters that applied correction" got 2x
+     * inflated. Field RETAINED for backwards compatibility but its name in
+     * the public diag struct now matches its actual semantics
+     * (correction_stages_applied). The new correction_iters_applied
+     * counter bumps once per recurrent iter only. */
+    uint64_t corrections_applied;             /* deprecated alias of
+                                                  correction_stages_applied; identical value */
+    uint64_t correction_stages_applied;       /* stages that ran while
+                                                  correction_pending was true */
+    uint64_t correction_iters_applied;        /* recurrent iters during which
+                                                  correction was applied (max 1/iter) */
     float    last_pe_norm;             /* most recent stage's PE-norm */
 } nimcp_cerebellar_diag_t;
 

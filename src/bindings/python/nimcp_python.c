@@ -4460,6 +4460,14 @@ static PyObject* Brain_get_cerebellar_diag(BrainObject* self, PyObject* args) {
                         PyLong_FromUnsignedLongLong((unsigned long long)d.predictions_made));
     PyDict_SetItemString(dict, "corrections_applied",
                         PyLong_FromUnsignedLongLong((unsigned long long)d.corrections_applied));
+    /* S7-H3: disambiguated semantics. correction_stages_applied is the
+     * alias of corrections_applied (per-stage, bumped 2x/iter if both
+     * motor+prosody correct); correction_iters_applied is the new
+     * per-iter counter (bumped at most once per recurrent iter). */
+    PyDict_SetItemString(dict, "correction_stages_applied",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.correction_stages_applied));
+    PyDict_SetItemString(dict, "correction_iters_applied",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.correction_iters_applied));
     PyDict_SetItemString(dict, "last_pe_norm",
                         PyFloat_FromDouble((double)d.last_pe_norm));
     return dict;

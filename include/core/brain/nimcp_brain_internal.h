@@ -3082,7 +3082,16 @@ struct brain_struct {
     float    cerebellar_pe_threshold;             /* PE-norm gate (default 0.20). */
     /* Lifetime diagnostics surfaced via nimcp_brain_get_cerebellar_diag. */
     uint64_t cerebellar_predictions_made;
-    uint64_t cerebellar_corrections_applied;
+    /* S7-H3 fix (2026-05-19): cerebellar_corrections_applied counts STAGES
+     * that ran while correction_pending was set — bumped inside both
+     * stage_motor and stage_prosody. A single recurrent iter with both
+     * stages firing increments by 2, so consumers reading this as
+     * "iters with correction" get a 2x inflated count. Keep the field as
+     * the STAGES counter (renamed in the diag struct field below); add a
+     * separate iters counter bumped once per recurrent iter from the
+     * recurrent loop tail. */
+    uint64_t cerebellar_corrections_applied;       /* stages: bumped per stage */
+    uint64_t cerebellar_correction_iters_applied;  /* iters: bumped per recurrent iter */
     float    cerebellar_last_pe_norm;             /* most-recent stage's PE norm */
 
     /* === S2-C2/C3 ARCUATE FEEDBACK CROSS-THREAD LOCK ===
