@@ -3782,6 +3782,82 @@ static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* Slice 4 — Lateral inhibition control surface. Four Python methods:
+ * set/get enabled + set/get params. */
+static PyObject* Brain_set_lateral_inhibition_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_lateral_inhibition_enabled(self->brain,
+                                                                    enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "set_lateral_inhibition_enabled failed (bridge not initialized?)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_lateral_inhibition_enabled(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    nimcp_status_t s = nimcp_brain_get_lateral_inhibition_enabled(self->brain, &enabled);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "get_lateral_inhibition_enabled failed (bridge not initialized?)");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled ? 1 : 0);
+}
+
+static PyObject* Brain_set_lateral_inhibition_params(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float gain_self = 0.0f, gain_inhibit = 0.0f;
+    unsigned int micro_steps = 0;
+    if (!PyArg_ParseTuple(args, "ffI", &gain_self, &gain_inhibit, &micro_steps)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_lateral_inhibition_params(self->brain,
+                                                                  gain_self,
+                                                                  gain_inhibit,
+                                                                  micro_steps);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "set_lateral_inhibition_params failed (out of range or bridge missing)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_lateral_inhibition_params(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float gain_self = 0.0f, gain_inhibit = 0.0f;
+    uint32_t micro_steps = 0;
+    nimcp_status_t s = nimcp_brain_get_lateral_inhibition_params(self->brain,
+                                                                  &gain_self,
+                                                                  &gain_inhibit,
+                                                                  &micro_steps);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "get_lateral_inhibition_params failed (bridge not initialized?)");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "gain_self",    PyFloat_FromDouble((double)gain_self));
+    PyDict_SetItemString(d, "gain_inhibit", PyFloat_FromDouble((double)gain_inhibit));
+    PyDict_SetItemString(d, "micro_steps",  PyLong_FromUnsignedLong((unsigned long)micro_steps));
+    return d;
+}
+
 /* Wave 2 Item #10 — cascade Stage 14 (self-train) control surface.
  * Three small Brain methods exposing nimcp_brain_*_cascade_self_train_*. */
 static PyObject* Brain_set_cascade_self_train_enabled(BrainObject* self, PyObject* args) {
@@ -12133,6 +12209,14 @@ static PyMethodDef Brain_methods[] = {
      "TB-6: toggle sentence-boundary segmentation in comprehend — set_sentence_segmentation_enabled(enabled: bool) -> None. Default OFF."},
     {"set_length_control", (PyCFunction)Brain_set_length_control, METH_VARARGS,
      "TB-7: produce length control — set_length_control(min_words: int, max_words: int) -> None. 0/0 = disabled (legacy)."},
+    {"set_lateral_inhibition_enabled", (PyCFunction)Brain_set_lateral_inhibition_enabled, METH_VARARGS,
+     "Slice 4: toggle competitive recurrent decode — set_lateral_inhibition_enabled(enabled: bool) -> None. Default OFF. When ON, the bridge's per-word decode swaps argmax for recurrent competition over top-K candidates (cohort-model lexical selection). See docs/claude/recurrent-language-architecture.md."},
+    {"get_lateral_inhibition_enabled", (PyCFunction)Brain_get_lateral_inhibition_enabled, METH_NOARGS,
+     "Slice 4: read the lateral-inhibition runtime flag — get_lateral_inhibition_enabled() -> bool."},
+    {"set_lateral_inhibition_params", (PyCFunction)Brain_set_lateral_inhibition_params, METH_VARARGS,
+     "Slice 4: tune lateral-inhibition dynamics — set_lateral_inhibition_params(gain_self: float, gain_inhibit: float, micro_steps: int) -> None. Validation: gain_self/gain_inhibit in (0, 100]; micro_steps in [1, 200]. Defaults 1.5 / 0.026 / 20."},
+    {"get_lateral_inhibition_params", (PyCFunction)Brain_get_lateral_inhibition_params, METH_NOARGS,
+     "Slice 4: read lateral-inhibition tunables — get_lateral_inhibition_params() -> {'gain_self': float, 'gain_inhibit': float, 'micro_steps': int}."},
     {"set_speech_act_classification_enabled", (PyCFunction)Brain_set_speech_act_classification_enabled, METH_VARARGS,
      "TB-9: toggle speech-act intent classification — set_speech_act_classification_enabled(enabled: bool) -> None. Default OFF."},
     {"set_topic_shift_enabled", (PyCFunction)Brain_set_topic_shift_enabled, METH_VARARGS,

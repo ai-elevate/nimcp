@@ -1556,6 +1556,32 @@ nimcp_status_t nimcp_brain_produce_cascade_recurrent(
 nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);
 
+/** Slice 4 (recurrent-language-architecture) — lateral-inhibition in lexical
+ *  selection. Default OFF preserves bit-for-bit legacy produce / cascade.
+ *  When enabled, the bridge's per-word decode swaps the one-shot cosine
+ *  argmax for a recurrent competition over the top-K candidates:
+ *
+ *    for k:  new_a[k] = sigmoid(a[k]*gain_self - sum_{j!=k} a[j]*gain_inh)
+ *
+ *  for `micro_steps` iterations. Re-rank by post-settling activations.
+ *  Implements competitive selection in the cohort-model (Marslen-Wilson
+ *  1987) / interactive-activation (McClelland 1981) tradition.
+ *
+ *  All three runtime-only — caller re-applies after each brain load.
+ *  See docs/claude/recurrent-language-architecture.md for the design. */
+nimcp_status_t nimcp_brain_set_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool enabled);
+nimcp_status_t nimcp_brain_get_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool* out_enabled);
+nimcp_status_t nimcp_brain_set_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float gain_self,
+                                                          float gain_inhibit,
+                                                          uint32_t micro_steps);
+nimcp_status_t nimcp_brain_get_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float* out_gain_self,
+                                                          float* out_gain_inhibit,
+                                                          uint32_t* out_micro_steps);
+
 /** TB-6: sentence-boundary segmentation. */
 nimcp_status_t nimcp_brain_set_sentence_segmentation_enabled(nimcp_brain_t brain, bool enabled);
 

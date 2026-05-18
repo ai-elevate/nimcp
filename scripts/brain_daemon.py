@@ -2060,6 +2060,82 @@ class BrainService:
             return {"error": f"set_length_control: {e}"}
         return {"ok": True, "min_words": min_words, "max_words": max_words}
 
+    def _cmd_set_lateral_inhibition_enabled(self, req):
+        """Slice 4: toggle competitive recurrent decode in the bridge.
+        Default OFF preserves bit-for-bit legacy decode_spikes behavior.
+        When ON, every bridge_produce call's per-word decode swaps the
+        one-shot cosine argmax for a recurrent competition over the
+        top-K candidates (cohort-model lexical selection).
+
+        Request: {"cmd": "set_lateral_inhibition_enabled", "enabled": bool}
+        Response: {ok, enabled}
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_lateral_inhibition_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_lateral_inhibition_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_lateral_inhibition_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_get_lateral_inhibition_enabled(self, req):
+        """Slice 4: read the lateral-inhibition runtime flag.
+
+        Request: {"cmd": "get_lateral_inhibition_enabled"}
+        Response: {ok, enabled}
+        """
+        try:
+            enabled = bool(self.brain.get_lateral_inhibition_enabled())
+        except AttributeError:
+            return {"error": "get_lateral_inhibition_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_lateral_inhibition_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_lateral_inhibition_params(self, req):
+        """Slice 4: tune the lateral-inhibition dynamics.
+
+        Request: {"cmd": "set_lateral_inhibition_params",
+                  "gain_self": float (default 1.5),
+                  "gain_inhibit": float (default 0.026),
+                  "micro_steps": int (default 20)}
+        Response: {ok, gain_self, gain_inhibit, micro_steps}
+        """
+        try:
+            gain_self    = float(req.get("gain_self", 1.5))
+            gain_inhibit = float(req.get("gain_inhibit", 0.026))
+            micro_steps  = int(req.get("micro_steps", 20))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_lateral_inhibition_params bad arg: {e}"}
+        try:
+            self.brain.set_lateral_inhibition_params(gain_self, gain_inhibit, micro_steps)
+        except AttributeError:
+            return {"error": "set_lateral_inhibition_params not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_lateral_inhibition_params: {e}"}
+        return {"ok": True,
+                "gain_self": gain_self,
+                "gain_inhibit": gain_inhibit,
+                "micro_steps": micro_steps}
+
+    def _cmd_get_lateral_inhibition_params(self, req):
+        """Slice 4: read the lateral-inhibition tunables.
+
+        Request: {"cmd": "get_lateral_inhibition_params"}
+        Response: {ok, gain_self, gain_inhibit, micro_steps}
+        """
+        try:
+            params = self.brain.get_lateral_inhibition_params()
+        except AttributeError:
+            return {"error": "get_lateral_inhibition_params not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_lateral_inhibition_params: {e}"}
+        return {"ok": True,
+                "gain_self":    float(params.get("gain_self", 0.0)),
+                "gain_inhibit": float(params.get("gain_inhibit", 0.0)),
+                "micro_steps":  int(params.get("micro_steps", 0))}
+
     def _cmd_set_speech_act_classification_enabled(self, req):
         """TB-9: toggle speech-act intent classification. Default OFF."""
         enabled = bool(req.get("enabled", False))

@@ -365,6 +365,69 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return bool(resp.get("enabled", enabled))
 
+    def set_lateral_inhibition_enabled(self, enabled=True):
+        """Slice 4 (recurrent-language-architecture): toggle competitive
+        recurrent decode in the SNN language bridge. Default OFF preserves
+        bit-for-bit legacy decode_spikes behavior. When ON, every
+        bridge_produce call's per-word decode swaps the one-shot cosine
+        argmax for a recurrent competition over the top-K candidates:
+        candidates excite themselves AND inhibit each other; winner emerges
+        from settling dynamics. Implements cohort-model (Marslen-Wilson
+        1987) / interactive-activation (McClelland 1981) lexical selection.
+
+        See docs/claude/recurrent-language-architecture.md for the design.
+        Runtime-only — caller must re-apply after each daemon restart."""
+        resp = self._send({
+            "cmd": "set_lateral_inhibition_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def get_lateral_inhibition_enabled(self):
+        """Slice 4: read the lateral-inhibition runtime flag."""
+        resp = self._send({"cmd": "get_lateral_inhibition_enabled"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", False))
+
+    def set_lateral_inhibition_params(self, gain_self=1.5, gain_inhibit=0.026,
+                                       micro_steps=20):
+        """Slice 4: tune the recurrent-competition dynamics.
+
+        gain_self    — self-excitation gain per micro-step (default 1.5).
+        gain_inhibit — per-other inhibition coefficient (default ~0.026,
+                        chosen so 31 * gain_inhibit ≈ 0.81 < gain_self for
+                        K=32, keeping the competition bounded).
+        micro_steps  — settling iterations (default 20).
+
+        Validation: each value > 0; gains <= 100; steps in [1, 200]."""
+        resp = self._send({
+            "cmd": "set_lateral_inhibition_params",
+            "gain_self":    float(gain_self),
+            "gain_inhibit": float(gain_inhibit),
+            "micro_steps":  int(micro_steps),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return {
+            "gain_self":    float(resp.get("gain_self", gain_self)),
+            "gain_inhibit": float(resp.get("gain_inhibit", gain_inhibit)),
+            "micro_steps":  int(resp.get("micro_steps", micro_steps)),
+        }
+
+    def get_lateral_inhibition_params(self):
+        """Slice 4: read lateral-inhibition tunables."""
+        resp = self._send({"cmd": "get_lateral_inhibition_params"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return {
+            "gain_self":    float(resp.get("gain_self", 0.0)),
+            "gain_inhibit": float(resp.get("gain_inhibit", 0.0)),
+            "micro_steps":  int(resp.get("micro_steps", 0)),
+        }
+
     def set_respond_via_cascade(self, enabled=True):
         """Toggle whether grounded_respond routes through the 15-stage
         cascade (True) or just the bridge (False). Cascade adds Broca's
