@@ -320,7 +320,16 @@ int communication_cascade_set_thalamic_gate_for_stage(brain_t brain,
     if (!brain) return -1;
     uint32_t i = (uint32_t)stage;
     if (i >= 15) return -1;
-    if (weight < 0.0f) {
+    /* S6-H1 fix (2026-05-19): NaN/Inf weights must clear the override,
+     * not coerce-to-zero-and-lock. Pre-fix NaN failed `weight < 0.0f`
+     * (NaN compares false against `<`), slipped through to
+     * cascade_clamp01 which coerced NaN -> 0.0 AND set
+     * manual_override[i] = true. Result: the stage was locked at 0.0
+     * (full gate close) forever — a NaN SINK. The public C wrapper at
+     * nimcp_part_core.c:2885 was already doing `!isfinite -> -1.0f` but
+     * the inner boundary missed the same defense; an internal caller
+     * could still poison the gate. */
+    if (!isfinite(weight) || weight < 0.0f) {
         /* Sentinel: clear override + return to auto-derived behavior. */
         brain->thalamic_gate_manual_override[i] = false;
         return 0;
