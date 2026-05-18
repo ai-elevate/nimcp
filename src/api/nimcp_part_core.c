@@ -2918,6 +2918,116 @@ nimcp_status_t nimcp_brain_get_thalamic_gates(nimcp_brain_t brain,
 }
 
 /* =================================================================
+ * Slice 5 — phonological loop public API
+ *
+ * The setters are thin wrappers around the brain_struct fields; the
+ * accessor functions (decay/merge/render/clear) live in
+ * src/language/nimcp_phonological_loop.c. Setters intentionally do not
+ * take the loop_mutex — the underlying field writes are scalar/atomic
+ * at the hardware level on every platform we target, and runtime
+ * setters are called rarely (once at start-up / config). Read APIs
+ * that walk the buffer DO take the mutex inside the helper.
+ * ================================================================= */
+
+#include "language/nimcp_phonological_loop.h"
+
+nimcp_status_t nimcp_brain_set_phonological_loop_enabled(nimcp_brain_t brain,
+                                                           bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    /* Ensure the loop is initialized when flipping ON — broca-init may
+     * not have run yet (minimal-mode brain) or may have failed. Init is
+     * idempotent + cheap. Failure to init is non-fatal: the caller can
+     * still flip the flag, and the cascade helpers will continue to
+     * no-op until init succeeds on a subsequent call. */
+    if (enabled) {
+        (void)phonological_loop_init(b);
+    }
+    b->loop_enabled = enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_phonological_loop_decay(nimcp_brain_t brain,
+                                                         float decay) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!(decay == decay) /* NaN check */) decay = 0.15f;
+    if (decay < 0.0f) decay = 0.0f;
+    if (decay > 0.5f) decay = 0.5f;
+    /* Setting decay before enable is allowed — init lazily so subsequent
+     * loop helpers see the requested value. */
+    (void)phonological_loop_init(b);
+    b->loop_decay_rate = decay;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_clear_phonological_loop(nimcp_brain_t brain) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    phonological_loop_clear(b);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_phonological_loop_state(
+    nimcp_brain_t brain,
+    char* out_buffer,
+    uint32_t out_size,
+    uint32_t* out_trace_count)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    if (out_buffer && out_size > 0) {
+        out_buffer[0] = '\0';
+        /* render_active honors enabled-flag internally; returns 0 + empty
+         * string when disabled, so callers always see a well-defined
+         * surface form. */
+        (void)phonological_loop_render_active(b, 0.3f, out_buffer, out_size);
+    }
+    if (out_trace_count) {
+        /* trace_count snapshot — read outside the lock; worst case torn
+         * with a concurrent merge, but the field is uint32 (atomic on
+         * every supported arch) and this is read-only diagnostic. */
+        *out_trace_count = b->loop_trace_count;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_phonological_loop_diag(
+    nimcp_brain_t brain,
+    nimcp_phonological_loop_diag_t* out)
+{
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    /* All scalar reads; no lock — torn-read worst case is a stale
+     * snapshot, which is acceptable for a diagnostic surface. */
+    out->enabled         = b->loop_enabled;
+    out->buffer_len      = b->loop_buffer_len;
+    out->trace_count     = b->loop_trace_count;
+    out->trace_capacity  = b->loop_trace_capacity;
+    out->max_words       = b->loop_max_words;
+    out->decay_rate      = b->loop_decay_rate;
+    out->last_refresh_ms = b->loop_last_refresh_ms;
+
+    /* Avg trace strength — bounded loop over loop_trace_count traces.
+     * No lock; same torn-read tolerance as above. */
+    float sum = 0.0f;
+    uint32_t n = b->loop_trace_count;
+    if (b->loop_phonemic_trace && n > 0) {
+        for (uint32_t i = 0; i < n; i++) sum += b->loop_phonemic_trace[i];
+    }
+    out->avg_trace_strength = (n > 0) ? (sum / (float)n) : 0.0f;
+    return NIMCP_OK;
+}
+
+/* =================================================================
  * Base lexicon bootstrap (Option C of language training plan)
  * =================================================================
  *

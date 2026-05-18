@@ -522,6 +522,67 @@ class BrainProxy:
             return {}
         return resp
 
+    # ----- Slice 5 — phonological loop working memory buffer -----
+
+    def set_phonological_loop_enabled(self, enabled=True):
+        """Slice 5: enable Baddeley's phonological-loop working memory.
+
+        When enabled, the recurrent cascade decays traces between
+        iterations, merges lexical output into the buffer, and feeds the
+        buffer's surface form (words with trace >= 0.3) to stage_syntactic
+        + stage_self_comp instead of the one-shot lexical output. Default
+        OFF: recurrent cascade behaves byte-identically to Slice 1+2.
+        """
+        resp = self._send({
+            "cmd": "set_phonological_loop_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_phonological_loop_decay(self, decay=0.15):
+        """Slice 5: configure per-iteration phonological-loop trace decay.
+
+        Clamped to [0.0, 0.5]; NaN/Inf coerce to default 0.15."""
+        resp = self._send({
+            "cmd": "set_phonological_loop_decay",
+            "decay": float(decay),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("decay", decay))
+
+    def clear_phonological_loop(self):
+        """Slice 5: full reset of the phonological loop (drops every
+        trace + word; clears surface buffer). Recurrent cascade also
+        clears the loop on entry — this is primarily admin/diagnostic."""
+        resp = self._send({"cmd": "clear_phonological_loop"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return True
+
+    def get_phonological_loop_state(self):
+        """Slice 5: read-only inspection — returns dict('buffer': str,
+        'trace_count': int). buffer is the active surface form (words
+        with trace >= 0.3, space-separated)."""
+        resp = self._send({"cmd": "get_phonological_loop_state"})
+        if resp.get("error"):
+            return {}
+        return {
+            "buffer":      str(resp.get("buffer", "")),
+            "trace_count": int(resp.get("trace_count", 0)),
+        }
+
+    def get_phonological_loop_diag(self):
+        """Slice 5: full diagnostic snapshot — enabled/buffer_len/
+        trace_count/trace_capacity/max_words/decay_rate/
+        avg_trace_strength/last_refresh_ms."""
+        resp = self._send({"cmd": "get_phonological_loop_diag"})
+        if resp.get("error"):
+            return {}
+        return resp
+
     def echo_and_correct(self, parent_text, target_word, lr_scale=1.0):
         """Supervised production-training pulse for the SNN language bridge.
 

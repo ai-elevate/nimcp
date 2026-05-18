@@ -2481,6 +2481,103 @@ class BrainService:
         d["ok"] = True
         return d
 
+    # ----- Slice 5 — phonological loop working memory buffer -----
+
+    def _cmd_set_phonological_loop_enabled(self, req):
+        """Slice 5: enable Baddeley's phonological-loop working memory buffer.
+
+        Request: {"cmd": "set_phonological_loop_enabled", "enabled": bool}
+        Returns: {"ok": True, "enabled": bool}.
+
+        When enabled, the recurrent cascade decays traces between
+        iterations, merges lexical output into the buffer, and feeds the
+        buffer's surface form (words with trace >= 0.3) to stage_syntactic
+        + stage_self_comp instead of the one-shot lexical output. Default
+        OFF: recurrent cascade behaves byte-identically to Slice 1+2.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_phonological_loop_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_phonological_loop_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_phonological_loop_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_phonological_loop_decay(self, req):
+        """Slice 5: configure per-iteration phonological-loop trace decay.
+
+        Request: {"cmd": "set_phonological_loop_decay", "decay": float}
+        Clamped to [0.0, 0.5]; NaN/Inf coerce to default 0.15.
+        Returns: {"ok": True, "decay": float (requested)}.
+        """
+        try:
+            decay = float(req.get("decay", 0.15))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_phonological_loop_decay bad arg: {e}"}
+        try:
+            self.brain.set_phonological_loop_decay(decay)
+        except AttributeError:
+            return {"error": "set_phonological_loop_decay not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_phonological_loop_decay: {e}"}
+        return {"ok": True, "decay": decay}
+
+    def _cmd_clear_phonological_loop(self, req):
+        """Slice 5: full reset of the phonological loop.
+
+        Drops every trace + word and clears the surface buffer. The
+        recurrent cascade also clears the loop on entry, so this is
+        primarily an admin/diagnostic command.
+
+        Request: {"cmd": "clear_phonological_loop"}
+        Returns: {"ok": True}.
+        """
+        del req
+        try:
+            self.brain.clear_phonological_loop()
+        except AttributeError:
+            return {"error": "clear_phonological_loop not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"clear_phonological_loop: {e}"}
+        return {"ok": True}
+
+    def _cmd_get_phonological_loop_state(self, req):
+        """Slice 5: read-only inspection of the phonological loop.
+
+        Request: {"cmd": "get_phonological_loop_state"}
+        Returns: {"ok": True, "buffer": str, "trace_count": int}.
+        buffer is the surface form (words with trace >= 0.3,
+        space-separated).
+        """
+        del req
+        try:
+            d = self.brain.get_phonological_loop_state()
+        except AttributeError:
+            return {"error": "get_phonological_loop_state not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_phonological_loop_state: {e}"}
+        d["ok"] = True
+        return d
+
+    def _cmd_get_phonological_loop_diag(self, req):
+        """Slice 5: full diagnostic snapshot of the phonological loop.
+
+        Request: {"cmd": "get_phonological_loop_diag"}
+        Returns: full diag dict (enabled / buffer_len / trace_count /
+        trace_capacity / max_words / decay_rate / avg_trace_strength /
+        last_refresh_ms) plus "ok": True.
+        """
+        del req
+        try:
+            d = self.brain.get_phonological_loop_diag()
+        except AttributeError:
+            return {"error": "get_phonological_loop_diag not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_phonological_loop_diag: {e}"}
+        d["ok"] = True
+        return d
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 

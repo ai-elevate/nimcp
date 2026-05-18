@@ -1687,6 +1687,60 @@ nimcp_status_t nimcp_brain_get_thalamic_gates(nimcp_brain_t brain,
                                                 uint32_t max_count,
                                                 uint32_t* count_out);
 
+/** Slice 5 — phonological-loop working memory buffer.
+ *
+ *  Baddeley's working-memory model: a short-term phonological store
+ *  (~2 seconds of speech) + an articulatory rehearsal mechanism. When
+ *  enabled, the recurrent cascade incrementally refines the utterance
+ *  across iterations instead of rebuilding it from scratch each pass:
+ *    - Iteration start: existing traces decay by `decay_rate`; traces
+ *      below 0.05 are evicted.
+ *    - After stage_lexical: produced words merge into the buffer
+ *      (existing → refresh trace to 1.0, new → append, capped).
+ *    - stage_syntactic / stage_self_comp read the buffer's surface
+ *      form (words with trace >= 0.3) as the "intended utterance".
+ *
+ *  Default OFF — when not enabled, recurrent cascade behaves
+ *  byte-identically to Slice 1+2. Lifetime owned by the brain. */
+nimcp_status_t nimcp_brain_set_phonological_loop_enabled(nimcp_brain_t brain,
+                                                          bool enabled);
+/** Clamps to [0.0, 0.5]. NaN/Inf coerce to default (0.15). */
+nimcp_status_t nimcp_brain_set_phonological_loop_decay(nimcp_brain_t brain,
+                                                        float decay);
+/** Full reset — drops every word + trace, clears the surface buffer. */
+nimcp_status_t nimcp_brain_clear_phonological_loop(nimcp_brain_t brain);
+
+/** Read-only diagnostic snapshot. out_buffer receives the surface form
+ *  (words with trace >= 0.3, space-separated, NUL-terminated; truncated
+ *  to out_size-1). out_trace_count receives the count of currently-live
+ *  traces (regardless of threshold). Any out-pointer may be NULL.
+ *  Returns NIMCP_OK even when the loop is disabled (out_buffer = empty,
+ *  out_trace_count = 0). */
+nimcp_status_t nimcp_brain_get_phonological_loop_state(
+    nimcp_brain_t brain,
+    char* out_buffer,
+    uint32_t out_size,
+    uint32_t* out_trace_count);
+
+/** Full diag struct — covers what the lightweight getter omits
+ *  (decay_rate, enabled, avg trace strength). Forward-declared to keep
+ *  this header light; the full type lives in the include/language/
+ *  phonological-loop header. */
+typedef struct nimcp_phonological_loop_diag {
+    bool     enabled;
+    uint32_t buffer_len;          /* strlen of current surface buffer */
+    uint32_t trace_count;         /* number of currently-live traces */
+    uint32_t trace_capacity;      /* slot capacity */
+    uint32_t max_words;           /* configured cap */
+    float    decay_rate;          /* configured per-iteration decay */
+    float    avg_trace_strength;  /* mean of all live traces (0 if empty) */
+    uint64_t last_refresh_ms;     /* monotonic ms of last decay/merge */
+} nimcp_phonological_loop_diag_t;
+
+nimcp_status_t nimcp_brain_get_phonological_loop_diag(
+    nimcp_brain_t brain,
+    nimcp_phonological_loop_diag_t* out);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *
