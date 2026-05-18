@@ -925,6 +925,10 @@ int snn_language_bridge_decode_with_lateral_inhibition(
 
     uint32_t K = *num_results;
     if (K == 0) return 0;
+    /* Wave-3 (2026-05-19) telemetry: bump decode_calls for every entry
+     * that reached actual K-WTA logic (K >= 1), so consumers can divide
+     * the sum-counters by it for averages. */
+    bridge->stats.lateral_inhibition_decode_calls++;
     /* Degenerate: a single candidate has nothing to compete with. Leave
      * the result as-is (activation = cosine score, confidence intact). */
     if (K == 1) return 0;
@@ -1009,7 +1013,9 @@ int snn_language_bridge_decode_with_lateral_inhibition(
      * Result: the leader's share grows as the p-th power each step;
      * subordinates → 0 in O(log K) micro-steps. */
     bool nan_seen = false;
+    uint32_t steps_done = 0;
     for (uint32_t t = 0; t < T; t++) {
+        steps_done = t + 1;
         float sum_pwr = 0.0f;
         float pwr[LATERAL_INHIBITION_MAX_K];
         for (uint32_t k = 0; k < K; k++) {
@@ -1042,6 +1048,8 @@ int snn_language_bridge_decode_with_lateral_inhibition(
     }
 
     if (nan_seen) {
+        /* Wave-3 telemetry: bump NaN-fallback counter. */
+        bridge->stats.lateral_inhibition_nan_fallbacks++;
         /* Sticky one-shot warning — without this, the warning fires every
          * tick once the regime is bad. Fall back to cosine top-K. */
         if (!bridge->_li_warned) {
@@ -1054,6 +1062,13 @@ int snn_language_bridge_decode_with_lateral_inhibition(
         }
         return 0;
     }
+
+    /* Wave-3 telemetry: settled_steps + winner-margin. settled_steps is
+     * always T here (no early-exit on convergence yet — slot for future
+     * delta-stop), so this is "steps done before normal exit". Winner
+     * margin uses the post-sort top two activations after we do the
+     * sort below; record before tmp[] is destroyed. */
+    bridge->stats.lateral_inhibition_settled_steps_sum += steps_done;
 
     /* Sum for probability-like confidence. */
     float sum_settled = 0.0f;
@@ -1086,6 +1101,18 @@ int snn_language_bridge_decode_with_lateral_inhibition(
                                                  : 0.0f;
     }
     for (uint32_t k = 0; k < K; k++) results[k] = tmp[k];
+
+    /* Wave-3 telemetry: winner margin = a[order[0]] - a[order[1]] (post-
+     * settle). K guaranteed >= 2 here. Stored as fixed-point margin * 1e6
+     * to keep the field uint64_t (consumers divide by 1e6 * decode_calls
+     * for mean margin). */
+    if (K >= 2) {
+        float margin = a[order[0]] - a[order[1]];
+        if (margin < 0.0f) margin = 0.0f;
+        if (margin > 1.0f) margin = 1.0f;
+        bridge->stats.lateral_inhibition_winner_margin_sum +=
+            (uint64_t)(margin * 1000000.0f);
+    }
 
     return 0;
 }

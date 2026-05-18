@@ -982,6 +982,14 @@ typedef struct {
      * cold-start-bounced (will resolve as bindings accrue); a flat
      * counter means the path is never reached at all (labels too short). */
     uint64_t next_token_cold_start_skips;
+    /* Wave-3 (2026-05-19) S4 lateral-inhibition counters — mirror of
+     * snn_lang_stats_t equivalents. All zero when enable_lateral_inhibition
+     * is false. winner_margin_sum and settled_steps_sum are running sums;
+     * divide by decode_calls (and 1e6 for margin) to get means. */
+    uint64_t bridge_lateral_inhibition_decode_calls;
+    uint64_t bridge_lateral_inhibition_winner_margin_sum;
+    uint64_t bridge_lateral_inhibition_settled_steps_sum;
+    uint64_t bridge_lateral_inhibition_nan_fallbacks;
 } nimcp_grounded_language_diagnostics_t;
 
 /**

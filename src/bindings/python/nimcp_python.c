@@ -2791,6 +2791,11 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_da_gated_stdp_passes",      PyLong_FromUnsignedLongLong(d.bridge_da_gated_stdp_passes));
     GLD_SET("bridge_last_da_modulation",        PyFloat_FromDouble((double)d.bridge_last_da_modulation));
     GLD_SET("next_token_cold_start_skips",      PyLong_FromUnsignedLongLong(d.next_token_cold_start_skips));
+    /* Wave-3 (2026-05-19) lateral-inhibition telemetry surface. */
+    GLD_SET("bridge_lateral_inhibition_decode_calls",      PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_decode_calls));
+    GLD_SET("bridge_lateral_inhibition_winner_margin_sum", PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_winner_margin_sum));
+    GLD_SET("bridge_lateral_inhibition_settled_steps_sum", PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_settled_steps_sum));
+    GLD_SET("bridge_lateral_inhibition_nan_fallbacks",     PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_nan_fallbacks));
 #undef GLD_SET
     return dict;
 }

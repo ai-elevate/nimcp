@@ -534,6 +534,35 @@ typedef struct {
      *
      * APPEND-ONLY: ABI sentinel below pins the new size. */
     uint64_t beam_hnn_rerank_passes;
+
+    /* Wave-3 (2026-05-19) S4 lateral-inhibition telemetry. All zero when
+     * enable_lateral_inhibition is false.
+     *
+     *   lateral_inhibition_decode_calls       — invocations of the K-WTA
+     *                                            decode entry point.
+     *   lateral_inhibition_winner_margin_sum  — running sum of
+     *                                            (a[winner] - a[2nd])
+     *                                            across all decode calls;
+     *                                            divide by decode_calls for
+     *                                            mean margin.
+     *   lateral_inhibition_settled_steps_sum  — running sum of micro-steps
+     *                                            actually executed before
+     *                                            convergence; divide by
+     *                                            decode_calls for mean
+     *                                            settling speed.
+     *   lateral_inhibition_nan_fallbacks      — count of calls that hit a
+     *                                            NaN in the activation
+     *                                            field mid-settle and fell
+     *                                            back to plain argmax. Non-
+     *                                            zero indicates numeric
+     *                                            instability (gain too high
+     *                                            or input out of range).
+     *
+     * APPEND-ONLY: ABI sentinel at end of header pins new size. */
+    uint64_t lateral_inhibition_decode_calls;
+    uint64_t lateral_inhibition_winner_margin_sum;   /* fixed-point: margin * 1e6 */
+    uint64_t lateral_inhibition_settled_steps_sum;
+    uint64_t lateral_inhibition_nan_fallbacks;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -1432,9 +1461,11 @@ int snn_language_bridge_predict_sensory(
 _Static_assert(sizeof(snn_lang_config_t) == 188,
     "snn_lang_config_t ABI: size drifted from expected 188 bytes. "
     "Append-only on the struct; bump this literal in lockstep.");
-_Static_assert(sizeof(snn_lang_stats_t) == 264,
-    "snn_lang_stats_t ABI: size drifted from expected 264 bytes. "
-    "Append-only on the struct; bump this literal in lockstep.");
+_Static_assert(sizeof(snn_lang_stats_t) == 296,
+    "snn_lang_stats_t ABI: size drifted from expected 296 bytes. "
+    "Append-only on the struct; bump this literal in lockstep. "
+    "Wave-3 (2026-05-19) appended 4 lateral_inhibition_* counters "
+    "(32 bytes) -> 296.");
 #endif
 
 #ifdef __cplusplus

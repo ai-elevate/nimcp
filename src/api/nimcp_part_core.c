@@ -3813,6 +3813,11 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
             out->bridge_comprehend_stdp_pairs_fired = bs.comprehend_stdp_pairs_fired;
             out->bridge_da_gated_stdp_passes        = bs.da_gated_stdp_passes;
             out->bridge_last_da_modulation          = bs.last_da_modulation;
+            /* Wave-3 (2026-05-19) S4 lateral-inhibition counters. */
+            out->bridge_lateral_inhibition_decode_calls       = bs.lateral_inhibition_decode_calls;
+            out->bridge_lateral_inhibition_winner_margin_sum  = bs.lateral_inhibition_winner_margin_sum;
+            out->bridge_lateral_inhibition_settled_steps_sum  = bs.lateral_inhibition_settled_steps_sum;
+            out->bridge_lateral_inhibition_nan_fallbacks      = bs.lateral_inhibition_nan_fallbacks;
         }
         out->bridge_enable_da_modulation        = snn_language_bridge_get_da_modulation_enabled(b->snn_lang_bridge) ? 1u : 0u;
         out->bridge_enable_trigram_learning     = snn_language_bridge_get_trigram_learning_enabled(b->snn_lang_bridge) ? 1u : 0u;
