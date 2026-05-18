@@ -3090,6 +3090,21 @@ nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brai
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_cerebellar_pe_threshold(nimcp_brain_t brain,
+                                                       float threshold) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    /* The PE norm computed by the cascade is the sum of two cosine-distance
+     * norms (motor + prosody), each in [0, 1] — so the meaningful range of
+     * the threshold is [0, 2]. NaN/Inf coerce to the default. */
+    if (!isfinite(threshold)) threshold = 0.20f;
+    if (threshold < 0.0f) threshold = 0.0f;
+    if (threshold > 2.0f) threshold = 2.0f;
+    b->cerebellar_pe_threshold = threshold;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
                                                 nimcp_cerebellar_diag_t* out) {
     if (!out) return NIMCP_ERROR_INVALID_PARAM;

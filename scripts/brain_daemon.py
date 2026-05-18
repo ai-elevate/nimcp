@@ -2615,6 +2615,28 @@ class BrainService:
             return {"error": f"set_cerebellar_correction_strength: {e}"}
         return {"ok": True, "strength": strength}
 
+    def _cmd_set_cerebellar_pe_threshold(self, req):
+        """Slice 7 (S7-C2): set the PE-norm threshold above which the
+        recurrent cascade flags correction_pending. The cascade PE-norm is
+        the sum of two cosine-distance norms (motor + prosody), each in
+        [0, 1], so the meaningful range is [0, 2]. Clamped to [0, 2]
+        inside the C wrapper.
+
+        Request: {"cmd": "set_cerebellar_pe_threshold", "threshold": float}
+        Returns: {"ok": True, "threshold": float}.
+        """
+        try:
+            threshold = float(req.get("threshold", 0.20))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_cerebellar_pe_threshold bad arg: {e}"}
+        try:
+            self.brain.set_cerebellar_pe_threshold(threshold)
+        except AttributeError:
+            return {"error": "set_cerebellar_pe_threshold not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_cerebellar_pe_threshold: {e}"}
+        return {"ok": True, "threshold": threshold}
+
     def _cmd_get_cerebellar_diag(self, req):
         """Slice 7: snapshot of cerebellar prediction-correction
         diagnostics. Cheap (no atomics — cascade is single-caller-at-a-time

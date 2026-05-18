@@ -1770,6 +1770,13 @@ nimcp_status_t nimcp_brain_get_cerebellar_correction_enabled(nimcp_brain_t brain
 nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
                                                                float strength);
 
+/** Set the PE-norm threshold above which the recurrent cascade flags
+ *  correction_pending. The PE norm is the sum of two cosine-distance norms
+ *  (motor + prosody), each in [0, 1], so the meaningful range is [0, 2].
+ *  Clamped to [0.0, 2.0]; NaN/Inf coerce to default 0.20. */
+nimcp_status_t nimcp_brain_set_cerebellar_pe_threshold(nimcp_brain_t brain,
+                                                       float threshold);
+
 /** Snapshot type — lifetime cerebellar diagnostics. */
 typedef struct {
     int      enabled;                  /* current value of brain flag */

@@ -4369,6 +4369,20 @@ static PyObject* Brain_set_cerebellar_correction_strength(BrainObject* self, PyO
     Py_RETURN_NONE;
 }
 
+static PyObject* Brain_set_cerebellar_pe_threshold(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    double threshold = 0.0;
+    if (!PyArg_ParseTuple(args, "d", &threshold)) return NULL;
+    if (nimcp_brain_set_cerebellar_pe_threshold(self->brain,
+                                                (float)threshold) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cerebellar_pe_threshold failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_get_cerebellar_diag(BrainObject* self, PyObject* args) {
     (void)args;
     if (!self->brain) {
@@ -12638,6 +12652,8 @@ static PyMethodDef Brain_methods[] = {
      "Read the current cerebellar correction flag."},
     {"set_cerebellar_correction_strength", (PyCFunction)Brain_set_cerebellar_correction_strength, METH_VARARGS,
      "Slice 7: bias mix factor when the recurrent loop flags correction_pending — set_cerebellar_correction_strength(strength: float) -> None. Clamped to [0, 1]. NaN/Inf coerce to 0.5."},
+    {"set_cerebellar_pe_threshold", (PyCFunction)Brain_set_cerebellar_pe_threshold, METH_VARARGS,
+     "Slice 7: PE-norm threshold above which the recurrent cascade flags correction_pending — set_cerebellar_pe_threshold(threshold: float) -> None. The cascade PE-norm is the sum of two cosine-distance norms (motor + prosody), each in [0,1], so the meaningful range is [0, 2]. Clamped to [0, 2]. NaN/Inf coerce to default 0.20."},
     {"get_cerebellar_diag", (PyCFunction)Brain_get_cerebellar_diag, METH_NOARGS,
      "Slice 7: snapshot of cerebellar prediction-correction diagnostics — get_cerebellar_diag() -> dict(enabled, strength, correction_pending, pe_threshold, predictions_made, corrections_applied, last_pe_norm). Cheap (no atomics — cascade is single-caller-at-a-time by contract)."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,

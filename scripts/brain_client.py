@@ -615,6 +615,19 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return float(resp.get("strength", strength))
 
+    def set_cerebellar_pe_threshold(self, threshold=0.20):
+        """Slice 7 (S7-C2): PE-norm threshold above which the recurrent
+        cascade flags correction_pending. The cascade PE-norm is the sum of
+        two cosine-distance norms (motor + prosody), each in [0, 1], so the
+        meaningful range is [0, 2]. Clamped to [0, 2]. Default 0.20."""
+        resp = self._send({
+            "cmd": "set_cerebellar_pe_threshold",
+            "threshold": float(threshold),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("threshold", threshold))
+
     def get_cerebellar_diag(self):
         """Slice 7: snapshot of cerebellar prediction-correction
         diagnostics. Returns a dict with keys enabled / strength /
