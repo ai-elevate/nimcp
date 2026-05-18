@@ -781,6 +781,19 @@ typedef struct nimcp_cascade_counters {
      * Non-zero indicates the recurrent loop was running with reduced
      * settling-detection (useful for "loop ran to max_iters" debugging). */
     uint64_t recurrent_oom_count;
+
+    /* S3-H3 fix (2026-05-19) — count of stage_lexical invocations where
+     * prod.semantic_vector was NULL and the FEP pe_lexical channel was
+     * skipped (set to 0). Non-zero indicates an older bridge that doesn't
+     * fill semantic_vector; FEP precision-weighting is operating with one
+     * less signal. */
+    uint64_t fep_lexical_skipped;
+
+    /* S3-H6 fix (2026-05-19) — count of stage_self_train invocations
+     * where the effective lr_scale * gate * precision computation hit
+     * the CASCADE_SELF_TRAIN_LR_SCALE_MAX cap. Non-zero indicates the
+     * cap is engaging and the intended precision-boost is being clipped. */
+    uint64_t self_train_precision_cap_hits;
 } nimcp_cascade_counters_t;
 
 /* Walkthrough-4 audit M MEDIUM — ABI size sentinels for the two
@@ -801,11 +814,13 @@ _Static_assert(sizeof(nimcp_cascade_diag_full_t) == 424,
     "S1-C1 fix (2026-05-18) appended uint32_t settling_steps (4 bytes) → 416. "
     "S3+S6-H2/H4 fix (2026-05-19) appended pe_content_arcuate_norm + "
     "pe_content_gate_norm (8 bytes) → 424.");
-_Static_assert(sizeof(nimcp_cascade_counters_t) == 464,
-    "nimcp_cascade_counters_t ABI: size drifted from expected 464. "
+_Static_assert(sizeof(nimcp_cascade_counters_t) == 480,
+    "nimcp_cascade_counters_t ABI: size drifted from expected 480. "
     "Append-only; update binding shadow types in lockstep. "
     "S1-H3+H4 fix (2026-05-19) appended uint64_t recurrent_oom_count "
-    "(8 bytes) → 464.");
+    "(8 bytes) → 464. "
+    "S3-H3 + S3-H6 fix (2026-05-19) appended uint64_t fep_lexical_skipped "
+    "+ uint64_t self_train_precision_cap_hits (16 bytes) → 480.");
 #endif
 
 /**

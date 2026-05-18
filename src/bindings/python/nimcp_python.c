@@ -3988,14 +3988,18 @@ typedef struct {
     uint64_t discourse_ring_pushes_self;
     /* S1-H3+H4 fix (2026-05-19) — mirror of recurrent_oom_count. */
     uint64_t recurrent_oom_count;
+    /* S3-H3 + S3-H6 fix (2026-05-19) — mirrors of fep_lexical_skipped and
+     * self_train_precision_cap_hits. */
+    uint64_t fep_lexical_skipped;
+    uint64_t self_train_precision_cap_hits;
 } bk_cascade_counters_local_t;
 
 /* S3-C1 (CRITICAL): size lockstep with the public type. Mirror of
  * nimcp_cascade_counters_t in include/language/nimcp_communication_cascade.h
- * which has its own _Static_assert(... == 464). Future append on either
+ * which has its own _Static_assert(... == 480). Future append on either
  * side without the reciprocal assert silently stack-smashes the cast in
  * Brain_get_cascade_counters. */
-_Static_assert(sizeof(bk_cascade_counters_local_t) == 464,
+_Static_assert(sizeof(bk_cascade_counters_local_t) == 480,
     "bk_cascade_counters_local_t shadow drift — bump public + local in lockstep "
     "(public assert: include/language/nimcp_communication_cascade.h)");
 
@@ -4047,6 +4051,10 @@ static PyObject* Brain_get_cascade_counters(BrainObject* self, PyObject* args) {
         PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_self));
     PyDict_SetItemString(d, "recurrent_oom_count",
         PyLong_FromUnsignedLongLong(c.recurrent_oom_count));
+    PyDict_SetItemString(d, "fep_lexical_skipped",
+        PyLong_FromUnsignedLongLong(c.fep_lexical_skipped));
+    PyDict_SetItemString(d, "self_train_precision_cap_hits",
+        PyLong_FromUnsignedLongLong(c.self_train_precision_cap_hits));
     return d;
 }
 

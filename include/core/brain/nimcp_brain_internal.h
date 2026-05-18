@@ -2916,6 +2916,19 @@ struct brain_struct {
      * but multiple-reader from the RO snapshot path. */
     _Atomic uint64_t cascade_recurrent_oom_count;
 
+    /* S3-H3 fix (2026-05-19): cascade_stage_lexical hit the FEP fallback
+     * because prod.semantic_vector was NULL. Older bridges don't fill it;
+     * non-zero indicates the FEP pe_total is operating with the lexical
+     * channel zeroed and precision-weighting is missing that signal. */
+    _Atomic uint64_t cascade_fep_lexical_skipped;
+
+    /* S3-H6 fix (2026-05-19): cascade_stage_self_train computed an
+     * effective lr_scale (= base * gate * precision) that hit the
+     * CASCADE_SELF_TRAIN_LR_SCALE_MAX cap. Non-zero means the cap is
+     * engaging — the intended precision-boost is being clipped and the
+     * brain might be missing some plasticity headroom. */
+    _Atomic uint64_t cascade_self_train_precision_cap_hits;
+
     /* Audit Category A item 1 — route nimcp_brain_grounded_respond
      * through the 15-stage cascade orchestrator instead of the legacy
      * bridge-softmax passthrough. Default OFF preserves bit-for-bit

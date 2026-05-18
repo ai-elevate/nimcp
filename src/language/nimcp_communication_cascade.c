@@ -1134,20 +1134,28 @@ static int cascade_stage_lexical(brain_t brain,
     /* SLICE 3 — Stage Lexical PREDICTION: a perfectly-aligned bridge
      * would emit an utterance whose semantic_vector equals the input
      * content_intent. The OBSERVED is prod.semantic_vector. PE =
-     * ‖content_intent - prod.semantic_vector‖ / sqrt(dim). The bridge
-     * fills semantic_vector with its own re-projection of the produced
-     * text; if it's NULL (older bridges) we fall back to (1 - fluency)
-     * which carries similar "did the bridge know what it was saying"
-     * signal in [0,1]. */
+     * ‖content_intent - prod.semantic_vector‖ / sqrt(dim).
+     *
+     * S3-H3 fix (2026-05-19): pre-fix fell back to (1 - fluency) when
+     * prod.semantic_vector was NULL (older bridges that don't fill it).
+     * Fluency is the bridge's pre-recorded CONFIDENCE — NOT prediction
+     * error — and folding it into the FEP pe_total inflated the
+     * precision-weighting signal with confidence noise.
+     *
+     * Post-fix: when semantic_vector is absent, set pe_lexical_norm = 0
+     * (the FEP gate downstream treats 0 as "no signal" and falls back to
+     * pure cosine on the bridge's own self_match instead of doubling up).
+     * Bump cascade_fep_lexical_skipped to make the dependency visible
+     * — non-zero indicates the bridge is missing semantic_vector and
+     * FEP precision is operating with one less signal. */
     if (prod.semantic_vector && state->content_intent &&
         state->content_dim > 0) {
         state->pe_lexical_norm = cascade_fep_norm_diff(
             state->content_intent, prod.semantic_vector, state->content_dim);
-    } else if (isfinite(prod.fluency)) {
-        float f = prod.fluency;
-        if (f < 0.0f) f = 0.0f;
-        if (f > 1.0f) f = 1.0f;
-        state->pe_lexical_norm = 1.0f - f;
+    } else {
+        state->pe_lexical_norm = 0.0f;
+        atomic_fetch_add_explicit(&brain->cascade_fep_lexical_skipped, 1u,
+                                  memory_order_relaxed);
     }
 
     /* Transfer ownership: prod.text → state->utterance. */
@@ -2564,11 +2572,20 @@ static int cascade_stage_self_train(brain_t brain,
      * state->fep_precision on high-surprise iterations so plasticity is
      * stronger when the brain has more to learn. Default 1.0 leaves
      * legacy behavior unchanged. Bounded above to keep the effective LR
-     * inside the bridge's CASCADE_SELF_TRAIN_LR_SCALE_MAX cap. */
+     * inside the bridge's CASCADE_SELF_TRAIN_LR_SCALE_MAX cap.
+     *
+     * S3-H6 fix (2026-05-19): bump cascade_self_train_precision_cap_hits
+     * when the cap actually engages. Pre-fix the cap silently clipped
+     * intended precision-boost (e.g. base=5 * gate=1 * precision=3 = 15
+     * clipped to 10 — intended 3x became 2x). Non-zero indicates the cap
+     * is being hit and operators may want to lower the base lr_scale or
+     * raise CASCADE_SELF_TRAIN_LR_SCALE_MAX. */
     float precision = out_state_fep_precision_or_1(state);
     lr_scale *= precision;
     if (lr_scale > CASCADE_SELF_TRAIN_LR_SCALE_MAX) {
         lr_scale = CASCADE_SELF_TRAIN_LR_SCALE_MAX;
+        atomic_fetch_add_explicit(&brain->cascade_self_train_precision_cap_hits,
+                                  1u, memory_order_relaxed);
     }
 
     float reward_applied = 0.0f;
@@ -4078,6 +4095,12 @@ int nimcp_brain_get_cascade_counters_impl(brain_t brain,
     /* S1-H3+H4 fix (2026-05-19): surface recurrent-loop OOM counter. */
     out->recurrent_oom_count = atomic_load_explicit(
         &brain->cascade_recurrent_oom_count, memory_order_relaxed);
+    /* S3-H3 + S3-H6 fix (2026-05-19): surface FEP lexical-skipped + self-train
+     * precision-cap-hits counters. */
+    out->fep_lexical_skipped = atomic_load_explicit(
+        &brain->cascade_fep_lexical_skipped, memory_order_relaxed);
+    out->self_train_precision_cap_hits = atomic_load_explicit(
+        &brain->cascade_self_train_precision_cap_hits, memory_order_relaxed);
     return 0;
 }
 
@@ -4137,5 +4160,10 @@ int nimcp_brain_reset_cascade_counters_impl(brain_t brain)
     atomic_store_explicit(&brain->cascade_self_produced_events_fired, 0u, memory_order_relaxed);
     atomic_store_explicit(&brain->cascade_discourse_ring_pushes_user, 0u, memory_order_relaxed);
     atomic_store_explicit(&brain->cascade_discourse_ring_pushes_self, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_recurrent_oom_count, 0u, memory_order_relaxed);
+    /* S3-H3 + S3-H6 fix (2026-05-19): reset the new FEP-skipped + precision-cap
+     * counters alongside the rest. */
+    atomic_store_explicit(&brain->cascade_fep_lexical_skipped, 0u, memory_order_relaxed);
+    atomic_store_explicit(&brain->cascade_self_train_precision_cap_hits, 0u, memory_order_relaxed);
     return 0;
 }
