@@ -3635,6 +3635,10 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
         float    pe_total;
         uint32_t fep_iteration;
         float    fep_precision;
+
+        /* S1-C1 fix: append-only mirror — distinct from repair_attempts
+         * above (which is owned by speech-repair retries). */
+        uint32_t settling_steps;
     } nimcp_cascade_diag_full_t_local;
 
     char text[2048] = {0};
@@ -3779,6 +3783,11 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
     PyDict_SetItemString(d, "pe_total",             PyFloat_FromDouble((double)s.pe_total));
     PyDict_SetItemString(d, "fep_iteration",        PyLong_FromLong((long)s.fep_iteration));
     PyDict_SetItemString(d, "fep_precision",        PyFloat_FromDouble((double)s.fep_precision));
+
+    /* S1-C1 fix: distinct from repair_attempts above. The recurrent
+     * cascade reports its iteration count in settling_steps; consumers
+     * that need both can read both. */
+    PyDict_SetItemString(d, "settling_steps",       PyLong_FromLong((long)s.settling_steps));
 
     /* Free heap-owned arrays we just copied into Python lists. */
     if (phon_seq)       nimcp_free(phon_seq);

@@ -11,6 +11,7 @@
 #include "core/brain/subcortical/nimcp_amygdala.h"  /* Phase 3c: amygdala destroy */
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* glial destroy helper */
 #include "core/brain/factory/init/nimcp_brain_init_broca.h"  /* S5-C1: Broca + phonological-loop destroy */
+#include "utils/thread/nimcp_thread.h"  /* S2-C2: arcuate-feedback lock destroy */
 #include "core/cortical_columns/nimcp_cortical_column_ternary.h"  /* CC4 ternary destroy */
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
@@ -381,6 +382,15 @@ void brain_destroy(brain_t brain)
     if (brain->grounded_lang) {
         grounded_language_destroy(brain->grounded_lang);
         brain->grounded_lang = NULL;
+    }
+
+    /* S2-C2 fix: destroy the arcuate-feedback lock (lazy-init'd by the
+     * cascade in nimcp_communication_cascade.c). Must come AFTER the
+     * cascade-consuming subsystems (broca/grounded_lang) are gone, so
+     * no thread will reach for the lock after we destroy it. */
+    if (brain->arcuate_feedback_lock) {
+        nimcp_mutex_free((nimcp_mutex_t*)brain->arcuate_feedback_lock);
+        brain->arcuate_feedback_lock = NULL;
     }
 
     // Cleanup sparse coding system

@@ -51,6 +51,42 @@
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"  /* S2-C2: arcuate-feedback lock */
+
+/* S2-C2/C3 fix: lazy-init for brain->arcuate_feedback_lock. The lock
+ * protects the arcuate_feedback_{vec,dim,strength} tuple from the
+ * recurrent-loop writer + cascade_stage_content reader race. Returns the
+ * mutex pointer or NULL if allocation fails (caller skips the locked
+ * path — degraded but no crash; the same TOCTOU window as before).
+ *
+ * Race-free via a global init mutex (mirrors the phonological_loop
+ * S5-C2 pattern in nimcp_phonological_loop.c). Fast-path single
+ * branch when the lock is already populated. */
+#include <pthread.h>
+static nimcp_once_t  g_arcuate_init_once = PTHREAD_ONCE_INIT;
+static nimcp_mutex_t g_arcuate_init_mu;
+static void arcuate_init_global_once(void) {
+    nimcp_mutex_init(&g_arcuate_init_mu, NULL);
+}
+static nimcp_mutex_t* cascade_arcuate_lock_ensure(brain_t brain) {
+    if (!brain) return NULL;
+    /* Fast-path: lock already populated. */
+    nimcp_mutex_t* m = (nimcp_mutex_t*)brain->arcuate_feedback_lock;
+    if (m) return m;
+
+    nimcp_once(&g_arcuate_init_once, arcuate_init_global_once);
+    nimcp_mutex_lock(&g_arcuate_init_mu);
+    /* Re-check under lock — another thread may have initialized while
+     * we waited. */
+    m = (nimcp_mutex_t*)brain->arcuate_feedback_lock;
+    if (!m) {
+        m = nimcp_mutex_create(NULL);
+        /* Publish only after the mutex is fully constructed. */
+        brain->arcuate_feedback_lock = (void*)m;
+    }
+    nimcp_mutex_unlock(&g_arcuate_init_mu);
+    return m;
+}
 
 /* === SLICE 7 — cerebellar prediction-correction forward decls.
  *
@@ -939,14 +975,40 @@ static int cascade_stage_content(brain_t brain,
      *
      * No-op when arcuate_feedback_vec is NULL or dim mismatches — the
      * recurrent-loop owner allocates it on iteration 2+ and zeros it
-     * between non-recurrent calls. */
-    if (brain->arcuate_feedback_vec &&
-        brain->arcuate_feedback_dim == dim &&
-        isfinite(brain->arcuate_feedback_strength) &&
-        brain->arcuate_feedback_strength > 0.0f) {
-        const float k = brain->arcuate_feedback_strength;
-        for (uint32_t i = 0; i < dim; i++) {
-            state->content_intent[i] += k * brain->arcuate_feedback_vec[i];
+     * between non-recurrent calls.
+     *
+     * S2-C2 fix: take the arcuate-feedback lock to serialize against
+     * the recurrent-loop writer which may free + reassign the pointer
+     * (UAF was reachable before the lock). The lock is held across the
+     * O(dim) consume loop — bounded ~128 floats, well under our
+     * lock-hold budget. */
+    {
+        nimcp_mutex_t* arc_lock = cascade_arcuate_lock_ensure(brain);
+        if (arc_lock) {
+            nimcp_mutex_lock(arc_lock);
+            if (brain->arcuate_feedback_vec &&
+                brain->arcuate_feedback_dim == dim &&
+                isfinite(brain->arcuate_feedback_strength) &&
+                brain->arcuate_feedback_strength > 0.0f) {
+                const float k = brain->arcuate_feedback_strength;
+                for (uint32_t i = 0; i < dim; i++) {
+                    state->content_intent[i] += k * brain->arcuate_feedback_vec[i];
+                }
+            }
+            nimcp_mutex_unlock(arc_lock);
+        } else {
+            /* Lock alloc failed — fall back to the legacy unlocked path.
+             * Same UAF window as pre-fix; preserves liveness on the
+             * cold-start failure path. */
+            if (brain->arcuate_feedback_vec &&
+                brain->arcuate_feedback_dim == dim &&
+                isfinite(brain->arcuate_feedback_strength) &&
+                brain->arcuate_feedback_strength > 0.0f) {
+                const float k = brain->arcuate_feedback_strength;
+                for (uint32_t i = 0; i < dim; i++) {
+                    state->content_intent[i] += k * brain->arcuate_feedback_vec[i];
+                }
+            }
         }
     }
 
@@ -2733,6 +2795,10 @@ int nimcp_brain_produce_cascade_diag_full_impl(
         out->pe_total          = state.pe_total;
         out->fep_iteration     = state.fep_iteration;
         out->fep_precision     = state.fep_precision;
+
+        /* S1-C1 fix: dedicated settling_steps field — distinct from
+         * repair_attempts which counts speech-repair retries above. */
+        out->settling_steps    = state.settling_steps;
     }
 
     cascade_state_cleanup(&state);
@@ -2804,7 +2870,10 @@ int nimcp_brain_produce_cascade_recurrent_impl(
         }
         if (out_word_count)     *out_word_count     = state.word_count;
         if (out_confidence)     *out_confidence     = state.content_confidence;
-        if (out_settling_steps) *out_settling_steps = state.repair_attempts;
+        /* S1-C1 fix: out_settling_steps now reads from the dedicated
+         * settling_steps field, not the speech-repair-owned
+         * repair_attempts. */
+        if (out_settling_steps) *out_settling_steps = state.settling_steps;
     } else {
         if (out_utterance && out_text_max > 0) out_utterance[0] = '\0';
         if (out_word_count)     *out_word_count     = 0;
@@ -3347,7 +3416,13 @@ int communication_cascade_run_recurrent(brain_t brain,
     /* Save the brain's pre-existing arcuate state so we can restore it
      * if this recurrent_run is nested under a higher-level caller that
      * had its own feedback active. Defense in depth — current callers
-     * don't nest. */
+     * don't nest.
+     *
+     * S2-C2 fix: take the arcuate-feedback lock around the save+reset
+     * so a concurrent cascade_stage_content reader sees a consistent
+     * tuple snapshot. */
+    nimcp_mutex_t* arc_lock_recur = cascade_arcuate_lock_ensure(brain);
+    if (arc_lock_recur) nimcp_mutex_lock(arc_lock_recur);
     float*   saved_arcuate_vec      = brain->arcuate_feedback_vec;
     uint32_t saved_arcuate_dim      = brain->arcuate_feedback_dim;
     float    saved_arcuate_strength = brain->arcuate_feedback_strength;
@@ -3355,6 +3430,7 @@ int communication_cascade_run_recurrent(brain_t brain,
     brain->arcuate_feedback_vec      = NULL;
     brain->arcuate_feedback_dim      = 0;
     brain->arcuate_feedback_strength = 0.0f;
+    if (arc_lock_recur) nimcp_mutex_unlock(arc_lock_recur);
 
     float* feedback_vec = NULL;   /* owned by this function; size gl_dim */
 
@@ -3438,7 +3514,11 @@ int communication_cascade_run_recurrent(brain_t brain,
                                        <= self_match_eps);
             settling_steps++;
             if (utterance_stable && self_match_stable) {
-                out_state->repair_attempts =
+                /* S1-C1 fix: write to the new settling_steps field
+                 * instead of stomping on repair_attempts (which is owned
+                 * by the speech-repair retry loop and reads bogus to
+                 * consumers when overwritten here). */
+                out_state->settling_steps =
                     (settling_steps > 0) ? (settling_steps - 1) : 0;
                 converged = true;
                 break;
@@ -3500,9 +3580,16 @@ int communication_cascade_run_recurrent(brain_t brain,
                     if (!isfinite(strength) || strength < 0.0f) strength = 0.5f;
                     if (strength > 0.8f) strength = 0.8f;
 
+                    /* S2-C2 fix: publish the (vec, dim, strength) tuple
+                     * under the arcuate lock so a concurrent
+                     * cascade_stage_content reader either sees the OLD
+                     * tuple (and reads its vec safely) or the NEW tuple
+                     * (and reads the new vec safely) — never a torn mix. */
+                    if (arc_lock_recur) nimcp_mutex_lock(arc_lock_recur);
                     brain->arcuate_feedback_vec      = feedback_vec;
                     brain->arcuate_feedback_dim      = gl_dim;
                     brain->arcuate_feedback_strength = strength;
+                    if (arc_lock_recur) nimcp_mutex_unlock(arc_lock_recur);
                 }
             }
             gl_comprehension_result_cleanup(&self_comp);
@@ -3542,18 +3629,34 @@ int communication_cascade_run_recurrent(brain_t brain,
     }
 
     /* Record settling_steps even if we hit max_iters without converging —
-     * tells callers "system did not settle, here's how many tries it got". */
-    if (settling_steps > 0 && out_state->repair_attempts == 0) {
-        out_state->repair_attempts = settling_steps;
+     * tells callers "system did not settle, here's how many tries it got".
+     *
+     * S1-C1 fix: this path used to write into repair_attempts, which is
+     * owned by the speech-repair retry loop. Consumers reading repair_attempts
+     * saw a meaningless mix of two unrelated subsystem counters. Now we
+     * write into the new dedicated settling_steps field, and leave
+     * repair_attempts alone. */
+    if (settling_steps > 0 && out_state->settling_steps == 0) {
+        out_state->settling_steps = settling_steps;
     }
 
     /* Restore caller's arcuate-feedback state, then free our buffer. The
      * pointer assignment order matters: clear the pointer BEFORE freeing,
      * so cascade_stage_content can't read a freed buffer if another
-     * thread sneaks in (defense in depth). */
+     * thread sneaks in.
+     *
+     * S2-C2 fix: hold the arcuate lock across the restore so the
+     * (vec, dim, strength) tuple stays consistent for any concurrent
+     * reader. The lock is dropped BEFORE the free so we don't hold it
+     * across a malloc-system call (and any concurrent reader that
+     * snapped the OLD pointer while we held the lock already finished
+     * its consume loop — produce_cascade is a one-shot copy under the
+     * lock, not a long-lived view). */
+    if (arc_lock_recur) nimcp_mutex_lock(arc_lock_recur);
     brain->arcuate_feedback_vec      = saved_arcuate_vec;
     brain->arcuate_feedback_dim      = saved_arcuate_dim;
     brain->arcuate_feedback_strength = saved_arcuate_strength;
+    if (arc_lock_recur) nimcp_mutex_unlock(arc_lock_recur);
     if (feedback_vec) nimcp_free(feedback_vec);
 
     /* SLICE 7 — restore caller's correction_pending flag (always false

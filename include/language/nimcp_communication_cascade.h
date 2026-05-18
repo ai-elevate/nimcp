@@ -354,6 +354,17 @@ typedef struct {
     float    cereb_prosody_pe_norm;
     bool     cereb_correction_applied;
     uint32_t cereb_predictions_made;
+
+    /* S1-C1 fix: recurrent-loop settling steps. Distinct from
+     * repair_attempts which counts speech-repair retries. Pre-fix the
+     * recurrent loop OVERWROTE repair_attempts with its iteration count,
+     * corrupting any reader that expected repair-retry semantics.
+     * Owner: communication_cascade_run_recurrent writes this to the
+     * number of recurrent passes (iter+1) it executed before
+     * convergence or max_iters. Reader: nimcp_cascade_diag_full_t /
+     * Python diag-dict surfaces it as 'settling_steps' alongside
+     * 'repair_attempts'. APPENDED at end of struct. */
+    uint32_t settling_steps;
 } production_cascade_state_t;
 
 /* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
@@ -371,14 +382,16 @@ typedef struct {
  *
  * Computed on x86_64 Linux gcc with default packing. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(production_cascade_state_t) == 888,
-    "production_cascade_state_t ABI: size drifted from expected 888. "
+_Static_assert(sizeof(production_cascade_state_t) == 896,
+    "production_cascade_state_t ABI: size drifted from expected 896. "
     "Append-only on the struct; bump this literal in lockstep. "
     "Slice 3 (2026-05-18) appended 6 prediction-error fields (24 bytes) "
     "atop the 760-byte baseline → 784. Slice 7 (2026-05-18) appended "
     "cerebellar prediction-correction fields (104 bytes — cereb_motor_* / "
     "cereb_prosody_* / cereb_correction_applied / cereb_predictions_made) "
-    "→ 888.");
+    "→ 888. S1-C1 fix (2026-05-18) appended uint32_t settling_steps "
+    "(4 bytes data + 4 bytes tail alignment padding to keep struct align) "
+    "→ 896.");
 #endif
 
 /**
@@ -619,6 +632,12 @@ typedef struct {
     float    pe_total;
     uint32_t fep_iteration;
     float    fep_precision;
+
+    /* S1-C1 fix: distinguish recurrent-loop settling from speech-repair
+     * retries. repair_attempts above is owned by Stage 12 (speech repair);
+     * settling_steps is the number of recurrent passes the recurrent
+     * cascade ran before convergence or max_iters. APPENDED at end. */
+    uint32_t settling_steps;
 } nimcp_cascade_diag_full_t;
 
 /**
@@ -716,10 +735,11 @@ typedef struct nimcp_cascade_counters {
  * nimcp_cascade_diag_full_t is similarly read field-by-name from
  * Python and the daemon RPC layer. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 412,
-    "nimcp_cascade_diag_full_t ABI: size drifted from expected 412. "
+_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 416,
+    "nimcp_cascade_diag_full_t ABI: size drifted from expected 416. "
     "Append-only; update binding shadow types in lockstep. "
-    "Slice 3 (2026-05-18) appended 7 FEP prediction-error fields (28 bytes).");
+    "Slice 3 (2026-05-18) appended 7 FEP prediction-error fields (28 bytes). "
+    "S1-C1 fix (2026-05-18) appended uint32_t settling_steps (4 bytes) → 416.");
 _Static_assert(sizeof(nimcp_cascade_counters_t) == 456,
     "nimcp_cascade_counters_t ABI: size drifted from expected 456. "
     "Append-only; update binding shadow types in lockstep.");

@@ -3013,6 +3013,26 @@ struct brain_struct {
     uint64_t cerebellar_predictions_made;
     uint64_t cerebellar_corrections_applied;
     float    cerebellar_last_pe_norm;             /* most-recent stage's PE norm */
+
+    /* === S2-C2/C3 ARCUATE FEEDBACK CROSS-THREAD LOCK ===
+     * Protects the arcuate_feedback_{vec,dim,strength} tuple above.
+     * Before this lock, the recurrent loop in communication_cascade_run_recurrent
+     * wrote/freed brain->arcuate_feedback_vec while a concurrent
+     * cascade_stage_content read the pointer + dereferenced it — a UAF
+     * was reachable if another thread invoked produce_cascade mid-recurrent
+     * run (the cascade was documented as "single-caller-at-a-time" but
+     * nothing enforced that contract).
+     *
+     * Lock-ordering: the cascade rule is that this lock is acquired only
+     * around the PUBLISH (writer) + READ-DEREF (reader) of the arcuate
+     * tuple — never held across other cascade-stage work. It MUST NOT
+     * nest under bridge / broca / grounded_lang mutexes (see
+     * docs/claude/modules/lock-ordering.md). Lazy-init via
+     * cascade_arcuate_lock_ensure() — the brain struct is calloc'd so a
+     * NULL pointer here means "not yet initialized".
+     *
+     * APPENDED at end of brain_struct — ABI append-only. */
+    void*    arcuate_feedback_lock;               /* nimcp_mutex_t*, lazy-init */
 };
 
 //=============================================================================
