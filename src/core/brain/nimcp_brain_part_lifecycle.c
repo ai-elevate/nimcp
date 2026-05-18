@@ -10,6 +10,7 @@
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"  /* Phase 3c: amygdala destroy */
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* glial destroy helper */
+#include "core/brain/factory/init/nimcp_brain_init_broca.h"  /* S5-C1: Broca + phonological-loop destroy */
 #include "core/cortical_columns/nimcp_cortical_column_ternary.h"  /* CC4 ternary destroy */
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
@@ -367,6 +368,16 @@ void brain_destroy(brain_t brain)
         snn_language_bridge_destroy(brain->snn_lang_bridge);
         brain->snn_lang_bridge = NULL;
     }
+
+    /* S5-C1 fix: tear down the Broca subsystem (Broca adapter +
+     * speech_repair + phonological_loop + pragmatics + the
+     * substrate/thalamic/quantum bridges) BEFORE grounded_lang. The
+     * destroy function is idempotent — if init was skipped, all the
+     * tested fields are NULL and the inner branches no-op. Without this
+     * call, the phonological_loop's malloced trace buffer + once-init
+     * mutex (Slice 5) leak on every brain teardown. */
+    nimcp_brain_factory_destroy_broca_subsystem(brain);
+
     if (brain->grounded_lang) {
         grounded_language_destroy(brain->grounded_lang);
         brain->grounded_lang = NULL;

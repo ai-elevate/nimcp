@@ -65,6 +65,22 @@ extern "C" {
 bool nimcp_brain_factory_init_broca_subsystem(brain_t brain);
 
 /**
+ * @brief Destroy the Broca's-area subsystem
+ *
+ * WHAT: Tear down Broca + speech-repair + phonological-loop +
+ *       pragmatics + substrate/thalamic/quantum bridges. Idempotent;
+ *       guards on NULL fields and clears each to NULL on exit.
+ * WHY:  Without this called from brain_destroy, all of these subsystems
+ *       leak on every brain teardown (S5-C1 / S5-C2 critical fix —
+ *       phonological_loop in particular owns a malloced trace buffer +
+ *       once-init mutex).
+ * HOW:  Reverse-order tear-down of the init call sequence.
+ *
+ * @param brain Brain instance
+ */
+void nimcp_brain_factory_destroy_broca_subsystem(brain_t brain);
+
+/**
  * @brief Initialize Broca's substrate bridge
  *
  * WHAT: Creates bridge to neural substrate for metabolic modulation
