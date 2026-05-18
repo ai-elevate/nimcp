@@ -46,6 +46,7 @@ BRIDGE_BOILERPLATE_MESH_ONLY(brain_init_broca, MESH_ADAPTER_CATEGORY_SYSTEM)
 #include "core/brain/regions/broca/nimcp_broca_substrate_bridge.h"
 #include "core/brain/regions/broca/nimcp_pragmatics_processor.h"
 #include "core/brain/regions/broca/nimcp_speech_repair.h"
+#include "language/nimcp_phonological_loop.h"
 // NOTE: Avoid including thalamic_bridge.h directly due to type conflicts
 // We use forward declarations instead
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
@@ -225,6 +226,22 @@ bool nimcp_brain_factory_init_broca_subsystem(brain_t brain) {
             LOG_WARN(LOG_MODULE, "Speech-repair processor create failed (non-fatal)");
         } else {
             LOG_DEBUG(LOG_MODULE, "Speech-repair processor initialized");
+        }
+    }
+
+    /* Slice 5 — phonological-loop working-memory buffer. The recurrent
+     * cascade refreshes this incrementally across iterations (Baddeley's
+     * model). Default OFF — buffer is allocated but inert until the
+     * caller flips nimcp_brain_set_phonological_loop_enabled. Non-fatal
+     * on failure — recurrent cascade tolerates a NULL loop by falling
+     * back to one-shot per-iteration utterance construction. */
+    if (!brain->loop_mutex) {
+        if (phonological_loop_init(brain) != 0) {
+            LOG_WARN(LOG_MODULE,
+                     "Phonological loop init failed (non-fatal, recurrent cascade falls back to one-shot mode)");
+        } else {
+            LOG_DEBUG(LOG_MODULE,
+                      "Phonological loop initialized (default OFF, decay=0.15, max_words=16)");
         }
     }
 
@@ -487,6 +504,11 @@ void nimcp_brain_factory_destroy_broca_subsystem(brain_t brain) {
         speech_repair_destroy(brain->speech_repair);
         brain->speech_repair = NULL;
     }
+
+    /* Destroy phonological loop (Slice 5 — sibling of speech_repair).
+     * Idempotent: phonological_loop_destroy guards on NULL fields and
+     * leaves them NULL on exit. */
+    phonological_loop_destroy(brain);
 
     /* Destroy pragmatics processor (sibling of broca_adapter) */
     if (brain->broca_pragmatics) {

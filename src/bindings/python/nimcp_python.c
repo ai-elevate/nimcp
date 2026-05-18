@@ -3950,6 +3950,95 @@ static PyObject* Brain_get_respond_via_cascade(BrainObject* self, PyObject* args
     return PyBool_FromLong(enabled);
 }
 
+/* =================================================================
+ * Slice 5 — phonological-loop working memory buffer.
+ *
+ * Setters/clear are simple void → None bindings; the state getter
+ * returns a dict with the surface form + trace count, and the diag
+ * getter returns a richer dict with the configured tunables + summary
+ * stats.
+ * ================================================================= */
+
+static PyObject* Brain_set_phonological_loop_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_phonological_loop_enabled(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_phonological_loop_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_phonological_loop_decay(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float decay = 0.15f;
+    if (!PyArg_ParseTuple(args, "f", &decay)) return NULL;
+    if (nimcp_brain_set_phonological_loop_decay(self->brain, decay) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_phonological_loop_decay failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_clear_phonological_loop(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    if (nimcp_brain_clear_phonological_loop(self->brain) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "clear_phonological_loop failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_phonological_loop_state(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    char buf[512];
+    uint32_t trace_count = 0;
+    if (nimcp_brain_get_phonological_loop_state(self->brain, buf, sizeof(buf),
+                                                  &trace_count) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_phonological_loop_state failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "buffer",      PyUnicode_FromString(buf));
+    PyDict_SetItemString(d, "trace_count", PyLong_FromUnsignedLong(trace_count));
+    return d;
+}
+
+static PyObject* Brain_get_phonological_loop_diag(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    nimcp_phonological_loop_diag_t diag = {0};
+    if (nimcp_brain_get_phonological_loop_diag(self->brain, &diag) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_phonological_loop_diag failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "enabled",            PyBool_FromLong(diag.enabled ? 1 : 0));
+    PyDict_SetItemString(d, "buffer_len",         PyLong_FromUnsignedLong(diag.buffer_len));
+    PyDict_SetItemString(d, "trace_count",        PyLong_FromUnsignedLong(diag.trace_count));
+    PyDict_SetItemString(d, "trace_capacity",     PyLong_FromUnsignedLong(diag.trace_capacity));
+    PyDict_SetItemString(d, "max_words",          PyLong_FromUnsignedLong(diag.max_words));
+    PyDict_SetItemString(d, "decay_rate",         PyFloat_FromDouble((double)diag.decay_rate));
+    PyDict_SetItemString(d, "avg_trace_strength", PyFloat_FromDouble((double)diag.avg_trace_strength));
+    PyDict_SetItemString(d, "last_refresh_ms",    PyLong_FromUnsignedLongLong((unsigned long long)diag.last_refresh_ms));
+    return d;
+}
+
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
  * gap where this was persisted in the LANC block but unreachable via
  * Python / daemon RPC. */
@@ -12155,6 +12244,16 @@ static PyMethodDef Brain_methods[] = {
      "Audit Cat A #1: opt-in cascade orchestrator path inside nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough). When ON, respond runs the full 15-stage cascade. Latency cost ~10x vs the bridge-only path."},
     {"get_respond_via_cascade", (PyCFunction)Brain_get_respond_via_cascade, METH_NOARGS,
      "Read the current respond_via_cascade flag."},
+    {"set_phonological_loop_enabled", (PyCFunction)Brain_set_phonological_loop_enabled, METH_VARARGS,
+     "Slice 5: enable Baddeley's phonological-loop working memory buffer — set_phonological_loop_enabled(enabled: bool) -> None. When enabled, the recurrent cascade decays traces between iterations, merges lexical output into the buffer, and feeds the buffer's surface form (words with trace >= 0.3) to stage_syntactic + stage_self_comp instead of the one-shot lexical output. Default OFF: when off, recurrent cascade behaves byte-identically to Slice 1+2."},
+    {"set_phonological_loop_decay", (PyCFunction)Brain_set_phonological_loop_decay, METH_VARARGS,
+     "Slice 5: per-iteration trace decay rate — set_phonological_loop_decay(decay: float) -> None. Clamped to [0.0, 0.5]; NaN/Inf coerce to default 0.15."},
+    {"clear_phonological_loop", (PyCFunction)Brain_clear_phonological_loop, METH_NOARGS,
+     "Slice 5: drop every trace + word, clear surface buffer — clear_phonological_loop() -> None. Use between unrelated prompts to ensure a clean start; the recurrent cascade also clears the loop on entry."},
+    {"get_phonological_loop_state", (PyCFunction)Brain_get_phonological_loop_state, METH_NOARGS,
+     "Slice 5: read-only inspection of the loop — get_phonological_loop_state() -> dict('buffer': str, 'trace_count': int). buffer is the surface form (words with trace >= 0.3, space-separated)."},
+    {"get_phonological_loop_diag", (PyCFunction)Brain_get_phonological_loop_diag, METH_NOARGS,
+     "Slice 5: full diagnostic snapshot — get_phonological_loop_diag() -> dict with enabled/buffer_len/trace_count/trace_capacity/max_words/decay_rate/avg_trace_strength/last_refresh_ms."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

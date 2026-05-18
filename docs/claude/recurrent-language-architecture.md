@@ -117,9 +117,34 @@ int communication_cascade_run_recurrent(
 
 **Why fourth**: lexical competition is well-documented in psycholinguistics (cohort model, semantic interference). Need iteration scaffold first to run the competition.
 
-### Slice 5: Phonological-loop working memory buffer
+### Slice 5: Phonological-loop working memory buffer (shipped 2026-05-18)
 
 **What**: replace one-shot utterance construction with a buffer that's incrementally refined each iteration. Baddeley's phonological loop model.
+
+**Implementation**:
+- `phonological_loop` lives on the brain struct (`loop_*` fields, append-only). Holds: surface buffer + per-word phonemic traces + the words themselves + decay rate + max-word cap + last-refresh timestamp + enabled flag + per-loop mutex.
+- Allocated once in `nimcp_brain_factory_init_broca_subsystem` (sibling of `speech_repair`), freed in the matching destroy. Initial capacity 256 bytes buffer + 16 trace slots; grows on demand via realloc, non-fatal on alloc failure.
+- Default OFF — when `loop_enabled=false`, the recurrent cascade is byte-identical to Slice 1+2.
+
+**Recurrent-loop integration**:
+1. `communication_cascade_run_recurrent` calls `phonological_loop_clear(brain)` on entry (single-recurrent-run buffer; not persisted across calls).
+2. At the start of each iteration after the first, `phonological_loop_decay(brain)` multiplies every trace by `(1 - decay_rate)` and evicts traces below 0.05.
+3. Inside `cascade_stage_lexical`, AFTER the bridge produces, `phonological_loop_merge_words(brain, state->utterance)` tokenizes the produced text; existing words refresh trace to 1.0, new words append (capped at `loop_max_words=16`).
+4. `cascade_stage_lexical` then SWAPS `state->utterance` to the buffer's surface form (`phonological_loop_render_active`, threshold 0.3). All downstream stages — `cascade_stage_syntactic`, `cascade_stage_self_comprehension`, speech-repair, prosody — see the buffered version.
+
+**Public surface (all default-OFF)**:
+- C API: `nimcp_brain_set_phonological_loop_enabled` / `_set_phonological_loop_decay` / `_clear_phonological_loop` / `_get_phonological_loop_state` (buffer + trace_count) / `_get_phonological_loop_diag` (full struct).
+- Python: `Brain.set_phonological_loop_enabled` / `set_phonological_loop_decay` / `clear_phonological_loop` / `get_phonological_loop_state` / `get_phonological_loop_diag`.
+- Daemon RPC: `set_phonological_loop_enabled` / `set_phonological_loop_decay` / `clear_phonological_loop` / `get_phonological_loop_state` / `get_phonological_loop_diag`.
+- Client: `BrainProxy.set_phonological_loop_enabled` / `set_phonological_loop_decay` / `clear_phonological_loop` / `get_phonological_loop_state` / `get_phonological_loop_diag`.
+
+**Files**:
+- `include/core/brain/nimcp_brain_internal.h` (loop_* fields appended).
+- `include/language/nimcp_phonological_loop.h` + `src/language/nimcp_phonological_loop.c` (new; all loop logic).
+- `include/nimcp.h` + `src/api/nimcp_part_core.c` (public C API).
+- `src/core/brain/factory/init/nimcp_brain_init_broca.c` (init / destroy wiring).
+- `src/language/nimcp_communication_cascade.c` (recurrent loop + lexical stage swap).
+- `src/bindings/python/nimcp_python.c`, `scripts/brain_daemon.py`, `scripts/brain_client.py`.
 
 ### Slice 6: Thalamic gating
 

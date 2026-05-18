@@ -2880,6 +2880,52 @@ struct brain_struct {
      * The cascade is significantly slower per call than the bridge-only
      * path — opt-in by deployment as a quality-vs-latency tradeoff. */
     bool respond_via_cascade;
+
+    /* === SLICE 5 — PHONOLOGICAL LOOP working memory buffer (2026-05-18) ===
+     * Baddeley's working memory model: a short-term phonological store
+     * (~2 seconds of speech) plus an articulatory rehearsal mechanism
+     * that refreshes activation. Real speakers don't construct an
+     * utterance in one shot — they hold a partial draft, decay it
+     * passively, and refresh it through rehearsal.
+     *
+     * Used by communication_cascade_run_recurrent (Slice 5):
+     *   - At the start of each iteration, decay all phonemic traces
+     *     by `loop_decay_rate`; drop any whose trace < 0.05.
+     *   - After cascade_stage_lexical produces new words, merge them
+     *     into the buffer: existing word → refresh trace to 1.0,
+     *     new word → append (cap at loop_max_words).
+     *   - cascade_stage_syntactic / Broca read the buffer's surface
+     *     form (words with trace >= 0.3) as the "intended utterance".
+     *   - cascade_stage_self_comprehension parses the buffer's surface
+     *     form (not the one-shot lexical output).
+     *
+     * Default OFF — when loop_enabled=false, the recurrent cascade
+     * behaves byte-identically to Slice 1+2 (no buffer interaction).
+     *
+     * Memory: heap-allocated buffer + trace + words arrays, owned by
+     * the brain across its lifetime; created in brain init alongside
+     * speech_repair, freed in brain destroy. Capacity grows on demand
+     * (realloc); never shrinks. Failures during realloc are non-fatal —
+     * the loop truncates writes rather than crashing.
+     *
+     * Lock: loop_mutex protects buffer/traces/words/last_refresh_ms.
+     * Held only by accessor functions. NEVER acquire while holding
+     * bridge or broca mutexes — see lock-ordering.md. The recurrent
+     * cascade calls merge/read APIs sequentially, so contention is
+     * single-caller-at-a-time in practice. void* opaque storage avoids
+     * pulling thread.h into the brain header. */
+    bool      loop_enabled;
+    char*     loop_buffer;             /* accumulated utterance text, NUL-terminated */
+    uint32_t  loop_buffer_len;         /* strlen() — excludes NUL */
+    uint32_t  loop_buffer_capacity;    /* bytes allocated for buffer */
+    float*    loop_phonemic_trace;     /* per-word activation/decay traces */
+    uint32_t  loop_trace_count;        /* current number of valid traces */
+    uint32_t  loop_trace_capacity;     /* slots allocated for traces */
+    uint32_t  loop_max_words;          /* cap at this many words (default 16) */
+    float     loop_decay_rate;         /* per-iteration decay (default 0.15) */
+    uint64_t  loop_last_refresh_ms;    /* monotonic ms — for rehearsal timing */
+    void*     loop_mutex;              /* nimcp_mutex_t* — see lock comment */
+    char**    loop_words;              /* per-word storage; size = loop_trace_capacity */
 };
 
 //=============================================================================

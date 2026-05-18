@@ -17,6 +17,7 @@
 
 #include "language/nimcp_communication_cascade.h"
 #include "language/nimcp_grounded_language.h"
+#include "language/nimcp_phonological_loop.h"
 
 #include "core/brain/nimcp_brain_internal.h"
 
@@ -720,6 +721,49 @@ static int cascade_stage_lexical(brain_t brain,
     state->fluency    = prod.fluency;
 
     gl_production_result_cleanup(&prod);
+
+    /* SLICE 5 — phonological loop integration.
+     *
+     * When the loop is enabled, merge the just-produced words into the
+     * working-memory buffer and SWAP state->utterance to the buffer's
+     * surface form (active words with trace >= 0.3). Downstream stages
+     * (syntactic, self_comp) then see the buffer's surface form rather
+     * than the one-shot lexical output — matching Baddeley's model where
+     * production iterates over a held draft.
+     *
+     * Default OFF — when brain->loop_enabled is false, this branch is
+     * skipped and stage_lexical's output flows downstream unchanged
+     * (Slice 1+2 behavior). */
+    if (brain->loop_enabled && brain->loop_mutex &&
+        state->utterance && state->utterance[0]) {
+        phonological_loop_merge_words(brain, state->utterance);
+
+        /* Render the active surface form into a heap-owned buffer that
+         * replaces state->utterance. Use a reasonable cap matching the
+         * cascade's own MAX_TOKENS×avg-word-len budget; the loop is
+         * capped at 16 words so 256 bytes is enough headroom. */
+        char surface[512];
+        surface[0] = '\0';
+        uint32_t active = phonological_loop_render_active(
+            brain, 0.3f, surface, sizeof(surface));
+
+        if (active > 0 && surface[0]) {
+            size_t slen = strlen(surface);
+            char* repl = (char*)nimcp_malloc(slen + 1);
+            if (repl) {
+                memcpy(repl, surface, slen + 1);
+                if (state->utterance) nimcp_free(state->utterance);
+                state->utterance  = repl;
+                state->word_count = active;
+                /* fluency stays as the bridge reported it — the buffered
+                 * surface form is by-construction a strict subset/
+                 * reorder of fluent tokens. */
+            }
+            /* On alloc failure we keep the bridge's raw text — the loop
+             * has still been updated for the next iteration's merge. */
+        }
+    }
+
     cascade_record_complete(state);
     return 0;
 }
@@ -2577,6 +2621,19 @@ int communication_cascade_run_recurrent(brain_t brain,
 
     float* feedback_vec = NULL;   /* owned by this function; size gl_dim */
 
+    /* SLICE 5 — phonological loop entry handshake.
+     *
+     * The loop is a between-iteration state across a SINGLE recurrent run,
+     * not a between-call persistent buffer. Clear it on entry so this
+     * call starts with a clean slate; subsequent merges accumulate within
+     * the run, and the final surface form represents what the brain
+     * "said" when settling completed. Default OFF — when loop_enabled is
+     * false, clear becomes a (mostly) no-op and the iteration loop
+     * behaves byte-identically to Slice 1+2. */
+    if (brain->loop_enabled && brain->loop_mutex) {
+        phonological_loop_clear(brain);
+    }
+
     for (iter = 0; iter < max_iters; iter++) {
         /* Free heap from previous iteration before communication_cascade_run
          * memset-clears the state. Otherwise prev iteration's utterance /
@@ -2584,6 +2641,15 @@ int communication_cascade_run_recurrent(brain_t brain,
          * provided state hasn't been populated yet. */
         if (iter > 0) {
             cascade_state_cleanup(out_state);
+        }
+
+        /* SLICE 5 — decay phonological traces at the start of each
+         * iteration (after iter 0). Models passive decay of the
+         * phonological store between articulatory rehearsals. Traces
+         * dropping below 0.05 are evicted. On iter 0 the loop is empty
+         * (we cleared above), so this is a no-op. */
+        if (iter > 0 && brain->loop_enabled && brain->loop_mutex) {
+            phonological_loop_decay(brain);
         }
 
         last_rc = communication_cascade_run(brain, prompt_or_null,
