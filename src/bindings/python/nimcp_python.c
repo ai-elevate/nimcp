@@ -2774,6 +2774,7 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("enable_anaphora_resolution",       PyBool_FromLong(d.enable_anaphora_resolution));
     GLD_SET("bridge_enable_da_modulation",      PyBool_FromLong(d.bridge_enable_da_modulation));
     GLD_SET("bridge_enable_trigram_learning",   PyBool_FromLong(d.bridge_enable_trigram_learning));
+    GLD_SET("bridge_ltd_margin",                PyFloat_FromDouble((double)d.bridge_ltd_margin));
     GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
     GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
@@ -3370,6 +3371,23 @@ static PyObject* Brain_set_trigram_learning_enabled(BrainObject* self,
         self->brain, enabled ? true : false);
     if (s != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, "no SNN language bridge attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Margin-gated LTD for next-token learners. margin must be in [1.0, 100.0]. */
+static PyObject* Brain_set_ltd_margin(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float margin = 1.5f;
+    if (!PyArg_ParseTuple(args, "f", &margin)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_ltd_margin(self->brain, margin);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "set_ltd_margin: margin must be in [1.0, 100.0] and bridge must be attached");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -12007,6 +12025,8 @@ static PyMethodDef Brain_methods[] = {
      "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied bigram updates. If trigram learning is enabled (set_trigram_learning_enabled), each step also walks (w_t, w_{t+1}) → w_{t+2} at half lr."},
     {"set_trigram_learning_enabled", (PyCFunction)Brain_set_trigram_learning_enabled, METH_VARARGS,
      "TA-4: toggle trigram next-token learning — set_trigram_learning_enabled(enabled: bool) -> None. Default OFF (preserves PA-4 bigram-only behavior)."},
+    {"set_ltd_margin", (PyCFunction)Brain_set_ltd_margin, METH_VARARGS,
+     "Margin gate for the SNN bridge's next-token LTD — set_ltd_margin(margin: float) -> None. LTD fires only when topK[0].confidence >= margin * topK[target_rank].confidence (and target is in topK). margin=1.0 reproduces legacy unconditional LTD; 1.5 (default) requires false_winner to lead by 50%; >=10 effectively disables LTD. Clamped to [1.0, 100.0]; raises RuntimeError on out-of-range. Runtime-only; not persisted."},
     /* Audit fix: campaign feature setters accessible from Python + daemon RPC. */
     {"set_da_modulation_enabled", (PyCFunction)Brain_set_da_modulation_enabled, METH_VARARGS,
      "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},

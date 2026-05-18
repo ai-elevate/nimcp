@@ -1797,6 +1797,30 @@ class BrainService:
             return {"error": f"set_trigram_learning_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_set_ltd_margin(self, req):
+        """Margin gate for the SNN bridge's next-token LTD. LTD only fires
+        when topK[0].confidence >= margin * topK[target_rank].confidence
+        (and target is in topK). Bumps the lower bound on how decisively
+        a false_winner must be beating the target in this *specific*
+        context before its bindings get suppressed.
+
+        Request keys: margin (float, default 1.5). Clamped to [1.0, 100.0].
+        margin=1.0 reproduces legacy unconditional LTD (the step-3900
+        regression mechanism); higher values progressively protect
+        strong-but-unrelated bindings. Runtime-only; not persisted.
+        """
+        try:
+            margin = float(req.get("margin", 1.5))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_ltd_margin bad arg: {e}"}
+        try:
+            self.brain.set_ltd_margin(margin)
+        except AttributeError:
+            return {"error": "set_ltd_margin not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_ltd_margin: {e}"}
+        return {"ok": True, "margin": margin}
+
     # =====================================================================
     # Audit fix: campaign feature setters via daemon RPC.
     # All persisted via mt_save_config now (LANC block) so the trainer
@@ -2050,6 +2074,7 @@ class BrainService:
             "topic_shift_threshold":   float(d.get("topic_shift_threshold", 0.0)),
             "topic_shift_min_turns":   int(d.get("topic_shift_min_turns", 0)),
             "snn_bridge_blend":        float(d.get("snn_bridge_blend", -1.0)),
+            "bridge_ltd_margin":       float(d.get("bridge_ltd_margin", 0.0)),
         }
         stats = {
             "vocab_size":                int(d.get("vocab_size", 0)),

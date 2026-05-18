@@ -4405,16 +4405,44 @@ int grounded_language_learn_next_token_pair(grounded_language_t* gl,
     /* LTD on (c, top-1 false winner) when target wasn't already #1. Half
      * the LR so LTD is gentler than LTP — biology and softmax CE both
      * prefer asymmetric updates in this direction. Skip if top-1 is the
-     * target itself (already learned correctly). */
+     * target itself (already learned correctly).
+     *
+     * Margin gate: only LTD when the false_winner is *decisively* beating
+     * the target in this specific context, not just dominant globally.
+     * Without this gate, indiscriminate LTD-on-top-1 erodes every
+     * globally-dominant binding regardless of whether it actually
+     * competed here — the step-3900 regression mechanism. We require:
+     *   (a) target appears in topK (rank in [0, num_out)) so the bridge
+     *       has at least *some* presence to compare against
+     *   (b) topK[0].confidence >= ltd_margin * topK[target_rank].confidence
+     *       so the false_winner is winning by a meaningful margin
+     * Skip the LTD step entirely when either fails. */
     if (target_rank != 0 && num_out > 0) {
         uint32_t false_winner = topK[0].word_pop;
         if (false_winner != next_word_pop) {
-            float ltd_lr = -0.5f * lr;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                if (concept_acts[c] > ltp_threshold) {
-                    snn_language_bridge_strengthen_binding(gl->snn_bridge,
-                                                            c, false_winner,
-                                                            ltd_lr * concept_acts[c]);
+            bool apply_ltd = false;
+            if (target_rank > 0 && (uint32_t)target_rank < num_out) {
+                float winner_conf = topK[0].confidence;
+                float target_conf = topK[target_rank].confidence;
+                float margin = snn_language_bridge_get_ltd_margin(gl->snn_bridge);
+                if (margin < 1.0f) margin = 1.5f;   /* safety net */
+                if (target_conf <= 0.0f) {
+                    /* Target is in topK but has zero/negative confidence —
+                     * essentially absent. Treat as "no in-context signal",
+                     * skip LTD. */
+                    apply_ltd = false;
+                } else if (winner_conf >= margin * target_conf) {
+                    apply_ltd = true;
+                }
+            }
+            if (apply_ltd) {
+                float ltd_lr = -0.5f * lr;
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    if (concept_acts[c] > ltp_threshold) {
+                        snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                                c, false_winner,
+                                                                ltd_lr * concept_acts[c]);
+                    }
                 }
             }
         }
@@ -4511,15 +4539,33 @@ int grounded_language_learn_next_token_pair_riemannian(grounded_language_t* gl,
         }
     }
 
+    /* Same margin gate as the flat path — see learn_next_token_pair for
+     * rationale. Riemannian step doesn't change the contrastive
+     * structure, just the per-binding update rule, so the indiscriminate-
+     * LTD failure mode applies identically. */
     if (target_rank != 0 && num_out > 0) {
         uint32_t false_winner = topK[0].word_pop;
         if (false_winner != next_word_pop) {
-            float ltd_lr = -0.5f * lr;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                if (concept_acts[c] > ltp_threshold) {
-                    snn_language_bridge_strengthen_binding_riemannian(
-                        gl->snn_bridge, c, false_winner,
-                        ltd_lr * concept_acts[c]);
+            bool apply_ltd = false;
+            if (target_rank > 0 && (uint32_t)target_rank < num_out) {
+                float winner_conf = topK[0].confidence;
+                float target_conf = topK[target_rank].confidence;
+                float margin = snn_language_bridge_get_ltd_margin(gl->snn_bridge);
+                if (margin < 1.0f) margin = 1.5f;
+                if (target_conf <= 0.0f) {
+                    apply_ltd = false;
+                } else if (winner_conf >= margin * target_conf) {
+                    apply_ltd = true;
+                }
+            }
+            if (apply_ltd) {
+                float ltd_lr = -0.5f * lr;
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    if (concept_acts[c] > ltp_threshold) {
+                        snn_language_bridge_strengthen_binding_riemannian(
+                            gl->snn_bridge, c, false_winner,
+                            ltd_lr * concept_acts[c]);
+                    }
                 }
             }
         }
@@ -4655,16 +4701,35 @@ int grounded_language_learn_next_token_triple(grounded_language_t* gl,
         }
     }
 
-    /* LTD on top-1 false winner, half-strength (matches bigram path). */
+    /* LTD on top-1 false winner, half-strength (matches bigram path).
+     * Same margin gate as learn_next_token_pair — see that function for
+     * the rationale. Critical for the trigram pump in particular: with
+     * ~85 trigram updates/min driven by learn_text_bigrams under the
+     * trigram flag, the unconditional LTD collapsed bridge_avg_binding_weight
+     * by 27% in ~3 hours (step-3900 regression). */
     if (target_rank != 0 && num_out > 0) {
         uint32_t false_winner = topK[0].word_pop;
         if (false_winner != next_word_pop) {
-            float ltd_lr = -0.5f * lr;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                if (context[c] > ltp_threshold) {
-                    snn_language_bridge_strengthen_binding(gl->snn_bridge,
-                                                            c, false_winner,
-                                                            ltd_lr * context[c]);
+            bool apply_ltd = false;
+            if (target_rank > 0 && (uint32_t)target_rank < num_out) {
+                float winner_conf = topK[0].confidence;
+                float target_conf = topK[target_rank].confidence;
+                float margin = snn_language_bridge_get_ltd_margin(gl->snn_bridge);
+                if (margin < 1.0f) margin = 1.5f;   /* safety net */
+                if (target_conf <= 0.0f) {
+                    apply_ltd = false;
+                } else if (winner_conf >= margin * target_conf) {
+                    apply_ltd = true;
+                }
+            }
+            if (apply_ltd) {
+                float ltd_lr = -0.5f * lr;
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    if (context[c] > ltp_threshold) {
+                        snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                                c, false_winner,
+                                                                ltd_lr * context[c]);
+                    }
                 }
             }
         }

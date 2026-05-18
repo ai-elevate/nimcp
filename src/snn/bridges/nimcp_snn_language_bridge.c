@@ -353,7 +353,13 @@ snn_lang_config_t snn_lang_config_default(void)
          * = 0.6 reproduces the prior hard-coded length-norm exponent. */
         .enable_beam_hnn_rerank     = false,
         .beam_hnn_weight            = 1.0f,
-        .beam_length_norm_alpha     = 0.6f
+        .beam_length_norm_alpha     = 0.6f,
+        /* Margin gate for learn_next_token_pair / _triple LTD. 1.5 means
+         * the false_winner must beat target by 50% in this context before
+         * LTD fires — empirically tuned to stop the step-3900 regression
+         * where indiscriminate LTD-on-top-1 eroded every globally-dominant
+         * binding regardless of in-context competition. */
+        .ltd_margin                 = 1.5f
     };
     return config;
 }
@@ -2980,6 +2986,23 @@ bool snn_language_bridge_get_trigram_learning_enabled(
     return bridge->enable_trigram_learning;
 }
 
+int snn_language_bridge_set_ltd_margin(
+    snn_language_bridge_t* bridge,
+    float margin)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(margin) || margin < 1.0f || margin > 100.0f) return -1;
+    bridge->config.ltd_margin = margin;
+    return 0;
+}
+
+float snn_language_bridge_get_ltd_margin(
+    const snn_language_bridge_t* bridge)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return 0.0f;
+    return bridge->config.ltd_margin;
+}
+
 /* TB-8: streaming-produce callback attach/detach. cb=NULL detaches.
  * Both cb and user_data are borrowed pointers — bridge never frees them
  * and never persists them across save/load. Stays consistent with the
@@ -3762,6 +3785,10 @@ static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
     cfg->enable_beam_hnn_rerank   = defaults.enable_beam_hnn_rerank;
     cfg->beam_hnn_weight          = defaults.beam_hnn_weight;
     cfg->beam_length_norm_alpha   = defaults.beam_length_norm_alpha;
+    /* ltd_margin is not in the V5 ext block — runtime-only knob. Reset
+     * to library default on every load; trainer/RPC re-applies any
+     * non-default value after the brain comes up. */
+    cfg->ltd_margin               = defaults.ltd_margin;
 }
 
 /* V5 stats trailer — 30 cumulative counters written after the bindings
@@ -4014,6 +4041,8 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
         config.enable_beam_hnn_rerank   = cfg_defaults.enable_beam_hnn_rerank;
         config.beam_hnn_weight          = cfg_defaults.beam_hnn_weight;
         config.beam_length_norm_alpha   = cfg_defaults.beam_length_norm_alpha;
+        /* Runtime-only knob, not in the ext block — reset to default. */
+        config.ltd_margin               = cfg_defaults.ltd_margin;
         uint32_t ext_block_size = 0;
         if (fread(&ext_block_size, sizeof(uint32_t), 1, f) != 1) {
             fclose(f);

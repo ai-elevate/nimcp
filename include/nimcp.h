@@ -949,6 +949,11 @@ typedef struct {
     float    reconsolidation_decay;
     float    topic_shift_threshold;
     uint32_t topic_shift_min_turns;
+    /* Margin gate threshold for learn_next_token_pair / _triple LTD.
+     * Default 1.5 — see snn_lang_config_t::ltd_margin in the bridge
+     * header for the rule. Exposed here so lang_status can surface it
+     * alongside the other bridge tunables. */
+    float    bridge_ltd_margin;
     /* TC-11 decode telemetry — operators use these to decide if/when to
      * invest in the GPU port. avg_decode_us = decode_total_ns / total_decode_calls
      * is the trigger metric (>100µs at production scale = GPU port wins). */
@@ -1392,6 +1397,19 @@ nimcp_status_t nimcp_brain_learn_text_bigrams(
 nimcp_status_t nimcp_brain_set_trigram_learning_enabled(
     nimcp_brain_t brain,
     bool enabled
+);
+
+/** Margin gate for the SNN language bridge's next-token LTD. See
+ *  snn_lang_config_t::ltd_margin in the bridge header for the rule.
+ *  margin=1.0 reproduces legacy unconditional LTD; ≥1.5 (default)
+ *  protects strong-but-unrelated bindings from indiscriminate
+ *  suppression. Clamped to [1.0, 100.0]; out-of-range or non-finite
+ *  inputs return NIMCP_ERROR without mutating bridge state.
+ *
+ *  Runtime-only; not persisted across saves. */
+nimcp_status_t nimcp_brain_set_ltd_margin(
+    nimcp_brain_t brain,
+    float margin
 );
 
 /* Audit fix — campaign feature flag setters callable from the daemon RPC

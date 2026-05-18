@@ -353,6 +353,26 @@ typedef struct {
     bool     enable_beam_hnn_rerank;
     float    beam_hnn_weight;                /* default 1.0 */
     float    beam_length_norm_alpha;         /* default 0.6 (Wu et al.) */
+    /* Margin-gated LTD for learn_next_token_pair / _triple. The legacy
+     * rule applied LTD on (context_concepts, top-1) whenever the target
+     * word_pop wasn't already top-1. At high pump rates (~85 updates/min
+     * via learn_text_bigrams) this indiscriminate suppression erodes
+     * every globally-dominant binding regardless of whether the
+     * false_winner was actually competing in *this* context, collapsing
+     * the bridge onto a tiny set of un-pruned word_pops (see step-3900
+     * regression: 1/50 unique answers, mean_conf 0.0022).
+     *
+     * With this margin gate, LTD fires only when BOTH:
+     *   (a) target_rank is in [0, num_out)  — target appears in topK
+     *   (b) topK[0].confidence >= ltd_margin * topK[target_rank].confidence
+     *       — false_winner is decisively beating target in this context
+     *
+     * ltd_margin = 1.0 reproduces the legacy "any winner > target" rule;
+     * 1.5 (default) requires false_winner to lead by 50%; ≥10.0 effectively
+     * disables LTD. Clamped to [1.0, 100.0] at runtime — values below 1.0
+     * would flip the direction. Runtime-only; not persisted in the V5 ext
+     * block (set via snn_language_bridge_set_ltd_margin on resume). */
+    float    ltd_margin;                     /* default 1.5 */
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -857,6 +877,27 @@ int snn_language_bridge_set_trigram_learning_enabled(
 bool snn_language_bridge_get_trigram_learning_enabled(
     const snn_language_bridge_t* bridge);
 
+/** Margin-gated LTD threshold for the next-token bigram/trigram learners.
+ *
+ *  See the snn_lang_config_t::ltd_margin field for the rule. Setting
+ *  margin=1.0 reproduces the legacy unconditional-LTD behavior; higher
+ *  values progressively gate LTD off and protect strong bindings that
+ *  aren't competing in the current context. Clamped to [1.0, 100.0];
+ *  out-of-range inputs return -1 without mutating state.
+ *
+ *  Runtime-only — not persisted across save/load. Trainer must re-apply
+ *  after each load. Caller-side default (snn_lang_config_default()) is 1.5.
+ *
+ *  @return 0 on success; -1 if bridge is NULL/invalid or margin is
+ *          out-of-range / non-finite. */
+int snn_language_bridge_set_ltd_margin(
+    snn_language_bridge_t* bridge,
+    float margin);
+
+/** Read the current LTD margin. Returns 0.0f if bridge is NULL/invalid. */
+float snn_language_bridge_get_ltd_margin(
+    const snn_language_bridge_t* bridge);
+
 /** TB-8: per-token streaming callback. Invoked once per emitted word
  *  during snn_language_bridge_produce. Returning non-zero aborts the
  *  produce loop early (text accumulated so far is preserved in
@@ -1239,8 +1280,8 @@ int snn_language_bridge_predict_sensory(
  * see the ABI delta. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #include <stddef.h>
-_Static_assert(sizeof(snn_lang_config_t) == 168,
-    "snn_lang_config_t ABI: size drifted from expected 168 bytes. "
+_Static_assert(sizeof(snn_lang_config_t) == 172,
+    "snn_lang_config_t ABI: size drifted from expected 172 bytes. "
     "Append-only on the struct; bump this literal in lockstep.");
 _Static_assert(sizeof(snn_lang_stats_t) == 264,
     "snn_lang_stats_t ABI: size drifted from expected 264 bytes. "

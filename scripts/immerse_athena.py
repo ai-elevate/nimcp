@@ -422,9 +422,23 @@ def submit_multimodal(brain, description):
                      if len(w.strip(".,!?;:\"'()-")) > 3]
             if words:
                 target_word = max(words, key=len)
-                brain.echo_and_correct(description, target_word, lr_scale=8.0)
-        except Exception:
-            pass
+                _r = brain.echo_and_correct(description, target_word, lr_scale=8.0)
+                print(f"[ECHO-OK] target={target_word!r} ret={_r}", file=sys.stderr, flush=True)
+            else:
+                print(f"[ECHO-SKIP] no-words desc={description[:30]!r}", file=sys.stderr, flush=True)
+        except Exception as _e:
+            print(f"[ECHO-EXC] {type(_e).__name__}: {_e}", file=sys.stderr, flush=True)
+
+        # Trigram + bigram STDP on the bridge. train_cognitive is dormant in
+        # stage 2 (no _train_cognitive call sites in the main loop), so the
+        # `learn_text_bigrams` wired into nimcp_brain_train_cognitive never
+        # fires. Drive it directly here so bridge_total_trigram_updates
+        # climbs and the LTD-on-false-winner mechanism actually pulls down
+        # saturated dominant word_pops.
+        try:
+            _b = brain.learn_text_bigrams(description, lr=0.02)
+        except Exception as _e:
+            print(f"[BIGRAM-EXC] {type(_e).__name__}: {_e}", file=sys.stderr, flush=True)
 
     desc_lower = description.lower()
 

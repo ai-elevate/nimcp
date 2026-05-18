@@ -3505,6 +3505,7 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         }
         out->bridge_enable_da_modulation        = snn_language_bridge_get_da_modulation_enabled(b->snn_lang_bridge) ? 1u : 0u;
         out->bridge_enable_trigram_learning     = snn_language_bridge_get_trigram_learning_enabled(b->snn_lang_bridge) ? 1u : 0u;
+        out->bridge_ltd_margin                  = snn_language_bridge_get_ltd_margin(b->snn_lang_bridge);
     }
 
     return NIMCP_OK;
@@ -4029,6 +4030,16 @@ nimcp_status_t nimcp_brain_set_trigram_learning_enabled(nimcp_brain_t brain,
     if (!b->snn_lang_bridge) return NIMCP_ERROR;
     int rc = snn_language_bridge_set_trigram_learning_enabled(
         b->snn_lang_bridge, enabled);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_set_ltd_margin(nimcp_brain_t brain, float margin)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_ltd_margin(b->snn_lang_bridge, margin);
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 

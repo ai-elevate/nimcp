@@ -320,6 +320,40 @@ class BrainProxy:
         })
         return int(resp.get("pairs_strengthened", 0))
 
+    def learn_text_bigrams(self, text, lr=0.02):
+        """Walk text and apply next-token bigram (and trigram, if flag is on)
+        STDP updates on the SNN language bridge. Returns the bigram count.
+
+        This is the ONLY path that drives `total_trigram_updates` — the
+        bridge's trigram counter stays at 0 unless this fires regularly on
+        real multi-word text. Trigram LTD-on-top-1-false-winner is the only
+        mechanism that pulls saturated dominant word_pops back down.
+        """
+        resp = self._send({
+            "cmd": "learn_text_bigrams",
+            "text": text,
+            "lr": float(lr),
+        })
+        if resp.get("error"):
+            return 0
+        return int(resp.get("count", 0))
+
+    def set_ltd_margin(self, margin):
+        """Set the SNN bridge's next-token LTD margin gate. LTD only fires
+        when topK[0].confidence >= margin * topK[target_rank].confidence
+        AND target appears in topK. margin=1.0 reproduces the legacy
+        unconditional rule (collapsed step-3900); 1.5 is the calibrated
+        default; >=10 effectively disables LTD. Clamped server-side to
+        [1.0, 100.0]; out-of-range raises RuntimeError via the daemon
+        error path. Runtime-only; not persisted across saves."""
+        resp = self._send({
+            "cmd": "set_ltd_margin",
+            "margin": float(margin),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("margin", margin))
+
     def ground_word(self, word, features, modality=5, attention=0.7,
                      valence=0.0, arousal=0.0):
         """Ground a word in sensory features. Returns True on success."""
