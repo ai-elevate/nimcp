@@ -1038,7 +1038,25 @@ int snn_language_bridge_strengthen_binding(snn_language_bridge_t* bridge,
     binding_node_t* existing = binding_find(bridge, concept_pop, word_pop);
     if (existing) {
         float old_w = existing->binding.weight;
-        float new_w = old_w + delta;
+        /* Weight-dependent plasticity (Wang/Markram soft-bound STDP):
+         *   LTP: delta_eff = delta * (w_max - w) / w_max
+         *   LTD: delta_eff = delta * w / w_max
+         * Recovers `Δw ≈ delta` in mid-range and vanishes at the boundaries.
+         * Without this, a saturating word_pop kept absorbing LTP without
+         * bound while the LTD ceiling was bypassed by the margin gate —
+         * resulting in 1/50-unique-answer attractors regardless of prompt.
+         * Same shape the Riemannian variant gets for free via sigmoid_prime;
+         * this brings the flat path to parity. */
+        float headroom;
+        if (delta >= 0.0f) {
+            headroom = (w_max - old_w) / w_max;
+        } else {
+            headroom = old_w / w_max;
+        }
+        if (headroom < 0.0f) headroom = 0.0f;
+        if (headroom > 1.0f) headroom = 1.0f;
+        float effective_delta = delta * headroom;
+        float new_w = old_w + effective_delta;
         if (new_w < SNN_LANG_BINDING_W_MIN) new_w = SNN_LANG_BINDING_W_MIN;
         if (new_w > w_max)                  new_w = w_max;
         if (new_w != old_w) {
@@ -1050,7 +1068,9 @@ int snn_language_bridge_strengthen_binding(snn_language_bridge_t* bridge,
 
     /* No existing binding; only create one for positive delta. Negative
      * delta on a non-existent binding is a no-op — there is nothing to
-     * weaken, and creating a zero-weight binding would just leak memory. */
+     * weaken, and creating a zero-weight binding would just leak memory.
+     * Seed weight is the full delta (capped at w_max). The saturating
+     * update kicks in on subsequent calls when the binding exists. */
     if (delta <= 0.0f) return 0;
     float new_w = (delta > w_max) ? w_max : delta;
     binding_node_t* node = binding_insert(bridge, concept_pop, word_pop, new_w);
@@ -3001,6 +3021,42 @@ float snn_language_bridge_get_ltd_margin(
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return 0.0f;
     return bridge->config.ltd_margin;
+}
+
+int64_t snn_language_bridge_reset_weights(snn_language_bridge_t* bridge,
+                                           float w_min,
+                                           float w_max)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (!isfinite(w_min) || !isfinite(w_max)) return -1;
+    if (w_min < 0.0f || w_max <= w_min) return -1;
+    float cfg_max = bridge->config.binding_w_max > 0.0f
+                       ? bridge->config.binding_w_max : SNN_LANG_BINDING_W_MAX;
+    if (w_max > cfg_max) w_max = cfg_max;
+
+    /* Reset the per-word-pop norm cache to zero — we rebuild it incrementally
+     * as we walk bindings below. */
+    if (bridge->word_norm_sq) {
+        for (uint32_t w = 0; w < bridge->word_pops_capacity; w++) {
+            bridge->word_norm_sq[w] = 0.0f;
+        }
+    }
+
+    float range = w_max - w_min;
+    int64_t count = 0;
+    for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
+        for (binding_node_t* n = bridge->binding_buckets[b]; n != NULL; n = n->next) {
+            float r = bridge_rng_unit(bridge);
+            float new_w = w_min + r * range;
+            n->binding.weight = new_w;
+            uint32_t wp = n->binding.word_pop;
+            if (bridge->word_norm_sq && wp < bridge->word_pops_capacity) {
+                bridge->word_norm_sq[wp] += new_w * new_w;
+            }
+            count++;
+        }
+    }
+    return count;
 }
 
 /* TB-8: streaming-produce callback attach/detach. cb=NULL detaches.

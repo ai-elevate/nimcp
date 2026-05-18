@@ -898,6 +898,27 @@ uint64_t grounded_language_prune_bindings(
     grounded_language_t* gl,
     uint32_t max_bindings_per_word);
 
+/**
+ * @brief Reset every lexicon entry's distributional embedding.
+ *
+ * Walks the vocab and either zeros + marks-uninitialized each entry's
+ * context_vector (if `zero_and_mark_uninit` is true), or re-randomizes
+ * it to small noise in [-jitter, +jitter] (if false). Use when
+ * pairwise cos(comprehend(p_i), comprehend(p_j)) ≈ 1.0 across distinct
+ * prompts indicates the distributional channel has homogenized.
+ *
+ * `zero_and_mark_uninit=true` is the cleanest reset — comprehend's
+ * binding+NLP-embedding loops still contribute, but the dominant
+ * convergence channel (distributional) is removed until each word is
+ * seen again in context.
+ *
+ * @return Number of lexicon entries touched, or -1 on bad args.
+ */
+int64_t grounded_language_reset_lexicon_distributional(
+    grounded_language_t* gl,
+    bool zero_and_mark_uninit,
+    float jitter);
+
 /*=============================================================================
  * Production (Broca's pathway)
  *===========================================================================*/

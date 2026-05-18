@@ -898,6 +898,32 @@ int snn_language_bridge_set_ltd_margin(
 float snn_language_bridge_get_ltd_margin(
     const snn_language_bridge_t* bridge);
 
+/** Break a rank-1 / homogenized bridge by re-randomizing every existing
+ *  binding weight to uniform(w_min, w_max). Keeps the *set* of (concept_pop,
+ *  word_pop) pairs intact (so vocab structure survives), but destroys the
+ *  shared eigenvector that causes all in-vocab inputs to produce the same
+ *  concept activation direction after comprehend's L2-normalize.
+ *
+ *  Use after diagnosing a collapsed bridge (pairwise cos(comprehend(p_i),
+ *  comprehend(p_j)) ≈ 1.0 across distinct prompts). w_min=0.001, w_max=0.05
+ *  is the calibrated seed range — small enough that subsequent
+ *  margin-gated LTD + saturating LTP can rebuild discriminative columns
+ *  without the reset itself dominating.
+ *
+ *  Rebuilds the bridge's word_norm_sq cache from scratch after the reset.
+ *  Bridge mutex must NOT be held by the caller — this function takes it
+ *  internally (same contract as other bulk-mutation APIs).
+ *
+ *  @param bridge  the bridge to reset
+ *  @param w_min   floor for randomized weight (must be in [0, w_max])
+ *  @param w_max   ceiling for randomized weight (must be in (w_min, binding_w_max])
+ *  @return        number of bindings whose weight was reset, or -1 on
+ *                 invalid args / bad bridge state. */
+int64_t snn_language_bridge_reset_weights(
+    snn_language_bridge_t* bridge,
+    float w_min,
+    float w_max);
+
 /** TB-8: per-token streaming callback. Invoked once per emitted word
  *  during snn_language_bridge_produce. Returning non-zero aborts the
  *  produce loop early (text accumulated so far is preserved in

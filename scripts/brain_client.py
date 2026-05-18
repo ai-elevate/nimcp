@@ -338,6 +338,36 @@ class BrainProxy:
             return 0
         return int(resp.get("count", 0))
 
+    def reset_lexicon_distributional(self, zero_and_mark_uninit=True, jitter=0.01):
+        """Reset every lexicon entry's distributional embedding. zero_and_mark_uninit=True
+        zeros and flags as uninitialized (clean reset; vectors re-learn from next
+        comprehend). False re-randomizes uniformly in [-jitter, +jitter] keeping
+        initialized=True. Returns the number of lexicon entries touched. Use when
+        comprehend(p_i) cosine ≈ 1.0 across distinct prompts."""
+        resp = self._send({
+            "cmd": "reset_lexicon_distributional",
+            "zero_and_mark_uninit": bool(zero_and_mark_uninit),
+            "jitter": float(jitter),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return int(resp.get("touched", 0))
+
+    def reset_lang_bridge_weights(self, w_min=0.001, w_max=0.05):
+        """Break rank-1 collapse by re-randomizing every bridge binding
+        weight to uniform(w_min, w_max). Returns the number of bindings
+        reset. Use after diagnosing comprehend cosines ≈ 1.0 across
+        distinct prompts. The vocab structure (which bindings exist)
+        is preserved; only weights change."""
+        resp = self._send({
+            "cmd": "reset_lang_bridge_weights",
+            "w_min": float(w_min),
+            "w_max": float(w_max),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return int(resp.get("reset_count", 0))
+
     def set_ltd_margin(self, margin):
         """Set the SNN bridge's next-token LTD margin gate. LTD only fires
         when topK[0].confidence >= margin * topK[target_rank].confidence

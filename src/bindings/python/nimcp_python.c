@@ -3393,6 +3393,46 @@ static PyObject* Brain_set_ltd_margin(BrainObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* Reset lexicon's distributional embeddings (context_vector). */
+static PyObject* Brain_reset_lexicon_distributional(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int zero_uninit = 1;
+    float jitter = 0.01f;
+    if (!PyArg_ParseTuple(args, "pf", &zero_uninit, &jitter)) return NULL;
+    int64_t count = 0;
+    nimcp_status_t s = nimcp_brain_reset_lexicon_distributional(
+        self->brain, zero_uninit != 0, jitter, &count);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "reset_lexicon_distributional: grounded_language not attached or bad jitter");
+        return NULL;
+    }
+    return PyLong_FromLongLong((long long)count);
+}
+
+/* Re-randomize bridge binding weights to break rank-1 collapse. */
+static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float w_min = 0.001f, w_max = 0.05f;
+    if (!PyArg_ParseTuple(args, "ff", &w_min, &w_max)) return NULL;
+    int64_t count = 0;
+    nimcp_status_t s = nimcp_brain_reset_lang_bridge_weights(
+        self->brain, w_min, w_max, &count);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "reset_lang_bridge_weights: bridge not attached or args out of range "
+            "(require 0 <= w_min < w_max <= binding_w_max)");
+        return NULL;
+    }
+    return PyLong_FromLongLong((long long)count);
+}
+
 /* Audit fix — campaign feature setter Python bindings. All take a single
  * argument (bool/int/float) and return None on success or RuntimeError. */
 
@@ -12027,6 +12067,10 @@ static PyMethodDef Brain_methods[] = {
      "TA-4: toggle trigram next-token learning — set_trigram_learning_enabled(enabled: bool) -> None. Default OFF (preserves PA-4 bigram-only behavior)."},
     {"set_ltd_margin", (PyCFunction)Brain_set_ltd_margin, METH_VARARGS,
      "Margin gate for the SNN bridge's next-token LTD — set_ltd_margin(margin: float) -> None. LTD fires only when topK[0].confidence >= margin * topK[target_rank].confidence (and target is in topK). margin=1.0 reproduces legacy unconditional LTD; 1.5 (default) requires false_winner to lead by 50%; >=10 effectively disables LTD. Clamped to [1.0, 100.0]; raises RuntimeError on out-of-range. Runtime-only; not persisted."},
+    {"reset_lang_bridge_weights", (PyCFunction)Brain_reset_lang_bridge_weights, METH_VARARGS,
+     "Re-randomize every existing SNN-language bridge binding weight to uniform(w_min, w_max) — reset_lang_bridge_weights(w_min: float, w_max: float) -> int. Returns number of bindings reset. Breaks rank-1 / homogenized collapse where all in-vocab prompts produce the same comprehend output. Use after diagnosing pairwise cos(comprehend(p_i), comprehend(p_j)) ≈ 1.0. Calibrated seed range: 0.001..0.05. Bindings themselves (which (concept, word) pairs exist) are preserved; only weights change."},
+    {"reset_lexicon_distributional", (PyCFunction)Brain_reset_lexicon_distributional, METH_VARARGS,
+     "Reset every lexicon entry's distributional embedding — reset_lexicon_distributional(zero_and_mark_uninit: bool, jitter: float) -> int. zero_and_mark_uninit=True zeros every context_vector + flags uninitialized (clean reset). False re-randomizes uniformly in [-jitter, +jitter] keeping initialized=True. Use when comprehend cos ≈ 1.0 across distinct prompts indicates the distributional channel has homogenized. Returns the number of lexicon entries touched."},
     /* Audit fix: campaign feature setters accessible from Python + daemon RPC. */
     {"set_da_modulation_enabled", (PyCFunction)Brain_set_da_modulation_enabled, METH_VARARGS,
      "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},

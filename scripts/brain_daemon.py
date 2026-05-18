@@ -1797,6 +1797,48 @@ class BrainService:
             return {"error": f"set_trigram_learning_enabled: {e}"}
         return {"ok": True, "enabled": enabled}
 
+    def _cmd_reset_lexicon_distributional(self, req):
+        """Reset every lexicon entry's distributional embedding (context_vector).
+        Use when comprehend cos ≈ 1.0 across distinct prompts indicates the
+        distributional channel has homogenized.
+
+        Request: {"zero_and_mark_uninit": bool (default true), "jitter": float (default 0.01)}
+        Returns: {"ok": True, "touched": int}
+        """
+        try:
+            zero = bool(req.get("zero_and_mark_uninit", True))
+            jitter = float(req.get("jitter", 0.01))
+        except (TypeError, ValueError) as e:
+            return {"error": f"reset_lexicon_distributional bad args: {e}"}
+        try:
+            n = int(self.brain.reset_lexicon_distributional(zero, jitter))
+        except AttributeError:
+            return {"error": "reset_lexicon_distributional not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"reset_lexicon_distributional: {e}"}
+        return {"ok": True, "touched": n, "zero_and_mark_uninit": zero, "jitter": jitter}
+
+    def _cmd_reset_lang_bridge_weights(self, req):
+        """Break rank-1 / homogenized bridge collapse by re-randomizing every
+        binding weight to uniform(w_min, w_max). Use after probing shows
+        comprehend cosines ≈ 1.0 across distinct prompts.
+
+        Request: {"w_min": float (default 0.001), "w_max": float (default 0.05)}
+        Returns: {"ok": True, "reset_count": int}
+        """
+        try:
+            w_min = float(req.get("w_min", 0.001))
+            w_max = float(req.get("w_max", 0.05))
+        except (TypeError, ValueError) as e:
+            return {"error": f"reset_lang_bridge_weights bad args: {e}"}
+        try:
+            count = int(self.brain.reset_lang_bridge_weights(w_min, w_max))
+        except AttributeError:
+            return {"error": "reset_lang_bridge_weights not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"reset_lang_bridge_weights: {e}"}
+        return {"ok": True, "reset_count": count, "w_min": w_min, "w_max": w_max}
+
     def _cmd_set_ltd_margin(self, req):
         """Margin gate for the SNN bridge's next-token LTD. LTD only fires
         when topK[0].confidence >= margin * topK[target_rank].confidence

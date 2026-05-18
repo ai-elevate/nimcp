@@ -3774,6 +3774,56 @@ uint64_t grounded_language_prune_bindings(grounded_language_t* gl,
     return dropped_total;
 }
 
+int64_t grounded_language_reset_lexicon_distributional(grounded_language_t* gl,
+                                                        bool zero_and_mark_uninit,
+                                                        float jitter)
+{
+    if (!gl || !gl->lexicon) return -1;
+    if (!isfinite(jitter) || jitter < 0.0f) return -1;
+
+    int64_t touched = 0;
+    uint32_t dim = gl->semantic_dim;
+    /* Simple xorshift seeded from gl pointer + clock — deterministic per
+     * call site, no need for crypto-grade randomness here. */
+    uint64_t rs = ((uint64_t)(uintptr_t)gl) ^ 0x9E3779B97F4A7C15ULL;
+    rs ^= (uint64_t)time(NULL);
+    if (rs == 0) rs = 1;
+
+    for (uint32_t slot = 0; slot < gl->lexicon_size; slot++) {
+        gl_lexicon_entry_t* e = gl->lexicon[slot];
+        if (!e) continue;
+        if (!e->context_vector || dim == 0) {
+            /* Still count as touched — the entry now has the desired
+             * "uninitialized" state by virtue of having no vector. */
+            e->context_initialized = false;
+            touched++;
+            continue;
+        }
+        if (zero_and_mark_uninit) {
+            memset(e->context_vector, 0, dim * sizeof(float));
+            e->context_initialized = false;
+        } else {
+            /* Re-randomize in [-jitter, +jitter]. */
+            for (uint32_t d = 0; d < dim; d++) {
+                rs ^= rs >> 12; rs ^= rs << 25; rs ^= rs >> 27;
+                uint64_t r = rs * 0x2545F4914F6CDD1DULL;
+                /* 24-bit mantissa -> uniform [0,1) */
+                float u = (float)((uint32_t)(r >> 40)) * (1.0f / 16777216.0f);
+                e->context_vector[d] = (u * 2.0f - 1.0f) * jitter;
+            }
+            e->context_initialized = true;
+        }
+        touched++;
+    }
+
+    fprintf(stderr,
+        "[gl_distrib_reset] mode=%s jitter=%g lexicon_entries_touched=%lld\n",
+        zero_and_mark_uninit ? "zero" : "jitter",
+        (double)jitter, (long long)touched);
+    fflush(stderr);
+    return touched;
+}
+
 int grounded_language_blend(grounded_language_t* gl,
                              uint64_t concept_a, uint64_t concept_b,
                              const float* vector_a, const float* vector_b,

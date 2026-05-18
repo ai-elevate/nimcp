@@ -1412,6 +1412,39 @@ nimcp_status_t nimcp_brain_set_ltd_margin(
     float margin
 );
 
+/** Re-randomize every existing bridge binding weight to uniform(w_min, w_max).
+ *  See snn_language_bridge_reset_weights in the bridge header for the
+ *  rationale (breaks rank-1 / homogenized collapse).
+ *
+ *  Writes the number of bindings reset to *out_count (may be NULL).
+ *  Returns NIMCP_ERROR if no SNN-language bridge is attached or args are
+ *  out of range. */
+nimcp_status_t nimcp_brain_reset_lang_bridge_weights(
+    nimcp_brain_t brain,
+    float w_min,
+    float w_max,
+    int64_t* out_count
+);
+
+/** Reset every lexicon entry's distributional embedding (context_vector).
+ *  When the distributional channel has converged across the vocab so that
+ *  every word's context_vector points the same direction, comprehend's
+ *  L2-normalized output collapses to a single eigenvector regardless of
+ *  input. This reset breaks that homogenization. See
+ *  grounded_language_reset_lexicon_distributional for the rule.
+ *
+ *  zero_and_mark_uninit=true: zero each vector + flag uninitialized (clean
+ *    reset; vectors re-learn from next comprehend forward).
+ *  zero_and_mark_uninit=false: re-randomize each vector uniformly in
+ *    [-jitter, +jitter] and keep initialized=true (preserves "this word
+ *    has been seen in some context" without preserving the direction). */
+nimcp_status_t nimcp_brain_reset_lexicon_distributional(
+    nimcp_brain_t brain,
+    bool zero_and_mark_uninit,
+    float jitter,
+    int64_t* out_count
+);
+
 /* Audit fix — campaign feature flag setters callable from the daemon RPC
  * surface + Python bindings. All have default-OFF semantics; calling with
  * enabled=false reverts to legacy behavior. */

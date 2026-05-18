@@ -4043,6 +4043,35 @@ nimcp_status_t nimcp_brain_set_ltd_margin(nimcp_brain_t brain, float margin)
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_reset_lang_bridge_weights(nimcp_brain_t brain,
+                                                       float w_min,
+                                                       float w_max,
+                                                       int64_t* out_count)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int64_t n = snn_language_bridge_reset_weights(b->snn_lang_bridge, w_min, w_max);
+    if (out_count) *out_count = n;
+    return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_reset_lexicon_distributional(nimcp_brain_t brain,
+                                                          bool zero_and_mark_uninit,
+                                                          float jitter,
+                                                          int64_t* out_count)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int64_t n = grounded_language_reset_lexicon_distributional(
+        b->grounded_lang, zero_and_mark_uninit, jitter);
+    if (out_count) *out_count = n;
+    return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /* ========== Audit fix: campaign feature setter wrappers ========== */
 
 nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool enabled) {
