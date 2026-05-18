@@ -142,6 +142,180 @@ extern const gl_lexicon_entry_t* lexicon_find_internal(
     const grounded_language_t* gl, const char* word);
 
 /*============================================================================
+ * Slice 6 — Thalamic gating helpers.
+ *
+ * Computes per-stage gain weights from brain arousal/attention state +
+ * (optionally) the existing thalamic_router's imagination_attention.
+ * Stages then read brain->thalamic_gate_weights[i] at their tail and
+ * scale their scaleable outputs accordingly. Default OFF — when
+ * brain->thalamic_gate_enabled is false the entire layer is skipped and
+ * the cascade behaves byte-identically to legacy.
+ *==========================================================================*/
+
+/* Use the thalamic router's API (when present) and the neuromodulator
+ * system (when present) without pulling those headers into the cascade
+ * TU — the cascade already includes plasticity/neuromodulators above. */
+#include "middleware/routing/nimcp_thalamic_router.h"
+
+/* Clamp a float to [lo, hi]; NaN/Inf are coerced to lo. */
+static inline float cascade_clamp01(float v) {
+    if (!isfinite(v)) return 0.0f;
+    if (v < 0.0f) return 0.0f;
+    if (v > 1.0f) return 1.0f;
+    return v;
+}
+
+int communication_cascade_set_thalamic_gate_enabled(brain_t brain, bool enabled) {
+    if (!brain) return -1;
+    brain->thalamic_gate_enabled = enabled;
+    /* First enable: initialize the gate array to neutral (1.0) so the
+     * stages that read it before the first compute see pass-through. */
+    if (enabled) {
+        bool any_nonzero_or_override = false;
+        for (uint32_t i = 0; i < 15; i++) {
+            if (brain->thalamic_gate_weights[i] != 0.0f ||
+                brain->thalamic_gate_manual_override[i]) {
+                any_nonzero_or_override = true;
+                break;
+            }
+        }
+        if (!any_nonzero_or_override) {
+            for (uint32_t i = 0; i < 15; i++) {
+                brain->thalamic_gate_weights[i] = 1.0f;
+            }
+        }
+    }
+    return 0;
+}
+
+bool communication_cascade_get_thalamic_gate_enabled(brain_t brain) {
+    if (!brain) return false;
+    return brain->thalamic_gate_enabled;
+}
+
+int communication_cascade_set_thalamic_gate_for_stage(brain_t brain,
+                                                      nimcp_cascade_stage_idx_t stage,
+                                                      float weight) {
+    if (!brain) return -1;
+    uint32_t i = (uint32_t)stage;
+    if (i >= 15) return -1;
+    if (weight < 0.0f) {
+        /* Sentinel: clear override + return to auto-derived behavior. */
+        brain->thalamic_gate_manual_override[i] = false;
+        return 0;
+    }
+    brain->thalamic_gate_weights[i] = cascade_clamp01(weight);
+    brain->thalamic_gate_manual_override[i] = true;
+    return 0;
+}
+
+int communication_cascade_get_thalamic_gates(brain_t brain,
+                                              float* out_weights,
+                                              bool*  out_overrides,
+                                              uint32_t* count_out) {
+    if (!brain) return -1;
+    if (count_out) *count_out = 15;
+    if (out_weights) {
+        for (uint32_t i = 0; i < 15; i++) {
+            out_weights[i] = brain->thalamic_gate_weights[i];
+        }
+    }
+    if (out_overrides) {
+        for (uint32_t i = 0; i < 15; i++) {
+            out_overrides[i] = brain->thalamic_gate_manual_override[i];
+        }
+    }
+    return 0;
+}
+
+int communication_cascade_compute_thalamic_gates(brain_t brain) {
+    if (!brain) return -1;
+
+    /* Arousal proxy: NE level if neuromodulator system is up, else 0.5. */
+    float arousal = 0.5f;
+    float attention = 0.5f;
+    if (brain->neuromodulator_system) {
+        float ne = neuromodulator_get_level(brain->neuromodulator_system,
+                                              NEUROMOD_NOREPINEPHRINE);
+        float ach = neuromodulator_get_level(brain->neuromodulator_system,
+                                              NEUROMOD_ACETYLCHOLINE);
+        if (isfinite(ne))  arousal   = cascade_clamp01(ne);
+        if (isfinite(ach)) attention = cascade_clamp01(ach);
+    }
+
+    /* Thalamic router imagination_attention — when imagination is
+     * dominating, we don't want the cascade to fire self-train on dreamy
+     * outputs. Reads as -1.0 on error → ignored. */
+    float imag_attn = -1.0f;
+    if (brain->thalamic_router) {
+        imag_attn = thalamic_router_get_imagination_attention(
+            (thalamic_router_t*)brain->thalamic_router);
+    }
+    float self_train_attenuation = 1.0f;
+    if (isfinite(imag_attn) && imag_attn >= 0.0f) {
+        /* High imagination focus → attenuate self_train (don't lock in
+         * inner-monologue patterns as real production memory). At
+         * imag_attn=1.0, self_train gate halves. */
+        self_train_attenuation = 1.0f - 0.5f * cascade_clamp01(imag_attn);
+    }
+
+    /* Per-stage gate-weight derivation rule. All gates start at the
+     * baseline 0.5*(arousal+attention) so when the brain has no signal
+     * (NaN modulators, no router) gates are ~0.5 — a noticeable but not
+     * catastrophic attenuation. Each stage gets a stage-specific
+     * weighting on top:
+     *
+     *   - Motor + prosody + self_feedback + speech_repair: arousal-heavy.
+     *     Urgent speech routes more bandwidth to articulation.
+     *   - Content + episodic + lexical + goal: attention-heavy. Focused
+     *     deliberate speech routes bandwidth to intent-formation.
+     *   - Drive + listener + wernicke + syntactic + phonological +
+     *     self_comp: balanced.
+     *   - Self_train: attention-heavy, then attenuated by
+     *     imagination_attention so we don't reinforce daydreams.
+     *
+     * All gates clamped to [0.0, 1.0]. Stages flagged with
+     * manual_override[i] retain their cached value. */
+    const float baseline = 0.5f * (arousal + attention);
+    float derived[15];
+    derived[NIMCP_CASCADE_STAGE_WERNICKE_IDX]      = baseline;
+    derived[NIMCP_CASCADE_STAGE_DRIVE_IDX]         = baseline;
+    derived[NIMCP_CASCADE_STAGE_GOAL_IDX]          = 0.4f * arousal + 0.6f * attention;
+    derived[NIMCP_CASCADE_STAGE_LISTENER_IDX]      = baseline;
+    derived[NIMCP_CASCADE_STAGE_EPISODIC_IDX]      = 0.3f * arousal + 0.7f * attention;
+    derived[NIMCP_CASCADE_STAGE_CONTENT_IDX]       = 0.3f * arousal + 0.7f * attention;
+    derived[NIMCP_CASCADE_STAGE_LEXICAL_IDX]       = 0.4f * arousal + 0.6f * attention;
+    derived[NIMCP_CASCADE_STAGE_SYNTACTIC_IDX]     = baseline;
+    derived[NIMCP_CASCADE_STAGE_SELF_COMP_IDX]     = baseline;
+    derived[NIMCP_CASCADE_STAGE_PHONOLOGICAL_IDX]  = baseline;
+    derived[NIMCP_CASCADE_STAGE_MOTOR_IDX]         = 0.7f * arousal + 0.3f * attention;
+    derived[NIMCP_CASCADE_STAGE_SELF_FEEDBACK_IDX] = 0.6f * arousal + 0.4f * attention;
+    derived[NIMCP_CASCADE_STAGE_SPEECH_REPAIR_IDX] = 0.6f * arousal + 0.4f * attention;
+    derived[NIMCP_CASCADE_STAGE_PROSODY_IDX]       = 0.7f * arousal + 0.3f * attention;
+    derived[NIMCP_CASCADE_STAGE_SELF_TRAIN_IDX]    =
+        (0.3f * arousal + 0.7f * attention) * self_train_attenuation;
+
+    for (uint32_t i = 0; i < 15; i++) {
+        if (brain->thalamic_gate_manual_override[i]) continue;
+        brain->thalamic_gate_weights[i] = cascade_clamp01(derived[i]);
+    }
+    return 0;
+}
+
+/* Lookup helper for stages: returns the current weight for a stage by
+ * its [0..14] index. Returns 1.0 (pass-through) when the gate layer is
+ * disabled or the brain pointer is NULL so callers can multiply without
+ * a separate enabled-check. */
+static inline float cascade_thalamic_gate_for(brain_t brain, uint32_t i) {
+    if (!brain || !brain->thalamic_gate_enabled || i >= 15) return 1.0f;
+    float w = brain->thalamic_gate_weights[i];
+    if (!isfinite(w)) return 1.0f;
+    if (w < 0.0f) return 0.0f;
+    if (w > 1.0f) return 1.0f;
+    return w;
+}
+
+/*============================================================================
  * Stage 1: Drive — read hypothalamus + insula + amygdala
  *==========================================================================*/
 
@@ -670,6 +844,21 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
+    /* Slice 6: thalamic gating of content_intent — scales every component
+     * by the thalamic gate for stage_content (NIMCP_CASCADE_STAGE_CONTENT_IDX).
+     * Default OFF; returns 1.0 (no change) when disabled. High attention →
+     * gate near 1.0; low attention → intent shrunk so the bridge softmax
+     * spreads — gate=0 effectively silences the cascade. Applied BEFORE
+     * the confidence computation so content_confidence reflects the
+     * thalamically-gated magnitude. */
+    const float gate_content = cascade_thalamic_gate_for(brain,
+                                  NIMCP_CASCADE_STAGE_CONTENT_IDX);
+    if (gate_content != 1.0f) {
+        for (uint32_t i = 0; i < dim; i++) {
+            state->content_intent[i] *= gate_content;
+        }
+    }
+
     /* Confidence = signal magnitude / sqrt(dim). 1.0 = strongly cohered;
      * 0.0 = no signal anywhere. */
     float ssum = 0.0f;
@@ -718,6 +907,18 @@ static int cascade_stage_lexical(brain_t brain,
     prod.text         = NULL;
     state->word_count = prod.word_count;
     state->fluency    = prod.fluency;
+
+    /* Slice 6: thalamic gating of lexical fluency. The bridge produce
+     * runs at full strength (text and word_count are discrete and
+     * shouldn't be scaled), but the fluency diagnostic — a 0..1 score
+     * downstream consumers (self_feedback, prosody) read for confidence
+     * gating — gets multiplied by the lexical gate. Low gate ≈ "I'm
+     * speaking but I'm not really attending to lexical access". */
+    const float gate_lexical = cascade_thalamic_gate_for(brain,
+                                  NIMCP_CASCADE_STAGE_LEXICAL_IDX);
+    if (gate_lexical != 1.0f && isfinite(state->fluency)) {
+        state->fluency *= gate_lexical;
+    }
 
     gl_production_result_cleanup(&prod);
     cascade_record_complete(state);
@@ -1035,7 +1236,13 @@ static int cascade_stage_phonological(brain_t brain,
 
 static int cascade_stage_motor(brain_t brain,
                                 production_cascade_state_t* state) {
-    (void)brain;
+    /* Slice 6: even though the text-mode motor stage is a skip, the
+     * thalamic gate weight for motor is computed + stored so that
+     * downstream consumers (edge platform / TTS bridges that DO emit
+     * real motor commands) can read it via the diag RPC and apply the
+     * pulvinar-style gain in their own articulator paths. We just
+     * touch the array so the gate compute call's value is visible. */
+    (void)cascade_thalamic_gate_for(brain, NIMCP_CASCADE_STAGE_MOTOR_IDX);
     cascade_record_skip(state, CASCADE_STAGE_MOTOR,
                         "stage_motor: text mode — rendering happens in stage_lexical");
     return 0;
@@ -1462,6 +1669,28 @@ static int cascade_stage_prosody(brain_t brain,
         intensity[i] = db;
     }
 
+    /* Slice 6: thalamic gating of prosodic intensity. The pulvinar
+     * gain-controls cortical output magnitude; for speech that means
+     * volume + amplitude prominence are attention-modulated. Low gate
+     * → quieter, less expressive prosody (sleepy speech). Scale dB on
+     * an additive scale (linear scale of dB) so gate=0.5 drops every
+     * syllable by ~6 dB. Floor at 40 dB to stay in physiological range.
+     * Pitch + duration are NOT scaled — those are perceptually-discrete
+     * features whose magnitudes mean specific phonological things. */
+    const float gate_prosody = cascade_thalamic_gate_for(brain,
+                                  NIMCP_CASCADE_STAGE_PROSODY_IDX);
+    if (gate_prosody != 1.0f) {
+        /* Convert gate to dB attenuation: gate=1 -> 0 dB, gate=0.5 -> -6 dB,
+         * gate=0 -> floor. log conversion for perceptual linearity. */
+        float db_offset = 20.0f * log10f(gate_prosody > 1e-3f ? gate_prosody : 1e-3f);
+        for (uint32_t i = 0; i < n_syll; i++) {
+            float v = intensity[i] + db_offset;
+            if (v < 40.0f) v = 40.0f;
+            if (v > 95.0f) v = 95.0f;
+            intensity[i] = v;
+        }
+    }
+
     state->prosody_pitch_hz       = pitch;
     state->prosody_duration_ms    = duration;
     state->prosody_intensity_db   = intensity;
@@ -1650,6 +1879,16 @@ static int cascade_stage_self_train(brain_t brain,
     float lr_scale = brain->cascade_self_train_lr_scale;
     if (!isfinite(alpha)    || alpha    < 0.0f) alpha    = 0.05f;
     if (!isfinite(lr_scale) || lr_scale < 0.0f) lr_scale = 1.0f;
+
+    /* Slice 6: thalamic gating of self_train. The gate attenuates the
+     * effective learning rate proportionally — low attention or high
+     * imagination_attention (dreamy state) drops lr_scale so we don't
+     * reinforce attended-elsewhere productions as if they were the
+     * brain's deliberate output. Default OFF returns gate=1.0
+     * (no change). */
+    const float gate_self_train = cascade_thalamic_gate_for(brain,
+                                     NIMCP_CASCADE_STAGE_SELF_TRAIN_IDX);
+    lr_scale *= gate_self_train;
 
     float reward_applied = 0.0f;
     int n = cascade_apply_self_train_reward(
@@ -2174,6 +2413,17 @@ int communication_cascade_run(
         for (uint32_t bit = 1u; bit != 0; bit <<= 1) {
             if (missing & bit) cascade_counter_mask_skip(brain, bit);
         }
+    }
+
+    /* Slice 6 — thalamic gating: refresh gate weights from arousal +
+     * attention state at the top of every cascade call. Stages that
+     * scale by gate read brain->thalamic_gate_weights[] later via the
+     * cascade_thalamic_gate_for() helper. Manual overrides (set via
+     * communication_cascade_set_thalamic_gate_for_stage) are preserved.
+     * No-op when thalamic_gate_enabled is false — the per-stage helper
+     * returns 1.0 unconditionally, so disabled = legacy behavior. */
+    if (brain->thalamic_gate_enabled) {
+        (void)communication_cascade_compute_thalamic_gates(brain);
     }
 
     /* If a prompt was given, comprehend it first to seed the intent

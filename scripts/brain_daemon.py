@@ -2326,6 +2326,66 @@ class BrainService:
             return {"error": f"get_respond_via_cascade: {e}"}
         return {"ok": True, "enabled": bool(enabled)}
 
+    def _cmd_set_thalamic_gate_enabled(self, req):
+        """Slice 6: toggle thalamic gating of cascade-stage bandwidth.
+
+        Request: {"cmd": "set_thalamic_gate_enabled", "enabled": bool}
+        Returns: {"ok": True, "enabled": bool}.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_thalamic_gate_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_thalamic_gate_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_thalamic_gate_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_thalamic_gate_for_stage(self, req):
+        """Slice 6: manual override of a single stage's gate weight.
+
+        Request: {"cmd": "set_thalamic_gate_for_stage",
+                  "stage_idx": int (0..14), "weight": float}
+        weight < 0 clears the manual override. weight in [0, 1] sets and
+        locks. Stage names: see cascade_stage_mask_t.
+        Returns: {"ok": True, "stage_idx": int, "weight": float}.
+        """
+        try:
+            stage_idx = int(req.get("stage_idx", -1))
+            weight    = float(req.get("weight", -1.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_thalamic_gate_for_stage bad arg: {e}"}
+        if stage_idx < 0 or stage_idx > 14:
+            return {"error": f"set_thalamic_gate_for_stage: stage_idx {stage_idx} out of range [0,14]"}
+        try:
+            self.brain.set_thalamic_gate_for_stage(stage_idx, weight)
+        except AttributeError:
+            return {"error": "set_thalamic_gate_for_stage not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_thalamic_gate_for_stage: {e}"}
+        return {"ok": True, "stage_idx": stage_idx, "weight": weight}
+
+    def _cmd_get_thalamic_gates(self, req):
+        """Slice 6: snapshot of current thalamic gate weights + override flags.
+
+        Request: {"cmd": "get_thalamic_gates"}
+        Returns: full snapshot dict from Brain.get_thalamic_gates() plus
+                 "ok": True. Includes {"enabled", "gates", "weights",
+                 "overrides", "stage_names"} where "gates" is a stage-name
+                 keyed dict like {"drive": 0.5, "content": 0.8, ...}.
+        """
+        del req
+        try:
+            d = self.brain.get_thalamic_gates()
+        except AttributeError:
+            return {"error": "get_thalamic_gates not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_thalamic_gates: {e}"}
+        if not isinstance(d, dict):
+            return {"error": "get_thalamic_gates returned non-dict"}
+        d["ok"] = True
+        return d
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 

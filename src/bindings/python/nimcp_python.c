@@ -3950,6 +3950,129 @@ static PyObject* Brain_get_respond_via_cascade(BrainObject* self, PyObject* args
     return PyBool_FromLong(enabled);
 }
 
+/* Slice 6 — thalamic gating of cascade-stage bandwidth.
+ *
+ * set_thalamic_gate_enabled(enabled: bool) -> None
+ * get_thalamic_gate_enabled() -> bool
+ * set_thalamic_gate_for_stage(stage_idx: int, weight: float) -> None
+ *   weight < 0 (or NaN/Inf) clears the manual override.
+ * get_thalamic_gates() -> dict
+ *   Returns {"enabled": bool, "weights": [w0..w14],
+ *            "overrides": [o0..o14], "stage_names": [...]}. */
+static PyObject* Brain_set_thalamic_gate_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_thalamic_gate_enabled(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_thalamic_gate_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_thalamic_gate_enabled(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_thalamic_gate_enabled(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_thalamic_gate_enabled failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
+static PyObject* Brain_set_thalamic_gate_for_stage(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage_idx = 0;
+    float weight = 0.0f;
+    if (!PyArg_ParseTuple(args, "If", &stage_idx, &weight)) return NULL;
+    if (nimcp_brain_set_thalamic_gate_for_stage(self->brain, stage_idx, weight) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_thalamic_gate_for_stage failed (stage_idx out of range?)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Stage names matching cascade_stage_mask_t bit order. Used to return a
+ * stage-name-keyed dict from get_thalamic_gates() so callers don't need
+ * to memorize the bit positions. Keep in lockstep with
+ * cascade_stage_mask_t in nimcp_communication_cascade.h. */
+static const char* const _thalamic_stage_names[15] = {
+    "wernicke",       /* bit 0 */
+    "drive",          /* bit 1 */
+    "goal",           /* bit 2 */
+    "listener",       /* bit 3 */
+    "episodic",       /* bit 4 */
+    "content",        /* bit 5 */
+    "lexical",        /* bit 6 */
+    "syntactic",      /* bit 7 */
+    "self_comp",      /* bit 8 */
+    "phonological",   /* bit 9 */
+    "motor",          /* bit 10 */
+    "self_feedback",  /* bit 11 */
+    "speech_repair",  /* bit 12 */
+    "prosody",        /* bit 13 */
+    "self_train"      /* bit 14 */
+};
+
+static PyObject* Brain_get_thalamic_gates(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    (void)nimcp_brain_get_thalamic_gate_enabled(self->brain, &enabled);
+
+    float weights[15];
+    bool  overrides[15];
+    uint32_t count = 0;
+    if (nimcp_brain_get_thalamic_gates(self->brain, weights, overrides,
+                                        15, &count) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_thalamic_gates failed");
+        return NULL;
+    }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "enabled", PyBool_FromLong(enabled));
+
+    /* Stage-name-keyed gate dict — the primary consumer view. */
+    PyObject* gates = PyDict_New();
+    if (!gates) { Py_DECREF(d); return NULL; }
+    for (uint32_t i = 0; i < count && i < 15; i++) {
+        PyDict_SetItemString(gates, _thalamic_stage_names[i],
+                             PyFloat_FromDouble((double)weights[i]));
+    }
+    PyDict_SetItemString(d, "gates", gates);
+    Py_DECREF(gates);
+
+    /* Parallel arrays for callers who want the raw layout. */
+    PyObject* warr = PyList_New((Py_ssize_t)count);
+    PyObject* oarr = PyList_New((Py_ssize_t)count);
+    PyObject* narr = PyList_New((Py_ssize_t)count);
+    if (!warr || !oarr || !narr) {
+        Py_XDECREF(warr); Py_XDECREF(oarr); Py_XDECREF(narr);
+        Py_DECREF(d);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < count && i < 15; i++) {
+        PyList_SET_ITEM(warr, (Py_ssize_t)i, PyFloat_FromDouble((double)weights[i]));
+        PyList_SET_ITEM(oarr, (Py_ssize_t)i, PyBool_FromLong(overrides[i]));
+        PyList_SET_ITEM(narr, (Py_ssize_t)i, PyUnicode_FromString(_thalamic_stage_names[i]));
+    }
+    PyDict_SetItemString(d, "weights",     warr);
+    PyDict_SetItemString(d, "overrides",   oarr);
+    PyDict_SetItemString(d, "stage_names", narr);
+    Py_DECREF(warr); Py_DECREF(oarr); Py_DECREF(narr);
+    return d;
+}
+
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
  * gap where this was persisted in the LANC block but unreachable via
  * Python / daemon RPC. */
@@ -12155,6 +12278,14 @@ static PyMethodDef Brain_methods[] = {
      "Audit Cat A #1: opt-in cascade orchestrator path inside nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough). When ON, respond runs the full 15-stage cascade. Latency cost ~10x vs the bridge-only path."},
     {"get_respond_via_cascade", (PyCFunction)Brain_get_respond_via_cascade, METH_NOARGS,
      "Read the current respond_via_cascade flag."},
+    {"set_thalamic_gate_enabled", (PyCFunction)Brain_set_thalamic_gate_enabled, METH_VARARGS,
+     "Slice 6 — toggle thalamic gating of cascade-stage bandwidth — set_thalamic_gate_enabled(enabled: bool) -> None. Default OFF preserves byte-identical legacy behavior. When ON, the cascade derives per-stage gate weights from arousal (NE) + attention (ACh) state and scales each stage's scaleable contributions accordingly. Models the pulvinar's role as central relay + gain controller."},
+    {"get_thalamic_gate_enabled", (PyCFunction)Brain_get_thalamic_gate_enabled, METH_NOARGS,
+     "Slice 6 — read the master thalamic_gate_enabled flag."},
+    {"set_thalamic_gate_for_stage", (PyCFunction)Brain_set_thalamic_gate_for_stage, METH_VARARGS,
+     "Slice 6 — manual override of a single stage's thalamic gate weight — set_thalamic_gate_for_stage(stage_idx: int, weight: float) -> None. stage_idx is 0..14 (cascade_stage_mask_t bit position). weight < 0 (or NaN/Inf) clears the manual override and returns to auto-derived. weight in [0, 1] sets and locks. Useful for ablation experiments."},
+    {"get_thalamic_gates", (PyCFunction)Brain_get_thalamic_gates, METH_NOARGS,
+     "Slice 6 — snapshot of current thalamic gate state — get_thalamic_gates() -> dict. Returns {'enabled': bool, 'gates': {'wernicke': float, 'drive': float, ...}, 'weights': [...15 floats...], 'overrides': [...15 bools...], 'stage_names': [...15 strs...]}. Stage names match the cascade_stage_mask_t bit order."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

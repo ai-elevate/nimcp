@@ -125,6 +125,53 @@ int communication_cascade_run_recurrent(
 
 **What**: thalamus modulates which populations get processing bandwidth. Already wired into substrate (per `substrate-plan` memory) but not gating cascade flow.
 
+**Status**: implemented 2026-05-18, default OFF.
+
+**Mechanism**: 15-slot per-stage gate weight array on `brain_struct` (`thalamic_gate_weights[15]`) re-derived from arousal (NE neuromodulator) + attention (ACh neuromodulator) at the top of every `communication_cascade_run` call when `thalamic_gate_enabled == true`. The existing `thalamic_router`'s imagination_attention (`thalamic_router_get_imagination_attention`) attenuates the `self_train` gate so dreamy outputs aren't reinforced as deliberate productions. Each stage's gate is the bit-position index into `cascade_stage_mask_t`.
+
+**Gate-weight derivation rule** (per stage):
+- baseline = 0.5 * (NE + ACh)
+- motor / prosody / self_feedback / speech_repair: 0.7 * NE + 0.3 * ACh (arousal-heavy)
+- content / episodic / lexical / goal: 0.4 * NE + 0.6 * ACh (attention-heavy)
+- self_train: (0.3 * NE + 0.7 * ACh) * (1 - 0.5 * imag_attn) (attention-heavy + dream-attenuated)
+- everyone else: baseline
+- All clamped to [0, 1]
+
+**Application points** (only where scaling is meaningful):
+- `stage_content`: `content_intent[]` multiplied by `gate_content` before confidence
+- `stage_lexical`: `state->fluency *= gate_lexical`
+- `stage_prosody`: `intensity_db[]` shifted by `20*log10(gate_prosody)` dB (perceptual)
+- `stage_self_train`: effective `lr_scale *= gate_self_train`
+
+Other stages (wernicke / drive / goal / listener / episodic / syntactic / self_comp / phonological / motor / self_feedback / speech_repair) produce structured discrete artifacts whose magnitudes are dimensionless; their gates are computed + surfaced via diagnostics but not multiplied into any output. To fully suppress a structured-output stage, use the existing `cascade_stage_mask_t` bit.
+
+**Manual overrides**: `set_thalamic_gate_for_stage(stage_idx, weight)`. `weight < 0` clears the override; otherwise weight is clamped to [0, 1] and locked until the next clear. Useful for ablation studies — e.g. set motor=0 to silence articulator output.
+
+**API**:
+```
+C:      nimcp_brain_set_thalamic_gate_enabled
+        nimcp_brain_get_thalamic_gate_enabled
+        nimcp_brain_set_thalamic_gate_for_stage
+        nimcp_brain_get_thalamic_gates
+Python: Brain.set_thalamic_gate_enabled(enabled)
+        Brain.get_thalamic_gate_enabled() -> bool
+        Brain.set_thalamic_gate_for_stage(idx, weight)
+        Brain.get_thalamic_gates() -> dict
+Daemon: _cmd_set_thalamic_gate_enabled
+        _cmd_set_thalamic_gate_for_stage
+        _cmd_get_thalamic_gates
+Client: BrainProxy.set_thalamic_gate_enabled(enabled)
+        BrainProxy.set_thalamic_gate_for_stage(idx, weight)
+        BrainProxy.get_thalamic_gates() -> dict
+```
+
+**Diagnostics RPC** returns `{"enabled": bool, "gates": {"drive": float, "goal": float, ...}, "weights": [...], "overrides": [...], "stage_names": [...]}`.
+
+**Known gaps**:
+- Stage gates other than content / lexical / prosody / self_train are computed-but-not-applied. The structured-artifact stages would need stage-specific scaling rules (e.g. shrink Wernicke parse confidence threshold) to honor gate < 1. Out of scope for Slice 6 since suppression of those stages is already cleanly achievable via the `cascade_stage_mask_t` bit.
+- Gate compute reads `thalamic_router`'s imagination_attention; the router's `set_attention(source_id, dest_id, weight)` per-route table is NOT consulted because there's no source/dest ID mapping for cascade stages. A future slice could allocate dedicated thalamic source/dest IDs for each cascade stage and route through the router proper.
+- No checkpoint persistence — gates are runtime state, re-derived on first cascade call after a load.
+
 ### Slice 7: Cerebellar prediction-correction
 
 **What**: cerebellum predicts next motor pattern; online correction signal feeds back into motor and prosody.
