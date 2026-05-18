@@ -304,6 +304,32 @@ class BrainProxy:
         resp = self._send({"cmd": "grounded_respond", "text": text})
         return resp.get("result", {})
 
+    def produce_cascade_recurrent(self, prompt=None, max_iters=8, self_match_eps=0.01):
+        """Recurrent / biological-fidelity variant of produce_cascade.
+        Iterates the full 15-stage cascade until utterance + self_match
+        converge. Each iteration's stage_self_train STDP shifts the bridge
+        slightly; the next iteration reads the shifted bridge; the system
+        settles toward an attractor. Mimics real cortical settling
+        dynamics (~200-400ms ≈ 4-8 iterations at our per-stage cost).
+
+        Returns dict with utterance/word_count/confidence/settling_steps.
+        settling_steps is the number of iterations actually taken before
+        convergence (or max_iters if no convergence).
+
+        Slice 1 of the recurrent-language-architecture rewrite (see
+        docs/claude/recurrent-language-architecture.md)."""
+        req = {
+            "cmd": "produce_cascade_recurrent",
+            "max_iters": int(max_iters),
+            "self_match_eps": float(self_match_eps),
+        }
+        if prompt is not None:
+            req["prompt"] = prompt
+        resp = self._send(req)
+        if resp.get("error"):
+            return {}
+        return resp
+
     def produce_cascade(self, prompt=None):
         """Invoke the full 15-stage production cascade. Drives drive/goal/
         listener/episodic/content/lexical/syntactic(Broca)/self-comp(Wernicke)/

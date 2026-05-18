@@ -4125,6 +4125,39 @@ nimcp_status_t nimcp_brain_produce_cascade(
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_produce_cascade_recurrent(
+    nimcp_brain_t brain,
+    const char* prompt_or_null,
+    uint32_t max_iters,
+    float self_match_eps,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence,
+    uint32_t* out_settling_steps)
+{
+    if (!brain) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    extern int nimcp_brain_produce_cascade_recurrent_impl(
+        brain_t brain,
+        const char* prompt_or_null,
+        uint32_t max_iters,
+        float self_match_eps,
+        char* out_utterance,
+        uint32_t out_text_max,
+        uint32_t* out_word_count,
+        float* out_confidence,
+        uint32_t* out_settling_steps);
+
+    int rc = nimcp_brain_produce_cascade_recurrent_impl(
+        b, prompt_or_null, max_iters, self_match_eps,
+        out_utterance, out_text_max, out_word_count,
+        out_confidence, out_settling_steps);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_echo_and_correct(
     nimcp_brain_t brain,
     const char* parent_text,

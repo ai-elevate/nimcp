@@ -1922,6 +1922,35 @@ class BrainService:
             return {"error": f"echo_and_correct: {e}"}
         return {"ok": True, "pairs_strengthened": int(pairs)}
 
+    def _cmd_produce_cascade_recurrent(self, req):
+        """Slice 1 of the recurrent-language-architecture rewrite. Iterates
+        the full 15-stage cascade until utterance + self_match converge.
+        Each iteration's stage_self_train shifts the bridge slightly; the
+        next iteration reads the shifted bridge; the system settles toward
+        an attractor — biological fidelity to cortical settling dynamics.
+
+        Request: {"cmd": "produce_cascade_recurrent",
+                   "prompt": str | None,
+                   "max_iters": int (default 8),
+                   "self_match_eps": float (default 0.01)}
+        Response: ok + utterance/word_count/confidence/settling_steps
+        """
+        prompt = req.get("prompt")
+        try:
+            max_iters = int(req.get("max_iters", 8))
+            eps = float(req.get("self_match_eps", 0.01))
+        except (TypeError, ValueError) as e:
+            return {"error": f"produce_cascade_recurrent bad arg: {e}"}
+        try:
+            result = self.brain.produce_cascade_recurrent(
+                prompt=prompt, max_iters=max_iters, self_match_eps=eps)
+        except AttributeError:
+            return {"error": "produce_cascade_recurrent not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"produce_cascade_recurrent: {e}"}
+        result["ok"] = True
+        return result
+
     def _cmd_produce_cascade(self, req):
         """Multi-region 15-stage production cascade. Forwards the full
         cascade diagnostic dict back to the caller — drive/goal/listener/

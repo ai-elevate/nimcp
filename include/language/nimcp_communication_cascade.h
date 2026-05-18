@@ -285,6 +285,45 @@ int communication_cascade_run(
     uint32_t stage_mask,
     production_cascade_state_t* out_state);
 
+/**
+ * @brief Biological-fidelity recurrent variant — iterates the cascade
+ *        until the utterance and self_match converge, mimicking the
+ *        settling dynamics of real cortex.
+ *
+ * Calls communication_cascade_run() up to @p max_iters times. After
+ * each iteration, compares the produced utterance string + self_match
+ * to the previous iteration's values. Convergence is reached when
+ * BOTH:
+ *   - utterance is byte-identical to the previous iteration
+ *   - |self_match - prev_self_match| <= @p self_match_eps
+ *
+ * Between iterations, the bridge's plasticity from stage_self_train
+ * (when enabled) is the load-bearing change: each iteration's STDP
+ * shifts the bridge's bindings slightly, the next cascade run reads
+ * the modified bridge, the system settles toward an attractor.
+ *
+ * This is Slice 1 of the recurrent-language-architecture rewrite — it
+ * establishes the iteration scaffold without changing per-stage
+ * semantics. Subsequent slices wire bidirectional Wernicke↔Broca,
+ * FEP prediction-error hooks, lateral inhibition, etc.
+ *
+ * @param brain           the brain
+ * @param prompt_or_null  same as communication_cascade_run
+ * @param max_iters       max iterations (default 8 if 0 passed)
+ * @param self_match_eps  convergence tolerance (default 0.01)
+ * @param out_state       caller-owned; populated with final iteration's state
+ * @return                0 on success; -1 on fatal failure of any iteration.
+ *                        out_state->repair_attempts is *additionally* bumped
+ *                        per iteration past the first so callers can see how
+ *                        many settling steps the system took.
+ */
+int communication_cascade_run_recurrent(
+    brain_t brain,
+    const char* prompt_or_null,
+    uint32_t max_iters,
+    float self_match_eps,
+    production_cascade_state_t* out_state);
+
 /** Free heap-owned fields in the cascade state. */
 void cascade_state_cleanup(production_cascade_state_t* state);
 

@@ -2026,6 +2026,46 @@ int nimcp_brain_produce_cascade_impl(
     return rc;
 }
 
+int nimcp_brain_produce_cascade_recurrent_impl(
+    brain_t brain,
+    const char* prompt_or_null,
+    uint32_t max_iters,
+    float self_match_eps,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence,
+    uint32_t* out_settling_steps)
+{
+    if (!brain) return -1;
+
+    production_cascade_state_t state;
+    int rc = communication_cascade_run_recurrent(brain, prompt_or_null,
+                                                   max_iters, self_match_eps,
+                                                   &state);
+
+    if (rc == 0) {
+        if (out_utterance && out_text_max > 0) {
+            const char* src = state.utterance ? state.utterance : "";
+            size_t n = strlen(src);
+            if (n >= out_text_max) n = out_text_max - 1;
+            memcpy(out_utterance, src, n);
+            out_utterance[n] = '\0';
+        }
+        if (out_word_count)     *out_word_count     = state.word_count;
+        if (out_confidence)     *out_confidence     = state.content_confidence;
+        if (out_settling_steps) *out_settling_steps = state.repair_attempts;
+    } else {
+        if (out_utterance && out_text_max > 0) out_utterance[0] = '\0';
+        if (out_word_count)     *out_word_count     = 0;
+        if (out_confidence)     *out_confidence     = 0.0f;
+        if (out_settling_steps) *out_settling_steps = 0;
+    }
+
+    cascade_state_cleanup(&state);
+    return rc;
+}
+
 /*============================================================================
  * Stage 10 (Item 5): Speech repair — perturbation-retry on low self_match.
  *
@@ -2456,6 +2496,103 @@ int communication_cascade_run(
     }
 
     return 0;
+}
+
+/*============================================================================
+ * Recurrent-language-architecture Slice 1 — iterative cascade with
+ * convergence check. See docs/claude/recurrent-language-architecture.md
+ * for the full plan. This entry point repeatedly invokes the existing
+ * sequential cascade and checks whether the utterance + self_match have
+ * stabilized between iterations.
+ *
+ * Biological motivation: real cortex doesn't run language production
+ * once and emit a result — it settles toward an attractor through
+ * recurrent dynamics over ~200-400ms. Each iteration of the cascade
+ * here is one "settling step". When cascade_self_train is enabled,
+ * each iteration's STDP shifts the bridge slightly, and the next
+ * iteration reads the shifted bridge. The system settles toward
+ * a coherent utterance.
+ *==========================================================================*/
+
+int communication_cascade_run_recurrent(brain_t brain,
+                                          const char* prompt_or_null,
+                                          uint32_t max_iters,
+                                          float self_match_eps,
+                                          production_cascade_state_t* out_state)
+{
+    if (!brain || !out_state) return -1;
+    if (max_iters == 0) max_iters = 8;
+    if (max_iters > 64) max_iters = 64;   /* defense against runaway */
+    if (!isfinite(self_match_eps) || self_match_eps < 0.0f) {
+        self_match_eps = 0.01f;
+    }
+
+    char* prev_utterance = NULL;
+    float prev_self_match = -1.0f;
+    int last_rc = 0;
+    uint32_t iter = 0;
+    uint32_t settling_steps = 0;
+
+    for (iter = 0; iter < max_iters; iter++) {
+        /* Free heap from previous iteration before communication_cascade_run
+         * memset-clears the state. Otherwise prev iteration's utterance /
+         * content_intent / etc leak. Skip on first iteration — caller-
+         * provided state hasn't been populated yet. */
+        if (iter > 0) {
+            cascade_state_cleanup(out_state);
+        }
+
+        last_rc = communication_cascade_run(brain, prompt_or_null,
+                                              CASCADE_STAGE_ALL, out_state);
+        if (last_rc < 0) {
+            /* Fatal error in this iteration — bail out preserving whatever
+             * partial state we have. */
+            break;
+        }
+
+        /* Convergence check — needs at least 2 iterations to compare. */
+        if (iter > 0) {
+            bool utterance_stable = false;
+            if (prev_utterance && out_state->utterance) {
+                utterance_stable = (strcmp(prev_utterance, out_state->utterance) == 0);
+            } else if (!prev_utterance && !out_state->utterance) {
+                utterance_stable = true;
+            }
+            bool self_match_stable = (fabsf(out_state->self_match - prev_self_match)
+                                       <= self_match_eps);
+            settling_steps++;
+            if (utterance_stable && self_match_stable) {
+                /* Converged. Bump repair_attempts as a "how many settling
+                 * steps did we take" diagnostic — overloads the field but
+                 * Slice 1 is opportunistic; future slices will add a
+                 * dedicated counter. */
+                out_state->repair_attempts =
+                    (settling_steps > 0) ? (settling_steps - 1) : 0;
+                break;
+            }
+        }
+
+        /* Save this iteration's outputs to compare against the next. */
+        if (prev_utterance) {
+            nimcp_free(prev_utterance);
+            prev_utterance = NULL;
+        }
+        if (out_state->utterance) {
+            size_t len = strlen(out_state->utterance);
+            prev_utterance = (char*)nimcp_malloc(len + 1);
+            if (prev_utterance) memcpy(prev_utterance, out_state->utterance, len + 1);
+        }
+        prev_self_match = out_state->self_match;
+    }
+
+    /* Record settling_steps even if we hit max_iters without converging —
+     * tells callers "system did not settle, here's how many tries it got". */
+    if (settling_steps > 0 && out_state->repair_attempts == 0) {
+        out_state->repair_attempts = settling_steps;
+    }
+
+    if (prev_utterance) nimcp_free(prev_utterance);
+    return last_rc;
 }
 
 /*============================================================================

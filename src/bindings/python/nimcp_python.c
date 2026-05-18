@@ -3507,6 +3507,45 @@ static PyObject* Brain_echo_and_correct(BrainObject* self, PyObject* args, PyObj
  * utterance + diagnostics from all stages. The diag fields (self_match,
  * self_grammaticality, prompt_is_question, etc.) come from the
  * sensorimotor-loop self-comprehension stage. */
+/* Slice 1 of the recurrent-language-architecture rewrite — iterates the
+ * cascade until utterance + self_match converge. Returns a small dict
+ * (utterance/word_count/confidence/settling_steps) rather than the full
+ * diag dump. Subsequent slices may add a recurrent diag variant. */
+static PyObject* Brain_produce_cascade_recurrent(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    const char* prompt = NULL;
+    uint32_t max_iters = 8;
+    float self_match_eps = 0.01f;
+    static char* kwlist[] = {"prompt", "max_iters", "self_match_eps", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|zIf", kwlist,
+                                       &prompt, &max_iters, &self_match_eps)) {
+        return NULL;
+    }
+
+    char buf[2048];
+    uint32_t word_count = 0;
+    float confidence = 0.0f;
+    uint32_t settling_steps = 0;
+    nimcp_status_t s = nimcp_brain_produce_cascade_recurrent(
+        self->brain, prompt, max_iters, self_match_eps,
+        buf, sizeof(buf), &word_count, &confidence, &settling_steps);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "produce_cascade_recurrent: bridge or cascade not attached");
+        return NULL;
+    }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "utterance",      PyUnicode_FromString(buf));
+    PyDict_SetItemString(d, "word_count",     PyLong_FromUnsignedLong(word_count));
+    PyDict_SetItemString(d, "confidence",     PyFloat_FromDouble((double)confidence));
+    PyDict_SetItemString(d, "settling_steps", PyLong_FromUnsignedLong(settling_steps));
+    return d;
+}
+
 static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObject* kwargs) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
@@ -12081,6 +12120,8 @@ static PyMethodDef Brain_methods[] = {
     {"echo_and_correct", (PyCFunction)Brain_echo_and_correct, METH_VARARGS | METH_KEYWORDS,
      "Supervised production-side learning: comprehend(parent_text) → strengthen (active concepts → target_word) bindings.\n"
      "echo_and_correct(parent_text: str, target_word: str, lr_scale: float = 1.0) -> int (pairs strengthened, 0 if target not registered)."},
+    {"produce_cascade_recurrent", (PyCFunction)Brain_produce_cascade_recurrent, METH_VARARGS | METH_KEYWORDS,
+     "Recurrent / biological-fidelity variant of produce_cascade — produce_cascade_recurrent(prompt: Optional[str]=None, max_iters: int=8, self_match_eps: float=0.01) -> dict. Iterates the full 15-stage cascade until the utterance + self_match converge. Mimics the settling dynamics of real cortex. Returns dict with 'utterance', 'word_count', 'confidence', 'settling_steps'. Slice 1 of the recurrent-language-architecture rewrite (see docs/claude/recurrent-language-architecture.md)."},
     {"produce_cascade", (PyCFunction)Brain_produce_cascade, METH_VARARGS | METH_KEYWORDS,
      "Phase 2A multi-region production cascade: drive + goal + listener + episodic → content_intent → bridge.\n"
      "produce_cascade(prompt: str | None = None) -> dict {'utterance': str, 'word_count': int, 'confidence': float}."},

@@ -1523,6 +1523,35 @@ nimcp_status_t nimcp_brain_produce_cascade(
     uint32_t* out_word_count,
     float* out_confidence);
 
+/** Recurrent / biological-fidelity variant of produce_cascade.
+ *
+ *  Iterates the full 15-stage cascade up to `max_iters` times, checking
+ *  convergence between iterations (utterance byte-stability + |Δself_match|
+ *  <= self_match_eps). Mimics the settling dynamics of real cortex: each
+ *  iteration's stage_self_train STDP shifts the bridge slightly, the next
+ *  iteration reads the shifted bridge, the system settles toward a coherent
+ *  attractor.
+ *
+ *  max_iters=0 uses the default of 8; self_match_eps<0 uses 0.01.
+ *
+ *  out_settling_steps receives the number of iterations actually taken
+ *  before convergence (or max_iters if no convergence). Pass NULL to skip.
+ *
+ *  This is Slice 1 of the recurrent-language-architecture rewrite (see
+ *  docs/claude/recurrent-language-architecture.md). Subsequent slices
+ *  wire bidirectional Wernicke↔Broca within each iteration, FEP
+ *  prediction-error hooks, lateral inhibition, etc. */
+nimcp_status_t nimcp_brain_produce_cascade_recurrent(
+    nimcp_brain_t brain,
+    const char* prompt_or_null,
+    uint32_t max_iters,
+    float self_match_eps,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence,
+    uint32_t* out_settling_steps);
+
 /** TA-5: reconsolidation-on-contradiction. */
 nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);
