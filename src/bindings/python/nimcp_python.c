@@ -3641,6 +3641,15 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
         uint32_t settling_steps;
     } nimcp_cascade_diag_full_t_local;
 
+    /* S3-C1 (CRITICAL): size lockstep with the public type. The public
+     * nimcp_cascade_diag_full_t in include/language/nimcp_communication_cascade.h
+     * has its own _Static_assert(... == 416). Without a reciprocal assert
+     * on the local shadow, a future field append on either side passes a
+     * shorter buffer into the C impl and stack-smashes. */
+    _Static_assert(sizeof(nimcp_cascade_diag_full_t_local) == 416,
+        "nimcp_cascade_diag_full_t_local shadow drift — bump public + local in lockstep "
+        "(public assert: include/language/nimcp_communication_cascade.h)");
+
     char text[2048] = {0};
     char best_text[2048] = {0};
     nimcp_cascade_diag_full_t_local s; memset(&s, 0, sizeof(s));
@@ -3967,6 +3976,15 @@ typedef struct {
     uint64_t discourse_ring_pushes_self;
 } bk_cascade_counters_local_t;
 
+/* S3-C1 (CRITICAL): size lockstep with the public type. Mirror of
+ * nimcp_cascade_counters_t in include/language/nimcp_communication_cascade.h
+ * which has its own _Static_assert(... == 456). Future append on either
+ * side without the reciprocal assert silently stack-smashes the cast in
+ * Brain_get_cascade_counters. */
+_Static_assert(sizeof(bk_cascade_counters_local_t) == 456,
+    "bk_cascade_counters_local_t shadow drift — bump public + local in lockstep "
+    "(public assert: include/language/nimcp_communication_cascade.h)");
+
 static PyObject* Brain_get_cascade_counters(BrainObject* self, PyObject* args) {
     (void)args;
     if (!self->brain) {
@@ -4047,6 +4065,15 @@ typedef struct {
     float    pe_decay_rate;
     int      converged;
 } bk_cascade_fep_metrics_local_t;
+
+/* S3-C1 (CRITICAL): size lockstep with the public type. Mirror of
+ * nimcp_cascade_fep_metrics_t in include/language/nimcp_communication_cascade.h
+ * which has its own _Static_assert(... == 288). Without a reciprocal
+ * assert on the local shadow, a future field append on either side
+ * passes a shorter buffer into the C impl and stack-smashes. */
+_Static_assert(sizeof(bk_cascade_fep_metrics_local_t) == 288,
+    "bk_cascade_fep_metrics_local_t shadow drift — bump public + local in lockstep "
+    "(public assert: include/language/nimcp_communication_cascade.h)");
 
 static PyObject* Brain_get_cascade_fep_metrics(BrainObject* self, PyObject* args) {
     (void)args;
