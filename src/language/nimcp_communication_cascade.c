@@ -3095,6 +3095,18 @@ int communication_cascade_run(
         (void)communication_cascade_compute_thalamic_gates(brain);
     }
 
+    /* S5-H3 fix (2026-05-19) — clear the phonological loop on every
+     * cascade entry, not just recurrent runs. Pre-fix the non-recurrent
+     * cascade_run wrote the loop (cascade_stage_lexical merges words)
+     * without clearing on entry; consecutive non-recurrent invocations
+     * inherited stale traces from the previous utterance. Biological
+     * semantics: each utterance starts with a fresh phonological buffer.
+     * No-op when loop_enabled=false (and the recurrent path still calls
+     * clear itself, harmless second clear). */
+    if (brain->loop_enabled && brain->loop_mutex) {
+        phonological_loop_clear(brain);
+    }
+
     /* If a prompt was given, comprehend it first to seed the intent
      * vector. The comprehend itself fires GL_EVENT_COMPREHENDED on the
      * cognitive bus, so working memory + ToM see the input naturally. */
