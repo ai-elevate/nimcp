@@ -248,6 +248,43 @@ static void test_recurrent_smoke(void) {
     fprintf(stderr, "PASS test_recurrent_smoke\n");
 }
 
+/* S6-M2 fix (2026-05-19): loop tokenizer now splits on isspace()+ispunct()
+ * to match grounded_language tokenize_text. Pre-fix, hyphen wasn't a
+ * delimiter for the loop but was for the lexicon, so "self-extinguishing"
+ * was one token in the loop but two in the lexicon — Broca's CYK lookup
+ * for the joined form was POS_UNKNOWN and the surface form was rejected.
+ * Verify the same hyphenated input now yields 4 separate normalised
+ * tokens in the loop. */
+static void test_hyphen_split_matches_lexicon(void) {
+    brain_t b = make_brain("phono_hyphen");
+    if (!b) { g_failures++; return; }
+    b->loop_enabled = true;
+
+    /* Two hyphenated forms = 4 normalized tokens in the lexicon's view. */
+    phonological_loop_merge_words(b, "self-extinguishing word-pop");
+    EXPECT(b->loop_trace_count == 4u,
+            "hyphen-split yields 4 tokens (count=%u)", b->loop_trace_count);
+
+    /* Confirm each of the 4 component tokens is present individually
+     * (order isn't strict but presence is). */
+    bool have_self = false, have_ext = false, have_word = false, have_pop = false;
+    for (uint32_t i = 0; i < b->loop_trace_count; i++) {
+        const char* w = b->loop_words[i];
+        if (!w) continue;
+        if (strcmp(w, "self") == 0)              have_self = true;
+        else if (strcmp(w, "extinguishing") == 0) have_ext = true;
+        else if (strcmp(w, "word") == 0)         have_word = true;
+        else if (strcmp(w, "pop") == 0)           have_pop = true;
+    }
+    EXPECT(have_self && have_ext && have_word && have_pop,
+            "all 4 hyphen-split tokens present: "
+            "self=%d ext=%d word=%d pop=%d",
+            have_self, have_ext, have_word, have_pop);
+
+    brain_destroy(b);
+    fprintf(stderr, "PASS test_hyphen_split_matches_lexicon\n");
+}
+
 int main(void) {
     test_default_off_and_init();
     test_merge_new_then_existing();
@@ -257,6 +294,7 @@ int main(void) {
     test_disabled_is_noop();
     test_max_words_cap();
     test_recurrent_smoke();
+    test_hyphen_split_matches_lexicon();
     if (g_failures > 0) {
         fprintf(stderr, "FAIL — %d failure(s)\n", g_failures);
         return 1;

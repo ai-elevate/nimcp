@@ -387,7 +387,20 @@ void phonological_loop_merge_words(brain_t brain, const char* utterance) {
     nimcp_mutex_t* m = (nimcp_mutex_t*)brain->loop_mutex;
     if (nimcp_mutex_lock(m) != 0) return;
 
-    /* Tokenize a local copy (utterance may live in caller-owned state). */
+    /* Tokenize a local copy (utterance may live in caller-owned state).
+     *
+     * S6-M2 fix (2026-05-19): pre-fix used strtok_r with a fixed delimiter
+     * set " \t\n\r.,!?;:\"'" — which is MISSING `-`. The lexicon's
+     * tokenize_text in grounded_language.c splits on isspace() || ispunct(),
+     * where `-` is ispunct. Surface form "self-extinguishing" was therefore
+     * ONE token in the loop but TWO in the lexicon. Broca's lexicon mirror
+     * for the hyphenated form was POS_UNKNOWN -> CYK rejected -> downstream
+     * syntactic_validity = 0 -> jargon word-salad would be accepted via the
+     * fallback path. The earlier "Broca accepts garbage" mode-collapse
+     * symptom traces straight back to this mismatch.
+     *
+     * Post-fix: manual scan using isspace()+ispunct() so the loop and the
+     * lexicon agree on token boundaries. */
     enum { LOCAL_MAX = 2048 };
     char dup[LOCAL_MAX];
     size_t ul = strlen(utterance);
@@ -395,14 +408,29 @@ void phonological_loop_merge_words(brain_t brain, const char* utterance) {
     memcpy(dup, utterance, ul);
     dup[ul] = '\0';
 
-    char* save = NULL;
-    char* tok  = strtok_r(dup, " \t\n\r.,!?;:\"'", &save);
-    while (tok) {
-        if (!tok[0]) { tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save); continue; }
+    char* p = dup;
+    while (*p) {
+        /* Skip separator chars (whitespace or any ispunct including '-').
+         * Mirrors the inner skip in grounded_language tokenize_text. */
+        while (*p && (isspace((unsigned char)*p) || ispunct((unsigned char)*p))) {
+            p++;
+        }
+        if (!*p) break;
+
+        char* tok = p;
+        /* Advance to next separator. */
+        while (*p && !isspace((unsigned char)*p) && !ispunct((unsigned char)*p)) {
+            p++;
+        }
+        if (*p) {
+            *p = '\0';
+            p++;
+        }
+        if (!tok[0]) continue;
 
         char norm[64];
         size_t nl = normalize_token(tok, norm, sizeof(norm));
-        if (nl == 0) { tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save); continue; }
+        if (nl == 0) continue;
 
         uint32_t idx = find_word_unlocked(brain, norm);
         if (idx != UINT32_MAX) {
@@ -416,23 +444,17 @@ void phonological_loop_merge_words(brain_t brain, const char* utterance) {
                 if (target > brain->loop_max_words) target = brain->loop_max_words;
                 if (grow_trace_capacity_unlocked(brain, target) != 0) {
                     /* Alloc failure — silently drop this token. */
-                    tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
                     continue;
                 }
             }
             char* wcopy = (char*)nimcp_malloc(nl + 1);
-            if (!wcopy) {
-                tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
-                continue;
-            }
+            if (!wcopy) continue;
             memcpy(wcopy, norm, nl + 1);
             brain->loop_words[brain->loop_trace_count] = wcopy;
             brain->loop_phonemic_trace[brain->loop_trace_count] = 1.0f;
             brain->loop_trace_count++;
         }
         /* else: cap reached, ignore further new tokens this round. */
-
-        tok = strtok_r(NULL, " \t\n\r.,!?;:\"'", &save);
     }
 
     rerender_buffer_unlocked(brain, LOOP_PRUNE_THRESHOLD);
