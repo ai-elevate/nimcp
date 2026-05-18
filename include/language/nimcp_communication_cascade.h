@@ -239,6 +239,72 @@ typedef struct {
      *                           was replaced. */
     char* utterance_pre_repair;
     bool  speech_repair_applied;
+
+    /* === SLICE 3 — FEP PREDICTION-ERROR HOOKS (2026-05-18) ===
+     * APPENDED at end of struct to avoid ABI shift on existing fields.
+     *
+     * Predictive-coding view of the cascade: each major stage maintains
+     * an implicit model of what its inputs SHOULD look like given the
+     * cognitive state. Once the stage runs and observes its actual input,
+     * we record the L2 norm of (actual - predicted) as a per-stage
+     * prediction-error scalar. High prediction error = "the upstream
+     * cognitive state didn't match what this stage expected" — a
+     * surprise signal. Friston's Free-Energy Principle: precision-weighted
+     * prediction error drives plasticity.
+     *
+     * Predictions are deliberately TRIVIAL at the start of this slice
+     * (mean / identity / persistence-from-prior-iter). The SIGNAL we care
+     * about is the SHAPE of pe over recurrent iterations: it should
+     * climb in early iterations (the system is surprised by its own
+     * outputs) and fall as the recurrent loop settles (the system
+     * predicts its own next-iter inputs well). Slice 3 wires the
+     * machinery; later slices replace trivial predictors with population-
+     * dynamic models.
+     *
+     * Fields:
+     *   pe_content_norm    — Stage Content predicts what content_intent
+     *                        WOULD look like from drives + episodic +
+     *                        listener + goal (no arcuate feedback). The
+     *                        observed content_intent is the actual, with
+     *                        arcuate feedback applied. PE = ‖actual -
+     *                        predicted‖ / sqrt(dim). Climbs when arcuate
+     *                        feedback is strong (lots to correct), falls
+     *                        toward zero as the recurrent loop converges.
+     *   pe_lexical_norm    — Stage Lexical predicts that its output's
+     *                        semantic vector (re-comprehended) matches
+     *                        the input content_intent. PE = ‖content_intent
+     *                        - (cosine-aligned echo of bridge output)‖ /
+     *                        sqrt(dim). On a settled cascade this drops
+     *                        as the bridge produces utterances closer to
+     *                        the intent.
+     *   pe_syntactic_norm  — Stage Syntactic predicts that Broca will
+     *                        accept the bridge's word sequence. PE =
+     *                        (1.0 - syntactic_validity) when stage ran,
+     *                        else 0. Trivially derived but kept as its
+     *                        own field for downstream consumers.
+     *   pe_self_comp_norm  — Stage Self-Comp's prediction is "my own
+     *                        utterance comprehends back to content_intent."
+     *                        PE = (1.0 - self_match) when self_parsed,
+     *                        else 1.0 (full surprise — the brain
+     *                        couldn't even parse its own output).
+     *   pe_total           — Sum of finite per-stage norms; the
+     *                        "surprise budget" of this iteration.
+     *   fep_iteration      — Which recurrent iteration this state came
+     *                        from (0 for single-pass cascade). Lets a
+     *                        consumer plot PE-vs-iter trajectories.
+     *   fep_precision      — Precision weighting applied to PE when
+     *                        scaling plasticity in stage_self_train.
+     *                        Default 1.0; the recurrent loop bumps it
+     *                        on high-surprise iterations so the bridge
+     *                        learns FASTER from surprising inputs (FEP:
+     *                        precision is the inverse-variance estimate). */
+    float    pe_content_norm;
+    float    pe_lexical_norm;
+    float    pe_syntactic_norm;
+    float    pe_self_comp_norm;
+    float    pe_total;
+    uint32_t fep_iteration;
+    float    fep_precision;
 } production_cascade_state_t;
 
 /* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
@@ -256,9 +322,11 @@ typedef struct {
  *
  * Computed on x86_64 Linux gcc with default packing. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(production_cascade_state_t) == 760,
-    "production_cascade_state_t ABI: size drifted from expected 760. "
-    "Append-only on the struct; bump this literal in lockstep.");
+_Static_assert(sizeof(production_cascade_state_t) == 784,
+    "production_cascade_state_t ABI: size drifted from expected 784. "
+    "Append-only on the struct; bump this literal in lockstep. "
+    "Slice 3 (2026-05-18) appended 6 prediction-error fields (24 bytes) "
+    "after speech_repair_applied — see file-history for the layout.");
 #endif
 
 /**
@@ -487,6 +555,18 @@ typedef struct {
     uint32_t stages_failed;
     uint32_t stages_skipped;
     char     failure_reason[128];
+
+    /* SLICE 3 — FEP prediction-error scalars per stage. APPENDED at end
+     * of the diag struct to keep the binding shadow stable for older
+     * consumers. New consumers can read these fields by name. See the
+     * production_cascade_state_t docstring above for the meaning of each. */
+    float    pe_content_norm;
+    float    pe_lexical_norm;
+    float    pe_syntactic_norm;
+    float    pe_self_comp_norm;
+    float    pe_total;
+    uint32_t fep_iteration;
+    float    fep_precision;
 } nimcp_cascade_diag_full_t;
 
 /**
@@ -584,9 +664,10 @@ typedef struct nimcp_cascade_counters {
  * nimcp_cascade_diag_full_t is similarly read field-by-name from
  * Python and the daemon RPC layer. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 384,
-    "nimcp_cascade_diag_full_t ABI: size drifted from expected 384. "
-    "Append-only; update binding shadow types in lockstep.");
+_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 412,
+    "nimcp_cascade_diag_full_t ABI: size drifted from expected 412. "
+    "Append-only; update binding shadow types in lockstep. "
+    "Slice 3 (2026-05-18) appended 7 FEP prediction-error fields (28 bytes).");
 _Static_assert(sizeof(nimcp_cascade_counters_t) == 456,
     "nimcp_cascade_counters_t ABI: size drifted from expected 456. "
     "Append-only; update binding shadow types in lockstep.");
@@ -706,6 +787,84 @@ int communication_cascade_get_thalamic_gates(brain_t brain,
  *  directly — it's exposed for tests + diagnostics. Stages flagged in
  *  manual_override[] are left alone. */
 int communication_cascade_compute_thalamic_gates(brain_t brain);
+
+/* ----------------------------------------------------------------------
+ * SLICE 3 — FEP recurrent metrics.
+ *
+ * Across the iterations of communication_cascade_run_recurrent, the per-
+ * stage prediction errors trace a trajectory. A well-settling recurrent
+ * system shows pe_total climbing in the first 1-3 iterations (the
+ * arcuate feedback is making the next iter "try harder") and then
+ * falling toward zero as the system converges on a coherent utterance.
+ * A wedged cascade shows pe_total flat or growing — the recurrent loop
+ * isn't actually fixing anything between iterations.
+ *
+ * These metrics summarize that trajectory and live on the brain so a
+ * monitor / trainer can snapshot them after each cascade run. Reset
+ * happens implicitly at the start of every recurrent run.
+ * ---------------------------------------------------------------------- */
+
+typedef struct nimcp_cascade_fep_metrics {
+    /* Number of iterations actually run in the latest recurrent call.
+     * 0 when the recurrent loop has never been invoked. */
+    uint32_t iterations_run;
+
+    /* Per-iteration pe_total trace. Sized to a fixed maximum so the
+     * caller doesn't need to allocate. Indices [iterations_run..) are
+     * zeroed. Max matches the runtime cap in communication_cascade_run_
+     * recurrent (64). */
+    float    pe_total_trace[64];
+
+    /* Summary scalars derived from the trace. All are NaN/0-safe when
+     * iterations_run < 2. */
+    float    pe_total_initial;       /* trace[0] */
+    float    pe_total_terminal;      /* trace[iterations_run-1] */
+    float    pe_total_min;
+    float    pe_total_max;
+    float    pe_total_mean;
+
+    /* Decay rate: (initial - terminal) / max(initial, eps). Positive =
+     * system reduced its surprise across iterations (good). Negative =
+     * system became more surprised (bad — the recurrent loop is
+     * diverging). 0 when iterations_run < 2. */
+    float    pe_decay_rate;
+
+    /* Converged flag — set true when the recurrent loop exited because
+     * utterance + self_match stabilized (not because it hit max_iters).
+     * Decoupled from pe_decay_rate so callers can detect "converged on
+     * a bad attractor" (low decay + converged=true). */
+    int      converged;
+} nimcp_cascade_fep_metrics_t;
+
+/* Same compile-time ABI guarantee as the other binding-mirrored structs.
+ * Layout: u32(4) + 64×float(256) + 5×float(20) + float(4) + int(4) = 288.
+ * Plus 4 bytes of trailing padding to align to 8-byte boundary? Actually
+ * with iterations_run(u32) + 64 floats (already 4-aligned) + 5 floats +
+ * decay rate + int — all 4-byte fields, no padding required. Total 288. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(nimcp_cascade_fep_metrics_t) == 288,
+    "nimcp_cascade_fep_metrics_t ABI: size drifted from expected 288. "
+    "Update binding shadow types in lockstep.");
+#endif
+
+/**
+ * @brief Snapshot the brain's latest recurrent-cascade FEP metrics.
+ *
+ * Returns the metrics from the MOST RECENT call to
+ * communication_cascade_run_recurrent. Zero-initialized if the recurrent
+ * loop has never been invoked. Lock-free: the recurrent loop writes the
+ * struct in place at exit; readers see at-worst a stale snapshot, not a
+ * torn one (the writes are aligned 4-byte stores). For tighter
+ * consistency wrap an external mutex; this API trades that for read
+ * latency.
+ *
+ * @param brain Brain handle (NULL → -1).
+ * @param out   Caller-owned struct; zeroed and populated on rc=0.
+ * @return 0 on success, -1 on invalid args.
+ */
+int nimcp_brain_get_cascade_fep_metrics_impl(
+    brain_t brain,
+    nimcp_cascade_fep_metrics_t* out);
 
 #ifdef __cplusplus
 }

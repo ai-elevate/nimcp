@@ -105,11 +105,41 @@ int communication_cascade_run_recurrent(
 
 **Why second**: this is the single most important biological-fidelity change. The arcuate fasciculus is the load-bearing white-matter tract for language; making it bidirectional in code matches the anatomy.
 
-### Slice 3: FEP prediction-error hooks
+### Slice 3: FEP prediction-error hooks ✓ SHIPPED
 
-**What**: each stage produces (current_estimate, prediction_of_its_inputs). Downstream stages compute prediction_error = own_input - predicted_input. Error signal drives plasticity (FEP module already exists in repo; wire it).
+**What**: each major cascade stage produces a trivial prediction of what its inputs SHOULD look like given the cognitive state, observes the actual input, and records the L2 norm of (actual - predicted) as a per-stage prediction-error scalar on `production_cascade_state_t`. The recurrent loop tracks the per-iteration `pe_total` trajectory and bumps `fep_precision` on high-surprise iterations so `cascade_stage_self_train` applies more plasticity to surprising inputs (Friston FEP: precision-weighted prediction error drives learning).
 
-**Why third**: predictive coding is the mathematical heart of biological inference. Once the iteration scaffold exists, predictions are a natural addition.
+**Why third**: predictive coding is the mathematical heart of biological inference. Once the iteration scaffold exists (Slice 1) and the arcuate-feedback loop carries meaningful inter-iteration signal (Slice 2), predictions are a natural addition.
+
+**Hooks landed** (all default-zero so the existing single-pass cascade behavior is bit-identical to pre-Slice-3):
+
+| Stage | Predictor | PE scalar |
+|-------|-----------|-----------|
+| Content | Pre-arcuate blend of drives/episodic/listener/goal (steps 1..5) | `pe_content_norm` — magnitude of the arcuate-feedback correction applied this iter. Drops as the recurrent loop converges. |
+| Lexical | "The bridge knows what it's saying" — the bridge's own `prod.semantic_vector` should equal `content_intent`. | `pe_lexical_norm` — `‖content_intent − prod.semantic_vector‖ / sqrt(dim)`. Fallback `1 − fluency` when the bridge doesn't fill `semantic_vector`. |
+| Syntactic | "Broca accepts the bridge's word sequence." | `pe_syntactic_norm` — `1 − syntactic_validity`. Stays 0 when the stage was skipped (no observation → no surprise). |
+| Self-comp | "My own utterance comprehends back to the original intent." | `pe_self_comp_norm` — `1 − self_match`. Full surprise (`1.0`) when even parsing my own output failed. |
+
+`pe_total = sum(finite per-stage norms)` is the iteration's surprise budget. The recurrent loop pushes `pe_total` into a per-iter trace + summary scalars on the brain; consumers read them via `nimcp_brain_get_cascade_fep_metrics()` / `Brain.get_cascade_fep_metrics()` / RPC `get_cascade_fep_metrics`.
+
+**FEP precision update** (recurrent loop only): `fep_precision_{iter+1} = clamp(1.0 + 0.5 × pe_total_iter, [0.5, 4.0])`. Stage_self_train multiplies its `lr_scale` by `precision` before invoking the bridge plasticity API, so a surprising iteration produces stronger learning on the next iter.
+
+**Surface added** (all opt-in / append-only):
+
+- `production_cascade_state_t` — 6 fields: `pe_content_norm`, `pe_lexical_norm`, `pe_syntactic_norm`, `pe_self_comp_norm`, `pe_total`, `fep_iteration`, `fep_precision`.
+- `nimcp_cascade_diag_full_t` — same 6 fields mirrored.
+- `brain_struct` — `fep_iterations_run`, `fep_pe_trace[64]`, `fep_pe_initial/terminal/min/max/mean`, `fep_pe_decay_rate`, `fep_converged`.
+- New type `nimcp_cascade_fep_metrics_t` in `nimcp_communication_cascade.h`.
+- C API: `nimcp_brain_get_cascade_fep_metrics()` in `nimcp.h`.
+- Python: `Brain.get_cascade_fep_metrics()` returning dict; `Brain.produce_cascade()` adds 7 PE/FEP fields to its diag dict.
+- Daemon RPC: `get_cascade_fep_metrics`.
+- BrainProxy: `get_cascade_fep_metrics()`.
+
+**What's NOT here** (deferred to walkthrough / later slices):
+
+1. Predictors are still TRIVIAL (identity / fluency / validity / self_match). A real population-dynamic predictor at each stage — e.g. Broca's syntactic processor learning a model of what bridge-output it expects given the content_intent — lands in a later slice.
+2. The PE signal is read-only on the bridge plasticity path; we precision-scale `lr_scale`, but we don't yet route the per-stage PE into stage-specific plasticity (e.g. Wernicke's parse-error → Wernicke STDP).
+3. The `pe_content_norm` predictor records the arcuate-feedback magnitude — useful, but not the textbook "predict downstream input" semantics. A proper Content predictor would model what the lexical stage will produce given the current intent.
 
 ### Slice 4: Lateral inhibition in lexical selection — SHIPPED
 

@@ -92,6 +92,57 @@ static void cascade_record_fail(production_cascade_state_t* s,
     }
 }
 
+/*============================================================================
+ * SLICE 3 — FEP prediction-error helpers.
+ *
+ * Each major stage produces a prediction of what its inputs SHOULD look
+ * like given the cognitive state, observes the actual input, and records
+ * the L2 norm of the difference in state->pe_*_norm. These are trivial
+ * predictors at the start of this slice — population-dynamic predictors
+ * land in a later slice. The SIGNAL we surface is the SHAPE of the
+ * prediction-error trace across recurrent iterations, not the value of
+ * any single iteration's PE.
+ *==========================================================================*/
+
+/* L2 norm of a difference between two equal-length float vectors,
+ * normalized by sqrt(dim) so the scalar is comparable across stages
+ * with different input ranks. NaN-safe — NaN inputs contribute 0 (we
+ * don't want a single bad dimension to mask the rest of the signal). */
+static inline float cascade_fep_norm_diff(const float* a, const float* b,
+                                            uint32_t dim) {
+    if (!a || !b || dim == 0) return 0.0f;
+    float ssum = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        float d = a[i] - b[i];
+        if (isfinite(d)) ssum += d * d;
+    }
+    float n = sqrtf(ssum) / sqrtf((float)dim);
+    return isfinite(n) ? n : 0.0f;
+}
+
+/* Sum the per-stage PE scalars into pe_total. NaN/inf entries are
+ * treated as 0 so a single missing stage doesn't poison the total. */
+static inline void cascade_fep_recompute_total(production_cascade_state_t* s) {
+    if (!s) return;
+    float t = 0.0f;
+    if (isfinite(s->pe_content_norm))   t += s->pe_content_norm;
+    if (isfinite(s->pe_lexical_norm))   t += s->pe_lexical_norm;
+    if (isfinite(s->pe_syntactic_norm)) t += s->pe_syntactic_norm;
+    if (isfinite(s->pe_self_comp_norm)) t += s->pe_self_comp_norm;
+    s->pe_total = t;
+}
+
+/* Return the state's fep_precision when finite + positive, else 1.0.
+ * Stage_self_train uses this to keep its legacy single-pass behavior
+ * when called outside the recurrent loop. */
+static inline float out_state_fep_precision_or_1(
+        const production_cascade_state_t* s) {
+    if (!s) return 1.0f;
+    float p = s->fep_precision;
+    if (!isfinite(p) || p <= 0.0f) return 1.0f;
+    return p;
+}
+
 /* Map a single-bit cascade_stage_mask_t to a [0,14] index for the
  * counter arrays. Returns -1 if the input is not a power of two or
  * is out of range. The orchestrator only ever passes single-bit
@@ -822,6 +873,27 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
+    /* SLICE 3 — Stage Content's PREDICTION of what content_intent
+     * "should" be is the upstream-driven blend computed in steps 1..5.
+     * We snapshot it BEFORE step 6 (arcuate feedback). The OBSERVED
+     * content_intent is what step 6 leaves behind. PE = ‖observed -
+     * predicted‖ / sqrt(dim) — i.e. the L2 magnitude of the arcuate-
+     * feedback correction applied this iteration. Drops toward 0 as the
+     * recurrent loop settles (arcuate feedback shrinks). On a single-
+     * pass cascade (no recurrent loop), arcuate is NULL and PE stays 0.
+     *
+     * The snapshot lives on the stack — a fixed cap keeps the helper
+     * allocation-free in the hot path. Stages with dim > the cap fall
+     * back to "no PE recorded" (pe_content_norm stays 0). 4096 covers
+     * every grounded_lang semantic_dim we ship today. */
+    float fep_predicted_intent[4096];
+    bool  fep_predicted_recorded = false;
+    if (dim <= (uint32_t)(sizeof(fep_predicted_intent) / sizeof(float))) {
+        memcpy(fep_predicted_intent, state->content_intent,
+               dim * sizeof(float));
+        fep_predicted_recorded = true;
+    }
+
     /* 6. ARCUATE FASCICULUS FEEDBACK (Slice 2 of recurrent-language-arch).
      * Real anatomy: between iterations of speech production, Wernicke
      * sends a parse of own previous speech back to Broca/PFC via the
@@ -845,18 +917,25 @@ static int cascade_stage_content(brain_t brain,
     }
 
     /* Slice 6: thalamic gating of content_intent — scales every component
-     * by the thalamic gate for stage_content (NIMCP_CASCADE_STAGE_CONTENT_IDX).
-     * Default OFF; returns 1.0 (no change) when disabled. High attention →
-     * gate near 1.0; low attention → intent shrunk so the bridge softmax
-     * spreads — gate=0 effectively silences the cascade. Applied BEFORE
-     * the confidence computation so content_confidence reflects the
-     * thalamically-gated magnitude. */
+     * by the thalamic gate for stage_content. Default OFF; returns 1.0
+     * when disabled. Applied BEFORE confidence computation so content_
+     * confidence reflects the thalamically-gated magnitude. */
     const float gate_content = cascade_thalamic_gate_for(brain,
                                   NIMCP_CASCADE_STAGE_CONTENT_IDX);
     if (gate_content != 1.0f) {
         for (uint32_t i = 0; i < dim; i++) {
             state->content_intent[i] *= gate_content;
         }
+    }
+
+    /* SLICE 3 — Record stage-content prediction error. Snapshot from
+     * before arcuate-feedback is the prediction; now-modified content_
+     * intent (post-arcuate, post-gate) is the observation. Gate effect
+     * is intentionally folded into pe_content_norm — it IS part of the
+     * stage's contribution to the running intent representation. */
+    if (fep_predicted_recorded) {
+        state->pe_content_norm = cascade_fep_norm_diff(
+            state->content_intent, fep_predicted_intent, dim);
     }
 
     /* Confidence = signal magnitude / sqrt(dim). 1.0 = strongly cohered;
@@ -900,6 +979,25 @@ static int cascade_stage_lexical(brain_t brain,
         cascade_record_fail(state, "stage_lexical: bridge produce failed");
         cascade_counter_failure(brain, CASCADE_STAGE_LEXICAL);
         return -1;
+    }
+
+    /* SLICE 3 — Stage Lexical PREDICTION: a perfectly-aligned bridge
+     * would emit an utterance whose semantic_vector equals the input
+     * content_intent. The OBSERVED is prod.semantic_vector. PE =
+     * ‖content_intent - prod.semantic_vector‖ / sqrt(dim). The bridge
+     * fills semantic_vector with its own re-projection of the produced
+     * text; if it's NULL (older bridges) we fall back to (1 - fluency)
+     * which carries similar "did the bridge know what it was saying"
+     * signal in [0,1]. */
+    if (prod.semantic_vector && state->content_intent &&
+        state->content_dim > 0) {
+        state->pe_lexical_norm = cascade_fep_norm_diff(
+            state->content_intent, prod.semantic_vector, state->content_dim);
+    } else if (isfinite(prod.fluency)) {
+        float f = prod.fluency;
+        if (f < 0.0f) f = 0.0f;
+        if (f > 1.0f) f = 1.0f;
+        state->pe_lexical_norm = 1.0f - f;
     }
 
     /* Transfer ownership: prod.text → state->utterance. */
@@ -1880,15 +1978,23 @@ static int cascade_stage_self_train(brain_t brain,
     if (!isfinite(alpha)    || alpha    < 0.0f) alpha    = 0.05f;
     if (!isfinite(lr_scale) || lr_scale < 0.0f) lr_scale = 1.0f;
 
-    /* Slice 6: thalamic gating of self_train. The gate attenuates the
-     * effective learning rate proportionally — low attention or high
-     * imagination_attention (dreamy state) drops lr_scale so we don't
-     * reinforce attended-elsewhere productions as if they were the
-     * brain's deliberate output. Default OFF returns gate=1.0
-     * (no change). */
+    /* Slice 6: thalamic gating of self_train attenuates effective LR.
+     * Low attention / high imagination_attention (dreamy state) drops
+     * lr_scale so we don't reinforce attended-elsewhere productions. */
     const float gate_self_train = cascade_thalamic_gate_for(brain,
                                      NIMCP_CASCADE_STAGE_SELF_TRAIN_IDX);
     lr_scale *= gate_self_train;
+
+    /* SLICE 3 — precision-weighted FEP scaling. The recurrent loop bumps
+     * state->fep_precision on high-surprise iterations so plasticity is
+     * stronger when the brain has more to learn. Default 1.0 leaves
+     * legacy behavior unchanged. Bounded above to keep the effective LR
+     * inside the bridge's CASCADE_SELF_TRAIN_LR_SCALE_MAX cap. */
+    float precision = out_state_fep_precision_or_1(state);
+    lr_scale *= precision;
+    if (lr_scale > CASCADE_SELF_TRAIN_LR_SCALE_MAX) {
+        lr_scale = CASCADE_SELF_TRAIN_LR_SCALE_MAX;
+    }
 
     float reward_applied = 0.0f;
     int n = cascade_apply_self_train_reward(
@@ -2244,6 +2350,17 @@ int nimcp_brain_produce_cascade_diag_full_impl(
         out->stages_skipped   = state.stages_skipped;
         memcpy(out->failure_reason, state.failure_reason,
                sizeof(out->failure_reason));
+
+        /* SLICE 3 — FEP prediction-error scalars. Mirror the same fields
+         * the state itself carries; consumers can read them by name from
+         * the dict-shaped binding. */
+        out->pe_content_norm   = state.pe_content_norm;
+        out->pe_lexical_norm   = state.pe_lexical_norm;
+        out->pe_syntactic_norm = state.pe_syntactic_norm;
+        out->pe_self_comp_norm = state.pe_self_comp_norm;
+        out->pe_total          = state.pe_total;
+        out->fep_iteration     = state.fep_iteration;
+        out->fep_precision     = state.fep_precision;
     }
 
     cascade_state_cleanup(&state);
@@ -2522,6 +2639,18 @@ int communication_cascade_run(
     if (stage_mask & CASCADE_STAGE_SYNTACTIC) {
         cascade_counter_invoke(brain, CASCADE_STAGE_SYNTACTIC);
         cascade_stage_syntactic(brain, out_state);
+        /* SLICE 3 — Stage Syntactic PREDICTION: Broca expects the
+         * bridge's word sequence to form a valid phrase structure.
+         * PE = 1.0 - syntactic_validity (clamped to [0,1]) when the
+         * stage actually ran; 0 when it was skipped (no utterance).
+         * Skip-leaves-default of 0 is the right default — a skipped
+         * stage didn't OBSERVE anything, so it cannot have been
+         * surprised. */
+        if (out_state->syntactic_validity >= 0.0f) {
+            float v = out_state->syntactic_validity;
+            if (v > 1.0f) v = 1.0f;
+            out_state->pe_syntactic_norm = 1.0f - v;
+        }
     }
     /* Speech repair (disfluency cleaner): strip "um", "uh", repetitions
      * and false starts from the produced utterance BEFORE Stage 8 so the
@@ -2579,6 +2708,18 @@ int communication_cascade_run(
         } else {
             cascade_record_skip(out_state, CASCADE_STAGE_SELF_COMP,
                                 "stage_self_comp: comprehend failed or no utterance");
+        }
+        /* SLICE 3 — Stage Self-Comp PREDICTION: "my own utterance
+         * comprehends back to the original intent." PE = 1.0 -
+         * self_match when self_parsed; full surprise (1.0) when even
+         * parsing the brain's own output failed. */
+        if (out_state->self_parsed && isfinite(out_state->self_match)) {
+            float m = out_state->self_match;
+            if (m < 0.0f) m = 0.0f;
+            if (m > 1.0f) m = 1.0f;
+            out_state->pe_self_comp_norm = 1.0f - m;
+        } else {
+            out_state->pe_self_comp_norm = 1.0f;
         }
     }
 
@@ -2767,6 +2908,17 @@ int communication_cascade_run(
         cascade_stage_self_feedback(brain, out_state);
     }
 
+    /* SLICE 3 — finalize FEP scalars. fep_precision defaults to 1.0 for
+     * a single-pass cascade; the recurrent loop bumps it on high-PE
+     * iterations so stage_self_train applies more plasticity to
+     * surprising inputs (Friston FEP — precision-weighted PE drives
+     * learning). pe_total is the precision-weighted "surprise budget"
+     * the trainer reads. */
+    if (!isfinite(out_state->fep_precision) || out_state->fep_precision <= 0.0f) {
+        out_state->fep_precision = 1.0f;
+    }
+    cascade_fep_recompute_total(out_state);
+
     return 0;
 }
 
@@ -2804,6 +2956,13 @@ int communication_cascade_run_recurrent(brain_t brain,
     int last_rc = 0;
     uint32_t iter = 0;
     uint32_t settling_steps = 0;
+    bool converged = false;
+
+    /* SLICE 3 — per-iteration FEP scalars. Trace is sized to the same
+     * 64-iter cap as the runtime max above. We hand the trace + summary
+     * to the brain at exit so a monitoring caller can snapshot it. */
+    float pe_trace[64] = {0};
+    uint32_t pe_trace_len = 0;
 
     /* Slice 2 — arcuate fasciculus feedback buffers. Lazy-allocated on
      * the first non-trivial feedback (iter >= 1, prev utterance non-
@@ -2836,12 +2995,34 @@ int communication_cascade_run_recurrent(brain_t brain,
             cascade_state_cleanup(out_state);
         }
 
+        /* SLICE 3 — let each cascade run record the current iteration
+         * number on the state so consumers reading the diag dict can
+         * tell which settling step their snapshot is from. */
+        out_state->fep_iteration = iter;
+        /* fep_precision rides between iterations: a surprising iter (high
+         * pe_total at the prior iter) raises precision so this iter's
+         * stage_self_train applies MORE plasticity. First iter gets the
+         * default 1.0 (no prior surprise). */
+        if (iter == 0) {
+            out_state->fep_precision = 1.0f;
+        }
+        /* Otherwise pe_precision is whatever we set at the bottom of the
+         * previous iteration's tail, below. */
+
         last_rc = communication_cascade_run(brain, prompt_or_null,
                                               CASCADE_STAGE_ALL, out_state);
         if (last_rc < 0) {
             /* Fatal error in this iteration — bail out preserving whatever
              * partial state we have. */
             break;
+        }
+
+        /* SLICE 3 — capture this iter's pe_total in the trace. The
+         * cascade tail (cascade_fep_recompute_total) populated it before
+         * returning. */
+        if (pe_trace_len < (uint32_t)(sizeof(pe_trace) / sizeof(pe_trace[0])) &&
+            isfinite(out_state->pe_total)) {
+            pe_trace[pe_trace_len++] = out_state->pe_total;
         }
 
         /* Convergence check — needs at least 2 iterations to compare. */
@@ -2858,8 +3039,22 @@ int communication_cascade_run_recurrent(brain_t brain,
             if (utterance_stable && self_match_stable) {
                 out_state->repair_attempts =
                     (settling_steps > 0) ? (settling_steps - 1) : 0;
+                converged = true;
                 break;
             }
+        }
+
+        /* SLICE 3 — precision update for the NEXT iteration. A high
+         * pe_total this iter means the recurrent system was surprised by
+         * its own output; bump precision so the next iter's
+         * stage_self_train applies more plasticity (Friston FEP).
+         * Saturating map keeps precision in [0.5, 4.0] so the bridge
+         * doesn't blow up on a single bad iteration. */
+        if (isfinite(out_state->pe_total) && out_state->pe_total > 0.0f) {
+            float p = 1.0f + 0.5f * out_state->pe_total;
+            if (p < 0.5f) p = 0.5f;
+            if (p > 4.0f) p = 4.0f;
+            out_state->fep_precision = p;
         }
 
         /* SLICE 2 — compute arcuate feedback for the NEXT iteration.
@@ -2941,6 +3136,54 @@ int communication_cascade_run_recurrent(brain_t brain,
     if (feedback_vec) nimcp_free(feedback_vec);
 
     if (prev_utterance) nimcp_free(prev_utterance);
+
+    /* SLICE 3 — publish FEP metrics on the brain. Caller-visible via
+     * nimcp_brain_get_cascade_fep_metrics_impl. Lock-free single-writer;
+     * concurrent readers see an at-worst stale snapshot. The struct is
+     * stored inline (not heap-allocated) so it survives across calls and
+     * the next recurrent invocation overwrites in place. */
+    brain->fep_iterations_run = pe_trace_len;
+    memset(brain->fep_pe_trace, 0, sizeof(brain->fep_pe_trace));
+    if (pe_trace_len > 0) {
+        uint32_t copy_n = pe_trace_len;
+        uint32_t cap = (uint32_t)(sizeof(brain->fep_pe_trace) /
+                                  sizeof(brain->fep_pe_trace[0]));
+        if (copy_n > cap) copy_n = cap;
+        for (uint32_t i = 0; i < copy_n; i++) {
+            brain->fep_pe_trace[i] = pe_trace[i];
+        }
+        float pe_min = pe_trace[0], pe_max = pe_trace[0];
+        float pe_sum = 0.0f;
+        for (uint32_t i = 0; i < pe_trace_len; i++) {
+            float v = pe_trace[i];
+            if (!isfinite(v)) continue;
+            if (v < pe_min) pe_min = v;
+            if (v > pe_max) pe_max = v;
+            pe_sum += v;
+        }
+        brain->fep_pe_initial  = pe_trace[0];
+        brain->fep_pe_terminal = pe_trace[pe_trace_len - 1];
+        brain->fep_pe_min      = pe_min;
+        brain->fep_pe_max      = pe_max;
+        brain->fep_pe_mean     = pe_sum / (float)pe_trace_len;
+        if (pe_trace_len >= 2) {
+            float denom = pe_trace[0];
+            if (denom < 1e-6f) denom = 1e-6f;
+            brain->fep_pe_decay_rate =
+                (pe_trace[0] - pe_trace[pe_trace_len - 1]) / denom;
+        } else {
+            brain->fep_pe_decay_rate = 0.0f;
+        }
+    } else {
+        brain->fep_pe_initial    = 0.0f;
+        brain->fep_pe_terminal   = 0.0f;
+        brain->fep_pe_min        = 0.0f;
+        brain->fep_pe_max        = 0.0f;
+        brain->fep_pe_mean       = 0.0f;
+        brain->fep_pe_decay_rate = 0.0f;
+    }
+    brain->fep_converged = converged ? 1 : 0;
+
     return last_rc;
 }
 
@@ -2986,6 +3229,42 @@ int nimcp_brain_get_cascade_counters_impl(brain_t brain,
         &brain->cascade_discourse_ring_pushes_user, memory_order_relaxed);
     out->discourse_ring_pushes_self = atomic_load_explicit(
         &brain->cascade_discourse_ring_pushes_self, memory_order_relaxed);
+    return 0;
+}
+
+/*============================================================================
+ * SLICE 3 — FEP recurrent metrics getter. Public RO API; returns the
+ * most-recent recurrent-cascade prediction-error trajectory. Zero-init
+ * when the recurrent loop has never been called.
+ *==========================================================================*/
+
+int nimcp_brain_get_cascade_fep_metrics_impl(brain_t brain,
+                                               nimcp_cascade_fep_metrics_t* out)
+{
+    if (!brain || !out) return -1;
+    memset(out, 0, sizeof(*out));
+
+    out->iterations_run = brain->fep_iterations_run;
+    /* Bound copy to BOTH brain-side array size and out-side array size
+     * (they happen to be 64 each — but the loop is defense-in-depth
+     * against either side drifting). */
+    uint32_t n = brain->fep_iterations_run;
+    uint32_t out_cap = (uint32_t)(sizeof(out->pe_total_trace) /
+                                   sizeof(out->pe_total_trace[0]));
+    uint32_t in_cap  = (uint32_t)(sizeof(brain->fep_pe_trace) /
+                                   sizeof(brain->fep_pe_trace[0]));
+    if (n > out_cap) n = out_cap;
+    if (n > in_cap)  n = in_cap;
+    for (uint32_t i = 0; i < n; i++) {
+        out->pe_total_trace[i] = brain->fep_pe_trace[i];
+    }
+    out->pe_total_initial  = brain->fep_pe_initial;
+    out->pe_total_terminal = brain->fep_pe_terminal;
+    out->pe_total_min      = brain->fep_pe_min;
+    out->pe_total_max      = brain->fep_pe_max;
+    out->pe_total_mean     = brain->fep_pe_mean;
+    out->pe_decay_rate     = brain->fep_pe_decay_rate;
+    out->converged         = brain->fep_converged;
     return 0;
 }
 

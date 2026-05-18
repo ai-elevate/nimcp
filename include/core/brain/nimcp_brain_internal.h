@@ -2885,34 +2885,36 @@ struct brain_struct {
      * Real thalamus is the central relay + gain control of the brain.
      * The pulvinar in particular modulates attention by gain-controlling
      * cortical activity — boosting attended regions, suppressing
-     * distractors. Currently every cascade stage runs at full strength.
-     * This slice adds per-stage gates that scale each stage's
-     * CONTRIBUTION based on the brain's current arousal/attention state
-     * (and optionally the existing thalamic_router's per-route weights).
+     * distractors. This slice adds per-stage gates that scale each
+     * stage's CONTRIBUTION based on the brain's current arousal/
+     * attention state.
      *
-     * thalamic_gate_enabled: master switch. Default OFF (calloc zero)
-     *   preserves bit-for-bit legacy behavior — when false, the cascade
-     *   never reads thalamic_gate_weights and skips the gain-application
-     *   helper at each stage's tail. Flipping ON re-derives gates each
-     *   call from arousal + thalamic_router and applies them.
-     *
+     * thalamic_gate_enabled: master switch. Default OFF (calloc zero).
      * thalamic_gate_weights[15]: per-stage scalar gain in [0.0, 1.0].
-     *   1.0 = full pass-through; 0.0 = stage suppressed. Indexed by
-     *   cascade_stage_to_index() (bit position of cascade_stage_mask_t).
-     *   When manual_override[i] is true the cached value persists across
-     *   compute calls — useful for ablation experiments.
+     * thalamic_gate_manual_override[15]: per-stage manual-override flag.
      *
-     * thalamic_gate_manual_override[15]: if true for stage i, the
-     *   compute helper leaves weights[i] alone. False (default)
-     *   re-derives weights[i] from the brain's current state.
-     *
-     * APPENDED at end of brain_struct to avoid ABI shift. Concurrency:
-     * the cascade orchestrator is normally called from a single thread
-     * per brain; we accept the same race-tolerance as the self_train
-     * EMA and skip a mutex. */
+     * APPENDED at end of brain_struct; race-tolerant like self_train EMA. */
     bool  thalamic_gate_enabled;
     float thalamic_gate_weights[15];
     bool  thalamic_gate_manual_override[15];
+
+    /* === SLICE 3 — FEP RECURRENT METRICS (2026-05-18) ===
+     * Per-iteration prediction-error trace + summary scalars written
+     * by communication_cascade_run_recurrent at exit. Read by
+     * nimcp_brain_get_cascade_fep_metrics_impl. Not _Atomic — the
+     * recurrent loop is single-caller-at-a-time by contract.
+     *
+     * fep_pe_trace sized to 64 = max iteration cap inside
+     * communication_cascade_run_recurrent. */
+    uint32_t fep_iterations_run;
+    float    fep_pe_trace[64];
+    float    fep_pe_initial;
+    float    fep_pe_terminal;
+    float    fep_pe_min;
+    float    fep_pe_max;
+    float    fep_pe_mean;
+    float    fep_pe_decay_rate;
+    int      fep_converged;
 };
 
 //=============================================================================
