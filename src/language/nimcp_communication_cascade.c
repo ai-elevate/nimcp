@@ -955,20 +955,27 @@ static int cascade_stage_content(brain_t brain,
     /* SLICE 3 — Stage Content's PREDICTION of what content_intent
      * "should" be is the upstream-driven blend computed in steps 1..5.
      * We snapshot it BEFORE step 6 (arcuate feedback). The OBSERVED
-     * content_intent is what step 6 leaves behind. PE = ‖observed -
-     * predicted‖ / sqrt(dim) — i.e. the L2 magnitude of the arcuate-
-     * feedback correction applied this iteration. Drops toward 0 as the
-     * recurrent loop settles (arcuate feedback shrinks). On a single-
-     * pass cascade (no recurrent loop), arcuate is NULL and PE stays 0.
+     * content_intent post-arcuate-pre-gate is what step 6 leaves
+     * behind; the post-gate value is what stage 7+ actually sees.
      *
-     * The snapshot lives on the stack — a fixed cap keeps the helper
+     * S3+S6-H2/H4 fix (2026-05-19): we now record TWO PE values to
+     * disentangle the arcuate-correction signal from the thalamic-gate
+     * attenuation signal. pe_content_arcuate_norm = ‖post-arc - pre‖
+     * (the FEP-relevant slice — drops as the recurrent loop settles).
+     * pe_content_gate_norm = ‖post-gate - post-arc‖ (pure attenuation
+     * from the thalamic relay; not a prediction error). Legacy
+     * pe_content_norm == pe_content_arcuate_norm so pe_total drives
+     * fep_precision on actual surprise, not on gate toggles.
+     *
+     * Two snapshots live on the stack — a fixed cap keeps the helper
      * allocation-free in the hot path. Stages with dim > the cap fall
-     * back to "no PE recorded" (pe_content_norm stays 0). 4096 covers
+     * back to "no PE recorded" (pe_content_* stays 0). 4096 covers
      * every grounded_lang semantic_dim we ship today. */
-    float fep_predicted_intent[4096];
+    float fep_pre_arcuate[4096];
+    float fep_post_arcuate[4096];
     bool  fep_predicted_recorded = false;
-    if (dim <= (uint32_t)(sizeof(fep_predicted_intent) / sizeof(float))) {
-        memcpy(fep_predicted_intent, state->content_intent,
+    if (dim <= (uint32_t)(sizeof(fep_pre_arcuate) / sizeof(float))) {
+        memcpy(fep_pre_arcuate, state->content_intent,
                dim * sizeof(float));
         fep_predicted_recorded = true;
     }
@@ -1048,6 +1055,13 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
+    /* S3+S6-H2/H4 fix (2026-05-19): snapshot post-arcuate, pre-gate so
+     * we can record the arcuate-only PE separately from the gate-only
+     * attenuation below. */
+    if (fep_predicted_recorded) {
+        memcpy(fep_post_arcuate, state->content_intent, dim * sizeof(float));
+    }
+
     /* Slice 6: thalamic gating of content_intent — scales every component
      * by the thalamic gate for stage_content. Default OFF; returns 1.0
      * when disabled. Applied BEFORE confidence computation so content_
@@ -1060,14 +1074,20 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
-    /* SLICE 3 — Record stage-content prediction error. Snapshot from
-     * before arcuate-feedback is the prediction; now-modified content_
-     * intent (post-arcuate, post-gate) is the observation. Gate effect
-     * is intentionally folded into pe_content_norm — it IS part of the
-     * stage's contribution to the running intent representation. */
+    /* S3+S6-H2/H4 fix (2026-05-19): Record stage-content prediction error
+     * SPLIT into arcuate (FEP-relevant) and gate (attenuation) components.
+     * pe_content_arcuate_norm = ‖post-arcuate - pre‖ — what FEP cares
+     * about. pe_content_gate_norm = ‖post-gate - post-arcuate‖ — pure
+     * thalamic effect, surfaced for observability but NOT counted as
+     * surprise. Legacy pe_content_norm aliases the arcuate field so
+     * pe_total drives precision on actual prediction error. */
     if (fep_predicted_recorded) {
-        state->pe_content_norm = cascade_fep_norm_diff(
-            state->content_intent, fep_predicted_intent, dim);
+        state->pe_content_arcuate_norm = cascade_fep_norm_diff(
+            fep_post_arcuate, fep_pre_arcuate, dim);
+        state->pe_content_gate_norm = cascade_fep_norm_diff(
+            state->content_intent, fep_post_arcuate, dim);
+        /* Legacy alias: pe_content_norm = arcuate-only norm. */
+        state->pe_content_norm = state->pe_content_arcuate_norm;
     }
 
     /* Confidence = signal magnitude / sqrt(dim). 1.0 = strongly cohered;
@@ -2886,6 +2906,10 @@ int nimcp_brain_produce_cascade_diag_full_impl(
         /* S1-C1 fix: dedicated settling_steps field — distinct from
          * repair_attempts which counts speech-repair retries above. */
         out->settling_steps    = state.settling_steps;
+
+        /* S3+S6-H2/H4 fix (2026-05-19): split arcuate vs gate PE. */
+        out->pe_content_arcuate_norm = state.pe_content_arcuate_norm;
+        out->pe_content_gate_norm    = state.pe_content_gate_norm;
     }
 
     cascade_state_cleanup(&state);
@@ -3988,6 +4012,9 @@ int nimcp_brain_get_cascade_counters_impl(brain_t brain,
         &brain->cascade_discourse_ring_pushes_user, memory_order_relaxed);
     out->discourse_ring_pushes_self = atomic_load_explicit(
         &brain->cascade_discourse_ring_pushes_self, memory_order_relaxed);
+    /* S1-H3+H4 fix (2026-05-19): surface recurrent-loop OOM counter. */
+    out->recurrent_oom_count = atomic_load_explicit(
+        &brain->cascade_recurrent_oom_count, memory_order_relaxed);
     return 0;
 }
 

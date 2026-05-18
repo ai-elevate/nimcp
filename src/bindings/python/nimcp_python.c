@@ -3639,14 +3639,19 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
         /* S1-C1 fix: append-only mirror — distinct from repair_attempts
          * above (which is owned by speech-repair retries). */
         uint32_t settling_steps;
+
+        /* S3+S6-H2/H4 fix (2026-05-19) — split pe_content_norm. Mirror
+         * in lockstep with the public type. */
+        float    pe_content_arcuate_norm;
+        float    pe_content_gate_norm;
     } nimcp_cascade_diag_full_t_local;
 
     /* S3-C1 (CRITICAL): size lockstep with the public type. The public
      * nimcp_cascade_diag_full_t in include/language/nimcp_communication_cascade.h
-     * has its own _Static_assert(... == 416). Without a reciprocal assert
+     * has its own _Static_assert(... == 424). Without a reciprocal assert
      * on the local shadow, a future field append on either side passes a
      * shorter buffer into the C impl and stack-smashes. */
-    _Static_assert(sizeof(nimcp_cascade_diag_full_t_local) == 416,
+    _Static_assert(sizeof(nimcp_cascade_diag_full_t_local) == 424,
         "nimcp_cascade_diag_full_t_local shadow drift — bump public + local in lockstep "
         "(public assert: include/language/nimcp_communication_cascade.h)");
 
@@ -3797,6 +3802,13 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
      * cascade reports its iteration count in settling_steps; consumers
      * that need both can read both. */
     PyDict_SetItemString(d, "settling_steps",       PyLong_FromLong((long)s.settling_steps));
+
+    /* S3+S6-H2/H4 fix (2026-05-19): split arcuate-only vs gate-only PE.
+     * pe_content_norm above aliases pe_content_arcuate_norm. */
+    PyDict_SetItemString(d, "pe_content_arcuate_norm",
+        PyFloat_FromDouble((double)s.pe_content_arcuate_norm));
+    PyDict_SetItemString(d, "pe_content_gate_norm",
+        PyFloat_FromDouble((double)s.pe_content_gate_norm));
 
     /* Free heap-owned arrays we just copied into Python lists. */
     if (phon_seq)       nimcp_free(phon_seq);
@@ -3974,14 +3986,16 @@ typedef struct {
     uint64_t self_produced_events_fired;
     uint64_t discourse_ring_pushes_user;
     uint64_t discourse_ring_pushes_self;
+    /* S1-H3+H4 fix (2026-05-19) — mirror of recurrent_oom_count. */
+    uint64_t recurrent_oom_count;
 } bk_cascade_counters_local_t;
 
 /* S3-C1 (CRITICAL): size lockstep with the public type. Mirror of
  * nimcp_cascade_counters_t in include/language/nimcp_communication_cascade.h
- * which has its own _Static_assert(... == 456). Future append on either
+ * which has its own _Static_assert(... == 464). Future append on either
  * side without the reciprocal assert silently stack-smashes the cast in
  * Brain_get_cascade_counters. */
-_Static_assert(sizeof(bk_cascade_counters_local_t) == 456,
+_Static_assert(sizeof(bk_cascade_counters_local_t) == 464,
     "bk_cascade_counters_local_t shadow drift — bump public + local in lockstep "
     "(public assert: include/language/nimcp_communication_cascade.h)");
 
@@ -4031,6 +4045,8 @@ static PyObject* Brain_get_cascade_counters(BrainObject* self, PyObject* args) {
         PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_user));
     PyDict_SetItemString(d, "discourse_ring_pushes_self",
         PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_self));
+    PyDict_SetItemString(d, "recurrent_oom_count",
+        PyLong_FromUnsignedLongLong(c.recurrent_oom_count));
     return d;
 }
 

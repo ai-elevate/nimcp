@@ -365,6 +365,29 @@ typedef struct {
      * Python diag-dict surfaces it as 'settling_steps' alongside
      * 'repair_attempts'. APPENDED at end of struct. */
     uint32_t settling_steps;
+
+    /* S3+S6-H2/H4 fix (2026-05-19) — split pe_content_norm telemetry.
+     * Pre-fix pe_content_norm was recorded against a snapshot taken
+     * pre-arcuate-AND-pre-gate, so the value folded together two
+     * unrelated effects:
+     *   ||gate * (pre + k*arcuate) - pre||
+     * In particular a thalamic gate of 0.5 with ZERO arcuate feedback
+     * reported a nonzero "PE" that was just attenuation, misleading the
+     * Slice 3 precision update into bumping fep_precision on
+     * gate-toggles. Likewise, toggling the gate mid-recurrent-run
+     * polluted pe_total with gating-noise.
+     *
+     * Post-fix: take TWO snapshots. pe_content_arcuate_norm measures
+     * the L2 of (post-arcuate - pre) — the FEP prediction-error part.
+     * pe_content_gate_norm measures the L2 of (post-gate - post-arcuate)
+     * — pure thalamic attenuation, not a prediction error.
+     *
+     * The legacy pe_content_norm is kept for ABI compatibility and now
+     * holds the SAME value as pe_content_arcuate_norm (semantically
+     * "the FEP-relevant slice of the stage's effect"), which is what
+     * pe_total has always wanted. */
+    float    pe_content_arcuate_norm;
+    float    pe_content_gate_norm;
 } production_cascade_state_t;
 
 /* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
@@ -382,8 +405,8 @@ typedef struct {
  *
  * Computed on x86_64 Linux gcc with default packing. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(production_cascade_state_t) == 896,
-    "production_cascade_state_t ABI: size drifted from expected 896. "
+_Static_assert(sizeof(production_cascade_state_t) == 904,
+    "production_cascade_state_t ABI: size drifted from expected 904. "
     "Append-only on the struct; bump this literal in lockstep. "
     "Slice 3 (2026-05-18) appended 6 prediction-error fields (24 bytes) "
     "atop the 760-byte baseline → 784. Slice 7 (2026-05-18) appended "
@@ -391,7 +414,9 @@ _Static_assert(sizeof(production_cascade_state_t) == 896,
     "cereb_prosody_* / cereb_correction_applied / cereb_predictions_made) "
     "→ 888. S1-C1 fix (2026-05-18) appended uint32_t settling_steps "
     "(4 bytes data + 4 bytes tail alignment padding to keep struct align) "
-    "→ 896.");
+    "→ 896. S3+S6-H2/H4 fix (2026-05-19) appended pe_content_arcuate_norm "
+    "+ pe_content_gate_norm (8 bytes, no padding needed — both float, "
+    "struct already 8-byte aligned at offset 896) → 904.");
 #endif
 
 /**
@@ -638,6 +663,14 @@ typedef struct {
      * settling_steps is the number of recurrent passes the recurrent
      * cascade ran before convergence or max_iters. APPENDED at end. */
     uint32_t settling_steps;
+
+    /* S3+S6-H2/H4 fix (2026-05-19) — split pe_content_norm telemetry.
+     * pe_content_norm above now equals pe_content_arcuate_norm. The
+     * separate gate-only norm is surfaced so consumers can attribute
+     * "movement in content_intent" to FEP-correction vs thalamic
+     * attenuation. APPENDED at end. */
+    float    pe_content_arcuate_norm;
+    float    pe_content_gate_norm;
 } nimcp_cascade_diag_full_t;
 
 /**
@@ -722,6 +755,13 @@ typedef struct nimcp_cascade_counters {
     uint64_t self_produced_events_fired;
     uint64_t discourse_ring_pushes_user;
     uint64_t discourse_ring_pushes_self;
+
+    /* S1-H3+H4 fix (2026-05-19) — count of times the recurrent loop hit
+     * an OOM on its convergence-check / arcuate-feedback / target-vec
+     * heap allocation and degraded to a less-precise convergence path.
+     * Non-zero indicates the recurrent loop was running with reduced
+     * settling-detection (useful for "loop ran to max_iters" debugging). */
+    uint64_t recurrent_oom_count;
 } nimcp_cascade_counters_t;
 
 /* Walkthrough-4 audit M MEDIUM — ABI size sentinels for the two
@@ -735,14 +775,18 @@ typedef struct nimcp_cascade_counters {
  * nimcp_cascade_diag_full_t is similarly read field-by-name from
  * Python and the daemon RPC layer. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 416,
-    "nimcp_cascade_diag_full_t ABI: size drifted from expected 416. "
+_Static_assert(sizeof(nimcp_cascade_diag_full_t) == 424,
+    "nimcp_cascade_diag_full_t ABI: size drifted from expected 424. "
     "Append-only; update binding shadow types in lockstep. "
     "Slice 3 (2026-05-18) appended 7 FEP prediction-error fields (28 bytes). "
-    "S1-C1 fix (2026-05-18) appended uint32_t settling_steps (4 bytes) → 416.");
-_Static_assert(sizeof(nimcp_cascade_counters_t) == 456,
-    "nimcp_cascade_counters_t ABI: size drifted from expected 456. "
-    "Append-only; update binding shadow types in lockstep.");
+    "S1-C1 fix (2026-05-18) appended uint32_t settling_steps (4 bytes) → 416. "
+    "S3+S6-H2/H4 fix (2026-05-19) appended pe_content_arcuate_norm + "
+    "pe_content_gate_norm (8 bytes) → 424.");
+_Static_assert(sizeof(nimcp_cascade_counters_t) == 464,
+    "nimcp_cascade_counters_t ABI: size drifted from expected 464. "
+    "Append-only; update binding shadow types in lockstep. "
+    "S1-H3+H4 fix (2026-05-19) appended uint64_t recurrent_oom_count "
+    "(8 bytes) → 464.");
 #endif
 
 /**
