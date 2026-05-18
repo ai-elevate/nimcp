@@ -25,11 +25,33 @@
 
 #include <ctype.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #define LOG_MODULE "PHONO_LOOP"
+
+/* S5-C2 TOCTOU fix: lazy `phonological_loop_init` was a check-then-act
+ * race. Two threads racing on first-touch could both see brain->loop_mutex
+ * == NULL, both allocate, and second-store-wins — first allocation leaked,
+ * threads with the stale pointer raced on the half-init state.
+ *
+ * Fix: serialize first-touch via a global init-mutex. The per-brain
+ * lazy-init still happens at most once per brain (the in-mutex re-check
+ * confirms idempotency), but two threads first-touching the same brain
+ * are now strictly ordered. Cost: one mutex acquire on first-touch only
+ * (subsequent calls see brain->loop_mutex non-NULL and bail out at the
+ * fast-path check before this mutex). The global mutex is initialized
+ * exactly once via pthread_once_t (we use the platform's nimcp_once
+ * wrapper to match the existing pattern in src/swarm/nimcp_swarm_signal.c
+ * and src/networking/nlp/nimcp_nlp_part_lifecycle.c). */
+static nimcp_once_t  g_loop_init_once = PTHREAD_ONCE_INIT;
+static nimcp_mutex_t g_loop_init_mu;
+
+static void loop_init_global_once(void) {
+    nimcp_mutex_init(&g_loop_init_mu, NULL);
+}
 
 #define LOOP_INITIAL_BUFFER     256u
 #define LOOP_INITIAL_TRACES     16u
@@ -184,22 +206,48 @@ static size_t normalize_token(const char* src, char* dst, size_t dst_max) {
 
 /* Internal lazy-init used by every helper. Returns 0 if the loop is
  * ready (already initialized or just-initialized), -1 on alloc failure.
- * Caller must NOT hold loop_mutex. */
+ * Caller must NOT hold loop_mutex.
+ *
+ * S5-C2: race-free via the global init mutex — see comment near
+ * g_loop_init_mu at the top of the file. */
 static int ensure_init_unlocked(brain_t brain);
 static int ensure_init_unlocked(brain_t brain) {
     if (!brain) return -1;
+    /* Fast-path: already initialized — no global mutex needed. The store
+     * to brain->loop_mutex at the end of phonological_loop_init is the
+     * synchronization point; once we observe non-NULL here, all the
+     * fields written before that store are visible. */
     if (brain->loop_mutex) return 0;
     return phonological_loop_init(brain);
 }
 
 int phonological_loop_init(brain_t brain) {
     if (!brain) return -1;
-    /* Idempotent — if already initialized, return success. */
+    /* Idempotent — if already initialized, return success. Same fast-path
+     * check is here for direct callers of the public init function. */
     if (brain->loop_mutex) return 0;
 
-    brain->loop_mutex = (void*)nimcp_mutex_create(NULL);
-    if (!brain->loop_mutex) {
+    /* S5-C2 fix: serialize first-touch via the global init mutex. We do a
+     * second check inside the mutex — if another thread initialized while
+     * we waited, we observe its store and return early. */
+    nimcp_once(&g_loop_init_once, loop_init_global_once);
+    nimcp_mutex_lock(&g_loop_init_mu);
+
+    if (brain->loop_mutex) {
+        /* Lost the race — another thread initialized first. Idempotent. */
+        nimcp_mutex_unlock(&g_loop_init_mu);
+        return 0;
+    }
+
+    /* Build the per-brain state in local stack vars first, then publish
+     * the mutex pointer LAST. This ensures any concurrent fast-path
+     * reader either sees brain->loop_mutex == NULL (skip and call us
+     * back into this slow path) or brain->loop_mutex != NULL AND all
+     * the other fields populated — never a torn intermediate. */
+    nimcp_mutex_t* m = nimcp_mutex_create(NULL);
+    if (!m) {
         LOG_WARN(LOG_MODULE, "loop_mutex create failed (non-fatal, loop disabled)");
+        nimcp_mutex_unlock(&g_loop_init_mu);
         return -1;
     }
 
@@ -224,6 +272,14 @@ int phonological_loop_init(brain_t brain) {
     if (brain->loop_decay_rate <= 0.0f) brain->loop_decay_rate = LOOP_DEFAULT_DECAY;
     brain->loop_last_refresh_ms = monotonic_ms();
 
+    /* PUBLISH last: the store of loop_mutex is the synchronization
+     * point that fast-path readers race on. After this, fast-path
+     * callers see all the fields above as fully populated. The release
+     * is implicit in the unlock that follows — pthread_mutex_unlock
+     * is a release operation on any sane platform. */
+    brain->loop_mutex = (void*)m;
+
+    nimcp_mutex_unlock(&g_loop_init_mu);
     return 0;
 }
 
