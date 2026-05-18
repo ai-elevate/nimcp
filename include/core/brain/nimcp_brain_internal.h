@@ -2807,6 +2807,29 @@ struct brain_struct {
     float cascade_self_train_alpha;
     float cascade_self_train_lr_scale;
 
+    /* === ARCUATE FASCICULUS FEEDBACK (Slice 2, 2026-05-18) ===
+     * Bidirectional Wernicke↔Broca channel. Real anatomy: the arcuate
+     * fasciculus carries Wernicke's phonological/semantic parse of own
+     * speech back to Broca's motor + syntactic planning. Conduction
+     * aphasia (arcuate damage) → can repeat external speech but can't
+     * self-monitor → exactly the failure mode the bridge had before.
+     *
+     * Within the recurrent cascade, between iterations:
+     *   1. comprehend(iter_N_utterance) → output_semantic_vec
+     *   2. arcuate_feedback_vec[i] = (content_intent[i] - output_semantic_vec[i]) * (1 - self_match)
+     *      i.e. the "missing semantic content" weighted by mismatch
+     *   3. cascade_stage_content reads arcuate_feedback_vec at top of
+     *      iter N+1 and ADDS it to content_intent — the brain
+     *      effectively "tries harder" on the dimensions it just missed.
+     *
+     * NULL/dim=0 outside of an active recurrent run. Lifetime owned by
+     * communication_cascade_run_recurrent (alloc on first non-zero
+     * write, free on exit). Not thread-safe — produce_cascade_recurrent
+     * is single-caller-at-a-time by contract. */
+    float*   arcuate_feedback_vec;
+    uint32_t arcuate_feedback_dim;
+    float    arcuate_feedback_strength;     /* 0..1; multiplied into the add */
+
     /* === SPEECH REPAIR PROCESSOR (statue wiring 2026-05-11) ===
      * Disfluency cleaner used by the communication cascade just before
      * Stage 8 (self-comprehension). The brain's own utterance is run

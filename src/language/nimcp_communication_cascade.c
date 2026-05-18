@@ -648,6 +648,28 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
+    /* 6. ARCUATE FASCICULUS FEEDBACK (Slice 2 of recurrent-language-arch).
+     * Real anatomy: between iterations of speech production, Wernicke
+     * sends a parse of own previous speech back to Broca/PFC via the
+     * arcuate fasciculus. This drives self-monitoring + correction. In
+     * our recurrent cascade, the previous iteration's
+     * (intent - own_output_parse) error vector lives in
+     * brain->arcuate_feedback_vec; ADD it here so the next pass of
+     * lexical+syntactic emphasizes what the previous attempt missed.
+     *
+     * No-op when arcuate_feedback_vec is NULL or dim mismatches — the
+     * recurrent-loop owner allocates it on iteration 2+ and zeros it
+     * between non-recurrent calls. */
+    if (brain->arcuate_feedback_vec &&
+        brain->arcuate_feedback_dim == dim &&
+        isfinite(brain->arcuate_feedback_strength) &&
+        brain->arcuate_feedback_strength > 0.0f) {
+        const float k = brain->arcuate_feedback_strength;
+        for (uint32_t i = 0; i < dim; i++) {
+            state->content_intent[i] += k * brain->arcuate_feedback_vec[i];
+        }
+    }
+
     /* Confidence = signal magnitude / sqrt(dim). 1.0 = strongly cohered;
      * 0.0 = no signal anywhere. */
     float ssum = 0.0f;
@@ -2533,6 +2555,28 @@ int communication_cascade_run_recurrent(brain_t brain,
     uint32_t iter = 0;
     uint32_t settling_steps = 0;
 
+    /* Slice 2 — arcuate fasciculus feedback buffers. Lazy-allocated on
+     * the first non-trivial feedback (iter >= 1, prev utterance non-
+     * empty). Sized to the GL semantic_dim if grounded_lang is attached,
+     * otherwise the feedback stays disabled. Cleared on exit. */
+    uint32_t gl_dim = 0;
+    if (brain->grounded_lang) {
+        gl_dim = grounded_language_get_semantic_dim(brain->grounded_lang);
+    }
+    /* Save the brain's pre-existing arcuate state so we can restore it
+     * if this recurrent_run is nested under a higher-level caller that
+     * had its own feedback active. Defense in depth — current callers
+     * don't nest. */
+    float*   saved_arcuate_vec      = brain->arcuate_feedback_vec;
+    uint32_t saved_arcuate_dim      = brain->arcuate_feedback_dim;
+    float    saved_arcuate_strength = brain->arcuate_feedback_strength;
+    /* Reset to "no feedback" for iteration 0. */
+    brain->arcuate_feedback_vec      = NULL;
+    brain->arcuate_feedback_dim      = 0;
+    brain->arcuate_feedback_strength = 0.0f;
+
+    float* feedback_vec = NULL;   /* owned by this function; size gl_dim */
+
     for (iter = 0; iter < max_iters; iter++) {
         /* Free heap from previous iteration before communication_cascade_run
          * memset-clears the state. Otherwise prev iteration's utterance /
@@ -2562,14 +2606,60 @@ int communication_cascade_run_recurrent(brain_t brain,
                                        <= self_match_eps);
             settling_steps++;
             if (utterance_stable && self_match_stable) {
-                /* Converged. Bump repair_attempts as a "how many settling
-                 * steps did we take" diagnostic — overloads the field but
-                 * Slice 1 is opportunistic; future slices will add a
-                 * dedicated counter. */
                 out_state->repair_attempts =
                     (settling_steps > 0) ? (settling_steps - 1) : 0;
                 break;
             }
+        }
+
+        /* SLICE 2 — compute arcuate feedback for the NEXT iteration.
+         *
+         * Comprehend our own just-produced utterance via Wernicke (read
+         * through grounded_language_comprehend, same call cascade_stage_
+         * self_comprehension uses). The output semantic_vector represents
+         * "what we actually said". The CURRENT iteration's content_intent
+         * represents "what we meant to say". The element-wise difference
+         * is the missing semantic content — broadcast it back into
+         * content_intent on the next pass so the bridge gets a stronger
+         * pull toward the unsaid dimensions.
+         *
+         * Weighted by (1 - self_match) so good iterations apply little
+         * correction (system is settling) and bad iterations apply more
+         * (system needs to retry differently). Cap at 0.8 to prevent
+         * runaway. */
+        if (gl_dim > 0 &&
+            out_state->utterance && out_state->utterance[0] &&
+            out_state->content_intent &&
+            out_state->content_dim == gl_dim) {
+            gl_comprehension_result_t self_comp = {0};
+            int rc = grounded_language_comprehend(brain->grounded_lang,
+                                                    out_state->utterance,
+                                                    &self_comp);
+            if (rc == 0 && self_comp.semantic_vector) {
+                if (!feedback_vec) {
+                    feedback_vec = (float*)nimcp_calloc(gl_dim, sizeof(float));
+                }
+                if (feedback_vec) {
+                    /* error_vec = intent - own_output (in semantic space).
+                     * Positive components = "what we wanted to say but
+                     * didn't"; negative components = "what we said but
+                     * didn't mean". The next pass's content_intent gets
+                     * += k * error_vec, which boosts unsaid dimensions
+                     * and damps spurious ones. */
+                    for (uint32_t i = 0; i < gl_dim; i++) {
+                        feedback_vec[i] = out_state->content_intent[i]
+                                        - self_comp.semantic_vector[i];
+                    }
+                    float strength = 1.0f - out_state->self_match;
+                    if (!isfinite(strength) || strength < 0.0f) strength = 0.5f;
+                    if (strength > 0.8f) strength = 0.8f;
+
+                    brain->arcuate_feedback_vec      = feedback_vec;
+                    brain->arcuate_feedback_dim      = gl_dim;
+                    brain->arcuate_feedback_strength = strength;
+                }
+            }
+            gl_comprehension_result_cleanup(&self_comp);
         }
 
         /* Save this iteration's outputs to compare against the next. */
@@ -2590,6 +2680,15 @@ int communication_cascade_run_recurrent(brain_t brain,
     if (settling_steps > 0 && out_state->repair_attempts == 0) {
         out_state->repair_attempts = settling_steps;
     }
+
+    /* Restore caller's arcuate-feedback state, then free our buffer. The
+     * pointer assignment order matters: clear the pointer BEFORE freeing,
+     * so cascade_stage_content can't read a freed buffer if another
+     * thread sneaks in (defense in depth). */
+    brain->arcuate_feedback_vec      = saved_arcuate_vec;
+    brain->arcuate_feedback_dim      = saved_arcuate_dim;
+    brain->arcuate_feedback_strength = saved_arcuate_strength;
+    if (feedback_vec) nimcp_free(feedback_vec);
 
     if (prev_utterance) nimcp_free(prev_utterance);
     return last_rc;
