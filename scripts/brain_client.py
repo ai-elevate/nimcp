@@ -304,6 +304,54 @@ class BrainProxy:
         resp = self._send({"cmd": "grounded_respond", "text": text})
         return resp.get("result", {})
 
+    def produce_cascade(self, prompt=None):
+        """Invoke the full 15-stage production cascade. Drives drive/goal/
+        listener/episodic/content/lexical/syntactic(Broca)/self-comp(Wernicke)/
+        phonological/motor/self-feedback/speech-repair/prosody/self-train.
+
+        When cascade_self_train is enabled (set_cascade_self_train_enabled),
+        stage 15 applies reward-modulated STDP to the bridge based on the
+        self-comprehension match score and releases phasic DA. This is the
+        path that trains all stages (not just the bridge).
+
+        prompt=None runs spontaneous-speech mode (purely from internal state).
+        Returns the full cascade diagnostic dict (~46 fields).
+        """
+        req = {"cmd": "produce_cascade"}
+        if prompt is not None:
+            req["prompt"] = prompt
+        resp = self._send(req)
+        if resp.get("error"):
+            return {}
+        return resp
+
+    def set_cascade_self_train_enabled(self, enabled=True):
+        """Toggle cascade-driven reinforcement learning. When True, every
+        produce_cascade call's stage_self_train applies reward-modulated
+        STDP to the bridge based on self_match (Wernicke re-parse of own
+        output vs. content_intent) and releases phasic DA proportional
+        to reward. Closes the self-supervised loop."""
+        resp = self._send({
+            "cmd": "set_cascade_self_train_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_respond_via_cascade(self, enabled=True):
+        """Toggle whether grounded_respond routes through the 15-stage
+        cascade (True) or just the bridge (False). Cascade adds Broca's
+        syntax + agreement validation, phonological + motor planning,
+        prosody, and self-comprehension. Default off in the daemon."""
+        resp = self._send({
+            "cmd": "set_respond_via_cascade",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
     def echo_and_correct(self, parent_text, target_word, lr_scale=1.0):
         """Supervised production-training pulse for the SNN language bridge.
 

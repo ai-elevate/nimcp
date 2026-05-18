@@ -7648,15 +7648,27 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # noun rather than the longest-word heuristic.
         submit_multimodal(brain, description, target_word=echo_target)
 
-        # Echo-and-correct — supervised production training signal, fired on
-        # every trainer-step (NOT gated by curriculum/spectral splitter).
-        # The earlier placement inside _inject_cognitive_training was filtered
-        # out by k-fold test holdout + curriculum tier locks, dropping rate
-        # to ~3 successful calls/hour. Bridge needs many more per minute to
-        # overcome uniform-random word_pop weights (mode-collapse symptom).
-        # Echo-and-correct fires inside submit_multimodal() above — no need
-        # to repeat it here. Left intentionally empty so the run_stage_2
-        # main loop doesn't double-fire.
+        # Cascade-driven training — drive ALL 15 stages, not just the bridge.
+        # produce_cascade runs the full Broca/Wernicke/hippocampus/PFC/OFC
+        # pipeline. Stage 15 (self_train) compares the produced utterance to
+        # the content_intent via self-comprehension match, applies reward-
+        # modulated STDP to the bridge, releases phasic DA, and feeds the
+        # validated utterance back through learn_text_bigrams. Closes the
+        # self-supervised loop that bridge-only training was missing.
+        #
+        # Cadence: every step, but only on a fraction of steps to keep the
+        # per-step cost manageable (the cascade is heavy — drive/goal/
+        # episodic/content/lexical/syntactic/self-comp/phonological/motor/
+        # self-feedback/speech-repair/prosody/self-train).
+        try:
+            if (steps_in % 4 == 0):  # ~25% of steps, ~12-15 cascades/min
+                brain.produce_cascade(description)
+        except Exception:
+            pass
+
+        # Echo-and-correct + bigram pump fire inside submit_multimodal()
+        # above — no need to repeat them here. The cascade above is the
+        # NEW training signal that closes the loop through Broca + Wernicke.
 
         # Athena experiences the stimulus and learns from it.
         # Apply LR spike if fast collapse detector is in recovery mode.
