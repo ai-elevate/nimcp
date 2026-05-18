@@ -401,11 +401,18 @@ _SOMATO_KW = frozenset(["touch", "feel", "rough", "smooth", "soft", "hard",
                          "ice", "water", "mud", "fabric", "cotton", "wicker"])
 
 
-def submit_multimodal(brain, description):
+def submit_multimodal(brain, description, target_word=None):
     """Submit synthetic sensory data for a description to the brain.
 
     Called before brain.decide_full() so the SNN sensory bridges get native
     modality data instead of interpreting text embeddings as pixels/MFCCs.
+
+    target_word: explicit echo-correct teaching word. When provided, this
+    overrides the longest-word heuristic — pass the OBJECT NAME / canonical
+    noun (e.g. "tree", "wool") rather than letting the bridge guess.
+    Without this, the heuristic picks max(words, key=len) which biases
+    toward jargon ("self-extinguishing" beats "wool" in length) and trains
+    the brain on adjective salad instead of the actual subject.
     """
     # Echo-and-correct — supervised production training signal. Fires per
     # submit_multimodal call regardless of which stage code path invoked
@@ -414,12 +421,15 @@ def submit_multimodal(brain, description):
     # to escape mode collapse.
     if description and len(description) > 3:
         try:
-            words = [w.strip(".,!?;:\"'()-").lower()
-                     for w in description.split()
-                     if len(w.strip(".,!?;:\"'()-")) > 3]
-            if words:
-                target_word = max(words, key=len)
-                brain.echo_and_correct(description, target_word, lr_scale=8.0)
+            chosen = target_word
+            if not chosen:
+                words = [w.strip(".,!?;:\"'()-").lower()
+                         for w in description.split()
+                         if len(w.strip(".,!?;:\"'()-")) > 3]
+                if words:
+                    chosen = max(words, key=len)
+            if chosen:
+                brain.echo_and_correct(description, chosen, lr_scale=8.0)
         except Exception:
             pass
 
@@ -7589,6 +7599,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Item 7: Curriculum ordering — cluster related facts within domains.
         # Each "epoch" of 10 facts draws from the same domain, then rotates.
         # Gives consecutive related facts (pedagogically superior to random).
+        echo_target = None
         if random.random() < fact_ratio:
             domain_cycle_len = 10
             domain_idx = (steps_in // domain_cycle_len) % 10
@@ -7597,12 +7608,45 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             preferred_domain = domain_names[domain_idx]
             fact, expected = source.get_fact(preferred_domain=preferred_domain)
             description = fact
+            # For facts, `expected` is the answer label (often multi-word or a
+            # full sentence). Pick the first content word of the fact as the
+            # teaching target — "Dogs are mammals..." → "dogs",
+            # "Plants make their own food..." → "plants". Skip a small set of
+            # English function-word starters so "The sun is a star..." picks
+            # "sun" not "the". Stopword set kept tiny on purpose; the bigram
+            # pump already shoulders the bulk of distributional learning.
+            _STOPWORD_PREFIX = {"the", "a", "an", "this", "that", "these",
+                                "those", "when", "if", "but", "and", "or",
+                                "for", "in", "on", "at", "of", "to", "is",
+                                "are", "was", "were"}
+            first_word = None
+            for w in description.split():
+                cleaned = w.strip(".,!?;:\"'()-").lower()
+                if (len(cleaned) >= 3 and cleaned.isalpha()
+                        and cleaned not in _STOPWORD_PREFIX):
+                    first_word = cleaned
+                    break
+            echo_target = first_word
         else:
             expected, description = source.get_object()
+            # `expected` IS the canonical subject noun (e.g. "tree", "wool",
+            # "sun"). Use it directly as the echo-correct teaching target so
+            # the brain associates the prompt's intent with the actual
+            # subject — not with the longest jargon adjective from the
+            # description. This was the curriculum-side root cause of the
+            # 'self-extinguishing' / 'ptolemaic' attractor.
+            if isinstance(expected, str) and expected:
+                # Normalize: lowercase, strip whitespace, pick first token if
+                # the expected label is multi-word ("sand dollar" → "sand").
+                tok = expected.strip().lower().split()
+                if tok:
+                    echo_target = tok[0]
 
         # Stage sensory data for cortex CNN training (visual/audio/speech).
         # Without this, cortex CNNs get zero forward steps in stage 2.
-        submit_multimodal(brain, description)
+        # Pass echo_target so the bridge trains on the canonical subject
+        # noun rather than the longest-word heuristic.
+        submit_multimodal(brain, description, target_word=echo_target)
 
         # Echo-and-correct — supervised production training signal, fired on
         # every trainer-step (NOT gated by curriculum/spectral splitter).
