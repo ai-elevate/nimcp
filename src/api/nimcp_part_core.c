@@ -3028,6 +3028,44 @@ nimcp_status_t nimcp_brain_get_phonological_loop_diag(
 }
 
 /* =================================================================
+ * Slice 7 — cerebellar prediction-correction public API tail
+ *
+ * The enable + get_enabled wrappers are above (interleaved with the
+ * thalamic gating block); these are the remaining strength setter and
+ * the diagnostics snapshot. All scalar-field writes — no atomics, no
+ * locks, by contract.
+ * ================================================================= */
+
+nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
+                                                               float strength) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!isfinite(strength)) strength = 0.5f;
+    if (strength < 0.0f) strength = 0.0f;
+    if (strength > 1.0f) strength = 1.0f;
+    b->cerebellar_correction_strength = strength;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
+                                                nimcp_cerebellar_diag_t* out) {
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    memset(out, 0, sizeof(*out));
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    out->enabled             = b->cerebellar_correction_enabled ? 1 : 0;
+    out->strength            = b->cerebellar_correction_strength;
+    out->correction_pending  = b->cerebellar_correction_pending ? 1 : 0;
+    out->pe_threshold        = b->cerebellar_pe_threshold;
+    out->predictions_made    = b->cerebellar_predictions_made;
+    out->corrections_applied = b->cerebellar_corrections_applied;
+    out->last_pe_norm        = b->cerebellar_last_pe_norm;
+    return NIMCP_OK;
+}
+
+/* =================================================================
  * Base lexicon bootstrap (Option C of language training plan)
  * =================================================================
  *

@@ -4315,6 +4315,90 @@ static PyObject* Brain_get_phonological_loop_diag(BrainObject* self, PyObject* a
     return d;
 }
 
+/* =================================================================
+ * Slice 7 — cerebellar prediction-correction in motor + prosody stages.
+ *
+ * Three Python entry points:
+ *   set_cerebellar_correction_enabled(bool) -> None
+ *   set_cerebellar_correction_strength(float) -> None    (clamps [0,1])
+ *   get_cerebellar_diag() -> dict
+ *
+ * Diag dict keys: enabled, strength, correction_pending, pe_threshold,
+ * predictions_made, corrections_applied, last_pe_norm. Matches the
+ * nimcp_cerebellar_diag_t struct from include/nimcp.h.
+ * ================================================================= */
+
+static PyObject* Brain_set_cerebellar_correction_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_cerebellar_correction_enabled(self->brain,
+                                                       enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cerebellar_correction_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_cerebellar_correction_enabled(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_cerebellar_correction_enabled(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cerebellar_correction_enabled failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
+static PyObject* Brain_set_cerebellar_correction_strength(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    double strength = 0.0;
+    if (!PyArg_ParseTuple(args, "d", &strength)) return NULL;
+    if (nimcp_brain_set_cerebellar_correction_strength(self->brain,
+                                                       (float)strength) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cerebellar_correction_strength failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_cerebellar_diag(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    nimcp_cerebellar_diag_t d;
+    memset(&d, 0, sizeof(d));
+    if (nimcp_brain_get_cerebellar_diag(self->brain, &d) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cerebellar_diag failed");
+        return NULL;
+    }
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+    PyDict_SetItemString(dict, "enabled",
+                        PyBool_FromLong(d.enabled ? 1 : 0));
+    PyDict_SetItemString(dict, "strength",
+                        PyFloat_FromDouble((double)d.strength));
+    PyDict_SetItemString(dict, "correction_pending",
+                        PyBool_FromLong(d.correction_pending ? 1 : 0));
+    PyDict_SetItemString(dict, "pe_threshold",
+                        PyFloat_FromDouble((double)d.pe_threshold));
+    PyDict_SetItemString(dict, "predictions_made",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.predictions_made));
+    PyDict_SetItemString(dict, "corrections_applied",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.corrections_applied));
+    PyDict_SetItemString(dict, "last_pe_norm",
+                        PyFloat_FromDouble((double)d.last_pe_norm));
+    return dict;
+}
+
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
  * gap where this was persisted in the LANC block but unreachable via
  * Python / daemon RPC. */
@@ -12548,6 +12632,14 @@ static PyMethodDef Brain_methods[] = {
      "Slice 5: read-only inspection of the loop — get_phonological_loop_state() -> dict('buffer': str, 'trace_count': int). buffer is the surface form (words with trace >= 0.3, space-separated)."},
     {"get_phonological_loop_diag", (PyCFunction)Brain_get_phonological_loop_diag, METH_NOARGS,
      "Slice 5: full diagnostic snapshot — get_phonological_loop_diag() -> dict with enabled/buffer_len/trace_count/trace_capacity/max_words/decay_rate/avg_trace_strength/last_refresh_ms."},
+    {"set_cerebellar_correction_enabled", (PyCFunction)Brain_set_cerebellar_correction_enabled, METH_VARARGS,
+     "Slice 7: enable cerebellar prediction-correction in motor + prosody cascade stages — set_cerebellar_correction_enabled(enabled: bool) -> None. When ON, the existing cerebellum adapter (cerebellum_predict_outcome / cerebellum_update_forward_model / cerebellum_broadcast_error) is queried before and after motor + prosody to predict + learn the upcoming pattern. Default OFF; when off the stages run byte-identically to master. Requires brain->cerebellum (created at init); minimal-init brains silently no-op."},
+    {"get_cerebellar_correction_enabled", (PyCFunction)Brain_get_cerebellar_correction_enabled, METH_NOARGS,
+     "Read the current cerebellar correction flag."},
+    {"set_cerebellar_correction_strength", (PyCFunction)Brain_set_cerebellar_correction_strength, METH_VARARGS,
+     "Slice 7: bias mix factor when the recurrent loop flags correction_pending — set_cerebellar_correction_strength(strength: float) -> None. Clamped to [0, 1]. NaN/Inf coerce to 0.5."},
+    {"get_cerebellar_diag", (PyCFunction)Brain_get_cerebellar_diag, METH_NOARGS,
+     "Slice 7: snapshot of cerebellar prediction-correction diagnostics — get_cerebellar_diag() -> dict(enabled, strength, correction_pending, pe_threshold, predictions_made, corrections_applied, last_pe_norm). Cheap (no atomics — cascade is single-caller-at-a-time by contract)."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

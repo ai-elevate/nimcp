@@ -2578,6 +2578,64 @@ class BrainService:
         d["ok"] = True
         return d
 
+    # ----- Slice 7 — cerebellar prediction-correction -----
+
+    def _cmd_set_cerebellar_correction_enabled(self, req):
+        """Slice 7: toggle cerebellar prediction-correction inside the
+        cascade's motor + prosody stages. Default OFF.
+
+        Request: {"cmd": "set_cerebellar_correction_enabled", "enabled": bool}
+        Returns: {"ok": True, "enabled": bool}.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_cerebellar_correction_enabled(enabled)
+        except AttributeError:
+            return {"error": "set_cerebellar_correction_enabled not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_cerebellar_correction_enabled: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_set_cerebellar_correction_strength(self, req):
+        """Slice 7: set the cerebellar correction bias-mix factor.
+        Clamped to [0,1] inside the C wrapper.
+
+        Request: {"cmd": "set_cerebellar_correction_strength", "strength": float}
+        Returns: {"ok": True, "strength": float}.
+        """
+        try:
+            strength = float(req.get("strength", 0.5))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_cerebellar_correction_strength bad arg: {e}"}
+        try:
+            self.brain.set_cerebellar_correction_strength(strength)
+        except AttributeError:
+            return {"error": "set_cerebellar_correction_strength not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_cerebellar_correction_strength: {e}"}
+        return {"ok": True, "strength": strength}
+
+    def _cmd_get_cerebellar_diag(self, req):
+        """Slice 7: snapshot of cerebellar prediction-correction
+        diagnostics. Cheap (no atomics — cascade is single-caller-at-a-time
+        by contract).
+
+        Request: {"cmd": "get_cerebellar_diag"}
+        Returns: ok + dict with enabled / strength / correction_pending /
+                 pe_threshold / predictions_made / corrections_applied /
+                 last_pe_norm.
+        """
+        del req
+        try:
+            d = self.brain.get_cerebellar_diag()
+        except AttributeError:
+            return {"error": "get_cerebellar_diag not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_cerebellar_diag: {e}"}
+        # d is already a dict of plain scalars — forward verbatim.
+        d["ok"] = True
+        return d
+
     def _cmd_learn_next_token_triple(self, req):
         """TA-4: contrastive next-token training on a single trigram.
 

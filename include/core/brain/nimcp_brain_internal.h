@@ -2961,6 +2961,58 @@ struct brain_struct {
     uint64_t  loop_last_refresh_ms;    /* monotonic ms — for rehearsal timing */
     void*     loop_mutex;              /* nimcp_mutex_t* — see lock comment */
     char**    loop_words;              /* per-word storage; size = loop_trace_capacity */
+
+    /* === SLICE 7 — CEREBELLAR PREDICTION-CORRECTION (2026-05-18) ===
+     * Wires the existing cerebellum adapter (brain->cerebellum, opaque
+     * cerebellum_adapter_t* — see
+     * include/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h)
+     * into the cascade's motor + prosody stages.
+     *
+     * Biological role: the cerebellum predicts the next motor pattern
+     * ~100ms before execution, computes prediction error vs. observed,
+     * and corrects motor + prosody trajectories on the fly. In speech
+     * production this is what smooths syllable timing + prosodic
+     * contours and corrects articulator dynamics. Cerebellar damage
+     * produces ataxic dysarthria (slurred, scanning, irregular speech).
+     *
+     * Default OFF. When ON, cascade_stage_motor and cascade_stage_prosody:
+     *   1. Build an 8D feature vector from cascade state (drive,
+     *      syntactic, phonological).
+     *   2. Call cerebellum_predict_outcome to get predicted next motor /
+     *      prosody pattern.
+     *   3. Run the stage's existing logic (always).
+     *   4. Build the "actual" 8D feature vector from realised outputs.
+     *   5. Call cerebellum_update_forward_model to learn from the
+     *      (command, outcome) pair + cerebellum_broadcast_error so
+     *      Purkinje LTD fires on high-error climbing-fiber signals.
+     *   6. Stash prediction-error norm on cascade state.
+     *
+     * Between iterations of communication_cascade_run_recurrent, if the
+     * accumulated cerebellar prediction error exceeds cerebellar_pe_threshold,
+     * cerebellar_correction_pending is set so the NEXT iteration's
+     * motor + prosody stages know to apply the prediction's bias
+     * contribution at cerebellar_correction_strength.
+     *
+     * Lifetime: enabled flag + strength + threshold persist for the
+     * life of the brain. correction_pending is set/cleared by the
+     * recurrent loop only — outside a recurrent run it is always false.
+     * Diag counters are lifetime totals; not _Atomic because the
+     * cascade is single-caller-at-a-time by contract (mirrors the
+     * arcuate_feedback_* fields above).
+     *
+     * APPENDED at end of brain_struct — ABI append-only. */
+    bool     cerebellar_correction_enabled;       /* master gate (default false) */
+    float    cerebellar_correction_strength;      /* [0,1] — how strongly to apply
+                                                    the cerebellar prediction bias
+                                                    when correction_pending. */
+    bool     cerebellar_correction_pending;       /* set between recurrent iters
+                                                    when accumulated PE > threshold;
+                                                    consumed by next iter's stages. */
+    float    cerebellar_pe_threshold;             /* PE-norm gate (default 0.20). */
+    /* Lifetime diagnostics surfaced via nimcp_brain_get_cerebellar_diag. */
+    uint64_t cerebellar_predictions_made;
+    uint64_t cerebellar_corrections_applied;
+    float    cerebellar_last_pe_norm;             /* most-recent stage's PE norm */
 };
 
 //=============================================================================

@@ -481,6 +481,27 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return bool(resp.get("enabled", enabled))
 
+    # ----- Slice 7 — cerebellar prediction-correction -----
+
+    def set_cerebellar_correction_enabled(self, enabled=True):
+        """Slice 7: enable cerebellar prediction-correction in the
+        cascade's motor + prosody stages. When ON, the existing cerebellum
+        adapter (cerebellum_predict_outcome / cerebellum_update_forward_model
+        / cerebellum_broadcast_error) is called before + after motor +
+        prosody to predict the upcoming pattern, learn from the realised
+        actual, and broadcast climbing-fiber error.
+
+        Default OFF — when off, the stages run byte-identically to master.
+        Requires brain->cerebellum (created at init); minimal-init brains
+        silently no-op the cerebellar code path."""
+        resp = self._send({
+            "cmd": "set_cerebellar_correction_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
     def set_thalamic_gate_for_stage(self, stage_idx, weight):
         """Slice 6: manual override of a single stage's gate weight.
 
@@ -581,6 +602,30 @@ class BrainProxy:
         resp = self._send({"cmd": "get_phonological_loop_diag"})
         if resp.get("error"):
             return {}
+        return resp
+
+    def set_cerebellar_correction_strength(self, strength=0.5):
+        """Slice 7: bias mix factor when the recurrent loop flags
+        correction_pending. Clamped to [0,1]. Default 0.5."""
+        resp = self._send({
+            "cmd": "set_cerebellar_correction_strength",
+            "strength": float(strength),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("strength", strength))
+
+    def get_cerebellar_diag(self):
+        """Slice 7: snapshot of cerebellar prediction-correction
+        diagnostics. Returns a dict with keys enabled / strength /
+        correction_pending / pe_threshold / predictions_made /
+        corrections_applied / last_pe_norm. Cheap to call (no atomics
+        — cascade is single-caller-at-a-time)."""
+        resp = self._send({"cmd": "get_cerebellar_diag"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        # Drop the wrapper "ok" key — callers want the diag scalars.
+        resp.pop("ok", None)
         return resp
 
     def echo_and_correct(self, parent_text, target_word, lr_scale=1.0):
