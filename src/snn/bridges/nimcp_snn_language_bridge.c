@@ -166,6 +166,11 @@ struct snn_language_bridge {
      * scaffold. Set on first decode call where the flag is true. */
     bool _tc11_warned;
 
+    /* S4-C1 (H1): one-shot warning sticky for NaN/Inf in lateral-inhibition
+     * settling. Without this the warning fires on every cascade tick once
+     * the regime goes bad, flooding the log. */
+    bool _li_warned;
+
     // Statistics
     snn_lang_stats_t stats;
 };
@@ -935,6 +940,46 @@ int snn_language_bridge_decode_with_lateral_inhibition(
     if (T == 0) T = 20;
     if (T > LATERAL_INHIBITION_MAX_STEPS) T = LATERAL_INHIBITION_MAX_STEPS;
 
+    /* S4-C1 fix: replaced the sigmoid update with Grossberg-style divisive
+     * normalization (new_a[k] = a[k]^p / (eps + sum_j a[j]^p)).
+     *
+     * The previous formula
+     *     new_a[k] = sigmoid(a[k]*gain_self - gain_inhibit*(sum_a - a[k]))
+     * had a STABLE symmetric fixed point: at the default
+     * gain_self=1.5, gain_inhibit=0.026, K=32 the per-step linearisation
+     * sigmoid'(drive) * (gain_self + gain_inhibit) yielded an amplification
+     * less than 1, so any small asymmetry decayed back into the symmetric
+     * fixed point a* ≈ 0.62 instead of growing into a winner. Net effect:
+     * every candidate converged to ≈ equal activation and the re-rank
+     * became noise.
+     *
+     * Divisive normalization at exponent p ≈ 2 is the standard
+     * neuroscience-style WTA primitive: it is mathematically equivalent
+     * to a softmax over log(a) with temperature 1/p, and a Liapunov
+     * argument (sum a^p is conserved up to scaling) guarantees the
+     * leader → 1, subordinates → 0 attractor at p > 1. With p = 2 the
+     * leader hits >0.9 within ~10-15 micro-steps for the K we care
+     * about (2..32).
+     *
+     * The legacy tunables (gain_self / gain_inhibit / micro_steps) are
+     * REPURPOSED in this regime:
+     *   - gain_self: divisive exponent p (clamped to [1.0, 8.0]; old
+     *     1.5 default was too low — bump implicit default to 2.0).
+     *   - gain_inhibit: epsilon floor on the denominator (clamped to
+     *     [1e-8, 1e-3]; old 0.026 was an inhibition gain, not an epsilon
+     *     — coerce small values into the new range).
+     *   - lateral_micro_steps: unchanged (settling iterations).
+     */
+    float p = gain_self;
+    if (p < 1.0f) p = 1.0f;
+    if (p > 8.0f) p = 8.0f;
+    /* Old gain_inhibit defaults were O(0.01..0.1) — too big for an
+     * eps floor. Clamp into a sane range; values > 1e-3 are forced
+     * down. */
+    float eps = gain_inhibit;
+    if (eps < 1e-8f) eps = 1e-8f;
+    if (eps > 1e-3f) eps = 1e-3f;
+
     /* On-stack activation buffers — K bounded by LATERAL_INHIBITION_MAX_K.
      * Two buffers: read from `a`, write to `new_a`, swap each step. */
     float a[LATERAL_INHIBITION_MAX_K];
@@ -957,18 +1002,32 @@ int snn_language_bridge_decode_with_lateral_inhibition(
         if (a[k] > 1.0f) a[k] = 1.0f;
     }
 
-    /* Settling loop. Each step is O(K) using a precomputed sum — avoid
-     * the naive O(K^2) inner double-loop. sum_a = sum_j a[j]; per-k
-     * inhibition is gain_inhibit * (sum_a - a[k]). */
+    /* Divisive-normalization settling loop. Each step is O(K).
+     *   pwr[k]   = a[k]^p  (one powf per element)
+     *   sum_pwr  = sum_j pwr[j] + eps
+     *   new_a[k] = pwr[k] / sum_pwr
+     * Result: the leader's share grows as the p-th power each step;
+     * subordinates → 0 in O(log K) micro-steps. */
     bool nan_seen = false;
     for (uint32_t t = 0; t < T; t++) {
-        float sum_a = 0.0f;
-        for (uint32_t k = 0; k < K; k++) sum_a += a[k];
+        float sum_pwr = 0.0f;
+        float pwr[LATERAL_INHIBITION_MAX_K];
+        for (uint32_t k = 0; k < K; k++) {
+            float v = a[k];
+            if (!isfinite(v) || v < 0.0f) v = 0.0f;
+            /* powf(0, p) is well-defined as 0 for p > 0; no domain issue. */
+            float pk = powf(v, p);
+            if (!isfinite(pk)) {
+                nan_seen = true;
+                pk = 0.0f;
+            }
+            pwr[k] = pk;
+            sum_pwr += pk;
+        }
+        sum_pwr += eps;
 
         for (uint32_t k = 0; k < K; k++) {
-            float inhibition = gain_inhibit * (sum_a - a[k]);
-            float drive = a[k] * gain_self - inhibition;
-            float next = _li_sigmoid(drive);
+            float next = (sum_pwr > 0.0f) ? (pwr[k] / sum_pwr) : 0.0f;
             if (!isfinite(next)) {
                 nan_seen = true;
                 next = 0.0f;
@@ -983,11 +1042,16 @@ int snn_language_bridge_decode_with_lateral_inhibition(
     }
 
     if (nan_seen) {
-        /* One-shot warning + fall back: leave results as the cosine top-K. */
-        LOG_WARN(LOG_MODULE,
-                 "decode_with_lateral_inhibition: NaN/Inf in settling — "
-                 "falling back to cosine top-K (gain_self=%.3f, gain_inh=%.6f, "
-                 "T=%u, K=%u)", gain_self, gain_inhibit, T, K);
+        /* Sticky one-shot warning — without this, the warning fires every
+         * tick once the regime is bad. Fall back to cosine top-K. */
+        if (!bridge->_li_warned) {
+            bridge->_li_warned = true;
+            LOG_WARN(LOG_MODULE,
+                     "decode_with_lateral_inhibition: NaN/Inf in divisive-"
+                     "normalization settling — falling back to cosine top-K "
+                     "(p=%.3f, eps=%.2e, T=%u, K=%u). Further occurrences "
+                     "suppressed.", p, (double)eps, T, K);
+        }
         return 0;
     }
 

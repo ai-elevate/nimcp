@@ -75,6 +75,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_cerebellar_correction
     test_gl_fno_audio_guard
     test_snn_fno_recording
+    test_lang_lateral_inhibition
 )
 
 # Helper: register a single standalone-C test.
