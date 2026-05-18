@@ -1641,6 +1641,42 @@ nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
 nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
                                                      bool* out_enabled);
 
+/** Slice 6 — thalamic gating of cascade-stage bandwidth.
+ *
+ *  Per-stage scalar gain control on the cascade modeled on the pulvinar
+ *  nucleus's role as central relay + gain controller. When enabled, each
+ *  cascade stage's scaleable contributions (content_intent magnitude,
+ *  lexical fluency, prosodic intensity, self-train lr_scale) are
+ *  multiplied by a per-stage gate in [0, 1] derived from the brain's
+ *  current arousal (NE) + attention (ACh) state. Default OFF preserves
+ *  bit-for-bit legacy behavior.
+ *
+ *  Manual override: set stage weight to clear (weight < 0) or any
+ *  specific value in [0, 1] to lock that stage's gate at the value
+ *  until the next clear. Useful for ablation experiments.
+ *
+ *  Stage index is the bit position of cascade_stage_mask_t — see the
+ *  nimcp_cascade_stage_idx_t enum in
+ *  include/language/nimcp_communication_cascade.h. */
+nimcp_status_t nimcp_brain_set_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool enabled);
+nimcp_status_t nimcp_brain_get_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool* out_enabled);
+/** weight < 0 clears the manual override (returns to auto-derived).
+ *  weight in [0, 1] sets and locks. NaN/Inf clear. */
+nimcp_status_t nimcp_brain_set_thalamic_gate_for_stage(nimcp_brain_t brain,
+                                                        uint32_t stage_idx,
+                                                        float weight);
+/** Snapshot of all 15 per-stage gate weights + override flags. Any of
+ *  out_weights / out_overrides may be NULL. Both arrays must have at
+ *  least max_count entries. count_out (NULL-tolerant) is set to the
+ *  number of entries populated. */
+nimcp_status_t nimcp_brain_get_thalamic_gates(nimcp_brain_t brain,
+                                                float* out_weights,
+                                                bool*  out_overrides,
+                                                uint32_t max_count,
+                                                uint32_t* count_out);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *

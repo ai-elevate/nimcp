@@ -619,6 +619,94 @@ int nimcp_brain_get_cascade_counters_impl(
  */
 int nimcp_brain_reset_cascade_counters_impl(brain_t brain);
 
+/* ----------------------------------------------------------------------
+ * Slice 6 — Thalamic gating of cascade-stage bandwidth.
+ *
+ * Per-stage gain control on the cascade. Real thalamus (esp. pulvinar)
+ * gain-modulates cortical regions according to attention/arousal state.
+ * Each cascade stage gets a [0.0, 1.0] gate that scales its scaleable
+ * outputs (content_intent magnitude, prosody intensity, etc) when
+ * brain->thalamic_gate_enabled is true. Default OFF — cascade is
+ * byte-identical to legacy when disabled.
+ *
+ * Gate-derivation rule (when enabled and manual_override[i] is false):
+ *   - Read arousal from NE neuromodulator level (NEUROMOD_NOREPINEPHRINE);
+ *     attention from ACh (NEUROMOD_ACETYLCHOLINE); fall back to 0.5 each
+ *     when neither modulator system is present.
+ *   - High arousal boosts motor + prosody + self_feedback (urgent speech).
+ *   - High attention boosts content + episodic + lexical (deliberate
+ *     speech).
+ *   - thalamic_router imagination_attention (when available) globally
+ *     attenuates self_train (don't reinforce dreamy outputs).
+ *   - All gates clamped to [0, 1].
+ *
+ * Manual overrides set via cascade_set_thalamic_gate_for_stage() persist
+ * until cleared (weight < 0 clears the override and restores
+ * auto-computed value on the next compute).
+ *
+ * Application points (matching the design doc Slice 6 spec):
+ *   stage_content:    multiply content_intent[] by gate before confidence
+ *   stage_lexical:    fluency *= gate
+ *   stage_self_train: lr_scale *= gate (effective in the reward path)
+ *   stage_motor:      no-op currently (text mode) — gate stored only
+ *   stage_prosody:    intensity_db scaled by gate (volume gain)
+ *   stage_phonological / stage_self_feedback / stage_drive / stage_goal /
+ *     stage_listener / stage_episodic / stage_syntactic / stage_self_comp /
+ *     stage_speech_repair / stage_wernicke: gate stored for diag only —
+ *     these stages produce structured artifacts whose magnitude is
+ *     dimensionless, so scaling is not meaningful. Suppression (gate=0)
+ *     of these stages should be done via the cascade_stage_mask_t bit.
+ *
+ * All APIs return 0 on success, -1 on invalid args. */
+
+/* Public stage enumeration mirroring cascade_stage_mask_t bit positions
+ * (0..14). Used by the gate setters/getters so callers don't have to
+ * compute the bit-index manually. */
+typedef enum {
+    NIMCP_CASCADE_STAGE_WERNICKE_IDX      = 0,
+    NIMCP_CASCADE_STAGE_DRIVE_IDX         = 1,
+    NIMCP_CASCADE_STAGE_GOAL_IDX          = 2,
+    NIMCP_CASCADE_STAGE_LISTENER_IDX      = 3,
+    NIMCP_CASCADE_STAGE_EPISODIC_IDX      = 4,
+    NIMCP_CASCADE_STAGE_CONTENT_IDX       = 5,
+    NIMCP_CASCADE_STAGE_LEXICAL_IDX       = 6,
+    NIMCP_CASCADE_STAGE_SYNTACTIC_IDX     = 7,
+    NIMCP_CASCADE_STAGE_SELF_COMP_IDX     = 8,
+    NIMCP_CASCADE_STAGE_PHONOLOGICAL_IDX  = 9,
+    NIMCP_CASCADE_STAGE_MOTOR_IDX         = 10,
+    NIMCP_CASCADE_STAGE_SELF_FEEDBACK_IDX = 11,
+    NIMCP_CASCADE_STAGE_SPEECH_REPAIR_IDX = 12,
+    NIMCP_CASCADE_STAGE_PROSODY_IDX       = 13,
+    NIMCP_CASCADE_STAGE_SELF_TRAIN_IDX    = 14
+} nimcp_cascade_stage_idx_t;
+
+/** Master enable for the thalamic gating layer. Default OFF. */
+int communication_cascade_set_thalamic_gate_enabled(brain_t brain, bool enabled);
+bool communication_cascade_get_thalamic_gate_enabled(brain_t brain);
+
+/** Manual override of a single stage's gate weight.
+ *  Pass weight < 0 to CLEAR the manual override (next compute will
+ *  re-derive the gate from arousal/attention). Otherwise weight is
+ *  clamped to [0.0, 1.0]. */
+int communication_cascade_set_thalamic_gate_for_stage(brain_t brain,
+                                                      nimcp_cascade_stage_idx_t stage,
+                                                      float weight);
+
+/** Read current gate weights into caller-owned arrays. out_weights and
+ *  out_overrides may each be NULL. count_out (NULL-tolerant) is set to
+ *  the number of populated entries (currently 15). */
+int communication_cascade_get_thalamic_gates(brain_t brain,
+                                              float* out_weights,
+                                              bool*  out_overrides,
+                                              uint32_t* count_out);
+
+/** Force a re-derivation of gate weights from current brain state.
+ *  The orchestrator calls this once at the top of every cascade run
+ *  (when enabled), so callers normally don't need to invoke it
+ *  directly — it's exposed for tests + diagnostics. Stages flagged in
+ *  manual_override[] are left alone. */
+int communication_cascade_compute_thalamic_gates(brain_t brain);
+
 #ifdef __cplusplus
 }
 #endif

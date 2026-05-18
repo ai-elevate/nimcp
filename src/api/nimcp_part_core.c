@@ -2841,6 +2841,82 @@ nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
+/* Slice 6 — thalamic gating public wrappers. Inline-extern the cascade
+ * implementations to avoid the header re-include cycle (cascade.h is
+ * already pulled in at the top of this TU). */
+extern int  communication_cascade_set_thalamic_gate_enabled(brain_t brain, bool enabled);
+extern bool communication_cascade_get_thalamic_gate_enabled(brain_t brain);
+extern int  communication_cascade_set_thalamic_gate_for_stage(brain_t brain,
+                                                              nimcp_cascade_stage_idx_t stage,
+                                                              float weight);
+extern int  communication_cascade_get_thalamic_gates(brain_t brain,
+                                                     float* out_weights,
+                                                     bool*  out_overrides,
+                                                     uint32_t* count_out);
+
+nimcp_status_t nimcp_brain_set_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (communication_cascade_set_thalamic_gate_enabled(b, enabled) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = communication_cascade_get_thalamic_gate_enabled(b);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_thalamic_gate_for_stage(nimcp_brain_t brain,
+                                                        uint32_t stage_idx,
+                                                        float weight) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (stage_idx >= 15) return NIMCP_ERROR_INVALID_PARAM;
+    /* NaN/Inf reads as "clear" — coerce to negative sentinel before
+     * forwarding to the cascade setter. */
+    if (!isfinite(weight)) weight = -1.0f;
+    return (communication_cascade_set_thalamic_gate_for_stage(b,
+                (nimcp_cascade_stage_idx_t)stage_idx, weight) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_thalamic_gates(nimcp_brain_t brain,
+                                                float* out_weights,
+                                                bool*  out_overrides,
+                                                uint32_t max_count,
+                                                uint32_t* count_out) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    /* Pull into a local 15-slot scratch buffer so we can copy only up
+     * to max_count entries into the caller's array. */
+    float    scratch_w[15];
+    bool     scratch_o[15];
+    uint32_t got = 0;
+    if (communication_cascade_get_thalamic_gates(b,
+            scratch_w, scratch_o, &got) != 0) {
+        return NIMCP_ERROR;
+    }
+    uint32_t copy = (got < max_count) ? got : max_count;
+    if (out_weights) {
+        for (uint32_t i = 0; i < copy; i++) out_weights[i] = scratch_w[i];
+    }
+    if (out_overrides) {
+        for (uint32_t i = 0; i < copy; i++) out_overrides[i] = scratch_o[i];
+    }
+    if (count_out) *count_out = copy;
+    return NIMCP_OK;
+}
+
 /* =================================================================
  * Base lexicon bootstrap (Option C of language training plan)
  * =================================================================

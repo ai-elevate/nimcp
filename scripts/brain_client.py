@@ -441,6 +441,65 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return bool(resp.get("enabled", enabled))
 
+    def set_thalamic_gate_enabled(self, enabled=True):
+        """Slice 6: toggle thalamic gating of cascade-stage bandwidth.
+
+        When True, each cascade stage's scaleable contributions
+        (content_intent magnitude, lexical fluency, prosodic intensity,
+        self-train lr_scale) are multiplied by a per-stage gate in
+        [0, 1] derived from arousal (NE) + attention (ACh) state. Models
+        the pulvinar's role as central relay + gain controller. Default
+        off — when disabled the cascade behaves byte-identically to
+        legacy. Returns the bool the daemon actually set."""
+        resp = self._send({
+            "cmd": "set_thalamic_gate_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_thalamic_gate_for_stage(self, stage_idx, weight):
+        """Slice 6: manual override of a single stage's gate weight.
+
+        stage_idx is 0..14 in cascade_stage_mask_t bit order:
+            0=wernicke 1=drive 2=goal 3=listener 4=episodic 5=content
+            6=lexical 7=syntactic 8=self_comp 9=phonological 10=motor
+            11=self_feedback 12=speech_repair 13=prosody 14=self_train
+
+        weight < 0 clears the manual override (returns to auto-derived).
+        weight in [0, 1] sets and locks the gate. Useful for ablation
+        experiments (e.g. set motor=0 to silence articulator output).
+        Returns the (stage_idx, weight) dict the daemon recorded."""
+        resp = self._send({
+            "cmd": "set_thalamic_gate_for_stage",
+            "stage_idx": int(stage_idx),
+            "weight":    float(weight),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return {
+            "stage_idx": int(resp.get("stage_idx", stage_idx)),
+            "weight":    float(resp.get("weight",    weight)),
+        }
+
+    def get_thalamic_gates(self):
+        """Slice 6: read the current thalamic gate weights + override flags.
+
+        Returns dict with keys:
+          'enabled':     bool — master flag
+          'gates':       dict[str, float] — stage-name keyed weights
+                         (e.g. {'drive': 0.5, 'content': 0.8, ...})
+          'weights':     [float] × 15 — same values, ordered by stage idx
+          'overrides':   [bool]  × 15 — true if manually overridden
+          'stage_names': [str]   × 15 — names matching the index ordering
+        When the daemon was started against a pre-Slice-6 nimcp.so the
+        call returns {} (RPC raises on AttributeError → returns empty)."""
+        resp = self._send({"cmd": "get_thalamic_gates"})
+        if resp.get("error"):
+            return {}
+        return resp
+
     def echo_and_correct(self, parent_text, target_word, lr_scale=1.0):
         """Supervised production-training pulse for the SNN language bridge.
 
