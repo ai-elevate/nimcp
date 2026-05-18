@@ -289,19 +289,17 @@ static inline float cascade_clamp01(float v) {
 int communication_cascade_set_thalamic_gate_enabled(brain_t brain, bool enabled) {
     if (!brain) return -1;
     brain->thalamic_gate_enabled = enabled;
-    /* First enable: initialize the gate array to neutral (1.0) so the
-     * stages that read it before the first compute see pass-through. */
+    /* S6-M4 fix (2026-05-19): on first enable, initialize EVERY non-overridden
+     * gate to neutral (1.0). Pre-fix this was gated on "all weights zero AND
+     * no overrides", which made it order-dependent: a caller setting an
+     * override BEFORE enable would skip the bulk init, leaving the
+     * non-override gates at calloc-zero 0.0 -> most stages silenced.
+     *
+     * Post-fix: manual_override[i] preserves user-set values; everything
+     * else is forced to 1.0 so stages that read pre-compute see pass-through. */
     if (enabled) {
-        bool any_nonzero_or_override = false;
         for (uint32_t i = 0; i < 15; i++) {
-            if (brain->thalamic_gate_weights[i] != 0.0f ||
-                brain->thalamic_gate_manual_override[i]) {
-                any_nonzero_or_override = true;
-                break;
-            }
-        }
-        if (!any_nonzero_or_override) {
-            for (uint32_t i = 0; i < 15; i++) {
+            if (!brain->thalamic_gate_manual_override[i]) {
                 brain->thalamic_gate_weights[i] = 1.0f;
             }
         }
@@ -1739,13 +1737,14 @@ static int cascade_stage_motor(brain_t brain,
                                 production_cascade_state_t* state) {
     if (!state) return 0;
 
-    /* Slice 6: even though the text-mode motor stage is a skip, the
-     * thalamic gate weight for motor is computed + stored so that
-     * downstream consumers (edge platform / TTS bridges that DO emit
-     * real motor commands) can read it via the diag RPC and apply the
-     * pulvinar-style gain in their own articulator paths. We just
-     * touch the array so the gate compute call's value is visible. */
-    (void)cascade_thalamic_gate_for(brain, NIMCP_CASCADE_STAGE_MOTOR_IDX);
+    /* S6-M3 fix (2026-05-19): pre-fix called
+     *   (void)cascade_thalamic_gate_for(brain, NIMCP_CASCADE_STAGE_MOTOR_IDX);
+     * with a comment claiming it "stored the gate weight" — but the helper
+     * is a pure read with no side effect. The line was a no-op with a
+     * misleading comment. Motor stage is gate-aware via the cerebellar
+     * prediction path below (cereb_build_motor_features reads the array
+     * already), which is the correct + only way to surface the motor
+     * gate value through cascade state. */
 
     /* Slice 7 default-OFF / no-cerebellum fast path — preserve the legacy
      * skip record so existing tests / consumers see no behavioral change. */
@@ -1794,8 +1793,16 @@ static int cascade_stage_motor(brain_t brain,
         float pe = cereb_norm_diff(feat_actual, predicted, 8);
         state->cereb_motor_pe_norm = pe;
         brain->cerebellar_last_pe_norm = pe;
-        /* Climbing-fiber broadcast — error_type 2 = force/motor */
-        cerebellum_broadcast_error((void*)brain->cerebellum, pe, 2);
+        /* Climbing-fiber broadcast — error_type 2 = force/motor.
+         * S7-M3 fix (2026-05-19): pre-fix the broadcast fired every iter
+         * regardless of pe magnitude — looped over thousands of climbing
+         * fibers, set purkinje complex spikes — for an error that the
+         * downstream LTD gate would immediately discard (gated on
+         * pe > threshold). Wasted compute + cerebellum state pollution.
+         * Skip the broadcast when pe is effectively zero. */
+        if (pe > 1e-6f) {
+            cerebellum_broadcast_error((void*)brain->cerebellum, pe, 2);
+        }
     }
 
     cascade_record_complete(state);
@@ -2334,7 +2341,13 @@ static int cascade_stage_prosody(brain_t brain,
         state->cereb_prosody_actual[1] = feat_actual[7];                 /* range */
         state->cereb_prosody_actual[2] = cereb_clamp01(feat_actual[1]);  /* valence proxy */
 
-        cerebellum_broadcast_error((void*)brain->cerebellum, pe, 1 /* TIMING */);
+        /* S7-M3 fix (2026-05-19): skip the climbing-fiber broadcast when
+         * pe is effectively zero — saves the cerebellum LTD gate from
+         * processing thousands of synapses for an immediately-discarded
+         * signal. Matches motor stage above. */
+        if (pe > 1e-6f) {
+            cerebellum_broadcast_error((void*)brain->cerebellum, pe, 1 /* TIMING */);
+        }
     }
 
     cascade_record_complete(state);
@@ -2568,9 +2581,17 @@ static int cascade_stage_self_train(brain_t brain,
          * bigram/trigram teaching path so the bridge learns from its own
          * good productions (closes the self-supervised loop). Gated on
          * a moderate self_match floor so we don't reinforce garbage.
-         * trigram_lr is half of bigram_lr inside learn_text_bigrams. */
+         * trigram_lr is half of bigram_lr inside learn_text_bigrams.
+         *
+         * S6-L8 fix (2026-05-19): multiply by gate_self_train (the thalamic
+         * gate) so dreamy/low-attention states attenuate bigram teaching
+         * the same way they attenuate the primary STDP path above. Pre-fix
+         * teach_lr read RAW brain->cascade_self_train_lr_scale, half-defeating
+         * the intent that low-gate states don't reinforce divergent
+         * productions. */
         if (brain->grounded_lang && state->self_match >= 0.30f) {
-            float teach_lr = brain->cascade_self_train_lr_scale * 0.05f * state->self_match;
+            float teach_lr = brain->cascade_self_train_lr_scale *
+                              gate_self_train * 0.05f * state->self_match;
             if (isfinite(teach_lr) && teach_lr > 0.0f) {
                 (void)grounded_language_learn_text_bigrams(
                     brain->grounded_lang, state->utterance, teach_lr);
