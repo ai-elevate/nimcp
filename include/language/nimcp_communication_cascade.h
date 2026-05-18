@@ -388,6 +388,21 @@ typedef struct {
      * pe_total has always wanted. */
     float    pe_content_arcuate_norm;
     float    pe_content_gate_norm;
+
+    /* S7-H2 fix (2026-05-19): per-stage flags surfacing whether the
+     * cerebellar bias was actually applied this iter (gated on
+     * correction_pending AND prediction confidence > 0.3 — pre-training
+     * the forward model is identity so a 0-confidence bias would just
+     * map voicing onto pitch). Also record the predict-call confidence
+     * itself so trainers can monitor forward-model learning curve.
+     * APPENDED at end. Layout (struct already 8-byte aligned at offset
+     * 904 from pe_content_gate_norm = 4-byte float at 900): two bools
+     * (2 bytes), 6 bytes trailing pad to 4-byte align, two floats
+     * (8 bytes) = 16 bytes total → struct size 920. */
+    bool     cereb_motor_bias_applied;
+    bool     cereb_prosody_bias_applied;
+    float    cereb_motor_confidence;
+    float    cereb_prosody_confidence;
 } production_cascade_state_t;
 
 /* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
@@ -405,8 +420,8 @@ typedef struct {
  *
  * Computed on x86_64 Linux gcc with default packing. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(production_cascade_state_t) == 904,
-    "production_cascade_state_t ABI: size drifted from expected 904. "
+_Static_assert(sizeof(production_cascade_state_t) == 912,
+    "production_cascade_state_t ABI: size drifted from expected 912. "
     "Append-only on the struct; bump this literal in lockstep. "
     "Slice 3 (2026-05-18) appended 6 prediction-error fields (24 bytes) "
     "atop the 760-byte baseline → 784. Slice 7 (2026-05-18) appended "
@@ -416,7 +431,11 @@ _Static_assert(sizeof(production_cascade_state_t) == 904,
     "(4 bytes data + 4 bytes tail alignment padding to keep struct align) "
     "→ 896. S3+S6-H2/H4 fix (2026-05-19) appended pe_content_arcuate_norm "
     "+ pe_content_gate_norm (8 bytes, no padding needed — both float, "
-    "struct already 8-byte aligned at offset 896) → 904.");
+    "struct already 8-byte aligned at offset 896) → 904. S7-H2 fix "
+    "(2026-05-19) appended cereb_motor_bias_applied + "
+    "cereb_prosody_bias_applied + cereb_motor_confidence + "
+    "cereb_prosody_confidence (2 bools + 2 floats — packed into 8 bytes "
+    "via slot reuse in earlier trailing pad) → 912.");
 #endif
 
 /**

@@ -1765,6 +1765,8 @@ static int cascade_stage_motor(brain_t brain,
     bool ok = cerebellum_predict_outcome((void*)brain->cerebellum,
                                           feat_pre, 8,
                                           predicted, &confidence);
+    if (!isfinite(confidence)) confidence = 0.0f;
+    state->cereb_motor_confidence = confidence;
     if (ok) {
         memcpy(state->cereb_motor_predicted, predicted, sizeof(predicted));
         cereb_bump_predictions(brain);
@@ -1776,9 +1778,17 @@ static int cascade_stage_motor(brain_t brain,
      * boost the prediction's contribution this iter". We record the
      * application; in text-mode there's no downstream motor effector
      * to bias, but the diag surfacing is what trainers/dashboards
-     * monitor. */
-    if (brain->cerebellar_correction_pending) {
+     * monitor.
+     *
+     * S7-H2 fix (2026-05-19): gate on confidence > 0.3 — pre-fix every
+     * pending iter applied a meaningless bias from the identity-init
+     * forward model. The pe_norm itself is still useful (it goes into
+     * the next iter's correction_pending compute), so we still update
+     * the forward model below; we just don't pretend a bias was applied
+     * before the model has learned to make a meaningful prediction. */
+    if (brain->cerebellar_correction_pending && confidence > 0.3f) {
         state->cereb_correction_applied = true;
+        state->cereb_motor_bias_applied = true;
         cereb_bump_corrections(brain);
     }
 
@@ -2095,13 +2105,15 @@ static int cascade_stage_prosody(brain_t brain,
     float cereb_pred_pros[8] = {0};
     float cereb_pre_feat[8]  = {0};
     bool  cereb_pred_ok      = false;
+    float cereb_pred_conf    = 0.0f;
     if (cereb_active) {
         cereb_build_prosody_features(state, /* post_stage = */ false,
                                        cereb_pre_feat);
-        float conf = 0.0f;
         cereb_pred_ok = cerebellum_predict_outcome(
             (void*)brain->cerebellum, cereb_pre_feat, 8,
-            cereb_pred_pros, &conf);
+            cereb_pred_pros, &cereb_pred_conf);
+        if (!isfinite(cereb_pred_conf)) cereb_pred_conf = 0.0f;
+        state->cereb_prosody_confidence = cereb_pred_conf;
         if (cereb_pred_ok) {
             /* cereb_prosody_predicted is float[3] in the cascade state —
              * carry only the 3 prosody-relevant slots forward
@@ -2170,8 +2182,16 @@ static int cascade_stage_prosody(brain_t brain,
      * as the cerebellum's expectation aligns with realised prosody).
      * Pending → "system flagged previous iter as high-PE, bias the
      * trajectory to correct on this iter". */
+    /* S7-H2 fix (2026-05-19): also gate on prediction confidence > 0.3.
+     * Pre-fix with the cerebellum's identity-init forward model,
+     * pred[6] = input[6] = phon_voiced_ratio at cold-start. base_f0 then
+     * collapsed to 80 + 320*voiced_ratio — voicing mapped onto pitch,
+     * which is nonsense. Once the forward model has had enough updates
+     * to differentiate features the confidence rises above 0.3 and the
+     * bias becomes meaningful. */
     if (cereb_active && cereb_pred_ok &&
-        brain->cerebellar_correction_pending) {
+        brain->cerebellar_correction_pending &&
+        cereb_pred_conf > 0.3f) {
         float strength = brain->cerebellar_correction_strength;
         if (!isfinite(strength) || strength < 0.0f) strength = 0.0f;
         if (strength > 1.0f) strength = 1.0f;
@@ -2183,6 +2203,7 @@ static int cascade_stage_prosody(brain_t brain,
         range_hz = (1.0f - strength) * range_hz + strength * pred_range;
 
         state->cereb_correction_applied = true;
+        state->cereb_prosody_bias_applied = true;
         cereb_bump_corrections(brain);
     }
 
