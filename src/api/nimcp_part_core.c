@@ -3028,13 +3028,55 @@ nimcp_status_t nimcp_brain_get_phonological_loop_diag(
 }
 
 /* =================================================================
- * Slice 7 — cerebellar prediction-correction public API tail
+ * Slice 7 — cerebellar prediction-correction public API
  *
- * The enable + get_enabled wrappers are above (interleaved with the
- * thalamic gating block); these are the remaining strength setter and
- * the diagnostics snapshot. All scalar-field writes — no atomics, no
+ * Default OFF; when enabled, brain->cerebellum (existing adapter) is queried
+ * for forward-model predictions inside cascade_stage_motor + stage_prosody
+ * and a closed-loop error is fed back via cerebellum_update_forward_model +
+ * cerebellum_broadcast_error. The recurrent cascade also sets/clears
+ * correction_pending between iterations based on accumulated PE.
+ *
+ * The wrappers below are intentionally minimal — they only set the flag /
+ * strength / threshold fields on the brain. The actual cerebellum calls
+ * happen inside nimcp_communication_cascade.c when the flag is set and
+ * brain->cerebellum is non-NULL. All scalar-field writes — no atomics, no
  * locks, by contract.
  * ================================================================= */
+
+nimcp_status_t nimcp_brain_set_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    b->cerebellar_correction_enabled = enabled;
+    /* Install sane defaults on first enable — caller can still override
+     * via set_correction_strength below. */
+    if (enabled) {
+        if (!isfinite(b->cerebellar_correction_strength) ||
+            b->cerebellar_correction_strength <= 0.0f) {
+            b->cerebellar_correction_strength = 0.5f;
+        }
+        if (!isfinite(b->cerebellar_pe_threshold) ||
+            b->cerebellar_pe_threshold <= 0.0f) {
+            b->cerebellar_pe_threshold = 0.20f;
+        }
+    } else {
+        /* Disable also resets the mid-loop pending flag so a future
+         * recurrent run isn't surprised by stale state. */
+        b->cerebellar_correction_pending = false;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = b->cerebellar_correction_enabled;
+    return NIMCP_OK;
+}
 
 nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
                                                                float strength) {
