@@ -3018,6 +3018,21 @@ struct brain_struct {
     void*     loop_mutex;              /* nimcp_mutex_t* — see lock comment */
     char**    loop_words;              /* per-word storage; size = loop_trace_capacity */
 
+    /* S5-H3/H5 fix (2026-05-19): operator-controllable surface threshold.
+     * Pre-fix the internal rerender used the 0.05 prune threshold (which
+     * matched eviction) so `loop_buffer` text held EVERY trace, but
+     * `phonological_loop_render_active` defaulted to 0.3 — trainers reading
+     * diag (loop_buffer_len) saw MORE words than the cascade actually
+     * emitted. Words with trace ∈ [0.05, 0.3) sat in the silent decay band:
+     * present in the buffer, invisible to the cascade.
+     *
+     * Post-fix: both internal rerender + render_active use this field.
+     * Default 0.3 matches the legacy cascade behavior; operators may lower
+     * (e.g. to 0.05) to make the silent band observable or raise (e.g. 0.5)
+     * to tighten the surface form. Clamped to [0.0, 1.0]. Setter:
+     * nimcp_brain_set_phonological_loop_threshold. */
+    float     loop_surface_threshold;   /* default 0.3; clamped [0,1] */
+
     /* === SLICE 7 — CEREBELLAR PREDICTION-CORRECTION (2026-05-18) ===
      * Wires the existing cerebellum adapter (brain->cerebellum, opaque
      * cerebellum_adapter_t* — see

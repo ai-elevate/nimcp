@@ -1707,6 +1707,13 @@ nimcp_status_t nimcp_brain_set_phonological_loop_enabled(nimcp_brain_t brain,
 /** Clamps to [0.0, 0.5]. NaN/Inf coerce to default (0.15). */
 nimcp_status_t nimcp_brain_set_phonological_loop_decay(nimcp_brain_t brain,
                                                         float decay);
+/** S5-H5: surface-render threshold. Words with trace ≥ this value count
+ *  as "on the surface form" (visible via get_phonological_loop_state +
+ *  consumed by stage_syntactic / stage_self_comp). Clamped to [0, 1];
+ *  NaN/Inf or <=0 coerce to default (0.3). Lower values reveal traces
+ *  in the silent decay band [0.05, default_threshold). */
+nimcp_status_t nimcp_brain_set_phonological_loop_threshold(nimcp_brain_t brain,
+                                                            float threshold);
 /** Full reset — drops every word + trace, clears the surface buffer. */
 nimcp_status_t nimcp_brain_clear_phonological_loop(nimcp_brain_t brain);
 
@@ -1735,6 +1742,9 @@ typedef struct nimcp_phonological_loop_diag {
     float    decay_rate;          /* configured per-iteration decay */
     float    avg_trace_strength;  /* mean of all live traces (0 if empty) */
     uint64_t last_refresh_ms;     /* monotonic ms of last decay/merge */
+    /* S5-H5 (2026-05-19): operator-controlled surface threshold. Words
+     * with trace >= this value count as on the surface form. */
+    float    surface_threshold;
 } nimcp_phonological_loop_diag_t;
 
 nimcp_status_t nimcp_brain_get_phonological_loop_diag(

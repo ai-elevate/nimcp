@@ -58,6 +58,21 @@ static void loop_init_global_once(void) {
 #define LOOP_DEFAULT_MAX_WORDS  16u
 #define LOOP_DEFAULT_DECAY      0.15f
 #define LOOP_PRUNE_THRESHOLD    0.05f
+/* S5-H3/H5 default surface threshold. Trace eviction still happens at
+ * LOOP_PRUNE_THRESHOLD (0.05); LOOP_DEFAULT_SURFACE_THRESHOLD (0.3) is the
+ * default "what counts as on the surface form" gate. Operator-controllable
+ * via nimcp_brain_set_phonological_loop_threshold. */
+#define LOOP_DEFAULT_SURFACE_THRESHOLD 0.3f
+
+/* Read the operator-controlled surface threshold; falls back to 0.3 if the
+ * field is uninitialized (calloc-zero) or non-finite. Used by both internal
+ * rerender and the public render_active default. */
+static inline float loop_surface_threshold(const brain_t brain) {
+    float t = brain->loop_surface_threshold;
+    if (!isfinite(t) || t <= 0.0f) return LOOP_DEFAULT_SURFACE_THRESHOLD;
+    if (t > 1.0f) return 1.0f;
+    return t;
+}
 
 /*============================================================================
  * Helpers (internal)
@@ -270,6 +285,12 @@ int phonological_loop_init(brain_t brain) {
      * setter before lazy-init fired. */
     if (brain->loop_max_words == 0u) brain->loop_max_words = LOOP_DEFAULT_MAX_WORDS;
     if (brain->loop_decay_rate <= 0.0f) brain->loop_decay_rate = LOOP_DEFAULT_DECAY;
+    /* S5-H5: default surface threshold matches legacy cascade value (0.3).
+     * Preserved if a setter ran before init. */
+    if (!isfinite(brain->loop_surface_threshold) ||
+        brain->loop_surface_threshold <= 0.0f) {
+        brain->loop_surface_threshold = LOOP_DEFAULT_SURFACE_THRESHOLD;
+    }
     brain->loop_last_refresh_ms = monotonic_ms();
 
     /* PUBLISH last: the store of loop_mutex is the synchronization
@@ -368,8 +389,11 @@ void phonological_loop_decay(brain_t brain) {
     }
     brain->loop_trace_count = write;
 
-    /* Re-render the surface buffer reflecting the survivors. */
-    rerender_buffer_unlocked(brain, LOOP_PRUNE_THRESHOLD);
+    /* S5-H3 fix: re-render at the operator-controlled surface threshold,
+     * not the eviction threshold. Pre-fix the buffer text held every
+     * surviving trace (≥0.05) while phonological_loop_render_active used
+     * 0.3 — diag counts diverged from cascade output. */
+    rerender_buffer_unlocked(brain, loop_surface_threshold(brain));
     brain->loop_last_refresh_ms = monotonic_ms();
 
     nimcp_mutex_unlock(m);
@@ -457,7 +481,10 @@ void phonological_loop_merge_words(brain_t brain, const char* utterance) {
         /* else: cap reached, ignore further new tokens this round. */
     }
 
-    rerender_buffer_unlocked(brain, LOOP_PRUNE_THRESHOLD);
+    /* S5-H3 fix: re-render at the operator-controlled surface threshold,
+     * matching phonological_loop_render_active so trainer diag and cascade
+     * output report the same word set. */
+    rerender_buffer_unlocked(brain, loop_surface_threshold(brain));
     brain->loop_last_refresh_ms = monotonic_ms();
     nimcp_mutex_unlock(m);
 }
@@ -478,7 +505,11 @@ uint32_t phonological_loop_render_active(brain_t brain,
     nimcp_mutex_t* m = (nimcp_mutex_t*)brain->loop_mutex;
     if (nimcp_mutex_lock(m) != 0) return 0;
 
-    if (!isfinite(threshold) || threshold < 0.0f) threshold = 0.3f;
+    /* S5-H5 fix: NaN / negative threshold => caller wants "default" — use
+     * the operator-controlled brain-level threshold (defaults to 0.3 if
+     * never set). This way set_phonological_loop_threshold widens or
+     * narrows the surface form for all readers consistently. */
+    if (!isfinite(threshold) || threshold < 0.0f) threshold = loop_surface_threshold(brain);
 
     uint32_t pos = 0;
     uint32_t words = 0;

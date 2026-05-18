@@ -2963,6 +2963,23 @@ nimcp_status_t nimcp_brain_set_phonological_loop_decay(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_phonological_loop_threshold(nimcp_brain_t brain,
+                                                            float threshold) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    /* S5-H5: validate + coerce. NaN/Inf/<=0 reset to default 0.3.
+     * Setting before enable is allowed — init lazily so subsequent
+     * loop helpers see the requested value. */
+    if (!(threshold == threshold) /* NaN */ ||
+        threshold <= 0.0f || threshold > 1.0f) {
+        threshold = 0.3f;
+    }
+    (void)phonological_loop_init(b);
+    b->loop_surface_threshold = threshold;
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_clear_phonological_loop(nimcp_brain_t brain) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);
@@ -3024,6 +3041,13 @@ nimcp_status_t nimcp_brain_get_phonological_loop_diag(
         for (uint32_t i = 0; i < n; i++) sum += b->loop_phonemic_trace[i];
     }
     out->avg_trace_strength = (n > 0) ? (sum / (float)n) : 0.0f;
+    /* S5-H5: surface threshold. 0 (calloc default) means "uninitialized" —
+     * report the effective default (0.3) so trainers see what's in force. */
+    {
+        float t = b->loop_surface_threshold;
+        if (!(t == t) /* NaN */ || t <= 0.0f || t > 1.0f) t = 0.3f;
+        out->surface_threshold = t;
+    }
     return NIMCP_OK;
 }
 
