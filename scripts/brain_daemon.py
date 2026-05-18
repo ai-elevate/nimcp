@@ -101,6 +101,21 @@ CHECKPOINT_MIN_SIZE = 5_000_000    # Absolute minimum checkpoint size (5 MB)
 # checkpoint dir means the rsync-back to Hetzner mirrors it for free.
 SNN_TUNE_PERSIST_PATH = "/workspace/nimcp/checkpoints/athena/snn_tune.json"
 
+# Wave-3 (2026-05-19) CROSS persistence fix: post-load language-architecture
+# runtime config. Every slice-1..7 setter is RUNTIME-ONLY — flips do NOT
+# survive nimcp_brain_save -> _load. Without re-application after every
+# brain start, the cascade falls back to bridge-only behavior silently.
+# Order of resolution:
+#   1. $LANG_CONFIG env var (absolute path or "off" to skip entirely)
+#   2. /etc/athena/runtime_lang_config.json
+#   3. data/lang_runtime_default.json packaged alongside the daemon.
+# Pick the FIRST that exists; missing default is non-fatal (logs WARN).
+_DEFAULT_LANG_CONFIG_PATHS = [
+    "/etc/athena/runtime_lang_config.json",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                 "..", "data", "lang_runtime_default.json"),
+]
+
 # Conductance-based rescale checkpoint marker (sidecar file). Used to
 # avoid double-rescale across save+load cycles. See cb_rescaled_marker.py.
 import cb_rescaled_marker  # noqa: E402
@@ -348,6 +363,170 @@ def _load_persistent_snn_tunes(brain, logger):
 
     logger.info("[snn_tune] reapplied %d persistent override(s) from %s",
                 applied, SNN_TUNE_PERSIST_PATH)
+
+
+def _apply_runtime_lang_config(brain, logger):
+    """CROSS Wave-3 (2026-05-19) — apply runtime language-architecture
+    config to the live brain. Every slice-1..7 setter is RUNTIME-ONLY;
+    flips do NOT survive checkpoint save/load. Without re-application
+    after every brain start, the cascade falls back to bridge-only
+    behavior silently because the setters revert to calloc-zero defaults.
+
+    Reads JSON from $LANG_CONFIG env (file path or "off" to skip), then
+    /etc/athena/runtime_lang_config.json, then the bundled default
+    data/lang_runtime_default.json. Missing-file is non-fatal (warns).
+
+    Each setter call is wrapped in try/except so an unknown key, an
+    unsupported tunable on the linked .so, or a temporarily-disconnected
+    bridge never blocks daemon startup. Apply counts surfaced to the log.
+    """
+    env_override = os.environ.get("LANG_CONFIG", "").strip()
+    if env_override.lower() in ("off", "0", "false", "none"):
+        logger.info("[lang_config] LANG_CONFIG=%s — skipping runtime "
+                    "language config apply", env_override)
+        return
+
+    cfg_path = None
+    if env_override:
+        cfg_path = env_override
+    else:
+        for p in _DEFAULT_LANG_CONFIG_PATHS:
+            if os.path.exists(p):
+                cfg_path = p
+                break
+
+    if not cfg_path or not os.path.exists(cfg_path):
+        logger.warning("[lang_config] no runtime lang config file at any of "
+                       "$LANG_CONFIG, %s — cascade will run with default-OFF "
+                       "slice flags. Set LANG_CONFIG=off to silence.",
+                       _DEFAULT_LANG_CONFIG_PATHS)
+        return
+
+    try:
+        with open(cfg_path) as f:
+            cfg = json.load(f)
+    except Exception as e:
+        logger.warning("[lang_config] failed to load %s: %s", cfg_path, e)
+        return
+
+    if not isinstance(cfg, dict):
+        logger.warning("[lang_config] %s is not a JSON object", cfg_path)
+        return
+
+    # Setter table: each entry is (config-key, brain-method-name,
+    # arg-extractor). The extractor is a callable taking the raw value
+    # (which may be dict, bool, float, list) and returning a tuple of
+    # positional args for the brain method, or None to skip.
+    def _bool(v):
+        return (bool(v),) if isinstance(v, (bool, int, float)) else None
+    def _f(v):
+        return (float(v),) if isinstance(v, (int, float)) else None
+    def _u(v):
+        return (int(v),) if isinstance(v, (int, float)) else None
+
+    applied = 0
+    skipped = 0
+    errors  = 0
+
+    # Slice 1 — recurrent cascade. Default ON if cfg block present.
+    table = [
+        # (cfg-key, method, extractor)
+        ("respond_via_cascade",                "set_respond_via_cascade",                _bool),
+        ("cascade_self_train_enabled",         "set_cascade_self_train_enabled",         _bool),
+        ("trigram_learning_enabled",           "set_trigram_learning_enabled",           _bool),
+        ("ltd_margin",                         "set_ltd_margin",                         _f),
+        ("lateral_inhibition_enabled",         "set_lateral_inhibition_enabled",         _bool),
+        ("thalamic_gate_enabled",              "set_thalamic_gate_enabled",              _bool),
+        ("phonological_loop_enabled",          "set_phonological_loop_enabled",          _bool),
+        ("phonological_loop_decay",            "set_phonological_loop_decay",            _f),
+        ("phonological_loop_threshold",        "set_phonological_loop_threshold",        _f),
+        ("cerebellar_correction_enabled",      "set_cerebellar_correction_enabled",      _bool),
+        ("cerebellar_correction_strength",     "set_cerebellar_correction_strength",     _f),
+        ("cerebellar_pe_threshold",            "set_cerebellar_pe_threshold",            _f),
+        ("comprehend_stdp_enabled",            "set_comprehend_stdp_enabled",            _bool),
+        ("da_modulation_enabled",              "set_da_modulation_enabled",              _bool),
+        ("da_modulation_gain",                 "set_da_modulation_gain",                 _f),
+        ("reconsolidation_enabled",            "set_reconsolidation_enabled",            _bool),
+        ("reconsolidation_decay",              "set_reconsolidation_decay",              _f),
+        ("sentence_segmentation_enabled",      "set_sentence_segmentation_enabled",      _bool),
+        ("speech_act_classification_enabled",  "set_speech_act_classification_enabled",  _bool),
+        ("topic_shift_enabled",                "set_topic_shift_enabled",                _bool),
+    ]
+    for key, method, extract in table:
+        if key not in cfg:
+            continue
+        args = extract(cfg[key])
+        if args is None:
+            logger.warning("[lang_config] %s: bad type for key %r — skipping",
+                           cfg_path, key)
+            skipped += 1
+            continue
+        fn = getattr(brain, method, None)
+        if fn is None:
+            logger.warning("[lang_config] brain.%s not available — rebuild .so",
+                           method)
+            skipped += 1
+            continue
+        try:
+            fn(*args)
+            applied += 1
+        except Exception as e:
+            logger.warning("[lang_config] brain.%s%s failed: %s",
+                           method, args, e)
+            errors += 1
+
+    # Tuple setters (multi-arg, can't fit single-extractor pattern)
+    if "lateral_inhibition_params" in cfg:
+        v = cfg["lateral_inhibition_params"]
+        if isinstance(v, dict):
+            try:
+                brain.set_lateral_inhibition_params(
+                    float(v.get("gain_self", 1.5)),
+                    float(v.get("gain_inhibit", 0.026)),
+                    int(v.get("micro_steps", 20)))
+                applied += 1
+            except Exception as e:
+                logger.warning("[lang_config] set_lateral_inhibition_params(%r) failed: %s", v, e)
+                errors += 1
+    if "cascade_self_train_tunables" in cfg:
+        v = cfg["cascade_self_train_tunables"]
+        if isinstance(v, dict):
+            try:
+                brain.set_cascade_self_train_tunables(
+                    float(v.get("alpha", 0.05)),
+                    float(v.get("lr_scale", 1.0)))
+                applied += 1
+            except Exception as e:
+                logger.warning("[lang_config] set_cascade_self_train_tunables(%r) failed: %s", v, e)
+                errors += 1
+    if "topic_shift_threshold" in cfg:
+        try:
+            brain.set_topic_shift_threshold(float(cfg["topic_shift_threshold"]))
+            applied += 1
+        except Exception as e:
+            logger.warning("[lang_config] set_topic_shift_threshold failed: %s", e)
+            errors += 1
+    if "topic_shift_min_turns" in cfg:
+        try:
+            brain.set_topic_shift_min_turns(int(cfg["topic_shift_min_turns"]))
+            applied += 1
+        except Exception as e:
+            logger.warning("[lang_config] set_topic_shift_min_turns failed: %s", e)
+            errors += 1
+    # Per-stage thalamic gates: dict of stage_idx -> weight.
+    if "thalamic_gate_overrides" in cfg:
+        v = cfg["thalamic_gate_overrides"]
+        if isinstance(v, dict):
+            for k, w in v.items():
+                try:
+                    brain.set_thalamic_gate_for_stage(int(k), float(w))
+                    applied += 1
+                except Exception as e:
+                    logger.warning("[lang_config] set_thalamic_gate_for_stage(%s, %s) failed: %s", k, w, e)
+                    errors += 1
+
+    logger.info("[lang_config] applied %d setting(s) from %s "
+                "(skipped=%d, errors=%d)", applied, cfg_path, skipped, errors)
 
 
 def _activate_cb_default(brain, logger):
@@ -5211,6 +5390,13 @@ def main():
     # so a --fresh daemon also gets the natural-saturation runaway defense.
     # See _activate_cb_default for the rescale-marker idempotency contract.
     _activate_cb_default(brain, logger)
+
+    # CROSS Wave-3 (2026-05-19) — apply runtime language-architecture
+    # config so slice-1..7 flags survive checkpoint reload. WITHOUT this,
+    # every brain start reverts to bridge-only behavior because all the
+    # slice setters are runtime-only and not persisted in brain_save.
+    # See _apply_runtime_lang_config for path resolution.
+    _apply_runtime_lang_config(brain, logger)
 
     # One-shot catch-up sleep cycle after resume. Previous sessions ran
     # without enable_sleep_wake_cycle, so 1000s of learn steps accumulated

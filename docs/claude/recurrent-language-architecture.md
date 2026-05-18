@@ -334,6 +334,50 @@ Client: BrainProxy.set_thalamic_gate_enabled(enabled)
 - Eval: after each slice, run `lang_eval.py` and compare diversity + coherence + self_match.
 - Tests: per-slice unit tests in `tests/cascade_recurrent_*.c`.
 
+## Post-load wire-up (CROSS Wave-3, 2026-05-19)
+
+Every slice-1..7 setter (respond_via_cascade, cascade_self_train_enabled,
+trigram_learning_enabled, ltd_margin, lateral_inhibition_enabled,
+thalamic_gate_enabled, phonological_loop_enabled, cerebellar_correction_enabled,
+arcuate_feedback_strength, etc.) is RUNTIME-ONLY. `nimcp_brain_save` does NOT
+persist these fields, and `nimcp_brain_load` calloc-zeros them on the reloaded
+brain. Operators / trainers MUST re-apply every flag after every checkpoint
+load — pre-fix they didn't, and production runs silently reverted to
+bridge-only mode.
+
+Source of truth: `data/lang_runtime_default.json`. `brain_daemon.py` calls
+`_apply_runtime_lang_config(brain, logger)` immediately after
+`_activate_cb_default`, which reads (in order):
+
+1. `$LANG_CONFIG` env var (file path, or `off` to skip the apply)
+2. `/etc/athena/runtime_lang_config.json`
+3. The bundled default `data/lang_runtime_default.json`
+
+The default config enables Slice 1+3+4+5+6 in their tested-default
+configuration. Slice 7 (cerebellar correction) ships OFF until the
+forward-model has trained enough to clear the confidence>0.3 gate
+(see S7-H2 in the bugfix history). Per-key error handling: an
+unknown key, an unsupported tunable, or a temporarily-disconnected
+bridge logs a WARN and continues. Apply counts surface to the daemon
+log on every brain start.
+
+## KNOWN_GAPS
+
+- **S3-H1 (Slice 3 predictors are textbook-trivial)**: the current
+  prediction-error fields (`pe_content_*`, `pe_lexical_norm`,
+  `pe_motor_*`, `pe_prosody_*`) are correction-magnitude norms, not
+  proper "predict downstream input" predictors. A genuine FEP predictor
+  would per-population learn a top-down expectation of its inputs and
+  compute PE = expected - observed. The current values are close enough
+  to FEP-style precision-weighting to be useful as a heuristic, but a
+  proper Slice 8 design pass should rebuild them on per-population
+  predictor networks.
+- **Arcuate setter**: no public C/Python setter for
+  `arcuate_feedback_strength` — the recurrent loop writes it
+  internally and the runtime-only flag is also restored to zero on
+  checkpoint reload. The default config's `_slice_2_arcuate` block
+  documents this gap.
+
 ## What this is NOT
 
 - NOT a performance optimization. Each iteration takes longer than the current single-pass cascade. The goal is biological fidelity and learnable structure, not speedup.
