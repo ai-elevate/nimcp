@@ -51,6 +51,39 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
+/* === SLICE 7 — cerebellar prediction-correction forward decls.
+ *
+ * The full cerebellum adapter header (include/core/brain/regions/cerebellum/
+ * nimcp_cerebellum_adapter.h) pulls bio-async + logging in, which in turn
+ * conflicts with the Wernicke speech_cortex phoneme_t already transitively
+ * included via grounded_language. We only need three functions out of the
+ * adapter ABI, so we forward-declare them with a void* opaque pointer —
+ * same pattern world_model_cognitive_integration.c uses. The cerebellum
+ * lives on brain->cerebellum as `struct cerebellum_adapter*`; the void*
+ * cast at the call site is safe because both refer to the same opaque type.
+ *
+ *   cerebellum_predict_outcome — feed an 8D motor command vector,
+ *       receive the cerebellum's forward-model prediction + confidence.
+ *   cerebellum_update_forward_model — close the loop with (cmd, outcome)
+ *       so Marr-Albus-Ito LTD shapes the forward-model weights.
+ *   cerebellum_broadcast_error — broadcast a scalar error to every
+ *       Purkinje cell (climbing-fiber signal); error_type 1 = timing,
+ *       2 = force (we reuse 1 for prosody-timing and 2 for motor-force
+ *       in keeping with existing callers).
+ */
+extern bool cerebellum_predict_outcome(void* adapter,
+                                        const float* motor_command,
+                                        uint32_t num_dims,
+                                        float* predicted_outcome,
+                                        float* confidence);
+extern bool cerebellum_update_forward_model(void* adapter,
+                                             const float* motor_command,
+                                             const float* outcome,
+                                             uint32_t num_dims);
+extern bool cerebellum_broadcast_error(void* adapter,
+                                        float error_magnitude,
+                                        uint8_t error_type);
+
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1030,14 +1063,221 @@ static int cascade_stage_phonological(brain_t brain,
 }
 
 /*============================================================================
- * Stage 9: Motor / output (deferred — text mode renders in stage 6)
+ * SLICE 7 — cerebellar prediction-correction helpers.
+ *
+ * Build a fixed-width 8D feature vector from the cascade state. The
+ * cerebellum's forward-model native width is 8 dimensions (see
+ * motor_command[8] in nuclei_output_t / cerebellum_adapter.c), so this
+ * is exactly the slot count the predictor expects. We pack syntactic +
+ * drive + phonological signals into the slots — the same signals that
+ * drive prosody contour synthesis downstream. Values clamped to [0, 1]
+ * for stable forward-model dynamics (the cerebellum's LR is tiny but
+ * unbounded inputs still cause weight drift).
+ *
+ * Slot map (motor stage):
+ *   [0] drive_arousal           — 0..1
+ *   [1] (drive_valence + 1)/2   — -1..1 → 0..1
+ *   [2] act_type bit pack       — question/declare/command → 0.25/0.50/0.75
+ *   [3] prompt_is_question      — 0 or 1
+ *   [4] syntactic_validity      — 0..1
+ *   [5] self_grammaticality     — 0..1
+ *   [6] phon_voiced_ratio       — 0..1
+ *   [7] log(word_count+1)/log9  — capped at 1.0 (word_count ≤ 8 → fills, >8 saturates)
+ *
+ * Slot map (prosody stage) — same packing PLUS [6..7] replaced by realised
+ * mean_F0 / pitch_range when post-stage:
+ *   [6] (mean_F0 - 80)/(400 - 80)         — 0..1 from physiological range
+ *   [7] pitch_range / 320                 — 0..1 (0..320 Hz)
+ *==========================================================================*/
+
+static inline float cereb_clamp01(float x) {
+    if (!isfinite(x)) return 0.0f;
+    if (x < 0.0f) return 0.0f;
+    if (x > 1.0f) return 1.0f;
+    return x;
+}
+
+/* Pack the 8D feature vector for the motor stage. Reads only the
+ * upstream-stage outputs that are already populated by the time
+ * cascade_stage_motor runs (drive, goal/act_type, syntactic_validity,
+ * self_grammaticality, phonological voiced_ratio, lexical word_count). */
+static void cereb_build_motor_features(const production_cascade_state_t* s,
+                                        float out_feat[8]) {
+    out_feat[0] = cereb_clamp01(s->drive_arousal);
+    out_feat[1] = cereb_clamp01((s->drive_valence + 1.0f) * 0.5f);
+
+    /* Speech-act bit pack — three discriminating cases get distinct
+     * mid-range values so the cerebellum's linear forward-model can
+     * separate them. Falls back to 0.5 (declarative) for other types.
+     * SPEECH_ACT_* enum is included via nimcp_pragmatics_processor.h
+     * pulled in by the cascade header. */
+    float act_slot = 0.5f;
+    if (s->prompt_is_question || s->act_type == SPEECH_ACT_QUESTION) {
+        act_slot = 0.25f;
+    } else if (s->act_type == SPEECH_ACT_COMMAND ||
+               s->act_type == SPEECH_ACT_REQUEST ||
+               s->prompt_is_imperative) {
+        act_slot = 0.75f;
+    }
+    out_feat[2] = act_slot;
+
+    out_feat[3] = s->prompt_is_question ? 1.0f : 0.0f;
+    out_feat[4] = cereb_clamp01(s->syntactic_validity);
+    out_feat[5] = cereb_clamp01(s->self_grammaticality);
+    out_feat[6] = cereb_clamp01(s->phon_voiced_ratio);
+
+    /* word_count → 0..1 via log compression; saturates around 8 words. */
+    float wc = (float)s->word_count;
+    if (wc < 0.0f) wc = 0.0f;
+    float wnorm = logf(wc + 1.0f) / logf(9.0f);  /* log(9) ≈ 2.197 */
+    out_feat[7] = cereb_clamp01(wnorm);
+}
+
+/* Build the "actual" motor feature vector post-stage. In text-mode (the
+ * only mode currently implemented) the motor stage doesn't emit a
+ * physical motor command — but the cascade IS the production trajectory,
+ * so we reuse the same packing as build_motor_features. The cerebellum's
+ * forward-model then learns: given these upstream signals, what TYPICALLY
+ * shows up downstream. Once a physical motor backend lands, the post-stage
+ * actual will diverge from the pre-stage prediction. */
+static void cereb_build_motor_actual(const production_cascade_state_t* s,
+                                      float out_actual[8]) {
+    cereb_build_motor_features(s, out_actual);
+}
+
+/* Pack 8D feature vector for the prosody stage. Slots [0..5] match motor
+ * features (same upstream inputs); slots [6..7] hold prosody-specific
+ * normalized output (mean_F0, pitch_range) for post-stage "actual". For
+ * pre-stage prediction, slots [6..7] leave the build_motor_features
+ * values in place — the cerebellum learns a same-shape 8D expectation
+ * and the first (pre, post) pair closes the loop. */
+static void cereb_build_prosody_features(const production_cascade_state_t* s,
+                                          bool post_stage,
+                                          float out_feat[8]) {
+    cereb_build_motor_features(s, out_feat);
+
+    if (post_stage && s->prosody_syllable_count > 0) {
+        float f0 = s->prosody_mean_f0;
+        if (!isfinite(f0) || f0 < 80.0f) f0 = 80.0f;
+        if (f0 > 400.0f) f0 = 400.0f;
+        out_feat[6] = (f0 - 80.0f) / (400.0f - 80.0f);
+
+        float rng = s->prosody_pitch_range;
+        if (!isfinite(rng) || rng < 0.0f) rng = 0.0f;
+        if (rng > 320.0f) rng = 320.0f;
+        out_feat[7] = rng / 320.0f;
+    }
+}
+
+/* L2 norm of (a - b) over `dim` floats, normalized by sqrt(dim) so the
+ * scalar is comparable across stages of different rank. NaN-safe. */
+static float cereb_norm_diff(const float* a, const float* b, uint32_t dim) {
+    if (!a || !b || dim == 0) return 0.0f;
+    float ssum = 0.0f;
+    for (uint32_t i = 0; i < dim; i++) {
+        float d = a[i] - b[i];
+        if (isfinite(d)) ssum += d * d;
+    }
+    float n = sqrtf(ssum) / sqrtf((float)dim);
+    return isfinite(n) ? n : 0.0f;
+}
+
+/* Brain-side lifetime counter bumps. The cascade is single-caller-at-a-
+ * time by contract (mirrors the arcuate_feedback_* fields), so non-atomic
+ * ++ is fine. Wrapped in helpers for traceability. */
+static void cereb_bump_predictions(brain_t brain) {
+    if (!brain) return;
+    brain->cerebellar_predictions_made++;
+}
+static void cereb_bump_corrections(brain_t brain) {
+    if (!brain) return;
+    brain->cerebellar_corrections_applied++;
+}
+
+/*============================================================================
+ * Stage 9: Motor / output.
+ *
+ * In text-mode (the only currently-implemented backend), the motor stage
+ * doesn't actually emit a physical motor command — the utterance text is
+ * already rendered in stage_lexical. What SLICE 7 adds here is the
+ * cerebellar prediction-correction loop:
+ *
+ *   1. Build 8D feature vector from cascade state (drive, syntax,
+ *      phonology, lexical).
+ *   2. cerebellum_predict_outcome → predicted 8D motor pattern + confidence.
+ *      Store predicted vector in state for diag.
+ *   3. If correction_pending is set on the brain (recurrent loop saw high
+ *      PE on the previous iter), record that correction is being applied
+ *      and bump the corrections_applied counter — the predicted vector
+ *      itself is the bias the next iter receives via state.
+ *   4. Build "actual" 8D vector (post-stage feature mix).
+ *   5. cerebellum_update_forward_model — closes the (cmd, outcome) loop
+ *      so Marr-Albus-Ito LTD shapes the forward-model weights.
+ *   6. cerebellum_broadcast_error — broadcasts the per-stage PE-norm to
+ *      every Purkinje cell (climbing-fiber signal). Error type 2 = force /
+ *      motor magnitude — distinguishes from prosody (type 1, timing).
+ *
+ * Flag-gated: when brain->cerebellar_correction_enabled is false or
+ * brain->cerebellum is NULL, the entire cerebellar block short-circuits
+ * to the original skip-record body. Default OFF preserves byte-identical
+ * behavior with the pre-Slice 7 cascade.
  *==========================================================================*/
 
 static int cascade_stage_motor(brain_t brain,
                                 production_cascade_state_t* state) {
-    (void)brain;
-    cascade_record_skip(state, CASCADE_STAGE_MOTOR,
-                        "stage_motor: text mode — rendering happens in stage_lexical");
+    if (!state) return 0;
+
+    /* Default-OFF / no-cerebellum fast path — preserve the legacy skip
+     * record so existing tests / consumers see no behavioral change. */
+    if (!brain || !brain->cerebellar_correction_enabled || !brain->cerebellum) {
+        cascade_record_skip(state, CASCADE_STAGE_MOTOR,
+                            "stage_motor: text mode — rendering happens in stage_lexical");
+        return 0;
+    }
+
+    /* 1+2: predict. The 8D feature vector packs cascade state into the
+     * cerebellum's native motor_command width. */
+    float feat_pre[8] = {0};
+    cereb_build_motor_features(state, feat_pre);
+
+    float predicted[8] = {0};
+    float confidence = 0.0f;
+    bool ok = cerebellum_predict_outcome((void*)brain->cerebellum,
+                                          feat_pre, 8,
+                                          predicted, &confidence);
+    if (ok) {
+        memcpy(state->cereb_motor_predicted, predicted, sizeof(predicted));
+        cereb_bump_predictions(brain);
+        state->cereb_predictions_made++;
+    }
+
+    /* 3: consume correction_pending from the previous iter. The signal
+     * here is: "the cerebellum thinks the upstream was mispredicted —
+     * boost the prediction's contribution this iter". We record the
+     * application; in text-mode there's no downstream motor effector
+     * to bias, but the diag surfacing is what trainers/dashboards
+     * monitor. */
+    if (brain->cerebellar_correction_pending) {
+        state->cereb_correction_applied = true;
+        cereb_bump_corrections(brain);
+    }
+
+    /* 4+5+6: build actual vector, learn, broadcast error. */
+    float feat_actual[8] = {0};
+    cereb_build_motor_actual(state, feat_actual);
+    memcpy(state->cereb_motor_actual, feat_actual, sizeof(feat_actual));
+
+    if (ok) {
+        cerebellum_update_forward_model((void*)brain->cerebellum,
+                                         feat_pre, feat_actual, 8);
+        float pe = cereb_norm_diff(feat_actual, predicted, 8);
+        state->cereb_motor_pe_norm = pe;
+        brain->cerebellar_last_pe_norm = pe;
+        /* Climbing-fiber broadcast — error_type 2 = force/motor */
+        cerebellum_broadcast_error((void*)brain->cerebellum, pe, 2);
+    }
+
+    cascade_record_complete(state);
     return 0;
 }
 
@@ -1317,6 +1557,37 @@ static int cascade_stage_prosody(brain_t brain,
     if (grammaticality < 0.0f) grammaticality = 0.0f;
     if (grammaticality > 1.0f) grammaticality = 1.0f;
 
+    /* === SLICE 7 — cerebellar prediction (pre-stage). Predict the
+     * prosodic-contour pattern BEFORE the FFT-style synthesis below,
+     * so an active correction_pending iter can fold the cerebellum's
+     * expectation into base_f0 + range_hz. Default-OFF / no-cerebellum
+     * fast path falls through with no effect. */
+    bool  cereb_active   = (brain->cerebellar_correction_enabled &&
+                            brain->cerebellum != NULL);
+    float cereb_pred_pros[8] = {0};
+    float cereb_pre_feat[8]  = {0};
+    bool  cereb_pred_ok      = false;
+    if (cereb_active) {
+        cereb_build_prosody_features(state, /* post_stage = */ false,
+                                       cereb_pre_feat);
+        float conf = 0.0f;
+        cereb_pred_ok = cerebellum_predict_outcome(
+            (void*)brain->cerebellum, cereb_pre_feat, 8,
+            cereb_pred_pros, &conf);
+        if (cereb_pred_ok) {
+            /* cereb_prosody_predicted is float[3] in the cascade state —
+             * carry only the 3 prosody-relevant slots forward
+             * (normalized mean_F0, normalized pitch_range, and a
+             * folded act/valence channel). The full 8D prediction
+             * stays in cereb_pred_pros for forward-model learning. */
+            state->cereb_prosody_predicted[0] = cereb_clamp01(cereb_pred_pros[6]);
+            state->cereb_prosody_predicted[1] = cereb_clamp01(cereb_pred_pros[7]);
+            state->cereb_prosody_predicted[2] = cereb_clamp01(cereb_pred_pros[1]); /* valence proxy */
+            cereb_bump_predictions(brain);
+            state->cereb_predictions_made++;
+        }
+    }
+
     /* Syllable count: reuse Stage 9's count if available (Broca's
      * phonological processor already syllabified). Fall back to a vowel-
      * cluster count over the utterance text so prosody can run even when
@@ -1351,12 +1622,41 @@ static int cascade_stage_prosody(brain_t brain,
      * (approach prosody, ~+20 Hz at val=1.0), negative valence drops
      * (avoid prosody, -30 Hz at val=-1.0). Arousal also nudges baseline
      * up (alertness → higher pitch). */
-    const float base_f0 = 150.0f + 20.0f * valence + 15.0f * (arousal - 0.5f);
+    float base_f0 = 150.0f + 20.0f * valence + 15.0f * (arousal - 0.5f);
 
     /* Pitch range: low arousal compresses (4 semitones, ~30 Hz), high
      * arousal expands (12 semitones, ~100 Hz). Wider range = more
      * expressive prosody. */
-    const float range_hz = 30.0f + 70.0f * arousal;
+    float range_hz = 30.0f + 70.0f * arousal;
+
+    /* === SLICE 7 — apply cerebellar prediction bias to base_f0 +
+     * range_hz when correction is pending from a prior iter. The
+     * cerebellum's predicted slot[6] is normalized mean_F0 in [0,1]
+     * mapped against the physiological range [80, 400]; slot[7] is
+     * normalized pitch_range in [0,1] mapped to [0, 320]. We blend
+     * the prediction in proportional to cerebellar_correction_strength.
+     *
+     * Why "pending only": the prediction is always available, but
+     * applying it on every iter would short-circuit the FEP signal
+     * (we want the cascade to feel surprise in early iters then settle
+     * as the cerebellum's expectation aligns with realised prosody).
+     * Pending → "system flagged previous iter as high-PE, bias the
+     * trajectory to correct on this iter". */
+    if (cereb_active && cereb_pred_ok &&
+        brain->cerebellar_correction_pending) {
+        float strength = brain->cerebellar_correction_strength;
+        if (!isfinite(strength) || strength < 0.0f) strength = 0.0f;
+        if (strength > 1.0f) strength = 1.0f;
+
+        float pred_f0    = 80.0f + cereb_clamp01(cereb_pred_pros[6]) * 320.0f;
+        float pred_range =          cereb_clamp01(cereb_pred_pros[7]) * 320.0f;
+
+        base_f0  = (1.0f - strength) * base_f0  + strength * pred_f0;
+        range_hz = (1.0f - strength) * range_hz + strength * pred_range;
+
+        state->cereb_correction_applied = true;
+        cereb_bump_corrections(brain);
+    }
 
     /* Contour shape — per-syllable F0 modulation across [0..1] phase.
      * The FFT-style basis (sinusoidal + linear trend) is what an FNO
@@ -1468,6 +1768,31 @@ static int cascade_stage_prosody(brain_t brain,
     state->prosody_syllable_count = n_syll;
     state->prosody_mean_f0        = (n_syll > 0) ? f0_sum / (float)n_syll : 0.0f;
     state->prosody_pitch_range    = (f0_max > f0_min) ? (f0_max - f0_min) : 0.0f;
+
+    /* === SLICE 7 — close the forward-model loop. Build the realised
+     * "actual" 8D vector from the prosody outputs that were just
+     * computed, ship (pre, actual) to cerebellum_update_forward_model
+     * so Marr-Albus-Ito LTD shapes the weights, and broadcast the
+     * PE-norm to every Purkinje cell as a climbing-fiber signal
+     * (error_type 1 = timing/prosody — distinguishes from motor=2
+     * elsewhere in this TU). */
+    if (cereb_active && cereb_pred_ok) {
+        float feat_actual[8] = {0};
+        cereb_build_prosody_features(state, /* post_stage = */ true,
+                                       feat_actual);
+        cerebellum_update_forward_model((void*)brain->cerebellum,
+                                         cereb_pre_feat, feat_actual, 8);
+        float pe = cereb_norm_diff(feat_actual, cereb_pred_pros, 8);
+        state->cereb_prosody_pe_norm = pe;
+        brain->cerebellar_last_pe_norm = pe;
+        /* Stash the 3-channel actual summary for diag. Mirrors the
+         * 3-channel predicted summary we wrote pre-stage. */
+        state->cereb_prosody_actual[0] = feat_actual[6];                 /* F0 */
+        state->cereb_prosody_actual[1] = feat_actual[7];                 /* range */
+        state->cereb_prosody_actual[2] = cereb_clamp01(feat_actual[1]);  /* valence proxy */
+
+        cerebellum_broadcast_error((void*)brain->cerebellum, pe, 1 /* TIMING */);
+    }
 
     cascade_record_complete(state);
     return 0;
@@ -2577,6 +2902,13 @@ int communication_cascade_run_recurrent(brain_t brain,
 
     float* feedback_vec = NULL;   /* owned by this function; size gl_dim */
 
+    /* SLICE 7 — save brain's pre-existing cerebellar correction_pending
+     * so a nested recurrent run doesn't perturb the caller's state. The
+     * pending flag is a per-run signal, distinct from the persistent
+     * enabled / strength fields which are user-set and stay untouched. */
+    bool saved_cereb_correction_pending = brain->cerebellar_correction_pending;
+    brain->cerebellar_correction_pending = false;
+
     for (iter = 0; iter < max_iters; iter++) {
         /* Free heap from previous iteration before communication_cascade_run
          * memset-clears the state. Otherwise prev iteration's utterance /
@@ -2662,6 +2994,26 @@ int communication_cascade_run_recurrent(brain_t brain,
             gl_comprehension_result_cleanup(&self_comp);
         }
 
+        /* SLICE 7 — set cerebellar correction_pending for the NEXT
+         * iteration based on accumulated PE this iter. Sum motor +
+         * prosody PE-norms; if > threshold, the next iter's motor +
+         * prosody stages will fold the cerebellum's prediction into
+         * their trajectories at correction_strength. Clears
+         * automatically below — pending is single-iteration; if PE
+         * stays high the next iter sets it again. */
+        if (brain->cerebellar_correction_enabled && brain->cerebellum) {
+            float accum_pe = 0.0f;
+            if (isfinite(out_state->cereb_motor_pe_norm)) {
+                accum_pe += out_state->cereb_motor_pe_norm;
+            }
+            if (isfinite(out_state->cereb_prosody_pe_norm)) {
+                accum_pe += out_state->cereb_prosody_pe_norm;
+            }
+            float thresh = brain->cerebellar_pe_threshold;
+            if (!isfinite(thresh) || thresh <= 0.0f) thresh = 0.20f;
+            brain->cerebellar_correction_pending = (accum_pe > thresh);
+        }
+
         /* Save this iteration's outputs to compare against the next. */
         if (prev_utterance) {
             nimcp_free(prev_utterance);
@@ -2689,6 +3041,10 @@ int communication_cascade_run_recurrent(brain_t brain,
     brain->arcuate_feedback_dim      = saved_arcuate_dim;
     brain->arcuate_feedback_strength = saved_arcuate_strength;
     if (feedback_vec) nimcp_free(feedback_vec);
+
+    /* SLICE 7 — restore caller's correction_pending flag (always false
+     * in current callers, but defense in depth for nested runs). */
+    brain->cerebellar_correction_pending = saved_cereb_correction_pending;
 
     if (prev_utterance) nimcp_free(prev_utterance);
     return last_rc;

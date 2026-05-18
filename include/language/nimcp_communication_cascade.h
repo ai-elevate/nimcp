@@ -239,6 +239,55 @@ typedef struct {
      *                           was replaced. */
     char* utterance_pre_repair;
     bool  speech_repair_applied;
+
+    /* === SLICE 7 — CEREBELLAR PREDICTION-CORRECTION (2026-05-18) ===
+     * APPENDED at end of struct to avoid ABI shift on existing fields.
+     *
+     * The cerebellum acts as a forward-model predictor for motor +
+     * prosody trajectories. Each affected stage builds an 8-element
+     * feature vector (the cerebellum adapter's native motor_command
+     * width is 8 dimensions — see motor_command[8] in nuclei_output_t)
+     * BEFORE running the stage's main body, calls
+     * cerebellum_predict_outcome, runs the stage, builds the realised
+     * "actual" vector, calls cerebellum_update_forward_model +
+     * cerebellum_broadcast_error so Purkinje LTD learns from the
+     * mismatch.
+     *
+     * Fields are populated only when brain->cerebellar_correction_enabled
+     * is true AND brain->cerebellum is non-NULL; otherwise they remain
+     * zero (cascade_state is calloc-zeroed by communication_cascade_run).
+     * That preserves the slice's default-OFF byte-identical contract.
+     *
+     *   cereb_motor_predicted[8]   — last predicted motor vector from
+     *                                cerebellum_predict_outcome inside
+     *                                cascade_stage_motor.
+     *   cereb_motor_actual[8]      — realised motor vector built post-stage.
+     *   cereb_motor_pe_norm        — ‖actual - predicted‖ / sqrt(8) for
+     *                                the motor stage; 0 when skipped.
+     *   cereb_prosody_predicted[3] — last predicted (mean_F0,
+     *                                mean_duration, mean_intensity) bias
+     *                                from cerebellum, projected to the
+     *                                prosody stage's 3 summary metrics.
+     *   cereb_prosody_actual[3]    — realised (mean_F0, mean_dur, mean_int)
+     *                                summary after stage_prosody finishes.
+     *   cereb_prosody_pe_norm      — ‖actual - predicted‖ / sqrt(3) for
+     *                                prosody stage; 0 when skipped.
+     *   cereb_correction_applied   — true on iters where motor/prosody
+     *                                stages consumed correction_pending and
+     *                                applied the cerebellar prediction bias
+     *                                at correction_strength.
+     *   cereb_predictions_made     — count of forward-model calls in this
+     *                                cascade run (typically 0 or 2 — motor
+     *                                + prosody).
+     */
+    float    cereb_motor_predicted[8];
+    float    cereb_motor_actual[8];
+    float    cereb_motor_pe_norm;
+    float    cereb_prosody_predicted[3];
+    float    cereb_prosody_actual[3];
+    float    cereb_prosody_pe_norm;
+    bool     cereb_correction_applied;
+    uint32_t cereb_predictions_made;
 } production_cascade_state_t;
 
 /* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
@@ -256,9 +305,12 @@ typedef struct {
  *
  * Computed on x86_64 Linux gcc with default packing. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(production_cascade_state_t) == 760,
-    "production_cascade_state_t ABI: size drifted from expected 760. "
-    "Append-only on the struct; bump this literal in lockstep.");
+_Static_assert(sizeof(production_cascade_state_t) == 864,
+    "production_cascade_state_t ABI: size drifted from expected 864. "
+    "Append-only on the struct; bump this literal in lockstep. "
+    "Slice 7 (2026-05-18) appended cerebellar prediction-correction "
+    "fields (104 bytes — see cereb_motor_* / cereb_prosody_* / "
+    "cereb_correction_applied / cereb_predictions_made).");
 #endif
 
 /**

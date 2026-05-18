@@ -1615,6 +1615,55 @@ nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
 nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
                                                      bool* out_enabled);
 
+/** Slice 7 — cerebellar prediction-correction in motor + prosody stages.
+ *
+ *  Wires the existing cerebellum adapter (cerebellum_predict_outcome /
+ *  cerebellum_update_forward_model / cerebellum_broadcast_error from
+ *  include/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h) into
+ *  cascade_stage_motor and cascade_stage_prosody. Each stage builds an
+ *  8D feature vector, calls the cerebellum to predict the next motor /
+ *  prosody pattern, runs its existing logic, then closes the loop by
+ *  feeding the realised "actual" vector back to the cerebellum for
+ *  forward-model learning + climbing-fiber error broadcast.
+ *
+ *  Between iterations of the recurrent cascade, accumulated prediction
+ *  error above the threshold sets brain->cerebellar_correction_pending
+ *  so the next iter's motor/prosody stages apply the cerebellar
+ *  prediction as a bias scaled by `strength`.
+ *
+ *  Default OFF — when not enabled, motor + prosody stages run their
+ *  existing logic with no cerebellar involvement (byte-identical to
+ *  master for callers that don't flip the flag). When enabled and
+ *  brain->cerebellum is NULL (minimal-init brain or cerebellum disabled
+ *  at brain create), the stages silently no-op the cerebellar code path. */
+nimcp_status_t nimcp_brain_set_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool enabled);
+nimcp_status_t nimcp_brain_get_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool* out_enabled);
+/** Clamps to [0, 1]. NaN/Inf coerce to 0.5 (mid bias). */
+nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
+                                                               float strength);
+
+/** Snapshot type — lifetime cerebellar diagnostics. */
+typedef struct {
+    int      enabled;                  /* current value of brain flag */
+    float    strength;                 /* current correction strength */
+    int      correction_pending;       /* mid-loop flag — most useful WITHIN
+                                          a recurrent run; outside, always 0 */
+    float    pe_threshold;             /* current PE threshold */
+    /* Lifetime totals — incremented by the cascade. */
+    uint64_t predictions_made;
+    uint64_t corrections_applied;
+    float    last_pe_norm;             /* most recent stage's PE-norm */
+} nimcp_cerebellar_diag_t;
+
+/** Snapshot cerebellar prediction-correction diagnostics. `out` is zeroed
+ *  and populated on success. Cheap (no atomics — cascade is single-caller-
+ *  at-a-time by contract). Read returns success even when the feature is
+ *  disabled — caller inspects `out->enabled` to know. */
+nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
+                                                nimcp_cerebellar_diag_t* out);
+
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.
  *

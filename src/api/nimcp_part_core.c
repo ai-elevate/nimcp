@@ -2841,6 +2841,82 @@ nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
+/* === SLICE 7 — cerebellar prediction-correction in motor + prosody stages.
+ * Default OFF; when enabled, brain->cerebellum (existing adapter) is queried
+ * for forward-model predictions inside cascade_stage_motor + stage_prosody
+ * and a closed-loop error is fed back via cerebellum_update_forward_model +
+ * cerebellum_broadcast_error. The recurrent cascade also sets/clears
+ * correction_pending between iterations based on accumulated PE.
+ *
+ * The wrappers below are intentionally minimal — they only set the flag /
+ * strength / threshold fields on the brain. The actual cerebellum calls
+ * happen inside nimcp_communication_cascade.c when the flag is set and
+ * brain->cerebellum is non-NULL.
+ */
+nimcp_status_t nimcp_brain_set_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    b->cerebellar_correction_enabled = enabled;
+    /* Install sane defaults on first enable — caller can still override
+     * via set_correction_strength below. */
+    if (enabled) {
+        if (!isfinite(b->cerebellar_correction_strength) ||
+            b->cerebellar_correction_strength <= 0.0f) {
+            b->cerebellar_correction_strength = 0.5f;
+        }
+        if (!isfinite(b->cerebellar_pe_threshold) ||
+            b->cerebellar_pe_threshold <= 0.0f) {
+            b->cerebellar_pe_threshold = 0.20f;
+        }
+    } else {
+        /* Disable also resets the mid-loop pending flag so a future
+         * recurrent run isn't surprised by stale state. */
+        b->cerebellar_correction_pending = false;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = b->cerebellar_correction_enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
+                                                               float strength) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!isfinite(strength)) strength = 0.5f;
+    if (strength < 0.0f) strength = 0.0f;
+    if (strength > 1.0f) strength = 1.0f;
+    b->cerebellar_correction_strength = strength;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
+                                                nimcp_cerebellar_diag_t* out) {
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    memset(out, 0, sizeof(*out));
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    out->enabled             = b->cerebellar_correction_enabled ? 1 : 0;
+    out->strength            = b->cerebellar_correction_strength;
+    out->correction_pending  = b->cerebellar_correction_pending ? 1 : 0;
+    out->pe_threshold        = b->cerebellar_pe_threshold;
+    out->predictions_made    = b->cerebellar_predictions_made;
+    out->corrections_applied = b->cerebellar_corrections_applied;
+    out->last_pe_norm        = b->cerebellar_last_pe_norm;
+    return NIMCP_OK;
+}
+
 /* =================================================================
  * Base lexicon bootstrap (Option C of language training plan)
  * =================================================================

@@ -129,6 +129,65 @@ int communication_cascade_run_recurrent(
 
 **What**: cerebellum predicts next motor pattern; online correction signal feeds back into motor and prosody.
 
+**Status**: implemented 2026-05-18.
+
+**Existing cerebellum API used** (from `include/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h`, impl in `src/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.c`):
+
+- `cerebellum_predict_outcome(adapter, motor_cmd[N], num_dims, out_predicted[N], out_confidence)` — forward-model feed-forward. Internal weights are 8×8 (see `forward_model_t::weights[64]`); `num_dims` is clamped to 8 internally.
+- `cerebellum_update_forward_model(adapter, motor_cmd[N], outcome[N], num_dims)` — gradient-descent update on the (cmd, outcome) pair.
+- `cerebellum_broadcast_error(adapter, error_magnitude, error_type)` — climbing-fiber-style global error broadcast to every Purkinje cell; error_type 1 = timing (used by prosody), 2 = force (used by motor), following the convention already used by `world_model_cognitive_integration.c` and `medulla_cerebellum_bridge.c`.
+- Adapter lifetime + lifecycle is owned by `brain->cerebellum` — created in `nimcp_brain_factory_init_cerebellum_subsystem`, destroyed in the matching teardown; no per-cascade resource ownership.
+
+**Data flow** (default OFF; enabled via `nimcp_brain_set_cerebellar_correction_enabled(brain, true)`):
+
+```
+   cascade_stage_motor:
+     build pre-stage 8D feature (drive, syntax, phonology, lexical)
+     cerebellum_predict_outcome → predicted[8]      → state.cereb_motor_predicted
+     (correction_pending: record bump diag, no text-mode effector yet)
+     run stage body (text mode: no physical render)
+     build post-stage 8D actual
+     cerebellum_update_forward_model(pre, actual)
+     cerebellum_broadcast_error(pe_norm, 2 /* force */)
+
+   cascade_stage_prosody:
+     build pre-stage 8D feature
+     cerebellum_predict_outcome → predicted[8]      → state.cereb_prosody_predicted[0..2]
+     if correction_pending:
+       base_f0  = (1-strength)·base_f0  + strength·(80 + 320·pred[6])
+       range_hz = (1-strength)·range_hz + strength·(      320·pred[7])
+       state.cereb_correction_applied = true
+     run stage body (FFT-style synthesis)
+     build post-stage 8D actual (slots[6..7] = realised F0+range)
+     cerebellum_update_forward_model(pre, actual)
+     cerebellum_broadcast_error(pe_norm, 1 /* timing */)
+
+   communication_cascade_run_recurrent (between iters):
+     accum_pe = motor_pe_norm + prosody_pe_norm
+     brain->cerebellar_correction_pending = (accum_pe > brain->cerebellar_pe_threshold)
+     # pending consumed (and reset implicitly) by next iter's stages
+   On exit: restore saved correction_pending.
+```
+
+**Files touched**:
+- `include/core/brain/nimcp_brain_internal.h` — append-only 7 fields on `brain_struct` (`cerebellar_correction_enabled` + strength + pending + pe_threshold + 3 diag counters).
+- `include/language/nimcp_communication_cascade.h` — append-only 7 fields on `production_cascade_state_t`; static_assert bumped 760 → 864.
+- `include/nimcp.h` — three new public functions + a `nimcp_cerebellar_diag_t` snapshot struct.
+- `src/language/nimcp_communication_cascade.c` — forward-declared the 3 cerebellum API entries (same pattern as `world_model_cognitive_integration.c`); added 7 helper statics (`cereb_clamp01`, `cereb_build_motor_features` / `_actual` / `_prosody_features`, `cereb_norm_diff`, `cereb_bump_*`); rewrote `cascade_stage_motor` (now does predict-stage-update-broadcast or falls back to the legacy skip-record when the flag is off); injected predict-bias-update around `cascade_stage_prosody`'s F0/range/synthesis; added between-iter correction-pending update + save/restore in `communication_cascade_run_recurrent`.
+- `src/api/nimcp_part_core.c` — three thin C wrappers + a diag-snapshot wrapper.
+- `src/bindings/python/nimcp_python.c` — four Python methods registered in the methods table.
+- `scripts/brain_daemon.py` — three RPC handlers.
+- `scripts/brain_client.py` — three `BrainProxy` wrappers.
+- `tests/unit/test_lang_cerebellar_correction.c` — 5 subtests covering default-OFF, strength roundtrip, motor skip when OFF, on-but-no-cerebellum still skips, recurrent save/restore of `correction_pending`. Registered in `tests/CMakeLists.txt`.
+
+**Default-OFF guarantee**: when the flag is off OR `brain->cerebellum` is NULL, `cascade_stage_motor` short-circuits to the original `cascade_record_skip("stage_motor: text mode...")` body and `cascade_stage_prosody` never enters its cerebellar block — the cascade is byte-identical to pre-Slice-7 master for callers who don't flip the flag.
+
+**Known gaps / TODOs**:
+- Text-mode motor stage's "actual" feature vector is currently built from the same upstream signals as the "predicted" — i.e. the cerebellum sees a degenerate (cmd ≈ outcome) pair, so the forward-model weights drift only marginally. Once a physical motor backend lands (TTS / articulator synthesizer), `cereb_build_motor_actual` should read the actual articulatory plan and the cerebellum will start learning real trajectory mappings.
+- The cerebellum's forward-model uses a fixed 8×8 weight matrix; our 8D feature packing under-uses the slot count. A future slice could widen to 16+ slots once we add lexical-stress + intonation features.
+- Prosody bias is applied only to `base_f0` + `range_hz` (the two scalars that gate the FFT-style contour synthesis). A future slice could bias the per-syllable `coef_decline`/`coef_rise`/`coef_front` coefficients directly.
+- Deeper end-to-end tests that actually exercise `cerebellum_predict_outcome` need a non-minimal-init brain (FULL/FAST modes wire the cerebellum subsystem) and belong in `tests/integration` rather than the lang_smoke suite added here.
+
 ## Migration strategy
 
 - Old `communication_cascade_run` stays intact. Recurrent path is opt-in via flag.
