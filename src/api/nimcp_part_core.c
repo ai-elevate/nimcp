@@ -4380,6 +4380,23 @@ nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain) {
               ? NIMCP_OK : NIMCP_ERROR;
 }
 
+/* Slice 3 — recurrent-cascade FEP prediction-error metrics. */
+extern int nimcp_brain_get_cascade_fep_metrics_impl(
+    brain_t brain, nimcp_cascade_fep_metrics_t* out);
+
+nimcp_status_t nimcp_brain_get_cascade_fep_metrics(
+    nimcp_brain_t brain,
+    struct nimcp_cascade_fep_metrics* out)
+{
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (nimcp_brain_get_cascade_fep_metrics_impl(
+                b, (nimcp_cascade_fep_metrics_t*)out) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);

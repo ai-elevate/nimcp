@@ -2880,6 +2880,31 @@ struct brain_struct {
      * The cascade is significantly slower per call than the bridge-only
      * path — opt-in by deployment as a quality-vs-latency tradeoff. */
     bool respond_via_cascade;
+
+    /* === SLICE 3 — FEP RECURRENT METRICS (2026-05-18) ===
+     * Per-iteration prediction-error trace + summary scalars written
+     * by communication_cascade_run_recurrent at exit. Read by
+     * nimcp_brain_get_cascade_fep_metrics_impl. Not _Atomic — the
+     * recurrent loop is single-caller-at-a-time by contract, and reads
+     * are best-effort (worst case: stale snapshot, not torn).
+     *
+     * Append-only at end of brain_struct; ABI-stable for older readers
+     * that don't access these fields. Stored inline (not heap-allocated)
+     * so the metrics survive a brain that hasn't yet called the
+     * recurrent loop (zero-init on calloc).
+     *
+     * fep_pe_trace is sized to 64 — the max iteration cap inside
+     * communication_cascade_run_recurrent. fep_iterations_run is the
+     * length actually populated. */
+    uint32_t fep_iterations_run;
+    float    fep_pe_trace[64];
+    float    fep_pe_initial;
+    float    fep_pe_terminal;
+    float    fep_pe_min;
+    float    fep_pe_max;
+    float    fep_pe_mean;
+    float    fep_pe_decay_rate;
+    int      fep_converged;
 };
 
 //=============================================================================

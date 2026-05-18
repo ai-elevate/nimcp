@@ -2299,6 +2299,25 @@ class BrainService:
             return {"error": f"reset_cascade_counters: {e}"}
         return {"ok": True}
 
+    def _cmd_get_cascade_fep_metrics(self, req):
+        """Slice 3: snapshot the FEP prediction-error trajectory of the
+        most recent produce_cascade_recurrent call.
+
+        Request: {"cmd": "get_cascade_fep_metrics"}
+        Returns: dict with iterations_run, pe_total_trace (list), summary
+        scalars (initial/terminal/min/max/mean/decay_rate), converged.
+        Zero-init when the recurrent loop has never been called.
+        """
+        del req
+        try:
+            d = self.brain.get_cascade_fep_metrics()
+        except AttributeError:
+            return {"error": "get_cascade_fep_metrics not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_cascade_fep_metrics: {e}"}
+        d["ok"] = True
+        return d
+
     def _cmd_set_respond_via_cascade(self, req):
         """Audit Cat A #1: toggle the cascade orchestrator path inside
         nimcp_brain_grounded_respond.

@@ -1605,6 +1605,16 @@ nimcp_status_t nimcp_brain_get_cascade_counters(
     struct nimcp_cascade_counters* out);
 nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain);
 
+/** Slice 3 — recurrent-cascade FEP prediction-error trajectory.
+ *  Snapshots the most-recent run of nimcp_brain_produce_cascade_recurrent.
+ *  Zero-init when the recurrent loop has never been invoked. Single-
+ *  writer / multi-reader; lock-free. */
+struct nimcp_cascade_fep_metrics; /* opaque forward decl — full type in
+                                     include/language/nimcp_communication_cascade.h */
+nimcp_status_t nimcp_brain_get_cascade_fep_metrics(
+    nimcp_brain_t brain,
+    struct nimcp_cascade_fep_metrics* out);
+
 /** Audit Cat A #1 — toggle the cascade orchestrator path inside
  *  nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough).
  *  When ON, respond runs the 15-stage cascade and emits state->utterance

@@ -330,6 +330,28 @@ class BrainProxy:
             return {}
         return resp
 
+    def get_cascade_fep_metrics(self):
+        """Slice 3: snapshot the FEP prediction-error trajectory of the
+        most recent produce_cascade_recurrent call on the daemon.
+
+        Returns dict with:
+          iterations_run     — number of recurrent iters
+          pe_total_trace     — list of per-iter pe_total values
+          pe_total_initial / terminal / min / max / mean
+          pe_decay_rate      — (initial-terminal)/initial; positive =
+                               system reduced its surprise across iters
+          converged          — True if the loop exited on convergence
+                               (utterance + self_match stable), False if
+                               it hit max_iters.
+
+        Zero-initialized if produce_cascade_recurrent has never run.
+        Used by monitoring + walkthrough scripts to diagnose whether
+        the recurrent loop is actually settling vs wedged."""
+        resp = self._send({"cmd": "get_cascade_fep_metrics"})
+        if resp.get("error"):
+            return {}
+        return resp
+
     def produce_cascade(self, prompt=None):
         """Invoke the full 15-stage production cascade. Drives drive/goal/
         listener/episodic/content/lexical/syntactic(Broca)/self-comp(Wernicke)/

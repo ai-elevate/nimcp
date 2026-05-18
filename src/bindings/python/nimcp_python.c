@@ -3625,6 +3625,16 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
         uint32_t stages_failed;
         uint32_t stages_skipped;
         char     failure_reason[128];
+        /* SLICE 3 — FEP prediction-error scalars (append-only mirror).
+         * Must stay in lockstep with nimcp_cascade_diag_full_t in
+         * include/language/nimcp_communication_cascade.h. */
+        float    pe_content_norm;
+        float    pe_lexical_norm;
+        float    pe_syntactic_norm;
+        float    pe_self_comp_norm;
+        float    pe_total;
+        uint32_t fep_iteration;
+        float    fep_precision;
     } nimcp_cascade_diag_full_t_local;
 
     char text[2048] = {0};
@@ -3758,6 +3768,17 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
     PyDict_SetItemString(d, "stages_failed",        PyLong_FromLong((long)s.stages_failed));
     PyDict_SetItemString(d, "stages_skipped",       PyLong_FromLong((long)s.stages_skipped));
     PyDict_SetItemString(d, "failure_reason",       PyUnicode_FromString(s.failure_reason));
+
+    /* Slice 3 — FEP prediction-error scalars. Consumers can plot the
+     * per-stage norms vs iteration to see if the recurrent system is
+     * actually settling (pe_total should fall) or wedged (flat / rising). */
+    PyDict_SetItemString(d, "pe_content_norm",      PyFloat_FromDouble((double)s.pe_content_norm));
+    PyDict_SetItemString(d, "pe_lexical_norm",      PyFloat_FromDouble((double)s.pe_lexical_norm));
+    PyDict_SetItemString(d, "pe_syntactic_norm",    PyFloat_FromDouble((double)s.pe_syntactic_norm));
+    PyDict_SetItemString(d, "pe_self_comp_norm",    PyFloat_FromDouble((double)s.pe_self_comp_norm));
+    PyDict_SetItemString(d, "pe_total",             PyFloat_FromDouble((double)s.pe_total));
+    PyDict_SetItemString(d, "fep_iteration",        PyLong_FromLong((long)s.fep_iteration));
+    PyDict_SetItemString(d, "fep_precision",        PyFloat_FromDouble((double)s.fep_precision));
 
     /* Free heap-owned arrays we just copied into Python lists. */
     if (phon_seq)       nimcp_free(phon_seq);
@@ -3920,6 +3941,62 @@ static PyObject* Brain_reset_cascade_counters(BrainObject* self, PyObject* args)
         return NULL;
     }
     Py_RETURN_NONE;
+}
+
+/* Slice 3 — recurrent-cascade FEP prediction-error trace + summary.
+ *
+ * Mirror the layout from include/language/nimcp_communication_cascade.h:
+ *   typedef struct nimcp_cascade_fep_metrics { u32 + 64×f + 5×f + f + int }
+ * Same approach the counter mirror uses to keep this TU header-conflict
+ * free. Must stay in lockstep — the _Static_assert in the cascade header
+ * catches drift on the C side. */
+#define BK_FEP_TRACE_CAP 64u
+typedef struct {
+    uint32_t iterations_run;
+    float    pe_total_trace[BK_FEP_TRACE_CAP];
+    float    pe_total_initial;
+    float    pe_total_terminal;
+    float    pe_total_min;
+    float    pe_total_max;
+    float    pe_total_mean;
+    float    pe_decay_rate;
+    int      converged;
+} bk_cascade_fep_metrics_local_t;
+
+static PyObject* Brain_get_cascade_fep_metrics(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bk_cascade_fep_metrics_local_t m;
+    memset(&m, 0, sizeof(m));
+    if (nimcp_brain_get_cascade_fep_metrics(self->brain,
+            (struct nimcp_cascade_fep_metrics*)&m) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cascade_fep_metrics failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "iterations_run",   PyLong_FromUnsignedLong((unsigned long)m.iterations_run));
+    PyDict_SetItemString(d, "pe_total_initial", PyFloat_FromDouble((double)m.pe_total_initial));
+    PyDict_SetItemString(d, "pe_total_terminal",PyFloat_FromDouble((double)m.pe_total_terminal));
+    PyDict_SetItemString(d, "pe_total_min",     PyFloat_FromDouble((double)m.pe_total_min));
+    PyDict_SetItemString(d, "pe_total_max",     PyFloat_FromDouble((double)m.pe_total_max));
+    PyDict_SetItemString(d, "pe_total_mean",    PyFloat_FromDouble((double)m.pe_total_mean));
+    PyDict_SetItemString(d, "pe_decay_rate",    PyFloat_FromDouble((double)m.pe_decay_rate));
+    PyDict_SetItemString(d, "converged",        PyBool_FromLong(m.converged));
+    /* The trace is fixed-size — emit only the populated prefix as a Py list. */
+    uint32_t n = m.iterations_run;
+    if (n > BK_FEP_TRACE_CAP) n = BK_FEP_TRACE_CAP;
+    PyObject* trace = PyList_New((Py_ssize_t)n);
+    if (trace) {
+        for (uint32_t i = 0; i < n; i++) {
+            PyList_SET_ITEM(trace, i, PyFloat_FromDouble((double)m.pe_total_trace[i]));
+        }
+        PyDict_SetItemString(d, "pe_total_trace", trace);
+        Py_DECREF(trace);
+    }
+    return d;
 }
 
 /* Audit Cat A #1 — opt-in cascade orchestrator path in
@@ -12151,6 +12228,8 @@ static PyMethodDef Brain_methods[] = {
      "Batch K: snapshot cascade lifetime counters — returns a dict with total_runs, runs_with_prompt, runs_spontaneous, runs_fatal_error, stage_invocations[15], stage_mask_skips[15], stage_failures[15], plus per-event counters (pragmatics_indirect_overrides, wernicke_lexicon_miss, speech_repair_applied, self_train_steps_matched/no_bindings, self_produced_events_fired, discourse_ring_pushes_user/_self)."},
     {"reset_cascade_counters", (PyCFunction)Brain_reset_cascade_counters, METH_NOARGS,
      "Batch K: zero all cascade lifetime counters atomically (per-field)."},
+    {"get_cascade_fep_metrics", (PyCFunction)Brain_get_cascade_fep_metrics, METH_NOARGS,
+     "Slice 3: snapshot the FEP prediction-error trajectory of the most recent produce_cascade_recurrent call. Returns dict with iterations_run, pe_total_trace (per-iter list), pe_total_initial/terminal/min/max/mean, pe_decay_rate ((init-term)/init; positive = system reduced surprise across iters), converged (bool — did the loop exit on convergence vs max_iters). Zero-init when the recurrent loop has never been called."},
     {"set_respond_via_cascade", (PyCFunction)Brain_set_respond_via_cascade, METH_VARARGS,
      "Audit Cat A #1: opt-in cascade orchestrator path inside nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough). When ON, respond runs the full 15-stage cascade. Latency cost ~10x vs the bridge-only path."},
     {"get_respond_via_cascade", (PyCFunction)Brain_get_respond_via_cascade, METH_NOARGS,
