@@ -982,6 +982,21 @@ static int cascade_stage_content(brain_t brain,
      * (UAF was reachable before the lock). The lock is held across the
      * O(dim) consume loop — bounded ~128 floats, well under our
      * lock-hold budget. */
+    /* S2-H2 fix (2026-05-19): convex blend toward (intent + k*error_vec)
+     * where error_vec = target - own_output, with target = iter-0 snapshot.
+     * Pre-fix the additive form `intent += k*feedback_vec` amplified intent
+     * magnitude by (1+k) per iter on a stable prompt. The recurrent loop
+     * now sets blend in (0,1] and recomputes feedback_vec each iter as
+     * (target - own_output); cascade_stage_content does a blended apply
+     * so the apply is bounded.
+     *
+     * Legacy single-pass cascade: arcuate_feedback_blend defaults to 0,
+     * which causes us to skip the apply entirely (recurrent-only by
+     * contract, no behavior change for single-pass callers).
+     *
+     * S1-H5+H7 (2026-05-19): per-element isfinite() guard on feedback_vec
+     * so a NaN/Inf in the comprehend output (e.g. Wernicke parsing
+     * garbage) doesn't propagate into content_intent. */
     {
         nimcp_mutex_t* arc_lock = cascade_arcuate_lock_ensure(brain);
         if (arc_lock) {
@@ -989,24 +1004,36 @@ static int cascade_stage_content(brain_t brain,
             if (brain->arcuate_feedback_vec &&
                 brain->arcuate_feedback_dim == dim &&
                 isfinite(brain->arcuate_feedback_strength) &&
-                brain->arcuate_feedback_strength > 0.0f) {
-                const float k = brain->arcuate_feedback_strength;
+                brain->arcuate_feedback_strength > 0.0f &&
+                isfinite(brain->arcuate_feedback_blend) &&
+                brain->arcuate_feedback_blend > 0.0f) {
+                float k     = brain->arcuate_feedback_strength;
+                float blend = brain->arcuate_feedback_blend;
+                if (blend > 1.0f) blend = 1.0f;
                 for (uint32_t i = 0; i < dim; i++) {
-                    state->content_intent[i] += k * brain->arcuate_feedback_vec[i];
+                    float v = brain->arcuate_feedback_vec[i];
+                    if (!isfinite(v)) continue;
+                    state->content_intent[i] += blend * k * v;
                 }
             }
             nimcp_mutex_unlock(arc_lock);
         } else {
             /* Lock alloc failed — fall back to the legacy unlocked path.
              * Same UAF window as pre-fix; preserves liveness on the
-             * cold-start failure path. */
+             * cold-start failure path. Convex-blend + NaN guards still apply. */
             if (brain->arcuate_feedback_vec &&
                 brain->arcuate_feedback_dim == dim &&
                 isfinite(brain->arcuate_feedback_strength) &&
-                brain->arcuate_feedback_strength > 0.0f) {
-                const float k = brain->arcuate_feedback_strength;
+                brain->arcuate_feedback_strength > 0.0f &&
+                isfinite(brain->arcuate_feedback_blend) &&
+                brain->arcuate_feedback_blend > 0.0f) {
+                float k     = brain->arcuate_feedback_strength;
+                float blend = brain->arcuate_feedback_blend;
+                if (blend > 1.0f) blend = 1.0f;
                 for (uint32_t i = 0; i < dim; i++) {
-                    state->content_intent[i] += k * brain->arcuate_feedback_vec[i];
+                    float v = brain->arcuate_feedback_vec[i];
+                    if (!isfinite(v)) continue;
+                    state->content_intent[i] += blend * k * v;
                 }
             }
         }
@@ -3386,6 +3413,11 @@ int communication_cascade_run_recurrent(brain_t brain,
                                           production_cascade_state_t* out_state)
 {
     if (!brain || !out_state) return -1;
+    /* S1-H6 fix (2026-05-19): zero out_state on entry so a max_iters=0
+     * coercion path or an early-exit before the inner cascade memsets
+     * leaves the struct with deterministic zero contents rather than
+     * stack garbage from the caller. */
+    memset(out_state, 0, sizeof(*out_state));
     if (max_iters == 0) max_iters = 8;
     if (max_iters > 64) max_iters = 64;   /* defense against runaway */
     if (!isfinite(self_match_eps) || self_match_eps < 0.0f) {
@@ -3398,12 +3430,22 @@ int communication_cascade_run_recurrent(brain_t brain,
     uint32_t iter = 0;
     uint32_t settling_steps = 0;
     bool converged = false;
+    /* S1-H3 fix (2026-05-19): degraded-mode flags so when an OOM bites the
+     * convergence-check buffer or arcuate-feedback buffer we DON'T silently
+     * spin to max_iters. prev_utterance_disabled drops the utterance-
+     * stability check (falls back to self_match-only); feedback_disabled
+     * skips the feedback-vec alloc and recompute for the rest of the run. */
+    bool prev_utterance_disabled = false;
+    bool feedback_disabled       = false;
 
     /* SLICE 3 — per-iteration FEP scalars. Trace is sized to the same
      * 64-iter cap as the runtime max above. We hand the trace + summary
      * to the brain at exit so a monitoring caller can snapshot it. */
     float pe_trace[64] = {0};
     uint32_t pe_trace_len = 0;
+    /* S2-H2 fix (2026-05-19): parallel intent-norm trace for runaway
+     * detection. Each iter we record ||content_intent|| / sqrt(dim). */
+    float intent_norm_trace[64] = {0};
 
     /* Slice 2 — arcuate fasciculus feedback buffers. Lazy-allocated on
      * the first non-trivial feedback (iter >= 1, prev utterance non-
@@ -3426,13 +3468,28 @@ int communication_cascade_run_recurrent(brain_t brain,
     float*   saved_arcuate_vec      = brain->arcuate_feedback_vec;
     uint32_t saved_arcuate_dim      = brain->arcuate_feedback_dim;
     float    saved_arcuate_strength = brain->arcuate_feedback_strength;
+    /* S2-H2 fix (2026-05-19): also save/reset the convex-blend coef and
+     * target snapshot pointer. Default reset to "no feedback" (blend=0
+     * disables apply in cascade_stage_content even if vec is set). */
+    float    saved_arcuate_blend    = brain->arcuate_feedback_blend;
+    float*   saved_arcuate_target   = brain->arcuate_target_vec;
+    uint32_t saved_arcuate_target_d = brain->arcuate_target_dim;
     /* Reset to "no feedback" for iteration 0. */
     brain->arcuate_feedback_vec      = NULL;
     brain->arcuate_feedback_dim      = 0;
     brain->arcuate_feedback_strength = 0.0f;
+    brain->arcuate_feedback_blend    = 0.0f;
+    brain->arcuate_target_vec        = NULL;
+    brain->arcuate_target_dim        = 0;
     if (arc_lock_recur) nimcp_mutex_unlock(arc_lock_recur);
 
     float* feedback_vec = NULL;   /* owned by this function; size gl_dim */
+    /* S2-H2 fix (2026-05-19): target snapshot — iter-0 content_intent
+     * captured here, kept FIXED across all subsequent iterations so the
+     * arcuate error vec computes against an external stable target instead
+     * of against the current (moving) intent. Owned by this function. */
+    float*   target_vec     = NULL;
+    uint32_t target_vec_dim = 0;
 
     /* SLICE 5 — phonological loop entry handshake.
      *
@@ -3494,6 +3551,30 @@ int communication_cascade_run_recurrent(brain_t brain,
             break;
         }
 
+        /* S2-H2 fix (2026-05-19): snapshot iter-0's content_intent as the
+         * EXTERNAL stable target for all subsequent iterations. The
+         * arcuate error_vec is then (target - own_output) instead of
+         * (current_intent - own_output), which kills the (1+k)
+         * amplification path. Target stays fixed across iters. */
+        if (iter == 0 && !feedback_disabled && gl_dim > 0 &&
+            out_state->content_intent && out_state->content_dim == gl_dim &&
+            !target_vec) {
+            target_vec = (float*)nimcp_calloc(gl_dim, sizeof(float));
+            if (target_vec) {
+                target_vec_dim = gl_dim;
+                for (uint32_t i = 0; i < gl_dim; i++) {
+                    float v = out_state->content_intent[i];
+                    target_vec[i] = isfinite(v) ? v : 0.0f;
+                }
+            } else {
+                /* OOM — disable feedback for this run. Single warning;
+                 * runaway-prevention metric bumped. */
+                atomic_fetch_add_explicit(&brain->cascade_recurrent_oom_count,
+                                           1u, memory_order_relaxed);
+                feedback_disabled = true;
+            }
+        }
+
         /* SLICE 3 — capture this iter's pe_total in the trace. The
          * cascade tail (cascade_fep_recompute_total) populated it before
          * returning. */
@@ -3502,13 +3583,42 @@ int communication_cascade_run_recurrent(brain_t brain,
             pe_trace[pe_trace_len++] = out_state->pe_total;
         }
 
-        /* Convergence check — needs at least 2 iterations to compare. */
+        /* S2-H2 fix (2026-05-19): record ||content_intent|| / sqrt(dim)
+         * this iter so monitors can detect runaway magnitude growth even
+         * if the convex-blend fix isn't enough. Same indexing as pe_trace. */
+        {
+            uint32_t slot = (pe_trace_len == 0) ? 0 : (pe_trace_len - 1);
+            uint32_t cap  = (uint32_t)(sizeof(intent_norm_trace) /
+                                       sizeof(intent_norm_trace[0]));
+            if (slot < cap && out_state->content_intent &&
+                out_state->content_dim > 0) {
+                float ssum = 0.0f;
+                uint32_t d = out_state->content_dim;
+                for (uint32_t i = 0; i < d; i++) {
+                    float v = out_state->content_intent[i];
+                    if (isfinite(v)) ssum += v * v;
+                }
+                float n = sqrtf(ssum) / sqrtf((float)d);
+                intent_norm_trace[slot] = isfinite(n) ? n : 0.0f;
+            }
+        }
+
+        /* Convergence check — needs at least 2 iterations to compare.
+         * S1-H3 fix: when prev_utterance_disabled (OOM earlier), drop
+         * the utterance-stability portion and rely on self_match alone. */
         if (iter > 0) {
-            bool utterance_stable = false;
-            if (prev_utterance && out_state->utterance) {
+            bool utterance_stable;
+            if (prev_utterance_disabled) {
+                /* Degraded mode: don't gate convergence on utterance
+                 * equality — we couldn't snapshot it. Settling can still
+                 * fire on self_match stability alone. */
+                utterance_stable = true;
+            } else if (prev_utterance && out_state->utterance) {
                 utterance_stable = (strcmp(prev_utterance, out_state->utterance) == 0);
             } else if (!prev_utterance && !out_state->utterance) {
                 utterance_stable = true;
+            } else {
+                utterance_stable = false;
             }
             bool self_match_stable = (fabsf(out_state->self_match - prev_self_match)
                                        <= self_match_eps);
@@ -3525,14 +3635,19 @@ int communication_cascade_run_recurrent(brain_t brain,
             }
         }
 
-        /* SLICE 3 — precision update for the NEXT iteration. A high
-         * pe_total this iter means the recurrent system was surprised by
-         * its own output; bump precision so the next iter's
-         * stage_self_train applies more plasticity (Friston FEP).
-         * Saturating map keeps precision in [0.5, 4.0] so the bridge
-         * doesn't blow up on a single bad iteration. */
-        if (isfinite(out_state->pe_total) && out_state->pe_total > 0.0f) {
+        /* SLICE 3 — precision update for the NEXT iteration.
+         *
+         * S3-H4 fix (2026-05-19): pre-fix the precision update was gated
+         * on `pe_total > 0.0f`. When iter N+1 settled cleanly (pe_total=0),
+         * the branch was skipped and precision stayed at iter N's bumped
+         * value forever — opposite of FEP, which wants precision to
+         * decay back toward 1.0 as evidence settles. Post-fix: drop the
+         * guard. At pe_total=0 the formula evaluates to 1.0 naturally,
+         * giving graceful decay. Defense-in-depth NaN guard before the
+         * clamp (S3-H5). */
+        if (isfinite(out_state->pe_total)) {
             float p = 1.0f + 0.5f * out_state->pe_total;
+            if (!isfinite(p)) p = 0.5f;
             if (p < 0.5f) p = 0.5f;
             if (p > 4.0f) p = 4.0f;
             out_state->fep_precision = p;
@@ -3540,20 +3655,19 @@ int communication_cascade_run_recurrent(brain_t brain,
 
         /* SLICE 2 — compute arcuate feedback for the NEXT iteration.
          *
-         * Comprehend our own just-produced utterance via Wernicke (read
-         * through grounded_language_comprehend, same call cascade_stage_
-         * self_comprehension uses). The output semantic_vector represents
-         * "what we actually said". The CURRENT iteration's content_intent
-         * represents "what we meant to say". The element-wise difference
-         * is the missing semantic content — broadcast it back into
-         * content_intent on the next pass so the bridge gets a stronger
-         * pull toward the unsaid dimensions.
+         * S2-H2 fix (2026-05-19): error_vec is computed against the
+         * FIXED iter-0 target snapshot (target_vec), not against the
+         * current iteration's content_intent. This kills the
+         * (1+k) self-amplification path. The apply step in
+         * cascade_stage_content now does a convex blend gated on
+         * arcuate_feedback_blend (set below to 0.5).
          *
          * Weighted by (1 - self_match) so good iterations apply little
          * correction (system is settling) and bad iterations apply more
          * (system needs to retry differently). Cap at 0.8 to prevent
          * runaway. */
-        if (gl_dim > 0 &&
+        if (!feedback_disabled && gl_dim > 0 && target_vec &&
+            target_vec_dim == gl_dim &&
             out_state->utterance && out_state->utterance[0] &&
             out_state->content_intent &&
             out_state->content_dim == gl_dim) {
@@ -3564,31 +3678,49 @@ int communication_cascade_run_recurrent(brain_t brain,
             if (rc == 0 && self_comp.semantic_vector) {
                 if (!feedback_vec) {
                     feedback_vec = (float*)nimcp_calloc(gl_dim, sizeof(float));
+                    if (!feedback_vec) {
+                        /* S1-H4 fix: feedback alloc OOM — disable
+                         * feedback for the rest of the run instead of
+                         * retrying every iter against pressured heap. */
+                        atomic_fetch_add_explicit(
+                            &brain->cascade_recurrent_oom_count,
+                            1u, memory_order_relaxed);
+                        feedback_disabled = true;
+                    }
                 }
                 if (feedback_vec) {
-                    /* error_vec = intent - own_output (in semantic space).
-                     * Positive components = "what we wanted to say but
-                     * didn't"; negative components = "what we said but
-                     * didn't mean". The next pass's content_intent gets
-                     * += k * error_vec, which boosts unsaid dimensions
-                     * and damps spurious ones. */
+                    /* error_vec = target - own_output (in semantic space).
+                     * Target = iter-0 content_intent (fixed). Positive
+                     * components = "what we wanted to say but didn't";
+                     * negative = "what we said but didn't mean".
+                     * cascade_stage_content does a convex blend so apply
+                     * is bounded. */
                     for (uint32_t i = 0; i < gl_dim; i++) {
-                        feedback_vec[i] = out_state->content_intent[i]
-                                        - self_comp.semantic_vector[i];
+                        float t = target_vec[i];
+                        float o = self_comp.semantic_vector[i];
+                        feedback_vec[i] = (isfinite(t) ? t : 0.0f)
+                                        - (isfinite(o) ? o : 0.0f);
                     }
                     float strength = 1.0f - out_state->self_match;
                     if (!isfinite(strength) || strength < 0.0f) strength = 0.5f;
                     if (strength > 0.8f) strength = 0.8f;
 
-                    /* S2-C2 fix: publish the (vec, dim, strength) tuple
-                     * under the arcuate lock so a concurrent
+                    /* S2-C2 fix: publish the (vec, dim, strength, blend, target)
+                     * tuple under the arcuate lock so a concurrent
                      * cascade_stage_content reader either sees the OLD
                      * tuple (and reads its vec safely) or the NEW tuple
-                     * (and reads the new vec safely) — never a torn mix. */
+                     * (and reads the new vec safely) — never a torn mix.
+                     *
+                     * S2-H2: also set blend=0.5 (convex-blend mode) so
+                     * the apply step bounds correction; pre-fix the
+                     * additive form amplified intent magnitude. */
                     if (arc_lock_recur) nimcp_mutex_lock(arc_lock_recur);
                     brain->arcuate_feedback_vec      = feedback_vec;
                     brain->arcuate_feedback_dim      = gl_dim;
                     brain->arcuate_feedback_strength = strength;
+                    brain->arcuate_feedback_blend    = 0.5f;
+                    brain->arcuate_target_vec        = target_vec;
+                    brain->arcuate_target_dim        = target_vec_dim;
                     if (arc_lock_recur) nimcp_mutex_unlock(arc_lock_recur);
                 }
             }
@@ -3615,15 +3747,26 @@ int communication_cascade_run_recurrent(brain_t brain,
             brain->cerebellar_correction_pending = (accum_pe > thresh);
         }
 
-        /* Save this iteration's outputs to compare against the next. */
+        /* Save this iteration's outputs to compare against the next.
+         *
+         * S1-H3 fix (2026-05-19): on alloc failure, flip
+         * prev_utterance_disabled so the convergence check falls back to
+         * self_match-only stability rather than silently failing every
+         * iter. One-time warn via cascade_recurrent_oom_count counter. */
         if (prev_utterance) {
             nimcp_free(prev_utterance);
             prev_utterance = NULL;
         }
-        if (out_state->utterance) {
+        if (!prev_utterance_disabled && out_state->utterance) {
             size_t len = strlen(out_state->utterance);
             prev_utterance = (char*)nimcp_malloc(len + 1);
-            if (prev_utterance) memcpy(prev_utterance, out_state->utterance, len + 1);
+            if (prev_utterance) {
+                memcpy(prev_utterance, out_state->utterance, len + 1);
+            } else {
+                atomic_fetch_add_explicit(&brain->cascade_recurrent_oom_count,
+                                           1u, memory_order_relaxed);
+                prev_utterance_disabled = true;
+            }
         }
         prev_self_match = out_state->self_match;
     }
@@ -3656,8 +3799,13 @@ int communication_cascade_run_recurrent(brain_t brain,
     brain->arcuate_feedback_vec      = saved_arcuate_vec;
     brain->arcuate_feedback_dim      = saved_arcuate_dim;
     brain->arcuate_feedback_strength = saved_arcuate_strength;
+    /* S2-H2 fix: also restore the blend + target snapshot fields. */
+    brain->arcuate_feedback_blend    = saved_arcuate_blend;
+    brain->arcuate_target_vec        = saved_arcuate_target;
+    brain->arcuate_target_dim        = saved_arcuate_target_d;
     if (arc_lock_recur) nimcp_mutex_unlock(arc_lock_recur);
     if (feedback_vec) nimcp_free(feedback_vec);
+    if (target_vec)   nimcp_free(target_vec);
 
     /* SLICE 7 — restore caller's correction_pending flag (always false
      * in current callers, but defense in depth for nested runs). */
@@ -3711,6 +3859,29 @@ int communication_cascade_run_recurrent(brain_t brain,
         brain->fep_pe_decay_rate = 0.0f;
     }
     brain->fep_converged = converged ? 1 : 0;
+
+    /* S2-H2 fix (2026-05-19): publish ||content_intent|| per-iter trace
+     * + summary so monitors can flag runaway amplification independent
+     * of the convex-blend bounding. */
+    memset(brain->fep_intent_norm_trace, 0, sizeof(brain->fep_intent_norm_trace));
+    if (pe_trace_len > 0) {
+        uint32_t cap = (uint32_t)(sizeof(brain->fep_intent_norm_trace) /
+                                   sizeof(brain->fep_intent_norm_trace[0]));
+        uint32_t copy_n = (pe_trace_len < cap) ? pe_trace_len : cap;
+        float n_max = 0.0f;
+        for (uint32_t i = 0; i < copy_n; i++) {
+            float v = intent_norm_trace[i];
+            brain->fep_intent_norm_trace[i] = v;
+            if (isfinite(v) && v > n_max) n_max = v;
+        }
+        brain->fep_intent_norm_initial  = intent_norm_trace[0];
+        brain->fep_intent_norm_terminal = intent_norm_trace[copy_n - 1];
+        brain->fep_intent_norm_max      = n_max;
+    } else {
+        brain->fep_intent_norm_initial  = 0.0f;
+        brain->fep_intent_norm_terminal = 0.0f;
+        brain->fep_intent_norm_max      = 0.0f;
+    }
 
     return last_rc;
 }

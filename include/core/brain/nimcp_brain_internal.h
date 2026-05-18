@@ -2830,6 +2830,43 @@ struct brain_struct {
     uint32_t arcuate_feedback_dim;
     float    arcuate_feedback_strength;     /* 0..1; multiplied into the add */
 
+    /* S2-H2 fix (2026-05-19) — convex-blend arcuate feedback.
+     *
+     * Pre-fix the apply step in cascade_stage_content was
+     *   content_intent[i] += k * feedback_vec[i]
+     * with feedback_vec = (intent - own_output). On a stable prompt where
+     * the next iter's intent ≈ blend ≈ prev intent, this iterates to
+     *   new_intent ≈ (1+k)*old_intent - k*own_output
+     * — i.e. an AMPLIFICATION of intent by factor (1+k) per iter, not an
+     * error-correction step. Bridge confidence climbing 2-4× across
+     * iterations turned out to be magnitude growth, not settling.
+     *
+     * Post-fix: the recurrent loop snapshots iter-0's content_intent as
+     * a FIXED target into arcuate_target_vec, then recomputes
+     * feedback_vec = (target - own_output) each iter, and the apply step
+     * does a convex blend instead of additive:
+     *   content_intent[i] = (1 - blend) * content_intent[i] + blend * (content_intent[i] + k * feedback_vec[i])
+     * which collapses to
+     *   content_intent[i] += blend * k * feedback_vec[i]
+     * but bounded by `blend` so magnitude can't grow without bound.
+     *
+     * arcuate_feedback_blend: convex blend coefficient in [0, 1].
+     *   0.0 => fully retain pre-arcuate content_intent (no correction)
+     *   1.0 => fully accept the corrected value (legacy additive behavior at k)
+     *   Recurrent loop sets this to a small value (default 0.5) so each
+     *   iter only takes a half-step toward the corrected intent. When 0
+     *   (default, single-pass cascade), cascade_stage_content treats
+     *   apply as a no-op even if arcuate_feedback_vec is set — keeps
+     *   the recurrent-only contract explicit.
+     *
+     * arcuate_target_vec: heap-allocated snapshot of iter-0's
+     *   content_intent. Owned by communication_cascade_run_recurrent
+     *   (alloc on iter==0, free on exit). Sized to gl_dim. NULL outside
+     *   an active recurrent run. */
+    float    arcuate_feedback_blend;
+    float*   arcuate_target_vec;
+    uint32_t arcuate_target_dim;
+
     /* === SPEECH REPAIR PROCESSOR (statue wiring 2026-05-11) ===
      * Disfluency cleaner used by the communication cascade just before
      * Stage 8 (self-comprehension). The brain's own utterance is run
@@ -2869,6 +2906,15 @@ struct brain_struct {
     _Atomic uint64_t cascade_self_produced_events_fired;
     _Atomic uint64_t cascade_discourse_ring_pushes_user;
     _Atomic uint64_t cascade_discourse_ring_pushes_self;
+    /* S1-H3+H4 fix (2026-05-19) — count of times the recurrent loop hit
+     * OOM allocating its convergence-check / arcuate-feedback buffers and
+     * had to fall back to degraded paths. Surfaces as
+     * cascade_recurrent_oom_count in counter snapshots. Non-zero indicates
+     * the recurrent cascade was running with reduced convergence
+     * detection — useful when investigating "loop ran to max_iters but
+     * shouldn't have". Relaxed atomic; single writer (recurrent loop)
+     * but multiple-reader from the RO snapshot path. */
+    _Atomic uint64_t cascade_recurrent_oom_count;
 
     /* Audit Category A item 1 — route nimcp_brain_grounded_respond
      * through the 15-stage cascade orchestrator instead of the legacy
@@ -2915,6 +2961,16 @@ struct brain_struct {
     float    fep_pe_mean;
     float    fep_pe_decay_rate;
     int      fep_converged;
+
+    /* S2-H2 fix (2026-05-19) — ||content_intent|| per iter trace.
+     * Lets external monitors detect runaway amplification regardless of
+     * the convex-blend fix above (defense in depth). Same lifetime as
+     * fep_pe_trace: filled at recurrent-loop exit, survives across calls
+     * for a single snapshot. */
+    float    fep_intent_norm_trace[64];
+    float    fep_intent_norm_initial;
+    float    fep_intent_norm_terminal;
+    float    fep_intent_norm_max;
 
     /* === SLICE 5 — PHONOLOGICAL LOOP working memory buffer (2026-05-18) ===
      * Baddeley's working memory model: a short-term phonological store
