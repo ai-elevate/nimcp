@@ -1565,16 +1565,67 @@ static void cereb_build_motor_features(const production_cascade_state_t* s,
     out_feat[7] = cereb_clamp01(wnorm);
 }
 
-/* Build the "actual" motor feature vector post-stage. In text-mode (the
- * only mode currently implemented) the motor stage doesn't emit a
- * physical motor command — but the cascade IS the production trajectory,
- * so we reuse the same packing as build_motor_features. The cerebellum's
- * forward-model then learns: given these upstream signals, what TYPICALLY
- * shows up downstream. Once a physical motor backend lands, the post-stage
- * actual will diverge from the pre-stage prediction. */
+/* Build the "actual" motor feature vector post-stage.
+ *
+ * S7-H1 fix (2026-05-19): pre-fix this just called cereb_build_motor_features
+ * — meaning the cerebellum's forward-model was always fed prediction==outcome,
+ * so the diff was always zero and every weight update was a no-op. The motor
+ * stage was observability-only with no learning signal.
+ *
+ * Post-fix the 8D actual vector is composed from POST-stage divergent
+ * signals (Wernicke's self-match re-parse, post-Broca syntactic validity,
+ * post-bridge fluency, post-stage word_count). The overlap with build_motor_
+ * features is intentional on the "upstream context" slots (0..3 — drives +
+ * speech-act bits don't change post-stage); slots 4..7 swap to post-stage
+ * realised values so prediction != outcome on average. */
 static void cereb_build_motor_actual(const production_cascade_state_t* s,
                                       float out_actual[8]) {
-    cereb_build_motor_features(s, out_actual);
+    /* Slots 0..3: same upstream context as build_motor_features — drives
+     * and speech-act bits are pre-stage signals that don't change here. */
+    out_actual[0] = cereb_clamp01(s->drive_arousal);
+    out_actual[1] = cereb_clamp01((s->drive_valence + 1.0f) * 0.5f);
+
+    float act_slot = 0.5f;
+    if (s->prompt_is_question || s->act_type == SPEECH_ACT_QUESTION) {
+        act_slot = 0.25f;
+    } else if (s->act_type == SPEECH_ACT_COMMAND ||
+               s->act_type == SPEECH_ACT_REQUEST ||
+               s->prompt_is_imperative) {
+        act_slot = 0.75f;
+    }
+    out_actual[2] = act_slot;
+    out_actual[3] = s->prompt_is_question ? 1.0f : 0.0f;
+
+    /* Slot 4: Wernicke re-parse of own utterance (POST self-comprehension).
+     * self_match is the cosine sim between the produced utterance and the
+     * original intent — a true downstream signal not visible at the pre-stage
+     * cerebellar prediction point. */
+    out_actual[4] = cereb_clamp01(s->self_match);
+
+    /* Slot 5: post-Broca syntactic validity. Pre-stage we have a stale
+     * snapshot from upstream; post-stage the CYK parse result is in.
+     * Same field name on the cascade_state — Broca writes it before motor
+     * runs in the standard order. We use self_grammaticality here so the
+     * pair (slot5 pre vs post) actually differs: pre=syntactic_validity,
+     * post=self_grammaticality (Wernicke's check of the produced surface). */
+    out_actual[5] = cereb_clamp01(s->self_grammaticality);
+
+    /* Slot 6: post-bridge fluency. cascade_state.fluency is the bridge's
+     * fluency estimate after the lexical/Broca stages — pre-stage we
+     * used phon_voiced_ratio (phonology-only); post-stage we use fluency
+     * (bridge softmax product). The two differ on average so the diff
+     * fed to the forward-model isn't trivially zero. */
+    out_actual[6] = cereb_clamp01(s->fluency);
+
+    /* Slot 7: post-stage word_count (same log-compression as pre, but the
+     * count IS the realised output — pre-stage reads stale upstream
+     * estimate; post-stage reads the final lexical output. The split makes
+     * pre==post only when the cascade has no flexible expansion stages
+     * between predict and actual, which is rare in practice). */
+    float wc = (float)s->word_count;
+    if (wc < 0.0f) wc = 0.0f;
+    float wnorm = logf(wc + 1.0f) / logf(9.0f);
+    out_actual[7] = cereb_clamp01(wnorm);
 }
 
 /* Pack 8D feature vector for the prosody stage. Slots [0..5] match motor
