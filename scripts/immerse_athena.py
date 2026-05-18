@@ -407,9 +407,6 @@ def submit_multimodal(brain, description):
     Called before brain.decide_full() so the SNN sensory bridges get native
     modality data instead of interpreting text embeddings as pixels/MFCCs.
     """
-    import sys
-    print(f"[SMM-TRACE] submit_multimodal called: desc='{str(description)[:40]}'", file=sys.stderr, flush=True)
-
     # Echo-and-correct — supervised production training signal. Fires per
     # submit_multimodal call regardless of which stage code path invoked
     # us (run_stage_2 main loop, parent teaching, developmental imitation,
@@ -422,23 +419,18 @@ def submit_multimodal(brain, description):
                      if len(w.strip(".,!?;:\"'()-")) > 3]
             if words:
                 target_word = max(words, key=len)
-                _r = brain.echo_and_correct(description, target_word, lr_scale=8.0)
-                print(f"[ECHO-OK] target={target_word!r} ret={_r}", file=sys.stderr, flush=True)
-            else:
-                print(f"[ECHO-SKIP] no-words desc={description[:30]!r}", file=sys.stderr, flush=True)
-        except Exception as _e:
-            print(f"[ECHO-EXC] {type(_e).__name__}: {_e}", file=sys.stderr, flush=True)
+                brain.echo_and_correct(description, target_word, lr_scale=8.0)
+        except Exception:
+            pass
 
         # Trigram + bigram STDP on the bridge. train_cognitive is dormant in
-        # stage 2 (no _train_cognitive call sites in the main loop), so the
-        # `learn_text_bigrams` wired into nimcp_brain_train_cognitive never
-        # fires. Drive it directly here so bridge_total_trigram_updates
-        # climbs and the LTD-on-false-winner mechanism actually pulls down
-        # saturated dominant word_pops.
+        # stage 2, so the learn_text_bigrams wired into nimcp_brain_train_cognitive
+        # never fires. Drive it directly here so the bridge's trigram-LTD-on-
+        # false-winner path runs against margin-gated LTD + saturating LTP.
         try:
-            _b = brain.learn_text_bigrams(description, lr=0.02)
-        except Exception as _e:
-            print(f"[BIGRAM-EXC] {type(_e).__name__}: {_e}", file=sys.stderr, flush=True)
+            brain.learn_text_bigrams(description, lr=0.02)
+        except Exception:
+            pass
 
     desc_lower = description.lower()
 
@@ -7506,13 +7498,24 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     except Exception as e:
         print(f"  [World Model] Enable failed (non-fatal): {e}")
 
-    # World model curriculum: start at reduced LR, ramp up
+    # World model curriculum: start at reduced LR, ramp up.
+    # Warm resume optimization (2026-05-18): skip the initial full-epoch load
+    # when resuming mid-stage. The epoch (~5K physics+chem+bio transitions)
+    # is a one-time bootstrap signal — once the brain has steps under its
+    # belt in stage 2 (start_from > 0), re-running the bootstrap costs
+    # ~38 minutes of wall time and contributes nothing the running brain
+    # doesn't already have. Cold-start (start_from == 0) still runs the
+    # full epoch so a fresh stage-2 has the bootstrap available.
     wm_curriculum = None
     try:
         from world_model_curriculum import WorldModelCurriculum
         wm_curriculum = WorldModelCurriculum(brain_proxy=brain, max_level=2)
-        n = wm_curriculum.run_full_epoch(scenarios_per_level=2)  # reduced initial
-        print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
+        if start_from == 0:
+            n = wm_curriculum.run_full_epoch(scenarios_per_level=2)  # cold-start bootstrap
+            print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
+        else:
+            print(f"  [World Model Curriculum] Warm resume from step {start_from}: "
+                  f"skipping initial epoch (bootstrap already absorbed)")
     except Exception as e:
         print(f"  [World Model Curriculum] Init failed (non-fatal): {e}")
 

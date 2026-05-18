@@ -19,6 +19,7 @@
 #include "utils/geometry/nimcp_lie_group.h"
 
 #include <math.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -212,7 +213,20 @@ int embedding_lookup(const embedding_layer_t* emb, uint32_t token_id, float* out
 {
     if (!emb || !output) return -1;
     if (token_id >= emb->vocab_size) {
-        LOG_WARN("embedding_lookup: token_id %u >= vocab_size %u", token_id, emb->vocab_size);
+        /* UINT32_MAX is the tokenizer's "not found" sentinel — fires on every
+         * OOV token in the hot path. Logging each one floods stderr (~117
+         * lines/sec observed in 2026-05-18 stage-2 trace, 13MB/h log spam)
+         * AND serializes the brain thread on stderr flush. Silent fast-path
+         * for the sentinel; rate-limit every other out-of-range case to
+         * once per ~16K calls so genuine bugs still surface. */
+        if (token_id != UINT32_MAX) {
+            static _Atomic uint64_t _emb_warn_ctr = 0;
+            uint64_t n = atomic_fetch_add(&_emb_warn_ctr, 1u);
+            if ((n & 0x3FFFu) == 0u) {
+                LOG_WARN("embedding_lookup: token_id %u >= vocab_size %u (sample 1/16384, total=%llu)",
+                         token_id, emb->vocab_size, (unsigned long long)(n + 1u));
+            }
+        }
         return -1;
     }
 
@@ -229,8 +243,17 @@ int embedding_lookup_batch(const embedding_layer_t* emb, const uint32_t* token_i
 
     for (uint32_t i = 0; i < count; i++) {
         if (token_ids[i] >= emb->vocab_size) {
-            LOG_WARN("embedding_lookup_batch: token_id[%u]=%u >= vocab_size %u",
-                     i, token_ids[i], emb->vocab_size);
+            /* Same silencing policy as embedding_lookup — sentinel is silent,
+             * other OOR cases sampled 1/16384. */
+            if (token_ids[i] != UINT32_MAX) {
+                static _Atomic uint64_t _emb_batch_warn_ctr = 0;
+                uint64_t n = atomic_fetch_add(&_emb_batch_warn_ctr, 1u);
+                if ((n & 0x3FFFu) == 0u) {
+                    LOG_WARN("embedding_lookup_batch: token_id[%u]=%u >= vocab_size %u (sample 1/16384, total=%llu)",
+                             i, token_ids[i], emb->vocab_size,
+                             (unsigned long long)(n + 1u));
+                }
+            }
             return -1;
         }
         const float* row = emb->weights + (size_t)token_ids[i] * emb->embed_dim;
