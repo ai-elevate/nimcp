@@ -4227,6 +4227,59 @@ nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool
     return NIMCP_OK;
 }
 
+/* Slice 4 — Lateral inhibition control surface.
+ *
+ * Four thin wrappers over snn_language_bridge_*_lateral_inhibition_*.
+ * Bridge is the load-bearing handle (cascade routes through it); when
+ * the bridge isn't initialized these all report NIMCP_ERROR_NOT_INITIALIZED. */
+nimcp_status_t nimcp_brain_set_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    return (snn_language_bridge_set_lateral_inhibition_enabled(
+              b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    *out_enabled = snn_language_bridge_get_lateral_inhibition_enabled(
+                       b->snn_lang_bridge);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float gain_self,
+                                                          float gain_inhibit,
+                                                          uint32_t micro_steps) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    return (snn_language_bridge_set_lateral_inhibition_params(
+              b->snn_lang_bridge, gain_self, gain_inhibit, micro_steps) == 0)
+              ? NIMCP_OK : NIMCP_ERROR_INVALID_PARAM;
+}
+
+nimcp_status_t nimcp_brain_get_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float* out_gain_self,
+                                                          float* out_gain_inhibit,
+                                                          uint32_t* out_micro_steps) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    return (snn_language_bridge_get_lateral_inhibition_params(
+              b->snn_lang_bridge, out_gain_self, out_gain_inhibit, out_micro_steps) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);

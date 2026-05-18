@@ -373,6 +373,40 @@ typedef struct {
      * would flip the direction. Runtime-only; not persisted in the V5 ext
      * block (set via snn_language_bridge_set_ltd_margin on resume). */
     float    ltd_margin;                     /* default 1.5 */
+    /* Slice 4 — Lateral inhibition in lexical selection.
+     *
+     * Real cortex doesn't pick a word by argmax; it runs a recurrent
+     * competition where candidate word representations excite themselves
+     * AND inhibit each other. Winner emerges from settling dynamics over
+     * ~50-200ms simulated time. Cohort model (Marslen-Wilson 1987),
+     * interactive activation (McClelland 1981), drift-diffusion models —
+     * all converge on this competitive structure as the mechanism behind
+     * lexical selection.
+     *
+     * When enable_lateral_inhibition is true, the new
+     * snn_language_bridge_decode_with_lateral_inhibition() function wraps
+     * the standard decode_spikes pass: take its top-K candidates (the
+     * cosine winners), initialize a[k]=score[k], then run T micro-steps of
+     *
+     *   new_a[k] = sigmoid(a[k]*gain_self - sum_{j!=k} a[j]*gain_inhibit)
+     *
+     * and re-rank by the post-settling activations. cascade_stage_lexical
+     * routes through this path automatically when the flag is on; standard
+     * decode_spikes callers are unaffected.
+     *
+     * Defaults preserve bit-for-bit legacy behavior (flag OFF). When the
+     * caller opts in, lateral_gain_self=1.5 and lateral_gain_inhibit=0.026
+     * (~ 0.8/(32-1)) bracket the competition in the regime where one
+     * candidate consistently wins without runaway. lateral_micro_steps=20
+     * matches the ~50ms/step biological cadence at our per-step cost.
+     *
+     * APPEND-ONLY: these fields MUST stay at the end of snn_lang_config_t.
+     * Not persisted in the V5 ext block (runtime-only); caller re-applies
+     * via snn_language_bridge_set_lateral_inhibition_* setters after load. */
+    bool     enable_lateral_inhibition;      /* default false */
+    float    lateral_gain_self;              /* default 1.5  */
+    float    lateral_gain_inhibit;           /* default 0.026f ~= 0.8/(32-1) */
+    uint32_t lateral_micro_steps;            /* default 20   */
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -638,6 +672,43 @@ int snn_language_bridge_decode_spikes(
     uint32_t max_results,
     uint32_t* num_results);
 
+/** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
+ *
+ * Pulls the standard top-K from snn_language_bridge_decode_spikes (cosine
+ * winners), then iterates a recurrent competition for `lateral_micro_steps`
+ * cycles:
+ *
+ *   for k in [0..K):
+ *     new_a[k] = sigmoid(a[k]*gain_self - sum_{j != k} a[j]*gain_inhibit)
+ *   a := new_a
+ *
+ * After settling, the results array is re-sorted by post-competition
+ * activation (which now reflects the competitive winner, not just the
+ * one-shot cosine pick). `activation` is overwritten with the settled
+ * value; `confidence` is recomputed as a[k] / sum(a) so callers reading
+ * confidence still see a probability-like quantity.
+ *
+ * This is the path that cascade_stage_lexical routes through when the
+ * config flag `enable_lateral_inhibition` is on. Direct callers of
+ * decode_spikes are unaffected.
+ *
+ * Hyperparameters are read from `bridge->config`:
+ *   lateral_gain_self     — self-excitation gain  (default 1.5)
+ *   lateral_gain_inhibit  — per-other inhibition  (default ~0.026)
+ *   lateral_micro_steps   — settling iterations   (default 20)
+ *
+ * Stability: activations are bounded to [0, 1] via sigmoid each step.
+ * If a NaN/Inf appears (shouldn't, given the bounded transfer) the
+ * function falls back to returning the pre-competition top-K unchanged
+ * and logs a one-shot warning. */
+int snn_language_bridge_decode_with_lateral_inhibition(
+    snn_language_bridge_t* bridge,
+    const float* concept_rates,
+    uint32_t num_concept_pops,
+    snn_lang_word_result_t* results,
+    uint32_t max_results,
+    uint32_t* num_results);
+
 /** Encode a word as concept neuron activation pattern */
 int snn_language_bridge_encode_word(
     snn_language_bridge_t* bridge,
@@ -897,6 +968,58 @@ int snn_language_bridge_set_ltd_margin(
 /** Read the current LTD margin. Returns 0.0f if bridge is NULL/invalid. */
 float snn_language_bridge_get_ltd_margin(
     const snn_language_bridge_t* bridge);
+
+/** Slice 4: toggle lateral-inhibition decode path.
+ *
+ * Default OFF — preserves bit-for-bit legacy decode_spikes behavior. When
+ * enabled, callers that route through
+ * snn_language_bridge_decode_with_lateral_inhibition (notably
+ * cascade_stage_lexical when the cascade routes through the bridge) get
+ * the recurrent-competition winner instead of the one-shot cosine
+ * argmax. Direct decode_spikes callers are unaffected by this flag.
+ *
+ * Runtime-only — not persisted in the V5 sidecar. Caller must re-apply
+ * after each load.
+ *
+ * @return 0 on success; -1 if bridge is NULL/invalid. */
+int snn_language_bridge_set_lateral_inhibition_enabled(
+    snn_language_bridge_t* bridge,
+    bool enabled);
+
+/** Slice 4: read the lateral-inhibition runtime flag. Returns false if
+ *  bridge is NULL/invalid. */
+bool snn_language_bridge_get_lateral_inhibition_enabled(
+    const snn_language_bridge_t* bridge);
+
+/** Slice 4: tune the recurrent-competition dynamics.
+ *
+ * gain_self ~ self-excitation per micro-step. > 0 (default 1.5). High
+ *   values can saturate the sigmoid early.
+ * gain_inhibit ~ per-other inhibition coefficient. > 0 (default
+ *   ~0.026 ~= 0.8/(K-1) for K=32). Multiplied by the sum of every
+ *   other candidate's activation at each step.
+ * micro_steps ~ settling iterations (default 20). Capped at 200 to
+ *   prevent runaway compute.
+ *
+ * All three values are validated; any non-finite or out-of-range input
+ * is rejected without mutating state.
+ *
+ * Runtime-only — not persisted in the V5 sidecar.
+ *
+ * @return 0 on success; -1 if bridge invalid or any value out of range. */
+int snn_language_bridge_set_lateral_inhibition_params(
+    snn_language_bridge_t* bridge,
+    float gain_self,
+    float gain_inhibit,
+    uint32_t micro_steps);
+
+/** Slice 4: read the lateral-inhibition tunables. NULL out-pointers are
+ *  skipped. Returns -1 on invalid bridge. */
+int snn_language_bridge_get_lateral_inhibition_params(
+    const snn_language_bridge_t* bridge,
+    float* out_gain_self,
+    float* out_gain_inhibit,
+    uint32_t* out_micro_steps);
 
 /** Break a rank-1 / homogenized bridge by re-randomizing every existing
  *  binding weight to uniform(w_min, w_max). Keeps the *set* of (concept_pop,
@@ -1306,8 +1429,8 @@ int snn_language_bridge_predict_sensory(
  * see the ABI delta. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #include <stddef.h>
-_Static_assert(sizeof(snn_lang_config_t) == 172,
-    "snn_lang_config_t ABI: size drifted from expected 172 bytes. "
+_Static_assert(sizeof(snn_lang_config_t) == 188,
+    "snn_lang_config_t ABI: size drifted from expected 188 bytes. "
     "Append-only on the struct; bump this literal in lockstep.");
 _Static_assert(sizeof(snn_lang_stats_t) == 264,
     "snn_lang_stats_t ABI: size drifted from expected 264 bytes. "
