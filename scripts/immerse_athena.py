@@ -4329,6 +4329,12 @@ class Parent:
         self._inspirations = []     # inspire passages
         self._dream_prompts = []    # encourage_dreaming questions
         self._conversation_replies = []  # stage 3 conversational responses
+        # Slice C — caregiver critic. Lazily created on first use (so the
+        # import doesn't run for the no-Claude smoke path); cached per stage
+        # to avoid reloading the vocab JSON on every cognitive injection.
+        self._critic_by_stage = {}     # stage_idx -> CaregiverCritic
+        self._current_critic_stage = None
+        self._critic_log_every = 200   # log one verdict per N evaluations
 
     def pre_generate_content(self, stage, num_stimuli):
         """Load pre-generated narrations for a stage.
@@ -4337,6 +4343,15 @@ class Parent:
         when memory is available). Falls back to Claude CLI call, then to
         built-in narrations.
         """
+        # Slice C — track current developmental stage so the critic fires at
+        # the correct rule set even when callers of _train_cognitive don't
+        # pass stage explicitly. pre_generate_content is invoked once per
+        # stage at the top of run_stage_N, so this is the single chokepoint
+        # for "what stage are we in now?".
+        self._current_critic_stage = int(stage)
+        # Pre-warm the critic so the first cognitive injection of the stage
+        # doesn't pay the JSON load latency.
+        self._get_critic(int(stage))
         if not self.enabled:
             print("  [Parent] Claude disabled — using silent parenting")
             return
@@ -4714,9 +4729,99 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         return features, target, word_label, desc
 
+    # -- Slice C: caregiver critic helpers ----------------------------------
+
+    def _get_critic(self, stage):
+        """Get-or-create a CaregiverCritic for the given developmental stage.
+
+        Cached per stage so we don't reload the vocab JSON on every cognitive
+        injection. ``stage`` is the integer training stage (0..3+).
+        """
+        if stage is None:
+            return None
+        try:
+            crit = self._critic_by_stage.get(stage)
+            if crit is None:
+                # Lazy import — keeps module-level imports light, and lets
+                # smoke runs that never train still work even if data files
+                # aren't present.
+                from caregiver_critic import CaregiverCritic
+                crit = CaregiverCritic(stage=stage)
+                self._critic_by_stage[stage] = crit
+            self._current_critic_stage = stage
+            return crit
+        except Exception as e:
+            # Don't let a critic problem kill training. Log once per stage.
+            if stage not in getattr(self, "_critic_warned_stages", set()):
+                self._critic_warned_stages = getattr(
+                    self, "_critic_warned_stages", set()) | {stage}
+                print(f"  [Critic] init failed for stage {stage}: {e}")
+            return None
+
+    def _apply_critic_verdict(self, brain, verdict, prompt, response, stage):
+        """Drive reward + (optional) recast into the brain.
+
+        Best-effort — every RPC is guarded so the critic never wedges training.
+        Returns the verdict for the caller to inspect / log.
+        """
+        if verdict is None:
+            return None
+
+        # 1. Deliver reward through whichever RPC the daemon currently
+        #    exposes. apply_reward_learning is the target (matches the
+        #    C-side path that drives DA into the SNN); bg_update_reward is
+        #    the basal-ganglia path that's already wired. We prefer the
+        #    former when available, fall back to the latter so the slice
+        #    works without waiting on Slice D's RPC merge.
+        if abs(verdict.reward) > 1e-6:
+            applied = False
+            try:
+                fn = getattr(brain, "apply_reward_learning", None)
+                if callable(fn):
+                    fn(verdict.reward)
+                    applied = True
+            except Exception:
+                pass
+            if not applied:
+                try:
+                    brain.bg_update_reward(verdict.reward, rpe=verdict.reward)
+                except Exception:
+                    pass
+
+        # 2. Recast — supervised teaching of the corrected form. Use the
+        #    existing echo_and_correct production-training path with a
+        #    boosted LR (recasts are high-confidence supervision).
+        if verdict.recast:
+            try:
+                # Pick the longest content word from the recast as the
+                # target — same heuristic the existing echo_and_correct
+                # block below uses for non-corrective teaching.
+                recast_tokens = [
+                    w.strip(".,!?;:\"'()-").lower()
+                    for w in verdict.recast.split()
+                    if w.strip(".,!?;:\"'()-")
+                ]
+                if recast_tokens:
+                    target_word = max(recast_tokens, key=len)
+                    # Higher lr_scale than the unsupervised echo path
+                    # (8.0) — recasts carry external reward signal.
+                    brain.echo_and_correct(prompt, target_word, lr_scale=16.0)
+            except Exception:
+                pass
+
+        # 3. Audit log — every Nth call. Walkthroughs need this to verify
+        #    the critic is actually firing (counters, not just "running").
+        if self.interaction_count % self._critic_log_every == 0:
+            recast_repr = verdict.recast if verdict.recast else "-"
+            print(f"  [Critic] stage={stage} reward={verdict.reward:+.2f} "
+                  f"reason={verdict.reason} recast={recast_repr!r} "
+                  f"prompt={prompt!r}")
+
+        return verdict
+
     def _train_cognitive(self, brain, text, domain=10, target_text=None,
                          modality_features=None, modality=5,
-                         valence=0.0, arousal=0.0):
+                         valence=0.0, arousal=0.0, stage=None):
         """Train ALL cognitive modules on a text sample.
 
         Calls brain.train_cognitive() which trains:
@@ -4781,9 +4886,30 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # Bridge produce exercise — every Nth cognitive call, run the
         # full comprehend → produce roundtrip via grounded_respond. Keeps
         # the produce path warm (DA modulation, decode_total_ns).
+        #
+        # Slice C: this is also the critic's hook. Every production gets
+        # scored against the stage's developmental rules; the resulting
+        # reward + optional recast is delivered back into the brain via
+        # apply_reward_learning + echo_and_correct. Replaces the
+        # cascade_self_train auto-confirmation loop.
         if target_text and self.interaction_count % 10 == 0:
             try:
-                brain.grounded_respond(target_text or text)
+                prompt = target_text or text
+                grounded = brain.grounded_respond(prompt)
+                response_text = ""
+                if isinstance(grounded, dict):
+                    response_text = (grounded.get("response")
+                                     or grounded.get("text") or "")
+                # Stage resolution: explicit arg first, fall back to
+                # whatever pre_generate_content most recently set.
+                effective_stage = stage if stage is not None else self._current_critic_stage
+                if response_text and effective_stage is not None:
+                    critic = self._get_critic(effective_stage)
+                    if critic is not None:
+                        verdict = critic.evaluate(prompt, response_text)
+                        self._apply_critic_verdict(
+                            brain, verdict, prompt, response_text,
+                            effective_stage)
             except Exception:
                 pass
 
