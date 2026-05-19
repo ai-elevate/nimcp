@@ -332,6 +332,7 @@ cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
+[[ -f /tmp/scripts/caregiver_critic.py ]] && cp /tmp/scripts/caregiver_critic.py "$POD_DIR/scripts/"
 
 # Curriculum-stack files (CE-1..19).
 for f in /tmp/scripts/storytelling.py /tmp/scripts/socratic_qa.py \
@@ -512,6 +513,7 @@ cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
+[[ -f /tmp/scripts/caregiver_critic.py ]] && cp /tmp/scripts/caregiver_critic.py "$POD_DIR/scripts/"
 # Curriculum-stack files (CE-1..19). Ship whatever's in the bundle —
 # old branches without these files won't have them packed, and `cp -f`
 # is a no-op on missing sources thanks to the for-loop existence guard.
