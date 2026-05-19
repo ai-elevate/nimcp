@@ -429,12 +429,18 @@ def _apply_runtime_lang_config(brain, logger):
     errors  = 0
 
     # Slice 1 — recurrent cascade. Default ON if cfg block present.
+    #
+    # Option-1 (Slice A, 2026-05-19): removed cfg keys for the deprecated
+    # bridge-side STDP setters (trigram_learning_enabled, ltd_margin,
+    # comprehend_stdp_enabled, da_modulation_enabled, da_modulation_gain).
+    # The C-side setters still exist (as no-op stubs) for ABI; the daemon
+    # just stops applying them from the runtime cfg so operators stop
+    # seeing apparent successes for inert toggles. DA modulation as a
+    # concept moves to SNN neuromod (Slice F).
     table = [
         # (cfg-key, method, extractor)
         ("respond_via_cascade",                "set_respond_via_cascade",                _bool),
         ("cascade_self_train_enabled",         "set_cascade_self_train_enabled",         _bool),
-        ("trigram_learning_enabled",           "set_trigram_learning_enabled",           _bool),
-        ("ltd_margin",                         "set_ltd_margin",                         _f),
         ("lateral_inhibition_enabled",         "set_lateral_inhibition_enabled",         _bool),
         ("thalamic_gate_enabled",              "set_thalamic_gate_enabled",              _bool),
         ("phonological_loop_enabled",          "set_phonological_loop_enabled",          _bool),
@@ -443,9 +449,6 @@ def _apply_runtime_lang_config(brain, logger):
         ("cerebellar_correction_enabled",      "set_cerebellar_correction_enabled",      _bool),
         ("cerebellar_correction_strength",     "set_cerebellar_correction_strength",     _f),
         ("cerebellar_pe_threshold",            "set_cerebellar_pe_threshold",            _f),
-        ("comprehend_stdp_enabled",            "set_comprehend_stdp_enabled",            _bool),
-        ("da_modulation_enabled",              "set_da_modulation_enabled",              _bool),
-        ("da_modulation_gain",                 "set_da_modulation_gain",                 _f),
         ("reconsolidation_enabled",            "set_reconsolidation_enabled",            _bool),
         ("reconsolidation_decay",              "set_reconsolidation_decay",              _f),
         ("sentence_segmentation_enabled",      "set_sentence_segmentation_enabled",      _bool),
@@ -1961,20 +1964,14 @@ class BrainService:
         return {"ok": True, "applied": count}
 
     def _cmd_set_trigram_learning_enabled(self, req):
-        """TA-4: toggle trigram next-token learning.
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
 
-        Request keys: enabled (bool, default false). Default OFF
-        preserves PA-4 bigram-only behavior bit-for-bit. Runtime-only;
-        not persisted across saves.
+        Bridge-side trigram learning was removed. If trigram learning
+        is needed it lives on grounded_language now, not the bridge.
+        This RPC stays for back-compat but is a no-op.
         """
-        enabled = bool(req.get("enabled", False))
-        try:
-            self.brain.set_trigram_learning_enabled(enabled)
-        except AttributeError:
-            return {"error": "set_trigram_learning_enabled not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"set_trigram_learning_enabled: {e}"}
-        return {"ok": True, "enabled": enabled}
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}
 
     def _cmd_reset_lexicon_distributional(self, req):
         """Reset every lexicon entry's distributional embedding (context_vector).
@@ -1998,49 +1995,23 @@ class BrainService:
         return {"ok": True, "touched": n, "zero_and_mark_uninit": zero, "jitter": jitter}
 
     def _cmd_reset_lang_bridge_weights(self, req):
-        """Break rank-1 / homogenized bridge collapse by re-randomizing every
-        binding weight to uniform(w_min, w_max). Use after probing shows
-        comprehend cosines ≈ 1.0 across distinct prompts.
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
 
-        Request: {"w_min": float (default 0.001), "w_max": float (default 0.05)}
-        Returns: {"ok": True, "reset_count": int}
+        The bridge no longer owns binding weights — there is nothing
+        to reset. Bridge collapse fixes belong in the SNN's projection
+        synapses (Slice B concept_registry).
         """
-        try:
-            w_min = float(req.get("w_min", 0.001))
-            w_max = float(req.get("w_max", 0.05))
-        except (TypeError, ValueError) as e:
-            return {"error": f"reset_lang_bridge_weights bad args: {e}"}
-        try:
-            count = int(self.brain.reset_lang_bridge_weights(w_min, w_max))
-        except AttributeError:
-            return {"error": "reset_lang_bridge_weights not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"reset_lang_bridge_weights: {e}"}
-        return {"ok": True, "reset_count": count, "w_min": w_min, "w_max": w_max}
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}
 
     def _cmd_set_ltd_margin(self, req):
-        """Margin gate for the SNN bridge's next-token LTD. LTD only fires
-        when topK[0].confidence >= margin * topK[target_rank].confidence
-        (and target is in topK). Bumps the lower bound on how decisively
-        a false_winner must be beating the target in this *specific*
-        context before its bindings get suppressed.
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
 
-        Request keys: margin (float, default 1.5). Clamped to [1.0, 100.0].
-        margin=1.0 reproduces legacy unconditional LTD (the step-3900
-        regression mechanism); higher values progressively protect
-        strong-but-unrelated bindings. Runtime-only; not persisted.
+        Bridge-side LTD margin gated the now-removed bridge STDP path.
+        The SNN's own STDP keeps its own thresholds.
         """
-        try:
-            margin = float(req.get("margin", 1.5))
-        except (TypeError, ValueError) as e:
-            return {"error": f"set_ltd_margin bad arg: {e}"}
-        try:
-            self.brain.set_ltd_margin(margin)
-        except AttributeError:
-            return {"error": "set_ltd_margin not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"set_ltd_margin: {e}"}
-        return {"ok": True, "margin": margin}
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}
 
     # =====================================================================
     # Audit fix: campaign feature setters via daemon RPC.
@@ -2413,6 +2384,22 @@ class BrainService:
             "avg_binding_strength":      float(d.get("avg_binding_strength", 0.0)),
             "avg_comprehension_confidence": float(d.get("avg_comprehension_confidence", 0.0)),
         }
+        # Slice D — cascade self_train reward gating counters. Surfaced under
+        # stats.cascade.self_train for monitoring. Graceful on older builds
+        # (returns zeros if the Python binding hasn't been rebuilt yet).
+        try:
+            gate = self.brain.get_cascade_self_train_gate_counters()
+        except AttributeError:
+            gate = {"skipped_stale": 0, "skipped_below_threshold": 0, "fired": 0}
+        except Exception:
+            gate = {"skipped_stale": 0, "skipped_below_threshold": 0, "fired": 0}
+        stats["cascade"] = {
+            "self_train": {
+                "skipped_stale":           int(gate.get("skipped_stale", 0)),
+                "skipped_below_threshold": int(gate.get("skipped_below_threshold", 0)),
+                "fired":                   int(gate.get("fired", 0)),
+            },
+        }
         decode = {
             "total_calls":          decode_calls,
             "total_ns":             decode_ns,
@@ -2486,11 +2473,16 @@ class BrainService:
         return {"ok": True, "enabled": enabled}
 
     def _cmd_set_cascade_self_train_tunables(self, req):
-        """Wave 2 Item #10: configure self-train EMA + lr_scale.
+        """Wave 2 Item #10 + Slice D: configure self-train EMA + lr_scale +
+        external-reward gating.
 
         Request: {"cmd": "set_cascade_self_train_tunables",
-                  "alpha": float, "lr_scale": float}
+                  "alpha": float, "lr_scale": float,
+                  "reward_threshold": float (optional, Slice D),
+                  "reward_ttl_us":    int   (optional, Slice D)}
         alpha ∈ [0,1] (0 freezes baseline); lr_scale ∈ [0,10] (0 disables plasticity).
+        reward_threshold ∈ (0, 1]; reward_ttl_us > 0 (microseconds).
+        Either Slice-D arg omitted / 0 / negative leaves the brain's value unchanged.
         """
         try:
             alpha    = float(req.get("alpha", 0.05))
@@ -2503,7 +2495,49 @@ class BrainService:
             return {"error": "set_cascade_self_train_tunables not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"set_cascade_self_train_tunables: {e}"}
+
+        # Slice D — optional reward gating tunables. Sent via separate setter
+        # so the legacy two-arg shape still works; either field omitted leaves
+        # the brain's value unchanged (partial update).
+        reward_threshold = req.get("reward_threshold", None)
+        reward_ttl_us    = req.get("reward_ttl_us", None)
+        if reward_threshold is not None or reward_ttl_us is not None:
+            try:
+                rt = float(reward_threshold) if reward_threshold is not None else 0.0
+                tt = int(reward_ttl_us)      if reward_ttl_us    is not None else 0
+            except (TypeError, ValueError) as e:
+                return {"error": f"set_cascade_self_train_tunables Slice-D bad arg: {e}"}
+            try:
+                self.brain.set_cascade_self_train_reward_gating(rt, tt)
+            except AttributeError:
+                return {"error": "set_cascade_self_train_reward_gating not available — rebuild nimcp.so"}
+            except Exception as e:
+                return {"error": f"set_cascade_self_train_reward_gating: {e}"}
+            return {"ok": True, "alpha": alpha, "lr_scale": lr_scale,
+                    "reward_threshold": rt, "reward_ttl_us": tt}
+
         return {"ok": True, "alpha": alpha, "lr_scale": lr_scale}
+
+    def _cmd_set_last_external_reward(self, req):
+        """Slice D: set the most-recent external reward signal for cascade
+        self-train gating. Called by the caregiver-critic / RL pipeline on
+        every brain production. Cascade Stage 14 (self-train) gates plasticity
+        on freshness (default 5s TTL) + threshold (default 0.5).
+
+        Request: {"cmd": "set_last_external_reward", "reward": float}
+        reward is clamped to [-1.0, +1.0] inside the public setter.
+        """
+        try:
+            reward = float(req.get("reward", 0.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_last_external_reward bad arg: {e}"}
+        try:
+            self.brain.set_last_external_reward(reward)
+        except AttributeError:
+            return {"error": "set_last_external_reward not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_last_external_reward: {e}"}
+        return {"ok": True, "reward": max(-1.0, min(1.0, reward))}
 
     def _cmd_get_cascade_self_train_state(self, req):
         """Wave 2 Item #10: read self-train state.
@@ -2520,6 +2554,120 @@ class BrainService:
             return {"error": f"get_cascade_self_train_state: {e}"}
         d["ok"] = True
         return d
+
+    # === Slice E (Option-1 architectural rebuild) ===========================
+    # Stage-anchored developmental scaffolding RPCs. The trainer
+    # (immerse_athena.py) sets active_stage as the curriculum advances and
+    # the brain enforces per-stage caps in cascade_stage_motor + lexicon
+    # vocab-mask filtering at production time.
+
+    def _cmd_set_active_stage(self, req):
+        """Slice E: advance the brain's current developmental stage.
+
+        Request: {"cmd": "set_active_stage", "stage": int}
+        Returns: {"ok": True, "stage": int} on success.
+        """
+        try:
+            stage = int(req.get("stage"))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_active_stage bad arg: {e}"}
+        try:
+            self.brain.set_active_stage(stage)
+        except AttributeError:
+            return {"error": "set_active_stage not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_active_stage: {e}"}
+        return {"ok": True, "stage": stage}
+
+    def _cmd_get_active_stage(self, req):
+        """Slice E: read the brain's current developmental stage."""
+        del req
+        try:
+            stage = int(self.brain.get_active_stage())
+        except AttributeError:
+            return {"error": "get_active_stage not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_active_stage: {e}"}
+        return {"ok": True, "stage": stage}
+
+    def _cmd_set_vocab_mask_for_stage(self, req):
+        """Slice E: install / refresh the per-stage lexicon visibility mask.
+
+        Request: {"cmd": "set_vocab_mask_for_stage", "stage": int}
+        """
+        try:
+            stage = int(req.get("stage"))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_vocab_mask_for_stage bad arg: {e}"}
+        try:
+            self.brain.set_vocab_mask_for_stage(stage)
+        except AttributeError:
+            return {"error": "set_vocab_mask_for_stage not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_vocab_mask_for_stage: {e}"}
+        return {"ok": True, "stage": stage}
+
+    def _cmd_clear_vocab_mask(self, req):
+        """Slice E: drop the active lexicon mask — every entry visible."""
+        del req
+        try:
+            self.brain.clear_vocab_mask()
+        except AttributeError:
+            return {"error": "clear_vocab_mask not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"clear_vocab_mask: {e}"}
+        return {"ok": True}
+
+    def _cmd_set_stage_constraints(self, req):
+        """Slice E alias for set_active_stage + set_vocab_mask_for_stage.
+
+        Combines the two setters so trainers can advance the developmental
+        stage AND refresh the lexicon mask in a single RPC. The static
+        stage table itself is not mutable at runtime — this RPC only
+        steers which row is active.
+
+        Request: {"cmd": "set_stage_constraints", "stage": int}
+        """
+        try:
+            stage = int(req.get("stage"))
+        except (TypeError, ValueError) as e:
+            return {"error": f"set_stage_constraints bad arg: {e}"}
+        try:
+            self.brain.set_active_stage(stage)
+        except AttributeError:
+            return {"error": "set_active_stage not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_active_stage: {e}"}
+        # Mask install is best-effort — grounded_lang may not be wired in
+        # minimal-init brains; we tolerate the failure and return the stage
+        # set succeeded.
+        mask_status = "installed"
+        try:
+            self.brain.set_vocab_mask_for_stage(stage)
+        except AttributeError:
+            mask_status = "skipped (set_vocab_mask_for_stage unavailable)"
+        except Exception as e:
+            mask_status = f"skipped ({e})"
+        return {"ok": True, "stage": stage, "vocab_mask": mask_status}
+
+    def _cmd_get_stage_constraints(self, req):
+        """Slice E: snapshot the stage table row for a stage.
+
+        Request: {"cmd": "get_stage_constraints", "stage": int}
+        Returns: {"ok": True, "constraints": {...}}.
+        """
+        try:
+            stage = int(req.get("stage", 0))
+        except (TypeError, ValueError):
+            stage = 0
+        try:
+            c = self.brain.get_stage_constraints(stage)
+        except AttributeError:
+            return {"error": "get_stage_constraints not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_stage_constraints: {e}"}
+        return {"ok": True, "constraints": c}
+    # === End Slice E =========================================================
 
     def _cmd_get_cascade_counters(self, req):
         """Batch K: snapshot lifetime cascade telemetry counters.

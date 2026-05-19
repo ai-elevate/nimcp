@@ -1629,6 +1629,61 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
                                                           float* out_alpha,
                                                           float* out_lr_scale);
 
+/** Slice D — external reward signal for cascade self-train gating.
+ *  Called by the caregiver-critic / RL pipeline on every external reward
+ *  event. Clamps to [-1.0, +1.0]; stamps a monotonic_us timestamp so
+ *  cascade_stage_self_train can detect staleness (default TTL 5s).
+ *  Returns 0 on success, -1 on invalid brain or non-finite reward. */
+int nimcp_brain_set_last_external_reward(nimcp_brain_t brain, float reward);
+
+/** Slice D — configure the reward gating thresholds. reward_threshold in
+ *  (0, 1]; reward_ttl_us > 0. Either argument zero/negative leaves the
+ *  brain's current value unchanged (partial update). */
+nimcp_status_t nimcp_brain_set_cascade_self_train_reward_gating(
+    nimcp_brain_t brain,
+    float reward_threshold,
+    uint64_t reward_ttl_us);
+
+/** Slice D — snapshot the three self-train gating counters surfaced in
+ *  stats.cascade.self_train of lang_status. Any out-pointer may be NULL. */
+nimcp_status_t nimcp_brain_get_cascade_self_train_gate_counters(
+    nimcp_brain_t brain,
+    uint64_t* out_skipped_stale,
+    uint64_t* out_skipped_below_threshold,
+    uint64_t* out_fired);
+
+/** Slice E — developmental-stage scaffolding.
+ *
+ *  set_active_stage() advances the brain's current_stage field. The
+ *  communication cascade reads this in cascade_stage_motor and enforces
+ *  the stage's min/max word-count window + grammar template mask from
+ *  the static table at
+ *  include/cognitive/grounded_language/nimcp_stage_table.h.
+ *
+ *  set_vocab_mask_for_stage() installs / refreshes the grounded_language
+ *  visibility mask so production only retrieves entries within the
+ *  stage's max_visible_vocab cap. Pass the same stage as set_active_stage
+ *  unless you specifically want a mask divergent from the cascade caps
+ *  (mainly useful for ablation tests).
+ *
+ *  get_active_stage() / get_stage_constraints() snapshot current state.
+ *
+ *  Defaults: current_stage starts at 0 (single-word noun productions)
+ *  unless set otherwise. The mask is uninstalled (every vocab entry
+ *  visible) until set_vocab_mask_for_stage() is called. */
+int nimcp_brain_set_active_stage(nimcp_brain_t brain, uint32_t stage);
+int nimcp_brain_get_active_stage(nimcp_brain_t brain, uint32_t* out_stage);
+int nimcp_brain_set_vocab_mask_for_stage(nimcp_brain_t brain, uint32_t stage);
+int nimcp_brain_clear_vocab_mask(nimcp_brain_t brain);
+/** Snapshot the stage table row for the requested stage. Any out-pointer
+ *  may be NULL. Out-of-range stage clamps to the highest defined row. */
+int nimcp_brain_get_stage_constraints(nimcp_brain_t brain,
+                                       uint32_t stage,
+                                       size_t* out_max_visible_vocab,
+                                       uint32_t* out_min_produce_words,
+                                       uint32_t* out_max_produce_words,
+                                       uint32_t* out_allowed_grammar_mask);
+
 /** Batch K — cascade lifetime telemetry counters. Snapshot + reset.
  *  `out` is zeroed and populated on success. Reset zeros every counter
  *  atomically (per-field; not transactional across fields). */

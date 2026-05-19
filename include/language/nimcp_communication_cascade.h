@@ -403,6 +403,23 @@ typedef struct {
     bool     cereb_prosody_bias_applied;
     float    cereb_motor_confidence;
     float    cereb_prosody_confidence;
+
+    /* === SLICE D — CASCADE SELF-TRAIN EXTERNAL-REWARD GATING (2026-05-19) ===
+     * Per-call tunables read by cascade_stage_self_train. The orchestrator
+     * copies brain->cascade_self_train_reward_threshold and
+     * brain->cascade_self_train_reward_ttl_us into these fields before
+     * invoking the stage. Zero (calloc default) means "use built-in
+     * fallback" (threshold=0.5, ttl_us=5,000,000 µs / 5s).
+     *
+     *   cascade_self_train_reward_threshold — reward must be >= this for
+     *       the self-train body to run. Negative-reward (punishment) is
+     *       always below threshold and never fires plasticity.
+     *   reward_ttl_us — staleness cutoff. (now - brain->last_external_reward_us)
+     *       must be <= ttl_us for the reward to count as "fresh".
+     *
+     * APPENDED at end of struct — ABI append-only; sentinel bumped below. */
+    float    cascade_self_train_reward_threshold;
+    uint64_t reward_ttl_us;
 } production_cascade_state_t;
 
 /* Walkthrough-4 audit M MEDIUM #6 — ABI size sentinels.
@@ -420,8 +437,8 @@ typedef struct {
  *
  * Computed on x86_64 Linux gcc with default packing. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(production_cascade_state_t) == 912,
-    "production_cascade_state_t ABI: size drifted from expected 912. "
+_Static_assert(sizeof(production_cascade_state_t) == 928,
+    "production_cascade_state_t ABI: size drifted from expected 928. "
     "Append-only on the struct; bump this literal in lockstep. "
     "Slice 3 (2026-05-18) appended 6 prediction-error fields (24 bytes) "
     "atop the 760-byte baseline → 784. Slice 7 (2026-05-18) appended "
@@ -435,7 +452,10 @@ _Static_assert(sizeof(production_cascade_state_t) == 912,
     "(2026-05-19) appended cereb_motor_bias_applied + "
     "cereb_prosody_bias_applied + cereb_motor_confidence + "
     "cereb_prosody_confidence (2 bools + 2 floats — packed into 8 bytes "
-    "via slot reuse in earlier trailing pad) → 912.");
+    "via slot reuse in earlier trailing pad) → 912. Slice D (2026-05-19) "
+    "appended cascade_self_train_reward_threshold (float, 4 bytes, "
+    "offset 912) + reward_ttl_us (uint64_t, requires 8-byte alignment so "
+    "4 bytes padding before, offset 920, 8 bytes) → 928.");
 #endif
 
 /**

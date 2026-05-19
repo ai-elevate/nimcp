@@ -6,6 +6,7 @@
 #include "snn/nimcp_snn_types.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "language/nimcp_communication_cascade.h"
+#include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 
 
 //=============================================================================
@@ -4722,6 +4723,138 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
     if (out_alpha)    *out_alpha    = b->cascade_self_train_alpha;
     if (out_lr_scale) *out_lr_scale = b->cascade_self_train_lr_scale;
     return NIMCP_OK;
+}
+
+/* === SLICE D — CASCADE SELF-TRAIN EXTERNAL-REWARD GATING (2026-05-19) ===
+ *
+ * The caregiver-critic / RL pipeline calls this setter on every external
+ * reward signal. The cascade's stage_self_train gates on the freshness +
+ * threshold of this value: stale or below-threshold reward → no plasticity.
+ *
+ * Clamps reward to [-1.0, +1.0] (matches CriticVerdict.reward contract).
+ * Stamps last_external_reward_us with the current monotonic_us so
+ * stage_self_train can compute (now - reward_us) > ttl_us. */
+int nimcp_brain_set_last_external_reward(nimcp_brain_t brain, float reward) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    if (!isfinite(reward)) return -1;
+    if (reward < -1.0f) reward = -1.0f;
+    if (reward >  1.0f) reward =  1.0f;
+    b->last_external_reward     = reward;
+    b->last_external_reward_us  = nimcp_time_monotonic_us();
+    return 0;
+}
+
+/* Slice D — extended tunables setter that also configures the reward
+ * threshold + TTL. Mirrors set_cascade_self_train_tunables but takes the
+ * two Slice-D fields. Callable via the RPC handler (see
+ * scripts/brain_daemon.py _cmd_set_cascade_self_train_tunables). Either
+ * argument as <= 0 leaves the brain's value unchanged (so the partial
+ * update path doesn't require the caller to know prior values). */
+nimcp_status_t nimcp_brain_set_cascade_self_train_reward_gating(
+        nimcp_brain_t brain,
+        float reward_threshold,
+        uint64_t reward_ttl_us) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (isfinite(reward_threshold) && reward_threshold > 0.0f) {
+        if (reward_threshold > 1.0f) reward_threshold = 1.0f;
+        b->cascade_self_train_reward_threshold = reward_threshold;
+    }
+    if (reward_ttl_us > 0) {
+        b->cascade_self_train_reward_ttl_us = reward_ttl_us;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cascade_self_train_gate_counters(
+        nimcp_brain_t brain,
+        uint64_t* out_skipped_stale,
+        uint64_t* out_skipped_below_threshold,
+        uint64_t* out_fired) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (out_skipped_stale) {
+        *out_skipped_stale = atomic_load_explicit(
+            &b->cascade_self_train_skipped_stale, memory_order_relaxed);
+    }
+    if (out_skipped_below_threshold) {
+        *out_skipped_below_threshold = atomic_load_explicit(
+            &b->cascade_self_train_skipped_below_threshold, memory_order_relaxed);
+    }
+    if (out_fired) {
+        *out_fired = atomic_load_explicit(
+            &b->cascade_self_train_fired, memory_order_relaxed);
+    }
+    return NIMCP_OK;
+}
+
+/*-----------------------------------------------------------------------------
+ * Slice E (Option-1 architectural rebuild) — public stage-scaffolding API.
+ *
+ * Returns 0 on success and -1 on invalid brain / missing internal brain so
+ * the daemon RPC can surface a simple OK/error without juggling
+ * nimcp_status_t enum names.
+ *---------------------------------------------------------------------------*/
+
+int nimcp_brain_set_active_stage(nimcp_brain_t brain, uint32_t stage) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    /* Clamp out-of-range stage to the highest defined row. The stage table
+     * itself does this internally on read, but stamping the field with a
+     * clamped value keeps trainer telemetry consistent. */
+    uint32_t max_s = stage_table_max_stage();
+    if (stage > max_s) stage = max_s;
+    b->current_stage = stage;
+    return 0;
+}
+
+int nimcp_brain_get_active_stage(nimcp_brain_t brain, uint32_t* out_stage) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    if (out_stage) *out_stage = b->current_stage;
+    return 0;
+}
+
+int nimcp_brain_set_vocab_mask_for_stage(nimcp_brain_t brain, uint32_t stage) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return -1;
+    uint32_t max_s = stage_table_max_stage();
+    if (stage > max_s) stage = max_s;
+    return grounded_language_set_active_vocab_mask(b->grounded_lang, stage);
+}
+
+int nimcp_brain_clear_vocab_mask(nimcp_brain_t brain) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return -1;
+    grounded_language_clear_active_vocab_mask(b->grounded_lang);
+    return 0;
+}
+
+int nimcp_brain_get_stage_constraints(nimcp_brain_t brain,
+                                       uint32_t stage,
+                                       size_t* out_max_visible_vocab,
+                                       uint32_t* out_min_produce_words,
+                                       uint32_t* out_max_produce_words,
+                                       uint32_t* out_allowed_grammar_mask) {
+    (void)brain;
+    /* Table lookup is brain-independent — we accept the brain handle so
+     * the API signature stays symmetric with the rest of the brain API,
+     * but the call itself is pure. */
+    const stage_constraints_t* sc = stage_table_get(stage);
+    if (!sc) sc = stage_table_default();
+    if (out_max_visible_vocab)    *out_max_visible_vocab    = sc->max_visible_vocab;
+    if (out_min_produce_words)    *out_min_produce_words    = (uint32_t)sc->min_produce_words;
+    if (out_max_produce_words)    *out_max_produce_words    = (uint32_t)sc->max_produce_words;
+    if (out_allowed_grammar_mask) *out_allowed_grammar_mask = sc->allowed_grammar_mask;
+    return 0;
 }
 
 /* Batch K — cascade lifetime counters public wrappers.

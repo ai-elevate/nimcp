@@ -3963,6 +3963,151 @@ static PyObject* Brain_get_cascade_self_train_state(BrainObject* self, PyObject*
     return d;
 }
 
+/* Slice D — set the external reward signal for cascade self-train gating.
+ * Callable from the caregiver-critic / RL pipeline via the brain daemon
+ * _cmd_set_last_external_reward RPC. Clamped [-1, +1]. */
+static PyObject* Brain_set_last_external_reward(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float reward = 0.0f;
+    if (!PyArg_ParseTuple(args, "f", &reward)) return NULL;
+    if (nimcp_brain_set_last_external_reward(self->brain, reward) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "set_last_external_reward failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Slice D — configure reward threshold + TTL. Mirrors the gating fields
+ * read by cascade_stage_self_train. Pass 0 (zero) for either argument to
+ * leave the brain's value unchanged (partial update). */
+static PyObject* Brain_set_cascade_self_train_reward_gating(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float    threshold = 0.0f;
+    uint64_t ttl_us    = 0;
+    /* "K" = unsigned long long → uint64_t */
+    if (!PyArg_ParseTuple(args, "fK", &threshold, &ttl_us)) return NULL;
+    if (nimcp_brain_set_cascade_self_train_reward_gating(self->brain,
+            threshold, ttl_us) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "set_cascade_self_train_reward_gating failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Slice D — snapshot the three gating counters as a dict. */
+static PyObject* Brain_get_cascade_self_train_gate_counters(BrainObject* self,
+                                                              PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    uint64_t stale = 0, below = 0, fired = 0;
+    if (nimcp_brain_get_cascade_self_train_gate_counters(self->brain,
+            &stale, &below, &fired) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "get_cascade_self_train_gate_counters failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "skipped_stale",
+                         PyLong_FromUnsignedLongLong((unsigned long long)stale));
+    PyDict_SetItemString(d, "skipped_below_threshold",
+                         PyLong_FromUnsignedLongLong((unsigned long long)below));
+    PyDict_SetItemString(d, "fired",
+                         PyLong_FromUnsignedLongLong((unsigned long long)fired));
+    return d;
+}
+
+/*===========================================================================
+ * Slice E (Option-1 architectural rebuild) — stage scaffolding bindings.
+ *=========================================================================*/
+
+static PyObject* Brain_set_active_stage(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage = 0;
+    if (!PyArg_ParseTuple(args, "I", &stage)) return NULL;
+    if (nimcp_brain_set_active_stage(self->brain, (uint32_t)stage) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "set_active_stage failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_active_stage(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    uint32_t stage = 0;
+    if (nimcp_brain_get_active_stage(self->brain, &stage) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "get_active_stage failed");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong((unsigned long)stage);
+}
+
+static PyObject* Brain_set_vocab_mask_for_stage(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage = 0;
+    if (!PyArg_ParseTuple(args, "I", &stage)) return NULL;
+    if (nimcp_brain_set_vocab_mask_for_stage(self->brain, (uint32_t)stage) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "set_vocab_mask_for_stage failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_clear_vocab_mask(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    if (nimcp_brain_clear_vocab_mask(self->brain) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "clear_vocab_mask failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_stage_constraints(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage = 0;
+    if (!PyArg_ParseTuple(args, "I", &stage)) return NULL;
+    size_t   max_visible_vocab    = 0;
+    uint32_t min_produce_words    = 0;
+    uint32_t max_produce_words    = 0;
+    uint32_t allowed_grammar_mask = 0;
+    if (nimcp_brain_get_stage_constraints(self->brain, (uint32_t)stage,
+            &max_visible_vocab, &min_produce_words,
+            &max_produce_words, &allowed_grammar_mask) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "get_stage_constraints failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "stage",
+                         PyLong_FromUnsignedLong((unsigned long)stage));
+    PyDict_SetItemString(d, "max_visible_vocab",
+                         PyLong_FromUnsignedLongLong(
+                            (unsigned long long)max_visible_vocab));
+    PyDict_SetItemString(d, "min_produce_words",
+                         PyLong_FromUnsignedLong((unsigned long)min_produce_words));
+    PyDict_SetItemString(d, "max_produce_words",
+                         PyLong_FromUnsignedLong((unsigned long)max_produce_words));
+    PyDict_SetItemString(d, "allowed_grammar_mask",
+                         PyLong_FromUnsignedLong((unsigned long)allowed_grammar_mask));
+    return d;
+}
+
 /* Batch K — cascade lifetime telemetry: snapshot + reset.
  *
  * get_cascade_counters() → dict with all atomic counters. Per-stage arrays
@@ -12691,6 +12836,23 @@ static PyMethodDef Brain_methods[] = {
      "Wave 2 Item #10: configure self-train EMA + lr scale — set_cascade_self_train_tunables(alpha: float, lr_scale: float) -> None. alpha ∈ [0,1] (0 freezes baseline), lr_scale ∈ [0,10] (0 disables plasticity)."},
     {"get_cascade_self_train_state", (PyCFunction)Brain_get_cascade_self_train_state, METH_NOARGS,
      "Wave 2 Item #10: read self-train state — returns {'enabled': bool, 'baseline': float, 'alpha': float, 'lr_scale': float}."},
+    {"set_last_external_reward", (PyCFunction)Brain_set_last_external_reward, METH_VARARGS,
+     "Slice D: set the most-recent external reward signal for cascade self-train gating — set_last_external_reward(reward: float) -> None. Clamped [-1, +1]. Cascade Stage 14 (self-train) reads brain->last_external_reward and gates plasticity on freshness (default 5s TTL) and threshold (default 0.5). Called by the caregiver-critic / RL pipeline."},
+    {"set_cascade_self_train_reward_gating", (PyCFunction)Brain_set_cascade_self_train_reward_gating, METH_VARARGS,
+     "Slice D: configure the self-train reward threshold + TTL — set_cascade_self_train_reward_gating(reward_threshold: float, reward_ttl_us: int) -> None. Either argument <= 0 leaves the brain's value unchanged. Defaults (0.5 threshold, 5,000,000 µs TTL) are applied in-stage when both fields remain calloc-zero."},
+    {"get_cascade_self_train_gate_counters", (PyCFunction)Brain_get_cascade_self_train_gate_counters, METH_NOARGS,
+     "Slice D: snapshot the three reward-gating counters — returns {'skipped_stale': int, 'skipped_below_threshold': int, 'fired': int}. Surfaced in lang_status under stats.cascade.self_train."},
+    /* Slice E (Option-1 rebuild) — developmental stage scaffolding. */
+    {"set_active_stage", (PyCFunction)Brain_set_active_stage, METH_VARARGS,
+     "Slice E: set the brain's current developmental stage — set_active_stage(stage: int) -> None. Out-of-range clamps to the highest defined row. Cascade Stage 9 (motor) reads this and enforces the stage table's min/max word-count window."},
+    {"get_active_stage", (PyCFunction)Brain_get_active_stage, METH_NOARGS,
+     "Slice E: read the brain's current developmental stage — returns int."},
+    {"set_vocab_mask_for_stage", (PyCFunction)Brain_set_vocab_mask_for_stage, METH_VARARGS,
+     "Slice E: install / refresh the per-stage lexicon visibility mask — set_vocab_mask_for_stage(stage: int) -> None. Only the first max_visible_vocab lexicon entries (in insertion order, a frequency proxy at the early curriculum) are visible for production."},
+    {"clear_vocab_mask", (PyCFunction)Brain_clear_vocab_mask, METH_NOARGS,
+     "Slice E: drop the active vocabulary mask — every lexicon entry becomes visible for production."},
+    {"get_stage_constraints", (PyCFunction)Brain_get_stage_constraints, METH_VARARGS,
+     "Slice E: snapshot the stage table row for a given stage — get_stage_constraints(stage: int) -> dict{'stage', 'max_visible_vocab', 'min_produce_words', 'max_produce_words', 'allowed_grammar_mask'}."},
     {"get_cascade_counters", (PyCFunction)Brain_get_cascade_counters, METH_NOARGS,
      "Batch K: snapshot cascade lifetime counters — returns a dict with total_runs, runs_with_prompt, runs_spontaneous, runs_fatal_error, stage_invocations[15], stage_mask_skips[15], stage_failures[15], plus per-event counters (pragmatics_indirect_overrides, wernicke_lexicon_miss, speech_repair_applied, self_train_steps_matched/no_bindings, self_produced_events_fired, discourse_ring_pushes_user/_self)."},
     {"reset_cascade_counters", (PyCFunction)Brain_reset_cascade_counters, METH_NOARGS,
