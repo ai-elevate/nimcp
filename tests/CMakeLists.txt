@@ -77,6 +77,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_snn_fno_recording
     test_lang_lateral_inhibition
     test_lang_thalamic_gates
+    test_concept_registry_binding
 )
 
 # Helper: register a single standalone-C test.

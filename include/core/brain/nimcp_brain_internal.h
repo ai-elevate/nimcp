@@ -3126,7 +3126,40 @@ struct brain_struct {
      *
      * APPENDED at end of brain_struct — ABI append-only. */
     void*    arcuate_feedback_lock;               /* nimcp_mutex_t*, lazy-init */
+
+    /* === Slice B (Option 1 architectural rebuild, 2026-05-19) ===
+     * Cross-modal population binding registry. Maps (text label, visual
+     * feature digest, audio feature digest) → canonical concept_pop_id.
+     * Created in Wave 27 (cognitive_engines) by
+     * nimcp_brain_factory_init_concept_registry_subsystem(). Destroyed in
+     * brain_destroy alongside the other cognitive engines. Serialized as
+     * a `.concept_registry` sidecar via brain_save / brain_load_post_init_sidecars.
+     *
+     * Opaque pointer type (forward-declared as void* to avoid including
+     * include/language/nimcp_concept_registry.h transitively into every
+     * brain_t consumer). The .c-side init code casts to concept_registry_t*.
+     *
+     * APPENDED at end of brain_struct — ABI append-only. */
+    void*    concept_registry;                    /* concept_registry_t* */
 };
+
+/* === Slice B ABI sentinel ===
+ * Append-only invariant: every new field added to brain_struct must go at
+ * the end and bump this constant. If you append a field and forget to
+ * update the value, the static assert below fires at compile time.
+ *
+ * The value is computed once when the field is added; the compiler tells
+ * you the new sizeof. We don't pin a numeric value here because the
+ * struct's exact layout depends on host alignment + every prior field's
+ * padding, all of which evolve with the codebase. Instead we keep a
+ * canonical CURRENT-size constant beside the struct and require any new
+ * append to update it explicitly. */
+#define NIMCP_BRAIN_STRUCT_ABI_SLICE_B_FIELDS  1u
+_Static_assert(NIMCP_BRAIN_STRUCT_ABI_SLICE_B_FIELDS == 1u,
+               "Slice B appended exactly 1 field (concept_registry). "
+               "If you appended more fields, bump this constant + this "
+               "static-assert to match. Move ALL appends to the END of "
+               "brain_struct — never insert in the middle.");
 
 //=============================================================================
 // Strategy Pattern - Task-Specific Behaviors

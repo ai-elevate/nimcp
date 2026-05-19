@@ -82,6 +82,7 @@
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "language/nimcp_concept_registry.h"  /* Slice B sidecar */
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "core/cortical_columns/nimcp_cortical_column_ternary.h"
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* substrate + thalamic attach */
@@ -1169,6 +1170,30 @@ bool brain_save(brain_t brain, const char* filepath)
             if (brain_kg_save((struct brain_kg*)brain->internal_kg, kg_path) != 0) {
                 fprintf(stderr, "[WARN] brain_kg_save failed for %s — "
                         "KG facts NOT persisted\n", kg_path);
+            }
+        }
+
+        /* Slice B (Option 1 architectural rebuild) — concept registry
+         * sidecar. Persists the cross-modal binding union-find + the
+         * text/visual/audio fingerprint tables so canonical pop_ids
+         * survive daemon restarts. Without this, every restart wipes
+         * the (image, label) → pop bindings the trainer has accumulated.
+         * Best-effort: missing sidecar is fine on pre-Slice-B checkpoints. */
+        if (brain->concept_registry) {
+            char cr_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(cr_path, sizeof(cr_path), "%s.concept_registry", filepath);
+            FILE* cr_fp = fopen(cr_path, "wb");
+            if (cr_fp) {
+                int cr_rc = concept_registry_save(
+                    (const concept_registry_t*)brain->concept_registry, cr_fp);
+                fclose(cr_fp);
+                if (cr_rc != 0) {
+                    fprintf(stderr, "[WARN] concept_registry_save failed for %s — "
+                            "cross-modal bindings NOT persisted\n", cr_path);
+                }
+            } else {
+                fprintf(stderr, "[WARN] could not open %s for write — "
+                        "concept registry NOT persisted\n", cr_path);
             }
         }
 
@@ -2344,6 +2369,31 @@ void brain_load_post_init_sidecars(brain_t brain)
     if (brain->loaded_from_path[0] == '\0') return;  /* fresh brain */
 
     const char* filepath = brain->loaded_from_path;
+
+    /* Slice B (Option 1 architectural rebuild) — concept registry sidecar.
+     * Restores the cross-modal binding union-find + fingerprint tables.
+     * Pre-Slice-B checkpoints won't have a .concept_registry file; the
+     * registry stays empty and bindings will accumulate from training
+     * onwards. */
+    if (brain->concept_registry) {
+        char cr_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(cr_path, sizeof(cr_path), "%s.concept_registry", filepath);
+        FILE* cr_fp = fopen(cr_path, "rb");
+        if (cr_fp) {
+            int cr_rc = concept_registry_load(
+                (concept_registry_t*)brain->concept_registry, cr_fp);
+            fclose(cr_fp);
+            if (cr_rc == 0) {
+                fprintf(stderr, "[INFO] Restored concept registry from %s\n", cr_path);
+            } else {
+                fprintf(stderr, "[WARN] concept_registry_load failed for %s — "
+                        "cross-modal bindings reset to empty\n", cr_path);
+            }
+        } else {
+            fprintf(stderr, "[INFO] no concept_registry sidecar at %s — "
+                    "starting cold\n", cr_path);
+        }
+    }
 
     /* Immune memory sidecar — restore B/T cells, antibodies, antigens.
      * Pre-Phase-B checkpoints won't have a .immune file; that's fine —

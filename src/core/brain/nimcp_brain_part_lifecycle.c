@@ -18,6 +18,7 @@
 #include "generation/nimcp_language_generator.h"
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
+#include "language/nimcp_concept_registry.h"  /* Slice B */
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "snn/bridges/nimcp_snn_speech_bridge.h"
 #include "snn/bridges/nimcp_snn_audio_bridge.h"
@@ -942,6 +943,14 @@ void brain_destroy(brain_t brain)
     if (brain->imagination) {
         imagination_engine_destroy(brain->imagination);
         brain->imagination = NULL;
+    }
+
+    /* Slice B (Option 1 architectural rebuild) — concept registry.
+     * concept_registry_destroy is NULL-safe but we still gate to keep
+     * the read-after-free pattern symmetrical with the other engines. */
+    if (brain->concept_registry) {
+        concept_registry_destroy((concept_registry_t*)brain->concept_registry);
+        brain->concept_registry = NULL;
     }
 
     // Cleanup Collective Cognition

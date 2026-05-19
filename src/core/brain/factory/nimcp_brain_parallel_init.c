@@ -234,6 +234,8 @@ extern bool nimcp_brain_factory_init_swarm_module_registry_subsystem(brain_t bra
 
 // Wave 27: Cognitive engines (rcog, inner dialogue, reasoning, imagination)
 extern bool nimcp_brain_factory_init_rcog_engine_subsystem(brain_t brain);
+/* Slice B: cross-modal population binding registry. */
+extern bool nimcp_brain_factory_init_concept_registry_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_inner_dialogue_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_reasoning_engine_subsystem(brain_t brain);
 extern bool nimcp_brain_factory_init_imagination_subsystem(brain_t brain);
@@ -1085,6 +1087,10 @@ bool nimcp_brain_parallel_init_subsystems(brain_t brain, const brain_config_t* c
     tasks[n++] = TASK(nimcp_brain_factory_init_reasoning_engine_subsystem, "reasoning_engine");
     tasks[n++] = TASK(nimcp_brain_factory_init_imagination_subsystem, "imagination");
     tasks[n++] = TASK(nimcp_brain_factory_init_collective_cognition_subsystem, "collective_cognition");
+    /* Slice B (Option 1 architectural rebuild) — concept registry.
+     * Created in the cognitive_engines wave so it's available before any
+     * brain_learn_vector call. NULL-tolerant downstream. */
+    tasks[n++] = TASK(nimcp_brain_factory_init_concept_registry_subsystem, "concept_registry");
     if (!execute_wave(pool, &ctx, tasks, n, 27)) goto cleanup;
 
     // ========================================================================
