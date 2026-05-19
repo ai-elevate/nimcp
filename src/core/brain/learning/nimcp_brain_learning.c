@@ -3242,6 +3242,7 @@ sequential_training:
         (strstr(label, "counterfactual") || strstr(label, "imagination"))) {
         extern void* imagination_begin_scenario(void*, int, const void*);
         extern int imagination_step_scenario(void*, void*);
+        extern int imagination_end_scenario(void*, void*);
 
         /* Lightweight goal: just mode + priority, no tensor constraints */
         struct { int mode; void* t1; void* t2; void* t3; float p; uint64_t d; void* c; } goal = {0};
@@ -3254,6 +3255,10 @@ sequential_training:
             for (int sim = 0; sim < 3; sim++) {
                 imagination_step_scenario(brain->imagination, scenario);
             }
+            /* Workspace caps at 64 active scenarios. Without this release,
+             * every "counterfactual"/"imagination" label leaks a slot and
+             * after 64 labels begin_scenario throws "workspace full". */
+            imagination_end_scenario(brain->imagination, scenario);
         }
     }
 
