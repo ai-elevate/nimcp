@@ -7,6 +7,7 @@
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "language/nimcp_communication_cascade.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
+#include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
 
 
 //=============================================================================
@@ -335,6 +336,39 @@ float nimcp_brain_get_accuracy(nimcp_brain_t brain)
 {
     if (!brain || !brain->internal_brain) return 0.0F;
     return brain->internal_brain->stats.running_accuracy;
+}
+
+/* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — expose concept_registry
+ * stats so callers can observe whether the cross-modal bind hook is
+ * actually firing during training. Without this accessor, the registry's
+ * growth is invisible from outside the C library.
+ *
+ * Both out params are NULL-tolerant. Returns NIMCP_OK on success;
+ * NIMCP_ERROR_NULL_POINTER if brain is NULL; NIMCP_OK with zeroed
+ * out params if the registry was never created (older checkpoints
+ * loaded before the registry was a thing). */
+nimcp_status_t nimcp_brain_get_concept_registry_stats(
+    nimcp_brain_t brain,
+    size_t* total_referents,
+    size_t* total_modality_bindings)
+{
+    if (!brain || !brain->internal_brain) {
+        if (total_referents) *total_referents = 0;
+        if (total_modality_bindings) *total_modality_bindings = 0;
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    concept_registry_t* reg =
+        (concept_registry_t*)brain->internal_brain->concept_registry;
+    if (!reg) {
+        if (total_referents) *total_referents = 0;
+        if (total_modality_bindings) *total_modality_bindings = 0;
+        return NIMCP_OK;
+    }
+    if (total_referents)
+        *total_referents = concept_registry_total_referents(reg);
+    if (total_modality_bindings)
+        *total_modality_bindings = concept_registry_total_modality_bindings(reg);
+    return NIMCP_OK;
 }
 
 

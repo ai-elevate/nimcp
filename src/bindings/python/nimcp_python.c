@@ -4043,6 +4043,28 @@ static PyObject* Brain_get_cascade_self_train_gate_counters(BrainObject* self,
     return d;
 }
 
+/* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — concept_registry stats. */
+static PyObject* Brain_get_concept_registry_stats(BrainObject* self,
+                                                    PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    size_t total_referents = 0, total_modality_bindings = 0;
+    if (nimcp_brain_get_concept_registry_stats(self->brain,
+            &total_referents, &total_modality_bindings) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "get_concept_registry_stats failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "total_referents",
+                         PyLong_FromUnsignedLongLong((unsigned long long)total_referents));
+    PyDict_SetItemString(d, "total_modality_bindings",
+                         PyLong_FromUnsignedLongLong((unsigned long long)total_modality_bindings));
+    return d;
+}
+
 /*===========================================================================
  * Slice E (Option-1 architectural rebuild) — stage scaffolding bindings.
  *=========================================================================*/
@@ -12864,6 +12886,8 @@ static PyMethodDef Brain_methods[] = {
      "Slice D: configure the self-train reward threshold + TTL — set_cascade_self_train_reward_gating(reward_threshold: float, reward_ttl_us: int) -> None. Either argument <= 0 leaves the brain's value unchanged. Defaults (0.5 threshold, 5,000,000 µs TTL) are applied in-stage when both fields remain calloc-zero."},
     {"get_cascade_self_train_gate_counters", (PyCFunction)Brain_get_cascade_self_train_gate_counters, METH_NOARGS,
      "Slice D: snapshot the three reward-gating counters — returns {'skipped_stale': int, 'skipped_below_threshold': int, 'fired': int}. Surfaced in lang_status under stats.cascade.self_train."},
+    {"get_concept_registry_stats", (PyCFunction)Brain_get_concept_registry_stats, METH_NOARGS,
+     "Walkthrough-2: snapshot the cross-modal concept_registry — returns {'total_referents': int, 'total_modality_bindings': int}. Verifies the bind hook in brain_learn_vector is firing during training. Surfaced in lang_status under stats.concept_registry."},
     /* Slice E (Option-1 rebuild) — developmental stage scaffolding. */
     {"set_active_stage", (PyCFunction)Brain_set_active_stage, METH_VARARGS,
      "Slice E: set the brain's current developmental stage — set_active_stage(stage: int) -> None. Out-of-range clamps to the highest defined row. Cascade Stage 9 (motor) reads this and enforces the stage table's min/max word-count window."},

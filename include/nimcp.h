@@ -468,6 +468,27 @@ float nimcp_brain_get_last_gradient_norm(nimcp_brain_t brain);
 float nimcp_brain_get_accuracy(nimcp_brain_t brain);
 
 /**
+ * @brief Get cross-modal concept_registry stats (Option-1 rebuild).
+ *
+ * Returns how many distinct referents the brain has interned and how
+ * many cross-modal bindings have been recorded. Useful for verifying
+ * the bind hook in brain_learn_vector is actually firing during
+ * training. Both out params are NULL-tolerant.
+ *
+ * Returns NIMCP_OK on success (counters populated). NIMCP_OK with both
+ * params zeroed if the brain was created without a concept_registry
+ * (older brains loaded from pre-Slice-B checkpoints).
+ *
+ * @param brain                     Brain handle
+ * @param total_referents           [out] count of unique interned referents
+ * @param total_modality_bindings   [out] count of bind_modalities calls
+ */
+nimcp_status_t nimcp_brain_get_concept_registry_stats(
+    nimcp_brain_t brain,
+    size_t* total_referents,
+    size_t* total_modality_bindings);
+
+/**
  * @brief Make a decision/prediction
  *
  * @param brain Brain handle

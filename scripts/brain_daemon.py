@@ -2366,6 +2366,19 @@ class BrainService:
                 "fired":                   int(gate.get("fired", 0)),
             },
         }
+        # Walkthrough-2 — cross-modal concept_registry stats (Slice B).
+        # Surfaced so callers can verify the bind hook in brain_learn_vector
+        # is actually firing during training. Graceful on older builds.
+        try:
+            reg = self.brain.get_concept_registry_stats()
+        except AttributeError:
+            reg = {"total_referents": 0, "total_modality_bindings": 0}
+        except Exception:
+            reg = {"total_referents": 0, "total_modality_bindings": 0}
+        stats["concept_registry"] = {
+            "total_referents":         int(reg.get("total_referents", 0)),
+            "total_modality_bindings": int(reg.get("total_modality_bindings", 0)),
+        }
         decode = {
             "total_calls":          decode_calls,
             "total_ns":             decode_ns,
