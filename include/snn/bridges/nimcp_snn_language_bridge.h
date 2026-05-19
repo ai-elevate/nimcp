@@ -166,7 +166,7 @@ typedef struct {
     float    decay_rate;           // Per-step activation decay
     float    spike_blend;          // Spike vs vector blend [0=all vector, 1=all spike]
     bool     enable_da_modulation; // Dopamine-gated three-factor learning
-    float    da_modulation_gain;   // DA → LR scaling
+    float    da_modulation_gain;   // DA → LR scaling (Slice F: [-200, +200])
     bool     enable_imagination;   // Wire imagination SNN output to word selection
     bool     enable_curiosity;     // Wire curiosity SNN to lexical exploration
     bool     enable_sleep_consolidation; // Enable binding replay during sleep
@@ -407,6 +407,17 @@ typedef struct {
     float    lateral_gain_self;              /* default 1.5  */
     float    lateral_gain_inhibit;           /* default 0.026f ~= 0.8/(32-1) */
     uint32_t lateral_micro_steps;            /* default 20   */
+    /* Slice F (2026-05-19) — anti-Hebbian punishment lower bound on
+     * da_modulation_gain. Default -200.0f (set by snn_lang_config_default)
+     * permits the full negative range. Set to 0.0f at deploy time to
+     * disable punishment without disabling reward. Set to a larger negative
+     * value to cap punishment intensity per deploy.
+     *
+     * APPEND-ONLY: this field stays at the end of snn_lang_config_t. Zero
+     * is a benign default for memset(0)-style callers (matches the legacy
+     * "no negative gain" behavior — the setter clamps gain to [da_min, +200]
+     * so da_min=0 effectively means "no punishment"). */
+    float    da_min;
 } snn_lang_config_t;
 
 /** Word decode result */
@@ -1157,11 +1168,17 @@ int snn_language_bridge_set_comprehend_stdp_enabled(
 bool snn_language_bridge_get_comprehend_stdp_enabled(
     const snn_language_bridge_t* bridge);
 
-/** TA-3: tune the DA → LR scaling.
+/** TA-3 + Slice F: tune the DA → LR scaling.
  *
- * Caps gain to [0, 200] to prevent pathological multipliers when DA
- * spikes (DA in [0,1] × gain × base_lr). gain=0 disables modulation
- * even when the enable flag is true (multiplier is always 1.0). */
+ * Caps gain to [da_min, +200] where da_min is a runtime tunable
+ * (default -200.0f). Positive gain implements classical reward-modulated
+ * STDP (modulation = 1 + DA × gain ≥ 1). Negative gain implements
+ * anti-Hebbian punishment: when |DA × gain| > 1 the multiplier flips
+ * sign, turning LTP into LTD. Synaptic w_min (typically 0.0) prevents
+ * weights crossing zero.
+ *
+ * gain=0 disables modulation (multiplier always 1.0) even when the
+ * enable flag is true. NaN is rejected with -1. */
 int snn_language_bridge_set_da_modulation_gain(
     snn_language_bridge_t* bridge,
     float gain);
@@ -1458,9 +1475,10 @@ int snn_language_bridge_predict_sensory(
  * see the ABI delta. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #include <stddef.h>
-_Static_assert(sizeof(snn_lang_config_t) == 188,
-    "snn_lang_config_t ABI: size drifted from expected 188 bytes. "
-    "Append-only on the struct; bump this literal in lockstep.");
+_Static_assert(sizeof(snn_lang_config_t) == 192,
+    "snn_lang_config_t ABI: size drifted from expected 192 bytes. "
+    "Append-only on the struct; bump this literal in lockstep. "
+    "Slice F (2026-05-19) appended `da_min` float (+4 bytes) -> 192.");
 _Static_assert(sizeof(snn_lang_stats_t) == 296,
     "snn_lang_stats_t ABI: size drifted from expected 296 bytes. "
     "Append-only on the struct; bump this literal in lockstep. "

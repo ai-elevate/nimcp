@@ -195,20 +195,28 @@ static void test_high_dopamine_amplifies(void)
 static void test_setter_validation(void)
 {
     snn_lang_config_t cfg = default_cfg();
+    /* Slice F: explicitly opt into negative-gain punishment so the
+     * clamp range here matches snn_lang_config_default()'s -200..+200. */
+    cfg.da_min = -200.0f;
     snn_language_bridge_t* b = snn_language_bridge_create(&cfg);
     EXPECT(b != NULL, "create");
     if (!b) return;
 
     EXPECT(snn_language_bridge_set_da_modulation_gain(b, NAN) == -1,
            "NaN gain rejected");
-    EXPECT(snn_language_bridge_set_da_modulation_gain(b, -1.0f) == -1,
-           "negative gain rejected");
+    /* Slice F: negative gain is now ACCEPTED (anti-Hebbian punishment).
+     * The setter clamps to [da_min, +200] so -1.0f passes through verbatim. */
+    EXPECT(snn_language_bridge_set_da_modulation_gain(b, -1.0f) == 0,
+           "negative gain accepted (Slice F: anti-Hebbian punishment)");
     EXPECT(snn_language_bridge_set_da_modulation_gain(b, 0.0f) == 0,
            "0 gain accepted");
     EXPECT(snn_language_bridge_set_da_modulation_gain(b, 50.0f) == 0,
            "50 gain accepted");
     EXPECT(snn_language_bridge_set_da_modulation_gain(b, 999.0f) == 0,
            "999 gain accepted (clamped)");
+    /* Slice F: gain below da_min is clamped, not rejected. */
+    EXPECT(snn_language_bridge_set_da_modulation_gain(b, -999.0f) == 0,
+           "-999 gain accepted (clamped to da_min)");
 
     /* NULL bridge handled gracefully. */
     EXPECT(snn_language_bridge_set_da_modulation_enabled(NULL, true) == -1,

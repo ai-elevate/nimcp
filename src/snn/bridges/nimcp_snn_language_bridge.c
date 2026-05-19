@@ -18,6 +18,7 @@
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/math/nimcp_math_helpers.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -373,7 +374,11 @@ snn_lang_config_t snn_lang_config_default(void)
         .enable_lateral_inhibition  = false,
         .lateral_gain_self          = 1.5f,
         .lateral_gain_inhibit       = 0.026f,  /* ~ 0.8 / (32 - 1) */
-        .lateral_micro_steps        = 20
+        .lateral_micro_steps        = 20,
+        /* Slice F: lower bound on da_modulation_gain. Default -200.0f
+         * permits full anti-Hebbian punishment range. Set to 0.0f at
+         * deploy time to disable punishment without disabling reward. */
+        .da_min                     = -200.0f
     };
     return config;
 }
@@ -1196,11 +1201,15 @@ int snn_language_bridge_apply_stdp(snn_language_bridge_t* bridge,
      * actually reaching the binding loop. */
     float da_modulation = 1.0f;
     if (bridge->config.enable_da_modulation && bridge->neuromod &&
-        bridge->config.da_modulation_gain > 0.0f) {
+        bridge->config.da_modulation_gain != 0.0f) {
         float da = neuromodulator_get_level(
             (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
-        /* Defensive: caller could feed back NaN/Inf via the system. */
-        if (isfinite(da) && da >= 0.0f) {
+        /* Defensive: caller could feed back NaN/Inf via the system.
+         * Slice F: negative DA is allowed (punishment), but NaN/Inf is not.
+         * The neuromod system itself clamps levels to [0, 1], so negative
+         * DA arrives via negative gain (modulation = 1 + DA × neg_gain),
+         * not via negative concentration. */
+        if (isfinite(da)) {
             da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
         }
         bridge->stats.da_gated_stdp_passes++;
@@ -3459,9 +3468,20 @@ int snn_language_bridge_set_da_modulation_gain(
     float gain)
 {
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (!isfinite(gain) || gain < 0.0f) return -1;
-    if (gain > 200.0f) gain = 200.0f;
-    bridge->config.da_modulation_gain = gain;
+    if (!isfinite(gain)) return -1;
+    /* Slice F: negative gain enables anti-Hebbian punishment.
+     * Lower bound is the runtime tunable da_min (default -200.0f).
+     * Upper bound is fixed at +200.0f. The asymmetry mirrors biology:
+     * reward bursts can be larger than DA dips below baseline.
+     *
+     * Three-factor STDP semantics under negative gain:
+     *   modulation = 1 + DA × gain
+     *   If gain < 0 and DA > 0, modulation < 1; if |DA × gain| > 1,
+     *   modulation flips sign — LTP becomes LTD. Synaptic weight floor
+     *   w_min (typically 0) prevents weights going negative. */
+    float da_min = bridge->config.da_min;
+    if (!isfinite(da_min) || da_min > 0.0f) da_min = -200.0f;
+    bridge->config.da_modulation_gain = nimcp_clampf(gain, da_min, 200.0f);
     return 0;
 }
 
@@ -3583,13 +3603,14 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
         const float w_max = bridge->config.binding_w_max;
         const float tau_plus = bridge->config.stdp_tau_plus;
 
-        /* TA-3 — same DA modulation as snn_language_bridge_apply_stdp. */
+        /* TA-3 — same DA modulation as snn_language_bridge_apply_stdp.
+         * Slice F: gain may be negative for anti-Hebbian punishment. */
         float da_modulation = 1.0f;
         if (bridge->config.enable_da_modulation && bridge->neuromod &&
-            bridge->config.da_modulation_gain > 0.0f) {
+            bridge->config.da_modulation_gain != 0.0f) {
             float da = neuromodulator_get_level(
                 (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
-            if (isfinite(da) && da >= 0.0f) {
+            if (isfinite(da)) {
                 da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
             }
         }
@@ -3701,10 +3722,10 @@ int snn_language_bridge_echo_correct(
      * 1.0 (unchanged behaviour). */
     float da_modulation = 1.0f;
     if (bridge->config.enable_da_modulation && bridge->neuromod &&
-        bridge->config.da_modulation_gain > 0.0f) {
+        bridge->config.da_modulation_gain != 0.0f) {
         float da = neuromodulator_get_level(
             (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
-        if (isfinite(da) && da >= 0.0f) {
+        if (isfinite(da)) {
             da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
         }
     }
@@ -3715,8 +3736,11 @@ int snn_language_bridge_echo_correct(
      * tracked apply_stdp's reads and stayed at 1.0 even when echo_correct
      * was consuming non-trivial DA. The bumped multiplier replaces the
      * existing 1.0 sentinel only when non-trivial, so apply_stdp-only
-     * operators still see the apply_stdp value on top of echo's. */
-    if (da_modulation > 1.0f) {
+     * operators still see the apply_stdp value on top of echo's.
+     *
+     * Slice F: also surface punishment (modulation < 1.0 from negative
+     * gain) so the negative-DA reach is observable in telemetry. */
+    if (da_modulation > 1.0f || da_modulation < 1.0f) {
         bridge->stats.last_da_modulation = da_modulation;
     }
 
@@ -4198,6 +4222,10 @@ static void reset_persisted_knobs_to_defaults(snn_lang_config_t* cfg)
      * to library default on every load; trainer/RPC re-applies any
      * non-default value after the brain comes up. */
     cfg->ltd_margin               = defaults.ltd_margin;
+    /* Slice F: da_min is a new tail-of-struct field. V2 blobs predate it,
+     * so we'd read garbage from past-EOF padding. Force the library
+     * default; trainer/RPC re-applies any custom value. */
+    cfg->da_min                   = defaults.da_min;
 }
 
 /* V5 stats trailer — 30 cumulative counters written after the bindings
@@ -4452,6 +4480,12 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
         config.beam_length_norm_alpha   = cfg_defaults.beam_length_norm_alpha;
         /* Runtime-only knob, not in the ext block — reset to default. */
         config.ltd_margin               = cfg_defaults.ltd_margin;
+        /* Slice F: da_min is a new tail-of-struct field. V3/V4 saves
+         * predate it and would carry undefined bytes there; even V5+ saves
+         * roundtrip it via the struct blob but the ext block isn't extended
+         * for it (operator re-applies via RPC). Always reset to library
+         * default; trainer/RPC re-applies any custom value on resume. */
+        config.da_min                   = cfg_defaults.da_min;
         uint32_t ext_block_size = 0;
         if (fread(&ext_block_size, sizeof(uint32_t), 1, f) != 1) {
             fclose(f);

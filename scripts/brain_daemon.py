@@ -2157,7 +2157,12 @@ class BrainService:
         return result
 
     def _cmd_set_da_modulation_gain(self, req):
-        """TA-3: tune the DA → LR scaling. Clamped [0, 200].
+        """TA-3 + Slice F: tune the DA → LR scaling. Clamped [-200, +200].
+
+        Slice F: negative gain enables anti-Hebbian punishment (LTD when
+        the three-factor product is positive). The C-side setter clamps
+        to the bridge's runtime `da_min` (default -200.0f) on the low end
+        and +200.0f on the high end. NaN is rejected.
 
         Audit-2 B4: returns the effective (post-clamp) value, not the
         request, so callers see what actually got applied.
