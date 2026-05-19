@@ -2109,6 +2109,10 @@ class BrainService:
 
         Bridge-side DA gain scaled the now-removed bridge STDP loop.
         DA modulation as a concept moves to SNN neuromod (Slice F).
+        Slice F's negative-DA semantics live on the SNN-side three-factor
+        STDP: dw = lr * pre * post * (1 + DA × gain). Negative gain inverts
+        the update sign at sufficient DA — anti-Hebbian punishment. The
+        bridge setter here is a no-op shim retained for old callers.
         """
         _ = req
         return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}

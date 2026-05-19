@@ -81,6 +81,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_snn_bridge_plumbing_only
     test_concept_registry_binding
     test_lang_stage_scaffolding
+    test_snn_negative_da
 )
 
 # Helper: register a single standalone-C test.
