@@ -4476,8 +4476,15 @@ int grounded_language_learn_next_token_pair(grounded_language_t* gl,
 
     /* LTP on (c, next_word_pop) — pull the target word toward the prefix's
      * concept activation profile. Active-only: skip near-zero concepts so
-     * we don't waste a binding on noise. The activation threshold mirrors
-     * the existing 0.05 heuristic used elsewhere in the bridge. */
+     * we don't waste a binding on noise.
+     *
+     * Walkthrough-2 (Option-1 rebuild, 2026-05-19): under the rebuild the
+     * bridge is transport-only — `strengthen_binding` is a no-op stub.
+     * This loop still runs; calls return success but no learning happens
+     * here. Next-token learning needs to migrate to SNN-side three-factor
+     * STDP on projection synapses (deferred walkthrough). Durable lexicon
+     * binding strengths are still updated via `lexicon_bind` on the
+     * concept-grounding path, which is independent of these calls. */
     const float ltp_threshold = 0.05f;
     for (uint32_t c = 0; c < n_concepts; c++) {
         if (concept_acts[c] > ltp_threshold) {
