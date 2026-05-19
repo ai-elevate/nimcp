@@ -13,6 +13,7 @@
 #include "language/nimcp_grounded_language.h"
 #include "language/nimcp_grounded_language_internal.h"
 #include "language/nimcp_bigram_spectrum.h"
+#include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 
 /* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
  * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
@@ -1682,6 +1683,12 @@ void grounded_language_destroy(grounded_language_t* gl) {
     for (uint8_t t = 0; t < GL_DISCOURSE_MAX_TURNS; t++) {
         nimcp_free(gl->discourse.turns[t].semantic_vector);
     }
+
+    /* Slice E — vocab visibility mask (heap-owned). May be NULL when no
+     * stage has been activated. */
+    nimcp_free(gl->vocab_active_mask);
+    gl->vocab_active_mask = NULL;
+    gl->vocab_active_mask_capacity = 0;
 
     nimcp_free(gl);
 }
@@ -6652,4 +6659,225 @@ gl_lexicon_entry_t* gl_internal_lexicon_find_or_create(
     const char* word) {
     if (!gl || !word) return NULL;
     return lexicon_find_or_create(gl, word);
+}
+
+/*=============================================================================
+ * Slice E (Option-1 rebuild) — developmental-stage vocab mask implementation.
+ *
+ * The mask lives on the grounded_language struct as a heap-owned bool[].
+ * Capacity grows monotonically with vocab_count. Indices align with
+ * vocab_list[], so reading mask[i] is O(1).
+ *===========================================================================*/
+
+/* Ensure the mask array can index up to `needed` entries. Grows by a 1.5x
+ * factor on each resize so callers that incrementally insert vocabulary
+ * after install pay amortized O(1) per insert. New slots default to
+ * VISIBLE so newly-learned vocabulary doesn't get silently hidden by an
+ * older mask (the trainer can rerun set_active_vocab_mask to re-apply
+ * the cap if needed). Returns 0 on success, -1 on alloc failure. */
+static int gl_vocab_mask_ensure_capacity(grounded_language_t* gl,
+                                          uint32_t needed) {
+    if (!gl) return -1;
+    if (gl->vocab_active_mask_capacity >= needed) return 0;
+
+    uint32_t new_cap = gl->vocab_active_mask_capacity;
+    if (new_cap < 64u) new_cap = 64u;
+    while (new_cap < needed) {
+        /* 1.5x growth, saturating */
+        uint64_t bumped = (uint64_t)new_cap + (uint64_t)(new_cap >> 1);
+        if (bumped > 0xFFFFFFFFu) {
+            new_cap = needed;
+            break;
+        }
+        new_cap = (uint32_t)bumped;
+    }
+
+    bool* fresh;
+    if (gl->vocab_active_mask) {
+        fresh = (bool*)nimcp_realloc(gl->vocab_active_mask,
+                                      new_cap * sizeof(bool));
+    } else {
+        fresh = (bool*)nimcp_calloc(new_cap, sizeof(bool));
+    }
+    if (!fresh) return -1;
+
+    /* Default newly-allocated tail to "visible". For a realloc the old
+     * region keeps its values; only the new tail needs initialization. */
+    for (uint32_t i = gl->vocab_active_mask_capacity; i < new_cap; i++) {
+        fresh[i] = true;
+    }
+
+    gl->vocab_active_mask = fresh;
+    gl->vocab_active_mask_capacity = new_cap;
+    return 0;
+}
+
+int grounded_language_set_active_vocab_mask(grounded_language_t* gl,
+                                              uint32_t stage) {
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_set_active_vocab_mask: NULL gl");
+        return -1;
+    }
+
+    const stage_constraints_t* sc = stage_table_get(stage);
+    if (!sc) {
+        /* stage_table_get clamps, so this is defensive only. */
+        sc = stage_table_default();
+    }
+
+    /* "Unlimited" max_visible_vocab → mask every entry visible. We still
+     * record the stage so future grow-events apply consistent defaults. */
+    const bool unlimited = (sc->max_visible_vocab >= (size_t)UINT32_MAX);
+    uint32_t cap = gl->vocab_count;
+    if (cap == 0u) cap = 64u;  /* pre-allocate so first lexicon insert has space */
+
+    gl_mutate_lock(gl);
+    if (gl_vocab_mask_ensure_capacity(gl, cap) != 0) {
+        gl_mutate_unlock(gl);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_set_active_vocab_mask: alloc failed");
+        return -1;
+    }
+
+    if (unlimited) {
+        for (uint32_t i = 0; i < gl->vocab_active_mask_capacity; i++) {
+            gl->vocab_active_mask[i] = true;
+        }
+    } else {
+        uint32_t cutoff = (sc->max_visible_vocab > (size_t)UINT32_MAX)
+                              ? UINT32_MAX
+                              : (uint32_t)sc->max_visible_vocab;
+        for (uint32_t i = 0; i < gl->vocab_active_mask_capacity; i++) {
+            gl->vocab_active_mask[i] = (i < cutoff);
+        }
+    }
+    gl->vocab_active_mask_stage = stage;
+    gl_mutate_unlock(gl);
+    return 0;
+}
+
+void grounded_language_clear_active_vocab_mask(grounded_language_t* gl) {
+    if (!gl) return;
+    gl_mutate_lock(gl);
+    nimcp_free(gl->vocab_active_mask);
+    gl->vocab_active_mask = NULL;
+    gl->vocab_active_mask_capacity = 0u;
+    gl->vocab_active_mask_stage = 0u;
+    gl_mutate_unlock(gl);
+}
+
+bool grounded_language_vocab_index_visible(const grounded_language_t* gl,
+                                            uint32_t idx) {
+    if (!gl) return true;
+    /* No mask installed → everything is visible. */
+    if (!gl->vocab_active_mask) return true;
+    /* Index out of mask range → default visible (the mask doesn't cover
+     * this entry yet — either it's a newly-added vocab item or the mask
+     * is stale w.r.t. the lexicon. Either way, don't deny.). */
+    if (idx >= gl->vocab_active_mask_capacity) return true;
+    return gl->vocab_active_mask[idx];
+}
+
+/* Helper: find the vocab_list index of a given surface form (case-
+ * insensitive). Returns UINT32_MAX when not found. */
+static uint32_t gl_vocab_list_index_of(const grounded_language_t* gl,
+                                        const char* form) {
+    if (!gl || !form || !gl->vocab_list) return UINT32_MAX;
+    /* Walk vocab_list — N is small in the early curriculum where the
+     * mask is most useful. We don't have a form→index map. */
+    char lower[GL_MAX_WORD_LEN];
+    lowercase_word(form, lower, GL_MAX_WORD_LEN);
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[i];
+        if (!e) continue;
+        if (strcmp(e->form, lower) == 0) return i;
+    }
+    return UINT32_MAX;
+}
+
+uint32_t grounded_language_filter_production_by_mask(
+    grounded_language_t* gl,
+    gl_production_result_t* result) {
+    if (!gl || !result || !result->text || result->word_count == 0) return 0u;
+    /* No mask → nothing to filter. */
+    if (!gl->vocab_active_mask) return 0u;
+
+    /* Tokenize result->text in place into pointers, filter, re-join.
+     * We strdup first so we can rewrite the original buffer without
+     * tripping the strtok_r aliasing. */
+    size_t tlen = strlen(result->text);
+    char* dup = (char*)nimcp_malloc(tlen + 1u);
+    if (!dup) return 0u;
+    memcpy(dup, result->text, tlen + 1u);
+
+    /* Worst case: every byte becomes a token boundary (impossible but
+     * defensive). Cap at word_count for the kept pointer array. */
+    enum { GL_FILTER_MAX_TOKENS = 256 };
+    const char* survive[GL_FILTER_MAX_TOKENS];
+    uint32_t survive_count = 0;
+    uint32_t dropped = 0;
+
+    char* saveptr = NULL;
+    char* tok = strtok_r(dup, " \t\n\r", &saveptr);
+    while (tok && survive_count < GL_FILTER_MAX_TOKENS) {
+        gl_mutate_lock(gl);
+        uint32_t idx = gl_vocab_list_index_of(gl, tok);
+        bool keep;
+        if (idx == UINT32_MAX) {
+            /* Unknown surface form — DEFAULT KEEP. The lexicon hasn't
+             * grounded this token; mask doesn't apply. The cascade's
+             * downstream stages decide whether to drop. */
+            keep = true;
+        } else if (idx >= gl->vocab_active_mask_capacity) {
+            keep = true;
+        } else {
+            keep = gl->vocab_active_mask[idx];
+        }
+        gl_mutate_unlock(gl);
+
+        if (keep) {
+            survive[survive_count++] = tok;
+        } else {
+            dropped++;
+        }
+        tok = strtok_r(NULL, " \t\n\r", &saveptr);
+    }
+
+    /* Defensive: if every token was masked out, leave the result alone
+     * (return dropped count so the caller can react). */
+    if (survive_count == 0u) {
+        nimcp_free(dup);
+        return dropped;
+    }
+    /* If nothing was dropped, we wasted some cycles but the text stays
+     * the same. */
+    if (dropped == 0u) {
+        nimcp_free(dup);
+        return 0u;
+    }
+
+    /* Rejoin the survivors with single-space separators. The new buffer
+     * is strictly shorter than the original (at least one token gone +
+     * its separator), so we reuse the original allocation. */
+    size_t need = 0;
+    for (uint32_t i = 0; i < survive_count; i++) {
+        need += strlen(survive[i]);
+        if (i + 1u < survive_count) need += 1u;  /* separator */
+    }
+    /* Need + 1 NUL ≤ tlen + 1 since we dropped at least one token. */
+    char* w = result->text;
+    for (uint32_t i = 0; i < survive_count; i++) {
+        size_t slen = strlen(survive[i]);
+        memcpy(w, survive[i], slen);
+        w += slen;
+        if (i + 1u < survive_count) {
+            *w++ = ' ';
+        }
+    }
+    *w = '\0';
+    result->word_count = survive_count;
+
+    nimcp_free(dup);
+    return dropped;
 }

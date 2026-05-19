@@ -663,6 +663,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
      *   [f32 cascade_self_train_alpha]
      *   [f32 cascade_self_train_lr_scale]
      *   [u8  respond_via_cascade]      <-- appended 2026-05-12
+     *   [u32 current_stage]            <-- appended 2026-05-19 (Slice E)
      *
      * Older readers seek past unknown trailing bytes via block_size.
      * Pre-LANG readers hit EOF before the sentinel and skip cleanly —
@@ -670,9 +671,11 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     {
         const uint32_t lang_sentinel = 0x4C414E47u;  /* "LANG" */
         const uint32_t lang_block_size =
-            sizeof(uint8_t) + sizeof(float) * 3u + sizeof(uint8_t);
+            sizeof(uint8_t) + sizeof(float) * 3u +
+            sizeof(uint8_t) + sizeof(uint32_t);   /* + current_stage */
         uint8_t st_enabled = brain->cascade_self_train_enabled ? 1u : 0u;
         uint8_t rvc_enabled = brain->respond_via_cascade ? 1u : 0u;
+        uint32_t cur_stage = brain->current_stage;  /* Slice E */
         fwrite(&lang_sentinel,   sizeof(uint32_t), 1, meta_file);
         fwrite(&lang_block_size, sizeof(uint32_t), 1, meta_file);
         fwrite(&st_enabled,                            sizeof(uint8_t), 1, meta_file);
@@ -680,6 +683,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         fwrite(&brain->cascade_self_train_alpha,       sizeof(float),   1, meta_file);
         fwrite(&brain->cascade_self_train_lr_scale,    sizeof(float),   1, meta_file);
         fwrite(&rvc_enabled,                           sizeof(uint8_t), 1, meta_file);
+        fwrite(&cur_stage,                             sizeof(uint32_t), 1, meta_file);
     }
 
     fclose(meta_file);
@@ -1852,6 +1856,16 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                     uint8_t rvc_enabled = 0;
                     if (fread(&rvc_enabled, sizeof(uint8_t), 1, meta_file) == 1) {
                         brain->respond_via_cascade = (rvc_enabled != 0);
+                    }
+                }
+                /* Slice E (2026-05-19) — current_stage tail. Optional u32
+                 * appended after rvc; older writers stopped at rvc and
+                 * we leave current_stage at the calloc-zero default. */
+                if (lang_block_size >= sizeof(uint8_t) + sizeof(float) * 3u
+                                       + sizeof(uint8_t) + sizeof(uint32_t)) {
+                    uint32_t cur_stage = 0;
+                    if (fread(&cur_stage, sizeof(uint32_t), 1, meta_file) == 1) {
+                        brain->current_stage = cur_stage;
                     }
                 }
                 /* Forward-compat: skip past any trailing bytes a newer

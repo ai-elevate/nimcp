@@ -2688,6 +2688,80 @@ grounded_language_t* grounded_language_load(
     const char* path,
     void* semantic_memory);
 
+/*=============================================================================
+ * Slice E (Option-1 rebuild) — developmental-stage vocab mask.
+ *
+ * The mask is a per-entry visibility bitmap over the lexicon: entries
+ * vocab_list[0..N) are visible for production iff mask[i] == true. When
+ * no mask is installed (the default), every entry is visible.
+ *
+ * `grounded_language_set_active_vocab_mask(stage)` installs / refreshes a
+ * mask sized to the lexicon's current vocab_count. The first
+ * stage_table_get(stage)->max_visible_vocab entries (in insertion order
+ * — a frequency proxy for the early curriculum) become visible; the
+ * rest are masked. The mask reflects insertion-order frequency at the
+ * time of the call; new entries added after installation are appended as
+ * visible (so newly-learned vocabulary doesn't get hidden by an older
+ * mask).
+ *
+ * `grounded_language_clear_active_vocab_mask` frees the mask. After this
+ * every entry is visible again — equivalent to "no constraints".
+ *
+ * `grounded_language_filter_production` rewrites a freshly-produced
+ * gl_production_result_t in place, dropping words whose lexicon index
+ * is masked out. Word_count is updated to reflect the surviving tokens.
+ * Returns the number of words dropped.
+ *=============================================================================*/
+
+/**
+ * @brief Install / refresh a stage-derived vocabulary mask.
+ *
+ * Indexed against the current lexicon insertion order. The first N entries
+ * (where N = stage_table_get(stage)->max_visible_vocab, clamped to the
+ * current vocab_count) are marked visible; the rest are masked.
+ *
+ * Calling this with a stage whose max_visible_vocab is SIZE_MAX leaves
+ * every entry visible (equivalent to clearing the mask). The function
+ * still records the stage so subsequent grow events extend correctly.
+ *
+ * @return 0 on success, -1 on alloc failure or NULL gl.
+ */
+int grounded_language_set_active_vocab_mask(grounded_language_t* gl,
+                                              uint32_t stage);
+
+/**
+ * @brief Clear the active vocabulary mask. Idempotent.
+ */
+void grounded_language_clear_active_vocab_mask(grounded_language_t* gl);
+
+/**
+ * @brief Predicate: is the lexicon entry at vocab_list[idx] visible?
+ *
+ * Returns true when no mask is installed OR when idx is out of range
+ * (defensive: don't deny entries the mask doesn't cover) OR when
+ * mask[idx] is true.
+ */
+bool grounded_language_vocab_index_visible(const grounded_language_t* gl,
+                                            uint32_t idx);
+
+/**
+ * @brief Strip masked-out tokens from a production result in place.
+ *
+ * Tokens are matched against the lexicon by surface form (case-insensitive
+ * lookup); tokens that don't resolve to any lexicon entry are left as-is
+ * (defensive: we never silently drop unknown surface forms — the cascade
+ * sees them and decides). The result's text buffer is rewritten with the
+ * surviving tokens joined by single spaces; word_count is updated to the
+ * surviving count. If every token is masked out, the result is left as a
+ * single space-separated string of the same content with word_count
+ * unchanged — the cascade's downstream stages decide how to recover.
+ *
+ * Returns the number of words dropped (>= 0).
+ */
+uint32_t grounded_language_filter_production_by_mask(
+    grounded_language_t* gl,
+    gl_production_result_t* result);
+
 #ifdef __cplusplus
 }
 #endif
