@@ -46347,6 +46347,266 @@ test_lang_config_persist/fast:
 	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_config_persist.dir/build.make tests/CMakeFiles/test_lang_config_persist.dir/build
 .PHONY : test_lang_config_persist/fast
 
+#=============================================================================
+# Target rules for targets named test_lang_consumer_events
+
+# Build rule for target.
+test_lang_consumer_events: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_consumer_events
+.PHONY : test_lang_consumer_events
+
+# fast build rule for target.
+test_lang_consumer_events/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_consumer_events.dir/build.make tests/CMakeFiles/test_lang_consumer_events.dir/build
+.PHONY : test_lang_consumer_events/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_subword_oov
+
+# Build rule for target.
+test_lang_subword_oov: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_subword_oov
+.PHONY : test_lang_subword_oov
+
+# fast build rule for target.
+test_lang_subword_oov/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_subword_oov.dir/build.make tests/CMakeFiles/test_lang_subword_oov.dir/build
+.PHONY : test_lang_subword_oov/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_coref
+
+# Build rule for target.
+test_lang_coref: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_coref
+.PHONY : test_lang_coref
+
+# fast build rule for target.
+test_lang_coref/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_coref.dir/build.make tests/CMakeFiles/test_lang_coref.dir/build
+.PHONY : test_lang_coref/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_cascade_self_train
+
+# Build rule for target.
+test_lang_cascade_self_train: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_cascade_self_train
+.PHONY : test_lang_cascade_self_train
+
+# fast build rule for target.
+test_lang_cascade_self_train/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_cascade_self_train.dir/build.make tests/CMakeFiles/test_lang_cascade_self_train.dir/build
+.PHONY : test_lang_cascade_self_train/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_cascade_self_train_gated
+
+# Build rule for target.
+test_lang_cascade_self_train_gated: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_cascade_self_train_gated
+.PHONY : test_lang_cascade_self_train_gated
+
+# fast build rule for target.
+test_lang_cascade_self_train_gated/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_cascade_self_train_gated.dir/build.make tests/CMakeFiles/test_lang_cascade_self_train_gated.dir/build
+.PHONY : test_lang_cascade_self_train_gated/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_cascade_orchestrator
+
+# Build rule for target.
+test_lang_cascade_orchestrator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_cascade_orchestrator
+.PHONY : test_lang_cascade_orchestrator
+
+# fast build rule for target.
+test_lang_cascade_orchestrator/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_cascade_orchestrator.dir/build.make tests/CMakeFiles/test_lang_cascade_orchestrator.dir/build
+.PHONY : test_lang_cascade_orchestrator/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_parser_coverage
+
+# Build rule for target.
+test_lang_parser_coverage: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_parser_coverage
+.PHONY : test_lang_parser_coverage
+
+# fast build rule for target.
+test_lang_parser_coverage/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_parser_coverage.dir/build.make tests/CMakeFiles/test_lang_parser_coverage.dir/build
+.PHONY : test_lang_parser_coverage/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_lang_v5_beam_rerank
+
+# Build rule for target.
+test_snn_lang_v5_beam_rerank: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_lang_v5_beam_rerank
+.PHONY : test_snn_lang_v5_beam_rerank
+
+# fast build rule for target.
+test_snn_lang_v5_beam_rerank/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_snn_lang_v5_beam_rerank.dir/build.make tests/CMakeFiles/test_snn_lang_v5_beam_rerank.dir/build
+.PHONY : test_snn_lang_v5_beam_rerank/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_cascade_counters
+
+# Build rule for target.
+test_lang_cascade_counters: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_cascade_counters
+.PHONY : test_lang_cascade_counters
+
+# fast build rule for target.
+test_lang_cascade_counters/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_cascade_counters.dir/build.make tests/CMakeFiles/test_lang_cascade_counters.dir/build
+.PHONY : test_lang_cascade_counters/fast
+
+#=============================================================================
+# Target rules for targets named test_broca_lexicon_concurrency
+
+# Build rule for target.
+test_broca_lexicon_concurrency: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_broca_lexicon_concurrency
+.PHONY : test_broca_lexicon_concurrency
+
+# fast build rule for target.
+test_broca_lexicon_concurrency/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_broca_lexicon_concurrency.dir/build.make tests/CMakeFiles/test_broca_lexicon_concurrency.dir/build
+.PHONY : test_broca_lexicon_concurrency/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_self_train_persistence
+
+# Build rule for target.
+test_lang_self_train_persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_self_train_persistence
+.PHONY : test_lang_self_train_persistence
+
+# fast build rule for target.
+test_lang_self_train_persistence/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_self_train_persistence.dir/build.make tests/CMakeFiles/test_lang_self_train_persistence.dir/build
+.PHONY : test_lang_self_train_persistence/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_respond_via_cascade
+
+# Build rule for target.
+test_lang_respond_via_cascade: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_respond_via_cascade
+.PHONY : test_lang_respond_via_cascade
+
+# fast build rule for target.
+test_lang_respond_via_cascade/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_respond_via_cascade.dir/build.make tests/CMakeFiles/test_lang_respond_via_cascade.dir/build
+.PHONY : test_lang_respond_via_cascade/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_phonological_loop
+
+# Build rule for target.
+test_lang_phonological_loop: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_phonological_loop
+.PHONY : test_lang_phonological_loop
+
+# fast build rule for target.
+test_lang_phonological_loop/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_phonological_loop.dir/build.make tests/CMakeFiles/test_lang_phonological_loop.dir/build
+.PHONY : test_lang_phonological_loop/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_cerebellar_correction
+
+# Build rule for target.
+test_lang_cerebellar_correction: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_cerebellar_correction
+.PHONY : test_lang_cerebellar_correction
+
+# fast build rule for target.
+test_lang_cerebellar_correction/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_cerebellar_correction.dir/build.make tests/CMakeFiles/test_lang_cerebellar_correction.dir/build
+.PHONY : test_lang_cerebellar_correction/fast
+
+#=============================================================================
+# Target rules for targets named test_gl_fno_audio_guard
+
+# Build rule for target.
+test_gl_fno_audio_guard: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_gl_fno_audio_guard
+.PHONY : test_gl_fno_audio_guard
+
+# fast build rule for target.
+test_gl_fno_audio_guard/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_gl_fno_audio_guard.dir/build.make tests/CMakeFiles/test_gl_fno_audio_guard.dir/build
+.PHONY : test_gl_fno_audio_guard/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_fno_recording
+
+# Build rule for target.
+test_snn_fno_recording: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_fno_recording
+.PHONY : test_snn_fno_recording
+
+# fast build rule for target.
+test_snn_fno_recording/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_snn_fno_recording.dir/build.make tests/CMakeFiles/test_snn_fno_recording.dir/build
+.PHONY : test_snn_fno_recording/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_lateral_inhibition
+
+# Build rule for target.
+test_lang_lateral_inhibition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_lateral_inhibition
+.PHONY : test_lang_lateral_inhibition
+
+# fast build rule for target.
+test_lang_lateral_inhibition/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_lateral_inhibition.dir/build.make tests/CMakeFiles/test_lang_lateral_inhibition.dir/build
+.PHONY : test_lang_lateral_inhibition/fast
+
+#=============================================================================
+# Target rules for targets named test_lang_thalamic_gates
+
+# Build rule for target.
+test_lang_thalamic_gates: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_lang_thalamic_gates
+.PHONY : test_lang_thalamic_gates
+
+# fast build rule for target.
+test_lang_thalamic_gates/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_lang_thalamic_gates.dir/build.make tests/CMakeFiles/test_lang_thalamic_gates.dir/build
+.PHONY : test_lang_thalamic_gates/fast
+
+#=============================================================================
+# Target rules for targets named test_snn_bridge_plumbing_only
+
+# Build rule for target.
+test_snn_bridge_plumbing_only: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_snn_bridge_plumbing_only
+.PHONY : test_snn_bridge_plumbing_only
+
+# fast build rule for target.
+test_snn_bridge_plumbing_only/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_snn_bridge_plumbing_only.dir/build.make tests/CMakeFiles/test_snn_bridge_plumbing_only.dir/build
+.PHONY : test_snn_bridge_plumbing_only/fast
+
+#=============================================================================
+# Target rules for targets named test_concept_registry_binding
+
+# Build rule for target.
+test_concept_registry_binding: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_concept_registry_binding
+.PHONY : test_concept_registry_binding
+
+# fast build rule for target.
+test_concept_registry_binding/fast:
+	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_concept_registry_binding.dir/build.make tests/CMakeFiles/test_concept_registry_binding.dir/build
+.PHONY : test_concept_registry_binding/fast
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -48061,6 +48321,7 @@ help:
 	@echo "... test_brain_reasoning_api"
 	@echo "... test_brain_simulation_pipeline"
 	@echo "... test_brain_swarm_immune_integration"
+	@echo "... test_broca_lexicon_concurrency"
 	@echo "... test_bulk_lexicon"
 	@echo "... test_calcium_dynamics"
 	@echo "... test_calcium_integration"
@@ -48070,6 +48331,7 @@ help:
 	@echo "... test_collective_workspace"
 	@echo "... test_combinatorics"
 	@echo "... test_complexity"
+	@echo "... test_concept_registry_binding"
 	@echo "... test_conservation_laws"
 	@echo "... test_cortical_attention_gain"
 	@echo "... test_cortical_column"
@@ -48094,6 +48356,7 @@ help:
 	@echo "... test_emotional_contagion"
 	@echo "... test_end_to_end_reasoning"
 	@echo "... test_forward_chaining"
+	@echo "... test_gl_fno_audio_guard"
 	@echo "... test_gossip_beliefs"
 	@echo "... test_graph_theory"
 	@echo "... test_hemispheric_e2e_all"
@@ -48127,20 +48390,34 @@ help:
 	@echo "... test_lang_bridge_rng_seed"
 	@echo "... test_lang_bridge_sampling"
 	@echo "... test_lang_bridge_spike_routing"
+	@echo "... test_lang_cascade_counters"
+	@echo "... test_lang_cascade_orchestrator"
+	@echo "... test_lang_cascade_self_train"
+	@echo "... test_lang_cascade_self_train_gated"
+	@echo "... test_lang_cerebellar_correction"
 	@echo "... test_lang_config_persist"
+	@echo "... test_lang_consumer_events"
+	@echo "... test_lang_coref"
 	@echo "... test_lang_da_modulation"
 	@echo "... test_lang_decode_bench"
 	@echo "... test_lang_immune_inspection"
+	@echo "... test_lang_lateral_inhibition"
 	@echo "... test_lang_length_control"
 	@echo "... test_lang_lgss_gates"
 	@echo "... test_lang_multiturn_persistence"
 	@echo "... test_lang_negation_discourse_polysemy"
+	@echo "... test_lang_parser_coverage"
 	@echo "... test_lang_phantom_wiring_audit"
+	@echo "... test_lang_phonological_loop"
 	@echo "... test_lang_reconsolidation"
+	@echo "... test_lang_respond_via_cascade"
+	@echo "... test_lang_self_train_persistence"
 	@echo "... test_lang_sentence_segmentation"
 	@echo "... test_lang_spectrum_tick"
 	@echo "... test_lang_speech_acts"
 	@echo "... test_lang_stream_produce"
+	@echo "... test_lang_subword_oov"
+	@echo "... test_lang_thalamic_gates"
 	@echo "... test_lang_tom_wiring"
 	@echo "... test_lang_topic_shift"
 	@echo "... test_lang_trigram_learning"
@@ -48305,6 +48582,7 @@ help:
 	@echo "... test_snn_audio_bridge"
 	@echo "... test_snn_autobiographical_bridge"
 	@echo "... test_snn_bcm_bridge"
+	@echo "... test_snn_bridge_plumbing_only"
 	@echo "... test_snn_buffer_bridge"
 	@echo "... test_snn_cortical_bridge"
 	@echo "... test_snn_curiosity_bridge"
@@ -48312,6 +48590,7 @@ help:
 	@echo "... test_snn_emotional_tagging_bridge"
 	@echo "... test_snn_empathetic_bridge"
 	@echo "... test_snn_executive_bridge"
+	@echo "... test_snn_fno_recording"
 	@echo "... test_snn_free_energy_bridge"
 	@echo "... test_snn_global_workspace_bridge"
 	@echo "... test_snn_grief_bridge"
@@ -48320,6 +48599,7 @@ help:
 	@echo "... test_snn_introspection_bridge"
 	@echo "... test_snn_joy_bridge"
 	@echo "... test_snn_lang_bridge_stdp"
+	@echo "... test_snn_lang_v5_beam_rerank"
 	@echo "... test_snn_language_bridge"
 	@echo "... test_snn_love_bridge"
 	@echo "... test_snn_medulla_bridge"

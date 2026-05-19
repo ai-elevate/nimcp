@@ -2320,6 +2320,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_orchestrator.c     # Language layer coordinator
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_config.c           # Default configuration
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_bio_async.c        # Bio-async messaging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_concept_registry.c          # Slice B: cross-modal population binding registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language.c        # Grounded language system
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_persistence.c  # Grounded language sidecar persistence
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_memory_bridge.c  # Grounded language ↔ memory subsystems bridge

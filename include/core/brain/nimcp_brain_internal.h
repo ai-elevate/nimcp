@@ -3132,72 +3132,40 @@ struct brain_struct {
      * unconditionally on its own production (autoconfirm loop). It gates on
      * an external reward signal — set by the caregiver-critic / RL pipeline
      * via nimcp_brain_set_last_external_reward() + the
-     * set_last_external_reward RPC. The reward is "fresh" only within a TTL
-     * (default 5s) and must clear a threshold (default 0.5) before the stage
-     * runs its plasticity body.
-     *
-     *   last_external_reward     — most recently set reward, clamped [-1, +1].
-     *                              Calloc-zero means "no reward ever set" —
-     *                              combined with last_external_reward_us==0
-     *                              the first call always reads as stale.
-     *   last_external_reward_us  — monotonic timestamp (nimcp_time_monotonic_us)
-     *                              of the most recent setter call. Used to
-     *                              compute (now - reward_us) > ttl_us → stale.
-     *
-     * APPENDED at end of brain_struct — ABI append-only. */
+     * set_last_external_reward RPC. */
     float    last_external_reward;
     uint64_t last_external_reward_us;
 
-    /* Slice D telemetry — three skip/fire counters surfaced via lang_status
-     * under stats.cascade.self_train. Atomic relaxed because the cascade
-     * orchestrator is single-threaded per brain but the RO socket pool reads
-     * concurrently. APPENDED at end of brain_struct — ABI append-only. */
     _Atomic uint64_t cascade_self_train_skipped_stale;
     _Atomic uint64_t cascade_self_train_skipped_below_threshold;
     _Atomic uint64_t cascade_self_train_fired;
 
-    /* Slice D persistent tunables — extended via
-     * set_cascade_self_train_tunables RPC. Copied into the cascade state at
-     * the top of every cascade_stage_self_train call. Zero (calloc default)
-     * triggers the in-stage fallback (0.5 threshold, 5,000,000 µs TTL). */
     float    cascade_self_train_reward_threshold;
     uint64_t cascade_self_train_reward_ttl_us;
 
-    /* === SLICE E — STAGE-ANCHORED DEVELOPMENTAL SCAFFOLDING (2026-05-19) ===
-     * Option-1 architectural rebuild: production is constrained to the
-     * brain's current developmental stage. The communication cascade reads
-     * current_stage in cascade_stage_motor and enforces a min/max word-count
-     * window + a grammar-template bitmask drawn from the stage table
-     * (include/cognitive/grounded_language/nimcp_stage_table.h).
-     *
-     * current_stage — calloc-zero default is "stage 0". Trainer or daemon
-     *   RPC bumps this as the developmental curriculum advances. The
-     *   cascade clamps out-of-range indices to the highest defined stage
-     *   row, so the brain never crashes on a stale/oversized value.
-     *
-     * APPENDED at end of brain_struct — ABI append-only. */
+    /* === SLICE E — STAGE-ANCHORED DEVELOPMENTAL SCAFFOLDING (2026-05-19) === */
     uint32_t current_stage;
+
+    /* === SLICE B — CROSS-MODAL CONCEPT REGISTRY (2026-05-19) ===
+     * Opaque pointer (concept_registry_t*). Maps (text label, visual digest,
+     * audio digest) → canonical concept_pop_id. Created in Wave 27
+     * (cognitive_engines). Serialized as a `.concept_registry` sidecar. */
+    void*    concept_registry;
 };
 
-/* Slice E ABI sentinel — see docs/claude/option1-rebuild.md, build invariant
- * #3. We can't easily _Static_assert the full sizeof(struct brain_struct)
- * because the layout drifts with every appended field. Instead, sentinel the
- * size of the slice's last field's offset by computing the offset of
- * current_stage and asserting that the field IMMEDIATELY before it has the
- * expected type — this catches an accidental re-order without pinning the
- * entire struct size.
- *
- * Note: previous slices have not installed a sentinel either; the convention
- * for this codebase is append-only with code-review enforcement. The
- * sentinel below is an OPTIONAL belt-and-suspenders. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(sizeof(((struct brain_struct*)0)->current_stage) == 4u,
-    "brain_struct.current_stage: Slice E expects a 4-byte uint32 — "
-    "ABI append-only invariant violated.");
+    "brain_struct.current_stage: Slice E expects a 4-byte uint32");
 _Static_assert(sizeof(((struct brain_struct*)0)->cascade_self_train_reward_ttl_us) == 8u,
-    "brain_struct.cascade_self_train_reward_ttl_us: Slice D field changed "
-    "size — Slice E sentinel depends on it being uint64_t.");
+    "brain_struct.cascade_self_train_reward_ttl_us: Slice D field size invariant");
 #endif
+
+/* Slice B append-counter — bump when adding more fields to brain_struct.
+ * Slice B's field is concept_registry. */
+#define NIMCP_BRAIN_STRUCT_ABI_SLICE_B_FIELDS  1u
+_Static_assert(NIMCP_BRAIN_STRUCT_ABI_SLICE_B_FIELDS == 1u,
+               "Slice B appended exactly 1 field (concept_registry). "
+               "If you append more, bump this constant + this static-assert.");
 
 //=============================================================================
 // Strategy Pattern - Task-Specific Behaviors
