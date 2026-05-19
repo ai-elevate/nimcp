@@ -75,6 +75,34 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         }
     }
 
+    /* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — recreate concept_registry
+     * on resume. nimcp_brain_load skips the parallel init waves and only
+     * touches state-restoration paths, so without this hook brain->concept_registry
+     * stays NULL after every checkpoint load. The bind hook in
+     * brain_learn_vector then no-ops silently and no cross-modal binding
+     * ever happens. Same pattern as the GPU + sparse_coding re-init above.
+     *
+     * Note: brain_load_post_init_sidecars (which fills the registry from
+     * the .concept_registry sidecar if one exists) is called downstream by
+     * nimcp_brain_eager_init_cognitive — no need to call it here. */
+    {
+        brain_t b = handle->internal_brain;
+        if (!b->concept_registry) {
+            extern bool nimcp_brain_factory_init_concept_registry_subsystem(brain_t);
+            nimcp_brain_factory_init_concept_registry_subsystem(b);
+        }
+        /* Wire the registry into grounded_language so its mirror_binding_to_bridge
+         * path can intern text into the registry on every grounding event.
+         * The same wiring is done in nimcp_brain_init_language.c on fresh
+         * init; the load path skips that wave, so we re-do it here. */
+        if (b->concept_registry && b->grounded_lang) {
+            extern void grounded_language_set_concept_registry(
+                struct grounded_language* gl, void* registry);
+            grounded_language_set_concept_registry(b->grounded_lang,
+                                                    b->concept_registry);
+        }
+    }
+
     set_error("No error");
     return handle;
 

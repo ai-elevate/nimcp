@@ -360,7 +360,9 @@ nimcp_status_t nimcp_brain_get_concept_registry_stats(
     concept_registry_t* reg =
         (concept_registry_t*)brain->internal_brain->concept_registry;
     if (!reg) {
-        if (total_referents) *total_referents = 0;
+        /* Sentinel value SIZE_MAX in total_referents distinguishes
+         * "registry is NULL" from "registry exists but empty (0)". */
+        if (total_referents) *total_referents = (size_t)-1;
         if (total_modality_bindings) *total_modality_bindings = 0;
         return NIMCP_OK;
     }
