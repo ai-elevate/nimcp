@@ -406,6 +406,26 @@ void grounded_language_set_semantic_memory(
     grounded_language_t* gl,
     void* semantic_memory);
 
+/**
+ * @brief Wire the concept_registry after creation (Option-1 rebuild).
+ *
+ * The concept_registry is the canonical cross-modal binding store: it
+ * maps (text label, visual digest, audio digest) → one canonical
+ * concept_pop_id, so the same SNN population fires for image+word+text
+ * of one referent. grounded_language mirrors lexicon registrations into
+ * the registry via intern_text + bind_modalities on the production /
+ * comprehension paths.
+ *
+ * Called from brain init after both subsystems exist. NULL-safe: the
+ * library degrades gracefully if the registry isn't wired.
+ *
+ * @param gl       System handle
+ * @param registry concept_registry_t* (opaque)
+ */
+void grounded_language_set_concept_registry(
+    grounded_language_t* gl,
+    void* registry);
+
 /*=============================================================================
  * Comprehension (Wernicke's pathway)
  *===========================================================================*/

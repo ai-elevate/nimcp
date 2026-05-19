@@ -424,6 +424,12 @@ struct grounded_language {
     bool*                vocab_active_mask;
     uint32_t             vocab_active_mask_capacity;
     uint32_t             vocab_active_mask_stage;   /* stage that installed it */
+
+    /* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — concept_registry handle.
+     * Set via grounded_language_set_concept_registry() during brain init.
+     * NULL means "not wired" — concept_registry_* calls are guarded so
+     * the legacy bridge-mirror path still compiles. */
+    void*                concept_registry;
 };
 
 /**

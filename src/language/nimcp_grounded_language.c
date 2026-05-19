@@ -14,6 +14,7 @@
 #include "language/nimcp_grounded_language_internal.h"
 #include "language/nimcp_bigram_spectrum.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
+#include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
 
 /* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
  * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
@@ -1048,14 +1049,33 @@ static void mirror_binding_to_bridge(grounded_language_t* gl,
                                       const gl_lexicon_entry_t* entry,
                                       uint64_t concept_id,
                                       float strength) {
-    if (!gl->snn_bridge || !entry) return;
+    if (!entry) return;
     uint32_t word_pop = entry->form_hash % SNN_LANG_MAX_WORD_POPS;
     uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
-    /* register_word/register_concept are idempotent (overwrite slot). bind
-     * requires both pops registered (it checks num_*_pops). */
-    snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
-    snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
-    snn_language_bridge_bind(gl->snn_bridge, concept_pop, word_pop, strength);
+
+    /* Bridge-side transport registration — the bridge still needs to know
+     * which pop ids correspond to which forms for spike routing. The
+     * `bind` call below is a Slice-A no-op stub (bridge has no weight
+     * matrix); kept here only to keep ABI compatibility for any third
+     * party still reading the bridge's per-pop metadata. The durable
+     * binding strength lives on the lexicon entry itself. */
+    if (gl->snn_bridge) {
+        snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
+        snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
+        (void)strength;
+    }
+
+    /* Cross-modal binding via concept_registry (Slice B / walkthrough-2):
+     * intern the text form so that subsequent visual/audio encodes of the
+     * same referent — interned by brain_learn_vector when (features,
+     * label) arrive together — canonicalize to the same root population.
+     * This is the load-bearing wiring that makes a single SNN population
+     * fire for the image, the spoken word, and the written word of one
+     * referent (Quian Quiroga concept-cell invariant). */
+    if (gl->concept_registry) {
+        (void)concept_registry_intern_text(
+            (concept_registry_t*)gl->concept_registry, entry->form);
+    }
 }
 
 /** Add or strengthen a binding between a word and a concept */
@@ -1700,6 +1720,14 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
         return;
     }
     gl->semantic_memory = (semantic_memory_system_t*)semantic_memory;
+}
+
+/* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — wire the concept_registry
+ * after creation. Called from brain init after both subsystems exist.
+ * NULL-safe on both args. */
+void grounded_language_set_concept_registry(grounded_language_t* gl, void* registry) {
+    if (!gl) return;
+    gl->concept_registry = registry;
 }
 
 /*=============================================================================

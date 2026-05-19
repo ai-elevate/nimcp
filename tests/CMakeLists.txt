@@ -70,6 +70,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     # ============================================================
     test_snn_bridge_plumbing_only   # Slice A: bridge is transport-only
     test_concept_registry_binding   # Slice B: cross-modal registry
+    test_concept_registry_live_binding  # Walkthrough-2: gl→registry live wiring
     test_lang_stage_scaffolding     # Slice E: stage constraints
     test_snn_negative_da            # Slice F: SNN STDP under negative DA
     # ============================================================

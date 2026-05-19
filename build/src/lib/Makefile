@@ -5825,6 +5825,30 @@ __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 .PHONY : __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 
+__/cognitive/grounded_language/nimcp_stage_table.o: __/cognitive/grounded_language/nimcp_stage_table.c.o
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.o
+
+# target to build an object file
+__/cognitive/grounded_language/nimcp_stage_table.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grounded_language/nimcp_stage_table.c.o
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.c.o
+
+__/cognitive/grounded_language/nimcp_stage_table.i: __/cognitive/grounded_language/nimcp_stage_table.c.i
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.i
+
+# target to preprocess a source file
+__/cognitive/grounded_language/nimcp_stage_table.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grounded_language/nimcp_stage_table.c.i
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.c.i
+
+__/cognitive/grounded_language/nimcp_stage_table.s: __/cognitive/grounded_language/nimcp_stage_table.c.s
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.s
+
+# target to generate assembly for a file
+__/cognitive/grounded_language/nimcp_stage_table.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grounded_language/nimcp_stage_table.c.s
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.c.s
+
 __/cognitive/health/nimcp_collective_health.o: __/cognitive/health/nimcp_collective_health.c.o
 .PHONY : __/cognitive/health/nimcp_collective_health.o
 
@@ -58168,6 +58192,9 @@ help:
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.o"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.i"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.s"
+	@echo "... __/cognitive/grounded_language/nimcp_stage_table.o"
+	@echo "... __/cognitive/grounded_language/nimcp_stage_table.i"
+	@echo "... __/cognitive/grounded_language/nimcp_stage_table.s"
 	@echo "... __/cognitive/health/nimcp_collective_health.o"
 	@echo "... __/cognitive/health/nimcp_collective_health.i"
 	@echo "... __/cognitive/health/nimcp_collective_health.s"
