@@ -3979,6 +3979,26 @@ static PyObject* Brain_set_last_external_reward(BrainObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
+/* Slice C — drive reward-modulated plasticity through the brain's
+ * three-factor STDP path. Called by the caregiver-critic / RL pipeline
+ * via the brain daemon _cmd_apply_reward_learning RPC. Distinct from
+ * set_last_external_reward, which only stamps a field used by the
+ * cascade self-train gate — this actually drives plasticity. Reward is
+ * clamped to [-1, +1]; negative reward drives anti-Hebbian LTD via
+ * Slice F's negative-DA path. */
+static PyObject* Brain_apply_reward_learning(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float reward = 0.0f;
+    if (!PyArg_ParseTuple(args, "f", &reward)) return NULL;
+    if (nimcp_brain_apply_reward_learning(self->brain, reward) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "apply_reward_learning failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* Slice D — configure reward threshold + TTL. Mirrors the gating fields
  * read by cascade_stage_self_train. Pass 0 (zero) for either argument to
  * leave the brain's value unchanged (partial update). */
@@ -12838,6 +12858,8 @@ static PyMethodDef Brain_methods[] = {
      "Wave 2 Item #10: read self-train state — returns {'enabled': bool, 'baseline': float, 'alpha': float, 'lr_scale': float}."},
     {"set_last_external_reward", (PyCFunction)Brain_set_last_external_reward, METH_VARARGS,
      "Slice D: set the most-recent external reward signal for cascade self-train gating — set_last_external_reward(reward: float) -> None. Clamped [-1, +1]. Cascade Stage 14 (self-train) reads brain->last_external_reward and gates plasticity on freshness (default 5s TTL) and threshold (default 0.5). Called by the caregiver-critic / RL pipeline."},
+    {"apply_reward_learning", (PyCFunction)Brain_apply_reward_learning, METH_VARARGS,
+     "Slice C: drive reward-modulated plasticity — apply_reward_learning(reward: float) -> None. Clamped [-1, +1]. Distinct from set_last_external_reward (which only stamps a field for the cascade gate); this actually propagates the reward through the three-factor STDP machinery. Negative reward drives anti-Hebbian LTD via Slice F's negative-DA path."},
     {"set_cascade_self_train_reward_gating", (PyCFunction)Brain_set_cascade_self_train_reward_gating, METH_VARARGS,
      "Slice D: configure the self-train reward threshold + TTL — set_cascade_self_train_reward_gating(reward_threshold: float, reward_ttl_us: int) -> None. Either argument <= 0 leaves the brain's value unchanged. Defaults (0.5 threshold, 5,000,000 µs TTL) are applied in-stage when both fields remain calloc-zero."},
     {"get_cascade_self_train_gate_counters", (PyCFunction)Brain_get_cascade_self_train_gate_counters, METH_NOARGS,

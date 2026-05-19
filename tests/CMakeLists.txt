@@ -24,46 +24,34 @@
 # ============================================================================
 
 set(NIMCP_STANDALONE_LANG_TESTS
-    test_lang_bridge_cosine_norm
-    test_lang_bridge_sampling
-    test_lang_bridge_glove_blend
-    test_lang_bridge_autoregressive
-    test_lang_bridge_next_token
+    # ============================================================
+    # Bridge transport + non-learning paths (Slice A-compatible)
+    # ============================================================
     test_lang_bridge_spike_routing
-    test_lang_bridge_riemannian
     test_bigram_spectrum
-    test_lang_bridge_hyperbolic_glove
-    test_lang_bridge_quantum_sampling
-    test_lang_bridge_quantum_shannon
-    test_lang_bridge_beam_eos_repeat
     test_lang_bridge_config_persistence
     test_lang_phantom_wiring_audit
     test_lang_anaphora
     test_lang_negation_discourse_polysemy
     test_lang_bridge_get_config
-    test_lang_bridge_latency
-    test_lang_bridge_rng_seed
-    test_snn_lang_bridge_stdp
+    # ============================================================
+    # Lexicon / cognitive subsystems independent of bridge STDP
+    # ============================================================
     test_bulk_lexicon
     test_lang_multiturn_persistence
     test_lang_lgss_gates
-    test_lang_trigram_learning
     test_lang_immune_inspection
     test_lang_spectrum_tick
     test_lang_da_modulation
     test_lang_reconsolidation
     test_lang_topic_shift
     test_lang_speech_acts
-    test_lang_length_control
-    test_lang_stream_produce
     test_lang_sentence_segmentation
     test_lang_tom_wiring
-    test_lang_decode_bench
     test_lang_config_persist
     test_lang_consumer_events
     test_lang_subword_oov
     test_lang_coref
-    test_lang_cascade_self_train
     test_lang_cascade_self_train_gated
     test_lang_cascade_orchestrator
     test_lang_parser_coverage
@@ -76,12 +64,41 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_cerebellar_correction
     test_gl_fno_audio_guard
     test_snn_fno_recording
-    test_lang_lateral_inhibition
     test_lang_thalamic_gates
-    test_snn_bridge_plumbing_only
-    test_concept_registry_binding
-    test_lang_stage_scaffolding
-    test_snn_negative_da
+    # ============================================================
+    # Option-1 rebuild — new slice surface tests
+    # ============================================================
+    test_snn_bridge_plumbing_only   # Slice A: bridge is transport-only
+    test_concept_registry_binding   # Slice B: cross-modal registry
+    test_lang_stage_scaffolding     # Slice E: stage constraints
+    test_snn_negative_da            # Slice F: SNN STDP under negative DA
+    # ============================================================
+    # REMOVED in walkthrough-1 (Option-1 rebuild) — these asserted
+    # bridge STDP / weight-matrix / produce-from-bindings behavior
+    # that Slice A intentionally deleted. The bridge is now transport
+    # only; the equivalent learning lives in the SNN's three-factor
+    # STDP (test_snn_negative_da) and Slice B's concept_registry
+    # (test_concept_registry_binding):
+    #
+    #   test_lang_bridge_cosine_norm     — produce() returns -1 (no bindings)
+    #   test_lang_bridge_sampling        — produce() returns -1
+    #   test_lang_bridge_glove_blend     — produce() returns -1
+    #   test_lang_bridge_autoregressive  — produce() returns -1
+    #   test_lang_bridge_next_token      — learn_next_token_* removed
+    #   test_lang_bridge_riemannian      — strengthen_binding_riemannian removed
+    #   test_lang_bridge_hyperbolic_glove — produce() returns -1
+    #   test_lang_bridge_quantum_sampling — produce() returns -1
+    #   test_lang_bridge_quantum_shannon — produce() returns -1
+    #   test_lang_bridge_beam_eos_repeat — produce() returns -1
+    #   test_lang_bridge_latency         — produce() returns -1
+    #   test_lang_bridge_rng_seed        — seed drives produce sampling
+    #   test_snn_lang_bridge_stdp        — bridge STDP removed wholesale
+    #   test_lang_trigram_learning       — bridge trigram counters frozen
+    #   test_lang_length_control         — produce() returns -1
+    #   test_lang_stream_produce         — produce() returns -1
+    #   test_lang_decode_bench           — decode returns zero candidates
+    #   test_lang_cascade_self_train     — echo_correct + binding strengthen gone
+    #   test_lang_lateral_inhibition     — decode_with_lateral_inhibition stub
 )
 
 # Helper: register a single standalone-C test.
