@@ -80,6 +80,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_thalamic_gates
     test_snn_bridge_plumbing_only
     test_concept_registry_binding
+    test_lang_stage_scaffolding
 )
 
 # Helper: register a single standalone-C test.

@@ -402,6 +402,28 @@ struct grounded_language {
     bool                 enable_coref_resolution;
     uint64_t             coref_attempts;   /* definite-NP heads observed */
     uint64_t             coref_resolved;   /* repeat mentions matched */
+
+    /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
+     *
+     * `vocab_active_mask` is a heap-allocated bool array sized to
+     * `vocab_active_mask_capacity`. Index v corresponds to lexicon entry
+     * vocab_list[v]; mask[v] == true means the entry is visible for
+     * production. NULL pointer (calloc default) means "no mask installed,
+     * everything is visible" — preserves the pre-Slice-E byte-identical
+     * contract.
+     *
+     * Installed via grounded_language_set_active_vocab_mask(); resized
+     * lazily by vocab_count growth. Capacity grows monotonically; we never
+     * shrink so existing index→mask mappings remain stable across vocab
+     * growth events.
+     *
+     * Read by the production-path filter that wraps grounded_language_produce
+     * (vocab-mask token replacement). Protected by mutate_lock above —
+     * the same lock that guards the lexicon array itself, since mask
+     * indexing depends on vocab_list shape. */
+    bool*                vocab_active_mask;
+    uint32_t             vocab_active_mask_capacity;
+    uint32_t             vocab_active_mask_stage;   /* stage that installed it */
 };
 
 /**
