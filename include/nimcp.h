@@ -1636,6 +1636,14 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
  *  Returns 0 on success, -1 on invalid brain or non-finite reward. */
 int nimcp_brain_set_last_external_reward(nimcp_brain_t brain, float reward);
 
+/** Slice C — drive reward-modulated plasticity for the brain. Thin wrapper
+ *  around the internal brain_apply_reward_learning(). The Slice C caregiver-
+ *  critic pipeline calls this on every brain production. Reward is clamped
+ *  to [-1, +1]. Negative reward drives anti-Hebbian (LTD) plasticity through
+ *  the three-factor STDP path (see Slice F). Returns 0 on success, -1 on
+ *  invalid brain or non-finite reward. */
+int nimcp_brain_apply_reward_learning(nimcp_brain_t brain, float reward);
+
 /** Slice D — configure the reward gating thresholds. reward_threshold in
  *  (0, 1]; reward_ttl_us > 0. Either argument zero/negative leaves the
  *  brain's current value unchanged (partial update). */

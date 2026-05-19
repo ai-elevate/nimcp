@@ -2505,6 +2505,31 @@ class BrainService:
             return {"error": f"set_last_external_reward: {e}"}
         return {"ok": True, "reward": max(-1.0, min(1.0, reward))}
 
+    def _cmd_apply_reward_learning(self, req):
+        """Slice C: drive reward-modulated plasticity on the brain. Called by
+        the caregiver-critic / RL pipeline after every brain production with
+        the verdict's reward in [-1, +1]. Negative reward drives anti-Hebbian
+        plasticity through the SNN's three-factor STDP path (Slice F).
+
+        Distinct from set_last_external_reward, which only stamps the brain's
+        latest-reward field for cascade self-train gating. This RPC actually
+        propagates the reward through the plasticity machinery.
+
+        Request: {"cmd": "apply_reward_learning", "reward": float}
+        reward is clamped to [-1, +1] inside the public setter.
+        """
+        try:
+            reward = float(req.get("reward", 0.0))
+        except (TypeError, ValueError) as e:
+            return {"error": f"apply_reward_learning bad arg: {e}"}
+        try:
+            self.brain.apply_reward_learning(reward)
+        except AttributeError:
+            return {"error": "apply_reward_learning not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"apply_reward_learning: {e}"}
+        return {"ok": True, "reward": max(-1.0, min(1.0, reward))}
+
     def _cmd_get_cascade_self_train_state(self, req):
         """Wave 2 Item #10: read self-train state.
 

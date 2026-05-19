@@ -3276,9 +3276,11 @@ int snn_language_bridge_set_da_modulation_gain(
 {
     /* Option-1 (Slice A): no-op stub. DA modulation as a concept persists
      * but moves to SNN neuromod (Slice F). The bridge-side setter is now
-     * inert. */
-    (void)gain;
+     * inert on the weight matrix (there are no weights) but we still
+     * validate the gain shape — NaN is always a caller bug regardless of
+     * whether the bridge consumes the value. */
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (isnan(gain)) return -1;
     return 0;
 }
 

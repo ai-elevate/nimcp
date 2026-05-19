@@ -4746,6 +4746,27 @@ int nimcp_brain_set_last_external_reward(nimcp_brain_t brain, float reward) {
     return 0;
 }
 
+/* Slice C — Public API wrapper for brain_apply_reward_learning. The Slice C
+ * caregiver-critic pipeline calls this on every brain production to drive
+ * reward-modulated plasticity through the canonical three-factor STDP path.
+ *
+ * The internal brain_apply_reward_learning() (src/core/brain/learning/
+ * nimcp_brain_learning.c:6045) walks active neurons, applies the reward via
+ * the neuromod-plasticity bridge, and updates the dopamine baseline. This
+ * thin wrapper validates the public handle and forwards.
+ *
+ * Returns 0 on success, -1 on invalid brain or non-finite reward. */
+int nimcp_brain_apply_reward_learning(nimcp_brain_t brain, float reward) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    if (!isfinite(reward)) return -1;
+    if (reward < -1.0f) reward = -1.0f;
+    if (reward >  1.0f) reward =  1.0f;
+    (void)brain_apply_reward_learning(b, reward);
+    return 0;
+}
+
 /* Slice D — extended tunables setter that also configures the reward
  * threshold + TTL. Mirrors set_cascade_self_train_tunables but takes the
  * two Slice-D fields. Callable via the RPC handler (see
