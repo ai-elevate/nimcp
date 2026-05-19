@@ -219,15 +219,33 @@ static void test_sigmoid_prime_damping_near_floor(void)
 }
 
 /* ------------------------------------------------------------- *
- * Test 3: mid-range Riemannian ≈ flat within 5%.
+ * Test 3: mid-range Δw — each path matches its own analytical form.
+ *
+ * Originally this test asserted Riemannian ≈ flat within 5% (linearization
+ * argument). That equivalence pre-dates the soft-bound (Wang/Markram)
+ * STDP introduced in commit e1368a573, where the flat path now applies
+ * `Δw_eff = delta * (w_max - w) / w_max` for LTP. The two paths are no
+ * longer equivalent mid-range — they damp via different geometries:
+ *
+ *   flat (soft-bound LTP): Δw_flat = grad * (1 - w) = 0.05 * 0.5 = 0.025
+ *   riemannian (σ u-space):
+ *     Δu     = grad / (w*(1-w) + eps) = 0.05 / 0.25 = 0.2
+ *     u_new  = logit(0.5) + 0.2 = 0.2
+ *     w_new  = σ(0.2) ≈ 0.5498
+ *     Δw_riem ≈ 0.0498
+ *
+ *   Resulting ratio Δw_riem / Δw_flat ≈ 0.0498 / 0.025 ≈ 1.99.
+ *
+ * Each path is still locally consistent — assert each against its closed
+ * form rather than equality to the other.
  * ------------------------------------------------------------- */
-static void test_midrange_matches_flat_within_5pct(void)
+static void test_midrange_matches_analytical_forms(void)
 {
     const float w_init = 0.5f;
     const float w_ref  = 1.0f;
     const float grad   = 0.05f;
 
-    /* Flat bridge. */
+    /* Flat bridge — soft-bound LTP: Δw = grad * (1 - w_init). */
     snn_language_bridge_t* b_flat = build_two_binding_bridge(w_init, w_ref);
     EXPECT(b_flat != NULL, "flat bridge create"); if (!b_flat) return;
     int rc = snn_language_bridge_strengthen_binding(b_flat, 0, 0, grad);
@@ -235,7 +253,7 @@ static void test_midrange_matches_flat_within_5pct(void)
     float w_flat_post = recover_weight(b_flat, w_ref);
     snn_language_bridge_destroy(b_flat);
 
-    /* Riemannian bridge. */
+    /* Riemannian bridge — exact σ projection. */
     snn_language_bridge_t* b_riem = build_two_binding_bridge(w_init, w_ref);
     EXPECT(b_riem != NULL, "riemannian bridge create"); if (!b_riem) return;
     rc = snn_language_bridge_strengthen_binding_riemannian(b_riem, 0, 0, grad);
@@ -243,22 +261,40 @@ static void test_midrange_matches_flat_within_5pct(void)
     float w_riem_post = recover_weight(b_riem, w_ref);
     snn_language_bridge_destroy(b_riem);
 
-    float dw_flat = w_flat_post - w_init;          /* expected ≈ 0.05 */
-    float dw_riem = w_riem_post - w_init;          /* expected ≈ 0.05 ± O(grad²) */
+    float dw_flat = w_flat_post - w_init;
+    float dw_riem = w_riem_post - w_init;
 
-    /* Both should be positive and roughly equal. */
+    /* Both must be positive (LTP). */
     EXPECT(dw_flat > 0.0f, "flat Δw > 0; got %g", (double)dw_flat);
     EXPECT(dw_riem > 0.0f, "riem Δw > 0; got %g", (double)dw_riem);
 
+    /* Flat path: closed form Δw_flat = grad * (1 - w_init) = 0.025. */
+    const float dw_flat_expected = grad * (1.0f - w_init);   /* 0.025 */
+    EXPECT_NEAR(dw_flat, dw_flat_expected, 1e-3f,
+                "flat Δw matches soft-bound closed form");
+
+    /* Riemannian: Δu = grad / (w*(1-w)) = 0.2; w_new = σ(logit(0.5)+0.2)
+     * = σ(0.2) ≈ 0.5498; Δw_riem ≈ 0.0498. */
+    float u_new = logf(w_init / (1.0f - w_init)) + grad / (w_init * (1.0f - w_init));
+    float w_riem_expected = 1.0f / (1.0f + expf(-u_new));
+    float dw_riem_expected = w_riem_expected - w_init;       /* ≈ 0.0498 */
+    EXPECT_NEAR(dw_riem, dw_riem_expected, 1e-3f,
+                "riemannian Δw matches σ-projection closed form");
+
+    /* Sanity: the two paths damp differently mid-range. Riemannian recovers
+     * roughly the full grad (since F_uu cancels), while the flat path halves
+     * it via soft-bound headroom. Ratio ≈ 1/(1-w_init) = 2.0. */
     float ratio = dw_riem / dw_flat;
-    /* Within 5%: ratio ∈ [0.95, 1.05]. */
-    EXPECT(ratio > 0.95f && ratio < 1.05f,
-           "mid-range Δw_riem/Δw_flat = %g — must be within 5%% of 1.0",
+    EXPECT(ratio > 1.5f && ratio < 2.5f,
+           "mid-range Δw_riem/Δw_flat = %g — soft-bound flat damps to ~½ of riemannian",
            (double)ratio);
 
     fprintf(stderr, "  test 3 (mid-range): w_init=%.4f, grad=%.4f, "
-            "Δw_flat=%.6f, Δw_riem=%.6f, ratio=%.4f\n",
-            (double)w_init, (double)grad, (double)dw_flat, (double)dw_riem,
+            "Δw_flat=%.6f (expect %.6f), Δw_riem=%.6f (expect %.6f), "
+            "ratio=%.4f\n",
+            (double)w_init, (double)grad,
+            (double)dw_flat, (double)dw_flat_expected,
+            (double)dw_riem, (double)dw_riem_expected,
             (double)ratio);
 }
 
@@ -267,7 +303,7 @@ int main(void)
     fprintf(stderr, "test_lang_bridge_riemannian: PA-4+ Riemannian update\n");
     test_sigmoid_prime_damping_near_top();
     test_sigmoid_prime_damping_near_floor();
-    test_midrange_matches_flat_within_5pct();
+    test_midrange_matches_analytical_forms();
 
     if (g_failures == 0) {
         fprintf(stderr, "PASS — all 3 Riemannian tests OK\n");

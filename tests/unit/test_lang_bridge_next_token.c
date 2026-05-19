@@ -139,14 +139,23 @@ static void test_strengthen_binding_additive(void)
      * is sensitive to the ratio of weights:
      *   bind (c=0, w=0, weight=0.3)
      *   bind (c=1, w=0, weight=1.0)  reference
-     * Then strengthen_binding(0, 0, +0.4) — first becomes 0.7.
+     *
+     * strengthen_binding now applies soft-bound (Wang/Markram) plasticity:
+     *   LTP:  Δw_eff = delta * (w_max - w) / w_max
+     *   LTD:  Δw_eff = delta * w / w_max
+     *
+     * With w_max = 1.0:
+     *   strengthen_binding(0, 0, +0.4) on w=0.3:
+     *     headroom = (1.0 - 0.3) / 1.0 = 0.7
+     *     Δw_eff   = 0.4 * 0.7 = 0.28
+     *     new_w    = 0.3 + 0.28 = 0.58
      *
      *   Pre:  word_act[0] for rates=[1,0,...] = 0.3
      *         |w_0|² = 0.09 + 1.0 = 1.09; norm = sqrt(1.09) ≈ 1.044
      *         score = 0.3 / 1.044 ≈ 0.2873
-     *   Post: word_act[0] = 0.7
-     *         |w_0|² = 0.49 + 1.0 = 1.49; norm = sqrt(1.49) ≈ 1.221
-     *         score = 0.7 / 1.221 ≈ 0.5734
+     *   Post: word_act[0] = 0.58
+     *         |w_0|² = 0.3364 + 1.0 = 1.3364; norm ≈ 1.156
+     *         score = 0.58 / 1.156 ≈ 0.5017
      */
     snn_lang_config_t cfg = snn_lang_config_default();
     cfg.max_concept_pops = 4;
@@ -164,15 +173,21 @@ static void test_strengthen_binding_additive(void)
     EXPECT_NEAR(pre, 0.3f / sqrtf(1.09f + 1e-6f), 1e-3f, "pre score");
 
     EXPECT(snn_language_bridge_strengthen_binding(b, 0, 0, +0.4f) == 0,
-            "additive +0.4");
+            "additive +0.4 (soft-bound)");
 
+    /* After soft-bound LTP: w = 0.3 + 0.4*(1-0.3) = 0.58. */
     float post = read_binding_weight_via_decode(b, 0, 0, 4);
-    EXPECT_NEAR(post, 0.7f / sqrtf(1.49f + 1e-6f), 1e-3f, "post score");
+    EXPECT_NEAR(post, 0.58f / sqrtf(0.58f*0.58f + 1.0f + 1e-6f), 2e-3f,
+                "post score (soft-bound LTP)");
     EXPECT(post > pre, "additive should increase score; pre=%g post=%g", pre, post);
 
-    /* Negative delta back below floor. weight = 0.7 + (-0.5) = 0.2 (clamps OK). */
+    /* Negative delta: soft-bound LTD scales by w/w_max.
+     * w = 0.58, delta = -0.5:
+     *   headroom = 0.58 / 1.0 = 0.58
+     *   Δw_eff   = -0.5 * 0.58 = -0.29
+     *   new_w    = 0.58 - 0.29 = 0.29 (well above floor). */
     EXPECT(snn_language_bridge_strengthen_binding(b, 0, 0, -0.5f) == 0,
-            "additive -0.5");
+            "additive -0.5 (soft-bound LTD)");
     float post2 = read_binding_weight_via_decode(b, 0, 0, 4);
     EXPECT(post2 < post, "subtractive should decrease score; %g vs %g", post2, post);
 
