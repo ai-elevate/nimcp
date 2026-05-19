@@ -130,17 +130,12 @@ static void brain_tick_lang_bridge_spike_routing(brain_t brain, float dt_ms)
      * even when other paths inject spikes through concept_spike/word_spike. */
     (void)snn_language_bridge_tick(brain->snn_lang_bridge, dt_ms);
 
-    /* Turn the spike timing just recorded by drain_pop_spikes into binding
-     * weight updates. Prior to this, apply_stdp was only ever called from
-     * brain_decide() (inference) and task_decide_imagination() — never from
-     * the training tick — so total_stdp_updates / da_gated_stdp_passes sat
-     * flat at zero through entire training runs even with pops attached and
-     * routing on. apply_stdp uses the bridge's configured stdp_learning_rate
-     * (no caller-side lr), reads dopamine once per pass for the three-factor
-     * gate, and runs once per brain_learn_vector step (~13-52s apart) so the
-     * full-bucket walk is negligible cost. t_ms is the same monotonic clock
-     * drain_pop_spikes stamped the spikes with, so STDP windows line up. */
-    (void)snn_language_bridge_apply_stdp(brain->snn_lang_bridge, t_ms);
+    /* Option-1 (Slice A, 2026-05-19): removed snn_language_bridge_apply_stdp.
+     * The bridge no longer owns weights; STDP on concept↔word associations
+     * moves to the SNN's own projection synapses (Slice B concept_registry).
+     * `t_ms` is preserved on `brain->lang_bridge_t_ms` for downstream tick
+     * consumers that still need the monotonic clock. */
+    (void)t_ms;
 }
 
 void brain_tick_language(brain_t brain, float dt_ms)

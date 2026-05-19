@@ -1,11 +1,25 @@
 //=============================================================================
-// nimcp_snn_language_bridge.c - SNN ↔ Language Spike-Driven Bridge
+// nimcp_snn_language_bridge.c - SNN ↔ Language Transport Bridge (Option-1)
 //=============================================================================
 /**
  * @file nimcp_snn_language_bridge.c
- * @brief Implementation of spike-to-word decoder and STDP word-concept binding
+ * @brief Implementation of the Option-1 transport-only SNN↔language bridge.
  *
- * Phases 1-7 of the SNN-Language-Creative integration plan.
+ * Slice A (2026-05-19): the bridge no longer holds a concept_pop × word_pop
+ * weight matrix or applies STDP. All learning has moved into the SNN's
+ * own projection synapses and the lexicon's concept_registry (Slice B).
+ * This TU keeps the public API stable: every former learning function is
+ * still here as a no-op stub that returns success, so existing callers
+ * in grounded_language.c / cascade.c / etc. continue to link cleanly
+ * until Slice B migrates them off the deprecated names.
+ *
+ * Pure transport stays:
+ *   - register_concept / register_word (population bookkeeping)
+ *   - route_concept_to_word / route_word_to_concept (NEW transport API,
+ *     currently identity-mapping stubs; Slice B will swap in the registry)
+ *   - decode_with_lateral_inhibition (K-WTA over routed pops, local dynamics)
+ *   - produce / comprehend (consume the transport)
+ *   - connection lifecycle + LGSS attachment
  */
 
 #include "snn/bridges/nimcp_snn_language_bridge.h"
@@ -179,6 +193,14 @@ struct snn_language_bridge {
 // Hash function for binding lookup
 //=============================================================================
 
+/* Option-1 (Slice A): the binding-hashmap helpers below have no live
+ * callers — the bridge no longer owns a concept_pop × word_pop weight
+ * matrix. They are kept here behind #if 0 for reference (the surrounding
+ * struct still has binding_buckets / num_bindings members for ABI / save-
+ * load file-format compatibility, but those arrays are never populated).
+ * Slice B's concept_registry replaces this layer entirely.
+ */
+#if 0
 static inline uint32_t binding_hash(uint32_t concept_pop, uint32_t word_pop)
 {
     uint32_t h = concept_pop * 2654435761u + word_pop * 40503u;
@@ -200,13 +222,6 @@ static binding_node_t* binding_find(snn_language_bridge_t* bridge,
     return NULL;
 }
 
-/* PA-5 forward decl: lazy embedding cache filler. Defined alongside the
- * other PA-5 helpers below; declared up here because decode_spikes uses
- * it before its definition. */
-static inline int emb_cache_ensure(snn_language_bridge_t* bridge, uint32_t w);
-
-/* Patch A: maintain word_norm_sq[word_pop] = Σ w² across all bindings
- * touching word_pop. Δ(Σw²) = new² − old² for any single weight mutation. */
 static inline void norm_update(snn_language_bridge_t* bridge,
                                 uint32_t word_pop,
                                 float old_w, float new_w)
@@ -215,7 +230,7 @@ static inline void norm_update(snn_language_bridge_t* bridge,
     float delta = (new_w * new_w) - (old_w * old_w);
     bridge->word_norm_sq[word_pop] += delta;
     if (bridge->word_norm_sq[word_pop] < 0.0f) {
-        bridge->word_norm_sq[word_pop] = 0.0f;  /* fp drift floor */
+        bridge->word_norm_sq[word_pop] = 0.0f;
     }
 }
 
@@ -236,8 +251,6 @@ static binding_node_t* binding_insert(snn_language_bridge_t* bridge,
 
     binding_node_t* node = nimcp_calloc(1, sizeof(binding_node_t));
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "binding_insert: failed to allocate binding_node");
         return NULL;
     }
 
@@ -256,6 +269,12 @@ static binding_node_t* binding_insert(snn_language_bridge_t* bridge,
 
     return node;
 }
+#endif  /* legacy binding hashmap helpers — Slice A removed all live callers */
+
+/* PA-5 forward decl: lazy embedding cache filler. Defined alongside the
+ * other PA-5 helpers below; declared up here because decode_spikes uses
+ * it before its definition. */
+static inline int emb_cache_ensure(snn_language_bridge_t* bridge, uint32_t w);
 
 //=============================================================================
 // Configuration
@@ -618,6 +637,37 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
 
     bridge->stats.total_decode_calls++;
     *num_results = 0;
+    (void)num_concept_pops; (void)max_results;
+    /* Option-1 (Slice A): the bridge no longer holds a concept_pop × word_pop
+     * weight matrix, so it cannot rank words from concept_rates on its own.
+     * Decode is now a transport-only stub — returns zero results. The real
+     * concept→word mapping moves to the SNN's projection synapses (Slice B
+     * concept_registry) and is exercised by route_concept_to_word(). The
+     * caller (produce / cascade) handles "no candidates" by falling through
+     * to its own selection path or returning an empty utterance.
+     *
+     * TODO(slice-B): once concept_registry is in place, replace this with a
+     * call to route_concept_to_word + lexicon lookup for the word_form.
+     */
+    return 0;
+}
+
+#if 0  /* Old decode_spikes body — retained only for reference; Slice B will
+        * rewrite this on top of concept_registry. */
+int snn_language_bridge_decode_spikes_LEGACY_OFF(snn_language_bridge_t* bridge,
+                                       const float* concept_rates,
+                                       uint32_t num_concept_pops,
+                                       snn_lang_word_result_t* results,
+                                       uint32_t max_results,
+                                       uint32_t* num_results)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !concept_rates ||
+        !results || !num_results) {
+        return -1;
+    }
+
+    bridge->stats.total_decode_calls++;
+    *num_results = 0;
 
     /* TC-11 — bench-first scaffold. The CUDA port of decode is deferred
      * pending vocab growth past ~16K (PCIe round-trip dominates the math
@@ -848,6 +898,7 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
 
     return 0;
 }
+#endif  /* end legacy decode_spikes off-block */
 
 /*===========================================================================
  * Slice 4 — Decode with lateral inhibition (competitive lexical selection)
@@ -1117,33 +1168,83 @@ int snn_language_bridge_decode_with_lateral_inhibition(
     return 0;
 }
 
+/*===========================================================================
+ * Option-1 transport API (Slice A)
+ *
+ * Pure spike routing between concept and word populations. The bridge does
+ * not own weights — the projection synapses that actually drive the
+ * concept→word mapping live in the SNN, indexed by the concept_registry
+ * Slice B is building. Until that registry is wired in, the routing here
+ * is an identity stub: each input pop_id is echoed to the same pop_id on
+ * the other side. Tests verify the function exists, accepts the inputs,
+ * returns successfully — joint Slice B+A walkthroughs will verify the
+ * mapping itself.
+ *===========================================================================*/
+
+int snn_language_bridge_route_concept_to_word(
+    snn_language_bridge_t* bridge,
+    const uint32_t* concept_pop_ids, size_t n_concepts,
+    uint32_t* word_pop_ids_out, size_t* n_words_out, size_t max_out)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (n_concepts > 0 && !concept_pop_ids) return -1;
+    if (!n_words_out) return -1;
+
+    bridge->stats.total_spike_routes_concept_to_word++;
+
+    /* TODO(slice-B): use concept_registry to translate concept_pop_id ->
+     * canonical word_pop_id. Until then, identity-map and clamp to max_out. */
+    size_t out_count = (n_concepts < max_out) ? n_concepts : max_out;
+    if (word_pop_ids_out && out_count > 0) {
+        for (size_t i = 0; i < out_count; i++) {
+            word_pop_ids_out[i] = concept_pop_ids[i];
+        }
+    }
+    *n_words_out = out_count;
+    return 0;
+}
+
+int snn_language_bridge_route_word_to_concept(
+    snn_language_bridge_t* bridge,
+    const uint32_t* word_pop_ids, size_t n_words,
+    uint32_t* concept_pop_ids_out, size_t* n_concepts_out, size_t max_out)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    if (n_words > 0 && !word_pop_ids) return -1;
+    if (!n_concepts_out) return -1;
+
+    bridge->stats.total_spike_routes_word_to_concept++;
+
+    /* TODO(slice-B): use concept_registry to translate word_pop_id ->
+     * canonical concept_pop_id. Until then, identity-map and clamp. */
+    size_t out_count = (n_words < max_out) ? n_words : max_out;
+    if (concept_pop_ids_out && out_count > 0) {
+        for (size_t i = 0; i < out_count; i++) {
+            concept_pop_ids_out[i] = word_pop_ids[i];
+        }
+    }
+    *n_concepts_out = out_count;
+    return 0;
+}
+
 int snn_language_bridge_encode_word(snn_language_bridge_t* bridge,
                                      uint32_t word_pop,
                                      float* concept_activations,
                                      uint32_t num_concept_pops)
 {
+    /* Option-1 (Slice A): transport-only stub. Bridge has no binding
+     * weights to encode a word as a concept activation pattern. Returns
+     * zeroed activations and 0 (success). Slice B's concept_registry
+     * will reattach this to the canonical word_id → concept_pop_id
+     * mapping. */
+    (void)word_pop;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC || !concept_activations) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "snn_language_bridge_encode_word: bridge or concept_activations is NULL");
         return -1;
     }
-    if (word_pop >= bridge->num_word_pops) return -1;
-
     bridge->stats.total_encode_calls++;
     memset(concept_activations, 0, num_concept_pops * sizeof(float));
-
-    // Reverse lookup: concept_activation[c] = binding_weight[c, word_pop]
-    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-        binding_node_t* node = bridge->binding_buckets[bucket];
-        while (node) {
-            if (node->binding.word_pop == word_pop &&
-                node->binding.concept_pop < num_concept_pops) {
-                concept_activations[node->binding.concept_pop] = node->binding.weight;
-            }
-            node = node->next;
-        }
-    }
-
     return 0;
 }
 
@@ -1155,11 +1256,12 @@ int snn_language_bridge_concept_spike(snn_language_bridge_t* bridge,
                                        uint32_t concept_pop,
                                        float spike_time_ms)
 {
+    /* Option-1 (Slice A): no-op stub. The bridge no longer drives STDP
+     * off spike timing — the SNN owns its plasticity directly. Concept-
+     * pop activation was only ever consumed by apply_stdp / decode_spikes,
+     * both of which are now transport-only. */
+    (void)concept_pop; (void)spike_time_ms;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (concept_pop >= bridge->num_concept_pops) return -1;
-
-    bridge->concept_pops[concept_pop].last_spike_ms = spike_time_ms;
-    bridge->concept_pops[concept_pop].activation += 1.0f;
     return 0;
 }
 
@@ -1167,124 +1269,22 @@ int snn_language_bridge_word_spike(snn_language_bridge_t* bridge,
                                     uint32_t word_pop,
                                     float spike_time_ms)
 {
+    /* Option-1 (Slice A): no-op stub. See concept_spike. */
+    (void)word_pop; (void)spike_time_ms;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (word_pop >= bridge->num_word_pops) return -1;
-
-    bridge->word_pops[word_pop].last_spike_ms = spike_time_ms;
-    bridge->word_pops[word_pop].activation += 1.0f;
     return 0;
 }
 
 int snn_language_bridge_apply_stdp(snn_language_bridge_t* bridge,
                                     float current_time_ms)
 {
+    /* Option-1 (Slice A): no-op stub. The bridge no longer owns a
+     * concept_pop × word_pop weight matrix; STDP is the SNN's job now,
+     * acting on the SNN's own projection synapses. Kept for ABI so
+     * existing callers (grounded_language.c, cascade.c, brain_tick_*.c)
+     * continue to link until Slice B migrates them. */
+    (void)current_time_ms;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-
-    bridge->current_time_ms = current_time_ms;
-    float tau_plus = bridge->config.stdp_tau_plus;
-    float tau_minus = bridge->config.stdp_tau_minus;
-    float a_plus = bridge->config.stdp_a_plus;
-    float a_minus = bridge->config.stdp_a_minus;
-    float lr = bridge->config.stdp_learning_rate;
-    float w_max = bridge->config.binding_w_max;
-
-    /* TA-3 — three-factor learning gate. Read dopamine ONCE per pass
-     * (constant across all bindings this call) and fold it into the LR.
-     * Pattern matches stdp_get_da_modulation_factor: multiplier = 1 +
-     * DA × gain. Identity when modulation disabled or no neuromod
-     * connected. Tracked in stats so consumers can verify dopamine is
-     * actually reaching the binding loop. */
-    float da_modulation = 1.0f;
-    if (bridge->config.enable_da_modulation && bridge->neuromod &&
-        bridge->config.da_modulation_gain > 0.0f) {
-        float da = neuromodulator_get_level(
-            (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
-        /* Defensive: caller could feed back NaN/Inf via the system. */
-        if (isfinite(da) && da >= 0.0f) {
-            da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
-        }
-        bridge->stats.da_gated_stdp_passes++;
-    }
-    bridge->stats.last_da_modulation = da_modulation;
-
-    // Iterate all bindings
-    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-        binding_node_t* node = bridge->binding_buckets[bucket];
-        while (node) {
-            snn_lang_binding_t* b = &node->binding;
-            uint32_t c = b->concept_pop;
-            uint32_t w = b->word_pop;
-
-            float t_pre = bridge->concept_pops[c].last_spike_ms;
-            float t_post = bridge->word_pops[w].last_spike_ms;
-
-            // Only process if both spiked recently (within 2x window)
-            float window = fmaxf(tau_plus, tau_minus) * 3.0f;
-            if (t_pre < current_time_ms - window &&
-                t_post < current_time_ms - window) {
-                // Decay eligibility trace
-                float dt = current_time_ms - fmaxf(t_pre, t_post);
-                b->eligibility *= expf(-dt / (tau_plus * 5.0f));
-                node = node->next;
-                continue;
-            }
-
-            // Update traces
-            float dt_pre = current_time_ms - t_pre;
-            float dt_post = current_time_ms - t_post;
-            b->pre_trace = (dt_pre < window) ?
-                expf(-dt_pre / tau_plus) : 0.0f;
-            b->post_trace = (dt_post < window) ?
-                expf(-dt_post / tau_minus) : 0.0f;
-
-            // STDP weight update
-            float dw = 0.0f;
-            float dt_spike = t_post - t_pre;
-
-            if (dt_spike > 0.0f && dt_spike < window) {
-                // Post after pre → LTP (concept before word → strengthen binding)
-                dw = a_plus * expf(-dt_spike / tau_plus);
-                b->ltp_count++;
-                bridge->stats.total_ltp_events++;
-            } else if (dt_spike < 0.0f && dt_spike > -window) {
-                // Pre after post → LTD (word before concept → weaken binding)
-                dw = -a_minus * expf(dt_spike / tau_minus);
-                b->ltd_count++;
-                bridge->stats.total_ltd_events++;
-            }
-
-            if (dw != 0.0f) {
-                // Update eligibility trace
-                b->eligibility += fabsf(dw);
-
-                // Apply weight change with learning rate (TA-3: gated by dopamine)
-                float weight_change = lr * dw * da_modulation;
-
-                // Soft bounds: weight-dependent scaling
-                if (weight_change > 0.0f) {
-                    weight_change *= (w_max - b->weight) / w_max;
-                } else {
-                    weight_change *= b->weight / w_max;
-                }
-
-                /* Patch A: keep word_norm_sq cache consistent with STDP write. */
-                float old_w = b->weight;
-                b->weight += weight_change;
-                b->weight = fmaxf(SNN_LANG_BINDING_W_MIN,
-                            fminf(w_max, b->weight));
-                norm_update(bridge, b->word_pop, old_w, b->weight);
-
-                bridge->stats.total_stdp_updates++;
-            }
-
-            // Decay activations
-            bridge->concept_pops[c].activation *= bridge->config.decay_rate;
-            bridge->word_pops[w].activation *= bridge->config.decay_rate;
-
-            node = node->next;
-        }
-    }
-
     return 0;
 }
 
@@ -1292,165 +1292,32 @@ int snn_language_bridge_bind(snn_language_bridge_t* bridge,
                               uint32_t concept_pop, uint32_t word_pop,
                               float initial_weight)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights. */
+    (void)concept_pop; (void)word_pop; (void)initial_weight;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (concept_pop >= bridge->num_concept_pops) return -1;
-    if (word_pop >= bridge->num_word_pops) return -1;
-
-    binding_node_t* node = binding_insert(bridge, concept_pop, word_pop,
-                                          initial_weight);
-    return node ? 0 : -1;
+    return 0;
 }
 
-/* PA-4: additive weight update on a binding. delta may be negative (LTD).
- * Creates the binding if it didn't exist (with weight = max(0, delta)).
- * Maintains the cosine norm cache via norm_update. */
 int snn_language_bridge_strengthen_binding(snn_language_bridge_t* bridge,
                                             uint32_t concept_pop,
                                             uint32_t word_pop,
                                             float delta)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights. */
+    (void)concept_pop; (void)word_pop; (void)delta;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (concept_pop >= bridge->num_concept_pops) return -1;
-    if (word_pop >= bridge->num_word_pops) return -1;
-    if (!isfinite(delta)) return -1;
-
-    float w_max = bridge->config.binding_w_max > 0.0f
-                    ? bridge->config.binding_w_max : SNN_LANG_BINDING_W_MAX;
-
-    binding_node_t* existing = binding_find(bridge, concept_pop, word_pop);
-    if (existing) {
-        float old_w = existing->binding.weight;
-        /* Weight-dependent plasticity (Wang/Markram soft-bound STDP):
-         *   LTP: delta_eff = delta * (w_max - w) / w_max
-         *   LTD: delta_eff = delta * w / w_max
-         * Recovers `Δw ≈ delta` in mid-range and vanishes at the boundaries.
-         * Without this, a saturating word_pop kept absorbing LTP without
-         * bound while the LTD ceiling was bypassed by the margin gate —
-         * resulting in 1/50-unique-answer attractors regardless of prompt.
-         * Same shape the Riemannian variant gets for free via sigmoid_prime;
-         * this brings the flat path to parity. */
-        float headroom;
-        if (delta >= 0.0f) {
-            headroom = (w_max - old_w) / w_max;
-        } else {
-            headroom = old_w / w_max;
-        }
-        if (headroom < 0.0f) headroom = 0.0f;
-        if (headroom > 1.0f) headroom = 1.0f;
-        float effective_delta = delta * headroom;
-        float new_w = old_w + effective_delta;
-        if (new_w < SNN_LANG_BINDING_W_MIN) new_w = SNN_LANG_BINDING_W_MIN;
-        if (new_w > w_max)                  new_w = w_max;
-        if (new_w != old_w) {
-            existing->binding.weight = new_w;
-            norm_update(bridge, word_pop, old_w, new_w);
-        }
-        return 0;
-    }
-
-    /* No existing binding; only create one for positive delta. Negative
-     * delta on a non-existent binding is a no-op — there is nothing to
-     * weaken, and creating a zero-weight binding would just leak memory.
-     * Seed weight is the full delta (capped at w_max). The saturating
-     * update kicks in on subsequent calls when the binding exists. */
-    if (delta <= 0.0f) return 0;
-    float new_w = (delta > w_max) ? w_max : delta;
-    binding_node_t* node = binding_insert(bridge, concept_pop, word_pop, new_w);
-    return node ? 0 : -1;
+    return 0;
 }
 
-/* PA-4+: sigmoid reparameterization helpers for Riemannian binding update.
- * w = σ(u) ∈ (0, 1); σ'(u) = w*(1-w). Inlined — no new utils. */
-static inline float sigmoid(float u)
-{
-    /* Numerically stable, branch-free for typical |u| < 30. */
-    if (u >= 0.0f) {
-        float z = expf(-u);
-        return 1.0f / (1.0f + z);
-    }
-    float z = expf(u);
-    return z / (1.0f + z);
-}
-
-static inline float sigmoid_prime(float w)
-{
-    /* d/du σ(u) expressed in terms of w = σ(u). Diagonal Fisher entry
-     * for a Bernoulli-like binding. Vanishes at w∈{0,1} — that's the
-     * boundary damping we want. */
-    return w * (1.0f - w);
-}
-
-/* PA-4+: Riemannian / sigmoid-reparameterized binding update.
- *
- * Treats `w = σ(u)` for an unconstrained latent u and applies a Fisher-
- * preconditioned natural-gradient step in u-space, then projects back
- * through σ:
- *
- *     F_uu(w) = σ'(u) = w*(1-w)         (diag Fisher for Bernoulli-like w)
- *     Δu      = grad / (F_uu(w) + eps)  (`grad` already absorbs lr from caller)
- *     w'      = σ( σ⁻¹(w) + Δu )        (exact, not linearized)
- *
- * In mid-range (w≈0.5, F_uu=0.25) the linearization
- *   Δw ≈ σ'(u) * Δu = F_uu * (grad/F_uu) = grad
- * recovers the flat PA-4 step `lr * grad` exactly to first order. Near
- * the [0, 1] boundaries F_uu shrinks, so Δu blows up — but σ saturates
- * the projection back into the valid range, so the *effective Δw stays
- * bounded* and we never waste a step on truncation. This is the natural
- * "boundary damping" that the flat additive path lacks.
- *
- * Bridge config bound `binding_w_max` still applies post-projection so
- * an operator-tightened range is respected. */
 int snn_language_bridge_strengthen_binding_riemannian(snn_language_bridge_t* bridge,
                                                        uint32_t concept_pop,
                                                        uint32_t word_pop,
                                                        float grad)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights. */
+    (void)concept_pop; (void)word_pop; (void)grad;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (concept_pop >= bridge->num_concept_pops) return -1;
-    if (word_pop >= bridge->num_word_pops) return -1;
-    if (!isfinite(grad)) return -1;
-
-    float w_max = bridge->config.binding_w_max > 0.0f
-                    ? bridge->config.binding_w_max : SNN_LANG_BINDING_W_MAX;
-
-    /* Floor for the diagonal Fisher metric in u-space. eps keeps the
-     * preconditioner finite when w is at a boundary; w_clamp keeps logit
-     * away from ±inf. Both are needed and not redundant. */
-    const float fisher_eps = 1e-6f;
-    const float w_clamp_eps = 1e-6f;
-
-    binding_node_t* existing = binding_find(bridge, concept_pop, word_pop);
-    if (existing) {
-        float old_w = existing->binding.weight;
-        float w_clamped = old_w;
-        if (w_clamped < w_clamp_eps)         w_clamped = w_clamp_eps;
-        if (w_clamped > 1.0f - w_clamp_eps)  w_clamped = 1.0f - w_clamp_eps;
-
-        float u       = logf(w_clamped / (1.0f - w_clamped));
-        float fisher  = sigmoid_prime(w_clamped);            /* w*(1-w) */
-        float du      = grad / (fisher + fisher_eps);
-        float new_u   = u + du;
-        float new_w   = sigmoid(new_u);
-
-        if (new_w < SNN_LANG_BINDING_W_MIN) new_w = SNN_LANG_BINDING_W_MIN;
-        if (new_w > w_max)                  new_w = w_max;
-        if (new_w != old_w) {
-            existing->binding.weight = new_w;
-            norm_update(bridge, word_pop, old_w, new_w);
-        }
-        return 0;
-    }
-
-    /* No existing binding: only create one for positive grad. To match
-     * the flat PA-4 bootstrap (weight = grad) — and avoid materializing
-     * a half-strength binding from a single small step — we seed at
-     * w_init ≈ grad clamped to w_max, identical to the flat path. The
-     * Riemannian step kicks in on the *next* call when the binding
-     * already exists. Negative grad on a non-existent binding is a no-op. */
-    if (grad <= 0.0f) return 0;
-    float new_w = (grad > w_max) ? w_max : grad;
-    binding_node_t* node = binding_insert(bridge, concept_pop, word_pop, new_w);
-    return node ? 0 : -1;
+    return 0;
 }
 
 /* PA-6: xorshift64* — small period (~2^64) but more than enough for
@@ -1941,49 +1808,25 @@ static inline int emb_cache_ensure(snn_language_bridge_t* bridge, uint32_t w)
  * mid-flight live salvage of brains that pre-date Patch A. */
 int snn_language_bridge_recompute_norms(snn_language_bridge_t* bridge)
 {
+    /* Option-1 (Slice A): the bridge no longer holds binding weights, so
+     * word_norm_sq has no meaningful content to recompute. Zero the cache
+     * (defensive — defaults to zero on calloc and stays there) and return
+     * success. Existing callers (Python binding +
+     * nimcp_brain_recompute_snn_language_bridge_norms) keep their contract. */
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (!bridge->word_norm_sq) return -1;
-
-    memset(bridge->word_norm_sq, 0,
-           bridge->word_pops_capacity * sizeof(float));
-
-    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-        binding_node_t* node = bridge->binding_buckets[bucket];
-        while (node) {
-            uint32_t w = node->binding.word_pop;
-            float weight = node->binding.weight;
-            if (w < bridge->word_pops_capacity) {
-                bridge->word_norm_sq[w] += weight * weight;
-            }
-            node = node->next;
-        }
+    if (bridge->word_norm_sq) {
+        memset(bridge->word_norm_sq, 0,
+               bridge->word_pops_capacity * sizeof(float));
     }
     return 0;
 }
 
 int snn_language_bridge_prune(snn_language_bridge_t* bridge, float threshold)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights to prune. */
+    (void)threshold;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-
-    uint32_t pruned = 0;
-
-    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-        binding_node_t** pp = &bridge->binding_buckets[bucket];
-        while (*pp) {
-            if ((*pp)->binding.weight < threshold) {
-                binding_node_t* dead = *pp;
-                *pp = dead->next;
-                nimcp_free(dead);
-                bridge->num_bindings--;
-                pruned++;
-            } else {
-                pp = &(*pp)->next;
-            }
-        }
-    }
-
-    bridge->stats.bindings_pruned += pruned;
-    return (int)pruned;
+    return 0;
 }
 
 //=============================================================================
@@ -3289,33 +3132,36 @@ int snn_language_bridge_set_trigram_learning_enabled(
     snn_language_bridge_t* bridge,
     bool enabled)
 {
+    /* Option-1 (Slice A): no-op stub. Trigram learning is no longer a
+     * bridge concern; if grounded_language wants to learn trigrams, it
+     * does so against its own lexicon, not against bridge weights. */
+    (void)enabled;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    bridge->enable_trigram_learning = enabled;
     return 0;
 }
 
 bool snn_language_bridge_get_trigram_learning_enabled(
     const snn_language_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
-    return bridge->enable_trigram_learning;
+    (void)bridge;
+    return false;
 }
 
 int snn_language_bridge_set_ltd_margin(
     snn_language_bridge_t* bridge,
     float margin)
 {
+    /* Option-1 (Slice A): no-op stub. */
+    (void)margin;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (!isfinite(margin) || margin < 1.0f || margin > 100.0f) return -1;
-    bridge->config.ltd_margin = margin;
     return 0;
 }
 
 float snn_language_bridge_get_ltd_margin(
     const snn_language_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return 0.0f;
-    return bridge->config.ltd_margin;
+    (void)bridge;
+    return 0.0f;
 }
 
 /*===========================================================================
@@ -3380,36 +3226,10 @@ int64_t snn_language_bridge_reset_weights(snn_language_bridge_t* bridge,
                                            float w_min,
                                            float w_max)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights to reset. */
+    (void)w_min; (void)w_max;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (!isfinite(w_min) || !isfinite(w_max)) return -1;
-    if (w_min < 0.0f || w_max <= w_min) return -1;
-    float cfg_max = bridge->config.binding_w_max > 0.0f
-                       ? bridge->config.binding_w_max : SNN_LANG_BINDING_W_MAX;
-    if (w_max > cfg_max) w_max = cfg_max;
-
-    /* Reset the per-word-pop norm cache to zero — we rebuild it incrementally
-     * as we walk bindings below. */
-    if (bridge->word_norm_sq) {
-        for (uint32_t w = 0; w < bridge->word_pops_capacity; w++) {
-            bridge->word_norm_sq[w] = 0.0f;
-        }
-    }
-
-    float range = w_max - w_min;
-    int64_t count = 0;
-    for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
-        for (binding_node_t* n = bridge->binding_buckets[b]; n != NULL; n = n->next) {
-            float r = bridge_rng_unit(bridge);
-            float new_w = w_min + r * range;
-            n->binding.weight = new_w;
-            uint32_t wp = n->binding.word_pop;
-            if (bridge->word_norm_sq && wp < bridge->word_pops_capacity) {
-                bridge->word_norm_sq[wp] += new_w * new_w;
-            }
-            count++;
-        }
-    }
-    return count;
+    return 0;
 }
 
 /* TB-8: streaming-produce callback attach/detach. cb=NULL detaches.
@@ -3427,41 +3247,38 @@ int snn_language_bridge_set_stream_callback(
     return 0;
 }
 
-/* TA-4: bump the trigram-update counter. Internal helper used from
- * grounded_language_learn_next_token_triple — exposed within the bridge
- * .c only via the snn_language_bridge_inc_trigram_updates symbol below
- * so the counter mutation stays inside the bridge's encapsulation. */
 void snn_language_bridge_inc_trigram_updates(snn_language_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return;
-    bridge->stats.total_trigram_updates++;
+    /* Option-1 (Slice A): no-op stub. */
+    (void)bridge;
 }
 
-/* TA-3: dopamine-modulated binding learning runtime accessors. */
 int snn_language_bridge_set_da_modulation_enabled(
     snn_language_bridge_t* bridge,
     bool enabled)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights to modulate. */
+    (void)enabled;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    bridge->config.enable_da_modulation = enabled;
     return 0;
 }
 
 bool snn_language_bridge_get_da_modulation_enabled(
     const snn_language_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
-    return bridge->config.enable_da_modulation;
+    (void)bridge;
+    return false;
 }
 
 int snn_language_bridge_set_da_modulation_gain(
     snn_language_bridge_t* bridge,
     float gain)
 {
+    /* Option-1 (Slice A): no-op stub. DA modulation as a concept persists
+     * but moves to SNN neuromod (Slice F). The bridge-side setter is now
+     * inert. */
+    (void)gain;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (!isfinite(gain) || gain < 0.0f) return -1;
-    if (gain > 200.0f) gain = 200.0f;
-    bridge->config.da_modulation_gain = gain;
     return 0;
 }
 
@@ -3485,6 +3302,18 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
                                     uint32_t* num_activated,
                                     float* comprehension_confidence)
 {
+    /* Option-1 (Slice A): the bridge no longer owns a word_pop→concept_pop
+     * weight matrix, so it cannot map text to concept activations on its
+     * own. Comprehend becomes a transport-only stub — zero activations,
+     * zero confidence. The real text→concept mapping moves to the lexicon
+     * (Slice B concept_registry); callers (cascade Wernicke stage) should
+     * already fall through to grounded_language's own comprehend path
+     * when this returns 0 activations.
+     *
+     * TODO(slice-B): rewrite on top of concept_registry — tokenize, look
+     * up each word_id, fetch concept_pop_id from the registry, write a
+     * Kronecker activation at that pop index.
+     */
     if (!bridge || bridge->magic != SNN_LANG_MAGIC ||
         !text || !concept_activations || !num_activated) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -3495,165 +3324,24 @@ int snn_language_bridge_comprehend(snn_language_bridge_t* bridge,
     bridge->stats.total_comprehend_calls++;
     memset(concept_activations, 0, max_concepts * sizeof(float));
     *num_activated = 0;
-
-    /* CSTDP — comprehend-driven scoped STDP. Capture pointers to
-     * qualifying binding nodes during the forward walk so we can apply
-     * STDP without a second 1.6M-binding hash walk. Cap the touched-set
-     * size to keep the per-comprehend cost bounded. */
-    const bool cstdp_on = bridge->config.enable_comprehend_stdp;
-    const float cstdp_min_weight = bridge->config.comprehend_stdp_min_weight;
-    enum { CSTDP_TOUCHED_CAP = 256 };
-    binding_node_t* touched[CSTDP_TOUCHED_CAP];
-    uint32_t touched_n = 0;
-
-    // Tokenize text into words (simple whitespace split)
-    char text_copy[2048];
-    strncpy(text_copy, text, sizeof(text_copy) - 1);
-    text_copy[sizeof(text_copy) - 1] = '\0';
-
-    float total_activation = 0.0f;
-    uint32_t word_count = 0;
-
-    char* saveptr = NULL;
-    char* token = strtok_r(text_copy, " \t\n,.;:!?\"'()-", &saveptr);
-
-    while (token) {
-        // Find word population
-        uint32_t word_pop = UINT32_MAX;
-        for (uint32_t w = 0; w < bridge->num_word_pops; w++) {
-            if (bridge->word_pops[w].registered &&
-                strcasecmp(bridge->word_pops[w].word_form, token) == 0) {
-                word_pop = w;
-                break;
-            }
-        }
-
-        if (word_pop != UINT32_MAX) {
-            // Direct reverse lookup of word_pop → concept_pop bindings.
-            for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-                binding_node_t* node = bridge->binding_buckets[bucket];
-                while (node) {
-                    if (node->binding.word_pop == word_pop &&
-                        node->binding.concept_pop < max_concepts) {
-                        concept_activations[node->binding.concept_pop] +=
-                            node->binding.weight;
-                        total_activation += node->binding.weight;
-                        /* CSTDP capture — keep pointer to bindings strong
-                         * enough to be worth reinforcing. The activation
-                         * threshold check happens AFTER the full word
-                         * loop so concepts touched by multiple words
-                         * accumulate before being judged. */
-                        if (cstdp_on &&
-                            node->binding.weight >= cstdp_min_weight &&
-                            touched_n < CSTDP_TOUCHED_CAP) {
-                            touched[touched_n++] = node;
-                        }
-                    }
-                    node = node->next;
-                }
-            }
-            word_count++;
-        }
-
-        token = strtok_r(NULL, " \t\n,.;:!?\"'()-", &saveptr);
-    }
-
-    // Count activated concepts
-    for (uint32_t c = 0; c < max_concepts; c++) {
-        if (concept_activations[c] > 0.01f) {
-            (*num_activated)++;
-        }
-    }
-
-    if (comprehension_confidence) {
-        *comprehension_confidence = (word_count > 0) ?
-            total_activation / (float)word_count : 0.0f;
-    }
-
-    /* CSTDP — apply scoped STDP to the bindings captured during the
-     * forward walk. This runs only when enable_comprehend_stdp is true
-     * AND at least one binding qualified by weight; the per-binding
-     * activation threshold gate fires inside the loop using the
-     * already-accumulated concept_activations[]. */
-    if (cstdp_on && touched_n > 0) {
-        const float min_act = bridge->config.comprehend_stdp_min_activation;
-        const float lr_scale = bridge->config.comprehend_stdp_lr_scale;
-        const float base_lr = bridge->config.stdp_learning_rate;
-        const float a_plus = bridge->config.stdp_a_plus;
-        const float w_max = bridge->config.binding_w_max;
-        const float tau_plus = bridge->config.stdp_tau_plus;
-
-        /* TA-3 — same DA modulation as snn_language_bridge_apply_stdp. */
-        float da_modulation = 1.0f;
-        if (bridge->config.enable_da_modulation && bridge->neuromod &&
-            bridge->config.da_modulation_gain > 0.0f) {
-            float da = neuromodulator_get_level(
-                (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
-            if (isfinite(da) && da >= 0.0f) {
-                da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
-            }
-        }
-
-        /* Production-direction LTP: concept fired before word at δ_ms
-         * separation. With Δt = -δ (negative because t_pre < t_post),
-         * the standard exp(-Δt/τ_plus) STDP kernel produces
-         * exp(δ/τ_plus). Pre-compute since δ is constant per call. */
-        const float delta_ms = 5.0f;  /* fixed pre→post lag */
-        const float ltp_kernel = expf(-delta_ms / tau_plus);
-        const float dw_per_pair = base_lr * lr_scale * a_plus *
-                                   ltp_kernel * da_modulation;
-
-        uint32_t pairs_fired = 0;
-        for (uint32_t i = 0; i < touched_n; i++) {
-            binding_node_t* node = touched[i];
-            uint32_t c = node->binding.concept_pop;
-            /* Activation gate — only reinforce bindings whose concept
-             * actually saw meaningful activation this comprehend
-             * (multi-word inputs concentrate activation on the few
-             * concepts that match across words). */
-            if (c >= max_concepts) continue;
-            if (concept_activations[c] < min_act) continue;
-
-            float new_w = node->binding.weight + dw_per_pair;
-            if (new_w > w_max) new_w = w_max;
-            node->binding.weight = new_w;
-            pairs_fired++;
-        }
-        if (pairs_fired > 0) {
-            bridge->stats.comprehend_stdp_passes++;
-            bridge->stats.comprehend_stdp_pairs_fired += pairs_fired;
-        }
-    }
-
+    if (comprehension_confidence) *comprehension_confidence = 0.0f;
     return 0;
 }
 
 int snn_language_bridge_set_comprehend_stdp_enabled(
     snn_language_bridge_t* bridge, bool enabled)
 {
+    /* Option-1 (Slice A): no-op stub. Comprehend is read-only transport now. */
+    (void)enabled;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    bridge->config.enable_comprehend_stdp = enabled;
     return 0;
 }
 
 bool snn_language_bridge_get_comprehend_stdp_enabled(
     const snn_language_bridge_t* bridge)
 {
-    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return false;
-    return bridge->config.enable_comprehend_stdp;
-}
-
-/* FNV-1a hash matching grounded_language.c::hash_word — must produce the
- * same form_hash so word_pop = (form_hash % SNN_LANG_MAX_WORD_POPS) lands
- * in the same slot mirror_binding_to_bridge writes to. Duplicating the
- * helper here avoids cross-module include of the lexicon's static. */
-static uint32_t echo_correct_hash_word(const char* word) {
-    uint32_t hash = 2166136261u;
-    for (const char* p = word; *p; p++) {
-        hash ^= (uint32_t)(unsigned char)tolower((unsigned char)*p);
-        hash *= 16777619u;
-    }
-    return hash;
+    (void)bridge;
+    return false;
 }
 
 int snn_language_bridge_echo_correct(
@@ -3663,122 +3351,17 @@ int snn_language_bridge_echo_correct(
     const char* target_word_form,
     float lr_scale)
 {
+    /* Option-1 (Slice A): no-op stub. Echo-correct supervised production
+     * learning is gone from the bridge — bridge owns no concept→word
+     * weights to strengthen. The supervised production-side learning
+     * loop is being moved into the SNN's projection synapses + the
+     * lexicon's concept_registry. Until Slice B wires that, callers
+     * (notably cascade_apply_self_train_reward) just get a 0-pairs
+     * return — equivalent to running the supervised step on an
+     * unfamiliar word, which they already handle as a no-op. */
+    (void)intent; (void)intent_dim; (void)target_word_form; (void)lr_scale;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-    if (!intent || intent_dim == 0 || !target_word_form ||
-        target_word_form[0] == '\0') return -1;
-    if (!isfinite(lr_scale) || lr_scale <= 0.0f) return -1;
-
-    bridge->stats.echo_correct_calls++;
-
-    /* Compute target word_pop the same way mirror_binding_to_bridge does:
-     * hash the form and modulo the max-pops cap. This sidesteps the
-     * collision-lossy linear scan over word_pops[].word_form (with 29K
-     * words mapped into 32K slots, ~10K hash collisions overwrite each
-     * other's stored forms — but the BINDINGS keyed by (concept, pop)
-     * are still at the right indices, so we can address them by hash
-     * even if the form-string in word_pops[pop] now shows some other
-     * colliding word). */
-    uint32_t form_hash = echo_correct_hash_word(target_word_form);
-    uint32_t target_word_pop = form_hash % SNN_LANG_MAX_WORD_POPS;
-    if (target_word_pop >= bridge->word_pops_capacity) {
-        bridge->stats.echo_correct_target_misses++;
-        return -2;
-    }
-    /* Register the word_form at this slot so the produce-side decoder
-     * (which skips !registered slots) can pick this word up later.
-     * Idempotent — register_word overwrites whatever colliding form
-     * was last written. With 29K words competing for 32K slots there's
-     * always a collision risk; this resets the slot to the word the
-     * trainer is currently teaching. The displaced word's bindings
-     * still exist in binding_buckets[] keyed on the same word_pop, but
-     * its form-string is overwritten. That's the same race the lexicon
-     * itself accepts during mirror_binding_to_bridge. */
-    snn_language_bridge_register_word(bridge, target_word_pop, target_word_form);
-
-    /* DA modulation — same formula as apply_stdp/CSTDP. Reads dopamine
-     * once per call so the same multiplier scales every binding update.
-     * When DA modulation is off or no neuromod is wired, multiplier is
-     * 1.0 (unchanged behaviour). */
-    float da_modulation = 1.0f;
-    if (bridge->config.enable_da_modulation && bridge->neuromod &&
-        bridge->config.da_modulation_gain > 0.0f) {
-        float da = neuromodulator_get_level(
-            (neuromodulator_system_t)bridge->neuromod, NEUROMOD_DOPAMINE);
-        if (isfinite(da) && da >= 0.0f) {
-            da_modulation = 1.0f + da * bridge->config.da_modulation_gain;
-        }
-    }
-    /* Surface the DA reach into echo_correct so operators can verify the
-     * cascade self_train DA-release path (cascade_stage_self_train calls
-     * neuromodulator_release_dopamine on success) is actually elevating
-     * the level the bridge sees. Without this, last_da_modulation only
-     * tracked apply_stdp's reads and stayed at 1.0 even when echo_correct
-     * was consuming non-trivial DA. The bumped multiplier replaces the
-     * existing 1.0 sentinel only when non-trivial, so apply_stdp-only
-     * operators still see the apply_stdp value on top of echo's. */
-    if (da_modulation > 1.0f) {
-        bridge->stats.last_da_modulation = da_modulation;
-    }
-
-    /* Per-binding LTP magnitude. Uses the same a_plus the produce-side
-     * apply_stdp uses, scaled by lr_scale (caller-controlled — set < 1.0
-     * during early training to avoid runaway, > 1.0 for fast supervised
-     * imprinting). The intent[i] activation acts as the per-concept
-     * weight: a strongly-activated concept during comprehend gets a
-     * proportionally larger LTP toward the target word.
-     *
-     * No activation gate: this is SUPERVISED — the caller is asserting
-     * "for this intent, produce target_word." Filtering on a noise-floor
-     * threshold would suppress the signal during early training when
-     * activations are uniformly small. CSTDP keeps its gate because
-     * it fires on every comprehend (unsupervised); echo_correct fires
-     * only when the trainer explicitly says "teach this word" so we
-     * trust the caller's correctness assertion. */
-    const float base_lr = bridge->config.stdp_learning_rate;
-    const float a_plus = bridge->config.stdp_a_plus;
-
-    /* Iterate the dimensions covered by both intent and concept_pops.
-     * Mirrors bridge_produce_impl's intent → concept_acts mapping
-     * (first num_concept_pops entries, ReLU). */
-    uint32_t copy_dim = (intent_dim < bridge->num_concept_pops)
-                        ? intent_dim : bridge->num_concept_pops;
-    uint32_t pairs_strengthened = 0;
-    for (uint32_t c = 0; c < copy_dim; c++) {
-        float act = intent[c];
-        if (!isfinite(act) || act <= 0.0f) continue;     /* ReLU only */
-        float delta = base_lr * lr_scale * a_plus * act * da_modulation;
-        if (delta <= 0.0f) continue;
-        if (snn_language_bridge_strengthen_binding(bridge, c, target_word_pop,
-                                                    delta) == 0) {
-            pairs_strengthened++;
-        }
-    }
-
-    bridge->stats.echo_correct_pairs += pairs_strengthened;
-    /* Diagnostic: helps the trainer / operator see whether the call ran
-     * to completion but found no positive activations (indicating the
-     * comprehend produced an empty semantic_vector — usually because
-     * the input text had no recognized words). */
-    if (pairs_strengthened == 0) {
-        /* Compute simple stats on the intent vector to help diagnose. */
-        float intent_max = 0.0f, intent_sum = 0.0f;
-        uint32_t intent_pos = 0;
-        uint32_t copy_dim_d = (intent_dim < bridge->num_concept_pops)
-                              ? intent_dim : bridge->num_concept_pops;
-        for (uint32_t c = 0; c < copy_dim_d; c++) {
-            float a = intent[c];
-            if (isfinite(a) && a > 0.0f) { intent_pos++; intent_sum += a; if (a > intent_max) intent_max = a; }
-        }
-        LOG_INFO("snn_lang_bridge",
-                  "echo_correct: '%s' resolved (pop=%u) but 0 pairs "
-                  "strengthened — intent_dim=%u, num_concept_pops=%u, "
-                  "intent_pos=%u/%u, max=%.4f, sum=%.4f, base_lr=%.4f a_plus=%.4f da=%.4f",
-                  target_word_form, target_word_pop,
-                  intent_dim, bridge->num_concept_pops,
-                  intent_pos, copy_dim_d, intent_max, intent_sum,
-                  base_lr, a_plus, da_modulation);
-    }
-    return (int)pairs_strengthened;
+    return 0;
 }
 
 //=============================================================================
@@ -3843,28 +3426,12 @@ int snn_language_bridge_curiosity_modulate(snn_language_bridge_t* bridge,
                                             float novelty_level,
                                             float exploration_drive)
 {
+    /* Option-1 (Slice A): no-op stub. Novelty / exploration as concepts
+     * persist but their effect on learning rates moves to the SNN's own
+     * STDP knobs, not the bridge's (now-deleted) STDP. */
+    (void)novelty_level; (void)exploration_drive;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-
     bridge->stats.curiosity_contributions++;
-
-    // Boost binding learning rate for novel stimuli
-    // Higher novelty → faster binding formation
-    float novelty_boost = 1.0f + novelty_level * 0.5f;
-    bridge->config.stdp_learning_rate *= novelty_boost;
-
-    // Clamp to reasonable range
-    if (bridge->config.stdp_learning_rate > 0.1f) {
-        bridge->config.stdp_learning_rate = 0.1f;
-    }
-
-    // Exploration drive lowers the prune threshold (keep more bindings)
-    if (exploration_drive > 0.5f) {
-        bridge->config.prune_threshold *= 0.5f;
-        if (bridge->config.prune_threshold < 0.001f) {
-            bridge->config.prune_threshold = 0.001f;
-        }
-    }
-
     return 0;
 }
 
@@ -3875,40 +3442,12 @@ int snn_language_bridge_curiosity_modulate(snn_language_bridge_t* bridge,
 int snn_language_bridge_sleep_consolidate(snn_language_bridge_t* bridge,
                                            float consolidation_strength)
 {
+    /* Option-1 (Slice A): no-op stub. Bridge has no weights to consolidate.
+     * If/when sleep consolidation lives on top of concept_registry +
+     * SNN projection synapses, Slice B will wire it through there. */
+    (void)consolidation_strength;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
-
     bridge->stats.sleep_consolidation_cycles++;
-
-    // Strengthen high-weight bindings, weaken low-weight ones
-    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-        binding_node_t* node = bridge->binding_buckets[bucket];
-        while (node) {
-            snn_lang_binding_t* b = &node->binding;
-
-            // Replay: bindings with high eligibility get strengthened.
-            // PA-1 fix (walkthrough round 1): keep word_norm_sq cache
-            // consistent with weight updates, otherwise post-sleep cosine
-            // scores in decode_spikes go stale.
-            if (b->eligibility > 0.1f) {
-                float replay_boost = consolidation_strength * b->eligibility * 0.1f;
-                float old_w = b->weight;
-                b->weight += replay_boost;
-                if (b->weight > bridge->config.binding_w_max) {
-                    b->weight = bridge->config.binding_w_max;
-                }
-                norm_update(bridge, b->word_pop, old_w, b->weight);
-            }
-
-            // Decay eligibility traces during sleep
-            b->eligibility *= 0.5f;
-
-            node = node->next;
-        }
-    }
-
-    // Prune weak bindings
-    snn_language_bridge_prune(bridge, bridge->config.prune_threshold);
-
     return 0;
 }
 
@@ -3926,21 +3465,12 @@ int snn_language_bridge_get_stats(const snn_language_bridge_t* bridge,
     }
 
     *stats = bridge->stats;
-    stats->active_bindings = bridge->num_bindings;
+    /* Option-1 (Slice A): bridge owns no bindings now. active_bindings and
+     * avg_binding_weight stay at the legacy 0 they get from the memcpy +
+     * default-init. spike_blend_current is still a config knob, so report it. */
+    stats->active_bindings = 0;
+    stats->avg_binding_weight = 0.0f;
     stats->spike_blend_current = bridge->config.spike_blend;
-
-    // Compute average binding weight
-    float total_weight = 0.0f;
-    uint32_t count = 0;
-    for (uint32_t bucket = 0; bucket < BINDING_HASH_BUCKETS; bucket++) {
-        binding_node_t* node = bridge->binding_buckets[bucket];
-        while (node) {
-            total_weight += node->binding.weight;
-            count++;
-            node = node->next;
-        }
-    }
-    stats->avg_binding_weight = (count > 0) ? total_weight / count : 0.0f;
 
     return 0;
 }
@@ -4514,28 +4044,24 @@ snn_language_bridge_t* snn_language_bridge_load(const char* path)
         bridge->num_word_pops = num_words;
     }
 
-    // Load bindings
+    /* Option-1 (Slice A): the bridge no longer owns binding weights.
+     * Older checkpoints still have a bindings array on disk — we read
+     * past it to keep file-format compatibility but discard every
+     * entry (bridge has no place to store them, nor any code path
+     * that would use them). num_bindings on the new save is always 0. */
     uint32_t num_bindings;
     if (fread(&num_bindings, sizeof(uint32_t), 1, f) != 1) {
         snn_language_bridge_destroy(bridge);
         fclose(f);
         return NULL;
     }
-
     for (uint32_t i = 0; i < num_bindings; i++) {
         snn_lang_binding_t b;
         if (fread(&b, sizeof(snn_lang_binding_t), 1, f) != 1) break;
-        binding_node_t* node = binding_insert(bridge, b.concept_pop,
-                                               b.word_pop, b.weight);
-        if (node) {
-            node->binding = b;
-        }
+        /* discard */
     }
-
-    /* Patch A: binding_insert's incremental norm tracking races with the
-     * `node->binding = b` overwrite (the on-disk weight may differ from the
-     * initial value just inserted). Rebuild from final state. */
-    snn_language_bridge_recompute_norms(bridge);
+    /* word_norm_sq stays zeroed (calloc'd in create) — no bindings to
+     * compute norms over. */
 
     /* V5 stats trailer — best-effort read. V3/V4 files have nothing here
      * (EOF), in which case stats stay zero. V5 files round-trip 30 fields. */
@@ -4566,54 +4092,20 @@ int snn_language_bridge_generate_attention_feedback(
     float* attention_weights,
     uint32_t num_weights)
 {
+    /* Option-1 (Slice A): the bridge no longer holds binding weights, so
+     * there is no concept→word attention signal to derive from this side.
+     * Return zeroed attention; callers that wanted top-down attention
+     * should consult grounded_language / concept_registry once Slice B
+     * lands. */
     if (!bridge || !attention_weights || num_weights == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "snn_language_bridge_generate_attention_feedback: bridge or attention_weights is NULL");
         return -1;
     }
-
-    /* Zero output */
     memset(attention_weights, 0, num_weights * sizeof(float));
-
-    /* Accumulate binding weights per concept population */
-    float max_weight = 0.0f;
-    for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
-        binding_node_t* node = bridge->binding_buckets[b];
-        while (node) {
-            uint32_t cp = node->binding.concept_pop;
-            if (cp < num_weights) {
-                /* Weight contribution scaled by concept activation */
-                float activation = 0.0f;
-                if (cp < bridge->num_concept_pops) {
-                    activation = bridge->concept_pops[cp].activation;
-                }
-                float contrib = node->binding.weight * activation;
-                attention_weights[cp] += contrib;
-                if (attention_weights[cp] > max_weight) {
-                    max_weight = attention_weights[cp];
-                }
-            }
-            node = node->next;
-        }
-    }
-
-    /* Normalize to [0, 1] */
-    if (max_weight > 1e-6f) {
-        float inv_max = 1.0f / max_weight;
-        for (uint32_t i = 0; i < num_weights; i++) {
-            attention_weights[i] *= inv_max;
-        }
-    }
-
     return 0;
 }
 
-/**
- * WHAT: Generate predicted sensory pattern from active concepts
- * WHY:  Predictive coding — reduce prediction error at sensory level
- * HOW:  For each active concept, sum binding weights to word populations;
- *        output predicted sensory pattern as weighted concept-to-sensory map
- */
 int snn_language_bridge_predict_sensory(
     snn_language_bridge_t* bridge,
     const float* concept_activations,
@@ -4621,44 +4113,10 @@ int snn_language_bridge_predict_sensory(
     float* predicted_sensory,
     uint32_t sensory_dim)
 {
-    if (!bridge || !concept_activations || !predicted_sensory) return -1;
-    if (num_concepts == 0 || sensory_dim == 0) return -1;
-
+    /* Option-1 (Slice A): no bridge-side bindings → no predictive sensory
+     * pattern. Zero output and succeed. */
+    (void)concept_activations; (void)num_concepts;
+    if (!bridge || !predicted_sensory || sensory_dim == 0) return -1;
     memset(predicted_sensory, 0, sensory_dim * sizeof(float));
-
-    /* Single pass over all binding buckets — check concept activation per node.
-     * O(num_bindings) instead of O(num_concepts * BINDING_HASH_BUCKETS). */
-    float total_activation = 0.0f;
-    uint32_t max_concept = num_concepts < bridge->num_concept_pops
-                         ? num_concepts : bridge->num_concept_pops;
-
-    for (uint32_t b = 0; b < BINDING_HASH_BUCKETS; b++) {
-        binding_node_t* node = bridge->binding_buckets[b];
-        while (node) {
-            uint32_t cp = node->binding.concept_pop;
-            if (cp < max_concept) {
-                float act = concept_activations[cp];
-                if (act >= 0.01f) {
-                    total_activation += act;
-                    uint32_t wp = node->binding.word_pop;
-                    uint32_t sensory_idx = wp % sensory_dim;
-                    predicted_sensory[sensory_idx] +=
-                        act * node->binding.weight;
-                }
-            }
-            node = node->next;
-        }
-    }
-
-    /* Normalize by total activation */
-    if (total_activation > 1e-6f) {
-        float inv = 1.0f / total_activation;
-        for (uint32_t i = 0; i < sensory_dim; i++) {
-            predicted_sensory[i] *= inv;
-            /* Clamp to [0, 1] */
-            if (predicted_sensory[i] > 1.0f) predicted_sensory[i] = 1.0f;
-        }
-    }
-
     return 0;
 }

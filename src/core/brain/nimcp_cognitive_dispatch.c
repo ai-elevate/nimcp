@@ -756,12 +756,9 @@ static void task_decide_imagination(void* arg) {
                 imagination_end_scenario(a->brain->imagination, scenario);
             }
         }
-        /* SNN language bridge STDP — safe, only touches bridge's own state.
-         * Return value (int) discarded; header is in scope above. */
-        if (a->brain->snn_lang_bridge) {
-            (void)snn_language_bridge_apply_stdp(a->brain->snn_lang_bridge,
-                                                  (float)(nimcp_time_get_ms() % 1000000));
-        }
+        /* Option-1 (Slice A, 2026-05-19): removed snn_language_bridge_apply_stdp
+         * call. The bridge is transport-only now; STDP on concept↔word
+         * bindings lives in the SNN's projection synapses (Slice B). */
     }
     r.elapsed_us = nimcp_time_get_us() - t0;
     nimcp_promise_complete(a->promise, &r);

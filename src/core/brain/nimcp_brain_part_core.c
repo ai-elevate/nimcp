@@ -2814,11 +2814,9 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             }
         }
 
-        /* Apply pending STDP updates to SNN language bridge */
-        if (brain->snn_lang_bridge) {
-            snn_language_bridge_apply_stdp(brain->snn_lang_bridge,
-                                            (float)(nimcp_time_get_ms() % 1000000));
-        }
+        /* Option-1 (Slice A, 2026-05-19): removed snn_language_bridge_apply_stdp
+         * call. The bridge is transport-only now; STDP on concept↔word
+         * bindings lives in the SNN's projection synapses (Slice B). */
     }
 
     // ========================================================================

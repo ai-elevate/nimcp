@@ -2020,57 +2020,34 @@ class BrainService:
     # =====================================================================
 
     def _cmd_set_da_modulation_enabled(self, req):
-        """TA-3: toggle dopamine-modulated STDP."""
-        enabled = bool(req.get("enabled", False))
-        try:
-            self.brain.set_da_modulation_enabled(enabled)
-        except AttributeError:
-            return {"error": "set_da_modulation_enabled not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"set_da_modulation_enabled: {e}"}
-        return {"ok": True, "enabled": enabled}
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
+
+        Bridge-side DA modulation gated the now-removed bridge STDP path.
+        DA modulation as a concept moves to SNN neuromod (Slice F).
+        """
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}
 
     def _cmd_set_comprehend_stdp_enabled(self, req):
-        """CSTDP: toggle comprehend-driven scoped STDP on the SNN language
-        bridge. When enabled, every comprehend call reinforces existing
-        strong concept↔word bindings via inline STDP — turns lexicon-side
-        training signal into bridge-weight reinforcement without a
-        separate supervised loop. Default OFF; entrenchment risk on
-        early-training brains with mostly-noise bindings."""
-        enabled = bool(req.get("enabled", False))
-        try:
-            self.brain.set_comprehend_stdp_enabled(enabled)
-        except AttributeError:
-            return {"error": "set_comprehend_stdp_enabled not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"set_comprehend_stdp_enabled: {e}"}
-        return {"ok": True, "enabled": enabled}
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
+
+        Comprehend-driven scoped STDP fired on the now-removed bridge
+        weight matrix. Comprehend is read-only transport now.
+        """
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}
 
     def _cmd_echo_and_correct(self, req):
-        """Echo-correct: comprehend(parent_text) → strengthen
-        (active concepts → target_word) bindings. Supervised production-
-        side learning loop. Returns count of bindings strengthened
-        (0 means target_word isn't registered in the bridge yet — it
-        hasn't been mirrored from the lexicon side).
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
 
-        Request: {"cmd": "echo_and_correct", "parent_text": "...",
-                   "target_word": "...", "lr_scale": 1.0}
-        Response: {"ok": True, "pairs_strengthened": <int>}"""
-        parent_text = req.get("parent_text", "")
-        target_word = req.get("target_word", "")
-        try:
-            lr_scale = float(req.get("lr_scale", 1.0))
-        except (TypeError, ValueError):
-            return {"error": "echo_and_correct: lr_scale must be a number"}
-        if not parent_text or not target_word:
-            return {"error": "echo_and_correct: parent_text and target_word required"}
-        try:
-            pairs = self.brain.echo_and_correct(parent_text, target_word, lr_scale=lr_scale)
-        except AttributeError:
-            return {"error": "echo_and_correct not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"echo_and_correct: {e}"}
-        return {"ok": True, "pairs_strengthened": int(pairs)}
+        Echo-correct supervised production-side learning was a bridge-
+        weight strengthen loop. With the bridge transport-only, the
+        supervised signal moves into SNN projection synapses + the
+        concept_registry (Slice B). RPC stays for back-compat.
+        """
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild",
+                "pairs_strengthened": 0}
 
     def _cmd_produce_cascade_recurrent(self, req):
         """Slice 1 of the recurrent-language-architecture rewrite. Iterates
@@ -2128,28 +2105,13 @@ class BrainService:
         return result
 
     def _cmd_set_da_modulation_gain(self, req):
-        """TA-3: tune the DA → LR scaling. Clamped [0, 200].
+        """DEPRECATED (Option-1 Slice A, 2026-05-19).
 
-        Audit-2 B4: returns the effective (post-clamp) value, not the
-        request, so callers see what actually got applied.
+        Bridge-side DA gain scaled the now-removed bridge STDP loop.
+        DA modulation as a concept moves to SNN neuromod (Slice F).
         """
-        try:
-            gain = float(req.get("gain", 50.0))
-        except (TypeError, ValueError) as e:
-            return {"error": f"set_da_modulation_gain bad arg: {e}"}
-        try:
-            self.brain.set_da_modulation_gain(gain)
-        except AttributeError:
-            return {"error": "set_da_modulation_gain not available — rebuild nimcp.so"}
-        except Exception as e:
-            return {"error": f"set_da_modulation_gain: {e}"}
-        # Audit-2 B4: read back via bridge config for the effective value.
-        try:
-            cfg = self.brain.get_snn_language_bridge_config()
-            effective = float(cfg.get("da_modulation_gain", gain))
-        except Exception:
-            effective = gain
-        return {"ok": True, "gain": effective, "requested": gain}
+        _ = req
+        return {"error": "deprecated — bridge is transport-only after Option-1 rebuild"}
 
     def _cmd_set_reconsolidation_enabled(self, req):
         """TA-5: toggle reconsolidation-on-contradiction. Default OFF."""

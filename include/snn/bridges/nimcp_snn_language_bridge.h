@@ -1,24 +1,30 @@
 //=============================================================================
-// nimcp_snn_language_bridge.h - SNN ↔ Language Spike-Driven Bridge
+// nimcp_snn_language_bridge.h - SNN ↔ Language Transport Bridge (Option-1)
 //=============================================================================
 /**
  * @file nimcp_snn_language_bridge.h
- * @brief Spike-to-word decoder and STDP-driven word-concept binding
+ * @brief Transport-only bridge between SNN concept/word populations and
+ *        the language system.
  *
- * Bridges the gap between SNN spike patterns and language generation.
- * Concept neuron populations fire in response to semantic content;
- * word neuron populations represent vocabulary entries. STDP strengthens
- * bindings when concept spikes precede word spikes (e.g., seeing a dog
- * before hearing "dog"). Production cascades concept activations through
- * binding weights to select words via winner-take-all.
+ * Option-1 rebuild (Slice A, 2026-05-19): the bridge no longer owns a
+ * concept_pop × word_pop STDP weight matrix. Concept patterns are owned
+ * by the SNN; the lexicon stores word_id ↔ concept_pop_id indexes
+ * (Slice B's concept_registry). This bridge is a pure transport — it
+ * routes spikes between concept and word populations and applies K-WTA
+ * lateral inhibition (a local-dynamics primitive, not learning).
+ *
+ * All STDP / weight / binding-learning APIs from the pre-rebuild bridge
+ * are now NO-OP stubs that return success. They remain in the header for
+ * ABI compatibility with callers (notably grounded_language.c, Slice B's
+ * territory) until those call sites are migrated. New code should use the
+ * `snn_language_bridge_route_*` family instead.
  *
  * Integrates with:
- * - Grounded Language System (production/comprehension fallback + dual-path)
+ * - Grounded Language System (production/comprehension fallback)
  * - Imagination SNN (creative spike patterns → word selection)
  * - Curiosity SNN (novelty-driven lexical exploration)
- * - STDP module (spike-timing-dependent plasticity for binding learning)
- * - Neuromodulator system (dopamine gating for three-factor learning)
- * - Sleep consolidation (binding replay and pruning)
+ * - Neuromodulator system (DA broadcast; bridge passes it through to SNN —
+ *   bridge has no weights to modulate of its own)
  */
 
 #ifndef NIMCP_SNN_LANGUAGE_BRIDGE_H
@@ -26,6 +32,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -563,6 +570,20 @@ typedef struct {
     uint64_t lateral_inhibition_winner_margin_sum;   /* fixed-point: margin * 1e6 */
     uint64_t lateral_inhibition_settled_steps_sum;
     uint64_t lateral_inhibition_nan_fallbacks;
+
+    /* Option-1 transport telemetry (Slice A, 2026-05-19).
+     *
+     * Bridge now counts message volume, not weight updates. Every entry to
+     * snn_language_bridge_route_concept_to_word / route_word_to_concept
+     * bumps the corresponding counter once. The legacy total_stdp_updates /
+     * total_ltp_events / total_ltd_events / comprehend_stdp_* /
+     * echo_correct_* / da_gated_stdp_passes counters above remain in the
+     * struct for ABI but stay flat at zero — the bridge no longer owns
+     * weights to update.
+     *
+     * APPEND-ONLY: ABI sentinel at end of header pins new size. */
+    uint64_t total_spike_routes_concept_to_word;
+    uint64_t total_spike_routes_word_to_concept;
 } snn_lang_stats_t;
 
 /** Opaque bridge type */
@@ -745,71 +766,98 @@ int snn_language_bridge_encode_word(
     float* concept_activations,    // Output: concept activations [num_concept_pops]
     uint32_t num_concept_pops);
 
-//=============================================================================
-// Phase 2: STDP-Driven Word-Concept Binding
-//=============================================================================
+/*=============================================================================
+ * Option-1 transport API (Slice A)
+ *
+ * Pure transport: forward an active list of concept pop ids into the
+ * corresponding word pops (and vice-versa) via the SNN's own projection
+ * synapses. The bridge does NOT own weights — projection synapses live in
+ * the SNN (Slice B wires them through the concept_registry).
+ *
+ * Until Slice B's concept_registry is merged, these functions are stubs
+ * that fire the same pop_id on the other side (identity mapping). Tests
+ * verify the function exists, accepts the inputs, returns successfully —
+ * not that it produces the right mapping (that's a joint Slice B + A
+ * test run during walkthroughs).
+ *===========================================================================*/
 
-/** Record a concept population spike event */
+/** Route a list of active concept pop ids to the corresponding word pop ids.
+ *
+ * @param bridge            Bridge handle.
+ * @param concept_pop_ids   Active concept population ids (input).
+ * @param n_concepts        Length of concept_pop_ids.
+ * @param word_pop_ids_out  Output buffer for routed word pop ids.
+ * @param n_words_out       On success: number of word pops written.
+ * @param max_out           Capacity of word_pop_ids_out (0 → query only,
+ *                          *n_words_out gets the would-be size).
+ * @return 0 on success, -1 on invalid arguments.
+ */
+int snn_language_bridge_route_concept_to_word(
+    snn_language_bridge_t* bridge,
+    const uint32_t* concept_pop_ids, size_t n_concepts,
+    uint32_t* word_pop_ids_out, size_t* n_words_out, size_t max_out);
+
+/** Route a list of active word pop ids to the corresponding concept pop ids.
+ *
+ * @param bridge              Bridge handle.
+ * @param word_pop_ids        Active word population ids (input).
+ * @param n_words             Length of word_pop_ids.
+ * @param concept_pop_ids_out Output buffer for routed concept pop ids.
+ * @param n_concepts_out      On success: number of concept pops written.
+ * @param max_out             Capacity of concept_pop_ids_out (0 → query only).
+ * @return 0 on success, -1 on invalid arguments.
+ */
+int snn_language_bridge_route_word_to_concept(
+    snn_language_bridge_t* bridge,
+    const uint32_t* word_pop_ids, size_t n_words,
+    uint32_t* concept_pop_ids_out, size_t* n_concepts_out, size_t max_out);
+
+//=============================================================================
+// DEPRECATED — Phase 2 STDP / binding-learning APIs
+//=============================================================================
+/* Option-1 (Slice A, 2026-05-19): the bridge no longer owns a
+ * concept_pop × word_pop weight matrix. The functions below are kept as
+ * NO-OP stubs that return success so existing callers continue to link;
+ * they do nothing and have no observable side effect. New code MUST use
+ * snn_language_bridge_route_concept_to_word / route_word_to_concept.
+ *
+ * Slice B (concept_registry) will migrate the remaining callers in
+ * grounded_language.c off these APIs entirely; at that point this whole
+ * section can be deleted. Until then, the symbols stay for ABI stability.
+ */
+
+/** DEPRECATED (Slice A): no-op stub. Returns 0. */
 int snn_language_bridge_concept_spike(
     snn_language_bridge_t* bridge,
     uint32_t concept_pop,
     float spike_time_ms);
 
-/** Record a word population spike event */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. */
 int snn_language_bridge_word_spike(
     snn_language_bridge_t* bridge,
     uint32_t word_pop,
     float spike_time_ms);
 
-/** Apply STDP updates to all bindings with recent spikes */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. Bridge owns no weights. */
 int snn_language_bridge_apply_stdp(
     snn_language_bridge_t* bridge,
     float current_time_ms);
 
-/** Create or strengthen a binding between concept and word populations */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. */
 int snn_language_bridge_bind(
     snn_language_bridge_t* bridge,
     uint32_t concept_pop,
     uint32_t word_pop,
     float initial_weight);
 
-/** PA-4: additive weight update on an existing or new binding.
- *
- * Unlike snn_language_bridge_bind() which takes max(old, new), this adds
- * `delta` to the binding weight (clamped to [W_MIN, W_MAX]) and creates
- * the binding if it did not exist. delta may be negative (LTD). Used by
- * the next-token-loss training path to apply small contrastive updates.
- *
- * @return 0 on success, -1 on failure (bridge invalid, pop out of range,
- *         or allocation failure when creating a new binding).
- */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. Bridge owns no weights. */
 int snn_language_bridge_strengthen_binding(
     snn_language_bridge_t* bridge,
     uint32_t concept_pop,
     uint32_t word_pop,
     float delta);
 
-/** Echo-correct: supervised "produce this word" learning.
- *
- * Given an intent vector (typically the semantic_vector from a fresh
- * comprehend) and a target word form, strengthens every (concept_pop_i →
- * target_word_pop) binding by lr_scale * stdp_lr * intent[i] * a_plus,
- * with optional DA modulation. The activation gate matches CSTDP — only
- * concept_pops with intent[i] >= comprehend_stdp_min_activation get an
- * update, so we don't reinforce on noise.
- *
- * This is the supervised production-side learning loop the bridge has
- * been missing: training updates word→concept bindings (comprehend
- * direction), but never tells the bridge "say THIS word for THAT
- * intent". Without it the produce path samples from noise across the
- * entire 29K-word lexicon. Calling this every Nth training item with
- * (parent_utterance → target_content_word) closes the loop.
- *
- * Returns:
- *    >= 0  number of bindings actually strengthened
- *      -1  bridge invalid
- *      -2  target word not registered in bridge (lexicon hasn't mirrored
- *          this word yet — caller should ground/comprehend first) */
+/** DEPRECATED (Slice A): no-op stub. Returns 0 (zero bindings strengthened). */
 int snn_language_bridge_echo_correct(
     snn_language_bridge_t* bridge,
     const float* intent,
@@ -817,32 +865,14 @@ int snn_language_bridge_echo_correct(
     const char* target_word_form,
     float lr_scale);
 
-/** PA-4+: Riemannian / sigmoid-reparameterized update on a binding.
- *
- * Treats the binding weight as `w = σ(u)` for an unconstrained latent u,
- * and applies a natural-gradient step in u-space:
- *
- *     Δu          = lr * grad
- *     Δw_effective = σ'(u) * Δu = w * (1 - w) * lr * grad
- *
- * The chain-rule factor `w*(1-w)` is the diagonal Fisher metric for a
- * Bernoulli-like binding and acts as a natural damping near the [0, 1]
- * boundaries — large |grad| no longer over-clips at the edges. Internally
- * the update is computed in u-space (no log/exp needed in the hot path
- * once we have w) and the result is projected back via σ. The binding is
- * created on positive grad if it didn't exist (with weight = σ(lr*grad/2),
- * starting from u=0 ⇔ w=0.5 then taking a half-step). Maintains the
- * cosine norm cache via norm_update.
- *
- * @return 0 on success, -1 on validation failure or allocation failure.
- */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. */
 int snn_language_bridge_strengthen_binding_riemannian(
     snn_language_bridge_t* bridge,
     uint32_t concept_pop,
     uint32_t word_pop,
     float grad);
 
-/** Prune weak bindings below threshold */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. Bridge has no weights to prune. */
 int snn_language_bridge_prune(
     snn_language_bridge_t* bridge,
     float threshold);
@@ -957,44 +987,22 @@ int snn_language_bridge_set_rng_seed(
     snn_language_bridge_t* bridge,
     uint64_t seed);
 
-/** TA-4: toggle trigram next-token learning.
- *
- * Default OFF — preserves PA-4 bigram-only behavior bit-for-bit. When ON,
- * grounded_language_learn_text_bigrams also walks every (w_t, w_{t+1}) → w_{t+2}
- * trigram and applies a learn_next_token_triple update at half the bigram lr.
- *
- * Runtime-only flag (not persisted in the V3 bridge sidecar) — caller must
- * re-enable after each load. This is intentional: trigram learning is a
- * trainer-curriculum knob, not a bridge-state property.
- *
- * @return 0 on success; -1 if bridge is NULL or magic mismatched. */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. Trigram learning, if still
+ *  wanted, lives in grounded_language now. */
 int snn_language_bridge_set_trigram_learning_enabled(
     snn_language_bridge_t* bridge,
     bool enabled);
 
-/** TA-4: read the trigram-learning runtime flag. Returns false if bridge
- *  is NULL/invalid (matches the "default OFF" contract). */
+/** DEPRECATED (Slice A): always returns false. */
 bool snn_language_bridge_get_trigram_learning_enabled(
     const snn_language_bridge_t* bridge);
 
-/** Margin-gated LTD threshold for the next-token bigram/trigram learners.
- *
- *  See the snn_lang_config_t::ltd_margin field for the rule. Setting
- *  margin=1.0 reproduces the legacy unconditional-LTD behavior; higher
- *  values progressively gate LTD off and protect strong bindings that
- *  aren't competing in the current context. Clamped to [1.0, 100.0];
- *  out-of-range inputs return -1 without mutating state.
- *
- *  Runtime-only — not persisted across save/load. Trainer must re-apply
- *  after each load. Caller-side default (snn_lang_config_default()) is 1.5.
- *
- *  @return 0 on success; -1 if bridge is NULL/invalid or margin is
- *          out-of-range / non-finite. */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. */
 int snn_language_bridge_set_ltd_margin(
     snn_language_bridge_t* bridge,
     float margin);
 
-/** Read the current LTD margin. Returns 0.0f if bridge is NULL/invalid. */
+/** DEPRECATED (Slice A): always returns 0.0f. */
 float snn_language_bridge_get_ltd_margin(
     const snn_language_bridge_t* bridge);
 
@@ -1050,27 +1058,7 @@ int snn_language_bridge_get_lateral_inhibition_params(
     float* out_gain_inhibit,
     uint32_t* out_micro_steps);
 
-/** Break a rank-1 / homogenized bridge by re-randomizing every existing
- *  binding weight to uniform(w_min, w_max). Keeps the *set* of (concept_pop,
- *  word_pop) pairs intact (so vocab structure survives), but destroys the
- *  shared eigenvector that causes all in-vocab inputs to produce the same
- *  concept activation direction after comprehend's L2-normalize.
- *
- *  Use after diagnosing a collapsed bridge (pairwise cos(comprehend(p_i),
- *  comprehend(p_j)) ≈ 1.0 across distinct prompts). w_min=0.001, w_max=0.05
- *  is the calibrated seed range — small enough that subsequent
- *  margin-gated LTD + saturating LTP can rebuild discriminative columns
- *  without the reset itself dominating.
- *
- *  Rebuilds the bridge's word_norm_sq cache from scratch after the reset.
- *  Bridge mutex must NOT be held by the caller — this function takes it
- *  internally (same contract as other bulk-mutation APIs).
- *
- *  @param bridge  the bridge to reset
- *  @param w_min   floor for randomized weight (must be in [0, w_max])
- *  @param w_max   ceiling for randomized weight (must be in (w_min, binding_w_max])
- *  @return        number of bindings whose weight was reset, or -1 on
- *                 invalid args / bad bridge state. */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. Bridge owns no weights. */
 int64_t snn_language_bridge_reset_weights(
     snn_language_bridge_t* bridge,
     float w_min,
@@ -1112,56 +1100,31 @@ int snn_language_bridge_set_stream_callback(
     snn_lang_stream_callback_t cb,
     void* user_data);
 
-/** TA-4 internal: increment the trigram-update counter. Called from
- *  grounded_language_learn_next_token_triple after a successful LTP/LTD
- *  pass so consumers can read total_trigram_updates from snn_lang_stats_t.
- *  No-op on NULL/invalid bridge. */
+/** DEPRECATED (Slice A): no-op stub. Bridge has no trigram counter to bump. */
 void snn_language_bridge_inc_trigram_updates(snn_language_bridge_t* bridge);
 
-/** TA-3: toggle dopamine-modulated binding learning.
- *
- * When enabled AND a neuromodulator system is connected via
- * snn_language_bridge_connect_neuromod(), every snn_language_bridge_apply_stdp
- * pass reads the current dopamine concentration once and applies
- *   weight_change *= 1 + dopamine * config.da_modulation_gain
- * to every binding update in the pass. Default config has the gate ON
- * with gain=50, so the pass amounts to identity (×1.0) when no neuromod
- * is connected and tonic-DA modulation otherwise.
- *
- * Runtime-only flag (not persisted in the V3 bridge sidecar) — caller
- * must re-enable after each load. This is intentional: DA modulation is
- * a trainer-curriculum knob, not a bridge-state property.
- *
- * @return 0 on success; -1 if bridge is NULL or magic mismatched. */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. DA modulation on bridge
+ *  weights is meaningless because the bridge has no weights. DA broadcast
+ *  is still received via connect_neuromod and forwarded to the SNN. */
 int snn_language_bridge_set_da_modulation_enabled(
     snn_language_bridge_t* bridge,
     bool enabled);
 
-/** TA-3: read the DA-modulation runtime flag. Returns false if bridge
- *  is NULL/invalid. */
+/** DEPRECATED (Slice A): always returns false. */
 bool snn_language_bridge_get_da_modulation_enabled(
     const snn_language_bridge_t* bridge);
 
-/** CSTDP: toggle comprehend-driven bridge STDP on/off at runtime.
- *  Default OFF. When enabled, snn_language_bridge_comprehend fires
- *  scoped concept↔word spike pairs and applies STDP to the touched
- *  bindings — so training-time comprehend reinforces bridge weights
- *  rather than just doing a read-only forward pass.
- *
- *  Returns 0 on success, -1 if bridge is NULL/invalid. */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. Comprehend is read-only
+ *  transport now; no bridge-side weight updates fire. */
 int snn_language_bridge_set_comprehend_stdp_enabled(
     snn_language_bridge_t* bridge,
     bool enabled);
 
-/** CSTDP: read the comprehend-STDP runtime flag. */
+/** DEPRECATED (Slice A): always returns false. */
 bool snn_language_bridge_get_comprehend_stdp_enabled(
     const snn_language_bridge_t* bridge);
 
-/** TA-3: tune the DA → LR scaling.
- *
- * Caps gain to [0, 200] to prevent pathological multipliers when DA
- * spikes (DA in [0,1] × gain × base_lr). gain=0 disables modulation
- * even when the enable flag is true (multiplier is always 1.0). */
+/** DEPRECATED (Slice A): no-op stub. Returns 0. */
 int snn_language_bridge_set_da_modulation_gain(
     snn_language_bridge_t* bridge,
     float gain);
@@ -1461,11 +1424,10 @@ int snn_language_bridge_predict_sensory(
 _Static_assert(sizeof(snn_lang_config_t) == 188,
     "snn_lang_config_t ABI: size drifted from expected 188 bytes. "
     "Append-only on the struct; bump this literal in lockstep.");
-_Static_assert(sizeof(snn_lang_stats_t) == 296,
-    "snn_lang_stats_t ABI: size drifted from expected 296 bytes. "
+_Static_assert(sizeof(snn_lang_stats_t) == 312,
+    "snn_lang_stats_t ABI: size drifted from expected 312 bytes. "
     "Append-only on the struct; bump this literal in lockstep. "
-    "Wave-3 (2026-05-19) appended 4 lateral_inhibition_* counters "
-    "(32 bytes) -> 296.");
+    "Slice A (2026-05-19) appended 2 spike-route counters (16 bytes) -> 312.");
 #endif
 
 #ifdef __cplusplus
