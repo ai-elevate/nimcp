@@ -84,6 +84,16 @@ for d in \
     data/finance_corpus data/code_corpus; do
   [[ -d "$d" ]] && CE_DATA+=("$d")
 done
+# Loose data/*.json files: runtime lang config, per-stage vocab masks
+# (Option-1 rebuild). The historic deploy bundle only synced curriculum
+# subdirs + data/stimuli/ — root-level JSONs were silently dropped, which
+# is why lang_runtime_default.json kept needing manual scp on 2026-05-19.
+DATA_JSON=()
+for f in \
+    data/lang_runtime_default.json \
+    data/stage_vocab_0.json data/stage_vocab_1.json data/stage_vocab_2.json; do
+  [[ -f "$f" ]] && DATA_JSON+=("$f")
+done
 
 case "$mode" in
   full)
@@ -95,9 +105,11 @@ case "$mode" in
         scripts/brain_daemon.py scripts/brain_client.py \
         scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py \
+        scripts/caregiver_critic.py \
         "${CE_SCRIPTS[@]}" \
         data/stimuli/ \
-        "${CE_DATA[@]}"
+        "${CE_DATA[@]}" \
+        "${DATA_JSON[@]}"
     ;;
   scripts)
     tar czf "$BUNDLE" \
@@ -106,8 +118,10 @@ case "$mode" in
         scripts/brain_daemon.py scripts/brain_client.py \
         scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py \
+        scripts/caregiver_critic.py \
         "${CE_SCRIPTS[@]}" \
-        "${CE_DATA[@]}"
+        "${CE_DATA[@]}" \
+        "${DATA_JSON[@]}"
     ;;
   stimuli)
     tar czf "$BUNDLE" data/stimuli/
@@ -343,6 +357,13 @@ for d in canonical_corpus math_corpus physics_corpus chemistry_corpus \
     rm -rf "$POD_DIR/data/$d"
     cp -r "/tmp/data/$d" "$POD_DIR/data/"
   fi
+done
+
+# Loose data/*.json files (Option-1 rebuild: lang_runtime_default + stage_vocab_*).
+for f in /tmp/data/lang_runtime_default.json \
+         /tmp/data/stage_vocab_0.json /tmp/data/stage_vocab_1.json \
+         /tmp/data/stage_vocab_2.json; do
+  [[ -f "$f" ]] && cp -f "$f" "$POD_DIR/data/"
 done
 
 # 4) Relaunch the daemon, then 5) wait for it to come ready.
