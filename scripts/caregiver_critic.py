@@ -30,9 +30,12 @@ Stage rules (anchored to Brown's stages — see vocab JSON files for sources):
 
 * **Stage 0** (12-18 mo, holophrastic): exactly ONE word from a 50-word
   caregiver-frequency vocab. Multi-word or out-of-vocab → negative reward.
-* **Stage 1** (18-24 mo, two-word): exactly TWO words from a 200-word vocab,
-  in a valid template (AGENT+ACTION, MODIFIER+NOUN, ACTION+PATIENT,
-  POSSESSOR+POSSESSED). Word-order errors trigger a recast.
+* **Stage 1** (18-24 mo, two-word floor): TWO content words is the developmental
+  MINIMUM, not a ceiling. A clean two-word utterance is judged by template
+  (AGENT+ACTION, MODIFIER+NOUN, ACTION+PATIENT, POSSESSOR+POSSESSED); longer
+  utterances or copula sentences ("the grass is green") are emerging
+  multi-word speech and are judged by SVO grammaticality — rewarded when
+  grammatical, punished + recast when inverted. Function words are allowed.
 * **Stage 2** (24-36 mo, telegraphic): 3-5 content words in SVO order;
   function words optional. Inversion / interrogative-for-declarative
   triggers a recast.
@@ -81,9 +84,16 @@ class CriticVerdict:
 # docs/claude/option1-rebuild.md Slice E).
 STAGE_RULES: dict[int, dict] = {
     0: {"min_words": 1, "max_words": 1, "vocab_size_target": 50},
-    1: {"min_words": 2, "max_words": 2, "vocab_size_target": 200},
+    # Stage 1: two content words is the FLOOR, not a ceiling. Longer,
+    # well-formed utterances are developmental progress (max_words=None).
+    1: {"min_words": 2, "max_words": None, "vocab_size_target": 200},
     2: {"min_words": 3, "max_words": 5, "vocab_size_target": 800},
 }
+
+# Copulas / linking verbs. Their presence signals a copula construction
+# ("grass is green") rather than telegraphic two-word speech, so a stage-1
+# response containing one is routed to the SVO grammaticality check.
+_COPULAS = {"is", "are", "was", "were", "am", "be"}
 
 # Tokens we strip when comparing words to the vocab. Production from the
 # brain can contain trailing punctuation from generation; the vocab files
@@ -249,10 +259,27 @@ class CaregiverCritic:
     # -- stage 1 -------------------------------------------------------------
 
     def _evaluate_stage_1(self, prompt: str, tokens: list[str]) -> CriticVerdict:
-        """Stage 1: exactly TWO in-vocab words in a valid template."""
+        """Stage 1: TWO content words is the developmental FLOOR, not a ceiling.
+
+        - Below two content words → too simple for stage 1 (mild negative).
+        - Exactly two content words, no copula → telegraphic two-word speech,
+          judged by the AGENT/ACTION/MODIFIER/POSSESSOR templates.
+        - Three+ content words, OR a copula present → emerging multi-word
+          speech (developmental PROGRESS). Judged by SVO grammaticality:
+          grammatical → reward, inverted → punish + recast. NEVER punished
+          purely for exceeding two words.
+
+        Function words ("the", "is", ...) are allowed: they are stripped
+        before the content-word count + OOV check, so "the grass is green"
+        is judged on grammar rather than vocab restriction.
+        """
         hint = self._lookup_hint(prompt)
 
-        oov = [t for t in tokens if t not in self._vocab]
+        # Function words are always allowed — they don't count as OOV and
+        # don't count toward the two-content-word floor.
+        content = [t for t in tokens if t not in self._function_words]
+
+        oov = [t for t in content if t not in self._vocab]
         if oov:
             return CriticVerdict(
                 reward=-1.0,
@@ -260,14 +287,27 @@ class CaregiverCritic:
                 reason=f"out_of_stage_vocab:{','.join(oov[:3])}",
             )
 
-        if len(tokens) != 2:
+        if len(content) < 2:
             return CriticVerdict(
-                reward=-0.5 if len(tokens) == 1 else -0.7,
+                reward=-0.5,
                 recast=hint,
-                reason=f"wrong_word_count:{len(tokens)}",
+                reason=f"below_two_word_floor:{len(content)}",
             )
 
-        w1, w2 = tokens
+        has_copula = any(t in _COPULAS for t in tokens)
+
+        # Clean two-word telegraphic case (no copula) → template grammar.
+        if len(content) == 2 and not has_copula:
+            return self._evaluate_two_word_templates(content, hint)
+
+        # Otherwise: emerging multi-word / copula speech → SVO grammaticality.
+        return self._evaluate_stage_1_multiword(prompt, tokens, content, hint)
+
+    def _evaluate_two_word_templates(self,
+                                     content: list[str],
+                                     hint: str | None) -> CriticVerdict:
+        """Telegraphic two-word grammar (the stage-1 canonical case)."""
+        w1, w2 = content
         # Templates the critic accepts:
         #   AGENT + ACTION        ("dog run")
         #   MODIFIER + NOUN       ("big dog")
@@ -308,6 +348,61 @@ class CaregiverCritic:
             recast=hint,
             reason=f"no_valid_template:{w1}_{w2}",
         )
+
+    def _evaluate_stage_1_multiword(self,
+                                    prompt: str,
+                                    tokens: list[str],
+                                    content: list[str],
+                                    hint: str | None) -> CriticVerdict:
+        """Stage 1 emerging multi-word / copula speech (3+ content words, or a
+        copula present). Beyond two-word telegraphic — rewarded when
+        grammatical, never punished for length alone.
+
+        Subject/verb detection is vocab-derived (the stage-1 vocab has no
+        explicit subjects/verbs lists): a "subject-like" word is any in-vocab
+        content word that isn't an action/modifier; a "verb-like" word is any
+        action or copula.
+        """
+        # Inverted question: "is grass green" for a declarative prompt.
+        if _looks_inverted_question(tokens) and not prompt.strip().lower().startswith(
+                ("is ", "are ", "was ", "were ", "am ", "do ", "does ", "did ")):
+            recast = self._svo_recast_from_inversion(tokens) or hint
+            return CriticVerdict(-1.0, recast, "interrogative_for_declarative")
+
+        # Subject-predicate inversion: "the green is grass".
+        if (content and content[0] in self._modifiers
+                and any(self._subject_like(w) for w in content[1:])
+                and any(t in {"is", "are", "was", "were"} for t in tokens)):
+            recast = self._svo_recast_modifier_subject(content, tokens) or hint
+            return CriticVerdict(-1.0, recast, "subject_predicate_inversion")
+
+        has_subject = any(self._subject_like(w) for w in content)
+        has_verb = (any(self._verb_like(w) for w in content)
+                    or any(t in _COPULAS for t in tokens))
+        if has_subject and has_verb:
+            return CriticVerdict(1.0, None, "valid_svo")
+
+        return CriticVerdict(
+            reward=-0.3,
+            recast=hint,
+            reason=f"missing_svo_structure:subj={has_subject},verb={has_verb}",
+        )
+
+    def _subject_like(self, w: str) -> bool:
+        """True if ``w`` can head a noun phrase (explicit subject, or an
+        in-vocab content noun — not a verb/action/modifier/function word)."""
+        if w in self._subjects:
+            return True
+        return (w in self._vocab
+                and w not in self._actions
+                and w not in self._verbs
+                and w not in self._modifiers
+                and w not in self._function_words
+                and w not in _COPULAS)
+
+    def _verb_like(self, w: str) -> bool:
+        """True if ``w`` can serve as a predicate verb (verb, action, copula)."""
+        return w in self._verbs or w in self._actions or w in _COPULAS
 
     # -- stage 2 -------------------------------------------------------------
 
@@ -466,7 +561,7 @@ class CaregiverCritic:
         if len(tokens) < 3:
             return None
         cop, subj, *rest = tokens
-        if cop in {"is", "are", "was", "were", "am"} and subj in self._subjects:
+        if cop in {"is", "are", "was", "were", "am"} and self._subject_like(subj):
             return " ".join([subj, cop] + rest)
         return None
 
@@ -479,7 +574,7 @@ class CaregiverCritic:
         content words for a known subject and reorder.
         """
         modifier = next((w for w in content if w in self._modifiers), None)
-        subject = next((w for w in content if w in self._subjects), None)
+        subject = next((w for w in content if self._subject_like(w)), None)
         copula = next((w for w in tokens if w in {"is", "are", "was", "were"}), "is")
         if modifier and subject:
             return f"{subject} {copula} {modifier}"

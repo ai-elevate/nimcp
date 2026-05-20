@@ -119,16 +119,59 @@ class TestStage1(unittest.TestCase):
         self.assertIn("word_order_error", v.reason)
 
     def test_one_word_at_stage_1_punished(self):
-        """Stage 1 requires two words — single word gets -0.5."""
+        """Stage 1 floor is two content words — a single word gets -0.5."""
         v = self.critic.evaluate("what is the dog doing?", "dog")
         self.assertEqual(v.reward, -0.5)
-        self.assertIn("wrong_word_count", v.reason)
+        self.assertIn("below_two_word_floor", v.reason)
 
     def test_out_of_vocab_word_punished(self):
         """-1.0 when any word falls outside the 200-word stage 1 vocab."""
         v = self.critic.evaluate("what is happening?", "verdant grass")
         self.assertEqual(v.reward, -1.0)
         self.assertIn("out_of_stage_vocab", v.reason)
+
+    # --- floor-not-ceiling: longer utterances are progress, not punished ---
+
+    def test_copula_sentence_rewarded(self):
+        """'the grass is green' — function words allowed, copula → SVO check.
+
+        This is developmental PROGRESS beyond two-word telegraphic and must
+        be rewarded, not punished for length or for using 'the'/'is'.
+        """
+        v = self.critic.evaluate("what color is grass?", "the grass is green")
+        self.assertEqual(v.reward, 1.0)
+        self.assertEqual(v.reason, "valid_svo")
+
+    def test_three_content_words_rewarded(self):
+        """'dog eat food' (3 content words, no copula) → rewarded SVO."""
+        v = self.critic.evaluate("what is the dog doing?", "dog eat food")
+        self.assertEqual(v.reward, 1.0)
+        self.assertEqual(v.reason, "valid_svo")
+
+    def test_longer_grammatical_not_punished_for_length(self):
+        """A 3+ word in-vocab grammatical utterance is not punished at stage 1."""
+        v = self.critic.evaluate("describe the dog", "the big dog run")
+        self.assertGreater(v.reward, 0.0)
+
+    def test_copula_inversion_punished_with_recast(self):
+        """'the green is grass' → -1.0 + recast 'grass is green' (subject first)."""
+        v = self.critic.evaluate("what color is grass?", "the green is grass")
+        self.assertEqual(v.reward, -1.0)
+        self.assertIsNotNone(v.recast)
+        self.assertEqual(v.recast.split()[0], "grass")
+        self.assertIn("green", v.recast)
+
+    def test_two_word_telegraphic_still_rewarded(self):
+        """Clean two-word telegraphic speech still uses template grammar."""
+        v = self.critic.evaluate("what is the dog doing?", "dog run")
+        self.assertEqual(v.reward, 1.0)
+        self.assertEqual(v.reason, "valid_template")
+
+    def test_function_words_only_below_floor(self):
+        """A response of only function words has 0 content words → below floor."""
+        v = self.critic.evaluate("what is happening?", "the is a")
+        self.assertEqual(v.reward, -0.5)
+        self.assertIn("below_two_word_floor", v.reason)
 
     def test_recast_uses_only_in_vocab_words(self):
         """Recasts must be grammatical AND in the stage's vocab."""
