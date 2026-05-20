@@ -778,6 +778,7 @@ DIVERSITY_INJECTION_COUNT = 20    # Number of diverse items to inject on collaps
 
 # Cognitive training injection interval — every N sensory steps, train one cognitive item
 COGNITIVE_TRAIN_INTERVAL = 5      # 1 cognitive item per 5 sensory steps (~20% cognitive mix)
+CRITIC_EVAL_INTERVAL = 20         # run caregiver critic on a production every N sensory steps
 COGNITIVE_TRAIN_LR_BOOST = 1.5    # Slightly higher LR for cognitive items (they're conceptual)
 
 # =============================================================================
@@ -4334,7 +4335,7 @@ class Parent:
         # to avoid reloading the vocab JSON on every cognitive injection.
         self._critic_by_stage = {}     # stage_idx -> CaregiverCritic
         self._current_critic_stage = None
-        self._critic_log_every = 200   # log one verdict per N evaluations
+        self._critic_log_every = 10    # log one verdict per N applied verdicts
 
     def pre_generate_content(self, stage, num_stimuli):
         """Load pre-generated narrations for a stage.
@@ -4758,6 +4759,36 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                 print(f"  [Critic] init failed for stage {stage}: {e}")
             return None
 
+    def run_critic_eval(self, brain, prompt, stage=None):
+        """Score one production against the developmental-stage rules and
+        deliver the resulting reward/recast into the brain.
+
+        Reusable critic driver. The original critic hook lived inside
+        _train_cognitive, but the live stage loops (run_stage_0/1/2) never
+        call _train_cognitive — their hot path goes straight to
+        learn_vector/decide_full. So the loops call this directly at the
+        cognitive cadence. Best-effort; never raises. Returns the verdict
+        (or None if no production / no critic / error)."""
+        if not prompt:
+            return None
+        try:
+            grounded = brain.grounded_respond(prompt)
+            response_text = ""
+            if isinstance(grounded, dict):
+                response_text = (grounded.get("response")
+                                 or grounded.get("text") or "")
+            effective_stage = stage if stage is not None else self._current_critic_stage
+            if not response_text or effective_stage is None:
+                return None
+            critic = self._get_critic(effective_stage)
+            if critic is None:
+                return None
+            verdict = critic.evaluate(prompt, response_text)
+            return self._apply_critic_verdict(
+                brain, verdict, prompt, response_text, effective_stage)
+        except Exception:
+            return None
+
     def _apply_critic_verdict(self, brain, verdict, prompt, response, stage):
         """Drive reward + (optional) recast into the brain.
 
@@ -4821,9 +4852,13 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             except Exception:
                 pass
 
-        # 3. Audit log — every Nth call. Walkthroughs need this to verify
-        #    the critic is actually firing (counters, not just "running").
-        if self.interaction_count % self._critic_log_every == 0:
+        # 3. Audit log — every Nth applied verdict. Gated on a dedicated
+        #    per-verdict counter (NOT interaction_count, which advances on
+        #    every sensory step and rarely aligns with the loop-driven
+        #    critic cadence). Walkthroughs need this to verify the critic is
+        #    actually firing (counters, not just "running").
+        self._critic_apply_count = getattr(self, "_critic_apply_count", 0) + 1
+        if self._critic_apply_count % self._critic_log_every == 0:
             recast_repr = verdict.recast if verdict.recast else "-"
             print(f"  [Critic] stage={stage} reward={verdict.reward:+.2f} "
                   f"reason={verdict.reason} recast={recast_repr!r} "
@@ -4905,25 +4940,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # apply_reward_learning + echo_and_correct. Replaces the
         # cascade_self_train auto-confirmation loop.
         if (target_text or text) and self.interaction_count % 10 == 0:
-            try:
-                prompt = target_text or text
-                grounded = brain.grounded_respond(prompt)
-                response_text = ""
-                if isinstance(grounded, dict):
-                    response_text = (grounded.get("response")
-                                     or grounded.get("text") or "")
-                # Stage resolution: explicit arg first, fall back to
-                # whatever pre_generate_content most recently set.
-                effective_stage = stage if stage is not None else self._current_critic_stage
-                if response_text and effective_stage is not None:
-                    critic = self._get_critic(effective_stage)
-                    if critic is not None:
-                        verdict = critic.evaluate(prompt, response_text)
-                        self._apply_critic_verdict(
-                            brain, verdict, prompt, response_text,
-                            effective_stage)
-            except Exception:
-                pass
+            self.run_critic_eval(brain, target_text or text, stage=stage)
 
         # Echo-and-correct — supervised production learning. For every
         # cognitive item, pick a content word from target_text (or text)
@@ -6965,6 +6982,14 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             brain.bg_update_reward(0.5, 0.3)
         except Exception:
             pass
+
+        # Caregiver critic — score Athena's production against stage-0
+        # developmental rules and deliver reward/recast into the brain.
+        # _train_cognitive (the original critic hook) is bypassed by this
+        # loop's hot path, so drive the critic directly here.
+        if (i + 1) % CRITIC_EVAL_INTERVAL == 0:
+            parent.run_critic_eval(brain, description, stage=0)
+
         parent.interaction_count += 1
 
         # Multi-resolution temporal processing (fast + slow LNN)
@@ -7488,6 +7513,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             if cog_loss is not None:
                 losses.append(cog_loss)
 
+        # Caregiver critic — see run_stage_0 note. _train_cognitive is
+        # bypassed by this loop's hot path, so drive the critic directly.
+        if (i + 1) % CRITIC_EVAL_INTERVAL == 0:
+            parent.run_critic_eval(brain, description, stage=1)
+
         # LNN temporal step (every 5 steps to reduce round-trips)
         if (i + 1) % 5 == 0:
             try:
@@ -7872,6 +7902,11 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                 curriculum=_stage2_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
+
+        # Caregiver critic — see run_stage_0 note. _train_cognitive is
+        # bypassed by this loop's hot path, so drive the critic directly.
+        if (i + 1) % CRITIC_EVAL_INTERVAL == 0:
+            parent.run_critic_eval(brain, description, stage=2)
 
         # World model curriculum — periodic physics/chemistry/biology experience.
         # LR ramps from 0.1× to 1× over first 2000 steps to prevent
