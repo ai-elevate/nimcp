@@ -1445,9 +1445,21 @@ static const float* get_concept_features(const grounded_language_t* gl, uint64_t
 static float score_word_against_vector(const grounded_language_t* gl,
                                        const gl_lexicon_entry_t* entry,
                                        const float* target, uint32_t dim) {
-    if (!entry || !entry->context_initialized) return 0.0f;
+    if (!entry) return 0.0f;
+    /* Drop the previous "context_initialized required" guard. With the
+     * Option-B lexicon readout (2026-05-20), a word with concept bindings
+     * is still scorable even when its distributional context_vector hasn't
+     * been seen yet — the binding-cosine term carries the signal. Returning
+     * 0 here would kill the produce path post-reset (context_vectors zeroed
+     * but bindings rebuilding). Only return 0 when there is genuinely no
+     * signal: no context AND no bindings. */
+    if (!entry->context_initialized && entry->binding_count == 0) return 0.0f;
+
     uint32_t cmp_dim = (dim < gl->semantic_dim) ? dim : gl->semantic_dim;
-    float sim = cosine_similarity(target, entry->context_vector, cmp_dim);
+    float sim = 0.0f;
+    if (entry->context_initialized && entry->context_vector) {
+        sim = cosine_similarity(target, entry->context_vector, cmp_dim);
+    }
 
     float concept_sim = 0.0f;
     for (uint32_t b = 0; b < entry->binding_count; b++) {
@@ -1487,7 +1499,12 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
 
     for (uint32_t w = 0; w < gl->vocab_count && count < max_words; w++) {
         const gl_lexicon_entry_t* entry = gl->vocab_list[w];
-        if (!entry || !entry->context_initialized) continue;
+        if (!entry) continue;
+        /* Skip only when there is truly no signal — same loosened gate as
+         * score_word_against_vector. A word with concept bindings but no
+         * distributional context_vector is still rankable via its bindings,
+         * which matters for the Option-B lexicon readout. */
+        if (!entry->context_initialized && entry->binding_count == 0) continue;
         if (required_class != GL_CLASS_UNKNOWN && entry->learned_class != required_class) {
             continue;
         }
@@ -3708,29 +3725,73 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     }
     memset(result, 0, sizeof(*result));
 
-    /* SNN bridge is the only production path. The brain learns syntactic
-     * structure emergently through training; we no longer impose templates.
-     * If the bridge can't produce (untrained, or no concepts activated),
-     * we return -1 and the caller's IDK gate fires "I don't know" — which
-     * is the honest answer for an undertrained model. */
-    if (!gl->snn_bridge) return -1;
+    /* Option-1 readout (Slice B, Option B — 2026-05-20): decode against
+     * grounded_language's own lexicon bindings, NOT the SNN-language
+     * bridge. The bridge was stripped to transport-only by the Option-1
+     * rebuild (snn_language_bridge_decode_spikes returns 0 unconditionally)
+     * and the registry-based readout was never built. find_words_near_vector
+     * scores each in-vocab word against the intent via
+     *   0.4·cos(intent, entry.context_vector)
+     *   + 0.6·max_b(strength_b · cos(intent, get_concept_features(b.concept_id)))
+     * and picks top-K (with a deterministic-shuffle diversity fallback when
+     * the lexicon is too under-grounded for top-K to discriminate). Function
+     * words are dropped from the emission to keep the output content-bearing.
+     * The bridge stays as async spike-routing transport but is no longer on
+     * the produce path. */
 
-    snn_lang_production_result_t spike_result;
-    memset(&spike_result, 0, sizeof(spike_result));
-    int rc = snn_language_bridge_produce(gl->snn_bridge, intent, intent_dim,
-                                         &spike_result);
-    if (rc != 0 || !spike_result.text || spike_result.word_count == 0) {
-        snn_lang_production_result_cleanup(&spike_result);
+    enum { GL_PRODUCE_TOPK = 32 };
+    const char* topk_words[GL_PRODUCE_TOPK];
+    float       topk_scores[GL_PRODUCE_TOPK];
+    memset(topk_words, 0, sizeof(topk_words));
+    memset(topk_scores, 0, sizeof(topk_scores));
+
+    uint32_t n = find_words_near_vector(gl, intent, intent_dim,
+                                         GL_CLASS_UNKNOWN /* any class */,
+                                         topk_words, topk_scores,
+                                         GL_PRODUCE_TOPK);
+    if (n == 0) {
+        /* No usable candidate — caller's IDK gate emits "I don't know".
+         * Honest answer for an undertrained or under-grounded lexicon. */
         return -1;
     }
 
-    /* Transfer the spike-produced text into the result. */
-    result->text = spike_result.text;
-    spike_result.text = NULL;  /* Ownership transferred. */
-    result->word_count = spike_result.word_count;
-    result->fluency = spike_result.fluency;
-    result->relevance = spike_result.spike_confidence;
-    result->creativity = spike_result.creativity;
+    /* Word-count defaults — short, telegraphic-ish output that the critic
+     * can shape further via reward. (The bridge's min/max_produce_words
+     * knobs are now stranded — the bridge produce path is dead post-rebuild
+     * — and should migrate to a grounded_language config when stage
+     * scaffolding needs per-stage bounds here.) */
+    uint32_t min_words = 1, max_words = 5;
+    if (max_words > GL_PRODUCE_TOPK) max_words = GL_PRODUCE_TOPK;
+    if (max_words > n) max_words = n;
+    if (min_words > max_words) min_words = max_words;
+
+    /* Build the emission: top scoring words, skipping function words. */
+    char    buf[1024] = {0};
+    size_t  pos = 0;
+    uint32_t emit = 0;
+    float    score_sum = 0.0f;
+    for (uint32_t i = 0; i < n && emit < max_words; i++) {
+        const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[i]);
+        if (e && e->learned_class == GL_CLASS_FUNCTION) continue;
+        size_t flen = strlen(topk_words[i]);
+        if (pos + flen + 2 >= sizeof(buf)) break;
+        if (emit > 0) buf[pos++] = ' ';
+        memcpy(buf + pos, topk_words[i], flen);
+        pos += flen;
+        score_sum += topk_scores[i];
+        emit++;
+    }
+    if (emit == 0 || emit < min_words) return -1;
+
+    result->text = (char*)nimcp_malloc(pos + 1);
+    if (!result->text) return -1;
+    memcpy(result->text, buf, pos);
+    result->text[pos] = '\0';
+
+    result->word_count = emit;
+    result->fluency    = topk_scores[0];
+    result->relevance  = (emit > 0) ? (score_sum / (float)emit) : 0.0f;
+    result->creativity = 0.5f;  /* placeholder — refine when sampling lands */
 
     result->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     if (result->semantic_vector) {
@@ -3739,7 +3800,6 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         memcpy(result->semantic_vector, intent, copy_dim * sizeof(float));
     }
 
-    snn_lang_production_result_cleanup(&spike_result);
     gl->stats.total_productions++;
 
     /* Fire PRODUCED event on the cognitive bus. */
