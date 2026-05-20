@@ -720,10 +720,29 @@ def _ground_content_words(brain, text, modality_features, modality,
     the extra kwargs. We swallow TypeError so the call still succeeds
     against legacy bindings."""
     words = _tokenize_for_grounding(text)
-    if not words or modality_features is None:
+    if not words:
         return 0
-    feats_list = modality_features if isinstance(modality_features, list) \
-                 else list(modality_features)
+    # ROOT-CAUSE FIX (2026-05-20 comprehension collapse): for LINGUISTIC
+    # grounding the discriminative feature must be the *clean text embedding*,
+    # NOT the composed brain-input vector. The composed vector's constant
+    # tag/bio prefix [0:16] (modality one-hot=1.0, bio state ~0.5-1.0)
+    # dominates the first GL_SEMANTIC_DIM=128 dims that find_or_create_concept
+    # compares (prefix L2 norm ~1.80 vs embedding ~0.30), pushing every
+    # pairwise cosine to ~0.98 > the 0.85 dedup threshold. Result: every
+    # content word grounded to ONE concept and comprehension collapsed to
+    # cosine 1.0 across all inputs. encode_text(text) restores per-text
+    # concept diversity (measured pairwise cosine 0.44-0.64). Non-linguistic
+    # modalities pass genuine sensory features (no tag prefix) — used as-is.
+    if modality == 5:  # GL_MODALITY_LINGUISTIC
+        try:
+            feats_list = list(encode_text(text))
+        except Exception:
+            return 0
+    else:
+        if modality_features is None:
+            return 0
+        feats_list = modality_features if isinstance(modality_features, list) \
+                     else list(modality_features)
     if not feats_list:
         return 0
     bound = 0
