@@ -71,17 +71,23 @@ typedef struct toxicity_classifier toxicity_classifier_t;
  * Per-call classification result. All scalars in [0, 1].
  */
 typedef struct {
-    float fairness_violation; /**< Max fairness_weight across matched rules.       */
-    float predicted_harm;     /**< Max harm_weight across matched rules.           */
-    float max_score;          /**< max(fairness_violation, predicted_harm).        */
-    char  matched_category[TOXICITY_CATEGORY_LEN]; /**< Empty if no match.         */
-    char  matched_pattern[TOXICITY_PATTERN_LEN];   /**< Short tag of matched rule. */
-    int   num_matches;        /**< Count of rules that matched.                    */
-    int   would_block;        /**< HINT only: 1 iff max_score >= classifier's      */
-                              /**< threshold. NOT a directive to drop content —    */
-                              /**< callers must propagate scores into the action   */
-                              /**< context and let LGSS rules + ethics evaluate    */
-                              /**< the action in context. (See module-level POLICY.) */
+    float fairness_violation;  /**< Max fairness_weight across matched toxic rules. */
+    float predicted_harm;      /**< Max harm_weight across matched toxic rules.     */
+    float max_score;           /**< max(fairness_violation, predicted_harm).        */
+    float anti_toxic_signal;   /**< 0..1 — 1 if an allowlist (anti-toxic) pattern   */
+                               /**< matched anywhere in the text. Independent of   */
+                               /**< toxic scores; both can be > 0 (e.g. "X aren't  */
+                               /**< subhuman. Kill all Y." — anti_toxic=1 AND      */
+                               /**< harm=1). Downstream evaluators combine these   */
+                               /**< — DO NOT short-circuit on anti_toxic alone.    */
+    char  matched_category[TOXICITY_CATEGORY_LEN]; /**< Highest-scoring toxic match. */
+    char  matched_pattern[TOXICITY_PATTERN_LEN];   /**< Short tag of toxic match.    */
+    int   num_matches;         /**< Count of rules that matched (toxic + allowlist). */
+    int   would_block;         /**< HINT only: 1 iff max_score >= threshold. NOT a  */
+                               /**< directive to drop content — callers propagate  */
+                               /**< scores into the action context and let LGSS    */
+                               /**< rules + ethics evaluate the action in context. */
+                               /**< (See module-level POLICY.)                     */
 } toxicity_result_t;
 
 /**

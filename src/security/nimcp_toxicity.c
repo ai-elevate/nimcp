@@ -99,8 +99,12 @@ add_rule(toxicity_pattern_t** patterns_io, size_t* num_io, size_t* cap_io,
     }
     toxicity_pattern_t* p = &(*patterns_io)[*num_io];
     memset(p, 0, sizeof(*p));
+    /* NOTE: REG_NOSUB intentionally removed — we need match positions
+     * (regmatch_t) so the classify() span-overlap check can suppress toxic
+     * matches that fall fully inside an allowlist span (e.g. "kill the
+     * immigrants" inside the allowlist span "don't kill the immigrants"). */
     if (regcomp(&p->regex, regex_pattern,
-                REG_EXTENDED | REG_ICASE | REG_NEWLINE | REG_NOSUB) != 0) {
+                REG_EXTENDED | REG_ICASE | REG_NEWLINE) != 0) {
         LOG_MODULE_WARN("toxicity", "skipping uncompilable pattern in '%s': %s",
                         category ? category : "?", regex_pattern);
         return -1;
@@ -333,34 +337,47 @@ toxicity_classify(const toxicity_classifier_t* tc,
 
     /* Hold the reload mutex around the whole match pass. This prevents
      * reload() from swapping/freeing the pattern table out from under us
-     * (use-after-free race). Regex matching itself does not block other
-     * classify() calls because the mutex is reentrant-safe for callers that
-     * never call reload() inside classify(), and is the cheapest correct
-     * solution; if concurrent classify throughput becomes a bottleneck we
-     * can switch to an atomic-pointer + RCU-grace pattern. */
+     * (use-after-free race). */
     nimcp_mutex_lock(tcm->reload_mutex);
 
-    /* Pass 1: allowlist. Any allowlist match short-circuits to a clean
-     * result. Tracks but does not mark as a "toxic" match. */
+    /* Pass 1: allowlist. Sets anti_toxic_signal AND collects match spans.
+     * Does NOT short-circuit. Round-3 walkthrough fix 2026-05-20: an earlier
+     * design returned immediately on allowlist match, which let an attacker
+     * prepend "X are not subhuman." to a real threat ("Kill all the Y.") —
+     * the disclaimer matched the allowlist and the threat was never scanned.
+     * Now allowlist is a separate signal AND we collect each match's
+     * (start, end) span so the toxic pass can suppress toxic matches that
+     * fall fully inside an allowlist span (e.g. "kill the immigrants"
+     * substring inside "don't kill the immigrants"). */
+    typedef struct { regoff_t so, eo; } match_span_t;
+    enum { TOX_ALLOWLIST_MAX_SPANS = 16 };
+    match_span_t allowlist_spans[TOX_ALLOWLIST_MAX_SPANS];
+    int num_allowlist_spans = 0;
+    int allowlist_hit_first_idx = -1;
     for (size_t i = 0; i < tc->num_patterns; i++) {
         const toxicity_pattern_t* p = &tc->patterns[i];
         if (!p->compiled) continue;
         if (strcmp(p->category, TOXICITY_ALLOWLIST_CATEGORY) != 0) continue;
-        if (regexec(&p->regex, text, 0, NULL, 0) == 0) {
-            /* Anti-toxic construction matched — emit a clean result and
-             * record the allowlist hit in matched_category for observability. */
-            strncpy(out->matched_category, p->category,
-                    sizeof(out->matched_category) - 1);
-            snprintf(out->matched_pattern, sizeof(out->matched_pattern),
-                     "%s#%zu", p->category, i);
-            out->num_matches = 1;
-            /* harm/fairness/max_score stay 0; would_block stays 0. */
-            nimcp_mutex_unlock(tcm->reload_mutex);
-            return 0;
+        regmatch_t m;
+        if (regexec(&p->regex, text, 1, &m, 0) == 0) {
+            out->anti_toxic_signal = 1.0f;
+            out->num_matches++;
+            if (allowlist_hit_first_idx < 0) allowlist_hit_first_idx = (int)i;
+            if (num_allowlist_spans < TOX_ALLOWLIST_MAX_SPANS) {
+                allowlist_spans[num_allowlist_spans].so = m.rm_so;
+                allowlist_spans[num_allowlist_spans].eo = m.rm_eo;
+                num_allowlist_spans++;
+            }
         }
     }
 
-    /* Pass 2: toxic categories. Accumulate max-weight across matches. */
+    /* Pass 2: toxic categories. For each pattern, iterate to find ALL matches
+     * in the text (not just the first). Round-3 walkthrough fix 2026-05-20:
+     * regexec returns only the LEFTMOST match. If that match happens to fall
+     * inside an allowlist span ("deport the refugees" inside "never deport
+     * the refugees"), suppressing it would let a later threat outside the
+     * disclaimer ("kill all the immigrants") slip through invisibly. We
+     * iterate by advancing the cursor past each match's end. */
     float best_score = 0.0f;
     size_t best_idx = SIZE_MAX;
 
@@ -368,23 +385,50 @@ toxicity_classify(const toxicity_classifier_t* tc,
         const toxicity_pattern_t* p = &tc->patterns[i];
         if (!p->compiled) continue;
         if (strcmp(p->category, TOXICITY_ALLOWLIST_CATEGORY) == 0) continue;
-        if (regexec(&p->regex, text, 0, NULL, 0) == 0) {
-            out->num_matches++;
-            if (p->harm_weight > out->predicted_harm)
-                out->predicted_harm = p->harm_weight;
-            if (p->fairness_weight > out->fairness_violation)
-                out->fairness_violation = p->fairness_weight;
-            float score = p->harm_weight > p->fairness_weight
-                            ? p->harm_weight : p->fairness_weight;
-            if (score > best_score) {
-                best_score = score;
-                best_idx = i;
+        const char* cursor = text;
+        int first_iter = 1;
+        while (*cursor) {
+            regmatch_t m;
+            int eflags = first_iter ? 0 : REG_NOTBOL;
+            if (regexec(&p->regex, cursor, 1, &m, eflags) != 0) break;
+            regoff_t abs_so = (regoff_t)(cursor - text) + m.rm_so;
+            regoff_t abs_eo = (regoff_t)(cursor - text) + m.rm_eo;
+
+            /* Span-overlap check: if this toxic match is fully contained in
+             * some allowlist span, treat it as disclaimer-covered and skip
+             * (but keep iterating for LATER toxic matches in the text). */
+            int covered = 0;
+            for (int s = 0; s < num_allowlist_spans; s++) {
+                if (allowlist_spans[s].so <= abs_so &&
+                    allowlist_spans[s].eo >= abs_eo) {
+                    covered = 1;
+                    break;
+                }
             }
+            if (!covered) {
+                out->num_matches++;
+                if (p->harm_weight > out->predicted_harm)
+                    out->predicted_harm = p->harm_weight;
+                if (p->fairness_weight > out->fairness_violation)
+                    out->fairness_violation = p->fairness_weight;
+                float score = p->harm_weight > p->fairness_weight
+                                ? p->harm_weight : p->fairness_weight;
+                if (score > best_score) {
+                    best_score = score;
+                    best_idx = i;
+                }
+            }
+            /* Advance past this match. Guard against zero-width matches
+             * (would otherwise loop forever). */
+            if (m.rm_eo <= m.rm_so) cursor += 1;
+            else                    cursor += m.rm_eo;
+            first_iter = 0;
         }
     }
 
     out->max_score = best_score;
     if (best_idx != SIZE_MAX) {
+        /* A toxic pattern matched — record it in matched_category. */
         const toxicity_pattern_t* p = &tc->patterns[best_idx];
         strncpy(out->matched_category, p->category,
                 sizeof(out->matched_category) - 1);
@@ -395,6 +439,15 @@ toxicity_classify(const toxicity_classifier_t* tc,
                  "%s#%zu", p->category, best_idx);
         atomic_fetch_add_explicit(&tcm->total_matches, 1ULL,
                                   memory_order_relaxed);
+    } else if (allowlist_hit_first_idx >= 0) {
+        /* Only an allowlist matched (no toxic pattern). Reflect that in the
+         * diagnostic fields for observability — caller checks
+         * anti_toxic_signal for the actual semantic flag. */
+        const toxicity_pattern_t* p = &tc->patterns[allowlist_hit_first_idx];
+        strncpy(out->matched_category, p->category,
+                sizeof(out->matched_category) - 1);
+        snprintf(out->matched_pattern, sizeof(out->matched_pattern),
+                 "%s#%d", p->category, allowlist_hit_first_idx);
     }
     /* `would_block` is a HINT, not an instruction. The user-stated policy
      * (2026-05-20) is: NEVER delete or filter toxic content — mark it with
