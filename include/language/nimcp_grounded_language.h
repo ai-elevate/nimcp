@@ -939,6 +939,26 @@ int64_t grounded_language_reset_lexicon_distributional(
     bool zero_and_mark_uninit,
     float jitter);
 
+/**
+ * @brief Reset concept grounding for a clean re-grounding pass.
+ *
+ * Clears every lexicon entry's concept bindings (keeps word forms,
+ * bindings[] capacity, and distributional context_vector) AND wipes the
+ * brain's semantic_memory concept store (frees capacity). Use after the
+ * grounding-feature fix to recover from concept collapse: the prior
+ * grounding pipeline fed a prefix-dominated feature vector to
+ * find_or_create_concept (cosine dedup 0.85), collapsing every word onto
+ * one concept and filling the store to capacity. Re-grounding then
+ * rebuilds a diverse store from clean embeddings.
+ *
+ * NOTE: semantic_memory is shared with other cognitive modules; resetting
+ * it drops all concepts brain-wide. Stale concept_id references resolve to
+ * NULL (handled gracefully by get_concept_features and callers).
+ *
+ * @return Number of bindings cleared, or -1 on NULL gl.
+ */
+int64_t grounded_language_reset_concept_grounding(grounded_language_t* gl);
+
 /*=============================================================================
  * Production (Broca's pathway)
  *===========================================================================*/

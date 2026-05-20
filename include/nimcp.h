@@ -1474,6 +1474,15 @@ nimcp_status_t nimcp_brain_reset_lexicon_distributional(
     int64_t* out_count
 );
 
+/* Reset concept grounding for a clean re-grounding pass: clears all lexicon
+ * concept bindings AND wipes the brain's semantic_memory concept store (frees
+ * capacity). Use after the grounding-feature fix to recover from concept
+ * collapse. out_cleared receives the number of bindings cleared. */
+nimcp_status_t nimcp_brain_reset_concept_grounding(
+    nimcp_brain_t brain,
+    int64_t* out_cleared
+);
+
 /* Audit fix — campaign feature flag setters callable from the daemon RPC
  * surface + Python bindings. All have default-OFF semantics; calling with
  * enabled=false reverts to legacy behavior. */

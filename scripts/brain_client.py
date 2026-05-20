@@ -690,6 +690,17 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return int(resp.get("touched", 0))
 
+    def reset_concept_grounding(self):
+        """Reset concept grounding for a clean re-grounding pass: clears all
+        lexicon concept bindings AND wipes the semantic_memory concept store
+        (frees capacity). Returns the number of bindings cleared. Use after the
+        grounding-feature fix to recover from concept collapse (comprehend
+        cosine ≈ 1.0)."""
+        resp = self._send({"cmd": "reset_concept_grounding"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return int(resp.get("bindings_cleared", 0))
+
     def reset_lang_bridge_weights(self, w_min=0.001, w_max=0.05):
         """Break rank-1 collapse by re-randomizing every bridge binding
         weight to uniform(w_min, w_max). Returns the number of bindings

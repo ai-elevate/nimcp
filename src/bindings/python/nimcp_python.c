@@ -3418,6 +3418,23 @@ static PyObject* Brain_reset_lexicon_distributional(BrainObject* self, PyObject*
     return PyLong_FromLongLong((long long)count);
 }
 
+/* Reset concept grounding (clear lexicon bindings + wipe semantic_memory). */
+static PyObject* Brain_reset_concept_grounding(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int64_t cleared = 0;
+    nimcp_status_t s = nimcp_brain_reset_concept_grounding(self->brain, &cleared);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "reset_concept_grounding: grounded_language not attached");
+        return NULL;
+    }
+    return PyLong_FromLongLong((long long)cleared);
+}
+
 /* Re-randomize bridge binding weights to break rank-1 collapse. */
 static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* args) {
     if (!self->brain) {
@@ -12833,6 +12850,8 @@ static PyMethodDef Brain_methods[] = {
      "Re-randomize every existing SNN-language bridge binding weight to uniform(w_min, w_max) — reset_lang_bridge_weights(w_min: float, w_max: float) -> int. Returns number of bindings reset. Breaks rank-1 / homogenized collapse where all in-vocab prompts produce the same comprehend output. Use after diagnosing pairwise cos(comprehend(p_i), comprehend(p_j)) ≈ 1.0. Calibrated seed range: 0.001..0.05. Bindings themselves (which (concept, word) pairs exist) are preserved; only weights change."},
     {"reset_lexicon_distributional", (PyCFunction)Brain_reset_lexicon_distributional, METH_VARARGS,
      "Reset every lexicon entry's distributional embedding — reset_lexicon_distributional(zero_and_mark_uninit: bool, jitter: float) -> int. zero_and_mark_uninit=True zeros every context_vector + flags uninitialized (clean reset). False re-randomizes uniformly in [-jitter, +jitter] keeping initialized=True. Use when comprehend cos ≈ 1.0 across distinct prompts indicates the distributional channel has homogenized. Returns the number of lexicon entries touched."},
+    {"reset_concept_grounding", (PyCFunction)Brain_reset_concept_grounding, METH_NOARGS,
+     "Reset concept grounding for a clean re-grounding pass — reset_concept_grounding() -> int. Clears every lexicon entry's concept bindings AND wipes the brain's semantic_memory concept store (frees capacity). Returns the number of bindings cleared. Use after the grounding-feature fix to recover from concept collapse (comprehend cosine ≈ 1.0): the prior pipeline fed a prefix-dominated feature vector to find_or_create_concept (0.85 cosine dedup), collapsing every word onto one concept and filling the store to capacity. Re-grounding then rebuilds a diverse store. NOTE: semantic_memory is brain-wide; reset drops all concepts (stale ids resolve to NULL gracefully)."},
     /* Audit fix: campaign feature setters accessible from Python + daemon RPC. */
     {"set_da_modulation_enabled", (PyCFunction)Brain_set_da_modulation_enabled, METH_VARARGS,
      "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},

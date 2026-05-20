@@ -3859,6 +3859,49 @@ int64_t grounded_language_reset_lexicon_distributional(grounded_language_t* gl,
     return touched;
 }
 
+int64_t grounded_language_reset_concept_grounding(grounded_language_t* gl)
+{
+    if (!gl) return -1;
+
+    /* Clear every lexicon entry's concept bindings (keep the word forms,
+     * the bindings[] capacity, and the distributional context_vector). New
+     * grounding will refill bindings[] from index 0. This drops the stale
+     * collapsed bindings that point every word at the one degenerate
+     * concept the prefixed-feature grounding created. */
+    int64_t cleared_bindings = 0;
+    int64_t words = 0;
+    if (gl->lexicon) {
+        for (uint32_t slot = 0; slot < gl->lexicon_size; slot++) {
+            gl_lexicon_entry_t* e = gl->lexicon[slot];
+            if (!e) continue;
+            cleared_bindings += e->binding_count;
+            e->binding_count = 0;
+            words++;
+        }
+    }
+
+    /* Wipe the brain's concept store. It was at/near capacity, so
+     * find_or_create_concept could no longer create fresh concepts and
+     * every clean re-grounding would match a stale concept instead. Reset
+     * frees capacity so re-grounding builds a diverse store from scratch. */
+    if (gl->semantic_memory) {
+        semantic_memory_reset(gl->semantic_memory);
+    }
+
+    /* Reflect the cleared state in the binding/grounding counters so
+     * lang_status doesn't keep reporting the pre-reset totals. */
+    gl->stats.total_bindings = 0;
+    gl->stats.total_groundings = 0;
+
+    fprintf(stderr,
+        "[gl_reground_reset] words=%lld bindings_cleared=%lld "
+        "semantic_memory_reset=%d\n",
+        (long long)words, (long long)cleared_bindings,
+        gl->semantic_memory ? 1 : 0);
+    fflush(stderr);
+    return cleared_bindings;
+}
+
 int grounded_language_blend(grounded_language_t* gl,
                              uint64_t concept_a, uint64_t concept_b,
                              const float* vector_a, const float* vector_b,

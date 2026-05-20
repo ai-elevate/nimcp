@@ -1994,6 +1994,22 @@ class BrainService:
             return {"error": f"reset_lexicon_distributional: {e}"}
         return {"ok": True, "touched": n, "zero_and_mark_uninit": zero, "jitter": jitter}
 
+    def _cmd_reset_concept_grounding(self, _req):
+        """Reset concept grounding for a clean re-grounding pass: clears all
+        lexicon concept bindings AND wipes the semantic_memory concept store
+        (frees capacity). Use after the grounding-feature fix to recover from
+        concept collapse (comprehend cosine ≈ 1.0).
+
+        Returns: {"ok": True, "bindings_cleared": int}
+        """
+        try:
+            n = int(self.brain.reset_concept_grounding())
+        except AttributeError:
+            return {"error": "reset_concept_grounding not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"reset_concept_grounding: {e}"}
+        return {"ok": True, "bindings_cleared": n}
+
     def _cmd_reset_lang_bridge_weights(self, req):
         """DEPRECATED (Option-1 Slice A, 2026-05-19).
 

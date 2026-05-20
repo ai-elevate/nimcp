@@ -4425,6 +4425,18 @@ nimcp_status_t nimcp_brain_reset_lexicon_distributional(nimcp_brain_t brain,
     return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_reset_concept_grounding(nimcp_brain_t brain,
+                                                    int64_t* out_cleared)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int64_t n = grounded_language_reset_concept_grounding(b->grounded_lang);
+    if (out_cleared) *out_cleared = n;
+    return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /* ========== Audit fix: campaign feature setter wrappers ========== */
 
 nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool enabled) {
