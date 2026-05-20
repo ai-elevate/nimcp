@@ -1831,6 +1831,7 @@ set(NIMCP_CORE_SOURCES
     # ${CMAKE_CURRENT_SOURCE_DIR}/../io/model/nimcp_model_loader.c  # DISABLED: adaptive_neuron_t type issues
 
     # Security - Core and Phase SC-1: Security Coverage Framework (Tier 0.7)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity.c           # Pattern-based content classifier (populates ethics/LGSS gates)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_coverage.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_continuous_monitor.c
