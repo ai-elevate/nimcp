@@ -902,6 +902,17 @@ class BrainProxy:
     def bg_update_reward(self, reward, rpe=0.0):
         self._send_fire_and_forget({"cmd": "bg_update_reward", "reward": reward, "rpe": rpe})
 
+    def apply_reward_learning(self, reward):
+        """Slice C: drive reward-modulated (three-factor STDP) plasticity.
+        Distinct from set_last_external_reward — this actually propagates the
+        reward through the DA machinery (negative reward → anti-Hebbian LTD)."""
+        self._send_fire_and_forget({"cmd": "apply_reward_learning", "reward": reward})
+
+    def set_last_external_reward(self, reward):
+        """Slice D: stamp the most-recent external reward so the cascade
+        self-train gate sees a FRESH reward (freshness TTL + threshold)."""
+        self._send_fire_and_forget({"cmd": "set_last_external_reward", "reward": reward})
+
     # -- Training config --
 
     def set_plasticity_state(self, state):

@@ -4787,6 +4787,18 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                     brain.bg_update_reward(verdict.reward, rpe=verdict.reward)
                 except Exception:
                     pass
+            # Stamp the external-reward field so Slice D's cascade self-train
+            # gate sees a FRESH reward on its next run. Without this, the
+            # cascade self_train.fired counter never advances — the gate only
+            # ever sees a stale (zero-timestamp) reward and skips. This is the
+            # signal that lets cascade_stage_self_train actually train on
+            # critic-approved productions instead of autoconfirming.
+            try:
+                fn = getattr(brain, "set_last_external_reward", None)
+                if callable(fn):
+                    fn(verdict.reward)
+            except Exception:
+                pass
 
         # 2. Recast — supervised teaching of the corrected form. Use the
         #    existing echo_and_correct production-training path with a
@@ -4892,7 +4904,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # reward + optional recast is delivered back into the brain via
         # apply_reward_learning + echo_and_correct. Replaces the
         # cascade_self_train auto-confirmation loop.
-        if target_text and self.interaction_count % 10 == 0:
+        if (target_text or text) and self.interaction_count % 10 == 0:
             try:
                 prompt = target_text or text
                 grounded = brain.grounded_respond(prompt)
