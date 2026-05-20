@@ -1508,6 +1508,16 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
         if (required_class != GL_CLASS_UNKNOWN && entry->learned_class != required_class) {
             continue;
         }
+        /* Drop function words from "any class" ranking — they're the most
+         * frequently grounded so their bindings outscore content words for
+         * almost any intent, swamping the top-K with the/is/to/etc. Callers
+         * that explicitly want function words can pass GL_CLASS_FUNCTION as
+         * required_class. (Found live 2026-05-20: top-3 of an "any-class"
+         * produce was the,is,to even for prompts about grass.) */
+        if (required_class == GL_CLASS_UNKNOWN &&
+            entry->learned_class == GL_CLASS_FUNCTION) {
+            continue;
+        }
         float score = score_word_against_vector(gl, entry, target, dim);
         if (score > best_seen) best_seen = score;
 
