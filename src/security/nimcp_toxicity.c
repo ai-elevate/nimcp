@@ -358,16 +358,31 @@ toxicity_classify(const toxicity_classifier_t* tc,
         const toxicity_pattern_t* p = &tc->patterns[i];
         if (!p->compiled) continue;
         if (strcmp(p->category, TOXICITY_ALLOWLIST_CATEGORY) != 0) continue;
-        regmatch_t m;
-        if (regexec(&p->regex, text, 1, &m, 0) == 0) {
+        /* Round-5 walkthrough fix: iterate to find ALL allowlist matches
+         * (same approach as Pass 2 below). regexec returns only the
+         * leftmost; without iteration, a text with three anti-toxic
+         * sentences (e.g. "Don't kill X. Never deport Y. Shouldn't lynch Z.")
+         * would only capture span 1, and toxic matches in sentences 2/3
+         * would not be covered by an allowlist span. */
+        const char* cursor = text;
+        int first_iter = 1;
+        while (*cursor) {
+            regmatch_t m;
+            int eflags = first_iter ? 0 : REG_NOTBOL;
+            if (regexec(&p->regex, cursor, 1, &m, eflags) != 0) break;
+            regoff_t abs_so = (regoff_t)(cursor - text) + m.rm_so;
+            regoff_t abs_eo = (regoff_t)(cursor - text) + m.rm_eo;
             out->anti_toxic_signal = 1.0f;
             out->num_matches++;
             if (allowlist_hit_first_idx < 0) allowlist_hit_first_idx = (int)i;
             if (num_allowlist_spans < TOX_ALLOWLIST_MAX_SPANS) {
-                allowlist_spans[num_allowlist_spans].so = m.rm_so;
-                allowlist_spans[num_allowlist_spans].eo = m.rm_eo;
+                allowlist_spans[num_allowlist_spans].so = abs_so;
+                allowlist_spans[num_allowlist_spans].eo = abs_eo;
                 num_allowlist_spans++;
             }
+            if (m.rm_eo <= m.rm_so) cursor += 1;
+            else                    cursor += m.rm_eo;
+            first_iter = 0;
         }
     }
 
