@@ -27,6 +27,7 @@
 #include "security/nimcp_toxicity_response.h"
 #include "security/nimcp_toxicity_ml.h"
 #include "security/nimcp_w11_safety_kg_events.h"
+#include "language/nimcp_grounded_language.h"  /* Round 2 risk 2: decay_all_valence */
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 
@@ -357,6 +358,15 @@ static void nimcp_brain_factory_toxicity_tick(void* ctx)
                 (toxicity_ml_classifier_t*)brain->toxicity_ml,
                 "data/safety/toxicity_ml.bin");
         }
+    }
+
+    /* === Round-2 risk-2: slow valence decay ===
+     * Multiplies every lexicon entry's valence by 0.999 per tick (1Hz).
+     * Half-life ~11.5 minutes for a saturated +1.0 valence — single
+     * mis-tags relax to neutral within an hour; truly toxic words that
+     * the gate keeps re-tagging hold their negative valence. */
+    if (brain->grounded_lang) {
+        (void)grounded_language_decay_all_valence(brain->grounded_lang, 0.999f);
     }
 
     /* === Job 1: heartbeat KG emit === */

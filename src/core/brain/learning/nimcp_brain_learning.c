@@ -1185,17 +1185,33 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                 /* === Phase 3c: anti-Hebbian on toxic associations ===
                  * Drive negative reward into the 3-factor R-STDP machinery
                  * so the brain LEARNS to anti-associate the toxic content
-                 * with positive-emission directions. Magnitude scales with
-                 * tox severity; sign is negative. The brain still SEES the
-                 * content (the learn_vector weight update still happens
-                 * later in this function) — it just LEARNS to refuse it. */
+                 * with positive-emission directions. The brain still SEES
+                 * the content (the learn_vector weight update still happens
+                 * later) — it just LEARNS to refuse it.
+                 *
+                 * Round-2 risk-1 fix: gentle scale + rate-limit.
+                 *  - Magnitude scaled to 0.3 * max_score (not 1.0). A
+                 *    -1.0 R-STDP signal on every toxic step would degrade
+                 *    adjacent representations co-active with the toxic
+                 *    content. -0.3 gives a clear gradient without
+                 *    dominating normal training.
+                 *  - Rate-limited via static call counter — at most one
+                 *    negative-reward delivery per 5 toxic detections.
+                 *    Combined with the gate's threshold gating, this caps
+                 *    cumulative anti-Hebbian pressure on toxic-adjacent
+                 *    representations. (Counter is per-process; one brain
+                 *    per process in production.) */
                 {
-                    float worst = tox.predicted_harm > tox.fairness_violation
-                                      ? tox.predicted_harm
-                                      : tox.fairness_violation;
-                    float neg_reward = -worst;
-                    if (neg_reward < -1.0f) neg_reward = -1.0f;
-                    (void)brain_apply_reward_learning(brain, neg_reward);
+                    static uint64_t s_neg_reward_skip_counter = 0;
+                    const uint64_t NEG_REWARD_EVERY_N = 5;
+                    if ((s_neg_reward_skip_counter++ % NEG_REWARD_EVERY_N) == 0) {
+                        float worst = tox.predicted_harm > tox.fairness_violation
+                                          ? tox.predicted_harm
+                                          : tox.fairness_violation;
+                        float neg_reward = -0.3f * worst;
+                        if (neg_reward < -1.0f) neg_reward = -1.0f;
+                        (void)brain_apply_reward_learning(brain, neg_reward);
+                    }
                 }
 
                 /* === Phase 3c (Round 1 fix): set affective tags on lexicon
@@ -1205,22 +1221,31 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                  *      arousal = +worst  (high salience)
                  *   2. Counterclaim words  -> valence = +0.8 (positive,
                  *      human-condition-aligned), arousal = +0.5
-                 * Earlier draft called learn_from_text on the counterclaim
-                 * but learn_from_text doesn't set valence — it only adds
-                 * the words to the lexicon. The new
-                 * grounded_language_tag_text_affective helper does set
-                 * valence + arousal via saturating EMA so repeat exposures
-                 * accumulate the tag. */
-                if (brain->grounded_lang) {
-                    float worst = tox.predicted_harm > tox.fairness_violation
-                                      ? tox.predicted_harm
-                                      : tox.fairness_violation;
+                 *
+                 * Round-2 risk-2: only apply the tag when toxicity is
+                 * CLEARLY toxic (max_score >= 0.85), stricter than the
+                 * gate's 0.7 threshold. Borderline cases trip the audit /
+                 * immune / KG / ethics machinery (which is reversible)
+                 * but do NOT permanently shift word valences. Combined
+                 * with the cycle's slow decay path, this prevents one-off
+                 * mis-flags from locking in permanent negative valence on
+                 * benign words. */
+                const float TAG_THRESHOLD = 0.85f;
+                float worst_for_tag = tox.predicted_harm > tox.fairness_violation
+                                          ? tox.predicted_harm
+                                          : tox.fairness_violation;
+                if (brain->grounded_lang && worst_for_tag >= TAG_THRESHOLD) {
+                    float worst = worst_for_tag;
                     /* Tag the toxic input words with negative valence so
-                     * produce damps them. */
+                     * produce damps them. content_only=0: function words
+                     * IN toxic constructions are part of the structure
+                     * (e.g. "are" in "X are subhuman") and acquire the
+                     * negative tag too. */
                     grounded_language_tag_text_affective(
                         brain->grounded_lang, label,
                         -worst,            /* valence (negative) */
-                        worst);            /* arousal (high salience) */
+                        worst,             /* arousal (high salience) */
+                        0 /* content_only */);
 
                     /* Generate + tag the stage-appropriate counterclaim
                      * with positive valence (human-condition-aligned). */
@@ -1241,7 +1266,11 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                             grounded_language_tag_text_affective(
                                 brain->grounded_lang, cr.text,
                                 0.8f,    /* positive valence */
-                                0.5f);   /* moderate arousal */
+                                0.5f,    /* moderate arousal */
+                                1 /* content_only — skip function words
+                                     so "the/of/are" don't saturate
+                                     positive across thousands of
+                                     detections */);
                         }
                     }
                 }

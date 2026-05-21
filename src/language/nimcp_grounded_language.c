@@ -1806,7 +1806,8 @@ void grounded_language_set_toxicity_response(grounded_language_t* gl, void* tr) 
 int grounded_language_tag_text_affective(grounded_language_t* gl,
                                           const char* text,
                                           float valence,
-                                          float arousal) {
+                                          float arousal,
+                                          int content_only) {
     if (!gl || !text || !*text) return 0;
     if (valence < -1.0f) valence = -1.0f;
     if (valence >  1.0f) valence =  1.0f;
@@ -1824,6 +1825,12 @@ int grounded_language_tag_text_affective(grounded_language_t* gl,
     for (uint32_t w = 0; w < word_count; w++) {
         gl_lexicon_entry_t* e = lexicon_find_or_create(gl, words[w]);
         if (!e) continue;
+        /* Round-2 risk-3: skip function words when caller asks for
+         * content-only tagging (counterclaim path). Without this,
+         * "the/of/are" in every counterclaim would saturate positive
+         * across thousands of detections, defeating the suppression
+         * mechanism for the rest of the lexicon. */
+        if (content_only && e->learned_class == GL_CLASS_FUNCTION) continue;
         /* Saturating EMA: 0.8*old + 0.2*new. ~5 exposures saturate. */
         e->valence = 0.8f * e->valence + 0.2f * valence;
         e->arousal = 0.8f * e->arousal + 0.2f * arousal;
@@ -1834,6 +1841,28 @@ int grounded_language_tag_text_affective(grounded_language_t* gl,
         touched++;
     }
     nimcp_free(buf);
+    return touched;
+}
+
+/* Round-2 risk-2 fix: provide a slow decay path so single mis-tags
+ * eventually relax to neutral. Called from the toxicity cycle tick
+ * (1Hz). factor=0.999 at 1Hz gives a half-life of ~11.5 minutes for
+ * a saturated valence — fast enough to forget a one-off misflag,
+ * slow enough that learned negative-valence on truly toxic words
+ * survives the next exposure that reinforces it. */
+int grounded_language_decay_all_valence(grounded_language_t* gl, float factor) {
+    if (!gl) return 0;
+    if (!isfinite(factor) || factor < 0.0f) factor = 1.0f;
+    if (factor > 1.0f) factor = 1.0f;
+    if (factor == 1.0f) return 0;  /* no-op */
+    int touched = 0;
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        gl_lexicon_entry_t* e = gl->vocab_list[i];
+        if (!e) continue;
+        e->valence *= factor;
+        e->arousal *= factor;
+        touched++;
+    }
     return touched;
 }
 

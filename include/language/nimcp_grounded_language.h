@@ -452,7 +452,7 @@ void grounded_language_set_toxicity_response(
     void* tr);
 
 /**
- * @brief Set valence/arousal on every content word in the given text.
+ * @brief Set valence/arousal on words in the given text.
  *
  * Tokenizes the text, looks up or creates each lexicon entry, and updates
  * its `valence` (in [-1, +1]) and `arousal` (in [0, 1]) using a saturating
@@ -462,8 +462,16 @@ void grounded_language_set_toxicity_response(
  * valence (so produce-side suppression in find_words_near_vector PROMOTES
  * them) and to tag toxic content words with negative valence (so produce
  * DAMPS them). The 0.2 weight on each call means ~5 exposures saturate
- * the tag — fast enough to take effect during training, slow enough to
- * survive noise.
+ * the tag.
+ *
+ * Round-2 risk-3 (2026-05-21): the `content_only` flag (1 = skip function
+ * words, 0 = tag everything) prevents counterclaim function words ("the",
+ * "of", "are") from accumulating positive valence across thousands of
+ * detections, which would eventually defeat the suppression mechanism
+ * by making EVERY common word look "good". Toxic-input tagging passes
+ * content_only=0 (function words there are part of the toxic structure
+ * and should also acquire negative valence); counterclaim tagging passes
+ * content_only=1.
  *
  * @return Number of lexicon entries touched (0 on empty text).
  */
@@ -471,7 +479,23 @@ int grounded_language_tag_text_affective(
     grounded_language_t* gl,
     const char* text,
     float valence,
-    float arousal);
+    float arousal,
+    int content_only);
+
+/**
+ * @brief Decay all lexicon valences toward zero by a small factor.
+ *
+ * Called from the toxicity cycle tick (1Hz) so single mis-tagged events
+ * eventually relax back to neutral rather than locking in permanent
+ * negative valence on benign words. Both valence and arousal are
+ * multiplied by `factor` (typically 0.999 — a 0.1% per-call decay,
+ * half-life ~12 minutes at 1Hz). Set factor=1.0 to disable.
+ *
+ * @return Number of lexicon entries touched.
+ */
+int grounded_language_decay_all_valence(
+    grounded_language_t* gl,
+    float factor);
 
 /**
  * @brief Update the developmental stage used for counterclaim selection.
