@@ -109,7 +109,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     // Integration settings from brain config
     lgss_config.bio_async_enabled = brain->bio_async_enabled;
     lgss_config.ethics_bridge_enabled = brain->config.enable_ethics && brain->ethics != NULL;
-    lgss_config.plasticity_bridge_enabled = brain->config.enable_plasticity;
+    lgss_config.plasticity_bridge_enabled = brain->config.lgss_enable_plasticity_bridge;
     lgss_config.output_gates_enabled = true;
     lgss_config.learning_guards_enabled = true;
     lgss_config.perception_guards_enabled = true;
