@@ -147,6 +147,22 @@ void toxicity_classifier_get_stats(const toxicity_classifier_t* tc,
  */
 size_t toxicity_classifier_pattern_count(const toxicity_classifier_t* tc);
 
+/**
+ * Attach an ML head (toxicity_ml_classifier_t* via opaque void*). When
+ * attached, classify() ensembles the pattern scores with the ML scores
+ * via max(): predicted_harm = max(pattern_harm, ml_harm); same for
+ * fairness_violation. The ML head is NOT mutated by classify() — train
+ * with toxicity_ml_train_step explicitly. Pass NULL to detach.
+ *
+ * Returns 0 on success.
+ */
+int toxicity_classifier_attach_ml(toxicity_classifier_t* tc, void* ml_head);
+
+/**
+ * Get the currently attached ML head (or NULL). Caller does not own it.
+ */
+void* toxicity_classifier_get_ml(const toxicity_classifier_t* tc);
+
 #ifdef __cplusplus
 }
 #endif

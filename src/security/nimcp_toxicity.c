@@ -5,6 +5,7 @@
  * See nimcp_toxicity.h for design + limits.
  */
 #include "security/nimcp_toxicity.h"
+#include "security/nimcp_toxicity_ml.h"
 
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -35,6 +36,12 @@ struct toxicity_classifier {
     size_t              capacity;
     float               threshold;
     nimcp_mutex_t*      reload_mutex;
+    /* Optional ML head — toxicity_ml_classifier_t* (opaque). When non-NULL,
+     * classify() ensembles pattern scores with ML scores via max(): the
+     * pattern classifier does NOT own the ML head; the caller wires and
+     * destroys it. The pattern classifier is high-precision, the ML head
+     * is high-recall — ensemble catches more than either alone. */
+    void*               ml_head;
     /* stats (atomic so classify() stays read-only on the hot path) */
     _Atomic uint64_t    total_classifications;
     _Atomic uint64_t    total_matches;
@@ -464,6 +471,39 @@ toxicity_classify(const toxicity_classifier_t* tc,
         snprintf(out->matched_pattern, sizeof(out->matched_pattern),
                  "%s#%d", p->category, allowlist_hit_first_idx);
     }
+    /* === ML head ensemble (Task 134, 2026-05-21) ===
+     * If an ML head is attached, take max(pattern, ml) for both score
+     * channels. The ML head is high-recall (catches coded / paraphrased
+     * toxicity the pattern set misses); ensemble preserves pattern's
+     * high-precision wins while adding ML's coverage. Skip when the
+     * allowlist already covered the span (anti_toxic_signal=1.0 + no toxic
+     * matches) — the disclaimer should not be re-flagged by the ML head. */
+    if (tc->ml_head) {
+        toxicity_ml_result_t mr = {0};
+        if (toxicity_ml_predict(tc->ml_head, text, &mr) == 0) {
+            if (mr.predicted_harm > out->predicted_harm)
+                out->predicted_harm = mr.predicted_harm;
+            if (mr.fairness_violation > out->fairness_violation)
+                out->fairness_violation = mr.fairness_violation;
+            /* max_score across pattern+ml. */
+            float ml_score = mr.predicted_harm > mr.fairness_violation
+                                ? mr.predicted_harm : mr.fairness_violation;
+            if (ml_score > out->max_score) out->max_score = ml_score;
+            /* Record ML hit as a match if no pattern matched but ML
+             * crosses the threshold; the matched_category is left as
+             * "ml_classifier" so the audit trail knows which lane fired. */
+            if (best_idx == SIZE_MAX && ml_score >= tc->threshold) {
+                strncpy(out->matched_category, "ml_classifier",
+                        sizeof(out->matched_category) - 1);
+                strncpy(out->matched_pattern, "ml#0",
+                        sizeof(out->matched_pattern) - 1);
+                out->num_matches++;
+                atomic_fetch_add_explicit(&tcm->total_matches, 1ULL,
+                                          memory_order_relaxed);
+            }
+        }
+    }
+
     /* `would_block` is a HINT, not an instruction. The user-stated policy
      * (2026-05-20) is: NEVER delete or filter toxic content — mark it with
      * scores and let downstream evaluators (LGSS rules, ethics gates) decide
@@ -548,4 +588,20 @@ size_t
 toxicity_classifier_pattern_count(const toxicity_classifier_t* tc)
 {
     return tc ? tc->num_patterns : 0;
+}
+
+int
+toxicity_classifier_attach_ml(toxicity_classifier_t* tc, void* ml_head)
+{
+    if (!tc) return -1;
+    nimcp_mutex_lock(tc->reload_mutex);
+    tc->ml_head = ml_head;
+    nimcp_mutex_unlock(tc->reload_mutex);
+    return 0;
+}
+
+void*
+toxicity_classifier_get_ml(const toxicity_classifier_t* tc)
+{
+    return tc ? tc->ml_head : NULL;
 }

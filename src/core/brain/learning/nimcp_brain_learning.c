@@ -1125,6 +1125,114 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                         0 /* source_node = local */,
                         &antigen_id);
                 }
+
+                /* === Phase 3b: drive the existing core-directive evaluator ===
+                 * Toxicity isn't a SEPARATE rule — it's content that fails
+                 * the existing Golden Rule policy whose ultimate goal
+                 * (per the core directive in nimcp_ethics.h:422-424) is
+                 * "improving the human condition through empathy,
+                 * compassion, fairness, and respect for human dignity".
+                 * Calling ethics_engine_evaluate_action with proper scores
+                 * is what makes the engine evaluate this content under
+                 * the directive that already exists.
+                 *
+                 * Category -> violation-channel mapping (mirrors the
+                 * categories' linguistic nature; engine reads all fields):
+                 *   dehumanization          -> fairness_violation + harm
+                 *                              (denial of equal personhood
+                 *                               is fundamentally an
+                 *                               unfairness; "harm" captures
+                 *                               its real-world consequence)
+                 *   violence_against_group  -> harm (direct call for harm)
+                 *   misogyny                -> fairness_violation +
+                 *                              autonomy_violation (denial
+                 *                               of agency / equal status)
+                 *   slurs_external          -> fairness_violation + harm
+                 *                              (weaponized dehumanization)
+                 *   other                   -> harm + fairness as scored
+                 *
+                 * The engine returns its allowed/violation_type/explanation,
+                 * which feeds the immune system + audit. We do NOT skip
+                 * the learning step based on this — POLICY is mark, not
+                 * filter; the brain must SEE this content with its
+                 * toxicity label so it can learn to refuse. */
+                if (brain->ethics) {
+                    action_context_t a_tox = {0};
+                    a_tox.features = (float*)features;
+                    a_tox.num_features = num_features;
+                    a_tox.predicted_harm     = tox.predicted_harm;
+                    a_tox.fairness_violation = tox.fairness_violation;
+                    if (strcmp(tox.matched_category, "misogyny") == 0) {
+                        /* Misogyny is denial of agency -> autonomy channel. */
+                        a_tox.autonomy_violation = tox.predicted_harm;
+                    }
+                    ethics_evaluation_t e_tox =
+                        ethics_engine_evaluate_action(brain->ethics, &a_tox);
+                    /* Log the engine's verdict so the audit trail records
+                     * the directive's response, not just the classifier's. */
+                    nimcp_safety_audit_log_event(
+                        NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
+                        "Ethics directive evaluated toxic training-data: "
+                        "allowed=%d gr_score=%.2f primary_violation=%d "
+                        "explanation='%.80s'",
+                        e_tox.allowed ? 1 : 0,
+                        e_tox.golden_rule_score,
+                        (int)e_tox.primary_violation,
+                        e_tox.explanation);
+                }
+
+                /* === Phase 3c: anti-Hebbian on toxic associations ===
+                 * Drive negative reward into the 3-factor R-STDP machinery
+                 * so the brain LEARNS to anti-associate the toxic content
+                 * with positive-emission directions. Magnitude scales with
+                 * tox severity; sign is negative. The brain still SEES the
+                 * content (the learn_vector weight update still happens
+                 * later in this function) — it just LEARNS to refuse it. */
+                {
+                    float worst = tox.predicted_harm > tox.fairness_violation
+                                      ? tox.predicted_harm
+                                      : tox.fairness_violation;
+                    float neg_reward = -worst;
+                    if (neg_reward < -1.0f) neg_reward = -1.0f;
+                    (void)brain_apply_reward_learning(brain, neg_reward);
+                }
+
+                /* === Phase 3c: ground the counterclaim with positive
+                 * valence so its content words inherit the human-condition-
+                 * aligned affective tag. When the response engine produces
+                 * a stage-appropriate counterclaim, calling
+                 * grounded_language_learn_from_text on it triggers the
+                 * existing valence/arousal grounding path with the values
+                 * we set on the gl_event.
+                 *
+                 * Note: this is best-effort — if no engine or no template
+                 * matches, skip silently. */
+                if (brain->grounded_lang && brain->toxicity_response) {
+                    extern int grounded_language_learn_from_text(
+                        struct grounded_language*, const char*);
+                    extern int toxicity_response_generate(
+                        const void*, const char*, const char*,
+                        int, void*);
+                    char cr_buf[640];
+                    /* toxicity_response_result_t is 512+16+8+8 = 544.
+                     * Use a 640-byte buffer for safety. */
+                    struct {
+                        char  text[512];
+                        char  source[16];
+                        int   stage_matched;
+                        int   antiframe_swaps;
+                    } cr;
+                    (void)cr_buf;
+                    memset(&cr, 0, sizeof(cr));
+                    int stage = (int)brain->current_stage;
+                    if (toxicity_response_generate(
+                            brain->toxicity_response, label,
+                            tox.matched_category, stage,
+                            &cr) == 0 && cr.text[0] != '\0') {
+                        grounded_language_learn_from_text(
+                            brain->grounded_lang, cr.text);
+                    }
+                }
             }
         }
     }

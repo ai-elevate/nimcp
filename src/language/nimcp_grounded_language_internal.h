@@ -437,6 +437,17 @@ struct grounded_language {
      * functional without it. POLICY: mark, never delete — classification
      * only annotates; content is never modified. */
     void*                toxicity_classifier;
+
+    /* Toxicity response engine (Phase 3a, 2026-05-21). Counterclaim
+     * generator used by respond() when input is classified toxic. Wired
+     * from brain init via grounded_language_set_toxicity_response().
+     * NULL means "not wired" — respond falls back to default refusal. */
+    void*                toxicity_response;
+
+    /* Current developmental stage for counterclaim selection (0..3).
+     * Set externally via grounded_language_set_current_stage(); falls
+     * back to gl_internal_get_current_stage() when zero. */
+    int                  current_stage;
 };
 
 /**

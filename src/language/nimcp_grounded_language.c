@@ -16,6 +16,7 @@
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
 #include "security/nimcp_toxicity.h"                        /* 2026-05-21: content classifier */
+#include "security/nimcp_toxicity_response.h"                /* Phase 3a: counterclaim engine */
 
 /* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
  * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
@@ -1471,7 +1472,32 @@ static float score_word_against_vector(const grounded_language_t* gl,
             if (cs > concept_sim) concept_sim = cs;
         }
     }
-    return 0.4f * sim + 0.6f * concept_sim;
+    float raw = 0.4f * sim + 0.6f * concept_sim;
+
+    /* Phase 3d (2026-05-21): valence-aware suppression at produce.
+     * Words whose lexicon entry carries strongly-negative valence are
+     * tagged "toxic-adjacent" by the brain's affective grounding (set by
+     * Phase 3c training when toxic content fires the reward path). At
+     * produce time, damp those words proportionally to their negative
+     * valence so they are unlikely to be EMITTED, even though they
+     * remain in the vocabulary (Athena recognizes them but does not
+     * volunteer them). Mapping:
+     *    valence  +1.0 -> factor 1.0   (no damping, positive prosocial words)
+     *    valence   0.0 -> factor 1.0   (default, no damping)
+     *    valence  -0.5 -> factor 0.75
+     *    valence  -1.0 -> factor 0.5   (strongest damping; not zero — the
+     *                                   brain may still need the word for
+     *                                   counterclaims that NAME the bad thing)
+     * Damping is linear in negative valence, capped so negative-valence
+     * words can still surface when context strongly demands them. */
+    if (entry->valence < 0.0f) {
+        float v = entry->valence;
+        if (v < -1.0f) v = -1.0f;
+        /* factor in [0.5 .. 1.0]: 0.5 when valence=-1, 1.0 when valence=0 */
+        float factor = 1.0f + (v * 0.5f);
+        raw *= factor;
+    }
+    return raw;
 }
 
 /** Find words closest to a semantic vector.
@@ -1764,6 +1790,18 @@ void grounded_language_set_concept_registry(grounded_language_t* gl, void* regis
 void grounded_language_set_toxicity_classifier(grounded_language_t* gl, void* tc) {
     if (!gl) return;
     gl->toxicity_classifier = tc;
+}
+
+void grounded_language_set_toxicity_response(grounded_language_t* gl, void* tr) {
+    if (!gl) return;
+    gl->toxicity_response = tr;
+}
+
+void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage) {
+    if (!gl) return;
+    if (stage < 0) stage = 0;
+    if (stage > 3) stage = 3;
+    gl->current_stage = stage;
 }
 
 /*=============================================================================
@@ -4149,24 +4187,75 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
         return -1;
     }
 
-    /* Comprehend input — gives us the semantic vector to drive production. */
+    /* === Phase 3c: INPUT-side toxicity check + counterclaim pushback ===
+     * If the input is classified toxic AND a response engine is wired,
+     * Athena emits a stage-appropriate counterclaim INSTEAD of running
+     * the (likely-collapsed) produce path. This is the operational
+     * expression of the core ethics directive: confronted with content
+     * that fails the Golden Rule's "improve the human condition" goal,
+     * Athena pushes back rather than passing it through.
+     *
+     * The classifier is still run on the OUTPUT below (defense in depth)
+     * for the rare case the counterclaim path doesn't fire. */
+    int input_is_toxic = 0;
+    toxicity_result_t input_tox = {0};
+    if (gl->toxicity_classifier && input_text && *input_text) {
+        toxicity_classifier_t* tc =
+            (toxicity_classifier_t*)gl->toxicity_classifier;
+        if (toxicity_classify(tc, input_text, &input_tox) == 0 &&
+            input_tox.would_block) {
+            input_is_toxic = 1;
+        }
+    }
+
+    /* Counterclaim short-circuit: if input is toxic, emit counterclaim
+     * and skip produce entirely. We DO still comprehend (so the immune /
+     * memory / audit machinery records the exposure) but the response is
+     * the pushback, not the brain's normal produce output. */
     gl_comprehension_result_t comp = {0};
     int comp_rc = grounded_language_comprehend(gl, input_text, &comp);
 
-    /* Produce via the SNN bridge. No template fallbacks, no quality-gated
-     * stock phrases ("I understand about X.", "I don't have words for that
-     * yet.", "I am learning."). Bridge succeeds → emit its output; bridge
+    int counterclaim_emitted = 0;
+    if (input_is_toxic && gl->toxicity_response) {
+        toxicity_response_t* tr =
+            (toxicity_response_t*)gl->toxicity_response;
+        toxicity_response_result_t cr = {0};
+        int stage = gl->current_stage;
+        if (stage < 0) stage = 0;
+        if (toxicity_response_generate(tr, input_text,
+                                        input_tox.matched_category,
+                                        stage, &cr) == 0 &&
+            cr.text[0] != '\0') {
+            strncpy(response, cr.text, response_max - 1);
+            response[response_max - 1] = '\0';
+            /* Counterclaims are confident assertions of values. */
+            if (confidence) *confidence = 0.95f;
+            counterclaim_emitted = 1;
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 1,
+                "Counterclaim emitted: src=%s cat=%s stage=%d "
+                "input='%.40s' response='%.60s'",
+                cr.source, input_tox.matched_category, stage,
+                input_text, response);
+        }
+    }
+
+    /* Produce via the lexicon readout (Option B). No template fallbacks, no
+     * quality-gated stock phrases. Produce succeeds → emit; produce
      * fails → emit "I don't know.", the curriculum-trained uncertainty
-     * marker (DK-B). The brain learns grammar emergently or admits it
-     * can't — there is no third option. */
+     * marker. The brain learns grammar emergently or admits it can't —
+     * counterclaim path above is the only exception, and only for toxic
+     * input. */
     gl_production_result_t prod = {0};
     int rc = -1;
-    if (comp_rc == 0 && comp.semantic_vector) {
+    if (!counterclaim_emitted && comp_rc == 0 && comp.semantic_vector) {
         rc = grounded_language_produce(gl, comp.semantic_vector, gl->semantic_dim,
                                         GL_PRODUCE_RESPOND, &prod);
     }
 
-    if (rc == 0 && prod.text && prod.word_count > 0) {
+    if (counterclaim_emitted) {
+        /* response + confidence already set by counterclaim block above. */
+    } else if (rc == 0 && prod.text && prod.word_count > 0) {
         strncpy(response, prod.text, response_max - 1);
         response[response_max - 1] = '\0';
         if (confidence) *confidence = prod.fluency * prod.relevance;

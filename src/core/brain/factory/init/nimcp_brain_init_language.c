@@ -603,6 +603,13 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
             grounded_language_set_toxicity_classifier(brain->grounded_lang,
                                                       brain->toxicity_classifier);
         }
+        /* Phase 3a/3c: wire the counterclaim response engine so toxic
+         * inputs trigger stage-appropriate pushback instead of pass-
+         * through produce. */
+        if (brain->toxicity_response) {
+            grounded_language_set_toxicity_response(brain->grounded_lang,
+                                                    brain->toxicity_response);
+        }
 
         /* Wire cross-modal connections */
         if (brain->visual_cortex)

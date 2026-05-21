@@ -119,6 +119,24 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
             grounded_language_set_toxicity_classifier(b->grounded_lang,
                                                       b->toxicity_classifier);
         }
+        /* Phase 3a/3c: response engine + ML head on resume path too. */
+        if (!b->toxicity_response) {
+            extern void* toxicity_response_create(const char*, const char*);
+            b->toxicity_response = toxicity_response_create(
+                "data/safety/toxicity_counterclaims.tsv",
+                "data/safety/toxicity_antiframes.tsv");
+        }
+        if (b->toxicity_response && b->grounded_lang) {
+            extern void grounded_language_set_toxicity_response(
+                struct grounded_language*, void*);
+            grounded_language_set_toxicity_response(b->grounded_lang,
+                                                    b->toxicity_response);
+        }
+        if (!b->toxicity_ml) {
+            extern void* toxicity_ml_create(const char*);
+            b->toxicity_ml =
+                toxicity_ml_create("data/safety/toxicity_ml.bin");
+        }
     }
 
     set_error("No error");

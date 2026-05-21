@@ -440,6 +440,25 @@ void grounded_language_set_toxicity_classifier(
     grounded_language_t* gl,
     void* tc);
 
+/**
+ * @brief Wire the toxicity response engine for counterclaim emission.
+ *
+ * When wired AND the classifier flags input as toxic, respond() emits a
+ * stage-appropriate counterclaim instead of the (probably-collapsed)
+ * produce output. NULL to unwire.
+ */
+void grounded_language_set_toxicity_response(
+    grounded_language_t* gl,
+    void* tr);
+
+/**
+ * @brief Update the developmental stage used for counterclaim selection.
+ * Stage 0..3 — out-of-range values are clamped.
+ */
+void grounded_language_set_current_stage_int(
+    grounded_language_t* gl,
+    int stage);
+
 /*=============================================================================
  * Comprehension (Wernicke's pathway)
  *===========================================================================*/

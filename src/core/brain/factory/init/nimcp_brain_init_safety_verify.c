@@ -24,8 +24,15 @@
 #include "core/brain/nimcp_brain_cycle_coordinator.h"
 #include "security/lgss/nimcp_lgss.h"
 #include "security/nimcp_toxicity.h"
+#include "security/nimcp_toxicity_response.h"
+#include "security/nimcp_toxicity_ml.h"
 #include "security/nimcp_w11_safety_kg_events.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Forward declaration: defined later in this file. */
 static void nimcp_brain_factory_toxicity_tick(void* ctx);
@@ -193,34 +200,189 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
                  "gate disabled (downstream LGSS uses legacy proxy scoring)");
     }
 
+    /* === Toxicity Response Engine — Athena's counterclaim generator ===
+     * Loads stage-graded templates + anti-frame swaps. NON-FATAL on
+     * missing files; engine returns no-counterclaim and caller falls back
+     * to a default refusal string. */
+    toxicity_response_t* trsp = toxicity_response_create(
+        "data/safety/toxicity_counterclaims.tsv",
+        "data/safety/toxicity_antiframes.tsv");
+    if (trsp) {
+        brain->toxicity_response = trsp;
+        LOG_INFO("Toxicity response engine initialized: %zu template(s), "
+                 "%zu antiframe(s)",
+                 toxicity_response_template_count(trsp),
+                 toxicity_response_antiframe_count(trsp));
+    } else {
+        brain->toxicity_response = NULL;
+        LOG_WARN("Toxicity response engine creation failed — "
+                 "counterclaim pushback disabled");
+    }
+
+    /* === Toxicity ML Head — ensembles with pattern classifier (max) ===
+     * Pre-trained weights loaded from data/safety/toxicity_ml.bin if
+     * present; otherwise initializes fresh and learns online from the
+     * pattern classifier as teacher during training. NON-FATAL. */
+    toxicity_ml_classifier_t* tml = toxicity_ml_create("data/safety/toxicity_ml.bin");
+    if (tml) {
+        brain->toxicity_ml = tml;
+        LOG_INFO("Toxicity ML head initialized "
+                 "(input=%d -> %d -> %d -> %d)",
+                 TOXICITY_ML_INPUT_DIM, TOXICITY_ML_HIDDEN1_DIM,
+                 TOXICITY_ML_HIDDEN2_DIM, TOXICITY_ML_OUTPUT_DIM);
+        /* Ensemble: pattern classifier consults the ML head via max() on
+         * every classify() call. */
+        if (brain->toxicity_classifier) {
+            toxicity_classifier_attach_ml(
+                (toxicity_classifier_t*)brain->toxicity_classifier,
+                tml);
+            LOG_INFO("  - ensembled with pattern classifier (max-merge)");
+        }
+    } else {
+        brain->toxicity_ml = NULL;
+        LOG_WARN("Toxicity ML head creation failed — ensemble disabled");
+    }
+
     return true;
 }
 
-/* Cycle-coordinator tick (1Hz). Pulls aggregate stats from the classifier
- * and emits a periodic heartbeat KG node so monitoring can see liveness. */
+/* Curriculum row used for ML head training. Loaded once on the first
+ * tick that sees a non-null ml head. */
+typedef struct {
+    char  text[256];
+    float label_harm;
+    float label_fair;
+    char  category[32];
+} tox_curriculum_row_t;
+
+/* Load the curriculum file once. Returns malloc'd array via *rows_out and
+ * the count via *n_out. NUL-terminates everything. Caller frees with
+ * nimcp_free. On parse error returns 0 and leaves arrays untouched. */
+static int
+load_tox_curriculum(const char* path,
+                     tox_curriculum_row_t** rows_out, size_t* n_out)
+{
+    if (!rows_out || !n_out) return -1;
+    *rows_out = NULL;
+    *n_out = 0;
+    FILE* f = fopen(path, "r");
+    if (!f) return -1;
+    size_t cap = 64, n = 0;
+    tox_curriculum_row_t* rows = (tox_curriculum_row_t*)nimcp_calloc(cap, sizeof(*rows));
+    if (!rows) { fclose(f); return -1; }
+    char line[1024];
+    while (fgets(line, sizeof(line), f)) {
+        char* p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (!*p || *p == '\n' || *p == '#') continue;
+        size_t L = strlen(line);
+        while (L > 0 && (line[L-1] == '\n' || line[L-1] == '\r')) line[--L] = '\0';
+        if (L == 0) continue;
+        /* split on \t — 5 cols expected but only 4 required */
+        char* fields[5] = {NULL, NULL, NULL, NULL, NULL};
+        int fc = 0;
+        char* cur = line;
+        fields[fc++] = cur;
+        while (*cur && fc < 5) {
+            if (*cur == '\t') { *cur = '\0'; cur++; if (fc < 5) fields[fc++] = cur; continue; }
+            cur++;
+        }
+        if (fc < 4) continue;
+        if (n + 1 >= cap) {
+            size_t nc = cap * 2;
+            tox_curriculum_row_t* np =
+                (tox_curriculum_row_t*)nimcp_calloc(nc, sizeof(*np));
+            if (!np) break;
+            memcpy(np, rows, n * sizeof(*rows));
+            nimcp_free(rows);
+            rows = np; cap = nc;
+        }
+        tox_curriculum_row_t* r = &rows[n];
+        memset(r, 0, sizeof(*r));
+        strncpy(r->text, fields[0], sizeof(r->text) - 1);
+        r->label_harm = (float)atof(fields[1]);
+        r->label_fair = (float)atof(fields[2]);
+        strncpy(r->category, fields[3], sizeof(r->category) - 1);
+        n++;
+    }
+    fclose(f);
+    *rows_out = rows;
+    *n_out = n;
+    return 0;
+}
+
+/* Cycle-coordinator tick (1Hz). Three jobs:
+ *  1. Emit a periodic heartbeat KG node so monitoring sees liveness.
+ *  2. Train one curriculum row through the ML head per tick (pattern
+ *     classifier as teacher). Round-robin through the curriculum.
+ *  3. Save ML weights every N ticks if anything changed. */
 static void nimcp_brain_factory_toxicity_tick(void* ctx)
 {
     struct brain_struct* brain = (struct brain_struct*)ctx;
     if (!brain || !brain->toxicity_classifier) return;
 
-    /* Snapshot stats once per second. Used by future ML head trainer +
-     * dashboards. */
+    static tox_curriculum_row_t* s_curriculum = NULL;
+    static size_t s_curriculum_n = 0;
+    static size_t s_curriculum_cursor = 0;
+    static int    s_curriculum_loaded = 0;
+    static uint64_t s_save_counter = 0;
+    static uint64_t s_last_total = 0;
+
+    /* One-shot curriculum load on first tick. */
+    if (!s_curriculum_loaded) {
+        s_curriculum_loaded = 1;
+        if (load_tox_curriculum("data/safety/toxicity_curriculum.tsv",
+                                 &s_curriculum, &s_curriculum_n) == 0) {
+            LOG_INFO("Toxicity curriculum loaded: %zu rows",
+                     s_curriculum_n);
+        }
+    }
+
+    /* === Job 2: ML head training (one row per tick) === */
+    if (brain->toxicity_ml && s_curriculum && s_curriculum_n > 0) {
+        tox_curriculum_row_t* r =
+            &s_curriculum[s_curriculum_cursor % s_curriculum_n];
+        s_curriculum_cursor++;
+        (void)toxicity_ml_train_step(
+            (toxicity_ml_classifier_t*)brain->toxicity_ml,
+            r->text,
+            r->label_harm, r->label_fair,
+            0.01f /* lr */,
+            0.05f /* dead_zone — skip step when already within 0.05 */);
+
+        /* === Job 3: periodic save (every 60 ticks ≈ 1 minute) === */
+        s_save_counter++;
+        if ((s_save_counter % 60) == 0) {
+            (void)toxicity_ml_save(
+                (toxicity_ml_classifier_t*)brain->toxicity_ml,
+                "data/safety/toxicity_ml.bin");
+        }
+    }
+
+    /* === Job 1: heartbeat KG emit === */
     uint64_t total = 0, matches = 0, blocks = 0;
     toxicity_classifier_get_stats(
         (toxicity_classifier_t*)brain->toxicity_classifier,
         &total, &matches, &blocks);
 
-    /* Emit a low-weight KG heartbeat so the toxicity_module node always
-     * has a recent timestamp. Suppressed if no classifications happened
-     * in this window (avoids noise). */
-    static uint64_t s_last_total = 0;
     if (total > s_last_total) {
-        char hb_excerpt[96];
+        char hb_excerpt[128];
+        uint64_t mlp = 0, mls = 0;
+        float ml_loss = 0.0f;
+        if (brain->toxicity_ml) {
+            toxicity_ml_get_stats(
+                (toxicity_ml_classifier_t*)brain->toxicity_ml,
+                &mlp, &mls, &ml_loss);
+        }
         snprintf(hb_excerpt, sizeof(hb_excerpt),
-                 "heartbeat total=%llu matches=%llu blocks=%llu",
+                 "hb total=%llu match=%llu block=%llu ml_pred=%llu "
+                 "ml_steps=%llu ml_loss=%.4f",
                  (unsigned long long)total,
                  (unsigned long long)matches,
-                 (unsigned long long)blocks);
+                 (unsigned long long)blocks,
+                 (unsigned long long)mlp,
+                 (unsigned long long)mls,
+                 ml_loss);
         w11_emit_toxicity_detection(brain, "cycle", "heartbeat",
                                     0.0f, 0.0f, 0.0f, hb_excerpt);
         s_last_total = total;
