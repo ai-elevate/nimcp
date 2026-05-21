@@ -4,6 +4,10 @@
 
 #include "training/nimcp_cortex_cnn.h"
 #include "snn/nimcp_snn_types.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "language/nimcp_communication_cascade.h"
+#include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
+#include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
 
 
 //=============================================================================
@@ -332,6 +336,41 @@ float nimcp_brain_get_accuracy(nimcp_brain_t brain)
 {
     if (!brain || !brain->internal_brain) return 0.0F;
     return brain->internal_brain->stats.running_accuracy;
+}
+
+/* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — expose concept_registry
+ * stats so callers can observe whether the cross-modal bind hook is
+ * actually firing during training. Without this accessor, the registry's
+ * growth is invisible from outside the C library.
+ *
+ * Both out params are NULL-tolerant. Returns NIMCP_OK on success;
+ * NIMCP_ERROR_NULL_POINTER if brain is NULL; NIMCP_OK with zeroed
+ * out params if the registry was never created (older checkpoints
+ * loaded before the registry was a thing). */
+nimcp_status_t nimcp_brain_get_concept_registry_stats(
+    nimcp_brain_t brain,
+    size_t* total_referents,
+    size_t* total_modality_bindings)
+{
+    if (!brain || !brain->internal_brain) {
+        if (total_referents) *total_referents = 0;
+        if (total_modality_bindings) *total_modality_bindings = 0;
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    concept_registry_t* reg =
+        (concept_registry_t*)brain->internal_brain->concept_registry;
+    if (!reg) {
+        /* Sentinel value SIZE_MAX in total_referents distinguishes
+         * "registry is NULL" from "registry exists but empty (0)". */
+        if (total_referents) *total_referents = (size_t)-1;
+        if (total_modality_bindings) *total_modality_bindings = 0;
+        return NIMCP_OK;
+    }
+    if (total_referents)
+        *total_referents = concept_registry_total_referents(reg);
+    if (total_modality_bindings)
+        *total_modality_bindings = concept_registry_total_modality_bindings(reg);
+    return NIMCP_OK;
 }
 
 
@@ -2683,6 +2722,15 @@ nimcp_status_t nimcp_brain_learn_language(
 
     int updates = grounded_language_learn_from_text(b->grounded_lang, text);
     grounded_language_learn_syntax(b->grounded_lang, text);
+    /* Drive bridge bigram + trigram STDP from real-text learning. Pre-fix the
+     * only callers of learn_text_bigrams were brain_cognitive_learning_step
+     * (which passes the cognitive LABEL — 1-2 tokens, too short for trigrams)
+     * and the cascade self-train path (own production, gated on confidence).
+     * Real user/training text never reached the bridge's trigram path, so
+     * bridge_total_trigram_updates stayed at 0 even with the flag enabled.
+     * LTD on top-1 false winner (inside learn_next_token_triple) is the
+     * only mechanism that can pull saturated dominant word_pops down. */
+    (void)grounded_language_learn_text_bigrams(b->grounded_lang, text, 0.02f);
 
     if (out_loss) *out_loss = (updates > 0) ? 1.0f / (float)updates : 1.0f;
     return (updates >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
@@ -2772,9 +2820,373 @@ nimcp_status_t nimcp_brain_grounded_respond(
     brain_t b = brain->internal_brain;
     if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
 
+    /* Audit Cat A #1 — cascade-orchestrator path. Opt-in via
+     * b->respond_via_cascade (default OFF). When ON, run the full
+     * 15-stage cascade with the input as prompt and emit
+     * state->utterance. Falls back to the legacy bridge-passthrough
+     * if the cascade produces no usable output (preserves the
+     * "I don't know." DK-B marker semantics on dead-end inputs). */
+    if (b->respond_via_cascade) {
+        production_cascade_state_t state;
+        memset(&state, 0, sizeof(state));
+        int rc = communication_cascade_run(b, input_text,
+                                            CASCADE_STAGE_ALL, &state);
+        if (rc == 0 && state.utterance && state.utterance[0] &&
+            state.word_count > 0) {
+            strncpy(out_response, state.utterance, response_max - 1);
+            out_response[response_max - 1] = '\0';
+            if (out_confidence) {
+                /* self_match (Phase 2D-B) is the cleanest "did the brain
+                 * actually say what it meant" signal. Fluency falls back
+                 * when self_match wasn't computed. */
+                float conf = (state.self_match > 0.0f) ? state.self_match
+                                                        : state.fluency;
+                *out_confidence = conf;
+            }
+            cascade_state_cleanup(&state);
+            return NIMCP_OK;
+        }
+        cascade_state_cleanup(&state);
+        /* Fall through to the bridge passthrough below — preserves the
+         * DK-B "I don't know." path for dead-end inputs. */
+    }
+
     int rc = grounded_language_respond(b->grounded_lang, input_text,
                                        out_response, response_max, out_confidence);
     return (rc >= 0) ? NIMCP_OK : NIMCP_ERROR_OPERATION_FAILED;
+}
+
+/* Forward decl — definition is further down in this TU. */
+static nimcp_status_t _gl_diag_validate(nimcp_brain_t brain, brain_t* out_b);
+
+nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    b->respond_via_cascade = enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = b->respond_via_cascade;
+    return NIMCP_OK;
+}
+
+/* Slice 6 — thalamic gating public wrappers. Inline-extern the cascade
+ * implementations to avoid the header re-include cycle (cascade.h is
+ * already pulled in at the top of this TU). */
+extern int  communication_cascade_set_thalamic_gate_enabled(brain_t brain, bool enabled);
+extern bool communication_cascade_get_thalamic_gate_enabled(brain_t brain);
+extern int  communication_cascade_set_thalamic_gate_for_stage(brain_t brain,
+                                                              nimcp_cascade_stage_idx_t stage,
+                                                              float weight);
+extern int  communication_cascade_get_thalamic_gates(brain_t brain,
+                                                     float* out_weights,
+                                                     bool*  out_overrides,
+                                                     uint32_t* count_out);
+
+nimcp_status_t nimcp_brain_set_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (communication_cascade_set_thalamic_gate_enabled(b, enabled) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = communication_cascade_get_thalamic_gate_enabled(b);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_thalamic_gate_for_stage(nimcp_brain_t brain,
+                                                        uint32_t stage_idx,
+                                                        float weight) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (stage_idx >= 15) return NIMCP_ERROR_INVALID_PARAM;
+    /* NaN/Inf reads as "clear" — coerce to negative sentinel before
+     * forwarding to the cascade setter. */
+    if (!isfinite(weight)) weight = -1.0f;
+    return (communication_cascade_set_thalamic_gate_for_stage(b,
+                (nimcp_cascade_stage_idx_t)stage_idx, weight) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_thalamic_gates(nimcp_brain_t brain,
+                                                float* out_weights,
+                                                bool*  out_overrides,
+                                                uint32_t max_count,
+                                                uint32_t* count_out) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    /* Pull into a local 15-slot scratch buffer so we can copy only up
+     * to max_count entries into the caller's array. */
+    float    scratch_w[15];
+    bool     scratch_o[15];
+    uint32_t got = 0;
+    if (communication_cascade_get_thalamic_gates(b,
+            scratch_w, scratch_o, &got) != 0) {
+        return NIMCP_ERROR;
+    }
+    uint32_t copy = (got < max_count) ? got : max_count;
+    if (out_weights) {
+        for (uint32_t i = 0; i < copy; i++) out_weights[i] = scratch_w[i];
+    }
+    if (out_overrides) {
+        for (uint32_t i = 0; i < copy; i++) out_overrides[i] = scratch_o[i];
+    }
+    if (count_out) *count_out = copy;
+    return NIMCP_OK;
+}
+
+/* =================================================================
+ * Slice 5 — phonological loop public API
+ *
+ * The setters are thin wrappers around the brain_struct fields; the
+ * accessor functions (decay/merge/render/clear) live in
+ * src/language/nimcp_phonological_loop.c. Setters intentionally do not
+ * take the loop_mutex — the underlying field writes are scalar/atomic
+ * at the hardware level on every platform we target, and runtime
+ * setters are called rarely (once at start-up / config). Read APIs
+ * that walk the buffer DO take the mutex inside the helper.
+ * ================================================================= */
+
+#include "language/nimcp_phonological_loop.h"
+
+nimcp_status_t nimcp_brain_set_phonological_loop_enabled(nimcp_brain_t brain,
+                                                           bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    /* Ensure the loop is initialized when flipping ON — broca-init may
+     * not have run yet (minimal-mode brain) or may have failed. Init is
+     * idempotent + cheap. Failure to init is non-fatal: the caller can
+     * still flip the flag, and the cascade helpers will continue to
+     * no-op until init succeeds on a subsequent call. */
+    if (enabled) {
+        (void)phonological_loop_init(b);
+    }
+    b->loop_enabled = enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_phonological_loop_decay(nimcp_brain_t brain,
+                                                         float decay) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!(decay == decay) /* NaN check */) decay = 0.15f;
+    if (decay < 0.0f) decay = 0.0f;
+    if (decay > 0.5f) decay = 0.5f;
+    /* Setting decay before enable is allowed — init lazily so subsequent
+     * loop helpers see the requested value. */
+    (void)phonological_loop_init(b);
+    b->loop_decay_rate = decay;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_phonological_loop_threshold(nimcp_brain_t brain,
+                                                            float threshold) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    /* S5-H5: validate + coerce. NaN/Inf/<=0 reset to default 0.3.
+     * Setting before enable is allowed — init lazily so subsequent
+     * loop helpers see the requested value. */
+    if (!(threshold == threshold) /* NaN */ ||
+        threshold <= 0.0f || threshold > 1.0f) {
+        threshold = 0.3f;
+    }
+    (void)phonological_loop_init(b);
+    b->loop_surface_threshold = threshold;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_clear_phonological_loop(nimcp_brain_t brain) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    phonological_loop_clear(b);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_phonological_loop_state(
+    nimcp_brain_t brain,
+    char* out_buffer,
+    uint32_t out_size,
+    uint32_t* out_trace_count)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    if (out_buffer && out_size > 0) {
+        out_buffer[0] = '\0';
+        /* render_active honors enabled-flag internally; returns 0 + empty
+         * string when disabled, so callers always see a well-defined
+         * surface form. */
+        (void)phonological_loop_render_active(b, 0.3f, out_buffer, out_size);
+    }
+    if (out_trace_count) {
+        /* trace_count snapshot — read outside the lock; worst case torn
+         * with a concurrent merge, but the field is uint32 (atomic on
+         * every supported arch) and this is read-only diagnostic. */
+        *out_trace_count = b->loop_trace_count;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_phonological_loop_diag(
+    nimcp_brain_t brain,
+    nimcp_phonological_loop_diag_t* out)
+{
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+
+    /* All scalar reads; no lock — torn-read worst case is a stale
+     * snapshot, which is acceptable for a diagnostic surface. */
+    out->enabled         = b->loop_enabled;
+    out->buffer_len      = b->loop_buffer_len;
+    out->trace_count     = b->loop_trace_count;
+    out->trace_capacity  = b->loop_trace_capacity;
+    out->max_words       = b->loop_max_words;
+    out->decay_rate      = b->loop_decay_rate;
+    out->last_refresh_ms = b->loop_last_refresh_ms;
+
+    /* Avg trace strength — bounded loop over loop_trace_count traces.
+     * No lock; same torn-read tolerance as above. */
+    float sum = 0.0f;
+    uint32_t n = b->loop_trace_count;
+    if (b->loop_phonemic_trace && n > 0) {
+        for (uint32_t i = 0; i < n; i++) sum += b->loop_phonemic_trace[i];
+    }
+    out->avg_trace_strength = (n > 0) ? (sum / (float)n) : 0.0f;
+    /* S5-H5: surface threshold. 0 (calloc default) means "uninitialized" —
+     * report the effective default (0.3) so trainers see what's in force. */
+    {
+        float t = b->loop_surface_threshold;
+        if (!(t == t) /* NaN */ || t <= 0.0f || t > 1.0f) t = 0.3f;
+        out->surface_threshold = t;
+    }
+    return NIMCP_OK;
+}
+
+/* =================================================================
+ * Slice 7 — cerebellar prediction-correction public API
+ *
+ * Default OFF; when enabled, brain->cerebellum (existing adapter) is queried
+ * for forward-model predictions inside cascade_stage_motor + stage_prosody
+ * and a closed-loop error is fed back via cerebellum_update_forward_model +
+ * cerebellum_broadcast_error. The recurrent cascade also sets/clears
+ * correction_pending between iterations based on accumulated PE.
+ *
+ * The wrappers below are intentionally minimal — they only set the flag /
+ * strength / threshold fields on the brain. The actual cerebellum calls
+ * happen inside nimcp_communication_cascade.c when the flag is set and
+ * brain->cerebellum is non-NULL. All scalar-field writes — no atomics, no
+ * locks, by contract.
+ * ================================================================= */
+
+nimcp_status_t nimcp_brain_set_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    b->cerebellar_correction_enabled = enabled;
+    /* Install sane defaults on first enable — caller can still override
+     * via set_correction_strength below. */
+    if (enabled) {
+        if (!isfinite(b->cerebellar_correction_strength) ||
+            b->cerebellar_correction_strength <= 0.0f) {
+            b->cerebellar_correction_strength = 0.5f;
+        }
+        if (!isfinite(b->cerebellar_pe_threshold) ||
+            b->cerebellar_pe_threshold <= 0.0f) {
+            b->cerebellar_pe_threshold = 0.20f;
+        }
+    } else {
+        /* Disable also resets the mid-loop pending flag so a future
+         * recurrent run isn't surprised by stale state. */
+        b->cerebellar_correction_pending = false;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = b->cerebellar_correction_enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
+                                                               float strength) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!isfinite(strength)) strength = 0.5f;
+    if (strength < 0.0f) strength = 0.0f;
+    if (strength > 1.0f) strength = 1.0f;
+    b->cerebellar_correction_strength = strength;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_cerebellar_pe_threshold(nimcp_brain_t brain,
+                                                       float threshold) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    /* The PE norm computed by the cascade is the sum of two cosine-distance
+     * norms (motor + prosody), each in [0, 1] — so the meaningful range of
+     * the threshold is [0, 2]. NaN/Inf coerce to the default. */
+    if (!isfinite(threshold)) threshold = 0.20f;
+    if (threshold < 0.0f) threshold = 0.0f;
+    if (threshold > 2.0f) threshold = 2.0f;
+    b->cerebellar_pe_threshold = threshold;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
+                                                nimcp_cerebellar_diag_t* out) {
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    memset(out, 0, sizeof(*out));
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    out->enabled                    = b->cerebellar_correction_enabled ? 1 : 0;
+    out->strength                   = b->cerebellar_correction_strength;
+    out->correction_pending         = b->cerebellar_correction_pending ? 1 : 0;
+    out->pe_threshold               = b->cerebellar_pe_threshold;
+    out->predictions_made           = b->cerebellar_predictions_made;
+    /* S7-H3: corrections_applied + correction_stages_applied are aliases —
+     * same underlying counter (stages that ran while pending=true). The
+     * dedicated iter counter is bumped once per recurrent iter from the
+     * recurrent loop tail. */
+    out->corrections_applied        = b->cerebellar_corrections_applied;
+    out->correction_stages_applied  = b->cerebellar_corrections_applied;
+    out->correction_iters_applied   = b->cerebellar_correction_iters_applied;
+    out->last_pe_norm               = b->cerebellar_last_pe_norm;
+    return NIMCP_OK;
 }
 
 /* =================================================================
@@ -3409,6 +3821,9 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         out->reconsolidation_decay              = grounded_language_get_reconsolidation_decay(b->grounded_lang);
         out->topic_shift_threshold              = grounded_language_get_topic_shift_threshold(b->grounded_lang);
         out->topic_shift_min_turns              = grounded_language_get_topic_shift_min_turns(b->grounded_lang);
+        /* Process-global counter (not per-GL-instance) — surfaced so the
+         * trainer can tell trigram "stall" from "cold-start ramp". */
+        out->next_token_cold_start_skips        = grounded_language_next_token_cold_start_skips();
     }
 
     if (b->snn_lang_bridge) {
@@ -3423,12 +3838,67 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
             /* Audit-2 follow-up: TC-11 decode telemetry surface. */
             out->bridge_decode_total_ns     = bs.decode_total_ns;
             out->bridge_total_decode_calls  = bs.total_decode_calls;
+            /* Plasticity-telemetry surface — lets operators verify trigram
+             * flag flips drive the counter, and discriminates self_train
+             * miss causes (no calls vs. zero pairs vs. target_misses). */
+            out->bridge_total_stdp_updates          = bs.total_stdp_updates;
+            out->bridge_total_trigram_updates       = bs.total_trigram_updates;
+            out->bridge_echo_correct_calls          = bs.echo_correct_calls;
+            out->bridge_echo_correct_pairs          = bs.echo_correct_pairs;
+            out->bridge_echo_correct_target_misses  = bs.echo_correct_target_misses;
+            out->bridge_comprehend_stdp_passes      = bs.comprehend_stdp_passes;
+            out->bridge_comprehend_stdp_pairs_fired = bs.comprehend_stdp_pairs_fired;
+            out->bridge_da_gated_stdp_passes        = bs.da_gated_stdp_passes;
+            out->bridge_last_da_modulation          = bs.last_da_modulation;
+            /* Wave-3 (2026-05-19) S4 lateral-inhibition counters. */
+            out->bridge_lateral_inhibition_decode_calls       = bs.lateral_inhibition_decode_calls;
+            out->bridge_lateral_inhibition_winner_margin_sum  = bs.lateral_inhibition_winner_margin_sum;
+            out->bridge_lateral_inhibition_settled_steps_sum  = bs.lateral_inhibition_settled_steps_sum;
+            out->bridge_lateral_inhibition_nan_fallbacks      = bs.lateral_inhibition_nan_fallbacks;
         }
         out->bridge_enable_da_modulation        = snn_language_bridge_get_da_modulation_enabled(b->snn_lang_bridge) ? 1u : 0u;
         out->bridge_enable_trigram_learning     = snn_language_bridge_get_trigram_learning_enabled(b->snn_lang_bridge) ? 1u : 0u;
+        out->bridge_ltd_margin                  = snn_language_bridge_get_ltd_margin(b->snn_lang_bridge);
     }
 
     return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_prune_lang_bindings(
+    nimcp_brain_t brain,
+    uint32_t max_bindings_per_word,
+    uint64_t* dropped_out)
+{
+    if (!brain || max_bindings_per_word == 0) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return NIMCP_ERROR;
+
+    uint64_t dropped = grounded_language_prune_bindings(b->grounded_lang,
+                                                       max_bindings_per_word);
+    if (dropped_out) *dropped_out = dropped;
+    return NIMCP_OK;
+}
+
+/* Runtime fix for bridge->neuromod NULL state. The SNN language bridge's
+ * DA gate (snn_language_bridge.c:910) is conditioned on bridge->neuromod
+ * being non-NULL. Both init paths (nimcp_brain_init_language.c:841 and
+ * nimcp_brain_init_language_pops.c:370) are gated on
+ * brain->neuromodulator_system existing AT THE TIME those init waves
+ * run. If init order puts the bridge first, bridge->neuromod stays NULL
+ * forever — bridge_da_gated_stdp_passes never increments. This RPC lets
+ * an operator re-connect them at runtime once both exist. Just stores
+ * a pointer, no concurrency hazard. */
+nimcp_status_t nimcp_brain_connect_lang_bridge_neuromod(nimcp_brain_t brain)
+{
+    if (!brain) return NIMCP_ERROR_INVALID;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    if (!b->neuromodulator_system) return NIMCP_ERROR;
+
+    int rc = snn_language_bridge_connect_neuromod(
+        b->snn_lang_bridge, b->neuromodulator_system);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
 /*=============================================================================
@@ -3916,6 +4386,57 @@ nimcp_status_t nimcp_brain_set_trigram_learning_enabled(nimcp_brain_t brain,
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_set_ltd_margin(nimcp_brain_t brain, float margin)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int rc = snn_language_bridge_set_ltd_margin(b->snn_lang_bridge, margin);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_reset_lang_bridge_weights(nimcp_brain_t brain,
+                                                       float w_min,
+                                                       float w_max,
+                                                       int64_t* out_count)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR;
+    int64_t n = snn_language_bridge_reset_weights(b->snn_lang_bridge, w_min, w_max);
+    if (out_count) *out_count = n;
+    return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_reset_lexicon_distributional(nimcp_brain_t brain,
+                                                          bool zero_and_mark_uninit,
+                                                          float jitter,
+                                                          int64_t* out_count)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int64_t n = grounded_language_reset_lexicon_distributional(
+        b->grounded_lang, zero_and_mark_uninit, jitter);
+    if (out_count) *out_count = n;
+    return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_reset_concept_grounding(nimcp_brain_t brain,
+                                                    int64_t* out_cleared)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    int64_t n = grounded_language_reset_concept_grounding(b->grounded_lang);
+    if (out_cleared) *out_cleared = n;
+    return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 /* ========== Audit fix: campaign feature setter wrappers ========== */
 
 nimcp_status_t nimcp_brain_set_da_modulation_enabled(nimcp_brain_t brain, bool enabled) {
@@ -3966,6 +4487,39 @@ nimcp_status_t nimcp_brain_produce_cascade(
     int rc = nimcp_brain_produce_cascade_impl(b, prompt_or_null,
                                                 out_utterance, out_text_max,
                                                 out_word_count, out_confidence);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_produce_cascade_recurrent(
+    nimcp_brain_t brain,
+    const char* prompt_or_null,
+    uint32_t max_iters,
+    float self_match_eps,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence,
+    uint32_t* out_settling_steps)
+{
+    if (!brain) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = brain->internal_brain;
+    if (!b) return NIMCP_ERROR_NOT_INITIALIZED;
+
+    extern int nimcp_brain_produce_cascade_recurrent_impl(
+        brain_t brain,
+        const char* prompt_or_null,
+        uint32_t max_iters,
+        float self_match_eps,
+        char* out_utterance,
+        uint32_t out_text_max,
+        uint32_t* out_word_count,
+        float* out_confidence,
+        uint32_t* out_settling_steps);
+
+    int rc = nimcp_brain_produce_cascade_recurrent_impl(
+        b, prompt_or_null, max_iters, self_match_eps,
+        out_utterance, out_text_max, out_word_count,
+        out_confidence, out_settling_steps);
     return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
@@ -4036,6 +4590,59 @@ nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool
     if (!b->grounded_lang) return NIMCP_ERROR;
     grounded_language_set_reconsolidation_enabled(b->grounded_lang, enabled);
     return NIMCP_OK;
+}
+
+/* Slice 4 — Lateral inhibition control surface.
+ *
+ * Four thin wrappers over snn_language_bridge_*_lateral_inhibition_*.
+ * Bridge is the load-bearing handle (cascade routes through it); when
+ * the bridge isn't initialized these all report NIMCP_ERROR_NOT_INITIALIZED. */
+nimcp_status_t nimcp_brain_set_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    return (snn_language_bridge_set_lateral_inhibition_enabled(
+              b->snn_lang_bridge, enabled) == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_get_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    *out_enabled = snn_language_bridge_get_lateral_inhibition_enabled(
+                       b->snn_lang_bridge);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float gain_self,
+                                                          float gain_inhibit,
+                                                          uint32_t micro_steps) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    return (snn_language_bridge_set_lateral_inhibition_params(
+              b->snn_lang_bridge, gain_self, gain_inhibit, micro_steps) == 0)
+              ? NIMCP_OK : NIMCP_ERROR_INVALID_PARAM;
+}
+
+nimcp_status_t nimcp_brain_get_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float* out_gain_self,
+                                                          float* out_gain_inhibit,
+                                                          uint32_t* out_micro_steps) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge) return NIMCP_ERROR_NOT_INITIALIZED;
+    return (snn_language_bridge_get_lateral_inhibition_params(
+              b->snn_lang_bridge, out_gain_self, out_gain_inhibit, out_micro_steps) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
 }
 
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay) {
@@ -4164,6 +4771,201 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
     if (out_alpha)    *out_alpha    = b->cascade_self_train_alpha;
     if (out_lr_scale) *out_lr_scale = b->cascade_self_train_lr_scale;
     return NIMCP_OK;
+}
+
+/* === SLICE D — CASCADE SELF-TRAIN EXTERNAL-REWARD GATING (2026-05-19) ===
+ *
+ * The caregiver-critic / RL pipeline calls this setter on every external
+ * reward signal. The cascade's stage_self_train gates on the freshness +
+ * threshold of this value: stale or below-threshold reward → no plasticity.
+ *
+ * Clamps reward to [-1.0, +1.0] (matches CriticVerdict.reward contract).
+ * Stamps last_external_reward_us with the current monotonic_us so
+ * stage_self_train can compute (now - reward_us) > ttl_us. */
+int nimcp_brain_set_last_external_reward(nimcp_brain_t brain, float reward) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    if (!isfinite(reward)) return -1;
+    if (reward < -1.0f) reward = -1.0f;
+    if (reward >  1.0f) reward =  1.0f;
+    b->last_external_reward     = reward;
+    b->last_external_reward_us  = nimcp_time_monotonic_us();
+    return 0;
+}
+
+/* Slice C — Public API wrapper for brain_apply_reward_learning. The Slice C
+ * caregiver-critic pipeline calls this on every brain production to drive
+ * reward-modulated plasticity through the canonical three-factor STDP path.
+ *
+ * The internal brain_apply_reward_learning() (src/core/brain/learning/
+ * nimcp_brain_learning.c:6045) walks active neurons, applies the reward via
+ * the neuromod-plasticity bridge, and updates the dopamine baseline. This
+ * thin wrapper validates the public handle and forwards.
+ *
+ * Returns 0 on success, -1 on invalid brain or non-finite reward. */
+int nimcp_brain_apply_reward_learning(nimcp_brain_t brain, float reward) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    if (!isfinite(reward)) return -1;
+    if (reward < -1.0f) reward = -1.0f;
+    if (reward >  1.0f) reward =  1.0f;
+    (void)brain_apply_reward_learning(b, reward);
+    return 0;
+}
+
+/* Slice D — extended tunables setter that also configures the reward
+ * threshold + TTL. Mirrors set_cascade_self_train_tunables but takes the
+ * two Slice-D fields. Callable via the RPC handler (see
+ * scripts/brain_daemon.py _cmd_set_cascade_self_train_tunables). Either
+ * argument as <= 0 leaves the brain's value unchanged (so the partial
+ * update path doesn't require the caller to know prior values). */
+nimcp_status_t nimcp_brain_set_cascade_self_train_reward_gating(
+        nimcp_brain_t brain,
+        float reward_threshold,
+        uint64_t reward_ttl_us) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (isfinite(reward_threshold) && reward_threshold > 0.0f) {
+        if (reward_threshold > 1.0f) reward_threshold = 1.0f;
+        b->cascade_self_train_reward_threshold = reward_threshold;
+    }
+    if (reward_ttl_us > 0) {
+        b->cascade_self_train_reward_ttl_us = reward_ttl_us;
+    }
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_cascade_self_train_gate_counters(
+        nimcp_brain_t brain,
+        uint64_t* out_skipped_stale,
+        uint64_t* out_skipped_below_threshold,
+        uint64_t* out_fired) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (out_skipped_stale) {
+        *out_skipped_stale = atomic_load_explicit(
+            &b->cascade_self_train_skipped_stale, memory_order_relaxed);
+    }
+    if (out_skipped_below_threshold) {
+        *out_skipped_below_threshold = atomic_load_explicit(
+            &b->cascade_self_train_skipped_below_threshold, memory_order_relaxed);
+    }
+    if (out_fired) {
+        *out_fired = atomic_load_explicit(
+            &b->cascade_self_train_fired, memory_order_relaxed);
+    }
+    return NIMCP_OK;
+}
+
+/*-----------------------------------------------------------------------------
+ * Slice E (Option-1 architectural rebuild) — public stage-scaffolding API.
+ *
+ * Returns 0 on success and -1 on invalid brain / missing internal brain so
+ * the daemon RPC can surface a simple OK/error without juggling
+ * nimcp_status_t enum names.
+ *---------------------------------------------------------------------------*/
+
+int nimcp_brain_set_active_stage(nimcp_brain_t brain, uint32_t stage) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    /* Clamp out-of-range stage to the highest defined row. The stage table
+     * itself does this internally on read, but stamping the field with a
+     * clamped value keeps trainer telemetry consistent. */
+    uint32_t max_s = stage_table_max_stage();
+    if (stage > max_s) stage = max_s;
+    b->current_stage = stage;
+    return 0;
+}
+
+int nimcp_brain_get_active_stage(nimcp_brain_t brain, uint32_t* out_stage) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b) return -1;
+    if (out_stage) *out_stage = b->current_stage;
+    return 0;
+}
+
+int nimcp_brain_set_vocab_mask_for_stage(nimcp_brain_t brain, uint32_t stage) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return -1;
+    uint32_t max_s = stage_table_max_stage();
+    if (stage > max_s) stage = max_s;
+    return grounded_language_set_active_vocab_mask(b->grounded_lang, stage);
+}
+
+int nimcp_brain_clear_vocab_mask(nimcp_brain_t brain) {
+    if (!brain) return -1;
+    brain_t b = brain->internal_brain;
+    if (!b || !b->grounded_lang) return -1;
+    grounded_language_clear_active_vocab_mask(b->grounded_lang);
+    return 0;
+}
+
+int nimcp_brain_get_stage_constraints(nimcp_brain_t brain,
+                                       uint32_t stage,
+                                       size_t* out_max_visible_vocab,
+                                       uint32_t* out_min_produce_words,
+                                       uint32_t* out_max_produce_words,
+                                       uint32_t* out_allowed_grammar_mask) {
+    (void)brain;
+    /* Table lookup is brain-independent — we accept the brain handle so
+     * the API signature stays symmetric with the rest of the brain API,
+     * but the call itself is pure. */
+    const stage_constraints_t* sc = stage_table_get(stage);
+    if (!sc) sc = stage_table_default();
+    if (out_max_visible_vocab)    *out_max_visible_vocab    = sc->max_visible_vocab;
+    if (out_min_produce_words)    *out_min_produce_words    = (uint32_t)sc->min_produce_words;
+    if (out_max_produce_words)    *out_max_produce_words    = (uint32_t)sc->max_produce_words;
+    if (out_allowed_grammar_mask) *out_allowed_grammar_mask = sc->allowed_grammar_mask;
+    return 0;
+}
+
+/* Batch K — cascade lifetime counters public wrappers.
+ * (Header now included at the top of the TU since the respond opt-in
+ * also uses cascade types.) */
+extern int nimcp_brain_get_cascade_counters_impl(brain_t brain,
+                                                   nimcp_cascade_counters_t* out);
+extern int nimcp_brain_reset_cascade_counters_impl(brain_t brain);
+
+nimcp_status_t nimcp_brain_get_cascade_counters(nimcp_brain_t brain,
+                                                  struct nimcp_cascade_counters* out) {
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (nimcp_brain_get_cascade_counters_impl(b, out) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (nimcp_brain_reset_cascade_counters_impl(b) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
+}
+
+/* Slice 3 — recurrent-cascade FEP prediction-error metrics. */
+extern int nimcp_brain_get_cascade_fep_metrics_impl(
+    brain_t brain, nimcp_cascade_fep_metrics_t* out);
+
+nimcp_status_t nimcp_brain_get_cascade_fep_metrics(
+    nimcp_brain_t brain,
+    struct nimcp_cascade_fep_metrics* out)
+{
+    if (!out) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    return (nimcp_brain_get_cascade_fep_metrics_impl(
+                b, (nimcp_cascade_fep_metrics_t*)out) == 0)
+              ? NIMCP_OK : NIMCP_ERROR;
 }
 
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect) {
@@ -4312,6 +5114,20 @@ nimcp_status_t nimcp_brain_train_cognitive(
     if (b->grounded_lang) {
         int updates = grounded_language_learn_from_text(b->grounded_lang, text);
         grounded_language_learn_syntax(b->grounded_lang, text);
+        /* Drive bridge bigram + trigram STDP from real-text learning.
+         * Mirrors the fix in nimcp_brain_learn_language. Trainer calls
+         * train_cognitive every cognitive injection — this is the hot
+         * path that actually fires per step. Without this, the bridge's
+         * trigram path (the only LTD-on-false-winner mechanism) stays
+         * dormant and mode-collapsed word_pops at weight=1.0 never
+         * get pulled down. */
+        (void)grounded_language_learn_text_bigrams(b->grounded_lang, text, 0.02f);
+        /* Also feed target_text if provided — pairs are often {prompt,
+         * answer} where the answer has the supervised content. */
+        if (target_text && target_text != text) {
+            (void)grounded_language_learn_text_bigrams(b->grounded_lang,
+                                                        target_text, 0.02f);
+        }
         if (updates > 0) {
             total_loss += 1.0f / (float)updates;
             modules_trained++;

@@ -610,12 +610,19 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
         }
     }
 
-    // Initialize imagination integration
-    router->imagination_attention_weight = 1.0f;  /* Default: full attention to imagination */
+    // S6-L4 fix (2026-05-19): default imagination_attention_weight = 0.0,
+    // not 1.0. The cascade's self_train_attenuation reads this as
+    //     self_train_attenuation = 1.0 - 0.5 * imagination_attention_weight
+    // Pre-fix the 1.0 default silently halved (×0.5) every router-attached
+    // brain's self-train lr_scale without any operator opt-in — a surprise
+    // attenuation that wasn't documented as default. Post-fix: 0.0 means
+    // "no signal" => "no attenuation". Operators wanting the 0.5×
+    // attenuation must explicitly set the attention weight.
+    router->imagination_attention_weight = 0.0f;
     router->imagination_routing_enabled = true;   /* Enable by default */
     router->imagination_gate_callback = NULL;
     router->imagination_callback_user_data = NULL;
-    LOG_DEBUG(LOG_MODULE, "Imagination routing enabled with default attention weight 1.0");
+    LOG_DEBUG(LOG_MODULE, "Imagination routing enabled; attention weight 0.0 (opt-in attenuation)");
 
     return router;
 }

@@ -35,8 +35,12 @@ protected:
 TEST_F(SNNLanguageBridgeTest, ConfigDefaults) {
     snn_lang_config_t cfg = snn_lang_config_default();
 
-    EXPECT_EQ(cfg.max_concept_pops, 512u);
-    EXPECT_EQ(cfg.max_word_pops, 4096u);
+    /* Assert against the macros, not hardcoded numbers — the pop caps were
+     * bumped (512→4096 concept, 4096→32768 word) after this test was written
+     * and the literals went stale. Pinning to the macro keeps the check
+     * meaningful ("the default wires the macro through") without re-drifting. */
+    EXPECT_EQ(cfg.max_concept_pops, (uint32_t)SNN_LANG_MAX_CONCEPT_POPS);
+    EXPECT_EQ(cfg.max_word_pops, (uint32_t)SNN_LANG_MAX_WORD_POPS);
     EXPECT_EQ(cfg.neurons_per_pop, SNN_LANG_NEURONS_PER_POP);
     EXPECT_FLOAT_EQ(cfg.stdp_tau_plus, SNN_LANG_DEFAULT_STDP_TAU);
     EXPECT_FLOAT_EQ(cfg.stdp_a_plus, SNN_LANG_DEFAULT_STDP_A_PLUS);

@@ -468,6 +468,27 @@ float nimcp_brain_get_last_gradient_norm(nimcp_brain_t brain);
 float nimcp_brain_get_accuracy(nimcp_brain_t brain);
 
 /**
+ * @brief Get cross-modal concept_registry stats (Option-1 rebuild).
+ *
+ * Returns how many distinct referents the brain has interned and how
+ * many cross-modal bindings have been recorded. Useful for verifying
+ * the bind hook in brain_learn_vector is actually firing during
+ * training. Both out params are NULL-tolerant.
+ *
+ * Returns NIMCP_OK on success (counters populated). NIMCP_OK with both
+ * params zeroed if the brain was created without a concept_registry
+ * (older brains loaded from pre-Slice-B checkpoints).
+ *
+ * @param brain                     Brain handle
+ * @param total_referents           [out] count of unique interned referents
+ * @param total_modality_bindings   [out] count of bind_modalities calls
+ */
+nimcp_status_t nimcp_brain_get_concept_registry_stats(
+    nimcp_brain_t brain,
+    size_t* total_referents,
+    size_t* total_modality_bindings);
+
+/**
  * @brief Make a decision/prediction
  *
  * @param brain Brain handle
@@ -949,11 +970,47 @@ typedef struct {
     float    reconsolidation_decay;
     float    topic_shift_threshold;
     uint32_t topic_shift_min_turns;
+    /* Margin gate threshold for learn_next_token_pair / _triple LTD.
+     * Default 1.5 — see snn_lang_config_t::ltd_margin in the bridge
+     * header for the rule. Exposed here so lang_status can surface it
+     * alongside the other bridge tunables. */
+    float    bridge_ltd_margin;
     /* TC-11 decode telemetry — operators use these to decide if/when to
      * invest in the GPU port. avg_decode_us = decode_total_ns / total_decode_calls
      * is the trigger metric (>100µs at production scale = GPU port wins). */
     uint64_t bridge_decode_total_ns;
     uint64_t bridge_total_decode_calls;
+    /* Bridge plasticity telemetry surface. Lets observers verify that a
+     * flag flip (e.g. set_trigram_learning_enabled) actually drives the
+     * underlying counter, and discriminate cascade self_train misses
+     * between "lr=0" (no echo_correct calls) and "intent=0" (calls fire
+     * but zero pairs strengthened) and "word not registered"
+     * (target_misses bumps). All fields mirror snn_lang_stats_t. */
+    uint64_t bridge_total_stdp_updates;
+    uint64_t bridge_total_trigram_updates;
+    uint64_t bridge_echo_correct_calls;
+    uint64_t bridge_echo_correct_pairs;
+    uint64_t bridge_echo_correct_target_misses;
+    uint64_t bridge_comprehend_stdp_passes;
+    uint64_t bridge_comprehend_stdp_pairs_fired;
+    uint64_t bridge_da_gated_stdp_passes;
+    float    bridge_last_da_modulation;
+    /* Grounded-language next-token cold-start counter. Discriminates
+     * trigram-path "stall" from "ramp": learn_next_token_triple bails
+     * before inc_trigram_updates when either prev-word lacks a concept
+     * binding (total <= 1e-6). A climbing counter alongside a flat
+     * bridge_total_trigram_updates means the path IS reached but is
+     * cold-start-bounced (will resolve as bindings accrue); a flat
+     * counter means the path is never reached at all (labels too short). */
+    uint64_t next_token_cold_start_skips;
+    /* Wave-3 (2026-05-19) S4 lateral-inhibition counters — mirror of
+     * snn_lang_stats_t equivalents. All zero when enable_lateral_inhibition
+     * is false. winner_margin_sum and settled_steps_sum are running sums;
+     * divide by decode_calls (and 1e6 for margin) to get means. */
+    uint64_t bridge_lateral_inhibition_decode_calls;
+    uint64_t bridge_lateral_inhibition_winner_margin_sum;
+    uint64_t bridge_lateral_inhibition_settled_steps_sum;
+    uint64_t bridge_lateral_inhibition_nan_fallbacks;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -966,6 +1023,50 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
     nimcp_brain_t brain,
     nimcp_grounded_language_diagnostics_t* out
 );
+
+/**
+ * @brief One-shot maintenance sweep: prune accumulated grounded-language
+ * bindings to top-K per word.
+ *
+ * Wraps grounded_language_prune_bindings. Intended as a single call after the
+ * 2026-05-16 cross-bind wedge fix to reclaim B per content word from the
+ * function-word leak. For each lexicon entry, sorts bindings descending by
+ * strength and truncates to @p max_bindings_per_word.
+ *
+ * Destructive — bindings dropped are not recoverable without checkpoint
+ * rollback. Suggested K=128 retains the strongest bindings while bounding
+ * cross-bind cost.
+ *
+ * @param brain                    Brain handle (must have grounded_lang)
+ * @param max_bindings_per_word    K, the per-word cap (must be > 0)
+ * @param dropped_out              Optional: total bindings dropped is written here
+ * @return NIMCP_OK on success, NIMCP_ERROR_INVALID on bad input,
+ *         NIMCP_ERROR if grounded_lang not attached.
+ */
+nimcp_status_t nimcp_brain_prune_lang_bindings(
+    nimcp_brain_t brain,
+    uint32_t max_bindings_per_word,
+    uint64_t* dropped_out
+);
+
+/**
+ * @brief Runtime fix for bridge->neuromod NULL state.
+ *
+ * The SNN language bridge's DA gate is conditioned on
+ * bridge->neuromod != NULL. Both init paths
+ * (nimcp_brain_init_language.c:841 and
+ * nimcp_brain_init_language_pops.c:370) connect it only if
+ * brain->neuromodulator_system already exists at the time the
+ * language init wave runs. If init order puts the bridge first,
+ * bridge->neuromod stays NULL forever — bridge_da_gated_stdp_passes
+ * never increments. This API lets an operator re-connect them at
+ * runtime once both exist (just stores a pointer, no concurrency
+ * hazard).
+ *
+ * Returns NIMCP_OK on success, NIMCP_ERROR if the bridge or
+ * neuromod system is missing.
+ */
+nimcp_status_t nimcp_brain_connect_lang_bridge_neuromod(nimcp_brain_t brain);
 
 /**
  * @brief PA-4+ : FFT-based bigram spectral metrics.
@@ -1327,6 +1428,61 @@ nimcp_status_t nimcp_brain_set_trigram_learning_enabled(
     bool enabled
 );
 
+/** Margin gate for the SNN language bridge's next-token LTD. See
+ *  snn_lang_config_t::ltd_margin in the bridge header for the rule.
+ *  margin=1.0 reproduces legacy unconditional LTD; ≥1.5 (default)
+ *  protects strong-but-unrelated bindings from indiscriminate
+ *  suppression. Clamped to [1.0, 100.0]; out-of-range or non-finite
+ *  inputs return NIMCP_ERROR without mutating bridge state.
+ *
+ *  Runtime-only; not persisted across saves. */
+nimcp_status_t nimcp_brain_set_ltd_margin(
+    nimcp_brain_t brain,
+    float margin
+);
+
+/** Re-randomize every existing bridge binding weight to uniform(w_min, w_max).
+ *  See snn_language_bridge_reset_weights in the bridge header for the
+ *  rationale (breaks rank-1 / homogenized collapse).
+ *
+ *  Writes the number of bindings reset to *out_count (may be NULL).
+ *  Returns NIMCP_ERROR if no SNN-language bridge is attached or args are
+ *  out of range. */
+nimcp_status_t nimcp_brain_reset_lang_bridge_weights(
+    nimcp_brain_t brain,
+    float w_min,
+    float w_max,
+    int64_t* out_count
+);
+
+/** Reset every lexicon entry's distributional embedding (context_vector).
+ *  When the distributional channel has converged across the vocab so that
+ *  every word's context_vector points the same direction, comprehend's
+ *  L2-normalized output collapses to a single eigenvector regardless of
+ *  input. This reset breaks that homogenization. See
+ *  grounded_language_reset_lexicon_distributional for the rule.
+ *
+ *  zero_and_mark_uninit=true: zero each vector + flag uninitialized (clean
+ *    reset; vectors re-learn from next comprehend forward).
+ *  zero_and_mark_uninit=false: re-randomize each vector uniformly in
+ *    [-jitter, +jitter] and keep initialized=true (preserves "this word
+ *    has been seen in some context" without preserving the direction). */
+nimcp_status_t nimcp_brain_reset_lexicon_distributional(
+    nimcp_brain_t brain,
+    bool zero_and_mark_uninit,
+    float jitter,
+    int64_t* out_count
+);
+
+/* Reset concept grounding for a clean re-grounding pass: clears all lexicon
+ * concept bindings AND wipes the brain's semantic_memory concept store (frees
+ * capacity). Use after the grounding-feature fix to recover from concept
+ * collapse. out_cleared receives the number of bindings cleared. */
+nimcp_status_t nimcp_brain_reset_concept_grounding(
+    nimcp_brain_t brain,
+    int64_t* out_cleared
+);
+
 /* Audit fix — campaign feature flag setters callable from the daemon RPC
  * surface + Python bindings. All have default-OFF semantics; calling with
  * enabled=false reverts to legacy behavior. */
@@ -1405,9 +1561,64 @@ nimcp_status_t nimcp_brain_produce_cascade(
     uint32_t* out_word_count,
     float* out_confidence);
 
+/** Recurrent / biological-fidelity variant of produce_cascade.
+ *
+ *  Iterates the full 15-stage cascade up to `max_iters` times, checking
+ *  convergence between iterations (utterance byte-stability + |Δself_match|
+ *  <= self_match_eps). Mimics the settling dynamics of real cortex: each
+ *  iteration's stage_self_train STDP shifts the bridge slightly, the next
+ *  iteration reads the shifted bridge, the system settles toward a coherent
+ *  attractor.
+ *
+ *  max_iters=0 uses the default of 8; self_match_eps<0 uses 0.01.
+ *
+ *  out_settling_steps receives the number of iterations actually taken
+ *  before convergence (or max_iters if no convergence). Pass NULL to skip.
+ *
+ *  This is Slice 1 of the recurrent-language-architecture rewrite (see
+ *  docs/claude/recurrent-language-architecture.md). Subsequent slices
+ *  wire bidirectional Wernicke↔Broca within each iteration, FEP
+ *  prediction-error hooks, lateral inhibition, etc. */
+nimcp_status_t nimcp_brain_produce_cascade_recurrent(
+    nimcp_brain_t brain,
+    const char* prompt_or_null,
+    uint32_t max_iters,
+    float self_match_eps,
+    char* out_utterance,
+    uint32_t out_text_max,
+    uint32_t* out_word_count,
+    float* out_confidence,
+    uint32_t* out_settling_steps);
+
 /** TA-5: reconsolidation-on-contradiction. */
 nimcp_status_t nimcp_brain_set_reconsolidation_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_reconsolidation_decay(nimcp_brain_t brain, float decay);
+
+/** Slice 4 (recurrent-language-architecture) — lateral-inhibition in lexical
+ *  selection. Default OFF preserves bit-for-bit legacy produce / cascade.
+ *  When enabled, the bridge's per-word decode swaps the one-shot cosine
+ *  argmax for a recurrent competition over the top-K candidates:
+ *
+ *    for k:  new_a[k] = sigmoid(a[k]*gain_self - sum_{j!=k} a[j]*gain_inh)
+ *
+ *  for `micro_steps` iterations. Re-rank by post-settling activations.
+ *  Implements competitive selection in the cohort-model (Marslen-Wilson
+ *  1987) / interactive-activation (McClelland 1981) tradition.
+ *
+ *  All three runtime-only — caller re-applies after each brain load.
+ *  See docs/claude/recurrent-language-architecture.md for the design. */
+nimcp_status_t nimcp_brain_set_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool enabled);
+nimcp_status_t nimcp_brain_get_lateral_inhibition_enabled(nimcp_brain_t brain,
+                                                            bool* out_enabled);
+nimcp_status_t nimcp_brain_set_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float gain_self,
+                                                          float gain_inhibit,
+                                                          uint32_t micro_steps);
+nimcp_status_t nimcp_brain_get_lateral_inhibition_params(nimcp_brain_t brain,
+                                                          float* out_gain_self,
+                                                          float* out_gain_inhibit,
+                                                          uint32_t* out_micro_steps);
 
 /** TB-6: sentence-boundary segmentation. */
 nimcp_status_t nimcp_brain_set_sentence_segmentation_enabled(nimcp_brain_t brain, bool enabled);
@@ -1447,6 +1658,268 @@ nimcp_status_t nimcp_brain_get_cascade_self_train_state(nimcp_brain_t brain,
                                                           float* out_baseline,
                                                           float* out_alpha,
                                                           float* out_lr_scale);
+
+/** Slice D — external reward signal for cascade self-train gating.
+ *  Called by the caregiver-critic / RL pipeline on every external reward
+ *  event. Clamps to [-1.0, +1.0]; stamps a monotonic_us timestamp so
+ *  cascade_stage_self_train can detect staleness (default TTL 5s).
+ *  Returns 0 on success, -1 on invalid brain or non-finite reward. */
+int nimcp_brain_set_last_external_reward(nimcp_brain_t brain, float reward);
+
+/** Slice C — drive reward-modulated plasticity for the brain. Thin wrapper
+ *  around the internal brain_apply_reward_learning(). The Slice C caregiver-
+ *  critic pipeline calls this on every brain production. Reward is clamped
+ *  to [-1, +1]. Negative reward drives anti-Hebbian (LTD) plasticity through
+ *  the three-factor STDP path (see Slice F). Returns 0 on success, -1 on
+ *  invalid brain or non-finite reward. */
+int nimcp_brain_apply_reward_learning(nimcp_brain_t brain, float reward);
+
+/** Slice D — configure the reward gating thresholds. reward_threshold in
+ *  (0, 1]; reward_ttl_us > 0. Either argument zero/negative leaves the
+ *  brain's current value unchanged (partial update). */
+nimcp_status_t nimcp_brain_set_cascade_self_train_reward_gating(
+    nimcp_brain_t brain,
+    float reward_threshold,
+    uint64_t reward_ttl_us);
+
+/** Slice D — snapshot the three self-train gating counters surfaced in
+ *  stats.cascade.self_train of lang_status. Any out-pointer may be NULL. */
+nimcp_status_t nimcp_brain_get_cascade_self_train_gate_counters(
+    nimcp_brain_t brain,
+    uint64_t* out_skipped_stale,
+    uint64_t* out_skipped_below_threshold,
+    uint64_t* out_fired);
+
+/** Slice E — developmental-stage scaffolding.
+ *
+ *  set_active_stage() advances the brain's current_stage field. The
+ *  communication cascade reads this in cascade_stage_motor and enforces
+ *  the stage's min/max word-count window + grammar template mask from
+ *  the static table at
+ *  include/cognitive/grounded_language/nimcp_stage_table.h.
+ *
+ *  set_vocab_mask_for_stage() installs / refreshes the grounded_language
+ *  visibility mask so production only retrieves entries within the
+ *  stage's max_visible_vocab cap. Pass the same stage as set_active_stage
+ *  unless you specifically want a mask divergent from the cascade caps
+ *  (mainly useful for ablation tests).
+ *
+ *  get_active_stage() / get_stage_constraints() snapshot current state.
+ *
+ *  Defaults: current_stage starts at 0 (single-word noun productions)
+ *  unless set otherwise. The mask is uninstalled (every vocab entry
+ *  visible) until set_vocab_mask_for_stage() is called. */
+int nimcp_brain_set_active_stage(nimcp_brain_t brain, uint32_t stage);
+int nimcp_brain_get_active_stage(nimcp_brain_t brain, uint32_t* out_stage);
+int nimcp_brain_set_vocab_mask_for_stage(nimcp_brain_t brain, uint32_t stage);
+int nimcp_brain_clear_vocab_mask(nimcp_brain_t brain);
+/** Snapshot the stage table row for the requested stage. Any out-pointer
+ *  may be NULL. Out-of-range stage clamps to the highest defined row. */
+int nimcp_brain_get_stage_constraints(nimcp_brain_t brain,
+                                       uint32_t stage,
+                                       size_t* out_max_visible_vocab,
+                                       uint32_t* out_min_produce_words,
+                                       uint32_t* out_max_produce_words,
+                                       uint32_t* out_allowed_grammar_mask);
+
+/** Batch K — cascade lifetime telemetry counters. Snapshot + reset.
+ *  `out` is zeroed and populated on success. Reset zeros every counter
+ *  atomically (per-field; not transactional across fields). */
+struct nimcp_cascade_counters; /* opaque forward decl — full type in
+                                  include/language/nimcp_communication_cascade.h */
+nimcp_status_t nimcp_brain_get_cascade_counters(
+    nimcp_brain_t brain,
+    struct nimcp_cascade_counters* out);
+nimcp_status_t nimcp_brain_reset_cascade_counters(nimcp_brain_t brain);
+
+/** Slice 3 — recurrent-cascade FEP prediction-error trajectory.
+ *  Snapshots the most-recent run of nimcp_brain_produce_cascade_recurrent.
+ *  Zero-init when the recurrent loop has never been invoked. Single-
+ *  writer / multi-reader; lock-free. */
+struct nimcp_cascade_fep_metrics; /* opaque forward decl — full type in
+                                     include/language/nimcp_communication_cascade.h */
+nimcp_status_t nimcp_brain_get_cascade_fep_metrics(
+    nimcp_brain_t brain,
+    struct nimcp_cascade_fep_metrics* out);
+
+/** Audit Cat A #1 — toggle the cascade orchestrator path inside
+ *  nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough).
+ *  When ON, respond runs the 15-stage cascade and emits state->utterance
+ *  (with speech_repair, self_comp validation, etc). Latency cost: ~10x
+ *  vs the bridge-only path; opt-in based on the quality/latency tradeoff. */
+nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool enabled);
+nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
+                                                     bool* out_enabled);
+
+/** Slice 6 — thalamic gating of cascade-stage bandwidth.
+ *
+ *  Per-stage scalar gain control on the cascade modeled on the pulvinar
+ *  nucleus's role as central relay + gain controller. When enabled, each
+ *  cascade stage's scaleable contributions (content_intent magnitude,
+ *  lexical fluency, prosodic intensity, self-train lr_scale) are
+ *  multiplied by a per-stage gate in [0, 1] derived from the brain's
+ *  current arousal (NE) + attention (ACh) state. Default OFF preserves
+ *  bit-for-bit legacy behavior.
+ *
+ *  Manual override: set stage weight to clear (weight < 0) or any
+ *  specific value in [0, 1] to lock that stage's gate at the value
+ *  until the next clear. Useful for ablation experiments.
+ *
+ *  Stage index is the bit position of cascade_stage_mask_t — see the
+ *  nimcp_cascade_stage_idx_t enum in
+ *  include/language/nimcp_communication_cascade.h. */
+nimcp_status_t nimcp_brain_set_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool enabled);
+nimcp_status_t nimcp_brain_get_thalamic_gate_enabled(nimcp_brain_t brain,
+                                                      bool* out_enabled);
+/** weight < 0 clears the manual override (returns to auto-derived).
+ *  weight in [0, 1] sets and locks. NaN/Inf clear. */
+nimcp_status_t nimcp_brain_set_thalamic_gate_for_stage(nimcp_brain_t brain,
+                                                        uint32_t stage_idx,
+                                                        float weight);
+/** Snapshot of all 15 per-stage gate weights + override flags. Any of
+ *  out_weights / out_overrides may be NULL. Both arrays must have at
+ *  least max_count entries. count_out (NULL-tolerant) is set to the
+ *  number of entries populated. */
+nimcp_status_t nimcp_brain_get_thalamic_gates(nimcp_brain_t brain,
+                                                float* out_weights,
+                                                bool*  out_overrides,
+                                                uint32_t max_count,
+                                                uint32_t* count_out);
+
+/** Slice 5 — phonological-loop working memory buffer.
+ *
+ *  Baddeley's working-memory model: a short-term phonological store
+ *  (~2 seconds of speech) + an articulatory rehearsal mechanism. When
+ *  enabled, the recurrent cascade incrementally refines the utterance
+ *  across iterations instead of rebuilding it from scratch each pass:
+ *    - Iteration start: existing traces decay by `decay_rate`; traces
+ *      below 0.05 are evicted.
+ *    - After stage_lexical: produced words merge into the buffer
+ *      (existing → refresh trace to 1.0, new → append, capped).
+ *    - stage_syntactic / stage_self_comp read the buffer's surface
+ *      form (words with trace >= 0.3) as the "intended utterance".
+ *
+ *  Default OFF — when not enabled, recurrent cascade behaves
+ *  byte-identically to Slice 1+2. Lifetime owned by the brain. */
+nimcp_status_t nimcp_brain_set_phonological_loop_enabled(nimcp_brain_t brain,
+                                                          bool enabled);
+/** Clamps to [0.0, 0.5]. NaN/Inf coerce to default (0.15). */
+nimcp_status_t nimcp_brain_set_phonological_loop_decay(nimcp_brain_t brain,
+                                                        float decay);
+/** S5-H5: surface-render threshold. Words with trace ≥ this value count
+ *  as "on the surface form" (visible via get_phonological_loop_state +
+ *  consumed by stage_syntactic / stage_self_comp). Clamped to [0, 1];
+ *  NaN/Inf or <=0 coerce to default (0.3). Lower values reveal traces
+ *  in the silent decay band [0.05, default_threshold). */
+nimcp_status_t nimcp_brain_set_phonological_loop_threshold(nimcp_brain_t brain,
+                                                            float threshold);
+/** Full reset — drops every word + trace, clears the surface buffer. */
+nimcp_status_t nimcp_brain_clear_phonological_loop(nimcp_brain_t brain);
+
+/** Read-only diagnostic snapshot. out_buffer receives the surface form
+ *  (words with trace >= 0.3, space-separated, NUL-terminated; truncated
+ *  to out_size-1). out_trace_count receives the count of currently-live
+ *  traces (regardless of threshold). Any out-pointer may be NULL.
+ *  Returns NIMCP_OK even when the loop is disabled (out_buffer = empty,
+ *  out_trace_count = 0). */
+nimcp_status_t nimcp_brain_get_phonological_loop_state(
+    nimcp_brain_t brain,
+    char* out_buffer,
+    uint32_t out_size,
+    uint32_t* out_trace_count);
+
+/** Full diag struct — covers what the lightweight getter omits
+ *  (decay_rate, enabled, avg trace strength). Forward-declared to keep
+ *  this header light; the full type lives in the include/language/
+ *  phonological-loop header. */
+typedef struct nimcp_phonological_loop_diag {
+    bool     enabled;
+    uint32_t buffer_len;          /* strlen of current surface buffer */
+    uint32_t trace_count;         /* number of currently-live traces */
+    uint32_t trace_capacity;      /* slot capacity */
+    uint32_t max_words;           /* configured cap */
+    float    decay_rate;          /* configured per-iteration decay */
+    float    avg_trace_strength;  /* mean of all live traces (0 if empty) */
+    uint64_t last_refresh_ms;     /* monotonic ms of last decay/merge */
+    /* S5-H5 (2026-05-19): operator-controlled surface threshold. Words
+     * with trace >= this value count as on the surface form. */
+    float    surface_threshold;
+} nimcp_phonological_loop_diag_t;
+
+nimcp_status_t nimcp_brain_get_phonological_loop_diag(
+    nimcp_brain_t brain,
+    nimcp_phonological_loop_diag_t* out);
+
+/** Slice 7 — cerebellar prediction-correction in motor + prosody stages.
+ *
+ *  Wires the existing cerebellum adapter (cerebellum_predict_outcome /
+ *  cerebellum_update_forward_model / cerebellum_broadcast_error from
+ *  include/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h) into
+ *  cascade_stage_motor and cascade_stage_prosody. Each stage builds an
+ *  8D feature vector, calls the cerebellum to predict the next motor /
+ *  prosody pattern, runs its existing logic, then closes the loop by
+ *  feeding the realised "actual" vector back to the cerebellum for
+ *  forward-model learning + climbing-fiber error broadcast.
+ *
+ *  Between iterations of the recurrent cascade, accumulated prediction
+ *  error above the threshold sets brain->cerebellar_correction_pending
+ *  so the next iter's motor/prosody stages apply the cerebellar
+ *  prediction as a bias scaled by `strength`.
+ *
+ *  Default OFF — when not enabled, motor + prosody stages run their
+ *  existing logic with no cerebellar involvement (byte-identical to
+ *  master for callers that don't flip the flag). When enabled and
+ *  brain->cerebellum is NULL (minimal-init brain or cerebellum disabled
+ *  at brain create), the stages silently no-op the cerebellar code path. */
+nimcp_status_t nimcp_brain_set_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool enabled);
+nimcp_status_t nimcp_brain_get_cerebellar_correction_enabled(nimcp_brain_t brain,
+                                                              bool* out_enabled);
+/** Clamps to [0, 1]. NaN/Inf coerce to 0.5 (mid bias). */
+nimcp_status_t nimcp_brain_set_cerebellar_correction_strength(nimcp_brain_t brain,
+                                                               float strength);
+
+/** Set the PE-norm threshold above which the recurrent cascade flags
+ *  correction_pending. The PE norm is the sum of two cosine-distance norms
+ *  (motor + prosody), each in [0, 1], so the meaningful range is [0, 2].
+ *  Clamped to [0.0, 2.0]; NaN/Inf coerce to default 0.20. */
+nimcp_status_t nimcp_brain_set_cerebellar_pe_threshold(nimcp_brain_t brain,
+                                                       float threshold);
+
+/** Snapshot type — lifetime cerebellar diagnostics. */
+typedef struct {
+    int      enabled;                  /* current value of brain flag */
+    float    strength;                 /* current correction strength */
+    int      correction_pending;       /* mid-loop flag — most useful WITHIN
+                                          a recurrent run; outside, always 0 */
+    float    pe_threshold;             /* current PE threshold */
+    /* Lifetime totals — incremented by the cascade. */
+    uint64_t predictions_made;
+    /* S7-H3 fix (2026-05-19): corrections_applied semantics disambiguated.
+     * Pre-fix this counted STAGE invocations with correction_pending=true;
+     * a recurrent iter with motor+prosody both correcting bumped it by 2,
+     * which consumers reading "iters that applied correction" got 2x
+     * inflated. Field RETAINED for backwards compatibility but its name in
+     * the public diag struct now matches its actual semantics
+     * (correction_stages_applied). The new correction_iters_applied
+     * counter bumps once per recurrent iter only. */
+    uint64_t corrections_applied;             /* deprecated alias of
+                                                  correction_stages_applied; identical value */
+    uint64_t correction_stages_applied;       /* stages that ran while
+                                                  correction_pending was true */
+    uint64_t correction_iters_applied;        /* recurrent iters during which
+                                                  correction was applied (max 1/iter) */
+    float    last_pe_norm;             /* most recent stage's PE-norm */
+} nimcp_cerebellar_diag_t;
+
+/** Snapshot cerebellar prediction-correction diagnostics. `out` is zeroed
+ *  and populated on success. Cheap (no atomics — cascade is single-caller-
+ *  at-a-time by contract). Read returns success even when the feature is
+ *  disabled — caller inspects `out->enabled` to know. */
+nimcp_status_t nimcp_brain_get_cerebellar_diag(nimcp_brain_t brain,
+                                                nimcp_cerebellar_diag_t* out);
 
 /**
  * @brief TA-4: train the bridge on a single (prev1, prev2) → next trigram.

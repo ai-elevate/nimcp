@@ -100,6 +100,14 @@ struct syntactic_comprehension {
     argument_frame_t* arg_frames;
     uint32_t num_frames;
 
+    /* Reduction tracking (parser-coverage expansion 2026-05-11).
+     * Each reduction fired during the current parse OR-s a
+     * WERNICKE_REDUCTION_* bit into this mask; it is propagated onto
+     * syntactic_parse_t.reductions_applied at finish_incremental(). */
+    uint32_t reductions_applied;
+    bool current_is_question;
+    bool current_is_imperative;
+
     /* Statistics */
     syntactic_stats_t stats;
 };
@@ -273,6 +281,11 @@ static void reset_node_pool(syntactic_comprehension_t* ctx) {
 
 /**
  * @brief Map POS category to phrase type
+ *
+ * Coverage expansion 2026-05-11: SYN_CAT_CONJ and SYN_CAT_PUNCT used to
+ * silently fall through to PHRASE_UNKNOWN, dropping any sentence with
+ * "and"/"or"/"but"/"." into a parse failure. SYN_CAT_NEG is also handled
+ * (treated as ADVP — "not" attaches as an adverbial modifier).
  */
 static phrase_type_t category_to_phrase(syntactic_category_t cat) {
     switch (cat) {
@@ -285,6 +298,8 @@ static phrase_type_t category_to_phrase(syntactic_category_t cat) {
         case SYN_CAT_ADJ:
             return PHRASE_AP;
         case SYN_CAT_ADV:
+        case SYN_CAT_NEG:
+            /* Negation attaches as an adverbial in this simplified grammar */
             return PHRASE_ADVP;
         case SYN_CAT_PREP:
             return PHRASE_PP;
@@ -292,9 +307,37 @@ static phrase_type_t category_to_phrase(syntactic_category_t cat) {
             return PHRASE_DP;
         case SYN_CAT_COMP:
             return PHRASE_CP;
+        case SYN_CAT_CONJ:
+            /* Conjunctions get a dedicated phrase type via CP-like slot.
+             * Wernicke's PHRASE enum has no PHRASE_CONJP, so we re-use
+             * PHRASE_CP — both are "head + clausal complement"
+             * conjunctive elements for reduction purposes. */
+            return PHRASE_CP;
+        case SYN_CAT_PUNCT:
+            /* Treat punctuation as transparent: caller sees PHRASE_UNKNOWN
+             * and skips the stack push. */
+            return PHRASE_UNKNOWN;
         default:
             return PHRASE_UNKNOWN;
     }
+}
+
+/**
+ * @brief Detect wh-word from the word string (simple lookup).
+ *
+ * The Wernicke header has no SYN_CAT_WH; wh-words are typically tagged
+ * as DET or PRON. This helper sniffs the string to flag wh-questions
+ * during sentence-initial position checks.
+ */
+static bool is_wh_word(const char* w) {
+    if (!w) return false;
+    /* Match common English wh-words case-insensitively on the first
+     * two letters; sufficient for who/what/when/where/why/which/how. */
+    return ((w[0] == 'w' || w[0] == 'W') &&
+            (w[1] == 'h' || w[1] == 'H')) ||
+           ((w[0] == 'h' || w[0] == 'H') &&
+            (w[1] == 'o' || w[1] == 'O') &&
+            (w[2] == 'w' || w[2] == 'W'));
 }
 
 /**
@@ -497,6 +540,9 @@ int syntactic_begin_incremental(syntactic_comprehension_t* ctx) {
     ctx->reanalysis_count = 0;
     ctx->current_state = PARSE_STATE_ACTIVE;
     ctx->current_probability = 1.0f;
+    ctx->reductions_applied = 0;
+    ctx->current_is_question = false;
+    ctx->current_is_imperative = false;
 
     reset_node_pool(ctx);
     update_predictions(ctx);
@@ -531,6 +577,21 @@ parse_state_t syntactic_add_word(syntactic_comprehension_t* ctx,
         }
     }
 
+    /* Sentence-type detection at sentence start (position 0):
+     *  - If the first word is an auxiliary verb (e.g. "is the cat hungry"),
+     *    flag the parse as a yes/no question (auxiliary inversion).
+     *  - If the first word is a wh-word (who/what/when/where/why/how/which),
+     *    flag the parse as a wh-question.
+     *  - The imperative flag (VP at sentence-start, null subject) is set
+     *    at finish_incremental when the final tree has VP as root. */
+    if (word->position == 0) {
+        if (word->category == SYN_CAT_AUX) {
+            ctx->current_is_question = true;
+        } else if (is_wh_word(word->word)) {
+            ctx->current_is_question = true;
+        }
+    }
+
     /* Create terminal node */
     syntactic_node_t* terminal = allocate_node(ctx);
     if (terminal) {
@@ -540,14 +601,104 @@ parse_state_t syntactic_add_word(syntactic_comprehension_t* ctx,
         terminal->is_complete = true;
         terminal->probability = word->category_confidence;
 
-        /* Push to stack */
-        if (ctx->stack_depth < MAX_STACK_DEPTH) {
+        /* Punctuation is transparent: don't push onto the parse stack;
+         * it would block reductions otherwise. */
+        if (word->category == SYN_CAT_PUNCT) {
+            /* Skip stack push for punctuation. */
+        } else if (ctx->stack_depth < MAX_STACK_DEPTH) {
             ctx->parse_stack[ctx->stack_depth++] = terminal;
         }
     }
 
-    /* Try to reduce (bottom-up) */
-    /* Simplified: try to combine top stack elements */
+    /* Try to reduce (bottom-up).
+     *
+     * Coverage expansion 2026-05-11: previously only Det+N → NP and
+     * P+NP → PP fired here. Added:
+     *   V + NP → VP            (transitive)
+     *   V + PP → VP            (PP-attachment)
+     *   NP + VP → S            (basic declarative)
+     *   NP + CP + NP → NP      (conjoined NPs: "the cat and the dog")
+     *   S  + CP + S  → S       (conjoined clauses)
+     *   CP + S → CP (question) (auxiliary inversion -- rough heuristic)
+     *   (lone VP at root) → S-imperative (handled at finish_incremental)
+     *
+     * Out of scope for this commit: relative clauses, embedded
+     * complement clauses ("that"-clauses), passive (be+V-en),
+     * subject-aux inversion in matrix clauses requiring movement
+     * traces, and full coordinate ellipsis. */
+
+    /* Three-element conjunction reductions, checked BEFORE the binary
+     * loop so the conjunction phrase (PHRASE_CP, re-used for "and"/"or")
+     * doesn't get prematurely combined with just one side. */
+    while (ctx->stack_depth >= 3) {
+        syntactic_node_t* top    = ctx->parse_stack[ctx->stack_depth - 1];
+        syntactic_node_t* middle = ctx->parse_stack[ctx->stack_depth - 2];
+        syntactic_node_t* bottom = ctx->parse_stack[ctx->stack_depth - 3];
+
+        /* NP + CONJ(CP) + NP → NP   ("the cat and the dog") */
+        if (bottom->phrase_type == PHRASE_NP &&
+            middle->phrase_type == PHRASE_CP &&
+            top->phrase_type    == PHRASE_NP) {
+            syntactic_node_t* np = allocate_node(ctx);
+            if (np) {
+                np->phrase_type = PHRASE_NP;
+                np->start_pos = bottom->start_pos;
+                np->end_pos   = top->end_pos;
+                np->is_complete = true;
+                np->probability = bottom->probability *
+                                  middle->probability *
+                                  top->probability * 0.5f;
+                ctx->stack_depth -= 3;
+                ctx->parse_stack[ctx->stack_depth++] = np;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_NP_CONJ_NP;
+                continue;
+            }
+        }
+
+        /* S + CONJ(CP) + S → S   ("X ran and Y jumped") */
+        if (bottom->phrase_type == PHRASE_S &&
+            middle->phrase_type == PHRASE_CP &&
+            top->phrase_type    == PHRASE_S) {
+            syntactic_node_t* s = allocate_node(ctx);
+            if (s) {
+                s->phrase_type = PHRASE_S;
+                s->start_pos = bottom->start_pos;
+                s->end_pos   = top->end_pos;
+                s->is_complete = true;
+                s->probability = bottom->probability *
+                                 middle->probability *
+                                 top->probability * 0.4f;
+                ctx->stack_depth -= 3;
+                ctx->parse_stack[ctx->stack_depth++] = s;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_S_CONJ_S;
+                continue;
+            }
+        }
+
+        /* VP + CONJ(CP) + VP → VP  ("ran and jumped") */
+        if (bottom->phrase_type == PHRASE_VP &&
+            middle->phrase_type == PHRASE_CP &&
+            top->phrase_type    == PHRASE_VP) {
+            syntactic_node_t* vp = allocate_node(ctx);
+            if (vp) {
+                vp->phrase_type = PHRASE_VP;
+                vp->start_pos = bottom->start_pos;
+                vp->end_pos   = top->end_pos;
+                vp->is_complete = true;
+                vp->probability = bottom->probability *
+                                  middle->probability *
+                                  top->probability * 0.4f;
+                ctx->stack_depth -= 3;
+                ctx->parse_stack[ctx->stack_depth++] = vp;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_S_CONJ_S;
+                continue;
+            }
+        }
+
+        break;  /* No ternary reduction possible */
+    }
+
+    /* Simplified: try to combine top stack elements (binary) */
     while (ctx->stack_depth >= 2) {
         syntactic_node_t* top = ctx->parse_stack[ctx->stack_depth - 1];
         syntactic_node_t* second = ctx->parse_stack[ctx->stack_depth - 2];
@@ -566,6 +717,7 @@ parse_state_t syntactic_add_word(syntactic_comprehension_t* ctx,
                 /* Pop two, push combined */
                 ctx->stack_depth -= 2;
                 ctx->parse_stack[ctx->stack_depth++] = np;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_NP_DET_N;
                 continue;
             }
         }
@@ -578,7 +730,159 @@ parse_state_t syntactic_add_word(syntactic_comprehension_t* ctx,
             second->is_complete = true;
             second->probability *= top->probability * 0.9f;
             ctx->stack_depth--;
+            ctx->reductions_applied |= WERNICKE_REDUCTION_PP_P_NP;
             continue;
+        }
+
+        /* VP + NP → VP  (transitive verb: "ate [the apple]") */
+        if (second->phrase_type == PHRASE_VP &&
+            top->phrase_type    == PHRASE_NP) {
+            syntactic_node_t* vp = allocate_node(ctx);
+            if (vp) {
+                vp->phrase_type = PHRASE_VP;
+                vp->start_pos = second->start_pos;
+                vp->end_pos   = top->end_pos;
+                vp->is_complete = true;
+                vp->probability = second->probability *
+                                  top->probability * 0.5f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = vp;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_VP_V_NP;
+                continue;
+            }
+        }
+
+        /* VP + PP → VP  ("ran [to the store]") */
+        if (second->phrase_type == PHRASE_VP &&
+            top->phrase_type    == PHRASE_PP) {
+            syntactic_node_t* vp = allocate_node(ctx);
+            if (vp) {
+                vp->phrase_type = PHRASE_VP;
+                vp->start_pos = second->start_pos;
+                vp->end_pos   = top->end_pos;
+                vp->is_complete = true;
+                vp->probability = second->probability *
+                                  top->probability * 0.4f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = vp;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_VP_V_PP;
+                continue;
+            }
+        }
+
+        /* VP + AP → VP  ("became [happy]") */
+        if (second->phrase_type == PHRASE_VP &&
+            top->phrase_type    == PHRASE_AP) {
+            syntactic_node_t* vp = allocate_node(ctx);
+            if (vp) {
+                vp->phrase_type = PHRASE_VP;
+                vp->start_pos = second->start_pos;
+                vp->end_pos   = top->end_pos;
+                vp->is_complete = true;
+                vp->probability = second->probability *
+                                  top->probability * 0.3f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = vp;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_VP_V_NP;
+                continue;
+            }
+        }
+
+        /* ADVP + VP → VP  ("quickly [ran]") */
+        if (second->phrase_type == PHRASE_ADVP &&
+            top->phrase_type    == PHRASE_VP) {
+            syntactic_node_t* vp = allocate_node(ctx);
+            if (vp) {
+                vp->phrase_type = PHRASE_VP;
+                vp->start_pos = second->start_pos;
+                vp->end_pos   = top->end_pos;
+                vp->is_complete = true;
+                vp->probability = second->probability *
+                                  top->probability * 0.4f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = vp;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_VP_V_NP;
+                continue;
+            }
+        }
+
+        /* VP + ADVP → VP  ("ran [quickly]") */
+        if (second->phrase_type == PHRASE_VP &&
+            top->phrase_type    == PHRASE_ADVP) {
+            syntactic_node_t* vp = allocate_node(ctx);
+            if (vp) {
+                vp->phrase_type = PHRASE_VP;
+                vp->start_pos = second->start_pos;
+                vp->end_pos   = top->end_pos;
+                vp->is_complete = true;
+                vp->probability = second->probability *
+                                  top->probability * 0.4f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = vp;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_VP_V_NP;
+                continue;
+            }
+        }
+
+        /* NP + VP → S  (basic declarative sentence) */
+        if (second->phrase_type == PHRASE_NP &&
+            top->phrase_type    == PHRASE_VP) {
+            syntactic_node_t* s = allocate_node(ctx);
+            if (s) {
+                s->phrase_type = PHRASE_S;
+                s->start_pos = second->start_pos;
+                s->end_pos   = top->end_pos;
+                s->is_complete = true;
+                s->probability = second->probability *
+                                 top->probability * 0.8f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = s;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_S_NP_VP;
+                /* If sentence started with AUX/WH, the whole S becomes
+                 * the body of a CP-question. We don't restructure the
+                 * tree here — the question flag was already set when
+                 * the first word was seen. */
+                if (ctx->current_is_question) {
+                    ctx->reductions_applied |= WERNICKE_REDUCTION_CP_AUX_S;
+                }
+                continue;
+            }
+        }
+
+        /* NP + NP → NP  (compound noun: "[cat] food") */
+        if (second->phrase_type == PHRASE_NP &&
+            top->phrase_type    == PHRASE_NP) {
+            syntactic_node_t* np = allocate_node(ctx);
+            if (np) {
+                np->phrase_type = PHRASE_NP;
+                np->start_pos = second->start_pos;
+                np->end_pos   = top->end_pos;
+                np->is_complete = true;
+                np->probability = second->probability *
+                                  top->probability * 0.3f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = np;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_NP_DET_N;
+                continue;
+            }
+        }
+
+        /* NP + PP → NP  (PP-attachment: "cat [on the mat]") */
+        if (second->phrase_type == PHRASE_NP &&
+            top->phrase_type    == PHRASE_PP) {
+            syntactic_node_t* np = allocate_node(ctx);
+            if (np) {
+                np->phrase_type = PHRASE_NP;
+                np->start_pos = second->start_pos;
+                np->end_pos   = top->end_pos;
+                np->is_complete = true;
+                np->probability = second->probability *
+                                  top->probability * 0.4f;
+                ctx->stack_depth -= 2;
+                ctx->parse_stack[ctx->stack_depth++] = np;
+                ctx->reductions_applied |= WERNICKE_REDUCTION_NP_DET_N;
+                continue;
+            }
         }
 
         break;  /* No reduction possible */
@@ -655,6 +959,33 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
     parse->reanalysis_count = ctx->reanalysis_count;
     parse->is_grammatical = (ctx->current_state != PARSE_STATE_ERROR);
     parse->syntactic_complexity = syntactic_compute_complexity(parse);
+
+    /* === Sentence-type flag propagation (parser-coverage expansion) ===
+     *
+     * Imperative detection: a sentence-initial VP with no preceding NP
+     * subject ("run!", "give me the ball"). Heuristic: first word is a
+     * VERB (not AUX — that's question territory), and no NP+VP reduction
+     * fired (no subject was seen). */
+    bool first_is_verb =
+        (ctx->buffer_len > 0 &&
+         ctx->word_buffer[0].category == SYN_CAT_VERB);
+    bool s_np_vp_fired =
+        (ctx->reductions_applied & WERNICKE_REDUCTION_S_NP_VP) != 0;
+    if (first_is_verb && !s_np_vp_fired && !ctx->current_is_question) {
+        ctx->current_is_imperative = true;
+        ctx->reductions_applied |= WERNICKE_REDUCTION_S_IMPERATIVE;
+    }
+
+    /* Lone-VP root → S(intransitive) bookkeeping bit. Fires when the
+     * final stack has exactly one VP element and we didn't see NP+VP. */
+    if (!s_np_vp_fired && ctx->stack_depth == 1 &&
+        ctx->parse_stack[0]->phrase_type == PHRASE_VP) {
+        ctx->reductions_applied |= WERNICKE_REDUCTION_VP_INTRANSITIVE;
+    }
+
+    parse->is_question     = ctx->current_is_question;
+    parse->is_imperative   = ctx->current_is_imperative;
+    parse->reductions_applied = ctx->reductions_applied;
 
     /* Extract dependencies */
     parse->dependencies = nimcp_calloc(SYNTACTIC_MAX_DEPENDENCIES,

@@ -3,16 +3,22 @@
 #
 # NEVER overwrite nimcp.so while the brain daemon is running — the .so is mmap'd
 # into the process, and overwriting it causes SIGSEGV. This script enforces:
+#   0. Detect the pod's process manager (supervisord vs none)
 #   1. Bundle artifacts + upload to /tmp on pod
-#   2. Capture the running daemon's cmdline (argv) from /proc
-#   3. Send SIGTERM, wait for graceful exit (final checkpoint save)
-#   4. Swap .so + scripts atomically
-#   5. Relaunch daemon with the same argv, capture new PID
-#   6. Wait for "Brain daemon ready" + socket to appear before returning
+#   2. Stop daemon + training — supervisorctl stop when supervised (honors
+#      stopwaitsecs for the graceful checkpoint save), else SIGTERM by PID
+#   3. Swap libnimcp (/usr/local/lib + repo tree) + python wrapper + scripts
+#   4. Restart daemon + training — supervisorctl start when supervised,
+#      else nohup with the captured argv
+#   5. Wait for the socket to appear before returning
 #
-# The pod has no supervisor/systemd/cron watchdog — this script is the sole
-# mechanism that restarts the daemon. If it fails mid-way, the daemon stays
-# down until you intervene.
+# RunPod templates run athena-brain / athena-training under supervisord with
+# autorestart=true. The script detects this and drives stop/start through
+# supervisorctl — killing the daemon directly would race supervisord's own
+# autorestart (two daemons, one dies, false "daemon died" exit 6). On a pod
+# with no supervisord it falls back to direct kill + nohup. If the script
+# fails mid-way in the non-supervised path the daemon stays down until you
+# intervene; under supervisord, autorestart is the safety net.
 #
 # Usage:
 #   ./deploy_to_pod.sh                  # full deploy: .so + scripts + stimuli
@@ -78,6 +84,16 @@ for d in \
     data/finance_corpus data/code_corpus; do
   [[ -d "$d" ]] && CE_DATA+=("$d")
 done
+# Loose data/*.json files: runtime lang config, per-stage vocab masks
+# (Option-1 rebuild). The historic deploy bundle only synced curriculum
+# subdirs + data/stimuli/ — root-level JSONs were silently dropped, which
+# is why lang_runtime_default.json kept needing manual scp on 2026-05-19.
+DATA_JSON=()
+for f in \
+    data/lang_runtime_default.json \
+    data/stage_vocab_0.json data/stage_vocab_1.json data/stage_vocab_2.json; do
+  [[ -f "$f" ]] && DATA_JSON+=("$f")
+done
 
 case "$mode" in
   full)
@@ -89,9 +105,11 @@ case "$mode" in
         scripts/brain_daemon.py scripts/brain_client.py \
         scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py \
+        scripts/caregiver_critic.py \
         "${CE_SCRIPTS[@]}" \
         data/stimuli/ \
-        "${CE_DATA[@]}"
+        "${CE_DATA[@]}" \
+        "${DATA_JSON[@]}"
     ;;
   scripts)
     tar czf "$BUNDLE" \
@@ -100,8 +118,10 @@ case "$mode" in
         scripts/brain_daemon.py scripts/brain_client.py \
         scripts/cb_rescaled_marker.py \
         scripts/immerse_athena.py \
+        scripts/caregiver_critic.py \
         "${CE_SCRIPTS[@]}" \
-        "${CE_DATA[@]}"
+        "${CE_DATA[@]}" \
+        "${DATA_JSON[@]}"
     ;;
   stimuli)
     tar czf "$BUNDLE" data/stimuli/
@@ -118,8 +138,47 @@ if [[ "$mode" == "full" ]]; then
   echo "=== Full deploy: stop daemon, swap, restart ==="
   # Export pod paths so the heredoc can interpolate.
   export POD_DIR POD_PY_SITE POD_SOCKET POD_LOGDIR POD_CKPT
-  $POD_SSH "POD_DIR=$POD_DIR POD_PY_SITE=$POD_PY_SITE POD_SOCKET=$POD_SOCKET POD_LOGDIR=$POD_LOGDIR POD_CKPT=$POD_CKPT bash -s" <<'REMOTE_FULL'
+  export POD_MIN_PRODUCE_WORDS POD_MAX_PRODUCE_WORDS
+  $POD_SSH "POD_DIR=$POD_DIR POD_PY_SITE=$POD_PY_SITE POD_SOCKET=$POD_SOCKET POD_LOGDIR=$POD_LOGDIR POD_CKPT=$POD_CKPT POD_MIN_PRODUCE_WORDS=$POD_MIN_PRODUCE_WORDS POD_MAX_PRODUCE_WORDS=$POD_MAX_PRODUCE_WORDS bash -s" <<'REMOTE_FULL'
 set -euo pipefail
+
+# 0) Detect whether athena-brain / athena-training run under supervisord.
+# RunPod templates manage them with supervisord + autorestart=true. If we
+# kill the daemon directly, supervisord races us with its own restart — the
+# deploy's nohup copy and supervisord's copy both try to bind the socket,
+# one dies, and the script's PID tracking trips a false "daemon died" (exit
+# 6). When supervised we drive stop/start through supervisorctl: that sets
+# the program's expected state (no autorestart race) and honors
+# stopwaitsecs=300 for the graceful final-checkpoint save.
+SUPERVISED=0
+if command -v supervisorctl >/dev/null 2>&1 \
+   && supervisorctl status athena-brain >/dev/null 2>&1; then
+  SUPERVISED=1
+  echo "Process manager: supervisord (athena-brain / athena-training)"
+else
+  echo "Process manager: none detected — using direct kill + nohup"
+fi
+
+if [[ "$SUPERVISED" == "1" ]]; then
+  # supervisorctl stop is synchronous: it sends stopsignal (TERM) and blocks
+  # until the process exits or stopwaitsecs elapses. athena-brain has
+  # stopwaitsecs=300 — ample for the ~35s final-checkpoint save — and
+  # athena-training has 60s. Stopping also clears each program's expected
+  # RUNNING state so autorestart stays quiet while we swap files. Training
+  # first (it holds socket connections), then the brain.
+  echo "Stopping athena-training via supervisorctl..."
+  supervisorctl stop athena-training 2>&1 || true
+  echo "Stopping athena-brain via supervisorctl (graceful — final checkpoint save, up to 300s)..."
+  supervisorctl stop athena-brain 2>&1 || true
+  for svc in athena-brain athena-training; do
+    if supervisorctl status "$svc" 2>/dev/null | grep -qE 'RUNNING|STARTING|STOPPING'; then
+      echo "ERROR: $svc did not stop cleanly — aborting before file swap." >&2
+      supervisorctl status "$svc" >&2
+      exit 5
+    fi
+  done
+  echo "athena-brain + athena-training stopped."
+else
 
 # 1) Find running daemon + training PIDs. Match only actual python3 processes
 # (comm=python3) — bash wrappers that launched them via `bash -c "python3 ..."`
@@ -185,6 +244,8 @@ if [[ -n "$DAEMON_PID" ]]; then
   fi
 fi
 
+fi  # end: SUPERVISED stop branch
+
 # Remove the socket if left behind (shouldn't happen with clean exit).
 rm -f "$POD_SOCKET"
 
@@ -227,14 +288,37 @@ atomic_install() {
     echo "Installed $dst"
 }
 
-# The versioned C library — daemon mmaps this at runtime. Symlinks
-# (libnimcp.so, libnimcp.so.2) are left untouched; they already point at
-# the versioned name (e.g. libnimcp.so.0.9.0). If the version tag changes
-# between builds you'll need to update them manually.
+# The versioned C library — the daemon mmaps this at runtime. It is
+# resolved via the ld.so cache from /usr/local/lib (the python wrapper's
+# RUNPATH points at a dead build-box path), so /usr/local/lib is the
+# location that ACTUALLY matters — installing only into $POD_DIR/build/lib
+# is a silent no-op that leaves the daemon on the stale library after the
+# restart. We install into both: /usr/local/lib (load path) and
+# $POD_DIR/build/lib (kept fresh for repo-tree tooling). Both the daemon
+# and any other python3 holder were confirmed stopped + unmapped in
+# steps 2 / 2b above, so overwriting the live versioned file is safe.
+# Symlinks (libnimcp.so, libnimcp.so.2) are left untouched; they already
+# point at the versioned name (e.g. libnimcp.so.0.9.0). If the version
+# tag changes between builds you'll need to update them manually.
 for f in /tmp/build/lib/libnimcp.so.*; do
     [[ -f "$f" && ! -L "$f" ]] || continue
-    atomic_install "$f" "$POD_DIR/build/lib/$(basename "$f")"
+    base="$(basename "$f")"
+    atomic_install "$f" "$POD_DIR/build/lib/$base"
+    # Sweep stale .OLD-* siblings out of /usr/local/lib first — multiple
+    # OLD copies sharing the SONAME confuse ldconfig's SONAME picker
+    # (libnimcp.so.2 → wrong file). See memory: old-symlink-trap.
+    for old in /usr/local/lib/libnimcp.so.*.OLD-* /usr/local/lib/libnimcp.*.OLD-*; do
+        if [[ -e "$old" ]]; then
+            echo "Sweeping stale $old"
+            rm -f "$old"
+        fi
+    done
+    atomic_install "$f" "/usr/local/lib/$base"
 done
+# Refresh the ld.so cache so the next daemon start resolves
+# libnimcp.so.2 → the just-installed /usr/local/lib versioned file.
+ldconfig
+echo "ldconfig refreshed: $(ldconfig -p | grep 'libnimcp.so.2' || echo 'libnimcp.so.2 NOT IN CACHE')"
 
 # The Python binding wrapper — thin .so that dlopens libnimcp.so.2.
 atomic_install /tmp/build/lib/python/nimcp.so \
@@ -248,6 +332,7 @@ cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
+[[ -f /tmp/scripts/caregiver_critic.py ]] && cp /tmp/scripts/caregiver_critic.py "$POD_DIR/scripts/"
 
 # Curriculum-stack files (CE-1..19).
 for f in /tmp/scripts/storytelling.py /tmp/scripts/socratic_qa.py \
@@ -275,45 +360,133 @@ for d in canonical_corpus math_corpus physics_corpus chemistry_corpus \
   fi
 done
 
-# 4) Relaunch daemon with the same argv (detached, stdout/stderr to log dir).
+# Loose data/*.json files (Option-1 rebuild: lang_runtime_default + stage_vocab_*).
+for f in /tmp/data/lang_runtime_default.json \
+         /tmp/data/stage_vocab_0.json /tmp/data/stage_vocab_1.json \
+         /tmp/data/stage_vocab_2.json; do
+  [[ -f "$f" ]] && cp -f "$f" "$POD_DIR/data/"
+done
+
+# 4) Relaunch the daemon, then 5) wait for it to come ready.
 mkdir -p "$POD_LOGDIR" "$(dirname "$POD_SOCKET")"
 cd "$POD_DIR"
-# Rotate previous logs so the new run starts clean.
-ts="$(date +%m-%d-%H%M-deploy)"
-for f in daemon.stdout daemon.stderr training.stdout training.stderr; do
-  [[ -f "$POD_LOGDIR/$f" ]] && mv "$POD_LOGDIR/$f" "$POD_LOGDIR/$f.$ts"
-done
 
-echo "Starting daemon: python3 -u scripts/brain_daemon.py $DAEMON_ARGS"
-# shellcheck disable=SC2086
-nohup python3 -u scripts/brain_daemon.py $DAEMON_ARGS \
-    > "$POD_LOGDIR/daemon.stdout" 2> "$POD_LOGDIR/daemon.stderr" &
-NEW_DAEMON_PID=$!
-disown || true
-echo "Daemon started PID=$NEW_DAEMON_PID"
+if [[ "$SUPERVISED" == "1" ]]; then
+  # supervisord owns the process + its logs (50MB×10 rotation, brain.stderr).
+  # `supervisorctl start` blocks up to startsecs (30s) — the 2M-brain init
+  # runs far longer, so a returned "started" just means it launched OK; we
+  # still poll for the socket. A crash surfaces as FATAL/BACKOFF/EXITED.
+  echo "Starting athena-brain via supervisorctl..."
+  supervisorctl start athena-brain 2>&1 || true
+  echo "Waiting for daemon ready (socket)..."
+  for i in $(seq 1 180); do
+    if [[ -S "$POD_SOCKET" ]]; then
+      echo "Daemon socket up after ~$((i * 10))s"
+      break
+    fi
+    if supervisorctl status athena-brain 2>/dev/null | grep -qE 'FATAL|BACKOFF|EXITED'; then
+      echo "ERROR: athena-brain crashed during init:" >&2
+      supervisorctl status athena-brain >&2
+      tail -40 "$POD_LOGDIR/brain.stderr" >&2 2>/dev/null || true
+      exit 6
+    fi
+    sleep 10
+  done
+  if [[ ! -S "$POD_SOCKET" ]]; then
+    echo "WARNING: Daemon still initializing after 30 min — supervisord keeps it running."
+    echo "         Watch: supervisorctl tail -f athena-brain stderr"
+  fi
+else
+  # Rotate previous logs so the new run starts clean.
+  ts="$(date +%m-%d-%H%M-deploy)"
+  for f in daemon.stdout daemon.stderr training.stdout training.stderr; do
+    [[ -f "$POD_LOGDIR/$f" ]] && mv "$POD_LOGDIR/$f" "$POD_LOGDIR/$f.$ts"
+  done
 
-# 5) Wait for socket + "Brain daemon ready" in stderr. 2M brain init can take 15min.
-echo "Waiting for daemon ready (socket + log marker)..."
-for i in $(seq 1 120); do
-  if [[ -S "$POD_SOCKET" ]] && grep -q "Brain daemon ready" "$POD_LOGDIR/daemon.stderr" 2>/dev/null; then
-    echo "Daemon READY after ${i}*10s"
-    break
+  echo "Starting daemon: python3 -u scripts/brain_daemon.py $DAEMON_ARGS"
+  # shellcheck disable=SC2086
+  nohup python3 -u scripts/brain_daemon.py $DAEMON_ARGS \
+      > "$POD_LOGDIR/daemon.stdout" 2> "$POD_LOGDIR/daemon.stderr" &
+  NEW_DAEMON_PID=$!
+  disown || true
+  echo "Daemon started PID=$NEW_DAEMON_PID"
+
+  # 5) Wait for socket + "Brain daemon ready" in stderr. 2M brain init can take 15min.
+  echo "Waiting for daemon ready (socket + log marker)..."
+  for i in $(seq 1 120); do
+    if [[ -S "$POD_SOCKET" ]] && grep -q "Brain daemon ready" "$POD_LOGDIR/daemon.stderr" 2>/dev/null; then
+      echo "Daemon READY after ${i}*10s"
+      break
+    fi
+    # Detect early crash.
+    if ! kill -0 "$NEW_DAEMON_PID" 2>/dev/null; then
+      echo "ERROR: Daemon died during init. Tail of stderr:" >&2
+      tail -40 "$POD_LOGDIR/daemon.stderr" >&2 || true
+      exit 6
+    fi
+    sleep 10
+  done
+  if [[ ! -S "$POD_SOCKET" ]]; then
+    echo "WARNING: Daemon still initializing after 20 min — letting it continue in background"
+    echo "         Watch: tail -f $POD_LOGDIR/daemon.stderr"
   fi
-  # Detect early crash.
-  if ! kill -0 "$NEW_DAEMON_PID" 2>/dev/null; then
-    echo "ERROR: Daemon died during init. Tail of stderr:" >&2
-    tail -40 "$POD_LOGDIR/daemon.stderr" >&2 || true
-    exit 6
-  fi
-  sleep 10
-done
-if [[ ! -S "$POD_SOCKET" ]]; then
-  echo "WARNING: Daemon still initializing after 20 min — letting it continue in background"
-  echo "         Watch: tail -f $POD_LOGDIR/daemon.stderr"
 fi
 
-# 6) Relaunch training if it was running.
-if [[ -n "$TRAIN_ARGS" ]]; then
+# 5b) Activate the SNN language-bridge produce length floor (min_produce_words)
+# so the cascade self-train bigram/trigram path isn't starved by the greedy
+# decoder's 1-word confidence-floor collapse (commit 0d993d656). The 2M brain
+# can take ~30min to finish init — longer than the ready-wait above — so this
+# runs as a detached poller that applies the set_length_control RPC whenever
+# the daemon socket comes live (polling up to 60min), then exits. Non-fatal:
+# a failure here only means the cascade keeps its legacy behavior until the
+# RPC is sent manually. Set POD_MIN_PRODUCE_WORDS=0 to skip entirely.
+if [[ "${POD_MIN_PRODUCE_WORDS:-0}" != "0" ]]; then
+  echo "Scheduling set_length_control(min=$POD_MIN_PRODUCE_WORDS, max=$POD_MAX_PRODUCE_WORDS) poller..."
+  cat > /tmp/apply_length_control.py <<'PYEOF'
+import socket, struct, json, sys, time, os
+sock_path, minw, maxw = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+deadline = time.time() + 3600
+while time.time() < deadline:
+    if os.path.exists(sock_path):
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.settimeout(180)
+            s.connect(sock_path)
+            req = json.dumps({"cmd": "set_length_control",
+                              "min_words": minw, "max_words": maxw}).encode()
+            s.sendall(struct.pack(">I", len(req)) + req)
+            hdr = b""
+            while len(hdr) < 4:
+                hdr += s.recv(4 - len(hdr))
+            n = struct.unpack(">I", hdr)[0]
+            buf = b""
+            while len(buf) < n:
+                buf += s.recv(min(65536, n - len(buf)))
+            s.close()
+            resp = json.loads(buf.decode())
+            print(f"[apply_length_control] set_length_control -> {resp}", flush=True)
+            sys.exit(0 if resp.get("ok") else 1)
+        except Exception as e:
+            print(f"[apply_length_control] socket up but RPC retry: {e}", flush=True)
+    time.sleep(15)
+print("[apply_length_control] timed out waiting for daemon socket", flush=True)
+sys.exit(1)
+PYEOF
+  nohup python3 /tmp/apply_length_control.py "$POD_SOCKET" \
+      "$POD_MIN_PRODUCE_WORDS" "$POD_MAX_PRODUCE_WORDS" \
+      > "$POD_LOGDIR/apply_length_control.log" 2>&1 &
+  disown || true
+  echo "  poller PID=$! — log: $POD_LOGDIR/apply_length_control.log"
+else
+  echo "set_length_control: skipped (POD_MIN_PRODUCE_WORDS=0)"
+fi
+
+# 6) Relaunch training. immerse_athena.py connects to the brain socket with
+# retry, so it can start before the daemon finishes init.
+if [[ "$SUPERVISED" == "1" ]]; then
+  echo "Starting athena-training via supervisorctl..."
+  supervisorctl start athena-training 2>&1 || true
+elif [[ -n "$TRAIN_ARGS" ]]; then
   echo "Restarting training: python3 -u scripts/immerse_athena.py $TRAIN_ARGS"
   # shellcheck disable=SC2086
   nohup python3 -u scripts/immerse_athena.py $TRAIN_ARGS \
@@ -340,6 +513,7 @@ cp    /tmp/scripts/brain_daemon.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/brain_client.py     "$POD_DIR/scripts/"
 cp    /tmp/scripts/cb_rescaled_marker.py "$POD_DIR/scripts/"
 cp    /tmp/scripts/immerse_athena.py   "$POD_DIR/scripts/"
+[[ -f /tmp/scripts/caregiver_critic.py ]] && cp /tmp/scripts/caregiver_critic.py "$POD_DIR/scripts/"
 # Curriculum-stack files (CE-1..19). Ship whatever's in the bundle —
 # old branches without these files won't have them packed, and `cp -f`
 # is a no-op on missing sources thanks to the for-loop existence guard.

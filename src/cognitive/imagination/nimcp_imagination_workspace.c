@@ -277,7 +277,9 @@ static scenario_slot_t* find_empty_slot(imagination_workspace_t* workspace) {
             return &slots[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: slots is NULL");
+    /* Loop completed: every slot[i].active was true. Workspace is full,
+     * not NULL — the line 263 guard already covers the NULL case. */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_empty_slot: workspace full (all max_scenarios slots active — check for missing imagination_end_scenario)");
     return NULL;
 }
 

@@ -2693,6 +2693,46 @@ static PyObject* Brain_get_bigram_spectral_metrics(BrainObject* self, PyObject* 
     return dict;
 }
 
+static PyObject* Brain_prune_lang_bindings(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    unsigned int max_per_word = 128;
+    static char* kwlist[] = {"max_bindings_per_word", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|I", kwlist, &max_per_word)) {
+        return NULL;
+    }
+    if (max_per_word == 0) {
+        PyErr_SetString(PyExc_ValueError, "max_bindings_per_word must be > 0");
+        return NULL;
+    }
+    uint64_t dropped = 0;
+    nimcp_status_t s = nimcp_brain_prune_lang_bindings(self->brain,
+                                                       (uint32_t)max_per_word,
+                                                       &dropped);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "prune_lang_bindings failed (no grounded_lang attached?)");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLongLong((unsigned long long)dropped);
+}
+
+static PyObject* Brain_connect_lang_bridge_neuromod(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    nimcp_status_t s = nimcp_brain_connect_lang_bridge_neuromod(self->brain);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "connect_lang_bridge_neuromod failed (no bridge or no neuromod system?)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
@@ -2734,11 +2774,28 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("enable_anaphora_resolution",       PyBool_FromLong(d.enable_anaphora_resolution));
     GLD_SET("bridge_enable_da_modulation",      PyBool_FromLong(d.bridge_enable_da_modulation));
     GLD_SET("bridge_enable_trigram_learning",   PyBool_FromLong(d.bridge_enable_trigram_learning));
+    GLD_SET("bridge_ltd_margin",                PyFloat_FromDouble((double)d.bridge_ltd_margin));
     GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
     GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
     GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
     GLD_SET("bridge_total_decode_calls",        PyLong_FromUnsignedLongLong(d.bridge_total_decode_calls));
+    /* Plasticity telemetry surface (gap #1 from 2026-05-13 walkthrough). */
+    GLD_SET("bridge_total_stdp_updates",        PyLong_FromUnsignedLongLong(d.bridge_total_stdp_updates));
+    GLD_SET("bridge_total_trigram_updates",     PyLong_FromUnsignedLongLong(d.bridge_total_trigram_updates));
+    GLD_SET("bridge_echo_correct_calls",        PyLong_FromUnsignedLongLong(d.bridge_echo_correct_calls));
+    GLD_SET("bridge_echo_correct_pairs",        PyLong_FromUnsignedLongLong(d.bridge_echo_correct_pairs));
+    GLD_SET("bridge_echo_correct_target_misses",PyLong_FromUnsignedLongLong(d.bridge_echo_correct_target_misses));
+    GLD_SET("bridge_comprehend_stdp_passes",    PyLong_FromUnsignedLongLong(d.bridge_comprehend_stdp_passes));
+    GLD_SET("bridge_comprehend_stdp_pairs_fired", PyLong_FromUnsignedLongLong(d.bridge_comprehend_stdp_pairs_fired));
+    GLD_SET("bridge_da_gated_stdp_passes",      PyLong_FromUnsignedLongLong(d.bridge_da_gated_stdp_passes));
+    GLD_SET("bridge_last_da_modulation",        PyFloat_FromDouble((double)d.bridge_last_da_modulation));
+    GLD_SET("next_token_cold_start_skips",      PyLong_FromUnsignedLongLong(d.next_token_cold_start_skips));
+    /* Wave-3 (2026-05-19) lateral-inhibition telemetry surface. */
+    GLD_SET("bridge_lateral_inhibition_decode_calls",      PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_decode_calls));
+    GLD_SET("bridge_lateral_inhibition_winner_margin_sum", PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_winner_margin_sum));
+    GLD_SET("bridge_lateral_inhibition_settled_steps_sum", PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_settled_steps_sum));
+    GLD_SET("bridge_lateral_inhibition_nan_fallbacks",     PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_nan_fallbacks));
 #undef GLD_SET
     return dict;
 }
@@ -3324,6 +3381,80 @@ static PyObject* Brain_set_trigram_learning_enabled(BrainObject* self,
     Py_RETURN_NONE;
 }
 
+/* Margin-gated LTD for next-token learners. margin must be in [1.0, 100.0]. */
+static PyObject* Brain_set_ltd_margin(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float margin = 1.5f;
+    if (!PyArg_ParseTuple(args, "f", &margin)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_ltd_margin(self->brain, margin);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "set_ltd_margin: margin must be in [1.0, 100.0] and bridge must be attached");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Reset lexicon's distributional embeddings (context_vector). */
+static PyObject* Brain_reset_lexicon_distributional(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int zero_uninit = 1;
+    float jitter = 0.01f;
+    if (!PyArg_ParseTuple(args, "pf", &zero_uninit, &jitter)) return NULL;
+    int64_t count = 0;
+    nimcp_status_t s = nimcp_brain_reset_lexicon_distributional(
+        self->brain, zero_uninit != 0, jitter, &count);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "reset_lexicon_distributional: grounded_language not attached or bad jitter");
+        return NULL;
+    }
+    return PyLong_FromLongLong((long long)count);
+}
+
+/* Reset concept grounding (clear lexicon bindings + wipe semantic_memory). */
+static PyObject* Brain_reset_concept_grounding(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    int64_t cleared = 0;
+    nimcp_status_t s = nimcp_brain_reset_concept_grounding(self->brain, &cleared);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "reset_concept_grounding: grounded_language not attached");
+        return NULL;
+    }
+    return PyLong_FromLongLong((long long)cleared);
+}
+
+/* Re-randomize bridge binding weights to break rank-1 collapse. */
+static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    float w_min = 0.001f, w_max = 0.05f;
+    if (!PyArg_ParseTuple(args, "ff", &w_min, &w_max)) return NULL;
+    int64_t count = 0;
+    nimcp_status_t s = nimcp_brain_reset_lang_bridge_weights(
+        self->brain, w_min, w_max, &count);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "reset_lang_bridge_weights: bridge not attached or args out of range "
+            "(require 0 <= w_min < w_max <= binding_w_max)");
+        return NULL;
+    }
+    return PyLong_FromLongLong((long long)count);
+}
+
 /* Audit fix — campaign feature setter Python bindings. All take a single
  * argument (bool/int/float) and return None on success or RuntimeError. */
 
@@ -3398,6 +3529,45 @@ static PyObject* Brain_echo_and_correct(BrainObject* self, PyObject* args, PyObj
  * utterance + diagnostics from all stages. The diag fields (self_match,
  * self_grammaticality, prompt_is_question, etc.) come from the
  * sensorimotor-loop self-comprehension stage. */
+/* Slice 1 of the recurrent-language-architecture rewrite — iterates the
+ * cascade until utterance + self_match converge. Returns a small dict
+ * (utterance/word_count/confidence/settling_steps) rather than the full
+ * diag dump. Subsequent slices may add a recurrent diag variant. */
+static PyObject* Brain_produce_cascade_recurrent(BrainObject* self, PyObject* args, PyObject* kwargs) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    const char* prompt = NULL;
+    uint32_t max_iters = 8;
+    float self_match_eps = 0.01f;
+    static char* kwlist[] = {"prompt", "max_iters", "self_match_eps", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|zIf", kwlist,
+                                       &prompt, &max_iters, &self_match_eps)) {
+        return NULL;
+    }
+
+    char buf[2048];
+    uint32_t word_count = 0;
+    float confidence = 0.0f;
+    uint32_t settling_steps = 0;
+    nimcp_status_t s = nimcp_brain_produce_cascade_recurrent(
+        self->brain, prompt, max_iters, self_match_eps,
+        buf, sizeof(buf), &word_count, &confidence, &settling_steps);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "produce_cascade_recurrent: bridge or cascade not attached");
+        return NULL;
+    }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "utterance",      PyUnicode_FromString(buf));
+    PyDict_SetItemString(d, "word_count",     PyLong_FromUnsignedLong(word_count));
+    PyDict_SetItemString(d, "confidence",     PyFloat_FromDouble((double)confidence));
+    PyDict_SetItemString(d, "settling_steps", PyLong_FromUnsignedLong(settling_steps));
+    return d;
+}
+
 static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObject* kwargs) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
@@ -3477,7 +3647,35 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
         uint32_t stages_failed;
         uint32_t stages_skipped;
         char     failure_reason[128];
+        /* SLICE 3 — FEP prediction-error scalars (append-only mirror).
+         * Must stay in lockstep with nimcp_cascade_diag_full_t in
+         * include/language/nimcp_communication_cascade.h. */
+        float    pe_content_norm;
+        float    pe_lexical_norm;
+        float    pe_syntactic_norm;
+        float    pe_self_comp_norm;
+        float    pe_total;
+        uint32_t fep_iteration;
+        float    fep_precision;
+
+        /* S1-C1 fix: append-only mirror — distinct from repair_attempts
+         * above (which is owned by speech-repair retries). */
+        uint32_t settling_steps;
+
+        /* S3+S6-H2/H4 fix (2026-05-19) — split pe_content_norm. Mirror
+         * in lockstep with the public type. */
+        float    pe_content_arcuate_norm;
+        float    pe_content_gate_norm;
     } nimcp_cascade_diag_full_t_local;
+
+    /* S3-C1 (CRITICAL): size lockstep with the public type. The public
+     * nimcp_cascade_diag_full_t in include/language/nimcp_communication_cascade.h
+     * has its own _Static_assert(... == 424). Without a reciprocal assert
+     * on the local shadow, a future field append on either side passes a
+     * shorter buffer into the C impl and stack-smashes. */
+    _Static_assert(sizeof(nimcp_cascade_diag_full_t_local) == 424,
+        "nimcp_cascade_diag_full_t_local shadow drift — bump public + local in lockstep "
+        "(public assert: include/language/nimcp_communication_cascade.h)");
 
     char text[2048] = {0};
     char best_text[2048] = {0};
@@ -3611,6 +3809,29 @@ static PyObject* Brain_produce_cascade(BrainObject* self, PyObject* args, PyObje
     PyDict_SetItemString(d, "stages_skipped",       PyLong_FromLong((long)s.stages_skipped));
     PyDict_SetItemString(d, "failure_reason",       PyUnicode_FromString(s.failure_reason));
 
+    /* Slice 3 — FEP prediction-error scalars. Consumers can plot the
+     * per-stage norms vs iteration to see if the recurrent system is
+     * actually settling (pe_total should fall) or wedged (flat / rising). */
+    PyDict_SetItemString(d, "pe_content_norm",      PyFloat_FromDouble((double)s.pe_content_norm));
+    PyDict_SetItemString(d, "pe_lexical_norm",      PyFloat_FromDouble((double)s.pe_lexical_norm));
+    PyDict_SetItemString(d, "pe_syntactic_norm",    PyFloat_FromDouble((double)s.pe_syntactic_norm));
+    PyDict_SetItemString(d, "pe_self_comp_norm",    PyFloat_FromDouble((double)s.pe_self_comp_norm));
+    PyDict_SetItemString(d, "pe_total",             PyFloat_FromDouble((double)s.pe_total));
+    PyDict_SetItemString(d, "fep_iteration",        PyLong_FromLong((long)s.fep_iteration));
+    PyDict_SetItemString(d, "fep_precision",        PyFloat_FromDouble((double)s.fep_precision));
+
+    /* S1-C1 fix: distinct from repair_attempts above. The recurrent
+     * cascade reports its iteration count in settling_steps; consumers
+     * that need both can read both. */
+    PyDict_SetItemString(d, "settling_steps",       PyLong_FromLong((long)s.settling_steps));
+
+    /* S3+S6-H2/H4 fix (2026-05-19): split arcuate-only vs gate-only PE.
+     * pe_content_norm above aliases pe_content_arcuate_norm. */
+    PyDict_SetItemString(d, "pe_content_arcuate_norm",
+        PyFloat_FromDouble((double)s.pe_content_arcuate_norm));
+    PyDict_SetItemString(d, "pe_content_gate_norm",
+        PyFloat_FromDouble((double)s.pe_content_gate_norm));
+
     /* Free heap-owned arrays we just copied into Python lists. */
     if (phon_seq)       nimcp_free(phon_seq);
     if (pros_pitch)     nimcp_free(pros_pitch);
@@ -3632,6 +3853,82 @@ static PyObject* Brain_set_length_control(BrainObject* self, PyObject* args) {
         return NULL;
     }
     Py_RETURN_NONE;
+}
+
+/* Slice 4 — Lateral inhibition control surface. Four Python methods:
+ * set/get enabled + set/get params. */
+static PyObject* Brain_set_lateral_inhibition_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_lateral_inhibition_enabled(self->brain,
+                                                                    enabled ? true : false);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "set_lateral_inhibition_enabled failed (bridge not initialized?)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_lateral_inhibition_enabled(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    nimcp_status_t s = nimcp_brain_get_lateral_inhibition_enabled(self->brain, &enabled);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "get_lateral_inhibition_enabled failed (bridge not initialized?)");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled ? 1 : 0);
+}
+
+static PyObject* Brain_set_lateral_inhibition_params(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float gain_self = 0.0f, gain_inhibit = 0.0f;
+    unsigned int micro_steps = 0;
+    if (!PyArg_ParseTuple(args, "ffI", &gain_self, &gain_inhibit, &micro_steps)) return NULL;
+    nimcp_status_t s = nimcp_brain_set_lateral_inhibition_params(self->brain,
+                                                                  gain_self,
+                                                                  gain_inhibit,
+                                                                  micro_steps);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "set_lateral_inhibition_params failed (out of range or bridge missing)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_lateral_inhibition_params(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float gain_self = 0.0f, gain_inhibit = 0.0f;
+    uint32_t micro_steps = 0;
+    nimcp_status_t s = nimcp_brain_get_lateral_inhibition_params(self->brain,
+                                                                  &gain_self,
+                                                                  &gain_inhibit,
+                                                                  &micro_steps);
+    if (s != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "get_lateral_inhibition_params failed (bridge not initialized?)");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "gain_self",    PyFloat_FromDouble((double)gain_self));
+    PyDict_SetItemString(d, "gain_inhibit", PyFloat_FromDouble((double)gain_inhibit));
+    PyDict_SetItemString(d, "micro_steps",  PyLong_FromUnsignedLong((unsigned long)micro_steps));
+    return d;
 }
 
 /* Wave 2 Item #10 — cascade Stage 14 (self-train) control surface.
@@ -3681,6 +3978,716 @@ static PyObject* Brain_get_cascade_self_train_state(BrainObject* self, PyObject*
     PyDict_SetItemString(d, "alpha",    PyFloat_FromDouble((double)alpha));
     PyDict_SetItemString(d, "lr_scale", PyFloat_FromDouble((double)lr_scale));
     return d;
+}
+
+/* Slice D — set the external reward signal for cascade self-train gating.
+ * Callable from the caregiver-critic / RL pipeline via the brain daemon
+ * _cmd_set_last_external_reward RPC. Clamped [-1, +1]. */
+static PyObject* Brain_set_last_external_reward(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float reward = 0.0f;
+    if (!PyArg_ParseTuple(args, "f", &reward)) return NULL;
+    if (nimcp_brain_set_last_external_reward(self->brain, reward) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "set_last_external_reward failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Slice C — drive reward-modulated plasticity through the brain's
+ * three-factor STDP path. Called by the caregiver-critic / RL pipeline
+ * via the brain daemon _cmd_apply_reward_learning RPC. Distinct from
+ * set_last_external_reward, which only stamps a field used by the
+ * cascade self-train gate — this actually drives plasticity. Reward is
+ * clamped to [-1, +1]; negative reward drives anti-Hebbian LTD via
+ * Slice F's negative-DA path. */
+static PyObject* Brain_apply_reward_learning(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float reward = 0.0f;
+    if (!PyArg_ParseTuple(args, "f", &reward)) return NULL;
+    if (nimcp_brain_apply_reward_learning(self->brain, reward) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "apply_reward_learning failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Slice D — configure reward threshold + TTL. Mirrors the gating fields
+ * read by cascade_stage_self_train. Pass 0 (zero) for either argument to
+ * leave the brain's value unchanged (partial update). */
+static PyObject* Brain_set_cascade_self_train_reward_gating(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float    threshold = 0.0f;
+    uint64_t ttl_us    = 0;
+    /* "K" = unsigned long long → uint64_t */
+    if (!PyArg_ParseTuple(args, "fK", &threshold, &ttl_us)) return NULL;
+    if (nimcp_brain_set_cascade_self_train_reward_gating(self->brain,
+            threshold, ttl_us) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "set_cascade_self_train_reward_gating failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Slice D — snapshot the three gating counters as a dict. */
+static PyObject* Brain_get_cascade_self_train_gate_counters(BrainObject* self,
+                                                              PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    uint64_t stale = 0, below = 0, fired = 0;
+    if (nimcp_brain_get_cascade_self_train_gate_counters(self->brain,
+            &stale, &below, &fired) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "get_cascade_self_train_gate_counters failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "skipped_stale",
+                         PyLong_FromUnsignedLongLong((unsigned long long)stale));
+    PyDict_SetItemString(d, "skipped_below_threshold",
+                         PyLong_FromUnsignedLongLong((unsigned long long)below));
+    PyDict_SetItemString(d, "fired",
+                         PyLong_FromUnsignedLongLong((unsigned long long)fired));
+    return d;
+}
+
+/* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — concept_registry stats. */
+static PyObject* Brain_get_concept_registry_stats(BrainObject* self,
+                                                    PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    size_t total_referents = 0, total_modality_bindings = 0;
+    if (nimcp_brain_get_concept_registry_stats(self->brain,
+            &total_referents, &total_modality_bindings) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "get_concept_registry_stats failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "total_referents",
+                         PyLong_FromUnsignedLongLong((unsigned long long)total_referents));
+    PyDict_SetItemString(d, "total_modality_bindings",
+                         PyLong_FromUnsignedLongLong((unsigned long long)total_modality_bindings));
+    return d;
+}
+
+/*===========================================================================
+ * Slice E (Option-1 architectural rebuild) — stage scaffolding bindings.
+ *=========================================================================*/
+
+static PyObject* Brain_set_active_stage(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage = 0;
+    if (!PyArg_ParseTuple(args, "I", &stage)) return NULL;
+    if (nimcp_brain_set_active_stage(self->brain, (uint32_t)stage) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "set_active_stage failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_active_stage(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    uint32_t stage = 0;
+    if (nimcp_brain_get_active_stage(self->brain, &stage) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "get_active_stage failed");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong((unsigned long)stage);
+}
+
+static PyObject* Brain_set_vocab_mask_for_stage(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage = 0;
+    if (!PyArg_ParseTuple(args, "I", &stage)) return NULL;
+    if (nimcp_brain_set_vocab_mask_for_stage(self->brain, (uint32_t)stage) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "set_vocab_mask_for_stage failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_clear_vocab_mask(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    if (nimcp_brain_clear_vocab_mask(self->brain) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "clear_vocab_mask failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_stage_constraints(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage = 0;
+    if (!PyArg_ParseTuple(args, "I", &stage)) return NULL;
+    size_t   max_visible_vocab    = 0;
+    uint32_t min_produce_words    = 0;
+    uint32_t max_produce_words    = 0;
+    uint32_t allowed_grammar_mask = 0;
+    if (nimcp_brain_get_stage_constraints(self->brain, (uint32_t)stage,
+            &max_visible_vocab, &min_produce_words,
+            &max_produce_words, &allowed_grammar_mask) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "get_stage_constraints failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "stage",
+                         PyLong_FromUnsignedLong((unsigned long)stage));
+    PyDict_SetItemString(d, "max_visible_vocab",
+                         PyLong_FromUnsignedLongLong(
+                            (unsigned long long)max_visible_vocab));
+    PyDict_SetItemString(d, "min_produce_words",
+                         PyLong_FromUnsignedLong((unsigned long)min_produce_words));
+    PyDict_SetItemString(d, "max_produce_words",
+                         PyLong_FromUnsignedLong((unsigned long)max_produce_words));
+    PyDict_SetItemString(d, "allowed_grammar_mask",
+                         PyLong_FromUnsignedLong((unsigned long)allowed_grammar_mask));
+    return d;
+}
+
+/* Batch K — cascade lifetime telemetry: snapshot + reset.
+ *
+ * get_cascade_counters() → dict with all atomic counters. Per-stage arrays
+ * are returned as 15-element Python lists keyed
+ *   "stage_invocations", "stage_mask_skips", "stage_failures".
+ * reset_cascade_counters() returns None on success.
+ *
+ * Mirror the cascade-counters struct layout locally — avoid including the
+ * full cascade header (which conflicts with this TU's local extern for
+ * produce_cascade_diag_full_impl above). Must stay in sync with
+ * include/language/nimcp_communication_cascade.h:nimcp_cascade_counters_t. */
+#define BK_STAGE_COUNT 15u
+typedef struct {
+    uint64_t total_runs;
+    uint64_t runs_with_prompt;
+    uint64_t runs_spontaneous;
+    uint64_t runs_fatal_error;
+    uint64_t stage_invocations[BK_STAGE_COUNT];
+    uint64_t stage_mask_skips[BK_STAGE_COUNT];
+    uint64_t stage_failures[BK_STAGE_COUNT];
+    uint64_t pragmatics_indirect_overrides;
+    uint64_t wernicke_lexicon_miss;
+    uint64_t speech_repair_applied;
+    uint64_t self_train_steps_matched;
+    uint64_t self_train_steps_no_bindings;
+    uint64_t self_produced_events_fired;
+    uint64_t discourse_ring_pushes_user;
+    uint64_t discourse_ring_pushes_self;
+    /* S1-H3+H4 fix (2026-05-19) — mirror of recurrent_oom_count. */
+    uint64_t recurrent_oom_count;
+    /* S3-H3 + S3-H6 fix (2026-05-19) — mirrors of fep_lexical_skipped and
+     * self_train_precision_cap_hits. */
+    uint64_t fep_lexical_skipped;
+    uint64_t self_train_precision_cap_hits;
+} bk_cascade_counters_local_t;
+
+/* S3-C1 (CRITICAL): size lockstep with the public type. Mirror of
+ * nimcp_cascade_counters_t in include/language/nimcp_communication_cascade.h
+ * which has its own _Static_assert(... == 480). Future append on either
+ * side without the reciprocal assert silently stack-smashes the cast in
+ * Brain_get_cascade_counters. */
+_Static_assert(sizeof(bk_cascade_counters_local_t) == 480,
+    "bk_cascade_counters_local_t shadow drift — bump public + local in lockstep "
+    "(public assert: include/language/nimcp_communication_cascade.h)");
+
+static PyObject* Brain_get_cascade_counters(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bk_cascade_counters_local_t c;
+    if (nimcp_brain_get_cascade_counters(self->brain,
+            (struct nimcp_cascade_counters*)&c) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cascade_counters failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "total_runs",        PyLong_FromUnsignedLongLong(c.total_runs));
+    PyDict_SetItemString(d, "runs_with_prompt",  PyLong_FromUnsignedLongLong(c.runs_with_prompt));
+    PyDict_SetItemString(d, "runs_spontaneous",  PyLong_FromUnsignedLongLong(c.runs_spontaneous));
+    PyDict_SetItemString(d, "runs_fatal_error",  PyLong_FromUnsignedLongLong(c.runs_fatal_error));
+
+    PyObject* inv = PyList_New(BK_STAGE_COUNT);
+    PyObject* msk = PyList_New(BK_STAGE_COUNT);
+    PyObject* fail= PyList_New(BK_STAGE_COUNT);
+    for (uint32_t i = 0; i < BK_STAGE_COUNT; i++) {
+        PyList_SET_ITEM(inv,  i, PyLong_FromUnsignedLongLong(c.stage_invocations[i]));
+        PyList_SET_ITEM(msk,  i, PyLong_FromUnsignedLongLong(c.stage_mask_skips[i]));
+        PyList_SET_ITEM(fail, i, PyLong_FromUnsignedLongLong(c.stage_failures[i]));
+    }
+    PyDict_SetItemString(d, "stage_invocations", inv);  Py_DECREF(inv);
+    PyDict_SetItemString(d, "stage_mask_skips",  msk);  Py_DECREF(msk);
+    PyDict_SetItemString(d, "stage_failures",    fail); Py_DECREF(fail);
+
+    PyDict_SetItemString(d, "pragmatics_indirect_overrides",
+        PyLong_FromUnsignedLongLong(c.pragmatics_indirect_overrides));
+    PyDict_SetItemString(d, "wernicke_lexicon_miss",
+        PyLong_FromUnsignedLongLong(c.wernicke_lexicon_miss));
+    PyDict_SetItemString(d, "speech_repair_applied",
+        PyLong_FromUnsignedLongLong(c.speech_repair_applied));
+    PyDict_SetItemString(d, "self_train_steps_matched",
+        PyLong_FromUnsignedLongLong(c.self_train_steps_matched));
+    PyDict_SetItemString(d, "self_train_steps_no_bindings",
+        PyLong_FromUnsignedLongLong(c.self_train_steps_no_bindings));
+    PyDict_SetItemString(d, "self_produced_events_fired",
+        PyLong_FromUnsignedLongLong(c.self_produced_events_fired));
+    PyDict_SetItemString(d, "discourse_ring_pushes_user",
+        PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_user));
+    PyDict_SetItemString(d, "discourse_ring_pushes_self",
+        PyLong_FromUnsignedLongLong(c.discourse_ring_pushes_self));
+    PyDict_SetItemString(d, "recurrent_oom_count",
+        PyLong_FromUnsignedLongLong(c.recurrent_oom_count));
+    PyDict_SetItemString(d, "fep_lexical_skipped",
+        PyLong_FromUnsignedLongLong(c.fep_lexical_skipped));
+    PyDict_SetItemString(d, "self_train_precision_cap_hits",
+        PyLong_FromUnsignedLongLong(c.self_train_precision_cap_hits));
+    return d;
+}
+
+static PyObject* Brain_reset_cascade_counters(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    if (nimcp_brain_reset_cascade_counters(self->brain) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "reset_cascade_counters failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Slice 3 — recurrent-cascade FEP prediction-error trace + summary.
+ *
+ * Mirror the layout from include/language/nimcp_communication_cascade.h:
+ *   typedef struct nimcp_cascade_fep_metrics { u32 + 64×f + 5×f + f + int }
+ * Same approach the counter mirror uses to keep this TU header-conflict
+ * free. Must stay in lockstep — the _Static_assert in the cascade header
+ * catches drift on the C side. */
+#define BK_FEP_TRACE_CAP 64u
+typedef struct {
+    uint32_t iterations_run;
+    float    pe_total_trace[BK_FEP_TRACE_CAP];
+    float    pe_total_initial;
+    float    pe_total_terminal;
+    float    pe_total_min;
+    float    pe_total_max;
+    float    pe_total_mean;
+    float    pe_decay_rate;
+    int      converged;
+} bk_cascade_fep_metrics_local_t;
+
+/* S3-C1 (CRITICAL): size lockstep with the public type. Mirror of
+ * nimcp_cascade_fep_metrics_t in include/language/nimcp_communication_cascade.h
+ * which has its own _Static_assert(... == 288). Without a reciprocal
+ * assert on the local shadow, a future field append on either side
+ * passes a shorter buffer into the C impl and stack-smashes. */
+_Static_assert(sizeof(bk_cascade_fep_metrics_local_t) == 288,
+    "bk_cascade_fep_metrics_local_t shadow drift — bump public + local in lockstep "
+    "(public assert: include/language/nimcp_communication_cascade.h)");
+
+static PyObject* Brain_get_cascade_fep_metrics(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bk_cascade_fep_metrics_local_t m;
+    memset(&m, 0, sizeof(m));
+    if (nimcp_brain_get_cascade_fep_metrics(self->brain,
+            (struct nimcp_cascade_fep_metrics*)&m) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cascade_fep_metrics failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "iterations_run",   PyLong_FromUnsignedLong((unsigned long)m.iterations_run));
+    PyDict_SetItemString(d, "pe_total_initial", PyFloat_FromDouble((double)m.pe_total_initial));
+    PyDict_SetItemString(d, "pe_total_terminal",PyFloat_FromDouble((double)m.pe_total_terminal));
+    PyDict_SetItemString(d, "pe_total_min",     PyFloat_FromDouble((double)m.pe_total_min));
+    PyDict_SetItemString(d, "pe_total_max",     PyFloat_FromDouble((double)m.pe_total_max));
+    PyDict_SetItemString(d, "pe_total_mean",    PyFloat_FromDouble((double)m.pe_total_mean));
+    PyDict_SetItemString(d, "pe_decay_rate",    PyFloat_FromDouble((double)m.pe_decay_rate));
+    PyDict_SetItemString(d, "converged",        PyBool_FromLong(m.converged));
+    /* The trace is fixed-size — emit only the populated prefix as a Py list. */
+    uint32_t n = m.iterations_run;
+    if (n > BK_FEP_TRACE_CAP) n = BK_FEP_TRACE_CAP;
+    PyObject* trace = PyList_New((Py_ssize_t)n);
+    if (trace) {
+        for (uint32_t i = 0; i < n; i++) {
+            PyList_SET_ITEM(trace, i, PyFloat_FromDouble((double)m.pe_total_trace[i]));
+        }
+        PyDict_SetItemString(d, "pe_total_trace", trace);
+        Py_DECREF(trace);
+    }
+    return d;
+}
+
+/* Audit Cat A #1 — opt-in cascade orchestrator path in
+ * nimcp_brain_grounded_respond. set takes a bool; get returns a bool. */
+static PyObject* Brain_set_respond_via_cascade(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_respond_via_cascade(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_respond_via_cascade failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_respond_via_cascade(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_respond_via_cascade(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_respond_via_cascade failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
+/* Slice 6 — thalamic gating of cascade-stage bandwidth.
+ *
+ * set_thalamic_gate_enabled(enabled: bool) -> None
+ * get_thalamic_gate_enabled() -> bool
+ * set_thalamic_gate_for_stage(stage_idx: int, weight: float) -> None
+ *   weight < 0 (or NaN/Inf) clears the manual override.
+ * get_thalamic_gates() -> dict
+ *   Returns {"enabled": bool, "weights": [w0..w14],
+ *            "overrides": [o0..o14], "stage_names": [...]}. */
+static PyObject* Brain_set_thalamic_gate_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_thalamic_gate_enabled(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_thalamic_gate_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_thalamic_gate_enabled(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_thalamic_gate_enabled(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_thalamic_gate_enabled failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
+static PyObject* Brain_set_thalamic_gate_for_stage(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    unsigned int stage_idx = 0;
+    float weight = 0.0f;
+    if (!PyArg_ParseTuple(args, "If", &stage_idx, &weight)) return NULL;
+    if (nimcp_brain_set_thalamic_gate_for_stage(self->brain, stage_idx, weight) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_thalamic_gate_for_stage failed (stage_idx out of range?)");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+/* Stage names matching cascade_stage_mask_t bit order. Used to return a
+ * stage-name-keyed dict from get_thalamic_gates() so callers don't need
+ * to memorize the bit positions. Keep in lockstep with
+ * cascade_stage_mask_t in nimcp_communication_cascade.h. */
+static const char* const _thalamic_stage_names[15] = {
+    "wernicke",       /* bit 0 */
+    "drive",          /* bit 1 */
+    "goal",           /* bit 2 */
+    "listener",       /* bit 3 */
+    "episodic",       /* bit 4 */
+    "content",        /* bit 5 */
+    "lexical",        /* bit 6 */
+    "syntactic",      /* bit 7 */
+    "self_comp",      /* bit 8 */
+    "phonological",   /* bit 9 */
+    "motor",          /* bit 10 */
+    "self_feedback",  /* bit 11 */
+    "speech_repair",  /* bit 12 */
+    "prosody",        /* bit 13 */
+    "self_train"      /* bit 14 */
+};
+
+static PyObject* Brain_get_thalamic_gates(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    (void)nimcp_brain_get_thalamic_gate_enabled(self->brain, &enabled);
+
+    float weights[15];
+    bool  overrides[15];
+    uint32_t count = 0;
+    if (nimcp_brain_get_thalamic_gates(self->brain, weights, overrides,
+                                        15, &count) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_thalamic_gates failed");
+        return NULL;
+    }
+
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "enabled", PyBool_FromLong(enabled));
+
+    /* Stage-name-keyed gate dict — the primary consumer view. */
+    PyObject* gates = PyDict_New();
+    if (!gates) { Py_DECREF(d); return NULL; }
+    for (uint32_t i = 0; i < count && i < 15; i++) {
+        PyDict_SetItemString(gates, _thalamic_stage_names[i],
+                             PyFloat_FromDouble((double)weights[i]));
+    }
+    PyDict_SetItemString(d, "gates", gates);
+    Py_DECREF(gates);
+
+    /* Parallel arrays for callers who want the raw layout. */
+    PyObject* warr = PyList_New((Py_ssize_t)count);
+    PyObject* oarr = PyList_New((Py_ssize_t)count);
+    PyObject* narr = PyList_New((Py_ssize_t)count);
+    if (!warr || !oarr || !narr) {
+        Py_XDECREF(warr); Py_XDECREF(oarr); Py_XDECREF(narr);
+        Py_DECREF(d);
+        return NULL;
+    }
+    for (uint32_t i = 0; i < count && i < 15; i++) {
+        PyList_SET_ITEM(warr, (Py_ssize_t)i, PyFloat_FromDouble((double)weights[i]));
+        PyList_SET_ITEM(oarr, (Py_ssize_t)i, PyBool_FromLong(overrides[i]));
+        PyList_SET_ITEM(narr, (Py_ssize_t)i, PyUnicode_FromString(_thalamic_stage_names[i]));
+    }
+    PyDict_SetItemString(d, "weights",     warr);
+    PyDict_SetItemString(d, "overrides",   oarr);
+    PyDict_SetItemString(d, "stage_names", narr);
+    Py_DECREF(warr); Py_DECREF(oarr); Py_DECREF(narr);
+    return d;
+}
+
+/* =================================================================
+ * Slice 5 — phonological-loop working memory buffer.
+ *
+ * Setters/clear are simple void → None bindings; the state getter
+ * returns a dict with the surface form + trace count, and the diag
+ * getter returns a richer dict with the configured tunables + summary
+ * stats.
+ * ================================================================= */
+
+static PyObject* Brain_set_phonological_loop_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_phonological_loop_enabled(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_phonological_loop_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_phonological_loop_decay(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float decay = 0.15f;
+    if (!PyArg_ParseTuple(args, "f", &decay)) return NULL;
+    if (nimcp_brain_set_phonological_loop_decay(self->brain, decay) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_phonological_loop_decay failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_clear_phonological_loop(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    if (nimcp_brain_clear_phonological_loop(self->brain) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "clear_phonological_loop failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_phonological_loop_state(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    char buf[512];
+    uint32_t trace_count = 0;
+    if (nimcp_brain_get_phonological_loop_state(self->brain, buf, sizeof(buf),
+                                                  &trace_count) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_phonological_loop_state failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "buffer",      PyUnicode_FromString(buf));
+    PyDict_SetItemString(d, "trace_count", PyLong_FromUnsignedLong(trace_count));
+    return d;
+}
+
+static PyObject* Brain_get_phonological_loop_diag(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    nimcp_phonological_loop_diag_t diag = {0};
+    if (nimcp_brain_get_phonological_loop_diag(self->brain, &diag) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_phonological_loop_diag failed");
+        return NULL;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "enabled",            PyBool_FromLong(diag.enabled ? 1 : 0));
+    PyDict_SetItemString(d, "buffer_len",         PyLong_FromUnsignedLong(diag.buffer_len));
+    PyDict_SetItemString(d, "trace_count",        PyLong_FromUnsignedLong(diag.trace_count));
+    PyDict_SetItemString(d, "trace_capacity",     PyLong_FromUnsignedLong(diag.trace_capacity));
+    PyDict_SetItemString(d, "max_words",          PyLong_FromUnsignedLong(diag.max_words));
+    PyDict_SetItemString(d, "decay_rate",         PyFloat_FromDouble((double)diag.decay_rate));
+    PyDict_SetItemString(d, "avg_trace_strength", PyFloat_FromDouble((double)diag.avg_trace_strength));
+    PyDict_SetItemString(d, "last_refresh_ms",    PyLong_FromUnsignedLongLong((unsigned long long)diag.last_refresh_ms));
+    return d;
+}
+
+/* =================================================================
+ * Slice 7 — cerebellar prediction-correction in motor + prosody stages.
+ *
+ * Three Python entry points:
+ *   set_cerebellar_correction_enabled(bool) -> None
+ *   set_cerebellar_correction_strength(float) -> None    (clamps [0,1])
+ *   get_cerebellar_diag() -> dict
+ *
+ * Diag dict keys: enabled, strength, correction_pending, pe_threshold,
+ * predictions_made, corrections_applied, last_pe_norm. Matches the
+ * nimcp_cerebellar_diag_t struct from include/nimcp.h.
+ * ================================================================= */
+
+static PyObject* Brain_set_cerebellar_correction_enabled(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_cerebellar_correction_enabled(self->brain,
+                                                       enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cerebellar_correction_enabled failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_cerebellar_correction_enabled(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_cerebellar_correction_enabled(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cerebellar_correction_enabled failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
+static PyObject* Brain_set_cerebellar_correction_strength(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    double strength = 0.0;
+    if (!PyArg_ParseTuple(args, "d", &strength)) return NULL;
+    if (nimcp_brain_set_cerebellar_correction_strength(self->brain,
+                                                       (float)strength) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cerebellar_correction_strength failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_set_cerebellar_pe_threshold(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    double threshold = 0.0;
+    if (!PyArg_ParseTuple(args, "d", &threshold)) return NULL;
+    if (nimcp_brain_set_cerebellar_pe_threshold(self->brain,
+                                                (float)threshold) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_cerebellar_pe_threshold failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_cerebellar_diag(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    nimcp_cerebellar_diag_t d;
+    memset(&d, 0, sizeof(d));
+    if (nimcp_brain_get_cerebellar_diag(self->brain, &d) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_cerebellar_diag failed");
+        return NULL;
+    }
+    PyObject* dict = PyDict_New();
+    if (!dict) return NULL;
+    PyDict_SetItemString(dict, "enabled",
+                        PyBool_FromLong(d.enabled ? 1 : 0));
+    PyDict_SetItemString(dict, "strength",
+                        PyFloat_FromDouble((double)d.strength));
+    PyDict_SetItemString(dict, "correction_pending",
+                        PyBool_FromLong(d.correction_pending ? 1 : 0));
+    PyDict_SetItemString(dict, "pe_threshold",
+                        PyFloat_FromDouble((double)d.pe_threshold));
+    PyDict_SetItemString(dict, "predictions_made",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.predictions_made));
+    PyDict_SetItemString(dict, "corrections_applied",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.corrections_applied));
+    /* S7-H3: disambiguated semantics. correction_stages_applied is the
+     * alias of corrections_applied (per-stage, bumped 2x/iter if both
+     * motor+prosody correct); correction_iters_applied is the new
+     * per-iter counter (bumped at most once per recurrent iter). */
+    PyDict_SetItemString(dict, "correction_stages_applied",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.correction_stages_applied));
+    PyDict_SetItemString(dict, "correction_iters_applied",
+                        PyLong_FromUnsignedLongLong((unsigned long long)d.correction_iters_applied));
+    PyDict_SetItemString(dict, "last_pe_norm",
+                        PyFloat_FromDouble((double)d.last_pe_norm));
+    return dict;
 }
 
 /* Audit-2 B2: TB-10 min_turns single-uint32 setter. Closes the surface
@@ -11785,6 +12792,10 @@ static PyMethodDef Brain_methods[] = {
     // Grounded-language diagnostics (collapse triage)
     {"get_grounded_language_diagnostics", (PyCFunction)Brain_get_grounded_language_diagnostics, METH_NOARGS,
      "Get grounded-language diagnostic snapshot: get_grounded_language_diagnostics() -> dict"},
+    {"prune_lang_bindings", (PyCFunction)Brain_prune_lang_bindings, METH_VARARGS | METH_KEYWORDS,
+     "One-shot maintenance: keep top-K bindings per word by strength: prune_lang_bindings(max_bindings_per_word=128) -> int dropped"},
+    {"connect_lang_bridge_neuromod", (PyCFunction)Brain_connect_lang_bridge_neuromod, METH_NOARGS,
+     "Runtime fix for bridge->neuromod NULL state. Re-connect the SNN language bridge to the neuromodulator system so the DA gate fires. No-args, no-return; raises on missing bridge/neuromod."},
     {"get_bigram_spectral_metrics", (PyCFunction)Brain_get_bigram_spectral_metrics, METH_NOARGS,
      "PA-4+ FFT-based bigram spectral diagnostics: get_bigram_spectral_metrics() -> dict {peak_strength, low_freq_concentration, spectral_entropy}"},
     {"get_top_phrases", (PyCFunction)Brain_get_top_phrases, METH_VARARGS | METH_KEYWORDS,
@@ -11833,6 +12844,14 @@ static PyMethodDef Brain_methods[] = {
      "PA-4: walk a text and apply a next-token update for each (w_t, w_{t+1}) bigram — learn_text_bigrams(text, lr=0.05) -> int. Returns the count of applied bigram updates. If trigram learning is enabled (set_trigram_learning_enabled), each step also walks (w_t, w_{t+1}) → w_{t+2} at half lr."},
     {"set_trigram_learning_enabled", (PyCFunction)Brain_set_trigram_learning_enabled, METH_VARARGS,
      "TA-4: toggle trigram next-token learning — set_trigram_learning_enabled(enabled: bool) -> None. Default OFF (preserves PA-4 bigram-only behavior)."},
+    {"set_ltd_margin", (PyCFunction)Brain_set_ltd_margin, METH_VARARGS,
+     "Margin gate for the SNN bridge's next-token LTD — set_ltd_margin(margin: float) -> None. LTD fires only when topK[0].confidence >= margin * topK[target_rank].confidence (and target is in topK). margin=1.0 reproduces legacy unconditional LTD; 1.5 (default) requires false_winner to lead by 50%; >=10 effectively disables LTD. Clamped to [1.0, 100.0]; raises RuntimeError on out-of-range. Runtime-only; not persisted."},
+    {"reset_lang_bridge_weights", (PyCFunction)Brain_reset_lang_bridge_weights, METH_VARARGS,
+     "Re-randomize every existing SNN-language bridge binding weight to uniform(w_min, w_max) — reset_lang_bridge_weights(w_min: float, w_max: float) -> int. Returns number of bindings reset. Breaks rank-1 / homogenized collapse where all in-vocab prompts produce the same comprehend output. Use after diagnosing pairwise cos(comprehend(p_i), comprehend(p_j)) ≈ 1.0. Calibrated seed range: 0.001..0.05. Bindings themselves (which (concept, word) pairs exist) are preserved; only weights change."},
+    {"reset_lexicon_distributional", (PyCFunction)Brain_reset_lexicon_distributional, METH_VARARGS,
+     "Reset every lexicon entry's distributional embedding — reset_lexicon_distributional(zero_and_mark_uninit: bool, jitter: float) -> int. zero_and_mark_uninit=True zeros every context_vector + flags uninitialized (clean reset). False re-randomizes uniformly in [-jitter, +jitter] keeping initialized=True. Use when comprehend cos ≈ 1.0 across distinct prompts indicates the distributional channel has homogenized. Returns the number of lexicon entries touched."},
+    {"reset_concept_grounding", (PyCFunction)Brain_reset_concept_grounding, METH_NOARGS,
+     "Reset concept grounding for a clean re-grounding pass — reset_concept_grounding() -> int. Clears every lexicon entry's concept bindings AND wipes the brain's semantic_memory concept store (frees capacity). Returns the number of bindings cleared. Use after the grounding-feature fix to recover from concept collapse (comprehend cosine ≈ 1.0): the prior pipeline fed a prefix-dominated feature vector to find_or_create_concept (0.85 cosine dedup), collapsing every word onto one concept and filling the store to capacity. Re-grounding then rebuilds a diverse store. NOTE: semantic_memory is brain-wide; reset drops all concepts (stale ids resolve to NULL gracefully)."},
     /* Audit fix: campaign feature setters accessible from Python + daemon RPC. */
     {"set_da_modulation_enabled", (PyCFunction)Brain_set_da_modulation_enabled, METH_VARARGS,
      "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},
@@ -11843,6 +12862,8 @@ static PyMethodDef Brain_methods[] = {
     {"echo_and_correct", (PyCFunction)Brain_echo_and_correct, METH_VARARGS | METH_KEYWORDS,
      "Supervised production-side learning: comprehend(parent_text) → strengthen (active concepts → target_word) bindings.\n"
      "echo_and_correct(parent_text: str, target_word: str, lr_scale: float = 1.0) -> int (pairs strengthened, 0 if target not registered)."},
+    {"produce_cascade_recurrent", (PyCFunction)Brain_produce_cascade_recurrent, METH_VARARGS | METH_KEYWORDS,
+     "Recurrent / biological-fidelity variant of produce_cascade — produce_cascade_recurrent(prompt: Optional[str]=None, max_iters: int=8, self_match_eps: float=0.01) -> dict. Iterates the full 15-stage cascade until the utterance + self_match converge. Mimics the settling dynamics of real cortex. Returns dict with 'utterance', 'word_count', 'confidence', 'settling_steps'. Slice 1 of the recurrent-language-architecture rewrite (see docs/claude/recurrent-language-architecture.md)."},
     {"produce_cascade", (PyCFunction)Brain_produce_cascade, METH_VARARGS | METH_KEYWORDS,
      "Phase 2A multi-region production cascade: drive + goal + listener + episodic → content_intent → bridge.\n"
      "produce_cascade(prompt: str | None = None) -> dict {'utterance': str, 'word_count': int, 'confidence': float}."},
@@ -11854,6 +12875,14 @@ static PyMethodDef Brain_methods[] = {
      "TB-6: toggle sentence-boundary segmentation in comprehend — set_sentence_segmentation_enabled(enabled: bool) -> None. Default OFF."},
     {"set_length_control", (PyCFunction)Brain_set_length_control, METH_VARARGS,
      "TB-7: produce length control — set_length_control(min_words: int, max_words: int) -> None. 0/0 = disabled (legacy)."},
+    {"set_lateral_inhibition_enabled", (PyCFunction)Brain_set_lateral_inhibition_enabled, METH_VARARGS,
+     "Slice 4: toggle competitive recurrent decode — set_lateral_inhibition_enabled(enabled: bool) -> None. Default OFF. When ON, the bridge's per-word decode swaps argmax for recurrent competition over top-K candidates (cohort-model lexical selection). See docs/claude/recurrent-language-architecture.md."},
+    {"get_lateral_inhibition_enabled", (PyCFunction)Brain_get_lateral_inhibition_enabled, METH_NOARGS,
+     "Slice 4: read the lateral-inhibition runtime flag — get_lateral_inhibition_enabled() -> bool."},
+    {"set_lateral_inhibition_params", (PyCFunction)Brain_set_lateral_inhibition_params, METH_VARARGS,
+     "Slice 4: tune lateral-inhibition dynamics — set_lateral_inhibition_params(gain_self: float, gain_inhibit: float, micro_steps: int) -> None. Validation: gain_self/gain_inhibit in (0, 100]; micro_steps in [1, 200]. Defaults 1.5 / 0.026 / 20."},
+    {"get_lateral_inhibition_params", (PyCFunction)Brain_get_lateral_inhibition_params, METH_NOARGS,
+     "Slice 4: read lateral-inhibition tunables — get_lateral_inhibition_params() -> {'gain_self': float, 'gain_inhibit': float, 'micro_steps': int}."},
     {"set_speech_act_classification_enabled", (PyCFunction)Brain_set_speech_act_classification_enabled, METH_VARARGS,
      "TB-9: toggle speech-act intent classification — set_speech_act_classification_enabled(enabled: bool) -> None. Default OFF."},
     {"set_topic_shift_enabled", (PyCFunction)Brain_set_topic_shift_enabled, METH_VARARGS,
@@ -11868,6 +12897,65 @@ static PyMethodDef Brain_methods[] = {
      "Wave 2 Item #10: configure self-train EMA + lr scale — set_cascade_self_train_tunables(alpha: float, lr_scale: float) -> None. alpha ∈ [0,1] (0 freezes baseline), lr_scale ∈ [0,10] (0 disables plasticity)."},
     {"get_cascade_self_train_state", (PyCFunction)Brain_get_cascade_self_train_state, METH_NOARGS,
      "Wave 2 Item #10: read self-train state — returns {'enabled': bool, 'baseline': float, 'alpha': float, 'lr_scale': float}."},
+    {"set_last_external_reward", (PyCFunction)Brain_set_last_external_reward, METH_VARARGS,
+     "Slice D: set the most-recent external reward signal for cascade self-train gating — set_last_external_reward(reward: float) -> None. Clamped [-1, +1]. Cascade Stage 14 (self-train) reads brain->last_external_reward and gates plasticity on freshness (default 5s TTL) and threshold (default 0.5). Called by the caregiver-critic / RL pipeline."},
+    {"apply_reward_learning", (PyCFunction)Brain_apply_reward_learning, METH_VARARGS,
+     "Slice C: drive reward-modulated plasticity — apply_reward_learning(reward: float) -> None. Clamped [-1, +1]. Distinct from set_last_external_reward (which only stamps a field for the cascade gate); this actually propagates the reward through the three-factor STDP machinery. Negative reward drives anti-Hebbian LTD via Slice F's negative-DA path."},
+    {"set_cascade_self_train_reward_gating", (PyCFunction)Brain_set_cascade_self_train_reward_gating, METH_VARARGS,
+     "Slice D: configure the self-train reward threshold + TTL — set_cascade_self_train_reward_gating(reward_threshold: float, reward_ttl_us: int) -> None. Either argument <= 0 leaves the brain's value unchanged. Defaults (0.5 threshold, 5,000,000 µs TTL) are applied in-stage when both fields remain calloc-zero."},
+    {"get_cascade_self_train_gate_counters", (PyCFunction)Brain_get_cascade_self_train_gate_counters, METH_NOARGS,
+     "Slice D: snapshot the three reward-gating counters — returns {'skipped_stale': int, 'skipped_below_threshold': int, 'fired': int}. Surfaced in lang_status under stats.cascade.self_train."},
+    {"get_concept_registry_stats", (PyCFunction)Brain_get_concept_registry_stats, METH_NOARGS,
+     "Walkthrough-2: snapshot the cross-modal concept_registry — returns {'total_referents': int, 'total_modality_bindings': int}. Verifies the bind hook in brain_learn_vector is firing during training. Surfaced in lang_status under stats.concept_registry."},
+    /* Slice E (Option-1 rebuild) — developmental stage scaffolding. */
+    {"set_active_stage", (PyCFunction)Brain_set_active_stage, METH_VARARGS,
+     "Slice E: set the brain's current developmental stage — set_active_stage(stage: int) -> None. Out-of-range clamps to the highest defined row. Cascade Stage 9 (motor) reads this and enforces the stage table's min/max word-count window."},
+    {"get_active_stage", (PyCFunction)Brain_get_active_stage, METH_NOARGS,
+     "Slice E: read the brain's current developmental stage — returns int."},
+    {"set_vocab_mask_for_stage", (PyCFunction)Brain_set_vocab_mask_for_stage, METH_VARARGS,
+     "Slice E: install / refresh the per-stage lexicon visibility mask — set_vocab_mask_for_stage(stage: int) -> None. Only the first max_visible_vocab lexicon entries (in insertion order, a frequency proxy at the early curriculum) are visible for production."},
+    {"clear_vocab_mask", (PyCFunction)Brain_clear_vocab_mask, METH_NOARGS,
+     "Slice E: drop the active vocabulary mask — every lexicon entry becomes visible for production."},
+    {"get_stage_constraints", (PyCFunction)Brain_get_stage_constraints, METH_VARARGS,
+     "Slice E: snapshot the stage table row for a given stage — get_stage_constraints(stage: int) -> dict{'stage', 'max_visible_vocab', 'min_produce_words', 'max_produce_words', 'allowed_grammar_mask'}."},
+    {"get_cascade_counters", (PyCFunction)Brain_get_cascade_counters, METH_NOARGS,
+     "Batch K: snapshot cascade lifetime counters — returns a dict with total_runs, runs_with_prompt, runs_spontaneous, runs_fatal_error, stage_invocations[15], stage_mask_skips[15], stage_failures[15], plus per-event counters (pragmatics_indirect_overrides, wernicke_lexicon_miss, speech_repair_applied, self_train_steps_matched/no_bindings, self_produced_events_fired, discourse_ring_pushes_user/_self)."},
+    {"reset_cascade_counters", (PyCFunction)Brain_reset_cascade_counters, METH_NOARGS,
+     "Batch K: zero all cascade lifetime counters atomically (per-field)."},
+    {"get_cascade_fep_metrics", (PyCFunction)Brain_get_cascade_fep_metrics, METH_NOARGS,
+     "Slice 3: snapshot the FEP prediction-error trajectory of the most recent produce_cascade_recurrent call. Returns dict with iterations_run, pe_total_trace (per-iter list), pe_total_initial/terminal/min/max/mean, pe_decay_rate ((init-term)/init; positive = system reduced surprise across iters), converged (bool — did the loop exit on convergence vs max_iters). Zero-init when the recurrent loop has never been called."},
+    {"set_respond_via_cascade", (PyCFunction)Brain_set_respond_via_cascade, METH_VARARGS,
+     "Audit Cat A #1: opt-in cascade orchestrator path inside nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough). When ON, respond runs the full 15-stage cascade. Latency cost ~10x vs the bridge-only path."},
+    {"get_respond_via_cascade", (PyCFunction)Brain_get_respond_via_cascade, METH_NOARGS,
+     "Read the current respond_via_cascade flag."},
+    {"set_thalamic_gate_enabled", (PyCFunction)Brain_set_thalamic_gate_enabled, METH_VARARGS,
+     "Slice 6 — toggle thalamic gating of cascade-stage bandwidth — set_thalamic_gate_enabled(enabled: bool) -> None. Default OFF preserves byte-identical legacy behavior. When ON, the cascade derives per-stage gate weights from arousal (NE) + attention (ACh) state and scales each stage's scaleable contributions accordingly. Models the pulvinar's role as central relay + gain controller."},
+    {"get_thalamic_gate_enabled", (PyCFunction)Brain_get_thalamic_gate_enabled, METH_NOARGS,
+     "Slice 6 — read the master thalamic_gate_enabled flag."},
+    {"set_thalamic_gate_for_stage", (PyCFunction)Brain_set_thalamic_gate_for_stage, METH_VARARGS,
+     "Slice 6 — manual override of a single stage's thalamic gate weight — set_thalamic_gate_for_stage(stage_idx: int, weight: float) -> None. stage_idx is 0..14 (cascade_stage_mask_t bit position). weight < 0 (or NaN/Inf) clears the manual override and returns to auto-derived. weight in [0, 1] sets and locks. Useful for ablation experiments."},
+    {"get_thalamic_gates", (PyCFunction)Brain_get_thalamic_gates, METH_NOARGS,
+     "Slice 6 — snapshot of current thalamic gate state — get_thalamic_gates() -> dict. Returns {'enabled': bool, 'gates': {'wernicke': float, 'drive': float, ...}, 'weights': [...15 floats...], 'overrides': [...15 bools...], 'stage_names': [...15 strs...]}. Stage names match the cascade_stage_mask_t bit order."},
+    {"set_phonological_loop_enabled", (PyCFunction)Brain_set_phonological_loop_enabled, METH_VARARGS,
+     "Slice 5: enable Baddeley's phonological-loop working memory buffer — set_phonological_loop_enabled(enabled: bool) -> None. When enabled, the recurrent cascade decays traces between iterations, merges lexical output into the buffer, and feeds the buffer's surface form (words with trace >= 0.3) to stage_syntactic + stage_self_comp instead of the one-shot lexical output. Default OFF: when off, recurrent cascade behaves byte-identically to Slice 1+2."},
+    {"set_phonological_loop_decay", (PyCFunction)Brain_set_phonological_loop_decay, METH_VARARGS,
+     "Slice 5: per-iteration trace decay rate — set_phonological_loop_decay(decay: float) -> None. Clamped to [0.0, 0.5]; NaN/Inf coerce to default 0.15."},
+    {"clear_phonological_loop", (PyCFunction)Brain_clear_phonological_loop, METH_NOARGS,
+     "Slice 5: drop every trace + word, clear surface buffer — clear_phonological_loop() -> None. Use between unrelated prompts to ensure a clean start; the recurrent cascade also clears the loop on entry."},
+    {"get_phonological_loop_state", (PyCFunction)Brain_get_phonological_loop_state, METH_NOARGS,
+     "Slice 5: read-only inspection of the loop — get_phonological_loop_state() -> dict('buffer': str, 'trace_count': int). buffer is the surface form (words with trace >= 0.3, space-separated)."},
+    {"get_phonological_loop_diag", (PyCFunction)Brain_get_phonological_loop_diag, METH_NOARGS,
+     "Slice 5: full diagnostic snapshot — get_phonological_loop_diag() -> dict with enabled/buffer_len/trace_count/trace_capacity/max_words/decay_rate/avg_trace_strength/last_refresh_ms."},
+    {"set_cerebellar_correction_enabled", (PyCFunction)Brain_set_cerebellar_correction_enabled, METH_VARARGS,
+     "Slice 7: enable cerebellar prediction-correction in motor + prosody cascade stages — set_cerebellar_correction_enabled(enabled: bool) -> None. When ON, the existing cerebellum adapter (cerebellum_predict_outcome / cerebellum_update_forward_model / cerebellum_broadcast_error) is queried before and after motor + prosody to predict + learn the upcoming pattern. Default OFF; when off the stages run byte-identically to master. Requires brain->cerebellum (created at init); minimal-init brains silently no-op."},
+    {"get_cerebellar_correction_enabled", (PyCFunction)Brain_get_cerebellar_correction_enabled, METH_NOARGS,
+     "Read the current cerebellar correction flag."},
+    {"set_cerebellar_correction_strength", (PyCFunction)Brain_set_cerebellar_correction_strength, METH_VARARGS,
+     "Slice 7: bias mix factor when the recurrent loop flags correction_pending — set_cerebellar_correction_strength(strength: float) -> None. Clamped to [0, 1]. NaN/Inf coerce to 0.5."},
+    {"set_cerebellar_pe_threshold", (PyCFunction)Brain_set_cerebellar_pe_threshold, METH_VARARGS,
+     "Slice 7: PE-norm threshold above which the recurrent cascade flags correction_pending — set_cerebellar_pe_threshold(threshold: float) -> None. The cascade PE-norm is the sum of two cosine-distance norms (motor + prosody), each in [0,1], so the meaningful range is [0, 2]. Clamped to [0, 2]. NaN/Inf coerce to default 0.20."},
+    {"get_cerebellar_diag", (PyCFunction)Brain_get_cerebellar_diag, METH_NOARGS,
+     "Slice 7: snapshot of cerebellar prediction-correction diagnostics — get_cerebellar_diag() -> dict(enabled, strength, correction_pending, pe_threshold, predictions_made, corrections_applied, last_pe_norm). Cheap (no atomics — cascade is single-caller-at-a-time by contract)."},
     {"set_dialect", (PyCFunction)Brain_set_dialect, METH_VARARGS,
      "Tier-1 #14: set dialect / accent conditioning string — set_dialect(dialect: str | None) -> None. None or empty clears the dialect. Truncated to GL_MAX_DIALECT_LEN-1 chars internally."},
     {"learn_next_token_triple", (PyCFunction)Brain_learn_next_token_triple, METH_VARARGS,

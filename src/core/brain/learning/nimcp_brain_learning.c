@@ -38,6 +38,7 @@
 #include "memory/nimcp_memory_store.h"
 /* Cognitive module types for training wiring */
 #include "cognitive/recursive/nimcp_rcog_types.h"
+#include "language/nimcp_concept_registry.h"  /* Slice B */
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/nimcp_meta_learning.h"
@@ -339,6 +340,17 @@ void brain_train_cognitive_subsystems_sequential(
     if (brain->grounded_lang && label && label[0]) {
         grounded_language_learn_from_text(brain->grounded_lang, label);
         grounded_language_learn_syntax(brain->grounded_lang, label);
+        /* Bridge bigram + trigram STDP. learn_from_text/learn_syntax above
+         * only touch the grounded-language lexicon (distributional context
+         * vectors + _gl_track_phrases templates) — they never reach the SNN
+         * language bridge. learn_text_bigrams walks (prev,next) and, when
+         * trigram learning is enabled, (a,b)->c triples through the bridge,
+         * which is what moves total_trigram_updates off zero during training.
+         * Pre-fix the only callers were the API and the cascade self-train
+         * path, neither of which runs in the per-step training loop. lr is
+         * deliberately small — this fires on every labelled training step. */
+        (void)grounded_language_learn_text_bigrams(brain->grounded_lang,
+                                                    label, 0.02f);
         brain->cognitive_stats.grounded_lang_steps++;
     }
 
@@ -1154,6 +1166,37 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             NIMCP_LOGGING_WARN("brain_learn_vector: NaN/Inf in target[%u] = %f", i, target[i]);
             set_error("Invalid target value at index %u: NaN or Inf", i);
             return -1.0f;
+        }
+    }
+
+    /* Slice B (Option 1 architectural rebuild) — cross-modal population
+     * binding. When the caller supplies a `label`, intern both the label
+     * (text referent) and the feature vector (visual referent — the
+     * generic training path is the canonical place to bind any feature
+     * stream to its label) and merge their concept_pop_ids under the
+     * registry's union-find.
+     *
+     * The visual-vs-audio distinction is at the modality CAP for the
+     * fingerprint hashmap; the union-find resolves them to one canonical
+     * id regardless of which side allocated first.
+     *
+     * For now we use the visual table because brain_learn_vector is the
+     * primary training entrypoint for both image and generic feature
+     * tensors. Dedicated audio-only or text-only entrypoints can call
+     * concept_registry_intern_audio / _text directly. The binding is
+     * idempotent — repeated (features, label) pairs converge on the same
+     * pop_id.
+     *
+     * NULL-tolerant: silently skipped if the registry never came up. */
+    if (brain->concept_registry && label && label[0] != '\0') {
+        concept_registry_t* reg =
+            (concept_registry_t*)brain->concept_registry;
+        concept_pop_id_t vid =
+            concept_registry_intern_visual(reg, features, (size_t)num_features);
+        concept_pop_id_t tid =
+            concept_registry_intern_text(reg, label);
+        if (vid != CONCEPT_POP_ID_INVALID && tid != CONCEPT_POP_ID_INVALID) {
+            concept_registry_bind_modalities(reg, vid, tid);
         }
     }
 
@@ -3231,6 +3274,7 @@ sequential_training:
         (strstr(label, "counterfactual") || strstr(label, "imagination"))) {
         extern void* imagination_begin_scenario(void*, int, const void*);
         extern int imagination_step_scenario(void*, void*);
+        extern int imagination_end_scenario(void*, void*);
 
         /* Lightweight goal: just mode + priority, no tensor constraints */
         struct { int mode; void* t1; void* t2; void* t3; float p; uint64_t d; void* c; } goal = {0};
@@ -3243,6 +3287,10 @@ sequential_training:
             for (int sim = 0; sim < 3; sim++) {
                 imagination_step_scenario(brain->imagination, scenario);
             }
+            /* Workspace caps at 64 active scenarios. Without this release,
+             * every "counterfactual"/"imagination" label leaks a slot and
+             * after 64 labels begin_scenario throws "workspace full". */
+            imagination_end_scenario(brain->imagination, scenario);
         }
     }
 

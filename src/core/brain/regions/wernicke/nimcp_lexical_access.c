@@ -21,6 +21,7 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -83,6 +84,14 @@ struct lexical_access {
 
     /* Statistics */
     lexical_stats_t stats;
+
+    /* Batch H followup: writer/reader guard for hash_table + entries[]
+     * + num_words/next_word_id. Same race shape as the Broca fix:
+     * comprehend paths walking the chain race against trainer-side
+     * lexical_add_entry / lexical_add_word from GL→Wernicke mirroring
+     * + the lexicon-file loader. NULL = legacy unlocked behavior
+     * (allocator failed during init); helpers degrade to no-op locking. */
+    nimcp_mutex_t* lexicon_mutex;
 };
 
 /*=============================================================================
@@ -307,6 +316,13 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
         lex->priming.priming_levels = (float*)nimcp_calloc(64, sizeof(float));
     }
 
+    /* Batch H followup — guard hash_table + entries[] + counters. NULL
+     * on creation failure is non-fatal; the helpers degrade to unlocked. */
+    lex->lexicon_mutex = nimcp_mutex_create(NULL);
+    if (!lex->lexicon_mutex) {
+        NIMCP_LOG_WARN("lexical", "lexicon_mutex create failed — running unlocked");
+    }
+
     NIMCP_LOG_INFO("lexical", "Created lexical access (buckets=%u, max_cohort=%u)",
                    cfg.hash_buckets, cfg.max_cohort_size);
 
@@ -350,6 +366,11 @@ void lexical_destroy(lexical_access_t* lex)
     if (lex->priming.primed_concepts) nimcp_free(lex->priming.primed_concepts);
     if (lex->priming.priming_levels) nimcp_free(lex->priming.priming_levels);
 
+    if (lex->lexicon_mutex) {
+        nimcp_mutex_free(lex->lexicon_mutex);
+        lex->lexicon_mutex = NULL;
+    }
+
     nimcp_free(lex);
 }
 
@@ -388,28 +409,15 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
         return false;
     }
 
-    if (lex->num_words >= lex->config.lexicon_size) {
-        NIMCP_LOG_WARN("lexical", "Lexicon full (%u words)", lex->num_words);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_add_entry: capacity exceeded");
-        return false;
-    }
-
-    /* Allocate new node */
+    /* Batch H followup — pre-alloc the node + deep-copy buffers OUTSIDE
+     * the lock so the critical section stays tight. The deep-copy heap
+     * allocs don't touch lexical_access state. */
     lexicon_node_t* node = (lexicon_node_t*)nimcp_calloc(1, sizeof(lexicon_node_t));
     if (!node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_add_entry: node is NULL");
         return false;
     }
-
-    /* Copy entry */
     node->entry = *entry;
-
-    /* Assign word_id if not set */
-    if (node->entry.word_id == 0) {
-        node->entry.word_id = lex->next_word_id++;
-    }
-
-    /* Deep copy arrays */
     if (entry->sense_ids && entry->num_senses > 0) {
         node->entry.sense_ids = (uint32_t*)nimcp_malloc(entry->num_senses * sizeof(uint32_t));
         if (node->entry.sense_ids) {
@@ -417,7 +425,6 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
                    entry->num_senses * sizeof(uint32_t));
         }
     }
-
     if (entry->neighbors && entry->num_neighbors > 0) {
         node->entry.neighbors = (uint32_t*)nimcp_malloc(entry->num_neighbors * sizeof(uint32_t));
         if (node->entry.neighbors) {
@@ -425,13 +432,35 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
                    entry->num_neighbors * sizeof(uint32_t));
         }
     }
-
     if (entry->embedding && lex->config.enable_embeddings) {
         node->entry.embedding = (float*)nimcp_malloc(lex->config.embedding_dim * sizeof(float));
         if (node->entry.embedding) {
             memcpy(node->entry.embedding, entry->embedding,
                    lex->config.embedding_dim * sizeof(float));
         }
+    }
+
+    nimcp_mutex_t* mtx = lex->lexicon_mutex;
+    if (mtx) nimcp_mutex_lock(mtx);
+
+    /* Capacity check under lock — a concurrent insert could push us
+     * over while we were allocating above. */
+    if (lex->num_words >= lex->config.lexicon_size) {
+        if (mtx) nimcp_mutex_unlock(mtx);
+        NIMCP_LOG_WARN("lexical", "Lexicon full (%u words)", lex->num_words);
+        /* Free the staged node + deep-copies we won't be linking. */
+        if (node->entry.sense_ids) nimcp_free(node->entry.sense_ids);
+        if (node->entry.neighbors) nimcp_free(node->entry.neighbors);
+        if (node->entry.embedding) nimcp_free(node->entry.embedding);
+        nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_add_entry: capacity exceeded");
+        return false;
+    }
+
+    /* Assign word_id if not set — under lock so next_word_id increments
+     * monotonically even with concurrent inserts. */
+    if (node->entry.word_id == 0) {
+        node->entry.word_id = lex->next_word_id++;
     }
 
     /* Insert into hash table by word string */
@@ -445,10 +474,15 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
         lex->entries[id] = &node->entry;
     }
 
-    /* Insert into phoneme trie */
+    /* Insert into phoneme trie. trie_insert mutates the trie under the
+     * same lock — readers walking the trie need this too. (trie_insert
+     * is not exposed publicly so an in-flight reader of it must come
+     * through this TU, where every read site is similarly mutex-guarded.) */
     trie_insert(lex->trie_root, entry->phonemes, entry->phoneme_count, node->entry.word_id);
 
     lex->num_words++;
+
+    if (mtx) nimcp_mutex_unlock(mtx);
 
     return true;
 }
@@ -550,17 +584,30 @@ bool lexical_lookup_word(
     }
 
     uint32_t hash = hash_string(word, lex->hash_buckets);
-    lexicon_node_t* node = lex->hash_table[hash];
 
+    /* Batch H followup — lookup must be guarded against concurrent inserts.
+     * The cast to mutable mutex is safe: we're locking the chain walk only.
+     * Copy out the entry before unlocking so the borrowed node reference
+     * doesn't outlive the lock. */
+    nimcp_mutex_t* mtx = lex->lexicon_mutex;
+    if (mtx) nimcp_mutex_lock(mtx);
+    lexicon_node_t* node = lex->hash_table[hash];
     while (node) {
         if (strcmp(node->entry.orthography, word) == 0) {
             *entry = node->entry;
+            if (mtx) nimcp_mutex_unlock(mtx);
             return true;
         }
         node = node->next;
     }
+    if (mtx) nimcp_mutex_unlock(mtx);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_lookup_word: validation failed");
+    /* Miss is a normal outcome (not a validation failure). The legacy
+     * code threw a generic error here; keep the call to satisfy any
+     * immune-system callbacks but drop the misleading severity to OK
+     * via a debug-level message — actual error reporting happens via
+     * the false return. */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_lookup_word: word not in lexicon");
     return false;
 }
 

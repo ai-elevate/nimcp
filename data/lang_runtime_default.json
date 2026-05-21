@@ -1,0 +1,48 @@
+{
+  "_comment": "CROSS Wave-3 (2026-05-19) — default runtime language-architecture config applied by brain_daemon.py after every brain create/load. Every flag below is RUNTIME-ONLY in the C library (not persisted in nimcp_brain_save). This file is the source of truth for how the cascade behaves on daemon start. Override per-deployment by placing a JSON at /etc/athena/runtime_lang_config.json or pointing the LANG_CONFIG env var at an alternate file. Set LANG_CONFIG=off to skip the apply entirely.",
+  "_design_doc": "docs/claude/recurrent-language-architecture.md",
+
+  "_slice_1": "iterative cascade convergence — orchestrator only, no flag here; max_iters is per-call",
+
+  "_slice_2_arcuate": "Wernicke<->Broca arcuate feedback. No public setter on this branch (lives on brain->arcuate_feedback_strength, written only by the recurrent loop itself). Listed here for documentation.",
+
+  "respond_via_cascade": true,
+  "cascade_self_train_enabled": true,
+  "cascade_self_train_tunables": { "alpha": 0.05, "lr_scale": 1.0 },
+
+  "trigram_learning_enabled": true,
+  "ltd_margin": 1.5,
+  "comprehend_stdp_enabled": true,
+  "da_modulation_enabled": true,
+  "da_modulation_gain": 1.0,
+  "reconsolidation_enabled": false,
+  "reconsolidation_decay": 0.05,
+
+  "_slice_4_lateral_inhibition": "K-WTA over lexical cohort. Default ON with divisive-norm tunables p=2.0 (gain_self repurposed as exponent) and eps=1e-6 (gain_inhibit repurposed as denominator floor). See S4-C1 in cascade.c.",
+  "lateral_inhibition_enabled": true,
+  "lateral_inhibition_params": {
+    "gain_self": 2.0,
+    "gain_inhibit": 0.000001,
+    "micro_steps": 20
+  },
+
+  "_slice_5_phonological_loop": "Baddeley working-memory phonological store + articulatory rehearsal. Default ON with biologically-reasonable decay/threshold.",
+  "phonological_loop_enabled": true,
+  "phonological_loop_decay": 0.15,
+  "phonological_loop_threshold": 0.3,
+
+  "_slice_6_thalamic_gates": "Per-stage pulvinar-style gain. Default ON; the recurrent loop computes weights from arousal+attention each cascade run. Manual overrides via thalamic_gate_overrides{stage_idx: weight}.",
+  "thalamic_gate_enabled": true,
+  "thalamic_gate_overrides": {},
+
+  "_slice_7_cerebellar_correction": "Predict + climbing-fiber LTD via existing cerebellum adapter. Default OFF until forward-model has had enough training to clear the confidence>0.3 gate (S7-H2). Operators flip on once cereb_motor_confidence stabilizes >0.3 in lang_status.",
+  "cerebellar_correction_enabled": false,
+  "cerebellar_correction_strength": 0.5,
+  "cerebellar_pe_threshold": 0.2,
+
+  "sentence_segmentation_enabled": true,
+  "speech_act_classification_enabled": true,
+  "topic_shift_enabled": true,
+  "topic_shift_threshold": 0.6,
+  "topic_shift_min_turns": 3
+}

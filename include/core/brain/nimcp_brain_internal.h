@@ -37,6 +37,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 #include "plasticity/adaptive/nimcp_adaptive.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
@@ -2805,7 +2806,366 @@ struct brain_struct {
     float cascade_self_train_baseline;
     float cascade_self_train_alpha;
     float cascade_self_train_lr_scale;
+
+    /* === ARCUATE FASCICULUS FEEDBACK (Slice 2, 2026-05-18) ===
+     * Bidirectional Wernicke↔Broca channel. Real anatomy: the arcuate
+     * fasciculus carries Wernicke's phonological/semantic parse of own
+     * speech back to Broca's motor + syntactic planning. Conduction
+     * aphasia (arcuate damage) → can repeat external speech but can't
+     * self-monitor → exactly the failure mode the bridge had before.
+     *
+     * Within the recurrent cascade, between iterations:
+     *   1. comprehend(iter_N_utterance) → output_semantic_vec
+     *   2. arcuate_feedback_vec[i] = (content_intent[i] - output_semantic_vec[i]) * (1 - self_match)
+     *      i.e. the "missing semantic content" weighted by mismatch
+     *   3. cascade_stage_content reads arcuate_feedback_vec at top of
+     *      iter N+1 and ADDS it to content_intent — the brain
+     *      effectively "tries harder" on the dimensions it just missed.
+     *
+     * NULL/dim=0 outside of an active recurrent run. Lifetime owned by
+     * communication_cascade_run_recurrent (alloc on first non-zero
+     * write, free on exit). Not thread-safe — produce_cascade_recurrent
+     * is single-caller-at-a-time by contract. */
+    float*   arcuate_feedback_vec;
+    uint32_t arcuate_feedback_dim;
+    float    arcuate_feedback_strength;     /* 0..1; multiplied into the add */
+
+    /* S2-H2 fix (2026-05-19) — convex-blend arcuate feedback.
+     *
+     * Pre-fix the apply step in cascade_stage_content was
+     *   content_intent[i] += k * feedback_vec[i]
+     * with feedback_vec = (intent - own_output). On a stable prompt where
+     * the next iter's intent ≈ blend ≈ prev intent, this iterates to
+     *   new_intent ≈ (1+k)*old_intent - k*own_output
+     * — i.e. an AMPLIFICATION of intent by factor (1+k) per iter, not an
+     * error-correction step. Bridge confidence climbing 2-4× across
+     * iterations turned out to be magnitude growth, not settling.
+     *
+     * Post-fix: the recurrent loop snapshots iter-0's content_intent as
+     * a FIXED target into arcuate_target_vec, then recomputes
+     * feedback_vec = (target - own_output) each iter, and the apply step
+     * does a convex blend instead of additive:
+     *   content_intent[i] = (1 - blend) * content_intent[i] + blend * (content_intent[i] + k * feedback_vec[i])
+     * which collapses to
+     *   content_intent[i] += blend * k * feedback_vec[i]
+     * but bounded by `blend` so magnitude can't grow without bound.
+     *
+     * arcuate_feedback_blend: convex blend coefficient in [0, 1].
+     *   0.0 => fully retain pre-arcuate content_intent (no correction)
+     *   1.0 => fully accept the corrected value (legacy additive behavior at k)
+     *   Recurrent loop sets this to a small value (default 0.5) so each
+     *   iter only takes a half-step toward the corrected intent. When 0
+     *   (default, single-pass cascade), cascade_stage_content treats
+     *   apply as a no-op even if arcuate_feedback_vec is set — keeps
+     *   the recurrent-only contract explicit.
+     *
+     * arcuate_target_vec: heap-allocated snapshot of iter-0's
+     *   content_intent. Owned by communication_cascade_run_recurrent
+     *   (alloc on iter==0, free on exit). Sized to gl_dim. NULL outside
+     *   an active recurrent run. */
+    float    arcuate_feedback_blend;
+    float*   arcuate_target_vec;
+    uint32_t arcuate_target_dim;
+
+    /* === SPEECH REPAIR PROCESSOR (statue wiring 2026-05-11) ===
+     * Disfluency cleaner used by the communication cascade just before
+     * Stage 8 (self-comprehension). The brain's own utterance is run
+     * through speech_repair_clean() to strip filled pauses, repetitions,
+     * and false starts so the self_match score reflects the intended
+     * content, not the production noise. APPENDED at end of brain_struct
+     * to avoid ABI shift on existing layouts. Lifetime: created in
+     * nimcp_brain_factory_init_broca_subsystem alongside the pragmatics
+     * processor, destroyed in nimcp_brain_factory_destroy_broca_subsystem.
+     * NULL when Broca is disabled — the cascade tolerates NULL by simply
+     * skipping the repair step. Forward-declared opaque type. */
+    struct speech_repair* speech_repair;
+
+    /* === CASCADE TELEMETRY COUNTERS (Batch K, 2026-05-12) ===
+     * Lifetime totals incremented by the cascade orchestrator. _Atomic
+     * so the RO socket thread pool can snapshot them concurrently with
+     * a running cascade. Stored inline (not heap-allocated) so the
+     * counters survive across save/load — the brain_struct itself isn't
+     * persisted, but the trainer only needs run-to-run continuity within
+     * a single daemon process.
+     *
+     * APPENDED at end of brain_struct — ABI append-only. See
+     * include/language/nimcp_communication_cascade.h for the public
+     * snapshot type nimcp_cascade_counters_t. */
+    _Atomic uint64_t cascade_total_runs;
+    _Atomic uint64_t cascade_runs_with_prompt;
+    _Atomic uint64_t cascade_runs_spontaneous;
+    _Atomic uint64_t cascade_runs_fatal_error;
+    _Atomic uint64_t cascade_stage_invocations[15];
+    _Atomic uint64_t cascade_stage_mask_skips[15];
+    _Atomic uint64_t cascade_stage_failures[15];
+    _Atomic uint64_t cascade_pragmatics_indirect_overrides;
+    _Atomic uint64_t cascade_wernicke_lexicon_miss;
+    _Atomic uint64_t cascade_speech_repair_applied;
+    _Atomic uint64_t cascade_self_train_steps_matched;
+    _Atomic uint64_t cascade_self_train_steps_no_bindings;
+    _Atomic uint64_t cascade_self_produced_events_fired;
+    _Atomic uint64_t cascade_discourse_ring_pushes_user;
+    _Atomic uint64_t cascade_discourse_ring_pushes_self;
+    /* S1-H3+H4 fix (2026-05-19) — count of times the recurrent loop hit
+     * OOM allocating its convergence-check / arcuate-feedback buffers and
+     * had to fall back to degraded paths. Surfaces as
+     * cascade_recurrent_oom_count in counter snapshots. Non-zero indicates
+     * the recurrent cascade was running with reduced convergence
+     * detection — useful when investigating "loop ran to max_iters but
+     * shouldn't have". Relaxed atomic; single writer (recurrent loop)
+     * but multiple-reader from the RO snapshot path. */
+    _Atomic uint64_t cascade_recurrent_oom_count;
+
+    /* S3-H3 fix (2026-05-19): cascade_stage_lexical hit the FEP fallback
+     * because prod.semantic_vector was NULL. Older bridges don't fill it;
+     * non-zero indicates the FEP pe_total is operating with the lexical
+     * channel zeroed and precision-weighting is missing that signal. */
+    _Atomic uint64_t cascade_fep_lexical_skipped;
+
+    /* S3-H6 fix (2026-05-19): cascade_stage_self_train computed an
+     * effective lr_scale (= base * gate * precision) that hit the
+     * CASCADE_SELF_TRAIN_LR_SCALE_MAX cap. Non-zero means the cap is
+     * engaging — the intended precision-boost is being clipped and the
+     * brain might be missing some plasticity headroom. */
+    _Atomic uint64_t cascade_self_train_precision_cap_hits;
+
+    /* Audit Category A item 1 — route nimcp_brain_grounded_respond
+     * through the 15-stage cascade orchestrator instead of the legacy
+     * bridge-softmax passthrough. Default OFF preserves bit-for-bit
+     * legacy behavior. When ON, respond builds a cascade state with
+     * the input as prompt, runs all stages, and returns state->utterance
+     * (cleaned by speech_repair, validated by self-comprehension, etc).
+     *
+     * The cascade is significantly slower per call than the bridge-only
+     * path — opt-in by deployment as a quality-vs-latency tradeoff. */
+    bool respond_via_cascade;
+
+    /* === SLICE 6: THALAMIC GATING OF CASCADE-STAGE BANDWIDTH (2026-05-18) ===
+     * Real thalamus is the central relay + gain control of the brain.
+     * The pulvinar in particular modulates attention by gain-controlling
+     * cortical activity — boosting attended regions, suppressing
+     * distractors. This slice adds per-stage gates that scale each
+     * stage's CONTRIBUTION based on the brain's current arousal/
+     * attention state.
+     *
+     * thalamic_gate_enabled: master switch. Default OFF (calloc zero).
+     * thalamic_gate_weights[15]: per-stage scalar gain in [0.0, 1.0].
+     * thalamic_gate_manual_override[15]: per-stage manual-override flag.
+     *
+     * APPENDED at end of brain_struct; race-tolerant like self_train EMA. */
+    bool  thalamic_gate_enabled;
+    float thalamic_gate_weights[15];
+    bool  thalamic_gate_manual_override[15];
+
+    /* === SLICE 3 — FEP RECURRENT METRICS (2026-05-18) ===
+     * Per-iteration prediction-error trace + summary scalars written
+     * by communication_cascade_run_recurrent at exit. Read by
+     * nimcp_brain_get_cascade_fep_metrics_impl. Not _Atomic — the
+     * recurrent loop is single-caller-at-a-time by contract.
+     *
+     * fep_pe_trace sized to 64 = max iteration cap inside
+     * communication_cascade_run_recurrent. */
+    uint32_t fep_iterations_run;
+    float    fep_pe_trace[64];
+    float    fep_pe_initial;
+    float    fep_pe_terminal;
+    float    fep_pe_min;
+    float    fep_pe_max;
+    float    fep_pe_mean;
+    float    fep_pe_decay_rate;
+    int      fep_converged;
+
+    /* S2-H2 fix (2026-05-19) — ||content_intent|| per iter trace.
+     * Lets external monitors detect runaway amplification regardless of
+     * the convex-blend fix above (defense in depth). Same lifetime as
+     * fep_pe_trace: filled at recurrent-loop exit, survives across calls
+     * for a single snapshot. */
+    float    fep_intent_norm_trace[64];
+    float    fep_intent_norm_initial;
+    float    fep_intent_norm_terminal;
+    float    fep_intent_norm_max;
+
+    /* === SLICE 5 — PHONOLOGICAL LOOP working memory buffer (2026-05-18) ===
+     * Baddeley's working memory model: a short-term phonological store
+     * (~2 seconds of speech) plus an articulatory rehearsal mechanism
+     * that refreshes activation. Real speakers don't construct an
+     * utterance in one shot — they hold a partial draft, decay it
+     * passively, and refresh it through rehearsal.
+     *
+     * Used by communication_cascade_run_recurrent (Slice 5):
+     *   - At the start of each iteration, decay all phonemic traces
+     *     by `loop_decay_rate`; drop any whose trace < 0.05.
+     *   - After cascade_stage_lexical produces new words, merge them
+     *     into the buffer: existing word → refresh trace to 1.0,
+     *     new word → append (cap at loop_max_words).
+     *   - cascade_stage_syntactic / Broca read the buffer's surface
+     *     form (words with trace >= 0.3) as the "intended utterance".
+     *   - cascade_stage_self_comprehension parses the buffer's surface
+     *     form (not the one-shot lexical output).
+     *
+     * Default OFF — when loop_enabled=false, the recurrent cascade
+     * behaves byte-identically to Slice 1+2 (no buffer interaction).
+     *
+     * Memory: heap-allocated buffer + trace + words arrays, owned by
+     * the brain across its lifetime; created in brain init alongside
+     * speech_repair, freed in brain destroy. Capacity grows on demand
+     * (realloc); never shrinks. Failures during realloc are non-fatal —
+     * the loop truncates writes rather than crashing.
+     *
+     * Lock: loop_mutex protects buffer/traces/words/last_refresh_ms.
+     * Held only by accessor functions. NEVER acquire while holding
+     * bridge or broca mutexes — see lock-ordering.md. The recurrent
+     * cascade calls merge/read APIs sequentially, so contention is
+     * single-caller-at-a-time in practice. void* opaque storage avoids
+     * pulling thread.h into the brain header. */
+    bool      loop_enabled;
+    char*     loop_buffer;             /* accumulated utterance text, NUL-terminated */
+    uint32_t  loop_buffer_len;         /* strlen() — excludes NUL */
+    uint32_t  loop_buffer_capacity;    /* bytes allocated for buffer */
+    float*    loop_phonemic_trace;     /* per-word activation/decay traces */
+    uint32_t  loop_trace_count;        /* current number of valid traces */
+    uint32_t  loop_trace_capacity;     /* slots allocated for traces */
+    uint32_t  loop_max_words;          /* cap at this many words (default 16) */
+    float     loop_decay_rate;         /* per-iteration decay (default 0.15) */
+    uint64_t  loop_last_refresh_ms;    /* monotonic ms — for rehearsal timing */
+    void*     loop_mutex;              /* nimcp_mutex_t* — see lock comment */
+    char**    loop_words;              /* per-word storage; size = loop_trace_capacity */
+
+    /* S5-H3/H5 fix (2026-05-19): operator-controllable surface threshold.
+     * Pre-fix the internal rerender used the 0.05 prune threshold (which
+     * matched eviction) so `loop_buffer` text held EVERY trace, but
+     * `phonological_loop_render_active` defaulted to 0.3 — trainers reading
+     * diag (loop_buffer_len) saw MORE words than the cascade actually
+     * emitted. Words with trace ∈ [0.05, 0.3) sat in the silent decay band:
+     * present in the buffer, invisible to the cascade.
+     *
+     * Post-fix: both internal rerender + render_active use this field.
+     * Default 0.3 matches the legacy cascade behavior; operators may lower
+     * (e.g. to 0.05) to make the silent band observable or raise (e.g. 0.5)
+     * to tighten the surface form. Clamped to [0.0, 1.0]. Setter:
+     * nimcp_brain_set_phonological_loop_threshold. */
+    float     loop_surface_threshold;   /* default 0.3; clamped [0,1] */
+
+    /* === SLICE 7 — CEREBELLAR PREDICTION-CORRECTION (2026-05-18) ===
+     * Wires the existing cerebellum adapter (brain->cerebellum, opaque
+     * cerebellum_adapter_t* — see
+     * include/core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h)
+     * into the cascade's motor + prosody stages.
+     *
+     * Biological role: the cerebellum predicts the next motor pattern
+     * ~100ms before execution, computes prediction error vs. observed,
+     * and corrects motor + prosody trajectories on the fly. In speech
+     * production this is what smooths syllable timing + prosodic
+     * contours and corrects articulator dynamics. Cerebellar damage
+     * produces ataxic dysarthria (slurred, scanning, irregular speech).
+     *
+     * Default OFF. When ON, cascade_stage_motor and cascade_stage_prosody:
+     *   1. Build an 8D feature vector from cascade state (drive,
+     *      syntactic, phonological).
+     *   2. Call cerebellum_predict_outcome to get predicted next motor /
+     *      prosody pattern.
+     *   3. Run the stage's existing logic (always).
+     *   4. Build the "actual" 8D feature vector from realised outputs.
+     *   5. Call cerebellum_update_forward_model to learn from the
+     *      (command, outcome) pair + cerebellum_broadcast_error so
+     *      Purkinje LTD fires on high-error climbing-fiber signals.
+     *   6. Stash prediction-error norm on cascade state.
+     *
+     * Between iterations of communication_cascade_run_recurrent, if the
+     * accumulated cerebellar prediction error exceeds cerebellar_pe_threshold,
+     * cerebellar_correction_pending is set so the NEXT iteration's
+     * motor + prosody stages know to apply the prediction's bias
+     * contribution at cerebellar_correction_strength.
+     *
+     * Lifetime: enabled flag + strength + threshold persist for the
+     * life of the brain. correction_pending is set/cleared by the
+     * recurrent loop only — outside a recurrent run it is always false.
+     * Diag counters are lifetime totals; not _Atomic because the
+     * cascade is single-caller-at-a-time by contract (mirrors the
+     * arcuate_feedback_* fields above).
+     *
+     * APPENDED at end of brain_struct — ABI append-only. */
+    bool     cerebellar_correction_enabled;       /* master gate (default false) */
+    float    cerebellar_correction_strength;      /* [0,1] — how strongly to apply
+                                                    the cerebellar prediction bias
+                                                    when correction_pending. */
+    bool     cerebellar_correction_pending;       /* set between recurrent iters
+                                                    when accumulated PE > threshold;
+                                                    consumed by next iter's stages. */
+    float    cerebellar_pe_threshold;             /* PE-norm gate (default 0.20). */
+    /* Lifetime diagnostics surfaced via nimcp_brain_get_cerebellar_diag. */
+    uint64_t cerebellar_predictions_made;
+    /* S7-H3 fix (2026-05-19): cerebellar_corrections_applied counts STAGES
+     * that ran while correction_pending was set — bumped inside both
+     * stage_motor and stage_prosody. A single recurrent iter with both
+     * stages firing increments by 2, so consumers reading this as
+     * "iters with correction" get a 2x inflated count. Keep the field as
+     * the STAGES counter (renamed in the diag struct field below); add a
+     * separate iters counter bumped once per recurrent iter from the
+     * recurrent loop tail. */
+    uint64_t cerebellar_corrections_applied;       /* stages: bumped per stage */
+    uint64_t cerebellar_correction_iters_applied;  /* iters: bumped per recurrent iter */
+    float    cerebellar_last_pe_norm;             /* most-recent stage's PE norm */
+
+    /* === S2-C2/C3 ARCUATE FEEDBACK CROSS-THREAD LOCK ===
+     * Protects the arcuate_feedback_{vec,dim,strength} tuple above.
+     * Before this lock, the recurrent loop in communication_cascade_run_recurrent
+     * wrote/freed brain->arcuate_feedback_vec while a concurrent
+     * cascade_stage_content read the pointer + dereferenced it — a UAF
+     * was reachable if another thread invoked produce_cascade mid-recurrent
+     * run (the cascade was documented as "single-caller-at-a-time" but
+     * nothing enforced that contract).
+     *
+     * Lock-ordering: the cascade rule is that this lock is acquired only
+     * around the PUBLISH (writer) + READ-DEREF (reader) of the arcuate
+     * tuple — never held across other cascade-stage work. It MUST NOT
+     * nest under bridge / broca / grounded_lang mutexes (see
+     * docs/claude/modules/lock-ordering.md). Lazy-init via
+     * cascade_arcuate_lock_ensure() — the brain struct is calloc'd so a
+     * NULL pointer here means "not yet initialized".
+     *
+     * APPENDED at end of brain_struct — ABI append-only. */
+    void*    arcuate_feedback_lock;               /* nimcp_mutex_t*, lazy-init */
+
+    /* === SLICE D — CASCADE SELF-TRAIN EXTERNAL-REWARD GATING (2026-05-19) ===
+     * Option-1 architectural rebuild: cascade_stage_self_train must NOT fire
+     * unconditionally on its own production (autoconfirm loop). It gates on
+     * an external reward signal — set by the caregiver-critic / RL pipeline
+     * via nimcp_brain_set_last_external_reward() + the
+     * set_last_external_reward RPC. */
+    float    last_external_reward;
+    uint64_t last_external_reward_us;
+
+    _Atomic uint64_t cascade_self_train_skipped_stale;
+    _Atomic uint64_t cascade_self_train_skipped_below_threshold;
+    _Atomic uint64_t cascade_self_train_fired;
+
+    float    cascade_self_train_reward_threshold;
+    uint64_t cascade_self_train_reward_ttl_us;
+
+    /* === SLICE E — STAGE-ANCHORED DEVELOPMENTAL SCAFFOLDING (2026-05-19) === */
+    uint32_t current_stage;
+
+    /* === SLICE B — CROSS-MODAL CONCEPT REGISTRY (2026-05-19) ===
+     * Opaque pointer (concept_registry_t*). Maps (text label, visual digest,
+     * audio digest) → canonical concept_pop_id. Created in Wave 27
+     * (cognitive_engines). Serialized as a `.concept_registry` sidecar. */
+    void*    concept_registry;
 };
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(((struct brain_struct*)0)->current_stage) == 4u,
+    "brain_struct.current_stage: Slice E expects a 4-byte uint32");
+_Static_assert(sizeof(((struct brain_struct*)0)->cascade_self_train_reward_ttl_us) == 8u,
+    "brain_struct.cascade_self_train_reward_ttl_us: Slice D field size invariant");
+#endif
+
+/* Slice B append-counter — bump when adding more fields to brain_struct.
+ * Slice B's field is concept_registry. */
+#define NIMCP_BRAIN_STRUCT_ABI_SLICE_B_FIELDS  1u
+_Static_assert(NIMCP_BRAIN_STRUCT_ABI_SLICE_B_FIELDS == 1u,
+               "Slice B appended exactly 1 field (concept_registry). "
+               "If you append more, bump this constant + this static-assert.");
 
 //=============================================================================
 // Strategy Pattern - Task-Specific Behaviors

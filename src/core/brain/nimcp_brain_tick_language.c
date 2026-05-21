@@ -129,6 +129,13 @@ static void brain_tick_lang_bridge_spike_routing(brain_t brain, float dt_ms)
     /* Always-on activation decay — cheap, idempotent, guards against runaway
      * even when other paths inject spikes through concept_spike/word_spike. */
     (void)snn_language_bridge_tick(brain->snn_lang_bridge, dt_ms);
+
+    /* Option-1 (Slice A, 2026-05-19): removed snn_language_bridge_apply_stdp.
+     * The bridge no longer owns weights; STDP on concept↔word associations
+     * moves to the SNN's own projection synapses (Slice B concept_registry).
+     * `t_ms` is preserved on `brain->lang_bridge_t_ms` for downstream tick
+     * consumers that still need the monotonic clock. */
+    (void)t_ms;
 }
 
 void brain_tick_language(brain_t brain, float dt_ms)

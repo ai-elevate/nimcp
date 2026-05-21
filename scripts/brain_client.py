@@ -52,7 +52,12 @@ class BrainProxy:
     MAX_RETRIES = 5
     INITIAL_BACKOFF = 1.0       # seconds
     MAX_BACKOFF = 30.0          # seconds
-    DAEMON_WAIT_TIMEOUT = 300   # max seconds to wait for daemon restart
+    # 30 min covers a full-init brain restart (~15-25 min checkpoint load on
+    # a 2M neuron brain). The 2026-05-15 wedge was partially explained by the
+    # old 5 min ceiling: a brain SIGTERM + autorestart cycle exceeded 5 min,
+    # _wait_for_daemon raised ConnectionError, retries got burned, the
+    # trainer's caller silently swallowed the final exception.
+    DAEMON_WAIT_TIMEOUT = 1800
 
     # Transient errors worth retrying
     _TRANSIENT = (ConnectionError, BrokenPipeError,
@@ -106,12 +111,22 @@ class BrainProxy:
 
         Retries on transient socket errors (connection refused, reset, timeout,
         file not found). If the daemon socket disappears entirely, waits for
-        it to come back (systemd auto-restarts the daemon).
+        it to come back (supervisord auto-restarts the daemon).
+
+        Retry-counting policy: FileNotFoundError ("socket gone" — daemon
+        restarting) does NOT count against MAX_RETRIES. Instead it triggers
+        a single _wait_for_daemon call (up to DAEMON_WAIT_TIMEOUT). Counting
+        socket-gone against MAX_RETRIES is what made the 2026-05-15 wedge
+        unrecoverable: a brain SIGTERM + autorestart raced through 5
+        retries' worth of socket-gone events before the brain finished
+        loading. Now the retry budget is reserved for "brain is up but
+        flaky" failures (ConnectionReset, recv-timeout, etc.).
         """
         last_exc = None
         backoff = self.INITIAL_BACKOFF
+        attempt = 0
 
-        for attempt in range(1, self.MAX_RETRIES + 1):
+        while attempt < self.MAX_RETRIES:
             try:
                 resp = self._send_once(req)
                 # Success — reset failure counter
@@ -126,20 +141,29 @@ class BrainProxy:
                 self._consecutive_failures += 1
                 cmd = req.get("cmd", "?")
 
-                if attempt < self.MAX_RETRIES:
-                    # Socket gone — daemon may be restarting
-                    if isinstance(e, FileNotFoundError):
-                        print(f"  [BrainProxy] Socket gone — waiting for "
-                              f"daemon restart (attempt {attempt}/"
-                              f"{self.MAX_RETRIES})...", flush=True)
+                # Socket gone — daemon restarting. Wait for it without
+                # consuming a retry slot.
+                if isinstance(e, FileNotFoundError):
+                    print(f"  [BrainProxy] Socket gone — waiting for "
+                          f"daemon restart (up to "
+                          f"{self.DAEMON_WAIT_TIMEOUT}s)...", flush=True)
+                    try:
                         self._wait_for_daemon()
                         backoff = self.INITIAL_BACKOFF  # reset after wait
-                    else:
-                        print(f"  [BrainProxy] {type(e).__name__} on "
-                              f"'{cmd}' — retry {attempt}/{self.MAX_RETRIES} "
-                              f"in {backoff:.1f}s", flush=True)
-                        time.sleep(backoff)
-                        backoff = min(backoff * 2, self.MAX_BACKOFF)
+                        continue  # retry without bumping attempt
+                    except ConnectionError:
+                        # Daemon didn't come back within DAEMON_WAIT_TIMEOUT
+                        # — raise and let caller decide.
+                        raise
+
+                # Brain reachable but flaky — count against MAX_RETRIES.
+                attempt += 1
+                if attempt < self.MAX_RETRIES:
+                    print(f"  [BrainProxy] {type(e).__name__} on "
+                          f"'{cmd}' — retry {attempt}/{self.MAX_RETRIES} "
+                          f"in {backoff:.1f}s", flush=True)
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, self.MAX_BACKOFF)
 
         # All retries exhausted
         raise last_exc
@@ -279,6 +303,434 @@ class BrainProxy:
     def grounded_respond(self, text):
         resp = self._send({"cmd": "grounded_respond", "text": text})
         return resp.get("result", {})
+
+    def produce_cascade_recurrent(self, prompt=None, max_iters=8, self_match_eps=0.01):
+        """Recurrent / biological-fidelity variant of produce_cascade.
+        Iterates the full 15-stage cascade until utterance + self_match
+        converge. Each iteration's stage_self_train STDP shifts the bridge
+        slightly; the next iteration reads the shifted bridge; the system
+        settles toward an attractor. Mimics real cortical settling
+        dynamics (~200-400ms ≈ 4-8 iterations at our per-stage cost).
+
+        Returns dict with utterance/word_count/confidence/settling_steps.
+        settling_steps is the number of iterations actually taken before
+        convergence (or max_iters if no convergence).
+
+        Slice 1 of the recurrent-language-architecture rewrite (see
+        docs/claude/recurrent-language-architecture.md)."""
+        req = {
+            "cmd": "produce_cascade_recurrent",
+            "max_iters": int(max_iters),
+            "self_match_eps": float(self_match_eps),
+        }
+        if prompt is not None:
+            req["prompt"] = prompt
+        resp = self._send(req)
+        if resp.get("error"):
+            return {}
+        return resp
+
+    def get_cascade_fep_metrics(self):
+        """Slice 3: snapshot the FEP prediction-error trajectory of the
+        most recent produce_cascade_recurrent call on the daemon.
+
+        Returns dict with:
+          iterations_run     — number of recurrent iters
+          pe_total_trace     — list of per-iter pe_total values
+          pe_total_initial / terminal / min / max / mean
+          pe_decay_rate      — (initial-terminal)/initial; positive =
+                               system reduced its surprise across iters
+          converged          — True if the loop exited on convergence
+                               (utterance + self_match stable), False if
+                               it hit max_iters.
+
+        Zero-initialized if produce_cascade_recurrent has never run.
+        Used by monitoring + walkthrough scripts to diagnose whether
+        the recurrent loop is actually settling vs wedged."""
+        resp = self._send({"cmd": "get_cascade_fep_metrics"})
+        if resp.get("error"):
+            return {}
+        return resp
+
+    def produce_cascade(self, prompt=None):
+        """Invoke the full 15-stage production cascade. Drives drive/goal/
+        listener/episodic/content/lexical/syntactic(Broca)/self-comp(Wernicke)/
+        phonological/motor/self-feedback/speech-repair/prosody/self-train.
+
+        When cascade_self_train is enabled (set_cascade_self_train_enabled),
+        stage 15 applies reward-modulated STDP to the bridge based on the
+        self-comprehension match score and releases phasic DA. This is the
+        path that trains all stages (not just the bridge).
+
+        prompt=None runs spontaneous-speech mode (purely from internal state).
+        Returns the full cascade diagnostic dict (~46 fields).
+        """
+        req = {"cmd": "produce_cascade"}
+        if prompt is not None:
+            req["prompt"] = prompt
+        resp = self._send(req)
+        if resp.get("error"):
+            return {}
+        return resp
+
+    def set_cascade_self_train_enabled(self, enabled=True):
+        """Toggle cascade-driven reinforcement learning. When True, every
+        produce_cascade call's stage_self_train applies reward-modulated
+        STDP to the bridge based on self_match (Wernicke re-parse of own
+        output vs. content_intent) and releases phasic DA proportional
+        to reward. Closes the self-supervised loop."""
+        resp = self._send({
+            "cmd": "set_cascade_self_train_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_lateral_inhibition_enabled(self, enabled=True):
+        """Slice 4 (recurrent-language-architecture): toggle competitive
+        recurrent decode in the SNN language bridge. Default OFF preserves
+        bit-for-bit legacy decode_spikes behavior. When ON, every
+        bridge_produce call's per-word decode swaps the one-shot cosine
+        argmax for a recurrent competition over the top-K candidates:
+        candidates excite themselves AND inhibit each other; winner emerges
+        from settling dynamics. Implements cohort-model (Marslen-Wilson
+        1987) / interactive-activation (McClelland 1981) lexical selection.
+
+        See docs/claude/recurrent-language-architecture.md for the design.
+        Runtime-only — caller must re-apply after each daemon restart."""
+        resp = self._send({
+            "cmd": "set_lateral_inhibition_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def get_lateral_inhibition_enabled(self):
+        """Slice 4: read the lateral-inhibition runtime flag."""
+        resp = self._send({"cmd": "get_lateral_inhibition_enabled"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", False))
+
+    def set_lateral_inhibition_params(self, gain_self=1.5, gain_inhibit=0.026,
+                                       micro_steps=20):
+        """Slice 4: tune the recurrent-competition dynamics.
+
+        gain_self    — self-excitation gain per micro-step (default 1.5).
+        gain_inhibit — per-other inhibition coefficient (default ~0.026,
+                        chosen so 31 * gain_inhibit ≈ 0.81 < gain_self for
+                        K=32, keeping the competition bounded).
+        micro_steps  — settling iterations (default 20).
+
+        Validation: each value > 0; gains <= 100; steps in [1, 200]."""
+        resp = self._send({
+            "cmd": "set_lateral_inhibition_params",
+            "gain_self":    float(gain_self),
+            "gain_inhibit": float(gain_inhibit),
+            "micro_steps":  int(micro_steps),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return {
+            "gain_self":    float(resp.get("gain_self", gain_self)),
+            "gain_inhibit": float(resp.get("gain_inhibit", gain_inhibit)),
+            "micro_steps":  int(resp.get("micro_steps", micro_steps)),
+        }
+
+    def get_lateral_inhibition_params(self):
+        """Slice 4: read lateral-inhibition tunables."""
+        resp = self._send({"cmd": "get_lateral_inhibition_params"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return {
+            "gain_self":    float(resp.get("gain_self", 0.0)),
+            "gain_inhibit": float(resp.get("gain_inhibit", 0.0)),
+            "micro_steps":  int(resp.get("micro_steps", 0)),
+        }
+
+    def set_respond_via_cascade(self, enabled=True):
+        """Toggle whether grounded_respond routes through the 15-stage
+        cascade (True) or just the bridge (False). Cascade adds Broca's
+        syntax + agreement validation, phonological + motor planning,
+        prosody, and self-comprehension. Default off in the daemon."""
+        resp = self._send({
+            "cmd": "set_respond_via_cascade",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_thalamic_gate_enabled(self, enabled=True):
+        """Slice 6: toggle thalamic gating of cascade-stage bandwidth.
+
+        When True, each cascade stage's scaleable contributions
+        (content_intent magnitude, lexical fluency, prosodic intensity,
+        self-train lr_scale) are multiplied by a per-stage gate in
+        [0, 1] derived from arousal (NE) + attention (ACh) state. Models
+        the pulvinar's role as central relay + gain controller. Default
+        off — when disabled the cascade behaves byte-identically to
+        legacy. Returns the bool the daemon actually set."""
+        resp = self._send({
+            "cmd": "set_thalamic_gate_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    # ----- Slice 7 — cerebellar prediction-correction -----
+
+    def set_cerebellar_correction_enabled(self, enabled=True):
+        """Slice 7: enable cerebellar prediction-correction in the
+        cascade's motor + prosody stages. When ON, the existing cerebellum
+        adapter (cerebellum_predict_outcome / cerebellum_update_forward_model
+        / cerebellum_broadcast_error) is called before + after motor +
+        prosody to predict the upcoming pattern, learn from the realised
+        actual, and broadcast climbing-fiber error.
+
+        Default OFF — when off, the stages run byte-identically to master.
+        Requires brain->cerebellum (created at init); minimal-init brains
+        silently no-op the cerebellar code path."""
+        resp = self._send({
+            "cmd": "set_cerebellar_correction_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_thalamic_gate_for_stage(self, stage_idx, weight):
+        """Slice 6: manual override of a single stage's gate weight.
+
+        stage_idx is 0..14 in cascade_stage_mask_t bit order:
+            0=wernicke 1=drive 2=goal 3=listener 4=episodic 5=content
+            6=lexical 7=syntactic 8=self_comp 9=phonological 10=motor
+            11=self_feedback 12=speech_repair 13=prosody 14=self_train
+
+        weight < 0 clears the manual override (returns to auto-derived).
+        weight in [0, 1] sets and locks the gate. Useful for ablation
+        experiments (e.g. set motor=0 to silence articulator output).
+        Returns the (stage_idx, weight) dict the daemon recorded."""
+        resp = self._send({
+            "cmd": "set_thalamic_gate_for_stage",
+            "stage_idx": int(stage_idx),
+            "weight":    float(weight),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return {
+            "stage_idx": int(resp.get("stage_idx", stage_idx)),
+            "weight":    float(resp.get("weight",    weight)),
+        }
+
+    def get_thalamic_gates(self):
+        """Slice 6: read the current thalamic gate weights + override flags.
+
+        Returns dict with keys:
+          'enabled':     bool — master flag
+          'gates':       dict[str, float] — stage-name keyed weights
+                         (e.g. {'drive': 0.5, 'content': 0.8, ...})
+          'weights':     [float] × 15 — same values, ordered by stage idx
+          'overrides':   [bool]  × 15 — true if manually overridden
+          'stage_names': [str]   × 15 — names matching the index ordering
+        When the daemon was started against a pre-Slice-6 nimcp.so the
+        call returns {} (RPC raises on AttributeError → returns empty)."""
+        resp = self._send({"cmd": "get_thalamic_gates"})
+        if resp.get("error"):
+            return {}
+        return resp
+
+    # ----- Slice 5 — phonological loop working memory buffer -----
+
+    def set_phonological_loop_enabled(self, enabled=True):
+        """Slice 5: enable Baddeley's phonological-loop working memory.
+
+        When enabled, the recurrent cascade decays traces between
+        iterations, merges lexical output into the buffer, and feeds the
+        buffer's surface form (words with trace >= 0.3) to stage_syntactic
+        + stage_self_comp instead of the one-shot lexical output. Default
+        OFF: recurrent cascade behaves byte-identically to Slice 1+2.
+        """
+        resp = self._send({
+            "cmd": "set_phonological_loop_enabled",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def set_phonological_loop_decay(self, decay=0.15):
+        """Slice 5: configure per-iteration phonological-loop trace decay.
+
+        Clamped to [0.0, 0.5]; NaN/Inf coerce to default 0.15."""
+        resp = self._send({
+            "cmd": "set_phonological_loop_decay",
+            "decay": float(decay),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("decay", decay))
+
+    def clear_phonological_loop(self):
+        """Slice 5: full reset of the phonological loop (drops every
+        trace + word; clears surface buffer). Recurrent cascade also
+        clears the loop on entry — this is primarily admin/diagnostic."""
+        resp = self._send({"cmd": "clear_phonological_loop"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return True
+
+    def get_phonological_loop_state(self):
+        """Slice 5: read-only inspection — returns dict('buffer': str,
+        'trace_count': int). buffer is the active surface form (words
+        with trace >= 0.3, space-separated)."""
+        resp = self._send({"cmd": "get_phonological_loop_state"})
+        if resp.get("error"):
+            return {}
+        return {
+            "buffer":      str(resp.get("buffer", "")),
+            "trace_count": int(resp.get("trace_count", 0)),
+        }
+
+    def get_phonological_loop_diag(self):
+        """Slice 5: full diagnostic snapshot — enabled/buffer_len/
+        trace_count/trace_capacity/max_words/decay_rate/
+        avg_trace_strength/last_refresh_ms."""
+        resp = self._send({"cmd": "get_phonological_loop_diag"})
+        if resp.get("error"):
+            return {}
+        return resp
+
+    def set_cerebellar_correction_strength(self, strength=0.5):
+        """Slice 7: bias mix factor when the recurrent loop flags
+        correction_pending. Clamped to [0,1]. Default 0.5."""
+        resp = self._send({
+            "cmd": "set_cerebellar_correction_strength",
+            "strength": float(strength),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("strength", strength))
+
+    def set_cerebellar_pe_threshold(self, threshold=0.20):
+        """Slice 7 (S7-C2): PE-norm threshold above which the recurrent
+        cascade flags correction_pending. The cascade PE-norm is the sum of
+        two cosine-distance norms (motor + prosody), each in [0, 1], so the
+        meaningful range is [0, 2]. Clamped to [0, 2]. Default 0.20."""
+        resp = self._send({
+            "cmd": "set_cerebellar_pe_threshold",
+            "threshold": float(threshold),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("threshold", threshold))
+
+    def get_cerebellar_diag(self):
+        """Slice 7: snapshot of cerebellar prediction-correction
+        diagnostics. Returns a dict with keys enabled / strength /
+        correction_pending / pe_threshold / predictions_made /
+        corrections_applied / last_pe_norm. Cheap to call (no atomics
+        — cascade is single-caller-at-a-time)."""
+        resp = self._send({"cmd": "get_cerebellar_diag"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        # Drop the wrapper "ok" key — callers want the diag scalars.
+        resp.pop("ok", None)
+        return resp
+
+    def echo_and_correct(self, parent_text, target_word, lr_scale=1.0):
+        """Supervised production-training pulse for the SNN language bridge.
+
+        Strengthens (active_concept_pop → target_word_pop) bindings inside
+        the bridge so produce stops emitting uniform-random WordNet words.
+        Returns the number of pairs strengthened (0 if target_word not in
+        bridge's mirrored word_pops yet).
+        """
+        resp = self._send({
+            "cmd": "echo_and_correct",
+            "parent_text": parent_text,
+            "target_word": target_word,
+            "lr_scale": float(lr_scale),
+        })
+        return int(resp.get("pairs_strengthened", 0))
+
+    def learn_text_bigrams(self, text, lr=0.02):
+        """Walk text and apply next-token bigram (and trigram, if flag is on)
+        STDP updates on the SNN language bridge. Returns the bigram count.
+
+        This is the ONLY path that drives `total_trigram_updates` — the
+        bridge's trigram counter stays at 0 unless this fires regularly on
+        real multi-word text. Trigram LTD-on-top-1-false-winner is the only
+        mechanism that pulls saturated dominant word_pops back down.
+        """
+        resp = self._send({
+            "cmd": "learn_text_bigrams",
+            "text": text,
+            "lr": float(lr),
+        })
+        if resp.get("error"):
+            return 0
+        return int(resp.get("count", 0))
+
+    def reset_lexicon_distributional(self, zero_and_mark_uninit=True, jitter=0.01):
+        """Reset every lexicon entry's distributional embedding. zero_and_mark_uninit=True
+        zeros and flags as uninitialized (clean reset; vectors re-learn from next
+        comprehend). False re-randomizes uniformly in [-jitter, +jitter] keeping
+        initialized=True. Returns the number of lexicon entries touched. Use when
+        comprehend(p_i) cosine ≈ 1.0 across distinct prompts."""
+        resp = self._send({
+            "cmd": "reset_lexicon_distributional",
+            "zero_and_mark_uninit": bool(zero_and_mark_uninit),
+            "jitter": float(jitter),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return int(resp.get("touched", 0))
+
+    def reset_concept_grounding(self):
+        """Reset concept grounding for a clean re-grounding pass: clears all
+        lexicon concept bindings AND wipes the semantic_memory concept store
+        (frees capacity). Returns the number of bindings cleared. Use after the
+        grounding-feature fix to recover from concept collapse (comprehend
+        cosine ≈ 1.0)."""
+        resp = self._send({"cmd": "reset_concept_grounding"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return int(resp.get("bindings_cleared", 0))
+
+    def reset_lang_bridge_weights(self, w_min=0.001, w_max=0.05):
+        """Break rank-1 collapse by re-randomizing every bridge binding
+        weight to uniform(w_min, w_max). Returns the number of bindings
+        reset. Use after diagnosing comprehend cosines ≈ 1.0 across
+        distinct prompts. The vocab structure (which bindings exist)
+        is preserved; only weights change."""
+        resp = self._send({
+            "cmd": "reset_lang_bridge_weights",
+            "w_min": float(w_min),
+            "w_max": float(w_max),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return int(resp.get("reset_count", 0))
+
+    def set_ltd_margin(self, margin):
+        """Set the SNN bridge's next-token LTD margin gate. LTD only fires
+        when topK[0].confidence >= margin * topK[target_rank].confidence
+        AND target appears in topK. margin=1.0 reproduces the legacy
+        unconditional rule (collapsed step-3900); 1.5 is the calibrated
+        default; >=10 effectively disables LTD. Clamped server-side to
+        [1.0, 100.0]; out-of-range raises RuntimeError via the daemon
+        error path. Runtime-only; not persisted across saves."""
+        resp = self._send({
+            "cmd": "set_ltd_margin",
+            "margin": float(margin),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return float(resp.get("margin", margin))
 
     def ground_word(self, word, features, modality=5, attention=0.7,
                      valence=0.0, arousal=0.0):
@@ -460,6 +912,17 @@ class BrainProxy:
 
     def bg_update_reward(self, reward, rpe=0.0):
         self._send_fire_and_forget({"cmd": "bg_update_reward", "reward": reward, "rpe": rpe})
+
+    def apply_reward_learning(self, reward):
+        """Slice C: drive reward-modulated (three-factor STDP) plasticity.
+        Distinct from set_last_external_reward — this actually propagates the
+        reward through the DA machinery (negative reward → anti-Hebbian LTD)."""
+        self._send_fire_and_forget({"cmd": "apply_reward_learning", "reward": reward})
+
+    def set_last_external_reward(self, reward):
+        """Slice D: stamp the most-recent external reward so the cascade
+        self-train gate sees a FRESH reward (freshness TTL + threshold)."""
+        self._send_fire_and_forget({"cmd": "set_last_external_reward", "reward": reward})
 
     # -- Training config --
 

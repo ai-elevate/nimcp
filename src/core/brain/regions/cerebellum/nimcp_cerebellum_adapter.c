@@ -16,6 +16,7 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/thread/nimcp_thread.h"
 #include <string.h>
 #include <math.h>
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -242,6 +243,21 @@ struct cerebellum_adapter {
 
     /* Statistics */
     cerebellum_stats_t stats;
+
+    /* S7-H4 fix (2026-05-19) — internal mutex.
+     * Pre-fix the adapter had zero locking. cerebellum_predict_outcome
+     * reads forward_model.weights; cerebellum_update_forward_model
+     * reads+writes weights; cerebellum_broadcast_error writes
+     * climbing.error_signals[] + Purkinje cell state. Slice 7 wires 3
+     * concurrent callers from the cascade (motor + prosody + state
+     * updates), and the brain-tick driver thread calls
+     * cerebellum_process_bio_messages on its own thread. Race window
+     * was real.
+     * Lock-ordering: innermost. The cerebellum has no callers that hold
+     * bridge/grounded_lang mutexes; bio-async dispatcher serializes its
+     * own queue. Acquire inside predict / update / broadcast; never
+     * acquire while holding any other adapter-level lock. */
+    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -1611,6 +1627,18 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
         return NULL;
     }
 
+    /* S7-H4 fix (2026-05-19): create internal mutex first so all
+     * downstream init paths see a usable lock. NULL lock = adapter is
+     * unusable; bail out via destroy. */
+    adapter->mutex = nimcp_mutex_create(NULL);
+    if (!adapter->mutex) {
+        LOG_ERROR("[%s] Failed to create cerebellum mutex", CEREBELLUM_LOG_MODULE);
+        nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                              "cerebellum_create: mutex alloc failed");
+        return NULL;
+    }
+
     /* Set configuration */
     if (config) {
         adapter->config = *config;
@@ -1835,6 +1863,15 @@ void cerebellum_destroy(cerebellum_adapter_t* adapter) {
         nimcp_free(adapter->output_buffer);
     }
 
+    /* S7-H4 fix (2026-05-19): destroy internal mutex last so any final
+     * unlock from a concurrent caller still has a live object. By this
+     * point all sub-modules are torn down and the brain holds the only
+     * reference to the adapter. */
+    if (adapter->mutex) {
+        nimcp_mutex_free(adapter->mutex);
+        adapter->mutex = NULL;
+    }
+
     LOG_DEBUG("[%s] Cerebellum adapter destroyed", CEREBELLUM_LOG_MODULE);
     nimcp_free(adapter);
 }
@@ -1981,6 +2018,12 @@ bool cerebellum_broadcast_error(cerebellum_adapter_t* adapter,
         return false;
     }
 
+    /* S7-H4 fix (2026-05-19): serialize against concurrent
+     * predict/update from cascade callers + bio-router tick. The lock
+     * protects climbing->error_signals[] + Purkinje cell state mutated
+     * by process_climbing_signal. */
+    if (adapter->mutex) nimcp_mutex_lock(adapter->mutex);
+
     /* Create signal for each climbing fiber */
     for (uint32_t i = 0; i < adapter->climbing->num_fibers; i++) {
         climbing_fiber_signal_t signal;
@@ -1993,6 +2036,7 @@ bool cerebellum_broadcast_error(cerebellum_adapter_t* adapter,
         cerebellum_process_climbing_signal(adapter, &signal);
     }
 
+    if (adapter->mutex) nimcp_mutex_unlock(adapter->mutex);
     return true;
 }
 
@@ -2341,6 +2385,10 @@ bool cerebellum_update_forward_model(cerebellum_adapter_t* adapter,
     }
     if (!adapter->config.enable_forward_models) return true;
 
+    /* S7-H4 fix (2026-05-19): serialize forward_model.weights mutation
+     * against concurrent predict + broadcast callers. */
+    if (adapter->mutex) nimcp_mutex_lock(adapter->mutex);
+
     forward_model_t* fm = &adapter->forward_model;
 
     /* Predict outcome */
@@ -2371,6 +2419,7 @@ bool cerebellum_update_forward_model(cerebellum_adapter_t* adapter,
     /* Update stats */
     adapter->stats.avg_error_after_learning = fm->last_error;
 
+    if (adapter->mutex) nimcp_mutex_unlock(adapter->mutex);
     return true;
 }
 
@@ -2383,6 +2432,12 @@ bool cerebellum_predict_outcome(cerebellum_adapter_t* adapter,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: required parameter is NULL (adapter, motor_command, predicted_outcome)");
         return false;
     }
+
+    /* S7-H4 fix (2026-05-19): serialize forward_model.weights read
+     * against concurrent update writer. The lock is held across the
+     * prediction loop + last_prediction write so a concurrent update
+     * can't observe a partial snapshot of weights. */
+    if (adapter->mutex) nimcp_mutex_lock(adapter->mutex);
 
     forward_model_t* fm = &adapter->forward_model;
     uint32_t dims = (num_dims < 8) ? num_dims : 8;
@@ -2402,6 +2457,7 @@ bool cerebellum_predict_outcome(cerebellum_adapter_t* adapter,
 
     memcpy(fm->last_prediction, predicted_outcome, dims * sizeof(float));
 
+    if (adapter->mutex) nimcp_mutex_unlock(adapter->mutex);
     return true;
 }
 

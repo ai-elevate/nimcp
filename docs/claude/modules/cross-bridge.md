@@ -43,7 +43,7 @@ All bridges share a common `bridge_base_t` (from `nimcp_bridge_base.h`) with a p
 | Cortical -> Cognitive | burst_rate -> epistemic_uncertainty |
 | Perception -> Portia-Swarm | confidence modifier [0.5, 1.5] |
 | Cortical -> Portia-Swarm | threshold modifier [0.7, 1.3] |
-| SNN -> Language | spike patterns -> word-concept binding (STDP) |
+| SNN -> Language | spike patterns -> word-concept binding (STDP). As of 2026-05-14 (`ac47802b0`) `apply_stdp` is driven from the training tick (`brain_tick_lang_bridge_spike_routing`), not just inference/API/cascade. See [grounded-language.md](grounded-language.md#training-loop-plasticity-wiring-2026-05-14-commit-ac47802b0). |
 | SNN -> Creative | imagination-driven production |
 | Neuromodulator -> Sensory/Emotion/WM/etc. | 11+ inter-module bridges |
 

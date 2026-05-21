@@ -21,6 +21,7 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -79,6 +80,17 @@ struct broca_adapter {
     lexicon_node_t** lexicon;
     uint32_t lexicon_capacity;
     uint32_t lexicon_count;
+    /* Batch H concurrency: the lexicon is mutated by GL→Broca mirror
+     * (driven by trainer + cascade self-train threads) and read by
+     * broca_lookup_word from produce paths running on the RO socket
+     * thread pool. Without a mutex the chain walks race the inserts
+     * (writer's `adapter->lexicon[idx] = node` becomes visible mid-
+     * read, or worse, `node->next` is dereferenced before the writer
+     * has linked it). Plain mutex (not rwlock) keeps the API simple
+     * and the lookup path is a short chain walk — contention is
+     * minimal in practice. NULL means lexicon mutex creation failed
+     * during init; the helpers degrade to no-op locking. */
+    nimcp_mutex_t* lexicon_mutex;
 
     /* Working memory */
     wm_slot_t* working_memory;
@@ -89,6 +101,21 @@ struct broca_adapter {
     broca_output_command_t* output_commands;
     uint32_t output_count;
     uint32_t output_head;            /**< Next read position */
+
+    /* Walkthrough-3 fix — state_mutex guards working_memory[] +
+     * output_commands[] + their count/head indices.
+     *
+     * Both ring buffers are written by produce_utterance (cascade
+     * stage_lexical / stage_syntactic) and read by external
+     * consumers (broca_get_command, broca_get_commands,
+     * broca_wm_get_contents). With the cascade running on the
+     * RO socket pool concurrently with the main pool's trainer
+     * loop, the head/count writes raced.
+     *
+     * Separate from lexicon_mutex to avoid lock-ordering hazards —
+     * lexicon path doesn't touch WM/output and vice versa. NULL on
+     * alloc failure degrades to unlocked. */
+    nimcp_mutex_t* state_mutex;
 
     /* Callbacks */
     broca_lexical_callback_t lexical_callback;
@@ -373,6 +400,22 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->lexicon is NULL");
             return NULL;
         }
+        /* Batch H — lexicon writer/reader guard. NULL on alloc failure is
+         * non-fatal; the helpers below treat NULL as no-op locking. */
+        adapter->lexicon_mutex = nimcp_mutex_create(NULL);
+        if (!adapter->lexicon_mutex) {
+            LOG_WARN("[%s] lexicon_mutex create failed — running unlocked",
+                      BROCA_LOG_MODULE);
+        }
+    }
+
+    /* Walkthrough-3 — state_mutex for WM + output ring buffers.
+     * Created unconditionally (independent of lexicon/wm config flags)
+     * since the destroy path always frees it. */
+    adapter->state_mutex = nimcp_mutex_create(NULL);
+    if (!adapter->state_mutex) {
+        LOG_WARN("[%s] state_mutex create failed — running unlocked",
+                  BROCA_LOG_MODULE);
     }
 
     /* Initialize working memory */
@@ -535,6 +578,14 @@ void broca_destroy(broca_adapter_t* adapter) {
         }
         nimcp_free(adapter->lexicon);
     }
+    if (adapter->lexicon_mutex) {
+        nimcp_mutex_free(adapter->lexicon_mutex);
+        adapter->lexicon_mutex = NULL;
+    }
+    if (adapter->state_mutex) {
+        nimcp_mutex_free(adapter->state_mutex);
+        adapter->state_mutex = NULL;
+    }
 
     /* Free working memory */
     if (adapter->working_memory) {
@@ -600,33 +651,36 @@ bool broca_add_lexical_entry(broca_adapter_t* adapter,
         return false;
     }
 
-    /* Check capacity */
-    if (adapter->lexicon_count >= adapter->lexicon_capacity) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "broca_reset: capacity exceeded");
-        return false;
-    }
-
-    /* Create new node */
+    /* Batch H — capacity check, alloc, and link MUST happen under the
+     * lexicon_mutex. Capacity read outside the lock would race with a
+     * concurrent insert that just bumped the counter. Pre-alloc the
+     * node before locking so the lock window stays tight. */
     lexicon_node_t* node = (lexicon_node_t*)nimcp_calloc(1, sizeof(lexicon_node_t));
     if (!node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_reset: node is NULL");
         return false;
     }
-
     node->entry = *entry;
     node->next = NULL;
 
-    /* Insert into hash table */
+    /* Lock + capacity check + link + count. */
+    if (adapter->lexicon_mutex) nimcp_mutex_lock(adapter->lexicon_mutex);
+    if (adapter->lexicon_count >= adapter->lexicon_capacity) {
+        if (adapter->lexicon_mutex) nimcp_mutex_unlock(adapter->lexicon_mutex);
+        nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "broca_reset: capacity exceeded");
+        return false;
+    }
     uint32_t idx;
     if (entry->word_id != 0) {
         idx = hash_word_id(entry->word_id, adapter->lexicon_capacity);
     } else {
         idx = hash_string(entry->word, adapter->lexicon_capacity);
     }
-
     node->next = adapter->lexicon[idx];
     adapter->lexicon[idx] = node;
     adapter->lexicon_count++;
+    if (adapter->lexicon_mutex) nimcp_mutex_unlock(adapter->lexicon_mutex);
 
     return true;
 }
@@ -679,18 +733,28 @@ bool broca_lookup_word(const broca_adapter_t* adapter,
             return false;
         }
 
+        /* Batch H — lexicon read must be guarded against concurrent
+         * inserts. The cast to mutable adapter is safe: we're locking
+         * for read-walking the chain, not mutating the adapter. The
+         * `entry` copy out happens before unlock to keep the borrowed
+         * `node->entry` pointer alive. */
+        nimcp_mutex_t* mtx = adapter->lexicon_mutex;
+        if (mtx) nimcp_mutex_lock(mtx);
         lexicon_node_t* node = adapter->lexicon[idx];
         while (node) {
             if (word_id != 0 && node->entry.word_id == word_id) {
                 *entry = node->entry;
+                if (mtx) nimcp_mutex_unlock(mtx);
                 return true;
             }
             if (word && strcmp(node->entry.word, word) == 0) {
                 *entry = node->entry;
+                if (mtx) nimcp_mutex_unlock(mtx);
                 return true;
             }
             node = node->next;
         }
+        if (mtx) nimcp_mutex_unlock(mtx);
     }
 
     /* Try callback */
@@ -899,6 +963,9 @@ bool broca_process_utterance(broca_adapter_t* adapter,
 
     uint32_t cmd_count = max_commands;
     if (speech_motor_get_commands(adapter->motor, temp_commands, &cmd_count)) {
+        /* Walkthrough-3 — guard output ring writes against concurrent
+         * broca_get_next_command / broca_get_all_commands readers. */
+        if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
         /* Convert to output format */
         for (uint32_t i = 0; i < cmd_count && adapter->output_count < max_commands; i++) {
             broca_output_command_t* out = &adapter->output_commands[adapter->output_count];
@@ -909,10 +976,14 @@ bool broca_process_utterance(broca_adapter_t* adapter,
             out->phoneme = temp_commands[i].phoneme;
             adapter->output_count++;
         }
+        if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     }
     /* Release back to pool (Phase 1.5) */
     memory_pool_release(adapter->motor_command_pool, temp_commands);
 
+    /* Snapshot output_count for the local_result; this is a single
+     * read of an atomic-aligned u32 so torn reads aren't a concern,
+     * and command_count is advisory diagnostic data. */
     local_result.command_count = adapter->output_count;
     local_result.ready_for_articulation = (adapter->output_count > 0);
 
@@ -937,12 +1008,16 @@ bool broca_get_next_command(broca_adapter_t* adapter,
         return false;
     }
 
+    /* Walkthrough-3 — guard output ring read + head advance.
+     * Callback fires OUTSIDE the lock to avoid re-entry. */
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     if (adapter->output_head >= adapter->output_count) {
+        if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
         return false;  /* No more commands - normal end condition */
     }
-
     *command = adapter->output_commands[adapter->output_head];
     adapter->output_head++;
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
 
     /* Invoke motor callback if set */
     if (adapter->motor_callback) {
@@ -960,6 +1035,7 @@ bool broca_get_all_commands(broca_adapter_t* adapter,
         return false;
     }
 
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     uint32_t available = adapter->output_count - adapter->output_head;
     uint32_t to_copy = (*count < available) ? *count : available;
 
@@ -968,6 +1044,7 @@ bool broca_get_all_commands(broca_adapter_t* adapter,
 
     adapter->output_head += to_copy;
     *count = to_copy;
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
 
     return true;
 }
@@ -1043,6 +1120,9 @@ bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
         return false;
     }
 
+    /* Walkthrough-3 — guard wm_head + wm_count + working_memory[]. */
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
+
     if (adapter->wm_count >= adapter->config.working_memory_slots) {
         /* WM full - overwrite oldest */
         adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
@@ -1056,6 +1136,7 @@ bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
     adapter->working_memory[idx].activation = 1.0F;
     adapter->working_memory[idx].timestamp = adapter->current_time_ms;
 
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     return true;
 }
 
@@ -1064,7 +1145,10 @@ bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_wm_pop: required parameter is NULL (adapter, word_id, adapter->working_memory)");
         return false;
     }
+
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     if (adapter->wm_count == 0) {
+        if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_wm_pop: adapter->wm_count is zero");
         return false;
     }
@@ -1073,6 +1157,7 @@ bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
     adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
     adapter->wm_count--;
 
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     return true;
 }
 
@@ -1084,6 +1169,7 @@ bool broca_wm_get_contents(const broca_adapter_t* adapter,
         return false;
     }
 
+    if (adapter->state_mutex) nimcp_mutex_lock(adapter->state_mutex);
     uint32_t to_copy = (*count < adapter->wm_count) ? *count : adapter->wm_count;
 
     for (uint32_t i = 0; i < to_copy; i++) {
@@ -1092,6 +1178,7 @@ bool broca_wm_get_contents(const broca_adapter_t* adapter,
     }
 
     *count = to_copy;
+    if (adapter->state_mutex) nimcp_mutex_unlock(adapter->state_mutex);
     return true;
 }
 
@@ -1160,8 +1247,14 @@ bool broca_train_word(broca_adapter_t* adapter,
     broca_lexical_entry_t entry;
     memset(&entry, 0, sizeof(broca_lexical_entry_t));
 
-    /* Generate unique word ID from hash */
-    entry.word_id = hash_string(word, 0xFFFFFFFF);
+    /* word_id MUST be 0 here. broca_add_lexical_entry() uses
+     * hash_word_id(entry->word_id, capacity) for insertion, while
+     * broca_lookup_word() uses hash_string(word, capacity) — different
+     * buckets, silent miss. Setting word_id=0 routes both through the
+     * same hash_string-based path. Same convention as the GL→Broca
+     * mirror in grounded_language.c:4056-4062 (footgun previously fixed
+     * there). */
+    entry.word_id = 0;
     strncpy(entry.word, word, sizeof(entry.word) - 1);
 
     uint32_t copy_count = (num_phonemes < 16) ? num_phonemes : 16;

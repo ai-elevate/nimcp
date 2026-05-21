@@ -356,6 +356,25 @@ struct grounded_language {
     pthread_mutex_t      tc12_lock;
     bool                 tc12_lock_inited;
 
+    /* Audit walkthrough-2 fix — mutate_lock guards three mutable
+     * structures that comprehend touches:
+     *   - lexicon[] hash table + vocab_list + vocab_count
+     *     (writer: lexicon_find_or_create)
+     *   - discourse ring (head/count/turns array)
+     *     (writers: grounded_language_push_turn,
+     *      discourse_rebuild_context_blend)
+     *   - phrases[] table + phrase_count
+     *     (writer: _gl_phrase_find_or_create)
+     *
+     * Without this lock, concurrent comprehend calls (from RO socket
+     * pool + main pool) race on the hash-chain writes — same shape
+     * of bug Broca + Wernicke had before commits b1417e2a9 / a6f965029.
+     * Separate from tc12_lock to keep ownership semantics clean:
+     * tc12_lock covers anaphora + spectrum side-state; mutate_lock
+     * covers core GL state. */
+    pthread_mutex_t      mutate_lock;
+    bool                 mutate_lock_inited;
+
     /* NLP-1 — subword OOV/morphological fallback. When the tokenizer is
      * attached AND the flag is on, comprehend tries to bootstrap fresh
      * lexicon entries (no bindings yet) by segmenting the word and
@@ -383,6 +402,34 @@ struct grounded_language {
     bool                 enable_coref_resolution;
     uint64_t             coref_attempts;   /* definite-NP heads observed */
     uint64_t             coref_resolved;   /* repeat mentions matched */
+
+    /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
+     *
+     * `vocab_active_mask` is a heap-allocated bool array sized to
+     * `vocab_active_mask_capacity`. Index v corresponds to lexicon entry
+     * vocab_list[v]; mask[v] == true means the entry is visible for
+     * production. NULL pointer (calloc default) means "no mask installed,
+     * everything is visible" — preserves the pre-Slice-E byte-identical
+     * contract.
+     *
+     * Installed via grounded_language_set_active_vocab_mask(); resized
+     * lazily by vocab_count growth. Capacity grows monotonically; we never
+     * shrink so existing index→mask mappings remain stable across vocab
+     * growth events.
+     *
+     * Read by the production-path filter that wraps grounded_language_produce
+     * (vocab-mask token replacement). Protected by mutate_lock above —
+     * the same lock that guards the lexicon array itself, since mask
+     * indexing depends on vocab_list shape. */
+    bool*                vocab_active_mask;
+    uint32_t             vocab_active_mask_capacity;
+    uint32_t             vocab_active_mask_stage;   /* stage that installed it */
+
+    /* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — concept_registry handle.
+     * Set via grounded_language_set_concept_registry() during brain init.
+     * NULL means "not wired" — concept_registry_* calls are guarded so
+     * the legacy bridge-mirror path still compiles. */
+    void*                concept_registry;
 };
 
 /**

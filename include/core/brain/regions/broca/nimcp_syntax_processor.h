@@ -116,6 +116,8 @@ typedef enum {
     PHRASE_CP,          /**< Complementizer Phrase (that she left) */
     PHRASE_IP,          /**< Inflectional Phrase (sentence) */
     PHRASE_DP,          /**< Determiner Phrase (extended NP) */
+    /* APPENDED — keep at end for ABI safety */
+    PHRASE_CONJP,       /**< Conjunction Phrase (and / or / but) */
 
     PHRASE_COUNT
 } phrase_type_t;

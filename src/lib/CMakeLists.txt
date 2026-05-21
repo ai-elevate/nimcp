@@ -2320,7 +2320,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_orchestrator.c     # Language layer coordinator
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_config.c           # Default configuration
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_language_bio_async.c        # Bio-async messaging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_concept_registry.c          # Slice B: cross-modal population binding registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language.c        # Grounded language system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grounded_language/nimcp_stage_table.c # Slice E — developmental stage scaffolding table
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_persistence.c  # Grounded language sidecar persistence
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_memory_bridge.c  # Grounded language ↔ memory subsystems bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_grounded_language_nlp.c     # NLP frontend: morphology + embeddings + BPE fallback
@@ -2330,6 +2332,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_creative_language_bridge.c # Creative cognition → language bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_communication_cascade.c    # Multi-region production cascade (Phase 2A)
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_communication_cascade_wernicke.c  # Cascade Stage 0 (Wernicke comprehension, separate TU due to phrase_type_t conflict with Broca)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../language/nimcp_phonological_loop.c         # Slice 5 — phonological-loop working memory buffer
 
     # Language Layer Bridges (Phase L8: Integration bridges)
     ${CMAKE_CURRENT_SOURCE_DIR}/../language/bridges/nimcp_language_perception_bridge.c   # Perception integration

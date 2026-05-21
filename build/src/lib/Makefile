@@ -5825,6 +5825,30 @@ __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 .PHONY : __/cognitive/grief/nimcp_grief_thalamic_bridge.c.s
 
+__/cognitive/grounded_language/nimcp_stage_table.o: __/cognitive/grounded_language/nimcp_stage_table.c.o
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.o
+
+# target to build an object file
+__/cognitive/grounded_language/nimcp_stage_table.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grounded_language/nimcp_stage_table.c.o
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.c.o
+
+__/cognitive/grounded_language/nimcp_stage_table.i: __/cognitive/grounded_language/nimcp_stage_table.c.i
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.i
+
+# target to preprocess a source file
+__/cognitive/grounded_language/nimcp_stage_table.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grounded_language/nimcp_stage_table.c.i
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.c.i
+
+__/cognitive/grounded_language/nimcp_stage_table.s: __/cognitive/grounded_language/nimcp_stage_table.c.s
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.s
+
+# target to generate assembly for a file
+__/cognitive/grounded_language/nimcp_stage_table.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/grounded_language/nimcp_stage_table.c.s
+.PHONY : __/cognitive/grounded_language/nimcp_stage_table.c.s
+
 __/cognitive/health/nimcp_collective_health.o: __/cognitive/health/nimcp_collective_health.c.o
 .PHONY : __/cognitive/health/nimcp_collective_health.o
 
@@ -40169,6 +40193,78 @@ __/language/bridges/nimcp_language_training_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/bridges/nimcp_language_training_bridge.c.s
 .PHONY : __/language/bridges/nimcp_language_training_bridge.c.s
 
+__/language/nimcp_communication_cascade.o: __/language/nimcp_communication_cascade.c.o
+.PHONY : __/language/nimcp_communication_cascade.o
+
+# target to build an object file
+__/language/nimcp_communication_cascade.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_communication_cascade.c.o
+.PHONY : __/language/nimcp_communication_cascade.c.o
+
+__/language/nimcp_communication_cascade.i: __/language/nimcp_communication_cascade.c.i
+.PHONY : __/language/nimcp_communication_cascade.i
+
+# target to preprocess a source file
+__/language/nimcp_communication_cascade.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_communication_cascade.c.i
+.PHONY : __/language/nimcp_communication_cascade.c.i
+
+__/language/nimcp_communication_cascade.s: __/language/nimcp_communication_cascade.c.s
+.PHONY : __/language/nimcp_communication_cascade.s
+
+# target to generate assembly for a file
+__/language/nimcp_communication_cascade.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_communication_cascade.c.s
+.PHONY : __/language/nimcp_communication_cascade.c.s
+
+__/language/nimcp_communication_cascade_wernicke.o: __/language/nimcp_communication_cascade_wernicke.c.o
+.PHONY : __/language/nimcp_communication_cascade_wernicke.o
+
+# target to build an object file
+__/language/nimcp_communication_cascade_wernicke.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_communication_cascade_wernicke.c.o
+.PHONY : __/language/nimcp_communication_cascade_wernicke.c.o
+
+__/language/nimcp_communication_cascade_wernicke.i: __/language/nimcp_communication_cascade_wernicke.c.i
+.PHONY : __/language/nimcp_communication_cascade_wernicke.i
+
+# target to preprocess a source file
+__/language/nimcp_communication_cascade_wernicke.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_communication_cascade_wernicke.c.i
+.PHONY : __/language/nimcp_communication_cascade_wernicke.c.i
+
+__/language/nimcp_communication_cascade_wernicke.s: __/language/nimcp_communication_cascade_wernicke.c.s
+.PHONY : __/language/nimcp_communication_cascade_wernicke.s
+
+# target to generate assembly for a file
+__/language/nimcp_communication_cascade_wernicke.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_communication_cascade_wernicke.c.s
+.PHONY : __/language/nimcp_communication_cascade_wernicke.c.s
+
+__/language/nimcp_concept_registry.o: __/language/nimcp_concept_registry.c.o
+.PHONY : __/language/nimcp_concept_registry.o
+
+# target to build an object file
+__/language/nimcp_concept_registry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_concept_registry.c.o
+.PHONY : __/language/nimcp_concept_registry.c.o
+
+__/language/nimcp_concept_registry.i: __/language/nimcp_concept_registry.c.i
+.PHONY : __/language/nimcp_concept_registry.i
+
+# target to preprocess a source file
+__/language/nimcp_concept_registry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_concept_registry.c.i
+.PHONY : __/language/nimcp_concept_registry.c.i
+
+__/language/nimcp_concept_registry.s: __/language/nimcp_concept_registry.c.s
+.PHONY : __/language/nimcp_concept_registry.s
+
+# target to generate assembly for a file
+__/language/nimcp_concept_registry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_concept_registry.c.s
+.PHONY : __/language/nimcp_concept_registry.c.s
+
 __/language/nimcp_creative_language_bridge.o: __/language/nimcp_creative_language_bridge.c.o
 .PHONY : __/language/nimcp_creative_language_bridge.o
 
@@ -40432,6 +40528,30 @@ __/language/nimcp_language_orchestrator.s: __/language/nimcp_language_orchestrat
 __/language/nimcp_language_orchestrator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_language_orchestrator.c.s
 .PHONY : __/language/nimcp_language_orchestrator.c.s
+
+__/language/nimcp_phonological_loop.o: __/language/nimcp_phonological_loop.c.o
+.PHONY : __/language/nimcp_phonological_loop.o
+
+# target to build an object file
+__/language/nimcp_phonological_loop.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_phonological_loop.c.o
+.PHONY : __/language/nimcp_phonological_loop.c.o
+
+__/language/nimcp_phonological_loop.i: __/language/nimcp_phonological_loop.c.i
+.PHONY : __/language/nimcp_phonological_loop.i
+
+# target to preprocess a source file
+__/language/nimcp_phonological_loop.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_phonological_loop.c.i
+.PHONY : __/language/nimcp_phonological_loop.c.i
+
+__/language/nimcp_phonological_loop.s: __/language/nimcp_phonological_loop.c.s
+.PHONY : __/language/nimcp_phonological_loop.s
+
+# target to generate assembly for a file
+__/language/nimcp_phonological_loop.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/language/nimcp_phonological_loop.c.s
+.PHONY : __/language/nimcp_phonological_loop.c.s
 
 __/lnn/nimcp_lnn.o: __/lnn/nimcp_lnn.c.o
 .PHONY : __/lnn/nimcp_lnn.o
@@ -58072,6 +58192,9 @@ help:
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.o"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.i"
 	@echo "... __/cognitive/grief/nimcp_grief_thalamic_bridge.s"
+	@echo "... __/cognitive/grounded_language/nimcp_stage_table.o"
+	@echo "... __/cognitive/grounded_language/nimcp_stage_table.i"
+	@echo "... __/cognitive/grounded_language/nimcp_stage_table.s"
 	@echo "... __/cognitive/health/nimcp_collective_health.o"
 	@echo "... __/cognitive/health/nimcp_collective_health.i"
 	@echo "... __/cognitive/health/nimcp_collective_health.s"
@@ -62365,6 +62488,15 @@ help:
 	@echo "... __/language/bridges/nimcp_language_training_bridge.o"
 	@echo "... __/language/bridges/nimcp_language_training_bridge.i"
 	@echo "... __/language/bridges/nimcp_language_training_bridge.s"
+	@echo "... __/language/nimcp_communication_cascade.o"
+	@echo "... __/language/nimcp_communication_cascade.i"
+	@echo "... __/language/nimcp_communication_cascade.s"
+	@echo "... __/language/nimcp_communication_cascade_wernicke.o"
+	@echo "... __/language/nimcp_communication_cascade_wernicke.i"
+	@echo "... __/language/nimcp_communication_cascade_wernicke.s"
+	@echo "... __/language/nimcp_concept_registry.o"
+	@echo "... __/language/nimcp_concept_registry.i"
+	@echo "... __/language/nimcp_concept_registry.s"
 	@echo "... __/language/nimcp_creative_language_bridge.o"
 	@echo "... __/language/nimcp_creative_language_bridge.i"
 	@echo "... __/language/nimcp_creative_language_bridge.s"
@@ -62398,6 +62530,9 @@ help:
 	@echo "... __/language/nimcp_language_orchestrator.o"
 	@echo "... __/language/nimcp_language_orchestrator.i"
 	@echo "... __/language/nimcp_language_orchestrator.s"
+	@echo "... __/language/nimcp_phonological_loop.o"
+	@echo "... __/language/nimcp_phonological_loop.i"
+	@echo "... __/language/nimcp_phonological_loop.s"
 	@echo "... __/lnn/nimcp_lnn.o"
 	@echo "... __/lnn/nimcp_lnn.i"
 	@echo "... __/lnn/nimcp_lnn.s"

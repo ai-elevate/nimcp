@@ -13,6 +13,8 @@
 #include "language/nimcp_grounded_language.h"
 #include "language/nimcp_grounded_language_internal.h"
 #include "language/nimcp_bigram_spectrum.h"
+#include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
+#include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
 
 /* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
  * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
@@ -55,6 +57,19 @@ static inline void nimcp_fread_ignore(void* ptr, size_t sz, size_t n, FILE* f) {
 #define fread_chk nimcp_fread_ignore
 
 #define LOG_MODULE "GROUNDED_LANG"
+
+/* 2026-05-16 cross-bind wedge structural fix: cap-at-insertion.
+ *
+ * Without this, content-content cross-binding in
+ * grounded_language_learn_from_text accumulates new (entry_j, concept)
+ * pairs unboundedly as training varies. The function-word source guard
+ * stops the closed-class leak, but each content word's binding_count
+ * still grows linearly with corpus exposure. At B=~1000/word and
+ * sentence-scale N=20-30, learn_from_text wedges at 10-60+ sec per
+ * call. lexicon_bind now enforces B <= GL_MAX_BINDINGS_PER_WORD by
+ * evicting the weakest binding when full; new bindings weaker than
+ * the current floor are skipped entirely. */
+#define GL_MAX_BINDINGS_PER_WORD 128
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
@@ -158,12 +173,27 @@ static void normalize_vector(float* vec, uint32_t dim) {
  * Lexicon Operations
  *===========================================================================*/
 
-/** Find or create a lexicon entry for a word */
+/* Forward decls for the mutate_lock helpers — defined later in this TU. */
+static void gl_mutate_lock(grounded_language_t* gl);
+static void gl_mutate_unlock(grounded_language_t* gl);
+
+/** Find or create a lexicon entry for a word.
+ *
+ * Audit walkthrough-2 fix — the hash-table walk + insert is protected
+ * by mutate_lock. NEW_WORD event firing happens OUTSIDE the lock to
+ * avoid re-entrant deadlock if a subscriber writes back into the GL.
+ * gl_mirror_new_word_to_regions also runs outside since it takes
+ * Broca/Wernicke locks (lock-ordering hazard). */
 static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const char* word) {
     char lower[GL_MAX_WORD_LEN];
     lowercase_word(word, lower, GL_MAX_WORD_LEN);
     uint32_t h = hash_word(lower);
     uint32_t idx = h % gl->lexicon_size;
+
+    gl_mutate_lock(gl);
+
+    gl_lexicon_entry_t* result = NULL;
+    bool created_new = false;
 
     /* Linear probe to find existing entry */
     for (uint32_t probe = 0; probe < gl->lexicon_size; probe++) {
@@ -172,11 +202,15 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
             /* Empty slot - create new entry */
             if (gl->vocab_count >= GL_MAX_VOCAB) {
                 LOG_WARN(LOG_MODULE, "Lexicon full (%u words)", gl->vocab_count);
+                gl_mutate_unlock(gl);
                 return NULL;
             }
 
             gl_lexicon_entry_t* entry = (gl_lexicon_entry_t*)nimcp_calloc(1, sizeof(gl_lexicon_entry_t));
-            if (!entry) return NULL;
+            if (!entry) {
+                gl_mutate_unlock(gl);
+                return NULL;
+            }
 
             strncpy(entry->form, lower, GL_MAX_WORD_LEN - 1);
             entry->form_hash = h;
@@ -185,6 +219,7 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
                                                                 sizeof(gl_word_binding_t));
             if (!entry->bindings) {
                 nimcp_free(entry);
+                gl_mutate_unlock(gl);
                 return NULL;
             }
 
@@ -192,6 +227,7 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
             if (!entry->context_vector) {
                 nimcp_free(entry->bindings);
                 nimcp_free(entry);
+                gl_mutate_unlock(gl);
                 return NULL;
             }
 
@@ -210,38 +246,44 @@ static gl_lexicon_entry_t* lexicon_find_or_create(grounded_language_t* gl, const
                 entry->class_confidence = 0.4f;
             }
 
-            /* Mirror the new entry into broca/wernicke region lexicons
-             * if either adapter is connected. No-op when not wired. */
-            extern void gl_mirror_new_word_to_regions(grounded_language_t*,
-                                                       const char*);
-            gl_mirror_new_word_to_regions(gl, entry->form);
-
-            /* Fire NEW_WORD event on the cognitive bus.
-             *
-             * D7: suppress during persistence rehydrate. Resume blasts
-             * ~30K NEW_WORD events to every subscriber (inner-speech,
-             * imagination, theory-of-mind, empathy, introspection,
-             * prefrontal, insula, cingulate, amygdala, ofc, broca,
-             * wernicke, hippocampus, ...) — pure noise on cold boot.
-             * Live grounding events still fire normally. */
-            if (!gl->is_loading) {
-                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
-                gl_event_t ev = {0};
-                ev.type = GL_EVENT_NEW_WORD;
-                ev.word = entry->form;
-                gl_fire_event(gl, &ev);
-            }
-
-            return entry;
+            result = entry;
+            created_new = true;
+            break;
         }
 
         if (gl->lexicon[slot]->form_hash == h &&
             strcmp(gl->lexicon[slot]->form, lower) == 0) {
-            return gl->lexicon[slot]; /* Found existing */
+            result = gl->lexicon[slot]; /* Found existing */
+            break;
         }
     }
 
-    return NULL; /* Table full (shouldn't happen with GL_MAX_VOCAB < table size) */
+    gl_mutate_unlock(gl);
+
+    /* Side effects fire OUTSIDE the lock — mirror writes into Broca /
+     * Wernicke (which have their own locks), and the bus dispatch may
+     * re-enter the GL via subscribers. Both must run unlocked. */
+    if (created_new && result) {
+        /* Mirror the new entry into broca/wernicke region lexicons
+         * if either adapter is connected. No-op when not wired. */
+        extern void gl_mirror_new_word_to_regions(grounded_language_t*,
+                                                   const char*);
+        gl_mirror_new_word_to_regions(gl, result->form);
+
+        /* Fire NEW_WORD event on the cognitive bus.
+         *
+         * D7: suppress during persistence rehydrate. Resume blasts
+         * ~30K NEW_WORD events to every subscriber — pure noise on
+         * cold boot. Live grounding events still fire normally. */
+        if (!gl->is_loading) {
+            gl_event_t ev = {0};
+            ev.type = GL_EVENT_NEW_WORD;
+            ev.word = result->form;
+            gl_fire_event(gl, &ev);
+        }
+    }
+
+    return result;
 }
 
 /** Find a lexicon entry (read-only, no create) */
@@ -314,12 +356,21 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
                                                 uint8_t component_words) {
     if (!gl || !gl->phrases || !form) return NULL;
     uint32_t h = hash_word(form);
+
+    /* Audit walkthrough-2 fix — phrase table writes + eviction are
+     * protected by mutate_lock. Pre-fix, concurrent _gl_track_phrases
+     * calls (from comprehend on multiple threads) could double-allocate
+     * the phrase_count slot and corrupt the linear scan. */
+    gl_mutate_lock(gl);
+
     /* Linear scan — N ≤ GL_MAX_PHRASES = 512. learn_from_text is
      * cold-ish and we can afford O(N) per phrase track. */
     for (uint32_t i = 0; i < gl->phrase_count; i++) {
         if (gl->phrases[i].form_hash == h &&
             strcmp(gl->phrases[i].form, form) == 0) {
-            return &gl->phrases[i];
+            gl_phrase_t* found = &gl->phrases[i];
+            gl_mutate_unlock(gl);
+            return found;
         }
     }
 
@@ -347,6 +398,7 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
         } else {
             /* Everything is freq=0 — can't reliably pick a victim.
              * Reject the new phrase rather than thrash. */
+            gl_mutate_unlock(gl);
             return NULL;
         }
     }
@@ -360,6 +412,8 @@ static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
     p->frequency = 0;
     p->semantic_vec = NULL;
     p->vec_initialized = false;
+
+    gl_mutate_unlock(gl);
     return p;
 }
 
@@ -548,7 +602,6 @@ int gl_observe_snn_spikes(grounded_language_t* gl,
     if (best_idx < 0 || best_sim < GL_SNN_SPIKE_MATCH_THRESHOLD) return 0;
 
     /* Fire COMPREHENDED for the matched word. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type         = GL_EVENT_COMPREHENDED;
     bus_ev.word         = gl->vocab_list[best_idx]->form;
@@ -976,23 +1029,73 @@ const gl_lexicon_entry_t* lexicon_find_fuzzy_external(const grounded_language_t*
  * works; weights stay at the initial mirror-pushed values until the
  * proper SNN-spike wiring lands.
  */
+/* 2026-05-16 wedge diagnosis instrumentation. Process-global counters
+ * + per-call timing of grounded_language_learn_from_text. Cost: ~3
+ * clock_gettime calls + one LOG_INFO per learn_language RPC. The kill
+ * switch keeps this dormant in normal training — only fires when an
+ * operator explicitly re-enables NIMCP_DISABLE_LEARN_LANGUAGE=0. Once
+ * the root cause is fixed we'll remove or gate behind a build flag.
+ * Declared early so lexicon_bind can sample the counter. */
+static _Atomic uint64_t g_gl_mirror_call_count = 0;
+static _Atomic uint64_t g_gl_mirror_total_ns = 0;
+
+static inline uint64_t gl_profile_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+}
+
 static void mirror_binding_to_bridge(grounded_language_t* gl,
                                       const gl_lexicon_entry_t* entry,
                                       uint64_t concept_id,
                                       float strength) {
-    if (!gl->snn_bridge || !entry) return;
+    if (!entry) return;
     uint32_t word_pop = entry->form_hash % SNN_LANG_MAX_WORD_POPS;
     uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
-    /* register_word/register_concept are idempotent (overwrite slot). bind
-     * requires both pops registered (it checks num_*_pops). */
-    snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
-    snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
-    snn_language_bridge_bind(gl->snn_bridge, concept_pop, word_pop, strength);
+
+    /* Bridge-side transport registration — the bridge still needs to know
+     * which pop ids correspond to which forms for spike routing. The
+     * `bind` call below is a Slice-A no-op stub (bridge has no weight
+     * matrix); kept here only to keep ABI compatibility for any third
+     * party still reading the bridge's per-pop metadata. The durable
+     * binding strength lives on the lexicon entry itself. */
+    if (gl->snn_bridge) {
+        snn_language_bridge_register_word(gl->snn_bridge, word_pop, entry->form);
+        snn_language_bridge_register_concept(gl->snn_bridge, concept_pop, concept_id);
+        (void)strength;
+    }
+
+    /* Cross-modal binding via concept_registry (Slice B / walkthrough-2):
+     * intern the text form so that subsequent visual/audio encodes of the
+     * same referent — interned by brain_learn_vector when (features,
+     * label) arrive together — canonicalize to the same root population.
+     * This is the load-bearing wiring that makes a single SNN population
+     * fire for the image, the spoken word, and the written word of one
+     * referent (Quian Quiroga concept-cell invariant). */
+    if (gl->concept_registry) {
+        (void)concept_registry_intern_text(
+            (concept_registry_t*)gl->concept_registry, entry->form);
+    }
 }
 
 /** Add or strengthen a binding between a word and a concept */
 static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
                         uint64_t concept_id, float strength, gl_modality_t modality) {
+    /* Walkthrough-3 part 3 fix — guard entry->bindings against concurrent
+     * realloc (Audit B HIGH #7). Pre-fix, the nimcp_realloc below could
+     * move the buffer while another thread was reading entry->bindings[i]
+     * — classic UAF.
+     *
+     * mirror_binding_to_bridge fires OUTSIDE the lock: it calls into the
+     * SNN bridge which takes its own internal locks (lock-ordering hazard
+     * if we held mutate_lock during the call). We snapshot the strength
+     * value to mirror before unlocking. */
+    gl_mutate_lock(gl);
+
+    float mirror_strength = 0.0f;
+    bool  do_mirror = false;
+    int   rc = 0;
+
     /* Check if binding already exists */
     for (uint32_t i = 0; i < entry->binding_count; i++) {
         if (entry->bindings[i].concept_id == concept_id) {
@@ -1011,17 +1114,53 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
             entry->bindings[i].confidence = 1.0f - expf(-(float)entry->bindings[i].exposure_count / 5.0f);
             entry->bindings[i].last_activation_ms = (uint64_t)time(NULL) * 1000;
             gl->stats.total_bindings++;
-            mirror_binding_to_bridge(gl, entry, concept_id, entry->bindings[i].strength);
-            return 0;
+            mirror_strength = entry->bindings[i].strength;
+            do_mirror = true;
+            goto done;
         }
+    }
+
+    /* Cap-at-insertion: if at GL_MAX_BINDINGS_PER_WORD, evict the weakest
+     * binding if the new one is stronger; otherwise skip the insert.
+     * Bounds B by construction so the cross-bind loop's per-call cost
+     * stays O(N²·K) regardless of training history. */
+    if (entry->binding_count >= GL_MAX_BINDINGS_PER_WORD) {
+        uint32_t weakest_idx = 0;
+        float weakest = entry->bindings[0].strength;
+        for (uint32_t i = 1; i < entry->binding_count; i++) {
+            if (entry->bindings[i].strength < weakest) {
+                weakest = entry->bindings[i].strength;
+                weakest_idx = i;
+            }
+        }
+        if (strength <= weakest) {
+            /* New binding wouldn't survive eviction — skip both insert
+             * and mirror. No-op return so the caller's loop continues. */
+            rc = 0;
+            goto done;
+        }
+        /* Evict weakest in place. */
+        gl_word_binding_t* b = &entry->bindings[weakest_idx];
+        memset(b, 0, sizeof(*b));
+        b->concept_id = concept_id;
+        b->strength = strength;
+        b->modality_strength[modality] = strength;
+        b->exposure_count = 1;
+        b->confidence = 0.2f;
+        b->last_activation_ms = (uint64_t)time(NULL) * 1000;
+        gl->stats.total_bindings++;
+        mirror_strength = strength;
+        do_mirror = true;
+        goto done;
     }
 
     /* New binding - grow array if needed */
     if (entry->binding_count >= entry->binding_capacity) {
         uint32_t new_cap = entry->binding_capacity * 2;
+        if (new_cap > GL_MAX_BINDINGS_PER_WORD) new_cap = GL_MAX_BINDINGS_PER_WORD;
         gl_word_binding_t* new_bindings = (gl_word_binding_t*)nimcp_realloc(
             entry->bindings, new_cap * sizeof(gl_word_binding_t));
-        if (!new_bindings) return -1;
+        if (!new_bindings) { rc = -1; goto done; }
         memset(new_bindings + entry->binding_capacity, 0,
                (new_cap - entry->binding_capacity) * sizeof(gl_word_binding_t));
         entry->bindings = new_bindings;
@@ -1039,8 +1178,19 @@ static int lexicon_bind(grounded_language_t* gl, gl_lexicon_entry_t* entry,
 
     entry->binding_count++;
     gl->stats.total_bindings++;
-    mirror_binding_to_bridge(gl, entry, concept_id, strength);
-    return 0;
+    mirror_strength = strength;
+    do_mirror = true;
+
+done:
+    gl_mutate_unlock(gl);
+    if (do_mirror) {
+        uint64_t mt0 = gl_profile_ns();
+        mirror_binding_to_bridge(gl, entry, concept_id, mirror_strength);
+        uint64_t mt1 = gl_profile_ns();
+        __atomic_fetch_add(&g_gl_mirror_call_count, 1ULL, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&g_gl_mirror_total_ns,  mt1 - mt0, __ATOMIC_RELAXED);
+    }
+    return rc;
 }
 
 /*=============================================================================
@@ -1519,6 +1669,10 @@ void grounded_language_destroy(grounded_language_t* gl) {
         pthread_mutex_destroy(&gl->tc12_lock);
         gl->tc12_lock_inited = false;
     }
+    if (gl->mutate_lock_inited) {
+        pthread_mutex_destroy(&gl->mutate_lock);
+        gl->mutate_lock_inited = false;
+    }
 
     /* Free lexicon entries */
     if (gl->vocab_list) {
@@ -1550,6 +1704,12 @@ void grounded_language_destroy(grounded_language_t* gl) {
         nimcp_free(gl->discourse.turns[t].semantic_vector);
     }
 
+    /* Slice E — vocab visibility mask (heap-owned). May be NULL when no
+     * stage has been activated. */
+    nimcp_free(gl->vocab_active_mask);
+    gl->vocab_active_mask = NULL;
+    gl->vocab_active_mask_capacity = 0;
+
     nimcp_free(gl);
 }
 
@@ -1560,6 +1720,14 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
         return;
     }
     gl->semantic_memory = (semantic_memory_system_t*)semantic_memory;
+}
+
+/* Walkthrough-2 (Option-1 rebuild, 2026-05-19) — wire the concept_registry
+ * after creation. Called from brain init after both subsystems exist.
+ * NULL-safe on both args. */
+void grounded_language_set_concept_registry(grounded_language_t* gl, void* registry) {
+    if (!gl) return;
+    gl->concept_registry = registry;
 }
 
 /*=============================================================================
@@ -2212,7 +2380,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
          * consumers (ToM, response-strategy modules, etc.) only when a
          * concrete label was returned. UNKNOWN is silent. */
         if (result->speech_act != GL_SPEECH_ACT_UNKNOWN) {
-            extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
             gl_event_t ev = {0};
             ev.type            = GL_EVENT_SPEECH_ACT;
             ev.text            = text;
@@ -2385,7 +2552,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                  * consumers (engram episodic consolidation, sleep-wake
                  * scheduler, etc.). Carries the cosine score that crossed
                  * the threshold. */
-                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
                 gl_event_t ev = {0};
                 ev.type             = GL_EVENT_TOPIC_SHIFT;
                 ev.text             = text;
@@ -2470,7 +2636,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
                 ev.topic_similarity = 1.0f;  /* same-surface == 1.0 */
                 ev.confidence       = result->comprehension_confidence;
                 gl_tc12_unlock(gl);
-                extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
                 gl_fire_event(gl, &ev);
                 gl_tc12_lock(gl);
             }
@@ -2525,7 +2690,6 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
         result->comprehension_confidence = 1.0f;
 
     /* Fire COMPREHENDED event on the cognitive bus. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type         = GL_EVENT_COMPREHENDED;
     bus_ev.text         = text;
@@ -2999,6 +3163,12 @@ int grounded_language_push_turn(grounded_language_t* gl,
                                  uint32_t n_words,
                                  bool is_user) {
     if (!gl) return -1;
+
+    /* Audit walkthrough-2 fix — discourse ring writes + rebuild are
+     * protected by mutate_lock. Concurrent comprehend calls used to
+     * race on head/count + the turns array. */
+    gl_mutate_lock(gl);
+
     if (gl->discourse.capacity == 0) gl->discourse.capacity = GL_DISCOURSE_MAX_TURNS;
 
     /* Pick the destination slot — append while not full, otherwise
@@ -3033,12 +3203,23 @@ int grounded_language_push_turn(grounded_language_t* gl,
         if (!t->semantic_vector) {
             /* Roll back the slot reservation on alloc failure. */
             if (gl->discourse.count > 0) gl->discourse.count--;
+            gl_mutate_unlock(gl);
             return -1;
         }
         uint32_t cmp = vec_dim < gl->semantic_dim ? vec_dim : gl->semantic_dim;
         memcpy(t->semantic_vector, semantic_vec, cmp * sizeof(float));
     }
 
+    gl_mutate_unlock(gl);
+
+    /* Walkthrough-3 fix — rebuild context blend OUTSIDE the lock.
+     * The function reads discourse turns (which we just locked-write
+     * above) and computes a weighted blend; once we've released the
+     * lock, any concurrent push_turn would just re-trigger another
+     * rebuild — no correctness issue since the rebuild is idempotent
+     * over the read snapshot. Keeping the critical section tight
+     * matters here: rebuild does O(dim * turns) float math that
+     * shouldn't block other comprehend calls. */
     discourse_rebuild_context_blend(gl);
     return 0;
 }
@@ -3268,7 +3449,6 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
         gl->stats.total_negative_groundings++;
 
         /* Fire GROUNDED with negative confidence to mark the contrast. */
-        extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
         gl_event_t bus_ev = {0};
         bus_ev.type        = GL_EVENT_GROUNDED;
         bus_ev.word        = event->word;
@@ -3331,7 +3511,6 @@ int grounded_language_ground(grounded_language_t* gl, const gl_grounding_event_t
     gl_dispatch_event_to_memory(gl, event, concept_id);
 
     /* Fire GROUNDED event on the cognitive bus. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type        = GL_EVENT_GROUNDED;
     bus_ev.word        = event->word;
@@ -3352,6 +3531,10 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
             (void*)gl, (void*)text);
         return -1;
     }
+
+    uint64_t t_start = gl_profile_ns();
+    uint64_t mc_before = __atomic_load_n(&g_gl_mirror_call_count, __ATOMIC_RELAXED);
+    uint64_t mn_before = __atomic_load_n(&g_gl_mirror_total_ns,  __ATOMIC_RELAXED);
 
     size_t text_len = strlen(text);
     char* buf = (char*)nimcp_malloc(text_len + 1);
@@ -3420,10 +3603,20 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
         updates++;
     }
 
+    uint64_t t_after_distrib = gl_profile_ns();
+
     /* Cross-bind words in same sentence to each other's concepts (distributional grounding) */
+    uint64_t crossbind_iterations = 0;
     for (uint32_t i = 0; i < word_count; i++) {
         const gl_lexicon_entry_t* entry_i = lexicon_find(gl, words[i]);
         if (!entry_i) continue;
+        /* Skip closed-class words as a SOURCE — their accumulated bindings co-occur
+         * with everything, so propagating them to content words smears noise and
+         * causes B to grow without bound (the 2026-05-15 wedge). Receive-side
+         * guard below already blocks closed-class targets; this mirrors that on
+         * the source side, matching the pattern at lines ~3930/3951. */
+        if (entry_i->learned_class == GL_CLASS_FUNCTION ||
+            entry_i->learned_class == GL_CLASS_PRONOUN) continue;
 
         for (uint32_t b = 0; b < entry_i->binding_count; b++) {
             uint64_t concept = entry_i->bindings[b].concept_id;
@@ -3437,12 +3630,34 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
                 if (entry_j->learned_class == GL_CLASS_FUNCTION) continue; /* Skip function words */
 
                 lexicon_bind(gl, entry_j, concept, strength * 0.05f, GL_MODALITY_LINGUISTIC);
+                crossbind_iterations++;
             }
         }
     }
 
+    uint64_t t_after_crossbind = gl_profile_ns();
+
     /* #9 Compositional templates — track frequent bigrams + trigrams. */
     _gl_track_phrases(gl, words, word_count);
+
+    uint64_t t_end = gl_profile_ns();
+    uint64_t mc_after = __atomic_load_n(&g_gl_mirror_call_count, __ATOMIC_RELAXED);
+    uint64_t mn_after = __atomic_load_n(&g_gl_mirror_total_ns,  __ATOMIC_RELAXED);
+    /* Direct fprintf — the LOG_INFO macro signature mishandles printf-style
+     * format strings when LOG_MODULE is passed as the first arg, so the actual
+     * format gets dropped. fprintf+fflush is guaranteed to reach stderr. */
+    fprintf(stderr,
+        "[gl_profile] N=%u total_ms=%.3f distrib_ms=%.3f crossbind_ms=%.3f "
+        "phrases_ms=%.3f crossbind_iters=%llu mirror_calls=%llu mirror_ms=%.3f\n",
+        word_count,
+        (double)(t_end - t_start) / 1e6,
+        (double)(t_after_distrib - t_start) / 1e6,
+        (double)(t_after_crossbind - t_after_distrib) / 1e6,
+        (double)(t_end - t_after_crossbind) / 1e6,
+        (unsigned long long)crossbind_iterations,
+        (unsigned long long)(mc_after - mc_before),
+        (double)(mn_after - mn_before) / 1e6);
+    fflush(stderr);
 
     nimcp_free(buf);
     return updates;
@@ -3528,7 +3743,6 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     gl->stats.total_productions++;
 
     /* Fire PRODUCED event on the cognitive bus. */
-    extern void gl_fire_event(grounded_language_t*, const gl_event_t*);
     gl_event_t bus_ev = {0};
     bus_ev.type         = GL_EVENT_PRODUCED;
     bus_ev.text         = result->text;
@@ -3552,6 +3766,140 @@ int grounded_language_describe_concept(grounded_language_t* gl, uint64_t concept
 
     return grounded_language_produce(gl, features, gl->semantic_dim,
                                       GL_PRODUCE_DESCRIBE, result);
+}
+
+/* Comparator for descending-strength sort in grounded_language_prune_bindings. */
+static int gl_binding_strength_desc_cmp(const void* a, const void* b) {
+    float sa = ((const gl_word_binding_t*)a)->strength;
+    float sb = ((const gl_word_binding_t*)b)->strength;
+    if (sa > sb) return -1;
+    if (sa < sb) return 1;
+    return 0;
+}
+
+/* One-shot reclaim: for each lexicon entry, keep the top max_bindings_per_word
+ * bindings by strength and drop the rest. Intended as a single-call sweep at
+ * boot or via maintenance RPC after the 2026-05-15 wedge fix, to reclaim B
+ * accumulated under the prior leak. Returns total bindings dropped. */
+uint64_t grounded_language_prune_bindings(grounded_language_t* gl,
+                                          uint32_t max_bindings_per_word) {
+    if (!gl || !gl->lexicon || max_bindings_per_word == 0) return 0;
+
+    uint64_t dropped_total = 0;
+    uint32_t entries_pruned = 0;
+
+    for (uint32_t slot = 0; slot < gl->lexicon_size; slot++) {
+        gl_lexicon_entry_t* e = gl->lexicon[slot];
+        if (!e || !e->bindings) continue;
+        if (e->binding_count <= max_bindings_per_word) continue;
+
+        qsort(e->bindings, e->binding_count, sizeof(gl_word_binding_t),
+              gl_binding_strength_desc_cmp);
+        uint32_t before = e->binding_count;
+        e->binding_count = max_bindings_per_word;
+        dropped_total += (uint64_t)(before - max_bindings_per_word);
+        entries_pruned++;
+    }
+
+    fprintf(stderr,
+        "[gl_prune] max_per_word=%u entries_pruned=%u total_dropped=%llu\n",
+        max_bindings_per_word, entries_pruned,
+        (unsigned long long)dropped_total);
+    fflush(stderr);
+    return dropped_total;
+}
+
+int64_t grounded_language_reset_lexicon_distributional(grounded_language_t* gl,
+                                                        bool zero_and_mark_uninit,
+                                                        float jitter)
+{
+    if (!gl || !gl->lexicon) return -1;
+    if (!isfinite(jitter) || jitter < 0.0f) return -1;
+
+    int64_t touched = 0;
+    uint32_t dim = gl->semantic_dim;
+    /* Simple xorshift seeded from gl pointer + clock — deterministic per
+     * call site, no need for crypto-grade randomness here. */
+    uint64_t rs = ((uint64_t)(uintptr_t)gl) ^ 0x9E3779B97F4A7C15ULL;
+    rs ^= (uint64_t)time(NULL);
+    if (rs == 0) rs = 1;
+
+    for (uint32_t slot = 0; slot < gl->lexicon_size; slot++) {
+        gl_lexicon_entry_t* e = gl->lexicon[slot];
+        if (!e) continue;
+        if (!e->context_vector || dim == 0) {
+            /* Still count as touched — the entry now has the desired
+             * "uninitialized" state by virtue of having no vector. */
+            e->context_initialized = false;
+            touched++;
+            continue;
+        }
+        if (zero_and_mark_uninit) {
+            memset(e->context_vector, 0, dim * sizeof(float));
+            e->context_initialized = false;
+        } else {
+            /* Re-randomize in [-jitter, +jitter]. */
+            for (uint32_t d = 0; d < dim; d++) {
+                rs ^= rs >> 12; rs ^= rs << 25; rs ^= rs >> 27;
+                uint64_t r = rs * 0x2545F4914F6CDD1DULL;
+                /* 24-bit mantissa -> uniform [0,1) */
+                float u = (float)((uint32_t)(r >> 40)) * (1.0f / 16777216.0f);
+                e->context_vector[d] = (u * 2.0f - 1.0f) * jitter;
+            }
+            e->context_initialized = true;
+        }
+        touched++;
+    }
+
+    fprintf(stderr,
+        "[gl_distrib_reset] mode=%s jitter=%g lexicon_entries_touched=%lld\n",
+        zero_and_mark_uninit ? "zero" : "jitter",
+        (double)jitter, (long long)touched);
+    fflush(stderr);
+    return touched;
+}
+
+int64_t grounded_language_reset_concept_grounding(grounded_language_t* gl)
+{
+    if (!gl) return -1;
+
+    /* Clear every lexicon entry's concept bindings (keep the word forms,
+     * the bindings[] capacity, and the distributional context_vector). New
+     * grounding will refill bindings[] from index 0. This drops the stale
+     * collapsed bindings that point every word at the one degenerate
+     * concept the prefixed-feature grounding created. */
+    int64_t cleared_bindings = 0;
+    int64_t words = 0;
+    if (gl->lexicon) {
+        for (uint32_t slot = 0; slot < gl->lexicon_size; slot++) {
+            gl_lexicon_entry_t* e = gl->lexicon[slot];
+            if (!e) continue;
+            cleared_bindings += e->binding_count;
+            e->binding_count = 0;
+            words++;
+        }
+    }
+
+    /* Wipe the brain's concept store. It was at/near capacity, so
+     * find_or_create_concept could no longer create fresh concepts and
+     * every clean re-grounding would match a stale concept instead. Reset
+     * frees capacity so re-grounding builds a diverse store from scratch. */
+    if (gl->semantic_memory) {
+        semantic_memory_reset(gl->semantic_memory);
+    }
+
+    /* Reflect the cleared state in the binding/grounding counters so
+     * lang_status doesn't keep reporting the pre-reset totals. */
+    gl->stats.total_bindings = 0;
+    gl->stats.total_groundings = 0;
+
+    fprintf(stderr,
+        "[gl_reground_reset] words=%lld bindings_cleared=%lld "
+        "semantic_memory_reset=%d\n",
+        (long long)words, (long long)cleared_bindings,
+        gl->semantic_memory ? 1 : 0);
+    fflush(stderr);
+    return cleared_bindings;
 }
 
 int grounded_language_blend(grounded_language_t* gl,
@@ -4171,8 +4519,15 @@ int grounded_language_learn_next_token_pair(grounded_language_t* gl,
 
     /* LTP on (c, next_word_pop) — pull the target word toward the prefix's
      * concept activation profile. Active-only: skip near-zero concepts so
-     * we don't waste a binding on noise. The activation threshold mirrors
-     * the existing 0.05 heuristic used elsewhere in the bridge. */
+     * we don't waste a binding on noise.
+     *
+     * Walkthrough-2 (Option-1 rebuild, 2026-05-19): under the rebuild the
+     * bridge is transport-only — `strengthen_binding` is a no-op stub.
+     * This loop still runs; calls return success but no learning happens
+     * here. Next-token learning needs to migrate to SNN-side three-factor
+     * STDP on projection synapses (deferred walkthrough). Durable lexicon
+     * binding strengths are still updated via `lexicon_bind` on the
+     * concept-grounding path, which is independent of these calls. */
     const float ltp_threshold = 0.05f;
     for (uint32_t c = 0; c < n_concepts; c++) {
         if (concept_acts[c] > ltp_threshold) {
@@ -4185,16 +4540,44 @@ int grounded_language_learn_next_token_pair(grounded_language_t* gl,
     /* LTD on (c, top-1 false winner) when target wasn't already #1. Half
      * the LR so LTD is gentler than LTP — biology and softmax CE both
      * prefer asymmetric updates in this direction. Skip if top-1 is the
-     * target itself (already learned correctly). */
+     * target itself (already learned correctly).
+     *
+     * Margin gate: only LTD when the false_winner is *decisively* beating
+     * the target in this specific context, not just dominant globally.
+     * Without this gate, indiscriminate LTD-on-top-1 erodes every
+     * globally-dominant binding regardless of whether it actually
+     * competed here — the step-3900 regression mechanism. We require:
+     *   (a) target appears in topK (rank in [0, num_out)) so the bridge
+     *       has at least *some* presence to compare against
+     *   (b) topK[0].confidence >= ltd_margin * topK[target_rank].confidence
+     *       so the false_winner is winning by a meaningful margin
+     * Skip the LTD step entirely when either fails. */
     if (target_rank != 0 && num_out > 0) {
         uint32_t false_winner = topK[0].word_pop;
         if (false_winner != next_word_pop) {
-            float ltd_lr = -0.5f * lr;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                if (concept_acts[c] > ltp_threshold) {
-                    snn_language_bridge_strengthen_binding(gl->snn_bridge,
-                                                            c, false_winner,
-                                                            ltd_lr * concept_acts[c]);
+            bool apply_ltd = false;
+            if (target_rank > 0 && (uint32_t)target_rank < num_out) {
+                float winner_conf = topK[0].confidence;
+                float target_conf = topK[target_rank].confidence;
+                float margin = snn_language_bridge_get_ltd_margin(gl->snn_bridge);
+                if (margin < 1.0f) margin = 1.5f;   /* safety net */
+                if (target_conf <= 0.0f) {
+                    /* Target is in topK but has zero/negative confidence —
+                     * essentially absent. Treat as "no in-context signal",
+                     * skip LTD. */
+                    apply_ltd = false;
+                } else if (winner_conf >= margin * target_conf) {
+                    apply_ltd = true;
+                }
+            }
+            if (apply_ltd) {
+                float ltd_lr = -0.5f * lr;
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    if (concept_acts[c] > ltp_threshold) {
+                        snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                                c, false_winner,
+                                                                ltd_lr * concept_acts[c]);
+                    }
                 }
             }
         }
@@ -4291,15 +4674,33 @@ int grounded_language_learn_next_token_pair_riemannian(grounded_language_t* gl,
         }
     }
 
+    /* Same margin gate as the flat path — see learn_next_token_pair for
+     * rationale. Riemannian step doesn't change the contrastive
+     * structure, just the per-binding update rule, so the indiscriminate-
+     * LTD failure mode applies identically. */
     if (target_rank != 0 && num_out > 0) {
         uint32_t false_winner = topK[0].word_pop;
         if (false_winner != next_word_pop) {
-            float ltd_lr = -0.5f * lr;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                if (concept_acts[c] > ltp_threshold) {
-                    snn_language_bridge_strengthen_binding_riemannian(
-                        gl->snn_bridge, c, false_winner,
-                        ltd_lr * concept_acts[c]);
+            bool apply_ltd = false;
+            if (target_rank > 0 && (uint32_t)target_rank < num_out) {
+                float winner_conf = topK[0].confidence;
+                float target_conf = topK[target_rank].confidence;
+                float margin = snn_language_bridge_get_ltd_margin(gl->snn_bridge);
+                if (margin < 1.0f) margin = 1.5f;
+                if (target_conf <= 0.0f) {
+                    apply_ltd = false;
+                } else if (winner_conf >= margin * target_conf) {
+                    apply_ltd = true;
+                }
+            }
+            if (apply_ltd) {
+                float ltd_lr = -0.5f * lr;
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    if (concept_acts[c] > ltp_threshold) {
+                        snn_language_bridge_strengthen_binding_riemannian(
+                            gl->snn_bridge, c, false_winner,
+                            ltd_lr * concept_acts[c]);
+                    }
                 }
             }
         }
@@ -4435,16 +4836,35 @@ int grounded_language_learn_next_token_triple(grounded_language_t* gl,
         }
     }
 
-    /* LTD on top-1 false winner, half-strength (matches bigram path). */
+    /* LTD on top-1 false winner, half-strength (matches bigram path).
+     * Same margin gate as learn_next_token_pair — see that function for
+     * the rationale. Critical for the trigram pump in particular: with
+     * ~85 trigram updates/min driven by learn_text_bigrams under the
+     * trigram flag, the unconditional LTD collapsed bridge_avg_binding_weight
+     * by 27% in ~3 hours (step-3900 regression). */
     if (target_rank != 0 && num_out > 0) {
         uint32_t false_winner = topK[0].word_pop;
         if (false_winner != next_word_pop) {
-            float ltd_lr = -0.5f * lr;
-            for (uint32_t c = 0; c < n_concepts; c++) {
-                if (context[c] > ltp_threshold) {
-                    snn_language_bridge_strengthen_binding(gl->snn_bridge,
-                                                            c, false_winner,
-                                                            ltd_lr * context[c]);
+            bool apply_ltd = false;
+            if (target_rank > 0 && (uint32_t)target_rank < num_out) {
+                float winner_conf = topK[0].confidence;
+                float target_conf = topK[target_rank].confidence;
+                float margin = snn_language_bridge_get_ltd_margin(gl->snn_bridge);
+                if (margin < 1.0f) margin = 1.5f;   /* safety net */
+                if (target_conf <= 0.0f) {
+                    apply_ltd = false;
+                } else if (winner_conf >= margin * target_conf) {
+                    apply_ltd = true;
+                }
+            }
+            if (apply_ltd) {
+                float ltd_lr = -0.5f * lr;
+                for (uint32_t c = 0; c < n_concepts; c++) {
+                    if (context[c] > ltp_threshold) {
+                        snn_language_bridge_strengthen_binding(gl->snn_bridge,
+                                                                c, false_winner,
+                                                                ltd_lr * context[c]);
+                    }
                 }
             }
         }
@@ -4506,6 +4926,29 @@ static void gl_tc12_lock(grounded_language_t* gl) {
 
 static void gl_tc12_unlock(grounded_language_t* gl) {
     pthread_mutex_unlock(&gl->tc12_lock);
+}
+
+/* Audit walkthrough-2 — mutate_lock helpers. Same lazy-init pattern as
+ * tc12_lock; separate mutex so the two locks never need to be held
+ * simultaneously (avoids lock-ordering hazards). mutate_lock covers
+ * lexicon + discourse + phrase mutations from comprehend; tc12_lock
+ * covers anaphora + spectrum. */
+static pthread_mutex_t g_mutate_bootstrap = PTHREAD_MUTEX_INITIALIZER;
+
+static void gl_mutate_lock(grounded_language_t* gl) {
+    if (!__atomic_load_n(&gl->mutate_lock_inited, __ATOMIC_ACQUIRE)) {
+        pthread_mutex_lock(&g_mutate_bootstrap);
+        if (!gl->mutate_lock_inited) {
+            pthread_mutex_init(&gl->mutate_lock, NULL);
+            __atomic_store_n(&gl->mutate_lock_inited, true, __ATOMIC_RELEASE);
+        }
+        pthread_mutex_unlock(&g_mutate_bootstrap);
+    }
+    pthread_mutex_lock(&gl->mutate_lock);
+}
+
+static void gl_mutate_unlock(grounded_language_t* gl) {
+    pthread_mutex_unlock(&gl->mutate_lock);
 }
 
 static bigram_spectrum_t* gl_get_attached_spectrum(grounded_language_t* gl) {
@@ -6294,4 +6737,225 @@ gl_lexicon_entry_t* gl_internal_lexicon_find_or_create(
     const char* word) {
     if (!gl || !word) return NULL;
     return lexicon_find_or_create(gl, word);
+}
+
+/*=============================================================================
+ * Slice E (Option-1 rebuild) — developmental-stage vocab mask implementation.
+ *
+ * The mask lives on the grounded_language struct as a heap-owned bool[].
+ * Capacity grows monotonically with vocab_count. Indices align with
+ * vocab_list[], so reading mask[i] is O(1).
+ *===========================================================================*/
+
+/* Ensure the mask array can index up to `needed` entries. Grows by a 1.5x
+ * factor on each resize so callers that incrementally insert vocabulary
+ * after install pay amortized O(1) per insert. New slots default to
+ * VISIBLE so newly-learned vocabulary doesn't get silently hidden by an
+ * older mask (the trainer can rerun set_active_vocab_mask to re-apply
+ * the cap if needed). Returns 0 on success, -1 on alloc failure. */
+static int gl_vocab_mask_ensure_capacity(grounded_language_t* gl,
+                                          uint32_t needed) {
+    if (!gl) return -1;
+    if (gl->vocab_active_mask_capacity >= needed) return 0;
+
+    uint32_t new_cap = gl->vocab_active_mask_capacity;
+    if (new_cap < 64u) new_cap = 64u;
+    while (new_cap < needed) {
+        /* 1.5x growth, saturating */
+        uint64_t bumped = (uint64_t)new_cap + (uint64_t)(new_cap >> 1);
+        if (bumped > 0xFFFFFFFFu) {
+            new_cap = needed;
+            break;
+        }
+        new_cap = (uint32_t)bumped;
+    }
+
+    bool* fresh;
+    if (gl->vocab_active_mask) {
+        fresh = (bool*)nimcp_realloc(gl->vocab_active_mask,
+                                      new_cap * sizeof(bool));
+    } else {
+        fresh = (bool*)nimcp_calloc(new_cap, sizeof(bool));
+    }
+    if (!fresh) return -1;
+
+    /* Default newly-allocated tail to "visible". For a realloc the old
+     * region keeps its values; only the new tail needs initialization. */
+    for (uint32_t i = gl->vocab_active_mask_capacity; i < new_cap; i++) {
+        fresh[i] = true;
+    }
+
+    gl->vocab_active_mask = fresh;
+    gl->vocab_active_mask_capacity = new_cap;
+    return 0;
+}
+
+int grounded_language_set_active_vocab_mask(grounded_language_t* gl,
+                                              uint32_t stage) {
+    if (!gl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "grounded_language_set_active_vocab_mask: NULL gl");
+        return -1;
+    }
+
+    const stage_constraints_t* sc = stage_table_get(stage);
+    if (!sc) {
+        /* stage_table_get clamps, so this is defensive only. */
+        sc = stage_table_default();
+    }
+
+    /* "Unlimited" max_visible_vocab → mask every entry visible. We still
+     * record the stage so future grow-events apply consistent defaults. */
+    const bool unlimited = (sc->max_visible_vocab >= (size_t)UINT32_MAX);
+    uint32_t cap = gl->vocab_count;
+    if (cap == 0u) cap = 64u;  /* pre-allocate so first lexicon insert has space */
+
+    gl_mutate_lock(gl);
+    if (gl_vocab_mask_ensure_capacity(gl, cap) != 0) {
+        gl_mutate_unlock(gl);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "grounded_language_set_active_vocab_mask: alloc failed");
+        return -1;
+    }
+
+    if (unlimited) {
+        for (uint32_t i = 0; i < gl->vocab_active_mask_capacity; i++) {
+            gl->vocab_active_mask[i] = true;
+        }
+    } else {
+        uint32_t cutoff = (sc->max_visible_vocab > (size_t)UINT32_MAX)
+                              ? UINT32_MAX
+                              : (uint32_t)sc->max_visible_vocab;
+        for (uint32_t i = 0; i < gl->vocab_active_mask_capacity; i++) {
+            gl->vocab_active_mask[i] = (i < cutoff);
+        }
+    }
+    gl->vocab_active_mask_stage = stage;
+    gl_mutate_unlock(gl);
+    return 0;
+}
+
+void grounded_language_clear_active_vocab_mask(grounded_language_t* gl) {
+    if (!gl) return;
+    gl_mutate_lock(gl);
+    nimcp_free(gl->vocab_active_mask);
+    gl->vocab_active_mask = NULL;
+    gl->vocab_active_mask_capacity = 0u;
+    gl->vocab_active_mask_stage = 0u;
+    gl_mutate_unlock(gl);
+}
+
+bool grounded_language_vocab_index_visible(const grounded_language_t* gl,
+                                            uint32_t idx) {
+    if (!gl) return true;
+    /* No mask installed → everything is visible. */
+    if (!gl->vocab_active_mask) return true;
+    /* Index out of mask range → default visible (the mask doesn't cover
+     * this entry yet — either it's a newly-added vocab item or the mask
+     * is stale w.r.t. the lexicon. Either way, don't deny.). */
+    if (idx >= gl->vocab_active_mask_capacity) return true;
+    return gl->vocab_active_mask[idx];
+}
+
+/* Helper: find the vocab_list index of a given surface form (case-
+ * insensitive). Returns UINT32_MAX when not found. */
+static uint32_t gl_vocab_list_index_of(const grounded_language_t* gl,
+                                        const char* form) {
+    if (!gl || !form || !gl->vocab_list) return UINT32_MAX;
+    /* Walk vocab_list — N is small in the early curriculum where the
+     * mask is most useful. We don't have a form→index map. */
+    char lower[GL_MAX_WORD_LEN];
+    lowercase_word(form, lower, GL_MAX_WORD_LEN);
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[i];
+        if (!e) continue;
+        if (strcmp(e->form, lower) == 0) return i;
+    }
+    return UINT32_MAX;
+}
+
+uint32_t grounded_language_filter_production_by_mask(
+    grounded_language_t* gl,
+    gl_production_result_t* result) {
+    if (!gl || !result || !result->text || result->word_count == 0) return 0u;
+    /* No mask → nothing to filter. */
+    if (!gl->vocab_active_mask) return 0u;
+
+    /* Tokenize result->text in place into pointers, filter, re-join.
+     * We strdup first so we can rewrite the original buffer without
+     * tripping the strtok_r aliasing. */
+    size_t tlen = strlen(result->text);
+    char* dup = (char*)nimcp_malloc(tlen + 1u);
+    if (!dup) return 0u;
+    memcpy(dup, result->text, tlen + 1u);
+
+    /* Worst case: every byte becomes a token boundary (impossible but
+     * defensive). Cap at word_count for the kept pointer array. */
+    enum { GL_FILTER_MAX_TOKENS = 256 };
+    const char* survive[GL_FILTER_MAX_TOKENS];
+    uint32_t survive_count = 0;
+    uint32_t dropped = 0;
+
+    char* saveptr = NULL;
+    char* tok = strtok_r(dup, " \t\n\r", &saveptr);
+    while (tok && survive_count < GL_FILTER_MAX_TOKENS) {
+        gl_mutate_lock(gl);
+        uint32_t idx = gl_vocab_list_index_of(gl, tok);
+        bool keep;
+        if (idx == UINT32_MAX) {
+            /* Unknown surface form — DEFAULT KEEP. The lexicon hasn't
+             * grounded this token; mask doesn't apply. The cascade's
+             * downstream stages decide whether to drop. */
+            keep = true;
+        } else if (idx >= gl->vocab_active_mask_capacity) {
+            keep = true;
+        } else {
+            keep = gl->vocab_active_mask[idx];
+        }
+        gl_mutate_unlock(gl);
+
+        if (keep) {
+            survive[survive_count++] = tok;
+        } else {
+            dropped++;
+        }
+        tok = strtok_r(NULL, " \t\n\r", &saveptr);
+    }
+
+    /* Defensive: if every token was masked out, leave the result alone
+     * (return dropped count so the caller can react). */
+    if (survive_count == 0u) {
+        nimcp_free(dup);
+        return dropped;
+    }
+    /* If nothing was dropped, we wasted some cycles but the text stays
+     * the same. */
+    if (dropped == 0u) {
+        nimcp_free(dup);
+        return 0u;
+    }
+
+    /* Rejoin the survivors with single-space separators. The new buffer
+     * is strictly shorter than the original (at least one token gone +
+     * its separator), so we reuse the original allocation. */
+    size_t need = 0;
+    for (uint32_t i = 0; i < survive_count; i++) {
+        need += strlen(survive[i]);
+        if (i + 1u < survive_count) need += 1u;  /* separator */
+    }
+    /* Need + 1 NUL ≤ tlen + 1 since we dropped at least one token. */
+    char* w = result->text;
+    for (uint32_t i = 0; i < survive_count; i++) {
+        size_t slen = strlen(survive[i]);
+        memcpy(w, survive[i], slen);
+        w += slen;
+        if (i + 1u < survive_count) {
+            *w++ = ' ';
+        }
+    }
+    *w = '\0';
+    result->word_count = survive_count;
+
+    nimcp_free(dup);
+    return dropped;
 }

@@ -587,6 +587,15 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
                                         (void*)brain->lgss);
         }
 
+        /* Walkthrough-2 (Option-1 rebuild) — wire concept_registry so
+         * grounded_language can intern text labels into the cross-modal
+         * registry. brain->concept_registry is created in the cognitive_engines
+         * wave (W27) which runs before this wave, so the field is non-NULL. */
+        if (brain->concept_registry) {
+            grounded_language_set_concept_registry(brain->grounded_lang,
+                                                    brain->concept_registry);
+        }
+
         /* Wire cross-modal connections */
         if (brain->visual_cortex)
             grounded_language_connect_visual(brain->grounded_lang, brain->visual_cortex);

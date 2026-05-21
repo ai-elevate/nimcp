@@ -12,6 +12,19 @@
 
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_syntactic_comprehension.h"
+#include "core/brain/regions/wernicke/nimcp_phonological_analyzer.h"
+#include "core/brain/regions/wernicke/nimcp_lexical_access.h"
+/* NOTE: nimcp_semantic_integrator.h cannot be included here because it
+ * redefines `thematic_role_t` (ROLE_AGENT, ROLE_GOAL, ROLE_COUNT, ...)
+ * which is already pulled in via nimcp_syntactic_comprehension.h above —
+ * both headers define the same enum with overlapping values, causing
+ * redeclaration errors. We only need the lifecycle entry points; the
+ * opaque type semantic_integrator_t is already forward-declared in the
+ * adapter header. Declare just the create/destroy functions locally. */
+typedef struct semantic_config semantic_config_t;
+extern semantic_integrator_t* semantic_create(const semantic_config_t* config);
+extern void semantic_destroy(semantic_integrator_t* sem);
+
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +33,7 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
+#include "utils/thread/nimcp_thread.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 #include "utils/bridge/nimcp_bridge_boilerplate.h"
 #include "mesh/nimcp_mesh_participant.h"
@@ -82,6 +96,15 @@ struct wernicke_adapter {
     lexicon_entry_t** lexicon_table;
     uint32_t lexicon_count;
     uint32_t lexicon_capacity;
+    /* Walkthrough-3 fix — separate from lexical_access_t's own
+     * lexicon_mutex (commit a6f965029). The wernicke_adapter owns a
+     * SECOND phoneme-keyed lexicon_table here. Writers: wernicke_add_word
+     * + gl_mirror_new_word_to_regions. Readers: wernicke_lookup_word
+     * + wernicke_recognize_word + wernicke_destroy. Pre-fix the chain
+     * walks raced the add_word inserts when the GL mirror ran
+     * concurrently from comprehend on the RO socket pool. NULL on
+     * alloc failure degrades to no-op locking. */
+    nimcp_mutex_t* lexicon_mutex;
 
     /* Working memory */
     working_memory_t working_memory;
@@ -237,6 +260,13 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
             return NULL;
         }
         adapter->lexicon_count = 0;
+        /* Walkthrough-3 fix — guard add/lookup/recognize against
+         * concurrent inserts. NULL on alloc failure degrades to
+         * unlocked (matches Broca's pattern at commit b1417e2a9). */
+        adapter->lexicon_mutex = nimcp_mutex_create(NULL);
+        if (!adapter->lexicon_mutex) {
+            NIMCP_LOG_WARN("wernicke", "lexicon_mutex create failed — running unlocked");
+        }
     }
 
     /* Initialize working memory */
@@ -268,11 +298,27 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     adapter->snn = NULL;
     adapter->snn_pop_id = -1;
 
-    /* Create syntactic comprehension submodule (NULL config = defaults).
-     * Without this, wernicke_get_syntactic_comprehension() returns NULL and
-     * the language cascade Phase 2D-A/2D-B parsing path stays statue, leaving
-     * wernicke_parsed=false on every comprehension. Non-fatal: adapter still
-     * works for phonological/lexical/semantic stages even if this fails. */
+    /* Create comprehension submodules (NULL config = each module's defaults).
+     * Without these, wernicke_get_phonological_analyzer/lexical_access/
+     * semantic_integrator/syntactic_comprehension all return NULL and the
+     * language cascade + init-time lexicon seeding stays statue.
+     * Non-fatal on individual failures — leave the field NULL and let
+     * downstream NULL-checks handle it. */
+    adapter->phonological = wernicke_phonological_create(NULL);
+    if (!adapter->phonological) {
+        NIMCP_LOG_WARN("wernicke", "wernicke_phonological_create returned NULL — phonological analysis disabled");
+    }
+
+    adapter->lexical = lexical_create(NULL);
+    if (!adapter->lexical) {
+        NIMCP_LOG_WARN("wernicke", "lexical_create returned NULL — lexical access disabled");
+    }
+
+    adapter->semantic = semantic_create(NULL);
+    if (!adapter->semantic) {
+        NIMCP_LOG_WARN("wernicke", "semantic_create returned NULL — semantic integration disabled");
+    }
+
     adapter->syntactic = syntactic_comprehension_create(NULL);
     if (!adapter->syntactic) {
         NIMCP_LOG_WARN("wernicke", "syntactic_comprehension_create returned NULL — parsing disabled");
@@ -303,14 +349,31 @@ void wernicke_destroy(wernicke_adapter_t* adapter)
         }
         nimcp_free(adapter->lexicon_table);
     }
+    if (adapter->lexicon_mutex) {
+        nimcp_mutex_free(adapter->lexicon_mutex);
+        adapter->lexicon_mutex = NULL;
+    }
 
     /* Free phoneme buffer */
     if (adapter->phoneme_buffer.events) {
         nimcp_free(adapter->phoneme_buffer.events);
     }
 
-    /* Free sub-modules when implemented */
-    /* Phase 2: phonological, lexical, semantic, syntactic */
+    /* Free sub-modules — Phase 2: phonological, lexical, semantic, syntactic.
+     * Each module's destroy() handles NULL safely; symmetric ordering with
+     * create above is not strictly required but kept for readability. */
+    if (adapter->phonological) {
+        wernicke_phonological_destroy(adapter->phonological);
+        adapter->phonological = NULL;
+    }
+    if (adapter->lexical) {
+        lexical_destroy(adapter->lexical);
+        adapter->lexical = NULL;
+    }
+    if (adapter->semantic) {
+        semantic_destroy(adapter->semantic);
+        adapter->semantic = NULL;
+    }
     if (adapter->syntactic) {
         syntactic_comprehension_destroy(adapter->syntactic);
         adapter->syntactic = NULL;
@@ -447,7 +510,11 @@ bool wernicke_recognize_word(
     /* Hash the phoneme sequence */
     uint32_t hash = hash_phonemes((const uint8_t*)phonemes, count, adapter->lexicon_capacity);
 
-    /* Search hash bucket */
+    /* Walkthrough-3 fix — guard chain walk. Snapshot the matched entry
+     * BEFORE the callback fires (callback runs OUTSIDE the lock to avoid
+     * re-entry if it writes back into wernicke). */
+    bool matched = false;
+    if (adapter->lexicon_mutex) nimcp_mutex_lock(adapter->lexicon_mutex);
     lexicon_entry_t* entry = adapter->lexicon_table[hash];
     while (entry) {
         if (entry->word.phoneme_count == count) {
@@ -459,29 +526,29 @@ bool wernicke_recognize_word(
                 }
             }
             if (match) {
-                /* Found word */
                 result->word = entry->word;
                 result->confidence = 1.0f;
-                result->onset_time_ms = 0;  /* Would be set from phoneme events */
+                result->onset_time_ms = 0;
                 result->offset_time_ms = 0;
                 result->position_in_utterance = 0;
-
-                adapter->stats.words_recognized++;
-                adapter->stats.successful_recognitions++;
-
-                /* Fire callback if set */
-                if (adapter->word_callback) {
-                    adapter->word_callback(result, adapter->word_callback_data);
-                }
-
-                NIMCP_LOG_DEBUG("wernicke", "Recognized word: %s (conf=%.2f)",
-                               result->word.word, result->confidence);
-
-                adapter->status = WERNICKE_STATUS_IDLE;
-                return true;
+                matched = true;
+                break;
             }
         }
         entry = entry->next;
+    }
+    if (adapter->lexicon_mutex) nimcp_mutex_unlock(adapter->lexicon_mutex);
+
+    if (matched) {
+        adapter->stats.words_recognized++;
+        adapter->stats.successful_recognitions++;
+        if (adapter->word_callback) {
+            adapter->word_callback(result, adapter->word_callback_data);
+        }
+        NIMCP_LOG_DEBUG("wernicke", "Recognized word: %s (conf=%.2f)",
+                       result->word.word, result->confidence);
+        adapter->status = WERNICKE_STATUS_IDLE;
+        return true;
     }
 
     /* Word not found — normal lookup miss, not an error */
@@ -495,7 +562,20 @@ bool wernicke_add_word(
     wernicke_adapter_t* adapter,
     const wernicke_word_t* word)
 {
-    if (!adapter || !word || word->phoneme_count == 0) {
+    /* Walkthrough-3 fix — relax the phoneme_count==0 rejection. The
+     * GL→Wernicke lexicon mirror (gl_mirror_new_word_to_regions) sets
+     * phoneme_count=0 because it doesn't have a G2P pipeline at the
+     * point of new-word emission. Pre-fix, 100% of mirror calls were
+     * rejected here, so wernicke's lexicon never got any words from
+     * GL — silent capacity drop pattern (memory feedback_silent_capacity_drops).
+     *
+     * A phoneme_count=0 entry is a "graphemic seed" — it doesn't match
+     * phoneme-keyed lookups (wernicke_recognize_word keys on phonemes)
+     * but does match string-keyed lookups (wernicke_lookup_word
+     * compares via strcmp on entry->word.word), which is the path the
+     * mirror cares about. Phonemes can be derived on demand at first
+     * phonological lookup. */
+    if (!adapter || !word || !word->word[0]) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_add_word: validation failed");
         return false;
@@ -507,21 +587,27 @@ bool wernicke_add_word(
         return false;
     }
 
-    /* Hash by phoneme sequence */
+    /* Hash by phoneme sequence — for graphemic seeds (phoneme_count=0)
+     * this hashes the empty buffer to a stable bucket, which is fine
+     * since string-keyed lookups scan all buckets anyway. */
     uint32_t hash = hash_phonemes(word->phonemes, word->phoneme_count, adapter->lexicon_capacity);
 
-    /* Create new entry */
+    /* Create new entry. Pre-alloc OUTSIDE the lock to keep the
+     * critical section tight. */
     lexicon_entry_t* entry = (lexicon_entry_t*)nimcp_malloc(sizeof(lexicon_entry_t));
     if (!entry) {
         adapter->last_error = WERNICKE_ERROR_INTERNAL;
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_add_word: entry is NULL");
         return false;
     }
-
     entry->word = *word;
+
+    /* Walkthrough-3 fix — guard hash-chain link + count bump. */
+    if (adapter->lexicon_mutex) nimcp_mutex_lock(adapter->lexicon_mutex);
     entry->next = adapter->lexicon_table[hash];
     adapter->lexicon_table[hash] = entry;
     adapter->lexicon_count++;
+    if (adapter->lexicon_mutex) nimcp_mutex_unlock(adapter->lexicon_mutex);
 
     NIMCP_LOG_DEBUG("wernicke", "Added word to lexicon: %s (%u phonemes)",
                    word->word, word->phoneme_count);
@@ -544,6 +630,11 @@ bool wernicke_lookup_word(
         return false;
     }
 
+    /* Walkthrough-3 fix — guard the chain walk against concurrent
+     * inserts. Cast to non-const is safe: we lock for read-walk only. */
+    nimcp_mutex_t* mtx = adapter->lexicon_mutex;
+    if (mtx) nimcp_mutex_lock(mtx);
+
     /* Lexicon is indexed by phoneme hash, so we must search all buckets
      * to find a word by its string. This is O(n) but acceptable for
      * typical lexicon sizes. A secondary string index could be added
@@ -553,11 +644,13 @@ bool wernicke_lookup_word(
         while (e) {
             if (strcmp(e->word.word, word_str) == 0) {
                 *entry = e->word;
+                if (mtx) nimcp_mutex_unlock(mtx);
                 return true;
             }
             e = e->next;
         }
     }
+    if (mtx) nimcp_mutex_unlock(mtx);
 
     /* Word not found — normal lookup miss, not an error */
     return false;

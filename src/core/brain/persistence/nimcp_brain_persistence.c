@@ -82,6 +82,7 @@
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "language/nimcp_concept_registry.h"  /* Slice B sidecar */
 #include "core/cortical_columns/nimcp_cortical_column.h"
 #include "core/cortical_columns/nimcp_cortical_column_ternary.h"
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* substrate + thalamic attach */
@@ -648,6 +649,44 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
         }
     }
 
+    /* === LANG sidecar block — cascade self-train tunables + Cat-A flag
+     *
+     * Until this block existed, brain->cascade_self_train_* (set by
+     * nimcp_brain_set_cascade_self_train_enabled / _tunables) was lost
+     * on every save. Now extended (commit following cf7e47b29) to
+     * also round-trip respond_via_cascade.
+     *
+     * Wire format (self-describing, forward+backward compatible):
+     *   [u32 sentinel = 'LANG' (0x4C414E47)]
+     *   [u32 block_size_in_bytes]
+     *   [u8  cascade_self_train_enabled]
+     *   [f32 cascade_self_train_baseline]
+     *   [f32 cascade_self_train_alpha]
+     *   [f32 cascade_self_train_lr_scale]
+     *   [u8  respond_via_cascade]      <-- appended 2026-05-12
+     *   [u32 current_stage]            <-- appended 2026-05-19 (Slice E)
+     *
+     * Older readers seek past unknown trailing bytes via block_size.
+     * Pre-LANG readers hit EOF before the sentinel and skip cleanly —
+     * fields stay at library defaults. */
+    {
+        const uint32_t lang_sentinel = 0x4C414E47u;  /* "LANG" */
+        const uint32_t lang_block_size =
+            sizeof(uint8_t) + sizeof(float) * 3u +
+            sizeof(uint8_t) + sizeof(uint32_t);   /* + current_stage */
+        uint8_t st_enabled = brain->cascade_self_train_enabled ? 1u : 0u;
+        uint8_t rvc_enabled = brain->respond_via_cascade ? 1u : 0u;
+        uint32_t cur_stage = brain->current_stage;  /* Slice E */
+        fwrite(&lang_sentinel,   sizeof(uint32_t), 1, meta_file);
+        fwrite(&lang_block_size, sizeof(uint32_t), 1, meta_file);
+        fwrite(&st_enabled,                            sizeof(uint8_t), 1, meta_file);
+        fwrite(&brain->cascade_self_train_baseline,    sizeof(float),   1, meta_file);
+        fwrite(&brain->cascade_self_train_alpha,       sizeof(float),   1, meta_file);
+        fwrite(&brain->cascade_self_train_lr_scale,    sizeof(float),   1, meta_file);
+        fwrite(&rvc_enabled,                           sizeof(uint8_t), 1, meta_file);
+        fwrite(&cur_stage,                             sizeof(uint32_t), 1, meta_file);
+    }
+
     fclose(meta_file);
 
     /* Atomic rename .meta.tmp → .meta. If rename fails we have neither a
@@ -1135,6 +1174,30 @@ bool brain_save(brain_t brain, const char* filepath)
             if (brain_kg_save((struct brain_kg*)brain->internal_kg, kg_path) != 0) {
                 fprintf(stderr, "[WARN] brain_kg_save failed for %s — "
                         "KG facts NOT persisted\n", kg_path);
+            }
+        }
+
+        /* Slice B (Option 1 architectural rebuild) — concept registry
+         * sidecar. Persists the cross-modal binding union-find + the
+         * text/visual/audio fingerprint tables so canonical pop_ids
+         * survive daemon restarts. Without this, every restart wipes
+         * the (image, label) → pop bindings the trainer has accumulated.
+         * Best-effort: missing sidecar is fine on pre-Slice-B checkpoints. */
+        if (brain->concept_registry) {
+            char cr_path[NIMCP_METRICS_PATH_SIZE];
+            snprintf(cr_path, sizeof(cr_path), "%s.concept_registry", filepath);
+            FILE* cr_fp = fopen(cr_path, "wb");
+            if (cr_fp) {
+                int cr_rc = concept_registry_save(
+                    (const concept_registry_t*)brain->concept_registry, cr_fp);
+                fclose(cr_fp);
+                if (cr_rc != 0) {
+                    fprintf(stderr, "[WARN] concept_registry_save failed for %s — "
+                            "cross-modal bindings NOT persisted\n", cr_path);
+                }
+            } else {
+                fprintf(stderr, "[WARN] could not open %s for write — "
+                        "concept registry NOT persisted\n", cr_path);
             }
         }
 
@@ -1779,6 +1842,72 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
         }
     }
 
+    /* === LANG sidecar block (best-effort) =============================
+     *
+     * Mirror of the writer above. EOF here is the EXPECTED path for
+     * pre-2026-05-12 checkpoints — leave the cascade_self_train_*
+     * fields at whatever the caller's init/default set them to.
+     *
+     * Block was added 2026-05-12 (commit following a6f965029). Magic
+     * 'LANG' disambiguates it from a stray u32 = 0x4C414E47 by chance.
+     * block_size_in_bytes lets newer writers extend the block. */
+    {
+        uint32_t lang_sentinel = 0;
+        if (fread(&lang_sentinel, sizeof(uint32_t), 1, meta_file) == 1 &&
+            lang_sentinel == 0x4C414E47u) {
+            uint32_t lang_block_size = 0;
+            if (fread(&lang_block_size, sizeof(uint32_t), 1, meta_file) != 1 ||
+                lang_block_size > 64u * 1024u) {
+                /* Corrupt block size — abandon, tunables stay at defaults. */
+                NIMCP_LOGGING_WARN("LANG block: bad/missing block_size — skipping");
+            } else {
+                long start_pos = ftell(meta_file);
+                if (lang_block_size >= sizeof(uint8_t) + sizeof(float) * 3u) {
+                    uint8_t st_enabled = 0;
+                    float baseline = 0.0f, alpha = 0.0f, lr_scale = 0.0f;
+                    if (fread(&st_enabled, sizeof(uint8_t), 1, meta_file) == 1 &&
+                        fread(&baseline,   sizeof(float),   1, meta_file) == 1 &&
+                        fread(&alpha,      sizeof(float),   1, meta_file) == 1 &&
+                        fread(&lr_scale,   sizeof(float),   1, meta_file) == 1) {
+                        brain->cascade_self_train_enabled  = (st_enabled != 0);
+                        brain->cascade_self_train_baseline = baseline;
+                        brain->cascade_self_train_alpha    = alpha;
+                        brain->cascade_self_train_lr_scale = lr_scale;
+                    }
+                }
+                /* respond_via_cascade tail (2026-05-12) — optional u8.
+                 * Pre-rvc writers stopped at the lr_scale float. */
+                if (lang_block_size >= sizeof(uint8_t) + sizeof(float) * 3u + sizeof(uint8_t)) {
+                    uint8_t rvc_enabled = 0;
+                    if (fread(&rvc_enabled, sizeof(uint8_t), 1, meta_file) == 1) {
+                        brain->respond_via_cascade = (rvc_enabled != 0);
+                    }
+                }
+                /* Slice E (2026-05-19) — current_stage tail. Optional u32
+                 * appended after rvc; older writers stopped at rvc and
+                 * we leave current_stage at the calloc-zero default. */
+                if (lang_block_size >= sizeof(uint8_t) + sizeof(float) * 3u
+                                       + sizeof(uint8_t) + sizeof(uint32_t)) {
+                    uint32_t cur_stage = 0;
+                    if (fread(&cur_stage, sizeof(uint32_t), 1, meta_file) == 1) {
+                        brain->current_stage = cur_stage;
+                    }
+                }
+                /* Forward-compat: skip past any trailing bytes a newer
+                 * writer added beyond what we know how to read. */
+                if (start_pos >= 0) {
+                    long want = start_pos + (long)lang_block_size;
+                    long here = ftell(meta_file);
+                    if (here >= 0 && here < want) {
+                        fseek(meta_file, want, SEEK_SET);
+                    }
+                }
+            }
+        }
+        /* Any other outcome (EOF, mismatched sentinel) leaves the
+         * tunables at their init/RPC-set defaults. */
+    }
+
     fclose(meta_file);
 
     // Load persistent tokenizer (optional — returns NULL if file doesn't exist)
@@ -2254,6 +2383,31 @@ void brain_load_post_init_sidecars(brain_t brain)
     if (brain->loaded_from_path[0] == '\0') return;  /* fresh brain */
 
     const char* filepath = brain->loaded_from_path;
+
+    /* Slice B (Option 1 architectural rebuild) — concept registry sidecar.
+     * Restores the cross-modal binding union-find + fingerprint tables.
+     * Pre-Slice-B checkpoints won't have a .concept_registry file; the
+     * registry stays empty and bindings will accumulate from training
+     * onwards. */
+    if (brain->concept_registry) {
+        char cr_path[NIMCP_METRICS_PATH_SIZE];
+        snprintf(cr_path, sizeof(cr_path), "%s.concept_registry", filepath);
+        FILE* cr_fp = fopen(cr_path, "rb");
+        if (cr_fp) {
+            int cr_rc = concept_registry_load(
+                (concept_registry_t*)brain->concept_registry, cr_fp);
+            fclose(cr_fp);
+            if (cr_rc == 0) {
+                fprintf(stderr, "[INFO] Restored concept registry from %s\n", cr_path);
+            } else {
+                fprintf(stderr, "[WARN] concept_registry_load failed for %s — "
+                        "cross-modal bindings reset to empty\n", cr_path);
+            }
+        } else {
+            fprintf(stderr, "[INFO] no concept_registry sidecar at %s — "
+                    "starting cold\n", cr_path);
+        }
+    }
 
     /* Immune memory sidecar — restore B/T cells, antibodies, antigens.
      * Pre-Phase-B checkpoints won't have a .immune file; that's fine —

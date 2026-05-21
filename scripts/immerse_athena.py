@@ -401,14 +401,47 @@ _SOMATO_KW = frozenset(["touch", "feel", "rough", "smooth", "soft", "hard",
                          "ice", "water", "mud", "fabric", "cotton", "wicker"])
 
 
-def submit_multimodal(brain, description):
+def submit_multimodal(brain, description, target_word=None):
     """Submit synthetic sensory data for a description to the brain.
 
     Called before brain.decide_full() so the SNN sensory bridges get native
     modality data instead of interpreting text embeddings as pixels/MFCCs.
+
+    target_word: explicit echo-correct teaching word. When provided, this
+    overrides the longest-word heuristic — pass the OBJECT NAME / canonical
+    noun (e.g. "tree", "wool") rather than letting the bridge guess.
+    Without this, the heuristic picks max(words, key=len) which biases
+    toward jargon ("self-extinguishing" beats "wool" in length) and trains
+    the brain on adjective salad instead of the actual subject.
     """
-    import sys
-    print(f"[SMM-TRACE] submit_multimodal called: desc='{str(description)[:40]}'", file=sys.stderr, flush=True)
+    # Echo-and-correct — supervised production training signal. Fires per
+    # submit_multimodal call regardless of which stage code path invoked
+    # us (run_stage_2 main loop, parent teaching, developmental imitation,
+    # etc.). This is the production-side training pulse the bridge needs
+    # to escape mode collapse.
+    if description and len(description) > 3:
+        try:
+            chosen = target_word
+            if not chosen:
+                words = [w.strip(".,!?;:\"'()-").lower()
+                         for w in description.split()
+                         if len(w.strip(".,!?;:\"'()-")) > 3]
+                if words:
+                    chosen = max(words, key=len)
+            if chosen:
+                brain.echo_and_correct(description, chosen, lr_scale=8.0)
+        except Exception:
+            pass
+
+        # Trigram + bigram STDP on the bridge. train_cognitive is dormant in
+        # stage 2, so the learn_text_bigrams wired into nimcp_brain_train_cognitive
+        # never fires. Drive it directly here so the bridge's trigram-LTD-on-
+        # false-winner path runs against margin-gated LTD + saturating LTP.
+        try:
+            brain.learn_text_bigrams(description, lr=0.02)
+        except Exception:
+            pass
+
     desc_lower = description.lower()
 
     # Prepare all sensory data locally, then submit in a single batched call.
@@ -687,10 +720,29 @@ def _ground_content_words(brain, text, modality_features, modality,
     the extra kwargs. We swallow TypeError so the call still succeeds
     against legacy bindings."""
     words = _tokenize_for_grounding(text)
-    if not words or modality_features is None:
+    if not words:
         return 0
-    feats_list = modality_features if isinstance(modality_features, list) \
-                 else list(modality_features)
+    # ROOT-CAUSE FIX (2026-05-20 comprehension collapse): for LINGUISTIC
+    # grounding the discriminative feature must be the *clean text embedding*,
+    # NOT the composed brain-input vector. The composed vector's constant
+    # tag/bio prefix [0:16] (modality one-hot=1.0, bio state ~0.5-1.0)
+    # dominates the first GL_SEMANTIC_DIM=128 dims that find_or_create_concept
+    # compares (prefix L2 norm ~1.80 vs embedding ~0.30), pushing every
+    # pairwise cosine to ~0.98 > the 0.85 dedup threshold. Result: every
+    # content word grounded to ONE concept and comprehension collapsed to
+    # cosine 1.0 across all inputs. encode_text(text) restores per-text
+    # concept diversity (measured pairwise cosine 0.44-0.64). Non-linguistic
+    # modalities pass genuine sensory features (no tag prefix) — used as-is.
+    if modality == 5:  # GL_MODALITY_LINGUISTIC
+        try:
+            feats_list = list(encode_text(text))
+        except Exception:
+            return 0
+    else:
+        if modality_features is None:
+            return 0
+        feats_list = modality_features if isinstance(modality_features, list) \
+                     else list(modality_features)
     if not feats_list:
         return 0
     bound = 0
@@ -745,6 +797,7 @@ DIVERSITY_INJECTION_COUNT = 20    # Number of diverse items to inject on collaps
 
 # Cognitive training injection interval — every N sensory steps, train one cognitive item
 COGNITIVE_TRAIN_INTERVAL = 5      # 1 cognitive item per 5 sensory steps (~20% cognitive mix)
+CRITIC_EVAL_INTERVAL = 20         # run caregiver critic on a production every N sensory steps
 COGNITIVE_TRAIN_LR_BOOST = 1.5    # Slightly higher LR for cognitive items (they're conceptual)
 
 # =============================================================================
@@ -1909,11 +1962,20 @@ class MiniBatchTrainer:
     for more stable gradients and better GPU utilization.
     """
 
+    # Crash after this many consecutive flush() failures — supervisord
+    # restarts the trainer rather than letting it silently "train" forever
+    # at loss=0.0. The old bare-except pattern masked a 3-hour wedge in
+    # 2026-05-15 (brain SIGTERM → trainer kept calling learn_vector_batch
+    # which kept raising ConnectionError → caught silently → buffer cleared
+    # → repeat). 50 × ~5s per batch ≈ 4 min of grace before crashing out.
+    MAX_CONSECUTIVE_FLUSH_FAILURES = 50
+
     def __init__(self, brain, batch_size=8):
         self.brain = brain
         self.batch_size = batch_size
         self._buffer = []  # list of (features, target, label, confidence, lr)
         self._last_avg_loss = 0.0
+        self._consecutive_flush_failures = 0
 
     def learn(self, features, target, label="", confidence=0.5, learning_rate=None):
         """Buffer a sample. Returns estimated loss (batch average when flushed)."""
@@ -1931,12 +1993,24 @@ class MiniBatchTrainer:
         pairs = [(f, t) for f, t, _, _, _ in self._buffer]
         lrs = [lr for _, _, _, _, lr in self._buffer if lr is not None]
         avg_lr = sum(lrs) / len(lrs) if lrs else None
+        # Track whether ANY learn call this flush actually reached the brain.
+        # Old code silently treated every-call-failed as loss=0.0; that masked
+        # the 2026-05-15 wedge for 3 hours. We now log the first failure of
+        # each streak and crash out after MAX_CONSECUTIVE_FLUSH_FAILURES so
+        # supervisord can recover the trainer.
+        flush_ok = False
         try:
             lr_kw = {"learning_rate": avg_lr} if avg_lr is not None else {}
             avg_loss = self.brain.learn_vector_batch(pairs, **lr_kw)
             self._last_avg_loss = avg_loss if avg_loss is not None and avg_loss >= 0 else 0.0
-        except Exception:
-            # Fallback: per-sample
+            flush_ok = True
+        except Exception as e:
+            # Fallback: per-sample. We still log the batch-path failure
+            # because it's the canary — the per-sample loop usually fails
+            # the same way (brain unreachable, etc.).
+            if self._consecutive_flush_failures == 0:
+                logger.warning("BatchedTrainer.learn_vector_batch failed (%s) — "
+                               "falling back to per-sample", type(e).__name__)
             losses = []
             for f, t, lbl, conf, lr in self._buffer:
                 lr_kw = {"learning_rate": lr} if lr is not None else {}
@@ -1944,11 +2018,30 @@ class MiniBatchTrainer:
                     loss = self.brain.learn_vector(f, t, label=lbl,
                                                    confidence=conf, **lr_kw)
                     losses.append(loss if loss is not None and loss >= 0 else 0.0)
+                    flush_ok = True
                 except Exception:
                     losses.append(0.0)
             self._last_avg_loss = sum(losses) / len(losses) if losses else 0.0
 
         self._buffer.clear()
+
+        if flush_ok:
+            if self._consecutive_flush_failures > 0:
+                logger.warning("BatchedTrainer recovered after %d consecutive "
+                               "flush failures", self._consecutive_flush_failures)
+            self._consecutive_flush_failures = 0
+        else:
+            self._consecutive_flush_failures += 1
+            if self._consecutive_flush_failures % 10 == 1:
+                logger.error("BatchedTrainer flush failed %d consecutive times "
+                             "— brain unreachable? (will crash at %d)",
+                             self._consecutive_flush_failures,
+                             self.MAX_CONSECUTIVE_FLUSH_FAILURES)
+            if self._consecutive_flush_failures >= self.MAX_CONSECUTIVE_FLUSH_FAILURES:
+                raise RuntimeError(
+                    f"BatchedTrainer: {self._consecutive_flush_failures} "
+                    f"consecutive flush failures — brain appears unreachable; "
+                    f"raising to let supervisord restart the trainer")
         return self._last_avg_loss
 
 
@@ -3025,6 +3118,26 @@ def _inject_cognitive_training(brain, composer, step, learning_rate,
                 brain.learn_language_pair(text, answer, learning_rate=0.05)
         except Exception:
             pass
+        # Echo-and-correct — supervised production training signal. Without
+        # this, bridge weights stay uniform-random across 29K WordNet
+        # word_pops and produce emits gibberish (the 2026-05-16 mode-
+        # collapse symptom: "ptolemaic bundling compression ..." × 49/50).
+        # _train_cognitive has the same block at line ~4737; this is
+        # the per-step injection mirror. Safe to call here only after
+        # cap-at-insertion bounds lexicon_bind cost (commit 13045d312) —
+        # the earlier attempt without the cap caused writer-lock
+        # starvation when B was unbounded.
+        sup = answer or text
+        if sup and len(sup) > 3:
+            try:
+                words = [w.strip(".,!?;:\"'()-").lower()
+                         for w in sup.split()
+                         if len(w.strip(".,!?;:\"'()-")) > 3]
+                if words:
+                    target_word = max(words, key=len)
+                    brain.echo_and_correct(sup, target_word, lr_scale=8.0)
+            except Exception:
+                pass
         if curriculum:
             curriculum.record_loss(loss if loss else 0, item.get('domain', ''))
             curriculum.check_escalation()
@@ -4236,6 +4349,12 @@ class Parent:
         self._inspirations = []     # inspire passages
         self._dream_prompts = []    # encourage_dreaming questions
         self._conversation_replies = []  # stage 3 conversational responses
+        # Slice C — caregiver critic. Lazily created on first use (so the
+        # import doesn't run for the no-Claude smoke path); cached per stage
+        # to avoid reloading the vocab JSON on every cognitive injection.
+        self._critic_by_stage = {}     # stage_idx -> CaregiverCritic
+        self._current_critic_stage = None
+        self._critic_log_every = 10    # log one verdict per N applied verdicts
 
     def pre_generate_content(self, stage, num_stimuli):
         """Load pre-generated narrations for a stage.
@@ -4244,6 +4363,15 @@ class Parent:
         when memory is available). Falls back to Claude CLI call, then to
         built-in narrations.
         """
+        # Slice C — track current developmental stage so the critic fires at
+        # the correct rule set even when callers of _train_cognitive don't
+        # pass stage explicitly. pre_generate_content is invoked once per
+        # stage at the top of run_stage_N, so this is the single chokepoint
+        # for "what stage are we in now?".
+        self._current_critic_stage = int(stage)
+        # Pre-warm the critic so the first cognitive injection of the stage
+        # doesn't pay the JSON load latency.
+        self._get_critic(int(stage))
         if not self.enabled:
             print("  [Parent] Claude disabled — using silent parenting")
             return
@@ -4621,9 +4749,145 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
 
         return features, target, word_label, desc
 
+    # -- Slice C: caregiver critic helpers ----------------------------------
+
+    def _get_critic(self, stage):
+        """Get-or-create a CaregiverCritic for the given developmental stage.
+
+        Cached per stage so we don't reload the vocab JSON on every cognitive
+        injection. ``stage`` is the integer training stage (0..3+).
+        """
+        if stage is None:
+            return None
+        try:
+            crit = self._critic_by_stage.get(stage)
+            if crit is None:
+                # Lazy import — keeps module-level imports light, and lets
+                # smoke runs that never train still work even if data files
+                # aren't present.
+                from caregiver_critic import CaregiverCritic
+                crit = CaregiverCritic(stage=stage)
+                self._critic_by_stage[stage] = crit
+            self._current_critic_stage = stage
+            return crit
+        except Exception as e:
+            # Don't let a critic problem kill training. Log once per stage.
+            if stage not in getattr(self, "_critic_warned_stages", set()):
+                self._critic_warned_stages = getattr(
+                    self, "_critic_warned_stages", set()) | {stage}
+                print(f"  [Critic] init failed for stage {stage}: {e}")
+            return None
+
+    def run_critic_eval(self, brain, prompt, stage=None):
+        """Score one production against the developmental-stage rules and
+        deliver the resulting reward/recast into the brain.
+
+        Reusable critic driver. The original critic hook lived inside
+        _train_cognitive, but the live stage loops (run_stage_0/1/2) never
+        call _train_cognitive — their hot path goes straight to
+        learn_vector/decide_full. So the loops call this directly at the
+        cognitive cadence. Best-effort; never raises. Returns the verdict
+        (or None if no production / no critic / error)."""
+        if not prompt:
+            return None
+        try:
+            grounded = brain.grounded_respond(prompt)
+            response_text = ""
+            if isinstance(grounded, dict):
+                response_text = (grounded.get("response")
+                                 or grounded.get("text") or "")
+            effective_stage = stage if stage is not None else self._current_critic_stage
+            if not response_text or effective_stage is None:
+                return None
+            critic = self._get_critic(effective_stage)
+            if critic is None:
+                return None
+            verdict = critic.evaluate(prompt, response_text)
+            return self._apply_critic_verdict(
+                brain, verdict, prompt, response_text, effective_stage)
+        except Exception:
+            return None
+
+    def _apply_critic_verdict(self, brain, verdict, prompt, response, stage):
+        """Drive reward + (optional) recast into the brain.
+
+        Best-effort — every RPC is guarded so the critic never wedges training.
+        Returns the verdict for the caller to inspect / log.
+        """
+        if verdict is None:
+            return None
+
+        # 1. Deliver reward through whichever RPC the daemon currently
+        #    exposes. apply_reward_learning is the target (matches the
+        #    C-side path that drives DA into the SNN); bg_update_reward is
+        #    the basal-ganglia path that's already wired. We prefer the
+        #    former when available, fall back to the latter so the slice
+        #    works without waiting on Slice D's RPC merge.
+        if abs(verdict.reward) > 1e-6:
+            applied = False
+            try:
+                fn = getattr(brain, "apply_reward_learning", None)
+                if callable(fn):
+                    fn(verdict.reward)
+                    applied = True
+            except Exception:
+                pass
+            if not applied:
+                try:
+                    brain.bg_update_reward(verdict.reward, rpe=verdict.reward)
+                except Exception:
+                    pass
+            # Stamp the external-reward field so Slice D's cascade self-train
+            # gate sees a FRESH reward on its next run. Without this, the
+            # cascade self_train.fired counter never advances — the gate only
+            # ever sees a stale (zero-timestamp) reward and skips. This is the
+            # signal that lets cascade_stage_self_train actually train on
+            # critic-approved productions instead of autoconfirming.
+            try:
+                fn = getattr(brain, "set_last_external_reward", None)
+                if callable(fn):
+                    fn(verdict.reward)
+            except Exception:
+                pass
+
+        # 2. Recast — supervised teaching of the corrected form. Use the
+        #    existing echo_and_correct production-training path with a
+        #    boosted LR (recasts are high-confidence supervision).
+        if verdict.recast:
+            try:
+                # Pick the longest content word from the recast as the
+                # target — same heuristic the existing echo_and_correct
+                # block below uses for non-corrective teaching.
+                recast_tokens = [
+                    w.strip(".,!?;:\"'()-").lower()
+                    for w in verdict.recast.split()
+                    if w.strip(".,!?;:\"'()-")
+                ]
+                if recast_tokens:
+                    target_word = max(recast_tokens, key=len)
+                    # Higher lr_scale than the unsupervised echo path
+                    # (8.0) — recasts carry external reward signal.
+                    brain.echo_and_correct(prompt, target_word, lr_scale=16.0)
+            except Exception:
+                pass
+
+        # 3. Audit log — every Nth applied verdict. Gated on a dedicated
+        #    per-verdict counter (NOT interaction_count, which advances on
+        #    every sensory step and rarely aligns with the loop-driven
+        #    critic cadence). Walkthroughs need this to verify the critic is
+        #    actually firing (counters, not just "running").
+        self._critic_apply_count = getattr(self, "_critic_apply_count", 0) + 1
+        if self._critic_apply_count % self._critic_log_every == 0:
+            recast_repr = verdict.recast if verdict.recast else "-"
+            print(f"  [Critic] stage={stage} reward={verdict.reward:+.2f} "
+                  f"reason={verdict.reason} recast={recast_repr!r} "
+                  f"prompt={prompt!r}")
+
+        return verdict
+
     def _train_cognitive(self, brain, text, domain=10, target_text=None,
                          modality_features=None, modality=5,
-                         valence=0.0, arousal=0.0):
+                         valence=0.0, arousal=0.0, stage=None):
         """Train ALL cognitive modules on a text sample.
 
         Calls brain.train_cognitive() which trains:
@@ -4688,11 +4952,14 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
         # Bridge produce exercise — every Nth cognitive call, run the
         # full comprehend → produce roundtrip via grounded_respond. Keeps
         # the produce path warm (DA modulation, decode_total_ns).
-        if target_text and self.interaction_count % 10 == 0:
-            try:
-                brain.grounded_respond(target_text or text)
-            except Exception:
-                pass
+        #
+        # Slice C: this is also the critic's hook. Every production gets
+        # scored against the stage's developmental rules; the resulting
+        # reward + optional recast is delivered back into the brain via
+        # apply_reward_learning + echo_and_correct. Replaces the
+        # cascade_self_train auto-confirmation loop.
+        if (target_text or text) and self.interaction_count % 10 == 0:
+            self.run_critic_eval(brain, target_text or text, stage=stage)
 
         # Echo-and-correct — supervised production learning. For every
         # cognitive item, pick a content word from target_text (or text)
@@ -4721,7 +4988,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                     # Take longest as the "target" — most likely a noun
                     # in narrations like "Look! A ball." or "What a tree!"
                     target_word = max(words, key=len)
-                    pairs = brain.echo_and_correct(sup, target_word, lr_scale=1.0)
+                    pairs = brain.echo_and_correct(sup, target_word, lr_scale=8.0)
                     # Optional: log if a target wasn't registered yet (pairs == 0
                     # means lexicon hasn't mirrored target_word into the
                     # bridge's word_pops). Don't spam — only every 200th call.
@@ -6734,6 +7001,14 @@ def run_stage_0(brain, composer, parent, clock, source, decoder,
             brain.bg_update_reward(0.5, 0.3)
         except Exception:
             pass
+
+        # Caregiver critic — score Athena's production against stage-0
+        # developmental rules and deliver reward/recast into the brain.
+        # _train_cognitive (the original critic hook) is bypassed by this
+        # loop's hot path, so drive the critic directly here.
+        if (i + 1) % CRITIC_EVAL_INTERVAL == 0:
+            parent.run_critic_eval(brain, description, stage=0)
+
         parent.interaction_count += 1
 
         # Multi-resolution temporal processing (fast + slow LNN)
@@ -7257,6 +7532,11 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
             if cog_loss is not None:
                 losses.append(cog_loss)
 
+        # Caregiver critic — see run_stage_0 note. _train_cognitive is
+        # bypassed by this loop's hot path, so drive the critic directly.
+        if (i + 1) % CRITIC_EVAL_INTERVAL == 0:
+            parent.run_critic_eval(brain, description, stage=1)
+
         # LNN temporal step (every 5 steps to reduce round-trips)
         if (i + 1) % 5 == 0:
             try:
@@ -7415,13 +7695,24 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
     except Exception as e:
         print(f"  [World Model] Enable failed (non-fatal): {e}")
 
-    # World model curriculum: start at reduced LR, ramp up
+    # World model curriculum: start at reduced LR, ramp up.
+    # Warm resume optimization (2026-05-18): skip the initial full-epoch load
+    # when resuming mid-stage. The epoch (~5K physics+chem+bio transitions)
+    # is a one-time bootstrap signal — once the brain has steps under its
+    # belt in stage 2 (start_from > 0), re-running the bootstrap costs
+    # ~38 minutes of wall time and contributes nothing the running brain
+    # doesn't already have. Cold-start (start_from == 0) still runs the
+    # full epoch so a fresh stage-2 has the bootstrap available.
     wm_curriculum = None
     try:
         from world_model_curriculum import WorldModelCurriculum
         wm_curriculum = WorldModelCurriculum(brain_proxy=brain, max_level=2)
-        n = wm_curriculum.run_full_epoch(scenarios_per_level=2)  # reduced initial
-        print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
+        if start_from == 0:
+            n = wm_curriculum.run_full_epoch(scenarios_per_level=2)  # cold-start bootstrap
+            print(f"  [World Model Curriculum] Initial epoch: {n} transitions (reduced)")
+        else:
+            print(f"  [World Model Curriculum] Warm resume from step {start_from}: "
+                  f"skipping initial epoch (bootstrap already absorbed)")
     except Exception as e:
         print(f"  [World Model Curriculum] Init failed (non-fatal): {e}")
 
@@ -7495,6 +7786,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
         # Item 7: Curriculum ordering — cluster related facts within domains.
         # Each "epoch" of 10 facts draws from the same domain, then rotates.
         # Gives consecutive related facts (pedagogically superior to random).
+        echo_target = None
         if random.random() < fact_ratio:
             domain_cycle_len = 10
             domain_idx = (steps_in // domain_cycle_len) % 10
@@ -7503,12 +7795,67 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             preferred_domain = domain_names[domain_idx]
             fact, expected = source.get_fact(preferred_domain=preferred_domain)
             description = fact
+            # For facts, `expected` is the answer label (often multi-word or a
+            # full sentence). Pick the first content word of the fact as the
+            # teaching target — "Dogs are mammals..." → "dogs",
+            # "Plants make their own food..." → "plants". Skip a small set of
+            # English function-word starters so "The sun is a star..." picks
+            # "sun" not "the". Stopword set kept tiny on purpose; the bigram
+            # pump already shoulders the bulk of distributional learning.
+            _STOPWORD_PREFIX = {"the", "a", "an", "this", "that", "these",
+                                "those", "when", "if", "but", "and", "or",
+                                "for", "in", "on", "at", "of", "to", "is",
+                                "are", "was", "were"}
+            first_word = None
+            for w in description.split():
+                cleaned = w.strip(".,!?;:\"'()-").lower()
+                if (len(cleaned) >= 3 and cleaned.isalpha()
+                        and cleaned not in _STOPWORD_PREFIX):
+                    first_word = cleaned
+                    break
+            echo_target = first_word
         else:
             expected, description = source.get_object()
+            # `expected` IS the canonical subject noun (e.g. "tree", "wool",
+            # "sun"). Use it directly as the echo-correct teaching target so
+            # the brain associates the prompt's intent with the actual
+            # subject — not with the longest jargon adjective from the
+            # description. This was the curriculum-side root cause of the
+            # 'self-extinguishing' / 'ptolemaic' attractor.
+            if isinstance(expected, str) and expected:
+                # Normalize: lowercase, strip whitespace, pick first token if
+                # the expected label is multi-word ("sand dollar" → "sand").
+                tok = expected.strip().lower().split()
+                if tok:
+                    echo_target = tok[0]
 
         # Stage sensory data for cortex CNN training (visual/audio/speech).
         # Without this, cortex CNNs get zero forward steps in stage 2.
-        submit_multimodal(brain, description)
+        # Pass echo_target so the bridge trains on the canonical subject
+        # noun rather than the longest-word heuristic.
+        submit_multimodal(brain, description, target_word=echo_target)
+
+        # Cascade-driven training — drive ALL 15 stages, not just the bridge.
+        # produce_cascade runs the full Broca/Wernicke/hippocampus/PFC/OFC
+        # pipeline. Stage 15 (self_train) compares the produced utterance to
+        # the content_intent via self-comprehension match, applies reward-
+        # modulated STDP to the bridge, releases phasic DA, and feeds the
+        # validated utterance back through learn_text_bigrams. Closes the
+        # self-supervised loop that bridge-only training was missing.
+        #
+        # Cadence: every step, but only on a fraction of steps to keep the
+        # per-step cost manageable (the cascade is heavy — drive/goal/
+        # episodic/content/lexical/syntactic/self-comp/phonological/motor/
+        # self-feedback/speech-repair/prosody/self-train).
+        try:
+            if (steps_in % 4 == 0):  # ~25% of steps, ~12-15 cascades/min
+                brain.produce_cascade(description)
+        except Exception:
+            pass
+
+        # Echo-and-correct + bigram pump fire inside submit_multimodal()
+        # above — no need to repeat them here. The cascade above is the
+        # NEW training signal that closes the loop through Broca + Wernicke.
 
         # Athena experiences the stimulus and learns from it.
         # Apply LR spike if fast collapse detector is in recovery mode.
@@ -7574,6 +7921,11 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
                 curriculum=_stage2_curriculum)
             if cog_loss is not None:
                 losses.append(cog_loss)
+
+        # Caregiver critic — see run_stage_0 note. _train_cognitive is
+        # bypassed by this loop's hot path, so drive the critic directly.
+        if (i + 1) % CRITIC_EVAL_INTERVAL == 0:
+            parent.run_critic_eval(brain, description, stage=2)
 
         # World model curriculum — periodic physics/chemistry/biology experience.
         # LR ramps from 0.1× to 1× over first 2000 steps to prevent
@@ -9045,17 +9397,16 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
 
     Deletes oldest snapshots AND ALL their sidecars (including the big .snn
     which is ~12-17 GB). Disk-constrained pods cannot keep multiple snapshots.
+
+    Sidecar discovery is glob-based, not whitelist-based: the C library has
+    grown sidecar extensions over time (.gl_lang, .gl_multiturn, .temperature
+    were silently leaking ~40 GB of orphans on the production pod before this
+    fix — every cycle, the prune deleted the .bin but left these orphaned).
+    `snap + "*"` matches the .bin plus every sidecar — safe because sibling
+    snapshots differ in their step number BEFORE `.bin`, so the glob cannot
+    overmatch another snapshot's files.
     """
     import glob as glob_mod
-    # All sidecar extensions written by brain.save() — the C library writes
-    # these via snn_network_save, lnn_network_save, cnn_trainer_save,
-    # cortex_cnn_save, and metadata save in nimcp_brain_persistence.c
-    sidecars = ['.meta', '.tokenizer', '.mirror_neurons', '.executive',
-                '.snn', '.cnn', '.lnn',
-                '.cortex_visual', '.cortex_audio',
-                '.cortex_speech', '.cortex_somato',
-                '.knowledge', '.pink_noise',  # finding #5: were missing
-                '.cb_rescaled']  # CB marker — clean up so we don't leak orphan markers
     pattern = os.path.join(CHECKPOINT_DIR, "athena_s*_step*.bin")
     all_files = glob_mod.glob(pattern + "*")
 
@@ -9074,18 +9425,19 @@ def _prune_checkpoint_snapshots(max_snapshots=1):
 
     to_remove = snapshots[:len(snapshots) - max_snapshots]
     freed = 0
+    sidecar_count = 0
     for snap in to_remove:
-        for ext in [''] + sidecars:
-            f = snap + ext if ext else snap
-            if os.path.exists(f):
-                try:
-                    freed += os.path.getsize(f)
-                    os.remove(f)
-                except OSError:
-                    pass
+        for f in glob_mod.glob(snap + "*"):
+            try:
+                freed += os.path.getsize(f)
+                os.remove(f)
+                if f != snap:
+                    sidecar_count += 1
+            except OSError:
+                pass
     if freed > 0:
-        logger.info("Pruned %d old snapshots (freed %.1f GB)",
-                    len(to_remove), freed / 1e9)
+        logger.info("Pruned %d old snapshots (+%d sidecars, freed %.1f GB)",
+                    len(to_remove), sidecar_count, freed / 1e9)
 
 
 def _save_checkpoint_sync(brain, decoder, stage, step):

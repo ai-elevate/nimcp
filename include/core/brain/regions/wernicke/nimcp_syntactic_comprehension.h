@@ -252,7 +252,38 @@ typedef struct {
     float syntactic_complexity;      /**< Syntactic complexity score */
     bool is_grammatical;             /**< Grammaticality judgment */
     uint32_t reanalysis_count;       /**< Garden-path reanalyses */
+
+    /* === APPENDED 2026-05-11 (parser-coverage Wave) === */
+    /* Sentence-type flags. Appended at struct end for ABI safety —
+     * existing field offsets are preserved. */
+    bool is_question;                /**< Yes/no or wh-question */
+    bool is_imperative;              /**< Imperative (null subject) */
+
+    /* Bitmask of which reduction rules fired during this parse.
+     * Bit indices are the WERNICKE_REDUCTION_* constants below.
+     * Zero means no reductions fired (parse failed or trivial). */
+    uint32_t reductions_applied;     /**< Bitmask of fired reductions */
 } syntactic_parse_t;
+
+/* ============================================================================
+ * Reduction-rule bitmask
+ *
+ * Tracks which grammar rules fired during a parse. Set on
+ * syntactic_parse_t.reductions_applied so cascade Stage 7 (syntactic_validity)
+ * and downstream consumers can introspect the grammar coverage that was
+ * actually exercised by an utterance.
+ * ============================================================================ */
+#define WERNICKE_REDUCTION_NP_DET_N         (1u << 0)  /* DP + NP    → NP   */
+#define WERNICKE_REDUCTION_PP_P_NP          (1u << 1)  /* PP + NP    → PP   */
+#define WERNICKE_REDUCTION_VP_V_NP          (1u << 2)  /* VP + NP    → VP   */
+#define WERNICKE_REDUCTION_VP_V_PP          (1u << 3)  /* VP + PP    → VP   */
+#define WERNICKE_REDUCTION_S_NP_VP          (1u << 4)  /* NP + VP    → S    */
+#define WERNICKE_REDUCTION_CP_WH_S          (1u << 5)  /* WH + S/VP  → CP   */
+#define WERNICKE_REDUCTION_CP_AUX_S         (1u << 6)  /* AUX-inv    → CP   */
+#define WERNICKE_REDUCTION_S_IMPERATIVE     (1u << 7)  /* VP-only    → S    */
+#define WERNICKE_REDUCTION_NP_CONJ_NP       (1u << 8)  /* NP+Conj+NP → NP   */
+#define WERNICKE_REDUCTION_S_CONJ_S         (1u << 9)  /* S+Conj+S   → S    */
+#define WERNICKE_REDUCTION_VP_INTRANSITIVE  (1u << 10) /* lone VP    → VP   */
 
 /**
  * @brief Incremental parse state

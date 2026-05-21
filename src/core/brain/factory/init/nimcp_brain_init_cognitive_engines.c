@@ -15,6 +15,10 @@
 #include "cognitive/inner_dialogue/nimcp_inner_dialogue.h"
 #include "cognitive/reasoning/nimcp_reasoning_chain.h"
 
+/* Slice B (Option 1 architectural rebuild). Cross-modal population
+ * binding registry. */
+#include "language/nimcp_concept_registry.h"
+
 /* Imagination Engine: forward declarations only to avoid type conflicts
  * (nimcp_imagination_engine.h re-typedefs audio_cortex_t, visual_training_state_t,
  * etc. which conflict with already-included definitions from brain_internal.h).
@@ -176,6 +180,44 @@ bool nimcp_brain_factory_init_imagination_subsystem(brain_t brain)
     brain->imagination_enabled = true;
 
     LOG_INFO(LOG_MODULE, "Imagination engine enabled for brain '%s'",
+             brain->config.task_name);
+    return true;
+}
+
+/*=============================================================================
+ * Concept Registry (Slice B — Option 1 architectural rebuild)
+ *
+ * Allocates a registry mapping (text label, visual feature digest, audio
+ * feature digest) → canonical concept_pop_id_t. Wired into brain_learn_vector
+ * so that supervised (features, label) training installs the (modality,
+ * label) binding, enforcing the Quian Quiroga single-pop-per-referent
+ * invariant.
+ *
+ * Non-fatal: if creation fails the brain still works, just without the
+ * cross-modal binding hook (downstream callers NULL-check brain->concept_registry).
+ *===========================================================================*/
+
+bool nimcp_brain_factory_init_concept_registry_subsystem(brain_t brain)
+{
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_concept_registry_subsystem: brain is NULL");
+        return false;
+    }
+
+    brain->concept_registry = NULL;
+
+    /* Initial capacity: 1024 is plenty of headroom for stage-0/1 vocab.
+     * The table auto-grows; this is just a sizing hint. */
+    concept_registry_t* reg = concept_registry_create(1024);
+    if (!reg) {
+        LOG_WARN(LOG_MODULE, "Failed to create concept registry (non-fatal)");
+        return true;  /* non-fatal — brain still trains */
+    }
+
+    brain->concept_registry = reg;
+
+    LOG_INFO(LOG_MODULE, "Concept registry enabled for brain '%s'",
              brain->config.task_name);
     return true;
 }

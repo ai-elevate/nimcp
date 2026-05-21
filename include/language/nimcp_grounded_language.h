@@ -406,6 +406,26 @@ void grounded_language_set_semantic_memory(
     grounded_language_t* gl,
     void* semantic_memory);
 
+/**
+ * @brief Wire the concept_registry after creation (Option-1 rebuild).
+ *
+ * The concept_registry is the canonical cross-modal binding store: it
+ * maps (text label, visual digest, audio digest) → one canonical
+ * concept_pop_id, so the same SNN population fires for image+word+text
+ * of one referent. grounded_language mirrors lexicon registrations into
+ * the registry via intern_text + bind_modalities on the production /
+ * comprehension paths.
+ *
+ * Called from brain init after both subsystems exist. NULL-safe: the
+ * library degrades gracefully if the registry isn't wired.
+ *
+ * @param gl       System handle
+ * @param registry concept_registry_t* (opaque)
+ */
+void grounded_language_set_concept_registry(
+    grounded_language_t* gl,
+    void* registry);
+
 /*=============================================================================
  * Comprehension (Wernicke's pathway)
  *===========================================================================*/
@@ -881,6 +901,63 @@ uint64_t grounded_language_fast_map(
     const float* concept_features,
     uint32_t feature_dim,
     uint32_t category);
+
+/**
+ * @brief One-shot prune: keep top-K bindings per word by strength.
+ *
+ * Intended as a maintenance sweep after the 2026-05-15 cross-bind wedge fix to
+ * reclaim binding_count that accumulated under the prior function-word leak.
+ * Sorts each entry's bindings descending by strength and truncates to
+ * @p max_bindings_per_word.
+ *
+ * @param gl                       System handle
+ * @param max_bindings_per_word    K, the per-word cap (suggested 128)
+ * @return Total bindings dropped across the lexicon.
+ */
+uint64_t grounded_language_prune_bindings(
+    grounded_language_t* gl,
+    uint32_t max_bindings_per_word);
+
+/**
+ * @brief Reset every lexicon entry's distributional embedding.
+ *
+ * Walks the vocab and either zeros + marks-uninitialized each entry's
+ * context_vector (if `zero_and_mark_uninit` is true), or re-randomizes
+ * it to small noise in [-jitter, +jitter] (if false). Use when
+ * pairwise cos(comprehend(p_i), comprehend(p_j)) ≈ 1.0 across distinct
+ * prompts indicates the distributional channel has homogenized.
+ *
+ * `zero_and_mark_uninit=true` is the cleanest reset — comprehend's
+ * binding+NLP-embedding loops still contribute, but the dominant
+ * convergence channel (distributional) is removed until each word is
+ * seen again in context.
+ *
+ * @return Number of lexicon entries touched, or -1 on bad args.
+ */
+int64_t grounded_language_reset_lexicon_distributional(
+    grounded_language_t* gl,
+    bool zero_and_mark_uninit,
+    float jitter);
+
+/**
+ * @brief Reset concept grounding for a clean re-grounding pass.
+ *
+ * Clears every lexicon entry's concept bindings (keeps word forms,
+ * bindings[] capacity, and distributional context_vector) AND wipes the
+ * brain's semantic_memory concept store (frees capacity). Use after the
+ * grounding-feature fix to recover from concept collapse: the prior
+ * grounding pipeline fed a prefix-dominated feature vector to
+ * find_or_create_concept (cosine dedup 0.85), collapsing every word onto
+ * one concept and filling the store to capacity. Re-grounding then
+ * rebuilds a diverse store from clean embeddings.
+ *
+ * NOTE: semantic_memory is shared with other cognitive modules; resetting
+ * it drops all concepts brain-wide. Stale concept_id references resolve to
+ * NULL (handled gracefully by get_concept_features and callers).
+ *
+ * @return Number of bindings cleared, or -1 on NULL gl.
+ */
+int64_t grounded_language_reset_concept_grounding(grounded_language_t* gl);
 
 /*=============================================================================
  * Production (Broca's pathway)
@@ -1959,6 +2036,20 @@ typedef struct {
 /** Subscriber callback. Return 0 to continue, non-zero to log+continue. */
 typedef int (*gl_event_callback_t)(void* ctx, const gl_event_t* event);
 
+/**
+ * @brief Fire an event to all subscribers (filtered by type mask).
+ *
+ *  Internal entry-point invoked from various GL pipelines (learn,
+ *  ground, comprehend, produce, etc.). Re-entry guarded: a subscriber
+ *  that re-enters fire becomes a no-op. Safe to call with gl==NULL or
+ *  ev==NULL (no-op).
+ *
+ *  Defined in `nimcp_grounded_language_cognitive_bridge.c`. Declared
+ *  here so callers (cascade, GL pipelines) don't each inline an
+ *  `extern void` decl — those duplicates risked signature drift.
+ */
+void gl_fire_event(grounded_language_t* gl, const gl_event_t* ev);
+
 /* Event-type bitmask (#4 — per-subscriber filter). Use these to limit
  * which events a subscriber receives — the bus skips wrappers whose
  * mask doesn't match, removing the if-else boilerplate from every
@@ -2636,6 +2727,80 @@ int grounded_language_save(
 grounded_language_t* grounded_language_load(
     const char* path,
     void* semantic_memory);
+
+/*=============================================================================
+ * Slice E (Option-1 rebuild) — developmental-stage vocab mask.
+ *
+ * The mask is a per-entry visibility bitmap over the lexicon: entries
+ * vocab_list[0..N) are visible for production iff mask[i] == true. When
+ * no mask is installed (the default), every entry is visible.
+ *
+ * `grounded_language_set_active_vocab_mask(stage)` installs / refreshes a
+ * mask sized to the lexicon's current vocab_count. The first
+ * stage_table_get(stage)->max_visible_vocab entries (in insertion order
+ * — a frequency proxy for the early curriculum) become visible; the
+ * rest are masked. The mask reflects insertion-order frequency at the
+ * time of the call; new entries added after installation are appended as
+ * visible (so newly-learned vocabulary doesn't get hidden by an older
+ * mask).
+ *
+ * `grounded_language_clear_active_vocab_mask` frees the mask. After this
+ * every entry is visible again — equivalent to "no constraints".
+ *
+ * `grounded_language_filter_production` rewrites a freshly-produced
+ * gl_production_result_t in place, dropping words whose lexicon index
+ * is masked out. Word_count is updated to reflect the surviving tokens.
+ * Returns the number of words dropped.
+ *=============================================================================*/
+
+/**
+ * @brief Install / refresh a stage-derived vocabulary mask.
+ *
+ * Indexed against the current lexicon insertion order. The first N entries
+ * (where N = stage_table_get(stage)->max_visible_vocab, clamped to the
+ * current vocab_count) are marked visible; the rest are masked.
+ *
+ * Calling this with a stage whose max_visible_vocab is SIZE_MAX leaves
+ * every entry visible (equivalent to clearing the mask). The function
+ * still records the stage so subsequent grow events extend correctly.
+ *
+ * @return 0 on success, -1 on alloc failure or NULL gl.
+ */
+int grounded_language_set_active_vocab_mask(grounded_language_t* gl,
+                                              uint32_t stage);
+
+/**
+ * @brief Clear the active vocabulary mask. Idempotent.
+ */
+void grounded_language_clear_active_vocab_mask(grounded_language_t* gl);
+
+/**
+ * @brief Predicate: is the lexicon entry at vocab_list[idx] visible?
+ *
+ * Returns true when no mask is installed OR when idx is out of range
+ * (defensive: don't deny entries the mask doesn't cover) OR when
+ * mask[idx] is true.
+ */
+bool grounded_language_vocab_index_visible(const grounded_language_t* gl,
+                                            uint32_t idx);
+
+/**
+ * @brief Strip masked-out tokens from a production result in place.
+ *
+ * Tokens are matched against the lexicon by surface form (case-insensitive
+ * lookup); tokens that don't resolve to any lexicon entry are left as-is
+ * (defensive: we never silently drop unknown surface forms — the cascade
+ * sees them and decides). The result's text buffer is rewritten with the
+ * surviving tokens joined by single spaces; word_count is updated to the
+ * surviving count. If every token is masked out, the result is left as a
+ * single space-separated string of the same content with word_count
+ * unchanged — the cascade's downstream stages decide how to recover.
+ *
+ * Returns the number of words dropped (>= 0).
+ */
+uint32_t grounded_language_filter_production_by_mask(
+    grounded_language_t* gl,
+    gl_production_result_t* result);
 
 #ifdef __cplusplus
 }

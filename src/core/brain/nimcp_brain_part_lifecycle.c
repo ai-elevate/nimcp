@@ -10,12 +10,15 @@
 #include "cognitive/analysis/nimcp_network_analysis.h"
 #include "core/brain/subcortical/nimcp_amygdala.h"  /* Phase 3c: amygdala destroy */
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"  /* glial destroy helper */
+#include "core/brain/factory/init/nimcp_brain_init_broca.h"  /* S5-C1: Broca + phonological-loop destroy */
+#include "utils/thread/nimcp_thread.h"  /* S2-C2: arcuate-feedback lock destroy */
 #include "core/cortical_columns/nimcp_cortical_column_ternary.h"  /* CC4 ternary destroy */
 #include "security/nimcp_security_recovery_bridge.h"
 #include "security/nimcp_security_integration.h"
 #include "generation/nimcp_language_generator.h"
 #include "generation/nimcp_embedding.h"
 #include "language/nimcp_grounded_language.h"
+#include "language/nimcp_concept_registry.h"  /* Slice B */
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "snn/bridges/nimcp_snn_speech_bridge.h"
 #include "snn/bridges/nimcp_snn_audio_bridge.h"
@@ -367,9 +370,28 @@ void brain_destroy(brain_t brain)
         snn_language_bridge_destroy(brain->snn_lang_bridge);
         brain->snn_lang_bridge = NULL;
     }
+
+    /* S5-C1 fix: tear down the Broca subsystem (Broca adapter +
+     * speech_repair + phonological_loop + pragmatics + the
+     * substrate/thalamic/quantum bridges) BEFORE grounded_lang. The
+     * destroy function is idempotent — if init was skipped, all the
+     * tested fields are NULL and the inner branches no-op. Without this
+     * call, the phonological_loop's malloced trace buffer + once-init
+     * mutex (Slice 5) leak on every brain teardown. */
+    nimcp_brain_factory_destroy_broca_subsystem(brain);
+
     if (brain->grounded_lang) {
         grounded_language_destroy(brain->grounded_lang);
         brain->grounded_lang = NULL;
+    }
+
+    /* S2-C2 fix: destroy the arcuate-feedback lock (lazy-init'd by the
+     * cascade in nimcp_communication_cascade.c). Must come AFTER the
+     * cascade-consuming subsystems (broca/grounded_lang) are gone, so
+     * no thread will reach for the lock after we destroy it. */
+    if (brain->arcuate_feedback_lock) {
+        nimcp_mutex_free((nimcp_mutex_t*)brain->arcuate_feedback_lock);
+        brain->arcuate_feedback_lock = NULL;
     }
 
     // Cleanup sparse coding system
@@ -921,6 +943,14 @@ void brain_destroy(brain_t brain)
     if (brain->imagination) {
         imagination_engine_destroy(brain->imagination);
         brain->imagination = NULL;
+    }
+
+    /* Slice B (Option 1 architectural rebuild) — concept registry.
+     * concept_registry_destroy is NULL-safe but we still gate to keep
+     * the read-after-free pattern symmetrical with the other engines. */
+    if (brain->concept_registry) {
+        concept_registry_destroy((concept_registry_t*)brain->concept_registry);
+        brain->concept_registry = NULL;
     }
 
     // Cleanup Collective Cognition
