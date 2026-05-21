@@ -137,6 +137,14 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
             b->toxicity_ml =
                 toxicity_ml_create("data/safety/toxicity_ml.bin");
         }
+        /* Round-3 fix: re-register the toxicity cycle on --resume so the
+         * 1Hz tick (which runs ML training + valence decay + heartbeat KG
+         * emit) fires after a checkpoint reload. Without this, the cycle
+         * was only registered on fresh init. */
+        if (b->toxicity_classifier) {
+            extern int nimcp_brain_factory_register_toxicity_cycle(brain_t);
+            (void)nimcp_brain_factory_register_toxicity_cycle(b);
+        }
     }
 
     set_error("No error");

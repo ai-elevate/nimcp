@@ -37,6 +37,11 @@
 
 /* Forward declaration: defined later in this file. */
 static void nimcp_brain_factory_toxicity_tick(void* ctx);
+
+/* Public: register the toxicity cycle. Called from this file on fresh
+ * init AND from nimcp_brain_load on --resume. Idempotent — register_driven
+ * returns non-zero on duplicate registration which we treat as success. */
+int nimcp_brain_factory_register_toxicity_cycle(brain_t brain);
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -181,20 +186,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
          * Cycle is observational — it ticks the classifier's stat
          * counters; actual classification still happens at the gate sites
          * (training + inference) where text is in scope. */
-        if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
-            int crc = brain_cycle_coordinator_register_driven(
-                (brain_cycle_coordinator_t*)brain->cycle_coordinator,
-                BRAIN_CYCLE_TOXICITY,
-                1000000ull /* 1s */,
-                nimcp_brain_factory_toxicity_tick,
-                (void*)brain,
-                NULL);
-            if (crc == 0) {
-                LOG_INFO("  - Toxicity cycle: registered (1Hz observation)");
-            } else {
-                LOG_WARN("  - Toxicity cycle: register failed (rc=%d)", crc);
-            }
-        }
+        (void)nimcp_brain_factory_register_toxicity_cycle(brain);
     } else {
         brain->toxicity_classifier = NULL;
         LOG_WARN("Toxicity classifier creation failed — content-semantics "
@@ -310,6 +302,33 @@ load_tox_curriculum(const char* path,
     *rows_out = rows;
     *n_out = n;
     return 0;
+}
+
+/* Round-3 fix: cycle registration extracted into a public helper so the
+ * --resume load path can call it too. Without this, the cycle was only
+ * registered on fresh init — on --resume the brain came up with the
+ * toxicity classifier alive but the cycle tick (which runs ML training
+ * and valence decay) never fired. */
+int nimcp_brain_factory_register_toxicity_cycle(brain_t brain)
+{
+    if (!brain) return -1;
+    if (!brain->cycle_coordinator_enabled || !brain->cycle_coordinator) {
+        return -1;
+    }
+    int rc = brain_cycle_coordinator_register_driven(
+        (brain_cycle_coordinator_t*)brain->cycle_coordinator,
+        BRAIN_CYCLE_TOXICITY,
+        1000000ull /* 1s */,
+        nimcp_brain_factory_toxicity_tick,
+        (void*)brain,
+        NULL);
+    if (rc == 0) {
+        LOG_INFO("Toxicity cycle: registered (1Hz observation + ML train + decay)");
+    } else {
+        LOG_WARN("Toxicity cycle: register_driven returned %d "
+                 "(usually means already registered)", rc);
+    }
+    return rc;
 }
 
 /* Cycle-coordinator tick (1Hz). Three jobs:
