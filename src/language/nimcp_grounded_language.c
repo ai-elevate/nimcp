@@ -15,6 +15,7 @@
 #include "language/nimcp_bigram_spectrum.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
+#include "security/nimcp_toxicity.h"                        /* 2026-05-21: content classifier */
 
 /* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
  * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
@@ -1755,6 +1756,14 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 void grounded_language_set_concept_registry(grounded_language_t* gl, void* registry) {
     if (!gl) return;
     gl->concept_registry = registry;
+}
+
+/* Toxicity classifier plumbing (2026-05-21). Wired from brain init. Stored
+ * as void* to avoid header coupling — the .c file includes the header
+ * where it actually uses the classifier (in respond/produce). NULL-safe. */
+void grounded_language_set_toxicity_classifier(grounded_language_t* gl, void* tc) {
+    if (!gl) return;
+    gl->toxicity_classifier = tc;
 }
 
 /*=============================================================================
@@ -4164,6 +4173,33 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
     } else {
         snprintf(response, response_max, "I don't know.");
         if (confidence) *confidence = 0.0f;
+    }
+
+    /* Toxicity classification of the produced response (2026-05-21).
+     * POLICY: mark, never delete — we annotate the response and emit a
+     * safety-audit event but DO NOT modify the response text. The LGSS
+     * ethics gate downstream can decide what to do with the scores. */
+    if (gl->toxicity_classifier && response[0] != '\0') {
+        toxicity_classifier_t* tc =
+            (toxicity_classifier_t*)gl->toxicity_classifier;
+        toxicity_result_t tox = {0};
+        if (toxicity_classify(tc, response, &tox) == 0 && tox.would_block) {
+            char audit_msg[256];
+            snprintf(audit_msg, sizeof(audit_msg),
+                     "language_produce flagged: cat=%s harm=%.2f fair=%.2f "
+                     "anti=%.2f input='%.40s' output='%.40s'",
+                     tox.matched_category, tox.predicted_harm,
+                     tox.fairness_violation, tox.anti_toxic_signal,
+                     input_text, response);
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 2, "%s", audit_msg);
+            /* Reduce confidence proportional to harm so any consumer that
+             * gates on confidence sees the drop, without dropping content. */
+            if (confidence) *confidence *= (1.0f - tox.predicted_harm);
+            /* (KG emit at inference site is deferred — gl has no brain
+             * back-pointer; the audit-log entry above is the durable record.
+             * Training site emits KG events where brain is in scope.) */
+        }
     }
 
     int result_len = (int)strlen(response);

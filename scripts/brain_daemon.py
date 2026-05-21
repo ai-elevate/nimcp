@@ -2010,6 +2010,28 @@ class BrainService:
             return {"error": f"reset_concept_grounding: {e}"}
         return {"ok": True, "bindings_cleared": n}
 
+    def _cmd_classify_toxicity(self, req):
+        """Classify a text via the toxicity classifier.
+
+        Request: {"cmd": "classify_toxicity", "text": str}
+        Returns: {"ok": True, "result": {predicted_harm, fairness_violation,
+                  anti_toxic_signal, would_block, category}}
+        Returns {"error": ...} if the classifier isn't attached or the
+        binding isn't built.
+        """
+        text = req.get("text", "")
+        if not isinstance(text, str):
+            return {"error": "classify_toxicity: text must be a string"}
+        try:
+            d = self.brain.classify_toxicity(text)
+        except AttributeError:
+            return {"error": "classify_toxicity not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"classify_toxicity: {e}"}
+        if d is None:
+            return {"error": "toxicity classifier not attached on this brain"}
+        return {"ok": True, "result": d}
+
     def _cmd_reset_lang_bridge_weights(self, req):
         """DEPRECATED (Option-1 Slice A, 2026-05-19).
 

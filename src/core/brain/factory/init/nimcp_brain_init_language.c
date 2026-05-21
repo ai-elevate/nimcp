@@ -596,6 +596,14 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
                                                     brain->concept_registry);
         }
 
+        /* 2026-05-21: wire toxicity classifier so respond/produce can
+         * annotate output. Created in the safety init wave (runs before
+         * this language wave). NULL-safe — produce still works without it. */
+        if (brain->toxicity_classifier) {
+            grounded_language_set_toxicity_classifier(brain->grounded_lang,
+                                                      brain->toxicity_classifier);
+        }
+
         /* Wire cross-modal connections */
         if (brain->visual_cortex)
             grounded_language_connect_visual(brain->grounded_lang, brain->visual_cortex);

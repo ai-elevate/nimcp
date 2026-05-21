@@ -21,8 +21,14 @@
 #include "core/brain/factory/init/nimcp_brain_init_safety_verify.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_cycle_coordinator.h"
 #include "security/lgss/nimcp_lgss.h"
+#include "security/nimcp_toxicity.h"
+#include "security/nimcp_w11_safety_kg_events.h"
 #include "utils/logging/nimcp_logging.h"
+
+/* Forward declaration: defined later in this file. */
+static void nimcp_brain_factory_toxicity_tick(void* ctx);
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -144,7 +150,81 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     LOG_INFO("  - KB hash prefix: 0x%016lx", stats.kb_hash_prefix);
     LOG_INFO("  - Status: %s", lgss_status_name(stats.status));
 
+    /* === Toxicity Classifier — content-semantics gate ===
+     * Loads pattern-based rules from data/safety/toxicity_rules.tsv. Non-
+     * fatal if the file is missing (classifier becomes a no-op; downstream
+     * gates fall back to legacy proxy scoring). Once present, the
+     * classifier populates predicted_harm + fairness_violation on the
+     * action_context for LGSS rules to evaluate, and emits KG events on
+     * detection. POLICY (user directive 2026-05-20): mark, never delete —
+     * toxic training data is annotated, not filtered. */
+    toxicity_classifier_t* toxc =
+        toxicity_classifier_create("data/safety/toxicity_rules.tsv",
+                                   0 /* fail_on_missing = false */);
+    if (toxc) {
+        brain->toxicity_classifier = toxc;
+        LOG_INFO("Toxicity classifier initialized: %zu pattern(s) loaded "
+                 "(threshold=%.2f)",
+                 toxicity_classifier_pattern_count(toxc),
+                 toxicity_classifier_get_threshold(toxc));
+
+        /* Register a 1-second driven cycle so the coordinator monitors
+         * the classifier's liveness and the KG records periodic stats.
+         * Cycle is observational — it ticks the classifier's stat
+         * counters; actual classification still happens at the gate sites
+         * (training + inference) where text is in scope. */
+        if (brain->cycle_coordinator_enabled && brain->cycle_coordinator) {
+            int crc = brain_cycle_coordinator_register_driven(
+                (brain_cycle_coordinator_t*)brain->cycle_coordinator,
+                BRAIN_CYCLE_TOXICITY,
+                1000000ull /* 1s */,
+                nimcp_brain_factory_toxicity_tick,
+                (void*)brain,
+                NULL);
+            if (crc == 0) {
+                LOG_INFO("  - Toxicity cycle: registered (1Hz observation)");
+            } else {
+                LOG_WARN("  - Toxicity cycle: register failed (rc=%d)", crc);
+            }
+        }
+    } else {
+        brain->toxicity_classifier = NULL;
+        LOG_WARN("Toxicity classifier creation failed — content-semantics "
+                 "gate disabled (downstream LGSS uses legacy proxy scoring)");
+    }
+
     return true;
+}
+
+/* Cycle-coordinator tick (1Hz). Pulls aggregate stats from the classifier
+ * and emits a periodic heartbeat KG node so monitoring can see liveness. */
+static void nimcp_brain_factory_toxicity_tick(void* ctx)
+{
+    struct brain_struct* brain = (struct brain_struct*)ctx;
+    if (!brain || !brain->toxicity_classifier) return;
+
+    /* Snapshot stats once per second. Used by future ML head trainer +
+     * dashboards. */
+    uint64_t total = 0, matches = 0, blocks = 0;
+    toxicity_classifier_get_stats(
+        (toxicity_classifier_t*)brain->toxicity_classifier,
+        &total, &matches, &blocks);
+
+    /* Emit a low-weight KG heartbeat so the toxicity_module node always
+     * has a recent timestamp. Suppressed if no classifications happened
+     * in this window (avoids noise). */
+    static uint64_t s_last_total = 0;
+    if (total > s_last_total) {
+        char hb_excerpt[96];
+        snprintf(hb_excerpt, sizeof(hb_excerpt),
+                 "heartbeat total=%llu matches=%llu blocks=%llu",
+                 (unsigned long long)total,
+                 (unsigned long long)matches,
+                 (unsigned long long)blocks);
+        w11_emit_toxicity_detection(brain, "cycle", "heartbeat",
+                                    0.0f, 0.0f, 0.0f, hb_excerpt);
+        s_last_total = total;
+    }
 }
 
 //=============================================================================

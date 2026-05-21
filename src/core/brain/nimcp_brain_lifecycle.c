@@ -28,6 +28,7 @@
 #include "core/brain/nimcp_brain_lifecycle.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "middleware/cloud/nimcp_cloud_inference.h"
+#include "security/nimcp_toxicity.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
@@ -865,6 +866,13 @@ void brain_destroy(brain_t brain)
         brain_immune_destroy(brain->immune_system);
         brain->immune_system = NULL;
         brain->immune_enabled = false;
+    }
+
+    // Cleanup toxicity classifier (created in safety init wave)
+    if (brain->toxicity_classifier) {
+        toxicity_classifier_destroy(
+            (toxicity_classifier_t*)brain->toxicity_classifier);
+        brain->toxicity_classifier = NULL;
     }
 
     // Cleanup state manager (checkpointing - Phase 8)

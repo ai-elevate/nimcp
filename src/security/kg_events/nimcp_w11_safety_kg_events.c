@@ -313,6 +313,71 @@ void w11_emit_lgss_kb_event(
     w11_emit_linked(brain, name, desc, "lgss_module", 0.5f);
 }
 
+/* Toxicity-classifier detection event (2026-05-21). */
+void w11_emit_toxicity_detection(
+    struct brain_struct* brain,
+    const char* source,
+    const char* category,
+    float harm_score,
+    float fairness_score,
+    float anti_toxic,
+    const char* text_excerpt
+) {
+    if (!w11_kg_ready(brain)) return;
+    w11_safety_ensure_roots(brain);
+
+    /* Sanitize category for the node id (no spaces / weird chars). */
+    char cat_clean[33] = {0};
+    if (category) {
+        for (size_t i = 0, j = 0;
+             category[i] && j < sizeof(cat_clean) - 1; i++) {
+            char c = category[i];
+            if ((c >= 'a' && c <= 'z') ||
+                (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') || c == '_') {
+                cat_clean[j++] = c;
+            } else {
+                cat_clean[j++] = '_';
+            }
+        }
+    }
+    if (cat_clean[0] == '\0') strncpy(cat_clean, "unknown", sizeof(cat_clean) - 1);
+
+    char name[192];
+    snprintf(name, sizeof(name),
+             "toxicity_event_%s_%llu",
+             cat_clean, (unsigned long long)w11_ts_us());
+
+    /* Excerpt is for audit; clamp aggressively and replace non-printable
+     * with '?'. Newlines in particular can confuse downstream log readers. */
+    char excerpt[96] = {0};
+    if (text_excerpt) {
+        size_t L = strlen(text_excerpt);
+        if (L > sizeof(excerpt) - 1) L = sizeof(excerpt) - 1;
+        for (size_t i = 0; i < L; i++) {
+            unsigned char c = (unsigned char)text_excerpt[i];
+            excerpt[i] = (c >= 0x20 && c < 0x7F) ? (char)c : '?';
+        }
+    }
+
+    char desc[256];
+    snprintf(desc, sizeof(desc),
+             "TOX src=%s cat=%s harm=%.2f fair=%.2f anti=%.2f text='%.80s'",
+             source ? source : "unknown",
+             category ? category : "unknown",
+             harm_score, fairness_score, anti_toxic, excerpt);
+
+    /* Edge weight scales with max(harm, fairness) so KG consumers can
+     * filter/rank toxicity events by severity. Threshold-passing events
+     * (>=0.7) get weight >=0.7; anti_toxic dampens it slightly so flagged-
+     * but-disclaimed events sort below clean-toxic ones. */
+    float w = harm_score > fairness_score ? harm_score : fairness_score;
+    w *= (1.0f - 0.25f * anti_toxic);
+    if (w < 0.1f) w = 0.1f;
+    if (w > 1.0f) w = 1.0f;
+    w11_emit_linked(brain, name, desc, "toxicity_module", w);
+}
+
 /* ------------------------------------------------------------------------- *
  * 3. Mental health                                                          *
  * ------------------------------------------------------------------------- */

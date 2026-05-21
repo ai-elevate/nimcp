@@ -426,6 +426,20 @@ void grounded_language_set_concept_registry(
     grounded_language_t* gl,
     void* registry);
 
+/**
+ * @brief Wire the toxicity classifier so respond/produce can annotate output.
+ *
+ * After wiring, grounded_language_respond classifies the produced text and
+ * audit-logs detections. POLICY: mark, never delete — the classifier never
+ * modifies content; it only attaches scores for downstream evaluators.
+ *
+ * @param gl  Grounded language instance.
+ * @param tc  toxicity_classifier_t* (opaque), or NULL to unwire.
+ */
+void grounded_language_set_toxicity_classifier(
+    grounded_language_t* gl,
+    void* tc);
+
 /*=============================================================================
  * Comprehension (Wernicke's pathway)
  *===========================================================================*/

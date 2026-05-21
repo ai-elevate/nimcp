@@ -8,6 +8,7 @@
 #include "language/nimcp_communication_cascade.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
+#include "security/nimcp_toxicity.h"                        /* 2026-05-21: classifier diag */
 
 
 //=============================================================================
@@ -4435,6 +4436,37 @@ nimcp_status_t nimcp_brain_reset_concept_grounding(nimcp_brain_t brain,
     int64_t n = grounded_language_reset_concept_grounding(b->grounded_lang);
     if (out_cleared) *out_cleared = n;
     return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+/* ========== Toxicity classifier diagnostics (2026-05-21) ========== */
+nimcp_status_t nimcp_brain_classify_toxicity(nimcp_brain_t brain,
+                                              const char* text,
+                                              float* out_harm,
+                                              float* out_fairness,
+                                              float* out_anti_toxic,
+                                              int* out_would_block,
+                                              char* out_category,
+                                              size_t out_category_len)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->toxicity_classifier) return NIMCP_ERROR;
+    if (!text) return NIMCP_ERROR_NULL_ARG;
+    toxicity_result_t r = {0};
+    if (toxicity_classify((toxicity_classifier_t*)b->toxicity_classifier,
+                          text, &r) != 0) {
+        return NIMCP_ERROR;
+    }
+    if (out_harm)         *out_harm         = r.predicted_harm;
+    if (out_fairness)     *out_fairness     = r.fairness_violation;
+    if (out_anti_toxic)   *out_anti_toxic   = r.anti_toxic_signal;
+    if (out_would_block)  *out_would_block  = r.would_block;
+    if (out_category && out_category_len > 0) {
+        strncpy(out_category, r.matched_category, out_category_len - 1);
+        out_category[out_category_len - 1] = '\0';
+    }
+    return NIMCP_OK;
 }
 
 /* ========== Audit fix: campaign feature setter wrappers ========== */

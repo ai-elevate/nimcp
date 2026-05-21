@@ -3151,6 +3151,17 @@ struct brain_struct {
      * audio digest) → canonical concept_pop_id. Created in Wave 27
      * (cognitive_engines). Serialized as a `.concept_registry` sidecar. */
     void*    concept_registry;
+
+    /* === TOXICITY CLASSIFIER (2026-05-20) ===
+     * Opaque pointer (toxicity_classifier_t*). Pattern-based content
+     * classifier that populates predicted_harm + fairness_violation scalars
+     * on the ethics action_context, drives LGSS rule evaluation, and emits
+     * KG events on detection. POLICY: mark, never delete — toxic training
+     * data is NEVER filtered out, only labeled. Created in the safety init
+     * wave alongside LGSS. NULL when the rules file is unreadable (the
+     * classifier becomes a no-op; downstream gates fall back to legacy
+     * proxy scoring). */
+    void*    toxicity_classifier;
 };
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L

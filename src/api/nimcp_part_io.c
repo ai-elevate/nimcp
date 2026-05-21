@@ -103,6 +103,24 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         }
     }
 
+    /* Toxicity classifier — same load-path wiring (2026-05-21). The
+     * checkpoint does not serialize the classifier; it must be re-created
+     * here, then plumbed into grounded_language. NULL-safe on failure
+     * (classify becomes a no-op; the produce path still works). */
+    {
+        brain_t b = handle->internal_brain;
+        if (!b->toxicity_classifier) {
+            b->toxicity_classifier =
+                toxicity_classifier_create("data/safety/toxicity_rules.tsv", 0);
+        }
+        if (b->toxicity_classifier && b->grounded_lang) {
+            extern void grounded_language_set_toxicity_classifier(
+                struct grounded_language* gl, void* tc);
+            grounded_language_set_toxicity_classifier(b->grounded_lang,
+                                                      b->toxicity_classifier);
+        }
+    }
+
     set_error("No error");
     return handle;
 

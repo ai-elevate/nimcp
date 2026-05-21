@@ -39,6 +39,7 @@
 /* Cognitive module types for training wiring */
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "language/nimcp_concept_registry.h"  /* Slice B */
+#include "security/nimcp_toxicity.h"          /* 2026-05-21: content classifier */
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/nimcp_meta_learning.h"
@@ -261,6 +262,7 @@ extern int creative_training_submit_feedback(creative_training_bridge_t* bridge,
 
 // Self-heal engine training
 #include "cognitive/immune/nimcp_self_heal.h"
+#include "cognitive/immune/nimcp_brain_immune.h"  /* 2026-05-21: antigen presentation */
 
 // Intuition system training is declared in nimcp_intuition_integrations.h
 // (included via nimcp_brain_internal.h)
@@ -1059,6 +1061,74 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         _learn_ethics_warn_count++;
     }
 
+    /* === TOXICITY CLASSIFICATION OF TRAINING LABEL (2026-05-21) ===
+     * Runs the content classifier on the training label so the LGSS gate
+     * below sees REAL content semantics in its p_harm / fairness_violation
+     * fields (not just the toy NaN/Inf proxy). POLICY: mark, never delete
+     * — we annotate the training step with toxicity scores AND audit-log
+     * detections, but we DO NOT skip the learning step. The brain must
+     * SEE toxic content WITH its toxicity label to learn to recognize and
+     * refuse it. The existing LGSS DENY path (NaN/Inf adversarial features)
+     * still drops obviously-corrupt training data — toxicity scores only
+     * affect ESCALATE-style rules, not DENY. */
+    float tox_predicted_harm = 0.0f;
+    float tox_fairness_violation = 0.0f;
+    char tox_category[32] = {0};
+    if (label && label[0] != '\0' && brain->toxicity_classifier) {
+        toxicity_classifier_t* tc =
+            (toxicity_classifier_t*)brain->toxicity_classifier;
+        toxicity_result_t tox = {0};
+        if (toxicity_classify(tc, label, &tox) == 0) {
+            tox_predicted_harm = tox.predicted_harm;
+            tox_fairness_violation = tox.fairness_violation;
+            strncpy(tox_category, tox.matched_category,
+                    sizeof(tox_category) - 1);
+            if (tox.would_block) {
+                /* Mark the training step as toxic in the audit log so
+                 * post-hoc review can find every toxic-data exposure. */
+                nimcp_safety_audit_log_event(
+                    NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
+                    "TOXIC training-data MARKED (not filtered): "
+                    "cat=%s harm=%.2f fair=%.2f anti=%.2f label='%.60s'",
+                    tox.matched_category, tox.predicted_harm,
+                    tox.fairness_violation, tox.anti_toxic_signal,
+                    label);
+                /* Emit to W11 safety KG subgraph so downstream evaluators
+                 * (auditors, ML head trainer, immune system) can read the
+                 * detection from the graph. */
+                w11_emit_toxicity_detection(
+                    brain, "training", tox.matched_category,
+                    tox.predicted_harm, tox.fairness_violation,
+                    tox.anti_toxic_signal, label);
+                /* Present antigen to brain_immune so the tolerance / memory
+                 * subsystems track toxic content as a recognized class of
+                 * input. Severity maps max(harm, fair) -> [1..10]. The
+                 * epitope is the matched category name (stable across
+                 * pattern updates), padded into the epitope buffer. */
+                if (brain->immune_system && brain->immune_enabled) {
+                    float worst = tox.predicted_harm > tox.fairness_violation
+                                      ? tox.predicted_harm
+                                      : tox.fairness_violation;
+                    uint32_t sev = (uint32_t)(worst * 10.0f);
+                    if (sev < 1)  sev = 1;
+                    if (sev > 10) sev = 10;
+                    uint8_t epitope[64] = {0};
+                    size_t cat_len = strlen(tox.matched_category);
+                    if (cat_len > sizeof(epitope)) cat_len = sizeof(epitope);
+                    memcpy(epitope, tox.matched_category, cat_len);
+                    uint32_t antigen_id = 0;
+                    (void)brain_immune_present_antigen(
+                        brain->immune_system,
+                        ANTIGEN_SOURCE_MANUAL,
+                        epitope, cat_len,
+                        sev,
+                        0 /* source_node = local */,
+                        &antigen_id);
+                }
+            }
+        }
+    }
+
     /* === LGSS TRAINING GUARD: Validate learning data before weight updates ===
      * Prevents adversarial training data from corrupting the model.
      * This is a NON-REMOVABLE safety layer — defense in depth with ethics. */
@@ -1076,6 +1146,18 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         } else {
             lgss_train_ctx.num_string_fields = 2;
         }
+        /* Add toxicity category as a string field if present (for rule
+         * conditions that match on operation/category). */
+        if (tox_category[0] != '\0' &&
+            lgss_train_ctx.num_string_fields <
+                (sizeof(lgss_train_ctx.string_fields) /
+                 sizeof(lgss_train_ctx.string_fields[0]))) {
+            strncpy(lgss_train_ctx.string_fields[lgss_train_ctx.num_string_fields].key,
+                    "toxicity_category", 63);
+            strncpy(lgss_train_ctx.string_fields[lgss_train_ctx.num_string_fields].value,
+                    tox_category, SAFETY_MAX_VALUE_LEN - 1);
+            lgss_train_ctx.num_string_fields++;
+        }
 
         /* Check training data for NaN/Inf as an anomaly indicator */
         float train_p_harm = 0.0f;
@@ -1087,12 +1169,19 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             if (isnan(target[i]) || isinf(target[i])) train_nan++;
         }
         if (train_nan > 0) train_p_harm = 0.8f;
+        /* Take the MAX of the NaN-proxy harm and the real toxicity harm —
+         * either signal raises the score for LGSS rule evaluation. */
+        if (tox_predicted_harm > train_p_harm) train_p_harm = tox_predicted_harm;
 
         strncpy(lgss_train_ctx.numeric_fields[0].key, "p_harm", 63);
         lgss_train_ctx.numeric_fields[0].value = train_p_harm;
         strncpy(lgss_train_ctx.numeric_fields[1].key, "num_features", 63);
         lgss_train_ctx.numeric_fields[1].value = (float)num_features;
-        lgss_train_ctx.num_numeric_fields = 2;
+        /* Fairness violation populated from real content classifier so
+         * LGSS rules can match on it. */
+        strncpy(lgss_train_ctx.numeric_fields[2].key, "fairness_violation", 63);
+        lgss_train_ctx.numeric_fields[2].value = tox_fairness_violation;
+        lgss_train_ctx.num_numeric_fields = 3;
 
         lgss_train_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
         lgss_train_ctx.has_domain_hint = true;

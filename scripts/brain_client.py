@@ -701,6 +701,15 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return int(resp.get("bindings_cleared", 0))
 
+    def classify_toxicity(self, text):
+        """Classify text via the toxicity classifier. Returns a dict
+        {predicted_harm, fairness_violation, anti_toxic_signal, would_block,
+        category}, or None if the classifier is not attached."""
+        resp = self._send({"cmd": "classify_toxicity", "text": str(text)})
+        if resp.get("error"):
+            return None
+        return resp.get("result")
+
     def reset_lang_bridge_weights(self, w_min=0.001, w_max=0.05):
         """Break rank-1 collapse by re-randomizing every bridge binding
         weight to uniform(w_min, w_max). Returns the number of bindings

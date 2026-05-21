@@ -430,6 +430,13 @@ struct grounded_language {
      * NULL means "not wired" — concept_registry_* calls are guarded so
      * the legacy bridge-mirror path still compiles. */
     void*                concept_registry;
+
+    /* Toxicity classifier handle (2026-05-21). Wired from brain init via
+     * grounded_language_set_toxicity_classifier(). NULL means "not wired"
+     * — classify calls are guarded so the produce/respond path stays
+     * functional without it. POLICY: mark, never delete — classification
+     * only annotates; content is never modified. */
+    void*                toxicity_classifier;
 };
 
 /**
