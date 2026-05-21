@@ -9,6 +9,8 @@
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
 #include "security/nimcp_toxicity.h"                        /* 2026-05-21: classifier diag */
+#include "security/nimcp_toxicity_response.h"                /* Phase 3a: counterclaim engine */
+#include "security/nimcp_toxicity_ml.h"                      /* Task 134: ML head */
 
 
 //=============================================================================

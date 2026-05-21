@@ -335,7 +335,30 @@ int nimcp_brain_factory_register_toxicity_cycle(brain_t brain)
  *  1. Emit a periodic heartbeat KG node so monitoring sees liveness.
  *  2. Train one curriculum row through the ML head per tick (pattern
  *     classifier as teacher). Round-robin through the curriculum.
- *  3. Save ML weights every N ticks if anything changed. */
+ *  3. Save ML weights every N ticks if training progressed since last save.
+ *  4. Round-2 risk-2: slow valence decay (0.999 per tick).
+ *
+ * IMPORTANT LIMITATIONS (Round-4 documentation):
+ *
+ *  STATIC STATE IS PROCESS-WIDE, NOT PER-BRAIN.
+ *  The s_curriculum / s_curriculum_n / s_curriculum_cursor / s_save_counter /
+ *  s_last_total statics below are file-scope. In a single-brain process
+ *  (production), this is fine. In a multi-brain test, all brains share
+ *  the curriculum (read-only — safe) and the cursor (each brain's training
+ *  step bumps the global cursor, so they take turns through the curriculum
+ *  rather than each going round-robin independently). Moving these into
+ *  the brain struct is an ABI change deferred until multi-brain becomes
+ *  a real use case.
+ *
+ *  DESTROY ORDERING.
+ *  brain_destroy stops the cycle coordinator AS PART OF its destroy
+ *  sequence. Before that, individual subsystems get destroyed and their
+ *  fields zeroed (toxicity_classifier, toxicity_ml, toxicity_response,
+ *  grounded_lang all set to NULL after their destroy calls in
+ *  nimcp_brain_lifecycle.c). The NULL guards at the top of this function
+ *  protect against ticks that fire between subsystem-destroy and
+ *  coordinator-stop. After coordinator-stop the cycle thread is gone, so
+ *  the brain struct itself being freed is safe. */
 static void nimcp_brain_factory_toxicity_tick(void* ctx)
 {
     struct brain_struct* brain = (struct brain_struct*)ctx;
@@ -370,12 +393,25 @@ static void nimcp_brain_factory_toxicity_tick(void* ctx)
             0.01f /* lr */,
             0.05f /* dead_zone — skip step when already within 0.05 */);
 
-        /* === Job 3: periodic save (every 60 ticks ≈ 1 minute) === */
+        /* === Job 3: periodic save (every 60 ticks ≈ 1 minute) ===
+         * Round-4 cleanup: save only when training has progressed since
+         * the last save. The dead-zone in train_step means many ticks
+         * are no-ops (already within 0.05 of target). Saving on those is
+         * wasted disk I/O. We snapshot total_train_steps and only save
+         * when it has incremented since the previous save. */
         s_save_counter++;
         if ((s_save_counter % 60) == 0) {
-            (void)toxicity_ml_save(
+            static uint64_t s_last_saved_step_count = 0;
+            uint64_t now_step_count = 0;
+            toxicity_ml_get_stats(
                 (toxicity_ml_classifier_t*)brain->toxicity_ml,
-                "data/safety/toxicity_ml.bin");
+                NULL, &now_step_count, NULL);
+            if (now_step_count > s_last_saved_step_count) {
+                (void)toxicity_ml_save(
+                    (toxicity_ml_classifier_t*)brain->toxicity_ml,
+                    "data/safety/toxicity_ml.bin");
+                s_last_saved_step_count = now_step_count;
+            }
         }
     }
 
