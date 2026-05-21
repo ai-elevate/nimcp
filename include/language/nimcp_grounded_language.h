@@ -452,6 +452,28 @@ void grounded_language_set_toxicity_response(
     void* tr);
 
 /**
+ * @brief Set valence/arousal on every content word in the given text.
+ *
+ * Tokenizes the text, looks up or creates each lexicon entry, and updates
+ * its `valence` (in [-1, +1]) and `arousal` (in [0, 1]) using a saturating
+ * EMA so the tag accumulates rather than overwrites on repeat exposure.
+ *
+ * Phase 3c/3d (2026-05-21): used to tag counterclaim words with positive
+ * valence (so produce-side suppression in find_words_near_vector PROMOTES
+ * them) and to tag toxic content words with negative valence (so produce
+ * DAMPS them). The 0.2 weight on each call means ~5 exposures saturate
+ * the tag — fast enough to take effect during training, slow enough to
+ * survive noise.
+ *
+ * @return Number of lexicon entries touched (0 on empty text).
+ */
+int grounded_language_tag_text_affective(
+    grounded_language_t* gl,
+    const char* text,
+    float valence,
+    float arousal);
+
+/**
  * @brief Update the developmental stage used for counterclaim selection.
  * Stage 0..3 — out-of-range values are clamped.
  */

@@ -1797,6 +1797,46 @@ void grounded_language_set_toxicity_response(grounded_language_t* gl, void* tr) 
     gl->toxicity_response = tr;
 }
 
+/* Phase 3c/3d (2026-05-21): apply an affective tag (valence + arousal) to
+ * every content word in the text. EMA mix (weight 0.2) so repeat exposures
+ * saturate rather than overwrite — robust to single noisy events.
+ * Function-word entries are tagged too because they have neutral content
+ * and rarely the target of valence-based suppression; let the natural
+ * lexicon-class filter in find_words_near_vector drop them. */
+int grounded_language_tag_text_affective(grounded_language_t* gl,
+                                          const char* text,
+                                          float valence,
+                                          float arousal) {
+    if (!gl || !text || !*text) return 0;
+    if (valence < -1.0f) valence = -1.0f;
+    if (valence >  1.0f) valence =  1.0f;
+    if (arousal <  0.0f) arousal =  0.0f;
+    if (arousal >  1.0f) arousal =  1.0f;
+
+    size_t L = strlen(text);
+    char* buf = (char*)nimcp_malloc(L + 1);
+    if (!buf) return 0;
+    memcpy(buf, text, L + 1);
+    char* words[GL_MAX_PRODUCTION_WORDS];
+    uint32_t word_count = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
+
+    int touched = 0;
+    for (uint32_t w = 0; w < word_count; w++) {
+        gl_lexicon_entry_t* e = lexicon_find_or_create(gl, words[w]);
+        if (!e) continue;
+        /* Saturating EMA: 0.8*old + 0.2*new. ~5 exposures saturate. */
+        e->valence = 0.8f * e->valence + 0.2f * valence;
+        e->arousal = 0.8f * e->arousal + 0.2f * arousal;
+        if (e->valence < -1.0f) e->valence = -1.0f;
+        if (e->valence >  1.0f) e->valence =  1.0f;
+        if (e->arousal <  0.0f) e->arousal =  0.0f;
+        if (e->arousal >  1.0f) e->arousal =  1.0f;
+        touched++;
+    }
+    nimcp_free(buf);
+    return touched;
+}
+
 void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage) {
     if (!gl) return;
     if (stage < 0) stage = 0;
@@ -4267,8 +4307,13 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
     /* Toxicity classification of the produced response (2026-05-21).
      * POLICY: mark, never delete — we annotate the response and emit a
      * safety-audit event but DO NOT modify the response text. The LGSS
-     * ethics gate downstream can decide what to do with the scores. */
-    if (gl->toxicity_classifier && response[0] != '\0') {
+     * ethics gate downstream can decide what to do with the scores.
+     *
+     * Round-1 walkthrough fix: skip this check when the response was a
+     * counterclaim. Counterclaims are deliberate value assertions; running
+     * the toxic classifier on them produces misleading audit entries and
+     * incorrectly lowers their confidence. */
+    if (!counterclaim_emitted && gl->toxicity_classifier && response[0] != '\0') {
         toxicity_classifier_t* tc =
             (toxicity_classifier_t*)gl->toxicity_classifier;
         toxicity_result_t tox = {0};

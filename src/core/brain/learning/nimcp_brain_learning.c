@@ -40,6 +40,7 @@
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "language/nimcp_concept_registry.h"  /* Slice B */
 #include "security/nimcp_toxicity.h"          /* 2026-05-21: content classifier */
+#include "security/nimcp_toxicity_response.h" /* Phase 3a: counterclaim engine */
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/nimcp_meta_learning.h"
@@ -1197,40 +1198,51 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
                     (void)brain_apply_reward_learning(brain, neg_reward);
                 }
 
-                /* === Phase 3c: ground the counterclaim with positive
-                 * valence so its content words inherit the human-condition-
-                 * aligned affective tag. When the response engine produces
-                 * a stage-appropriate counterclaim, calling
-                 * grounded_language_learn_from_text on it triggers the
-                 * existing valence/arousal grounding path with the values
-                 * we set on the gl_event.
-                 *
-                 * Note: this is best-effort — if no engine or no template
-                 * matches, skip silently. */
-                if (brain->grounded_lang && brain->toxicity_response) {
-                    extern int grounded_language_learn_from_text(
-                        struct grounded_language*, const char*);
-                    extern int toxicity_response_generate(
-                        const void*, const char*, const char*,
-                        int, void*);
-                    char cr_buf[640];
-                    /* toxicity_response_result_t is 512+16+8+8 = 544.
-                     * Use a 640-byte buffer for safety. */
-                    struct {
-                        char  text[512];
-                        char  source[16];
-                        int   stage_matched;
-                        int   antiframe_swaps;
-                    } cr;
-                    (void)cr_buf;
-                    memset(&cr, 0, sizeof(cr));
-                    int stage = (int)brain->current_stage;
-                    if (toxicity_response_generate(
-                            brain->toxicity_response, label,
-                            tox.matched_category, stage,
-                            &cr) == 0 && cr.text[0] != '\0') {
-                        grounded_language_learn_from_text(
-                            brain->grounded_lang, cr.text);
+                /* === Phase 3c (Round 1 fix): set affective tags on lexicon
+                 * entries so the produce-side suppression in
+                 * find_words_near_vector actually has signal to act on.
+                 *   1. Toxic input words   -> valence = -worst (negative)
+                 *      arousal = +worst  (high salience)
+                 *   2. Counterclaim words  -> valence = +0.8 (positive,
+                 *      human-condition-aligned), arousal = +0.5
+                 * Earlier draft called learn_from_text on the counterclaim
+                 * but learn_from_text doesn't set valence — it only adds
+                 * the words to the lexicon. The new
+                 * grounded_language_tag_text_affective helper does set
+                 * valence + arousal via saturating EMA so repeat exposures
+                 * accumulate the tag. */
+                if (brain->grounded_lang) {
+                    float worst = tox.predicted_harm > tox.fairness_violation
+                                      ? tox.predicted_harm
+                                      : tox.fairness_violation;
+                    /* Tag the toxic input words with negative valence so
+                     * produce damps them. */
+                    grounded_language_tag_text_affective(
+                        brain->grounded_lang, label,
+                        -worst,            /* valence (negative) */
+                        worst);            /* arousal (high salience) */
+
+                    /* Generate + tag the stage-appropriate counterclaim
+                     * with positive valence (human-condition-aligned). */
+                    if (brain->toxicity_response) {
+                        toxicity_response_result_t cr;
+                        memset(&cr, 0, sizeof(cr));
+                        int stage = (int)brain->current_stage;
+                        if (toxicity_response_generate(
+                                (toxicity_response_t*)brain->toxicity_response,
+                                label,
+                                tox.matched_category, stage,
+                                &cr) == 0 && cr.text[0] != '\0') {
+                            /* Also add the counterclaim words to the
+                             * lexicon (so they're available for produce
+                             * to emit). */
+                            grounded_language_learn_from_text(
+                                brain->grounded_lang, cr.text);
+                            grounded_language_tag_text_affective(
+                                brain->grounded_lang, cr.text,
+                                0.8f,    /* positive valence */
+                                0.5f);   /* moderate arousal */
+                        }
                     }
                 }
             }
