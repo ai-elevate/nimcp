@@ -1832,6 +1832,8 @@ set(NIMCP_CORE_SOURCES
 
     # Security - Core and Phase SC-1: Security Coverage Framework (Tier 0.7)
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity.c           # Pattern-based content classifier (populates ethics/LGSS gates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity_ml.c        # ML toxicity head (1024->256->64->2 MLP)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity_response.c  # Counterclaim/anti-frame pushback engine
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_coverage.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_continuous_monitor.c
