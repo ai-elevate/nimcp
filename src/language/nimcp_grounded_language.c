@@ -3949,21 +3949,74 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     if (max_words > n) max_words = n;
     if (min_words > max_words) min_words = max_words;
 
-    /* Build the emission: top scoring words, skipping function words. */
+    /* Build the emission with bigram-conditioned reranking (Tier 1 Step B,
+     * 2026-05-23). Position 0 takes the highest cosine match. Subsequent
+     * positions pick the unused candidate that maximizes
+     *     topk_scores[j] + ALPHA * log(1 + bigram_freq(prev, cand))
+     * where bigram_freq comes from gl->phrases (the gl_phrase_t table that
+     * grounded_language_learn_from_text populates from text co-occurrence).
+     * The phrase table is small (<=512 entries, linear-scan lookup) so the
+     * per-position cost is bounded.
+     *
+     * ALPHA = 0.05 keeps cosine relevance as the primary signal —
+     * adjacent-rank cosine deltas in top-K are typically 0.05-0.10, so the
+     * bigram term re-orders within the top-K instead of overriding it.
+     * When no phrase entry exists for a (prev, cand) pair, log(1+0)=0 and
+     * the candidate is ranked by pure cosine — fully backward-compatible
+     * with the pre-rerank behavior.
+     *
+     * Note: this is NOT autoregressive in the residual-stream sense (the
+     * intent vector isn't evolved between positions). It's a within-top-K
+     * rerank, which is the cheapest way to add bigram coherence without
+     * rebuilding the decoder. Autoregressive intent evolution + larger
+     * top-K is the natural Tier 1 follow-up. */
+    const float GL_BIGRAM_RERANK_ALPHA = 0.05f;
+    bool used[GL_PRODUCE_TOPK] = {0};
+    char prev_word[GL_MAX_WORD_LEN] = {0};
     char    buf[1024] = {0};
     size_t  pos = 0;
     uint32_t emit = 0;
     float    score_sum = 0.0f;
-    for (uint32_t i = 0; i < n && emit < max_words; i++) {
-        const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[i]);
-        if (e && e->learned_class == GL_CLASS_FUNCTION) continue;
-        size_t flen = strlen(topk_words[i]);
+    while (emit < max_words) {
+        int   best_idx   = -1;
+        float best_score = -1e30f;
+        for (uint32_t j = 0; j < n; j++) {
+            if (used[j]) continue;
+            const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
+            if (e && e->learned_class == GL_CLASS_FUNCTION) continue;
+            float s = topk_scores[j];
+            if (emit > 0 && prev_word[0]) {
+                char key[GL_MAX_PHRASE_LEN];
+                int kn = snprintf(key, sizeof(key), "%s %s",
+                                  prev_word, topk_words[j]);
+                if (kn > 0 && (size_t)kn < sizeof(key)) {
+                    const gl_phrase_t* ph =
+                        grounded_language_lookup_phrase(gl, key);
+                    if (ph && ph->frequency > 0) {
+                        s += GL_BIGRAM_RERANK_ALPHA *
+                             logf(1.0f + (float)ph->frequency);
+                    }
+                }
+            }
+            if (s > best_score) {
+                best_score = s;
+                best_idx   = (int)j;
+            }
+        }
+        if (best_idx < 0) break;
+        used[best_idx] = true;
+        const char* w = topk_words[best_idx];
+        size_t flen = strlen(w);
         if (pos + flen + 2 >= sizeof(buf)) break;
         if (emit > 0) buf[pos++] = ' ';
-        memcpy(buf + pos, topk_words[i], flen);
+        memcpy(buf + pos, w, flen);
         pos += flen;
-        score_sum += topk_scores[i];
+        score_sum += topk_scores[best_idx];
         emit++;
+        size_t cl = (flen < sizeof(prev_word) - 1)
+                      ? flen : sizeof(prev_word) - 1;
+        memcpy(prev_word, w, cl);
+        prev_word[cl] = '\0';
     }
     if (emit == 0 || emit < min_words) return -1;
 

@@ -66,6 +66,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_snn_fno_recording
     test_lang_thalamic_gates
     test_lang_distributional_anticollapse
+    test_lang_bigram_rerank
     # ============================================================
     # Option-1 rebuild — new slice surface tests
     # ============================================================
