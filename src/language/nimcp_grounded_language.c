@@ -1535,14 +1535,18 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
         if (required_class != GL_CLASS_UNKNOWN && entry->learned_class != required_class) {
             continue;
         }
-        /* Drop function words from "any class" ranking — they're the most
-         * frequently grounded so their bindings outscore content words for
-         * almost any intent, swamping the top-K with the/is/to/etc. Callers
-         * that explicitly want function words can pass GL_CLASS_FUNCTION as
-         * required_class. (Found live 2026-05-20: top-3 of an "any-class"
-         * produce was the,is,to even for prompts about grass.) */
+        /* Drop function words AND pronouns from "any class" ranking. Both
+         * swamp content-bearing produce: function words like "the/is/to"
+         * are grounded everywhere; pronouns ("you/i/it/we/they") leak in
+         * at stage 2+ as "answers" to "what is X?" prompts because they
+         * accumulate generic distributional embeddings. Until grammar
+         * templates (Tier 1 Step C) can place pronouns in syntactically-
+         * appropriate slots, they don't carry content. Callers that
+         * explicitly want function words or pronouns can pass the
+         * matching class as required_class. */
         if (required_class == GL_CLASS_UNKNOWN &&
-            entry->learned_class == GL_CLASS_FUNCTION) {
+            (entry->learned_class == GL_CLASS_FUNCTION ||
+             entry->learned_class == GL_CLASS_PRONOUN)) {
             continue;
         }
         float score = score_word_against_vector(gl, entry, target, dim);
@@ -3939,13 +3943,14 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         return -1;
     }
 
-    /* Word-count defaults — short, telegraphic-ish output that the critic
-     * can shape further via reward. (The bridge's min/max_produce_words
-     * knobs are now stranded — the bridge produce path is dead post-rebuild
-     * — and should migrate to a grounded_language config when stage
-     * scaffolding needs per-stage bounds here.) */
-    uint32_t min_words = 1, max_words = 5;
-    if (max_words > GL_PRODUCE_TOPK) max_words = GL_PRODUCE_TOPK;
+    /* Length bounds. Historically this hard-coded max_words=5, which
+     * silently bottlenecked every stage above 2 (the stage table allows
+     * up to 20 at stage 4). The cap is now the top-K capacity itself
+     * (GL_PRODUCE_TOPK=32), letting the cascade's stage_motor truncate
+     * to the per-stage cap as the single source of length truth. min=1
+     * is preserved so callers see a non-degenerate result for
+     * single-relevant-word intents. */
+    uint32_t min_words = 1, max_words = GL_PRODUCE_TOPK;
     if (max_words > n) max_words = n;
     if (min_words > max_words) min_words = max_words;
 
@@ -3983,7 +3988,12 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         for (uint32_t j = 0; j < n; j++) {
             if (used[j]) continue;
             const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
-            if (e && e->learned_class == GL_CLASS_FUNCTION) continue;
+            /* Mirror the find_words_near_vector pronoun+function gate so
+             * any pronoun/function word that slipped through (e.g. a
+             * caller passed required_class explicitly) doesn't reach
+             * the emission buffer. */
+            if (e && (e->learned_class == GL_CLASS_FUNCTION ||
+                      e->learned_class == GL_CLASS_PRONOUN)) continue;
             float s = topk_scores[j];
             if (emit > 0 && prev_word[0]) {
                 char key[GL_MAX_PHRASE_LEN];
