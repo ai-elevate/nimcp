@@ -3711,13 +3711,71 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
             const gl_lexicon_entry_t* neighbor = lexicon_find(gl, words[j]);
             if (!neighbor || !neighbor->context_initialized) continue;
 
-            /* Blend neighbor's context into center's context */
+            /* Blend neighbor's context into center's context (ATTRACTION) */
             float dist_weight = 1.0f / (float)(abs((int)j - (int)i));
-            float lr = gl->hebbian_lr * 0.1f * dist_weight;
+
+            /* === FREQUENCY SUBSAMPLING — anti-collapse fix 2026-05-22 ===
+             * Root cause of the recurring distributional collapse: every
+             * sentence contains the same high-frequency function words
+             * ("what/is/a/the"), so the pure-attraction update drags every
+             * content word's context_vector toward those few words. Over
+             * training all vectors converge -> comprehend returns near-
+             * identical vectors -> produce emits one word. Probing confirmed
+             * it: prompts sharing a "What is" prefix re-converged (cos~0.75)
+             * while prompts with distinct function words stayed separate.
+             *
+             * word2vec solves exactly this by subsampling frequent words.
+             * We down-weight a neighbor's attraction by sqrt(T/freq) once it
+             * exceeds threshold T: content words (freq<=T) keep full pull,
+             * function words (freq>>T) are progressively suppressed. This
+             * removes the collapse SOURCE rather than fighting it after the
+             * fact. Combined with the negative sampling below. */
+            const float FREQ_SUBSAMPLE_T = 100.0f;
+            float freq_factor = 1.0f;
+            if ((float)neighbor->frequency > FREQ_SUBSAMPLE_T) {
+                freq_factor = sqrtf(FREQ_SUBSAMPLE_T / (float)neighbor->frequency);
+            }
+
+            float lr = gl->hebbian_lr * 0.1f * dist_weight * freq_factor;
 
             for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                 center->context_vector[d] += lr * neighbor->context_vector[d];
             }
+        }
+
+        /* === NEGATIVE SAMPLING (REPULSION) — anti-collapse fix 2026-05-22 ===
+         * The attractive blend above, on its own, is a pure averaging
+         * process: every word co-occurs with common function words, so
+         * all context_vectors drift toward the global mean and collapse
+         * (cos≈1 across distinct prompts -> single-word produce). This is
+         * the same failure word2vec/skip-gram avoids with negative
+         * sampling. For each center word we sample K random lexicon
+         * entries (its non-context) and push the center AWAY from them.
+         * Attraction + repulsion has a non-degenerate fixed point, so the
+         * distributional channel stays spread out without periodic resets.
+         *
+         * Repulsion lr is a fraction of attraction lr (asymmetric, as in
+         * SGNS where positive >> per-negative). Random samples that happen
+         * to be true neighbors are rare at K=5 over a 32K vocab and wash
+         * out across updates. */
+        if (center->context_initialized && gl->vocab_count > 16) {
+            const int K_NEG = 5;
+            float neg_lr = gl->hebbian_lr * 0.1f * 0.25f;
+            for (int k = 0; k < K_NEG; k++) {
+                uint32_t ridx = (uint32_t)(gl_random(gl) * (float)gl->vocab_count);
+                if (ridx >= gl->vocab_count) ridx = gl->vocab_count - 1;
+                const gl_lexicon_entry_t* neg = gl->vocab_list[ridx];
+                if (!neg || neg == center || !neg->context_initialized ||
+                    !neg->context_vector) {
+                    continue;
+                }
+                for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                    center->context_vector[d] -= neg_lr * neg->context_vector[d];
+                }
+            }
+            /* Bound magnitude so the additive dynamics can't explode and so
+             * cosine comparisons in produce stay well-conditioned. */
+            normalize_vector(center->context_vector, gl->semantic_dim);
         }
 
         /* Initialize context if first time in context */
