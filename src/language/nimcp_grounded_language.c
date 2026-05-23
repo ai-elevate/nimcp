@@ -1906,6 +1906,62 @@ static float gl_produce_confidence_floor(const grounded_language_t* gl) {
     }
 }
 
+/* Produce-side POS-transition bias weight (Tier 1 Step C, 2026-05-23).
+ *
+ * Scales how strongly the emit loop nudges each next word toward the
+ * content-word class that grammatically follows the previously emitted
+ * one (see gl_pos_expected_next). It is ADDITIVE on top of cosine +
+ * bigram scoring — never a hard gate — so missing/low-confidence POS
+ * tags degrade gracefully (no bias applied) rather than corrupting the
+ * output.
+ *
+ * Stage-scaled to match the developmental gradient: at stages 0-1 the
+ * output is 1-2 words where word order carries no grammatical signal, so
+ * the bias is OFF. It ramps in from stage 2 (telegraphic SVO emerges)
+ * through stage 4 (adult — full structural guidance). The returned
+ * weight is multiplied by the candidate's class_confidence at use, so a
+ * seeded high-confidence tag (0.7-0.9) counts ~2x a heuristic guess
+ * (0.3-0.4). Typical effective bonus at stage 4 is 0.15*0.8 = 0.12,
+ * comparable to the bigram term so it re-orders WITHIN the cosine top-K
+ * rather than overriding relevance. */
+static float gl_produce_pos_bias_weight(const grounded_language_t* gl) {
+    int s = gl ? gl->current_stage : 0;
+    switch (s) {
+        case 0: return 0.0f;   /* single word — no structure */
+        case 1: return 0.0f;   /* two-word telegraphic — order too noisy */
+        case 2: return 0.08f;  /* early SVO emerges */
+        case 3: return 0.12f;
+        default: return 0.15f; /* stage 4+ — adult structural guidance */
+    }
+}
+
+/* Minimal English SVO skeleton over CONTENT words (function words are
+ * filtered from the emission and inserted, if ever, by a separate path).
+ * Given the previously emitted word's class, returns the content-word
+ * class that most naturally follows:
+ *
+ *   (start)    -> NOUN   (subject)
+ *   ADJECTIVE  -> NOUN   (modifier precedes the noun it modifies)
+ *   NOUN       -> VERB   (subject -> predicate)
+ *   VERB       -> NOUN   (verb -> object)
+ *   ADVERB     -> VERB   (adverb attaches to a verb)
+ *
+ * Returns GL_CLASS_UNKNOWN ("no preference") for any class without a
+ * useful successor, so the caller applies no bias there. This is a soft
+ * heuristic skeleton, NOT a grammar — it produces NOUN VERB NOUN (and
+ * ADJ NOUN VERB NOUN) orderings, which is the conspicuous win over a
+ * relevance-only word salad. */
+static gl_word_class_t gl_pos_expected_next(gl_word_class_t prev) {
+    switch (prev) {
+        case GL_CLASS_UNKNOWN:   return GL_CLASS_NOUN;
+        case GL_CLASS_ADJECTIVE: return GL_CLASS_NOUN;
+        case GL_CLASS_NOUN:      return GL_CLASS_VERB;
+        case GL_CLASS_VERB:      return GL_CLASS_NOUN;
+        case GL_CLASS_ADVERB:    return GL_CLASS_VERB;
+        default:                 return GL_CLASS_UNKNOWN;
+    }
+}
+
 /*=============================================================================
  * Comprehension
  *===========================================================================*/
@@ -4014,8 +4070,13 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
      * top of the hard stage cap. As Athena develops the floor approaches
      * 0 and the gradient effectively dissolves. */
     const float confidence_floor = gl_produce_confidence_floor(gl);
+    /* POS-transition bias (Tier 1 Step C). Stage-scaled weight; 0 disables
+     * the structural nudge entirely (stages 0-1), so the emit loop is
+     * byte-for-byte the pre-Step-C path there. */
+    const float pos_bias_weight = gl_produce_pos_bias_weight(gl);
     bool used[GL_PRODUCE_TOPK] = {0};
     char prev_word[GL_MAX_WORD_LEN] = {0};
+    gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
     char    buf[1024] = {0};
     size_t  pos = 0;
     uint32_t emit = 0;
@@ -4051,6 +4112,18 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
                     }
                 }
             }
+            /* POS-transition bias (Tier 1 Step C): nudge toward the
+             * content-word class that grammatically follows prev_class,
+             * weighted by the candidate's class_confidence so trustworthy
+             * (seeded) tags count more than heuristic guesses. Soft +
+             * additive — UNKNOWN tags or a 0 weight apply nothing. */
+            if (pos_bias_weight > 0.0f && e &&
+                e->learned_class != GL_CLASS_UNKNOWN) {
+                gl_word_class_t want = gl_pos_expected_next(prev_class);
+                if (want != GL_CLASS_UNKNOWN && e->learned_class == want) {
+                    s += pos_bias_weight * e->class_confidence;
+                }
+            }
             if (s > best_score) {
                 best_score = s;
                 best_cos   = topk_scores[j];
@@ -4076,6 +4149,12 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
                       ? flen : sizeof(prev_word) - 1;
         memcpy(prev_word, w, cl);
         prev_word[cl] = '\0';
+        /* Carry the emitted word's class forward so the next position's
+         * POS bias keys off it (NOUN -> prefer VERB, etc.). */
+        {
+            const gl_lexicon_entry_t* be = lexicon_find(gl, w);
+            prev_class = be ? be->learned_class : GL_CLASS_UNKNOWN;
+        }
     }
     if (emit == 0 || emit < min_words) return -1;
 
