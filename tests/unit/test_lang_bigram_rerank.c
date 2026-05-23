@@ -97,6 +97,14 @@ static void test_empty_phrase_table_is_backward_compatible(void)
     EXPECT(gl != NULL, "grounded_language create");
     if (!gl) { semantic_memory_destroy(sm); return; }
 
+    /* Stage 2 lifts the developmental confidence floor enough that the
+     * loop emits multiple words (the floor at stage 0 is 1.0 which
+     * blocks anything past position 0 by design). The rerank's
+     * backward-compat behavior is what we're guarding here, not the
+     * floor itself — test_lang_distributional_anticollapse covers the
+     * floor's stop semantics elsewhere. */
+    grounded_language_set_current_stage_int(gl, 2);
+
     EXPECT(ground_word(gl, "tree",  4u)  != 0, "ground tree");
     EXPECT(ground_word(gl, "fire", 13u)  != 0, "ground fire");
     EXPECT(ground_word(gl, "water", 22u) != 0, "ground water");
@@ -132,6 +140,11 @@ static void test_bigram_bias_emits_adjacent_pair(void)
     semantic_memory_system_t* sm = semantic_memory_create();
     grounded_language_t* gl = grounded_language_create(SEMANTIC_DIM, sm);
     if (!gl) { semantic_memory_destroy(sm); return; }
+    /* Stage 2 lifts the developmental confidence floor enough that the
+     * emit loop runs for 4 positions (the rerank only does work past
+     * position 0). At stage 0 the floor is 1.0 and the loop would emit
+     * exactly 1 word, defeating the test's premise. */
+    grounded_language_set_current_stage_int(gl, 2);
 
     /* Four targets with disjoint one-hot dims so cosine-only ranking
      * across an intent that activates all four is tied. */

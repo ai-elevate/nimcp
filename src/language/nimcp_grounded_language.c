@@ -1873,8 +1873,37 @@ int grounded_language_decay_all_valence(grounded_language_t* gl, float factor) {
 void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage) {
     if (!gl) return;
     if (stage < 0) stage = 0;
-    if (stage > 3) stage = 3;
+    /* Bound widened to 4 (was 3) so the field tracks the brain's
+     * developmental stage table (kStageTable rows 0..4) — used by
+     * produce-side confidence floor as well as counterclaim selection. */
+    if (stage > 4) stage = 4;
     gl->current_stage = stage;
+}
+
+/* Produce-side developmental confidence floor.
+ *
+ * Returns the minimum cosine score a candidate must clear at emit
+ * position > 0 to be appended. Below the floor, produce stops emitting —
+ * length becomes content-determined rather than hard-capped.
+ *
+ * Stage 0 returns 1.0 (no candidate ever exceeds this → length 1 always,
+ * matching newborn babbling). The floor decays monotonically toward 0 as
+ * stage advances; stage 4 returns 0.0 (no early stop → length is purely
+ * content/top-K bound, like an adult speaker). The intermediate values
+ * are tuned so emitted length distribution overlaps the legacy stage
+ * table cap-distribution but isn't bit-identical — a softer ramp by
+ * design (the "gradient" model: kids transition gradually, not
+ * stepwise).
+ */
+static float gl_produce_confidence_floor(const grounded_language_t* gl) {
+    int s = gl ? gl->current_stage : 0;
+    switch (s) {
+        case 0: return 1.0f;
+        case 1: return 0.30f;
+        case 2: return 0.15f;
+        case 3: return 0.05f;
+        default: return 0.0f;  /* stage 4+ → no floor, adult */
+    }
 }
 
 /*=============================================================================
@@ -3976,6 +4005,15 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
      * rebuilding the decoder. Autoregressive intent evolution + larger
      * top-K is the natural Tier 1 follow-up. */
     const float GL_BIGRAM_RERANK_ALPHA = 0.05f;
+    /* Developmental confidence floor — per-position stop condition.
+     * Stage 0 returns 1.0 so the loop emits exactly 1 word (newborn).
+     * Stage 4 returns 0.0 so length is bounded only by top-K / phrase
+     * budget (adult-fluent — no developmental cap). Intermediate stages
+     * decay smoothly. Combined with the cascade's stage_motor truncation
+     * (which is still active), this gives a graceful soft length cap on
+     * top of the hard stage cap. As Athena develops the floor approaches
+     * 0 and the gradient effectively dissolves. */
+    const float confidence_floor = gl_produce_confidence_floor(gl);
     bool used[GL_PRODUCE_TOPK] = {0};
     char prev_word[GL_MAX_WORD_LEN] = {0};
     char    buf[1024] = {0};
@@ -3985,6 +4023,11 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     while (emit < max_words) {
         int   best_idx   = -1;
         float best_score = -1e30f;
+        /* Track the raw cosine of the eventual winner separately from
+         * the combined (cos + bigram_bias) score so the developmental
+         * floor only gates on cosine relevance — bigram inflation
+         * affects ORDER, never STOP. */
+        float best_cos   = -1e30f;
         for (uint32_t j = 0; j < n; j++) {
             if (used[j]) continue;
             const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
@@ -4010,10 +4053,16 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
             }
             if (s > best_score) {
                 best_score = s;
+                best_cos   = topk_scores[j];
                 best_idx   = (int)j;
             }
         }
         if (best_idx < 0) break;
+        /* Developmental floor: stop emitting if the chosen candidate's
+         * raw cosine drops below the floor. Always emit at least
+         * 1 word (the floor is a stop signal, not a gate on position 0)
+         * — callers that want zero output should not invoke produce. */
+        if (emit > 0 && best_cos < confidence_floor) break;
         used[best_idx] = true;
         const char* w = topk_words[best_idx];
         size_t flen = strlen(w);
