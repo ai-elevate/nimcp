@@ -1772,91 +1772,69 @@ static uint32_t slice_e_count_words(const char* s) {
     return n;
 }
 
-/* Slice E helper: truncate state->utterance to at most max_words. Returns
- * the number of words dropped. If state->utterance is already <= max_words
- * or there's no utterance, no-op and returns 0. */
-static uint32_t slice_e_truncate_utterance(production_cascade_state_t* state,
-                                             uint32_t max_words) {
-    if (!state || !state->utterance || !state->utterance[0]) return 0u;
-    uint32_t have = slice_e_count_words(state->utterance);
-    if (have <= max_words) return 0u;
-
-    /* Walk forward until we've passed max_words tokens, then NUL-terminate.
-     * Single-pass O(N) — no allocation. */
-    uint32_t seen = 0;
-    bool in_word = false;
-    char* p = state->utterance;
-    for (; *p; p++) {
-        if (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
-            in_word = false;
-        } else if (!in_word) {
-            seen++;
-            in_word = true;
-            if (seen > max_words) {
-                /* Back up to the previous whitespace boundary. */
-                *p = '\0';
-                /* Trim trailing whitespace too (one back-step is enough
-                 * since the boundary we hit was a single non-WS char that
-                 * we just NUL'd; the char before it could be WS). */
-                if (p > state->utterance && (*(p - 1) == ' ' ||
-                                              *(p - 1) == '\t' ||
-                                              *(p - 1) == '\n' ||
-                                              *(p - 1) == '\r')) {
-                    *(p - 1) = '\0';
-                }
-                break;
-            }
-        }
-    }
-    state->word_count = max_words;
-    return have - max_words;
-}
+/* Slice E truncation helper was removed 2026-05-23. The cascade no longer
+ * enforces stage->max_produce_words as a hard cap on the utterance text;
+ * the developmental confidence floor inside grounded_language_produce
+ * (gl_produce_confidence_floor, commit 79bb7752d) is now the sole length
+ * determiner. Cascade still records a telemetry skip when the produced
+ * utterance exceeds the stage's nominal cap so trainers can monitor
+ * where the floor's stop semantics land relative to the table — see
+ * cascade_stage_motor below. */
 
 static int cascade_stage_motor(brain_t brain,
                                 production_cascade_state_t* state) {
     if (!state) return 0;
 
-    /* === Slice E (2026-05-19) — developmental stage scaffolding enforcement.
+    /* === Slice E (2026-05-19) — developmental stage scaffolding.
      *
-     * Read the brain's current_stage and apply the stage table's caps:
-     *   - max_produce_words: truncate the utterance to this length.
-     *   - min_produce_words: best-effort signal — if state->utterance has
-     *     fewer words than the stage requires, record a skip with reason so
-     *     the cascade orchestrator (or a future settle loop) can re-run
-     *     lexical with relaxed sampling. The cascade is currently a
-     *     single-pass orchestrator outside the recurrent-loop entry point,
-     *     so we don't actually re-run here — but the skip record is what
-     *     callers will key off when they wrap a settle loop around stage_motor.
+     * 2026-05-23 — SOFTENED from enforcement to telemetry. The cascade
+     * USED to call slice_e_truncate_utterance(state, sc->max_produce_words)
+     * here, which hard-capped output length at every stage regardless of
+     * the producer's confidence. That defeated the developmental gradient:
+     * the user's design is "words → simple sentences → complex grammars,
+     * and eventually the cap disappears" — i.e. content (confidence)
+     * determines length, not a stage-table table-lookup.
+     *
+     * The new sole length authority is grounded_language_produce's
+     * developmental confidence floor (gl_produce_confidence_floor, commit
+     * 79bb7752d): at stage 0 the floor is 1.0 (effectively single-word
+     * production), graduating through 0.30 / 0.15 / 0.05 to 0.0 at
+     * stage 4+ (no floor, content-determined length). The cascade now
+     * only OBSERVES whether the producer's natural stopping point lands
+     * over the stage's nominal max — recording a skip-trail entry so
+     * trainers and dashboards can still see where the gradient lands
+     * relative to the table, but NOT truncating the text.
+     *
+     * Per-stage behavior fields still observed:
+     *   - max_produce_words: telemetry-only — record over-cap events.
+     *     No truncation; producer's floor is authoritative.
+     *   - min_produce_words: best-effort signal — same skip-record
+     *     semantics as before; the cascade does not re-run on underflow.
      *   - allowed_grammar_mask: TODO — wire Broca CYK once the cascade's
      *     stage_syntactic exposes the parse tree categorization needed to
-     *     match grammar_template_id_t. For now we skip the grammar check
-     *     and the length cap alone is the enforcement.
+     *     match grammar_template_id_t. For now we skip the grammar check.
      *
-     * Default OFF for non-Slice-E brains: when brain is NULL we fall through
-     * to the legacy cerebellar code below. When brain->current_stage points
-     * at the table's no-constraints row (which can't happen via the public
-     * setter since clamping pins to stage_table_max_stage, but defensive
-     * for direct field writes) we behave the same.
+     * Default OFF for non-Slice-E brains: when brain is NULL we fall
+     * through to the legacy cerebellar code below.
      *
-     * Grammar check follow-up — see TODO above. Document the gap in the
-     * deliverable report so it's tracked for a Slice-E follow-up PR. */
+     * Grammar check follow-up — see TODO above. */
     if (brain) {
         const stage_constraints_t* sc = stage_table_get(brain->current_stage);
         if (sc) {
-            /* Apply length cap FIRST — truncation gives downstream
-             * self-comprehension a stage-shaped utterance to evaluate. */
+            /* Telemetry-only over-cap signal. We count words and record a
+             * skip-trail entry when the produced utterance exceeds the
+             * stage's nominal max, but we leave state->utterance and
+             * state->word_count alone. The developmental confidence floor
+             * in grounded_language_produce is the authoritative length
+             * determiner — see commit 79bb7752d. */
             if (sc->max_produce_words > 0u &&
                 state->utterance && state->utterance[0]) {
-                uint32_t dropped = slice_e_truncate_utterance(state,
-                                                              (uint32_t)sc->max_produce_words);
-                if (dropped > 0u) {
-                    /* Record a skip-style trail so trainers can see which
-                     * runs got truncated. We do NOT mark the stage as
-                     * failed — truncation is the intended behavior. */
+                uint32_t have = slice_e_count_words(state->utterance);
+                if (have > (uint32_t)sc->max_produce_words) {
                     char msg[160];
                     snprintf(msg, sizeof(msg),
-                             "stage_motor: Slice E truncated %u word(s) over stage %u cap (%u)",
-                             dropped, brain->current_stage,
+                             "stage_motor: Slice E telemetry — produced %u word(s) over stage %u cap (%u); not truncated (floor-driven length)",
+                             have, brain->current_stage,
                              (uint32_t)sc->max_produce_words);
                     cascade_record_skip(state, CASCADE_STAGE_MOTOR, msg);
                 }
