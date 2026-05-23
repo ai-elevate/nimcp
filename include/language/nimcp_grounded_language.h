@@ -426,6 +426,85 @@ void grounded_language_set_concept_registry(
     grounded_language_t* gl,
     void* registry);
 
+/**
+ * @brief Wire the toxicity classifier so respond/produce can annotate output.
+ *
+ * After wiring, grounded_language_respond classifies the produced text and
+ * audit-logs detections. POLICY: mark, never delete — the classifier never
+ * modifies content; it only attaches scores for downstream evaluators.
+ *
+ * @param gl  Grounded language instance.
+ * @param tc  toxicity_classifier_t* (opaque), or NULL to unwire.
+ */
+void grounded_language_set_toxicity_classifier(
+    grounded_language_t* gl,
+    void* tc);
+
+/**
+ * @brief Wire the toxicity response engine for counterclaim emission.
+ *
+ * When wired AND the classifier flags input as toxic, respond() emits a
+ * stage-appropriate counterclaim instead of the (probably-collapsed)
+ * produce output. NULL to unwire.
+ */
+void grounded_language_set_toxicity_response(
+    grounded_language_t* gl,
+    void* tr);
+
+/**
+ * @brief Set valence/arousal on words in the given text.
+ *
+ * Tokenizes the text, looks up or creates each lexicon entry, and updates
+ * its `valence` (in [-1, +1]) and `arousal` (in [0, 1]) using a saturating
+ * EMA so the tag accumulates rather than overwrites on repeat exposure.
+ *
+ * Phase 3c/3d (2026-05-21): used to tag counterclaim words with positive
+ * valence (so produce-side suppression in find_words_near_vector PROMOTES
+ * them) and to tag toxic content words with negative valence (so produce
+ * DAMPS them). The 0.2 weight on each call means ~5 exposures saturate
+ * the tag.
+ *
+ * Round-2 risk-3 (2026-05-21): the `content_only` flag (1 = skip function
+ * words, 0 = tag everything) prevents counterclaim function words ("the",
+ * "of", "are") from accumulating positive valence across thousands of
+ * detections, which would eventually defeat the suppression mechanism
+ * by making EVERY common word look "good". Toxic-input tagging passes
+ * content_only=0 (function words there are part of the toxic structure
+ * and should also acquire negative valence); counterclaim tagging passes
+ * content_only=1.
+ *
+ * @return Number of lexicon entries touched (0 on empty text).
+ */
+int grounded_language_tag_text_affective(
+    grounded_language_t* gl,
+    const char* text,
+    float valence,
+    float arousal,
+    int content_only);
+
+/**
+ * @brief Decay all lexicon valences toward zero by a small factor.
+ *
+ * Called from the toxicity cycle tick (1Hz) so single mis-tagged events
+ * eventually relax back to neutral rather than locking in permanent
+ * negative valence on benign words. Both valence and arousal are
+ * multiplied by `factor` (typically 0.999 — a 0.1% per-call decay,
+ * half-life ~12 minutes at 1Hz). Set factor=1.0 to disable.
+ *
+ * @return Number of lexicon entries touched.
+ */
+int grounded_language_decay_all_valence(
+    grounded_language_t* gl,
+    float factor);
+
+/**
+ * @brief Update the developmental stage used for counterclaim selection.
+ * Stage 0..3 — out-of-range values are clamped.
+ */
+void grounded_language_set_current_stage_int(
+    grounded_language_t* gl,
+    int stage);
+
 /*=============================================================================
  * Comprehension (Wernicke's pathway)
  *===========================================================================*/

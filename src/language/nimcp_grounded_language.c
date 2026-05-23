@@ -15,6 +15,8 @@
 #include "language/nimcp_bigram_spectrum.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
+#include "security/nimcp_toxicity.h"                        /* 2026-05-21: content classifier */
+#include "security/nimcp_toxicity_response.h"                /* Phase 3a: counterclaim engine */
 
 /* TA-2 LGSS gate: pull the small safety_types header (key-value PODs +
  * SAFETY_DOMAIN_/SAFETY_ACTION_ enums) and the audit log header. We
@@ -1445,9 +1447,21 @@ static const float* get_concept_features(const grounded_language_t* gl, uint64_t
 static float score_word_against_vector(const grounded_language_t* gl,
                                        const gl_lexicon_entry_t* entry,
                                        const float* target, uint32_t dim) {
-    if (!entry || !entry->context_initialized) return 0.0f;
+    if (!entry) return 0.0f;
+    /* Drop the previous "context_initialized required" guard. With the
+     * Option-B lexicon readout (2026-05-20), a word with concept bindings
+     * is still scorable even when its distributional context_vector hasn't
+     * been seen yet — the binding-cosine term carries the signal. Returning
+     * 0 here would kill the produce path post-reset (context_vectors zeroed
+     * but bindings rebuilding). Only return 0 when there is genuinely no
+     * signal: no context AND no bindings. */
+    if (!entry->context_initialized && entry->binding_count == 0) return 0.0f;
+
     uint32_t cmp_dim = (dim < gl->semantic_dim) ? dim : gl->semantic_dim;
-    float sim = cosine_similarity(target, entry->context_vector, cmp_dim);
+    float sim = 0.0f;
+    if (entry->context_initialized && entry->context_vector) {
+        sim = cosine_similarity(target, entry->context_vector, cmp_dim);
+    }
 
     float concept_sim = 0.0f;
     for (uint32_t b = 0; b < entry->binding_count; b++) {
@@ -1458,7 +1472,32 @@ static float score_word_against_vector(const grounded_language_t* gl,
             if (cs > concept_sim) concept_sim = cs;
         }
     }
-    return 0.4f * sim + 0.6f * concept_sim;
+    float raw = 0.4f * sim + 0.6f * concept_sim;
+
+    /* Phase 3d (2026-05-21): valence-aware suppression at produce.
+     * Words whose lexicon entry carries strongly-negative valence are
+     * tagged "toxic-adjacent" by the brain's affective grounding (set by
+     * Phase 3c training when toxic content fires the reward path). At
+     * produce time, damp those words proportionally to their negative
+     * valence so they are unlikely to be EMITTED, even though they
+     * remain in the vocabulary (Athena recognizes them but does not
+     * volunteer them). Mapping:
+     *    valence  +1.0 -> factor 1.0   (no damping, positive prosocial words)
+     *    valence   0.0 -> factor 1.0   (default, no damping)
+     *    valence  -0.5 -> factor 0.75
+     *    valence  -1.0 -> factor 0.5   (strongest damping; not zero — the
+     *                                   brain may still need the word for
+     *                                   counterclaims that NAME the bad thing)
+     * Damping is linear in negative valence, capped so negative-valence
+     * words can still surface when context strongly demands them. */
+    if (entry->valence < 0.0f) {
+        float v = entry->valence;
+        if (v < -1.0f) v = -1.0f;
+        /* factor in [0.5 .. 1.0]: 0.5 when valence=-1, 1.0 when valence=0 */
+        float factor = 1.0f + (v * 0.5f);
+        raw *= factor;
+    }
+    return raw;
 }
 
 /** Find words closest to a semantic vector.
@@ -1487,8 +1526,23 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
 
     for (uint32_t w = 0; w < gl->vocab_count && count < max_words; w++) {
         const gl_lexicon_entry_t* entry = gl->vocab_list[w];
-        if (!entry || !entry->context_initialized) continue;
+        if (!entry) continue;
+        /* Skip only when there is truly no signal — same loosened gate as
+         * score_word_against_vector. A word with concept bindings but no
+         * distributional context_vector is still rankable via its bindings,
+         * which matters for the Option-B lexicon readout. */
+        if (!entry->context_initialized && entry->binding_count == 0) continue;
         if (required_class != GL_CLASS_UNKNOWN && entry->learned_class != required_class) {
+            continue;
+        }
+        /* Drop function words from "any class" ranking — they're the most
+         * frequently grounded so their bindings outscore content words for
+         * almost any intent, swamping the top-K with the/is/to/etc. Callers
+         * that explicitly want function words can pass GL_CLASS_FUNCTION as
+         * required_class. (Found live 2026-05-20: top-3 of an "any-class"
+         * produce was the,is,to even for prompts about grass.) */
+        if (required_class == GL_CLASS_UNKNOWN &&
+            entry->learned_class == GL_CLASS_FUNCTION) {
             continue;
         }
         float score = score_word_against_vector(gl, entry, target, dim);
@@ -1728,6 +1782,95 @@ void grounded_language_set_semantic_memory(grounded_language_t* gl, void* semant
 void grounded_language_set_concept_registry(grounded_language_t* gl, void* registry) {
     if (!gl) return;
     gl->concept_registry = registry;
+}
+
+/* Toxicity classifier plumbing (2026-05-21). Wired from brain init. Stored
+ * as void* to avoid header coupling — the .c file includes the header
+ * where it actually uses the classifier (in respond/produce). NULL-safe. */
+void grounded_language_set_toxicity_classifier(grounded_language_t* gl, void* tc) {
+    if (!gl) return;
+    gl->toxicity_classifier = tc;
+}
+
+void grounded_language_set_toxicity_response(grounded_language_t* gl, void* tr) {
+    if (!gl) return;
+    gl->toxicity_response = tr;
+}
+
+/* Phase 3c/3d (2026-05-21): apply an affective tag (valence + arousal) to
+ * every content word in the text. EMA mix (weight 0.2) so repeat exposures
+ * saturate rather than overwrite — robust to single noisy events.
+ * Function-word entries are tagged too because they have neutral content
+ * and rarely the target of valence-based suppression; let the natural
+ * lexicon-class filter in find_words_near_vector drop them. */
+int grounded_language_tag_text_affective(grounded_language_t* gl,
+                                          const char* text,
+                                          float valence,
+                                          float arousal,
+                                          int content_only) {
+    if (!gl || !text || !*text) return 0;
+    if (valence < -1.0f) valence = -1.0f;
+    if (valence >  1.0f) valence =  1.0f;
+    if (arousal <  0.0f) arousal =  0.0f;
+    if (arousal >  1.0f) arousal =  1.0f;
+
+    size_t L = strlen(text);
+    char* buf = (char*)nimcp_malloc(L + 1);
+    if (!buf) return 0;
+    memcpy(buf, text, L + 1);
+    char* words[GL_MAX_PRODUCTION_WORDS];
+    uint32_t word_count = tokenize_text(buf, words, GL_MAX_PRODUCTION_WORDS);
+
+    int touched = 0;
+    for (uint32_t w = 0; w < word_count; w++) {
+        gl_lexicon_entry_t* e = lexicon_find_or_create(gl, words[w]);
+        if (!e) continue;
+        /* Round-2 risk-3: skip function words when caller asks for
+         * content-only tagging (counterclaim path). Without this,
+         * "the/of/are" in every counterclaim would saturate positive
+         * across thousands of detections, defeating the suppression
+         * mechanism for the rest of the lexicon. */
+        if (content_only && e->learned_class == GL_CLASS_FUNCTION) continue;
+        /* Saturating EMA: 0.8*old + 0.2*new. ~5 exposures saturate. */
+        e->valence = 0.8f * e->valence + 0.2f * valence;
+        e->arousal = 0.8f * e->arousal + 0.2f * arousal;
+        if (e->valence < -1.0f) e->valence = -1.0f;
+        if (e->valence >  1.0f) e->valence =  1.0f;
+        if (e->arousal <  0.0f) e->arousal =  0.0f;
+        if (e->arousal >  1.0f) e->arousal =  1.0f;
+        touched++;
+    }
+    nimcp_free(buf);
+    return touched;
+}
+
+/* Round-2 risk-2 fix: provide a slow decay path so single mis-tags
+ * eventually relax to neutral. Called from the toxicity cycle tick
+ * (1Hz). factor=0.999 at 1Hz gives a half-life of ~11.5 minutes for
+ * a saturated valence — fast enough to forget a one-off misflag,
+ * slow enough that learned negative-valence on truly toxic words
+ * survives the next exposure that reinforces it. */
+int grounded_language_decay_all_valence(grounded_language_t* gl, float factor) {
+    if (!gl) return 0;
+    if (!isfinite(factor) || factor < 0.0f) factor = 1.0f;
+    if (factor > 1.0f) factor = 1.0f;
+    if (factor == 1.0f) return 0;  /* no-op */
+    int touched = 0;
+    for (uint32_t i = 0; i < gl->vocab_count; i++) {
+        gl_lexicon_entry_t* e = gl->vocab_list[i];
+        if (!e) continue;
+        e->valence *= factor;
+        e->arousal *= factor;
+        touched++;
+    }
+    return touched;
+}
+
+void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage) {
+    if (!gl) return;
+    if (stage < 0) stage = 0;
+    if (stage > 3) stage = 3;
+    gl->current_stage = stage;
 }
 
 /*=============================================================================
@@ -3568,13 +3711,71 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
             const gl_lexicon_entry_t* neighbor = lexicon_find(gl, words[j]);
             if (!neighbor || !neighbor->context_initialized) continue;
 
-            /* Blend neighbor's context into center's context */
+            /* Blend neighbor's context into center's context (ATTRACTION) */
             float dist_weight = 1.0f / (float)(abs((int)j - (int)i));
-            float lr = gl->hebbian_lr * 0.1f * dist_weight;
+
+            /* === FREQUENCY SUBSAMPLING — anti-collapse fix 2026-05-22 ===
+             * Root cause of the recurring distributional collapse: every
+             * sentence contains the same high-frequency function words
+             * ("what/is/a/the"), so the pure-attraction update drags every
+             * content word's context_vector toward those few words. Over
+             * training all vectors converge -> comprehend returns near-
+             * identical vectors -> produce emits one word. Probing confirmed
+             * it: prompts sharing a "What is" prefix re-converged (cos~0.75)
+             * while prompts with distinct function words stayed separate.
+             *
+             * word2vec solves exactly this by subsampling frequent words.
+             * We down-weight a neighbor's attraction by sqrt(T/freq) once it
+             * exceeds threshold T: content words (freq<=T) keep full pull,
+             * function words (freq>>T) are progressively suppressed. This
+             * removes the collapse SOURCE rather than fighting it after the
+             * fact. Combined with the negative sampling below. */
+            const float FREQ_SUBSAMPLE_T = 100.0f;
+            float freq_factor = 1.0f;
+            if ((float)neighbor->frequency > FREQ_SUBSAMPLE_T) {
+                freq_factor = sqrtf(FREQ_SUBSAMPLE_T / (float)neighbor->frequency);
+            }
+
+            float lr = gl->hebbian_lr * 0.1f * dist_weight * freq_factor;
 
             for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                 center->context_vector[d] += lr * neighbor->context_vector[d];
             }
+        }
+
+        /* === NEGATIVE SAMPLING (REPULSION) — anti-collapse fix 2026-05-22 ===
+         * The attractive blend above, on its own, is a pure averaging
+         * process: every word co-occurs with common function words, so
+         * all context_vectors drift toward the global mean and collapse
+         * (cos≈1 across distinct prompts -> single-word produce). This is
+         * the same failure word2vec/skip-gram avoids with negative
+         * sampling. For each center word we sample K random lexicon
+         * entries (its non-context) and push the center AWAY from them.
+         * Attraction + repulsion has a non-degenerate fixed point, so the
+         * distributional channel stays spread out without periodic resets.
+         *
+         * Repulsion lr is a fraction of attraction lr (asymmetric, as in
+         * SGNS where positive >> per-negative). Random samples that happen
+         * to be true neighbors are rare at K=5 over a 32K vocab and wash
+         * out across updates. */
+        if (center->context_initialized && gl->vocab_count > 16) {
+            const int K_NEG = 5;
+            float neg_lr = gl->hebbian_lr * 0.1f * 0.25f;
+            for (int k = 0; k < K_NEG; k++) {
+                uint32_t ridx = (uint32_t)(gl_random(gl) * (float)gl->vocab_count);
+                if (ridx >= gl->vocab_count) ridx = gl->vocab_count - 1;
+                const gl_lexicon_entry_t* neg = gl->vocab_list[ridx];
+                if (!neg || neg == center || !neg->context_initialized ||
+                    !neg->context_vector) {
+                    continue;
+                }
+                for (uint32_t d = 0; d < gl->semantic_dim; d++) {
+                    center->context_vector[d] -= neg_lr * neg->context_vector[d];
+                }
+            }
+            /* Bound magnitude so the additive dynamics can't explode and so
+             * cosine comparisons in produce stay well-conditioned. */
+            normalize_vector(center->context_vector, gl->semantic_dim);
         }
 
         /* Initialize context if first time in context */
@@ -3708,29 +3909,73 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     }
     memset(result, 0, sizeof(*result));
 
-    /* SNN bridge is the only production path. The brain learns syntactic
-     * structure emergently through training; we no longer impose templates.
-     * If the bridge can't produce (untrained, or no concepts activated),
-     * we return -1 and the caller's IDK gate fires "I don't know" — which
-     * is the honest answer for an undertrained model. */
-    if (!gl->snn_bridge) return -1;
+    /* Option-1 readout (Slice B, Option B — 2026-05-20): decode against
+     * grounded_language's own lexicon bindings, NOT the SNN-language
+     * bridge. The bridge was stripped to transport-only by the Option-1
+     * rebuild (snn_language_bridge_decode_spikes returns 0 unconditionally)
+     * and the registry-based readout was never built. find_words_near_vector
+     * scores each in-vocab word against the intent via
+     *   0.4·cos(intent, entry.context_vector)
+     *   + 0.6·max_b(strength_b · cos(intent, get_concept_features(b.concept_id)))
+     * and picks top-K (with a deterministic-shuffle diversity fallback when
+     * the lexicon is too under-grounded for top-K to discriminate). Function
+     * words are dropped from the emission to keep the output content-bearing.
+     * The bridge stays as async spike-routing transport but is no longer on
+     * the produce path. */
 
-    snn_lang_production_result_t spike_result;
-    memset(&spike_result, 0, sizeof(spike_result));
-    int rc = snn_language_bridge_produce(gl->snn_bridge, intent, intent_dim,
-                                         &spike_result);
-    if (rc != 0 || !spike_result.text || spike_result.word_count == 0) {
-        snn_lang_production_result_cleanup(&spike_result);
+    enum { GL_PRODUCE_TOPK = 32 };
+    const char* topk_words[GL_PRODUCE_TOPK];
+    float       topk_scores[GL_PRODUCE_TOPK];
+    memset(topk_words, 0, sizeof(topk_words));
+    memset(topk_scores, 0, sizeof(topk_scores));
+
+    uint32_t n = find_words_near_vector(gl, intent, intent_dim,
+                                         GL_CLASS_UNKNOWN /* any class */,
+                                         topk_words, topk_scores,
+                                         GL_PRODUCE_TOPK);
+    if (n == 0) {
+        /* No usable candidate — caller's IDK gate emits "I don't know".
+         * Honest answer for an undertrained or under-grounded lexicon. */
         return -1;
     }
 
-    /* Transfer the spike-produced text into the result. */
-    result->text = spike_result.text;
-    spike_result.text = NULL;  /* Ownership transferred. */
-    result->word_count = spike_result.word_count;
-    result->fluency = spike_result.fluency;
-    result->relevance = spike_result.spike_confidence;
-    result->creativity = spike_result.creativity;
+    /* Word-count defaults — short, telegraphic-ish output that the critic
+     * can shape further via reward. (The bridge's min/max_produce_words
+     * knobs are now stranded — the bridge produce path is dead post-rebuild
+     * — and should migrate to a grounded_language config when stage
+     * scaffolding needs per-stage bounds here.) */
+    uint32_t min_words = 1, max_words = 5;
+    if (max_words > GL_PRODUCE_TOPK) max_words = GL_PRODUCE_TOPK;
+    if (max_words > n) max_words = n;
+    if (min_words > max_words) min_words = max_words;
+
+    /* Build the emission: top scoring words, skipping function words. */
+    char    buf[1024] = {0};
+    size_t  pos = 0;
+    uint32_t emit = 0;
+    float    score_sum = 0.0f;
+    for (uint32_t i = 0; i < n && emit < max_words; i++) {
+        const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[i]);
+        if (e && e->learned_class == GL_CLASS_FUNCTION) continue;
+        size_t flen = strlen(topk_words[i]);
+        if (pos + flen + 2 >= sizeof(buf)) break;
+        if (emit > 0) buf[pos++] = ' ';
+        memcpy(buf + pos, topk_words[i], flen);
+        pos += flen;
+        score_sum += topk_scores[i];
+        emit++;
+    }
+    if (emit == 0 || emit < min_words) return -1;
+
+    result->text = (char*)nimcp_malloc(pos + 1);
+    if (!result->text) return -1;
+    memcpy(result->text, buf, pos);
+    result->text[pos] = '\0';
+
+    result->word_count = emit;
+    result->fluency    = topk_scores[0];
+    result->relevance  = (emit > 0) ? (score_sum / (float)emit) : 0.0f;
+    result->creativity = 0.5f;  /* placeholder — refine when sampling lands */
 
     result->semantic_vector = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     if (result->semantic_vector) {
@@ -3739,7 +3984,6 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         memcpy(result->semantic_vector, intent, copy_dim * sizeof(float));
     }
 
-    snn_lang_production_result_cleanup(&spike_result);
     gl->stats.total_productions++;
 
     /* Fire PRODUCED event on the cognitive bus. */
@@ -4070,30 +4314,113 @@ int grounded_language_respond(grounded_language_t* gl, const char* input_text,
         return -1;
     }
 
-    /* Comprehend input — gives us the semantic vector to drive production. */
+    /* === Phase 3c: INPUT-side toxicity check + counterclaim pushback ===
+     * If the input is classified toxic AND a response engine is wired,
+     * Athena emits a stage-appropriate counterclaim INSTEAD of running
+     * the (likely-collapsed) produce path. This is the operational
+     * expression of the core ethics directive: confronted with content
+     * that fails the Golden Rule's "improve the human condition" goal,
+     * Athena pushes back rather than passing it through.
+     *
+     * The classifier is still run on the OUTPUT below (defense in depth)
+     * for the rare case the counterclaim path doesn't fire. */
+    int input_is_toxic = 0;
+    toxicity_result_t input_tox = {0};
+    if (gl->toxicity_classifier && input_text && *input_text) {
+        toxicity_classifier_t* tc =
+            (toxicity_classifier_t*)gl->toxicity_classifier;
+        if (toxicity_classify(tc, input_text, &input_tox) == 0 &&
+            input_tox.would_block) {
+            input_is_toxic = 1;
+        }
+    }
+
+    /* Counterclaim short-circuit: if input is toxic, emit counterclaim
+     * and skip produce entirely. We DO still comprehend (so the immune /
+     * memory / audit machinery records the exposure) but the response is
+     * the pushback, not the brain's normal produce output. */
     gl_comprehension_result_t comp = {0};
     int comp_rc = grounded_language_comprehend(gl, input_text, &comp);
 
-    /* Produce via the SNN bridge. No template fallbacks, no quality-gated
-     * stock phrases ("I understand about X.", "I don't have words for that
-     * yet.", "I am learning."). Bridge succeeds → emit its output; bridge
+    int counterclaim_emitted = 0;
+    if (input_is_toxic && gl->toxicity_response) {
+        toxicity_response_t* tr =
+            (toxicity_response_t*)gl->toxicity_response;
+        toxicity_response_result_t cr = {0};
+        int stage = gl->current_stage;
+        if (stage < 0) stage = 0;
+        if (toxicity_response_generate(tr, input_text,
+                                        input_tox.matched_category,
+                                        stage, &cr) == 0 &&
+            cr.text[0] != '\0') {
+            strncpy(response, cr.text, response_max - 1);
+            response[response_max - 1] = '\0';
+            /* Counterclaims are confident assertions of values. */
+            if (confidence) *confidence = 0.95f;
+            counterclaim_emitted = 1;
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 1,
+                "Counterclaim emitted: src=%s cat=%s stage=%d "
+                "input='%.40s' response='%.60s'",
+                cr.source, input_tox.matched_category, stage,
+                input_text, response);
+        }
+    }
+
+    /* Produce via the lexicon readout (Option B). No template fallbacks, no
+     * quality-gated stock phrases. Produce succeeds → emit; produce
      * fails → emit "I don't know.", the curriculum-trained uncertainty
-     * marker (DK-B). The brain learns grammar emergently or admits it
-     * can't — there is no third option. */
+     * marker. The brain learns grammar emergently or admits it can't —
+     * counterclaim path above is the only exception, and only for toxic
+     * input. */
     gl_production_result_t prod = {0};
     int rc = -1;
-    if (comp_rc == 0 && comp.semantic_vector) {
+    if (!counterclaim_emitted && comp_rc == 0 && comp.semantic_vector) {
         rc = grounded_language_produce(gl, comp.semantic_vector, gl->semantic_dim,
                                         GL_PRODUCE_RESPOND, &prod);
     }
 
-    if (rc == 0 && prod.text && prod.word_count > 0) {
+    if (counterclaim_emitted) {
+        /* response + confidence already set by counterclaim block above. */
+    } else if (rc == 0 && prod.text && prod.word_count > 0) {
         strncpy(response, prod.text, response_max - 1);
         response[response_max - 1] = '\0';
         if (confidence) *confidence = prod.fluency * prod.relevance;
     } else {
         snprintf(response, response_max, "I don't know.");
         if (confidence) *confidence = 0.0f;
+    }
+
+    /* Toxicity classification of the produced response (2026-05-21).
+     * POLICY: mark, never delete — we annotate the response and emit a
+     * safety-audit event but DO NOT modify the response text. The LGSS
+     * ethics gate downstream can decide what to do with the scores.
+     *
+     * Round-1 walkthrough fix: skip this check when the response was a
+     * counterclaim. Counterclaims are deliberate value assertions; running
+     * the toxic classifier on them produces misleading audit entries and
+     * incorrectly lowers their confidence. */
+    if (!counterclaim_emitted && gl->toxicity_classifier && response[0] != '\0') {
+        toxicity_classifier_t* tc =
+            (toxicity_classifier_t*)gl->toxicity_classifier;
+        toxicity_result_t tox = {0};
+        if (toxicity_classify(tc, response, &tox) == 0 && tox.would_block) {
+            char audit_msg[256];
+            snprintf(audit_msg, sizeof(audit_msg),
+                     "language_produce flagged: cat=%s harm=%.2f fair=%.2f "
+                     "anti=%.2f input='%.40s' output='%.40s'",
+                     tox.matched_category, tox.predicted_harm,
+                     tox.fairness_violation, tox.anti_toxic_signal,
+                     input_text, response);
+            nimcp_safety_audit_log_event(
+                NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 2, "%s", audit_msg);
+            /* Reduce confidence proportional to harm so any consumer that
+             * gates on confidence sees the drop, without dropping content. */
+            if (confidence) *confidence *= (1.0f - tox.predicted_harm);
+            /* (KG emit at inference site is deferred — gl has no brain
+             * back-pointer; the audit-log entry above is the durable record.
+             * Training site emits KG events where brain is in scope.) */
+        }
     }
 
     int result_len = (int)strlen(response);

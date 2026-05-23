@@ -74,6 +74,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_monitoring.c          # Monitoring subsystems (476 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_structural.c          # Structural subsystems (624 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security.c            # Security subsystem (318 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_safety_verify.c       # LGSS + toxicity init + cycle registration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c   # FEP Orchestrator subsystem
     # Coordinator/Orchestrator init functions (brain lifecycle integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_bio_async_orchestrator.c  # Bio-Async Orchestrator
@@ -1831,6 +1832,9 @@ set(NIMCP_CORE_SOURCES
     # ${CMAKE_CURRENT_SOURCE_DIR}/../io/model/nimcp_model_loader.c  # DISABLED: adaptive_neuron_t type issues
 
     # Security - Core and Phase SC-1: Security Coverage Framework (Tier 0.7)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity.c           # Pattern-based content classifier (populates ethics/LGSS gates)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity_ml.c        # ML toxicity head (1024->256->64->2 MLP)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_toxicity_response.c  # Counterclaim/anti-frame pushback engine
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_security_coverage.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../security/nimcp_continuous_monitor.c

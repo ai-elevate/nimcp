@@ -21,8 +21,27 @@
 #include "core/brain/factory/init/nimcp_brain_init_safety_verify.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "core/brain/nimcp_brain_cycle_coordinator.h"
 #include "security/lgss/nimcp_lgss.h"
+#include "security/nimcp_toxicity.h"
+#include "security/nimcp_toxicity_response.h"
+#include "security/nimcp_toxicity_ml.h"
+#include "security/nimcp_w11_safety_kg_events.h"
+#include "language/nimcp_grounded_language.h"  /* Round 2 risk 2: decay_all_valence */
 #include "utils/logging/nimcp_logging.h"
+#include "utils/memory/nimcp_memory.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* Forward declaration: defined later in this file. */
+static void nimcp_brain_factory_toxicity_tick(void* ctx);
+
+/* Public: register the toxicity cycle. Called from this file on fresh
+ * init AND from nimcp_brain_load on --resume. Idempotent — register_driven
+ * returns non-zero on duplicate registration which we treat as success. */
+int nimcp_brain_factory_register_toxicity_cycle(brain_t brain);
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -90,7 +109,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     // Integration settings from brain config
     lgss_config.bio_async_enabled = brain->bio_async_enabled;
     lgss_config.ethics_bridge_enabled = brain->config.enable_ethics && brain->ethics != NULL;
-    lgss_config.plasticity_bridge_enabled = brain->config.enable_plasticity;
+    lgss_config.plasticity_bridge_enabled = brain->config.lgss_enable_plasticity_bridge;
     lgss_config.output_gates_enabled = true;
     lgss_config.learning_guards_enabled = true;
     lgss_config.perception_guards_enabled = true;
@@ -144,7 +163,295 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     LOG_INFO("  - KB hash prefix: 0x%016lx", stats.kb_hash_prefix);
     LOG_INFO("  - Status: %s", lgss_status_name(stats.status));
 
+    /* === Toxicity Classifier — content-semantics gate ===
+     * Loads pattern-based rules from data/safety/toxicity_rules.tsv. Non-
+     * fatal if the file is missing (classifier becomes a no-op; downstream
+     * gates fall back to legacy proxy scoring). Once present, the
+     * classifier populates predicted_harm + fairness_violation on the
+     * action_context for LGSS rules to evaluate, and emits KG events on
+     * detection. POLICY (user directive 2026-05-20): mark, never delete —
+     * toxic training data is annotated, not filtered. */
+    toxicity_classifier_t* toxc =
+        toxicity_classifier_create("data/safety/toxicity_rules.tsv",
+                                   0 /* fail_on_missing = false */);
+    if (toxc) {
+        brain->toxicity_classifier = toxc;
+        LOG_INFO("Toxicity classifier initialized: %zu pattern(s) loaded "
+                 "(threshold=%.2f)",
+                 toxicity_classifier_pattern_count(toxc),
+                 toxicity_classifier_get_threshold(toxc));
+
+        /* Register a 1-second driven cycle so the coordinator monitors
+         * the classifier's liveness and the KG records periodic stats.
+         * Cycle is observational — it ticks the classifier's stat
+         * counters; actual classification still happens at the gate sites
+         * (training + inference) where text is in scope. */
+        (void)nimcp_brain_factory_register_toxicity_cycle(brain);
+    } else {
+        brain->toxicity_classifier = NULL;
+        LOG_WARN("Toxicity classifier creation failed — content-semantics "
+                 "gate disabled (downstream LGSS uses legacy proxy scoring)");
+    }
+
+    /* === Toxicity Response Engine — Athena's counterclaim generator ===
+     * Loads stage-graded templates + anti-frame swaps. NON-FATAL on
+     * missing files; engine returns no-counterclaim and caller falls back
+     * to a default refusal string. */
+    toxicity_response_t* trsp = toxicity_response_create(
+        "data/safety/toxicity_counterclaims.tsv",
+        "data/safety/toxicity_antiframes.tsv");
+    if (trsp) {
+        brain->toxicity_response = trsp;
+        LOG_INFO("Toxicity response engine initialized: %zu template(s), "
+                 "%zu antiframe(s)",
+                 toxicity_response_template_count(trsp),
+                 toxicity_response_antiframe_count(trsp));
+    } else {
+        brain->toxicity_response = NULL;
+        LOG_WARN("Toxicity response engine creation failed — "
+                 "counterclaim pushback disabled");
+    }
+
+    /* === Toxicity ML Head — ensembles with pattern classifier (max) ===
+     * Pre-trained weights loaded from data/safety/toxicity_ml.bin if
+     * present; otherwise initializes fresh and learns online from the
+     * pattern classifier as teacher during training. NON-FATAL. */
+    toxicity_ml_classifier_t* tml = toxicity_ml_create("data/safety/toxicity_ml.bin");
+    if (tml) {
+        brain->toxicity_ml = tml;
+        LOG_INFO("Toxicity ML head initialized "
+                 "(input=%d -> %d -> %d -> %d)",
+                 TOXICITY_ML_INPUT_DIM, TOXICITY_ML_HIDDEN1_DIM,
+                 TOXICITY_ML_HIDDEN2_DIM, TOXICITY_ML_OUTPUT_DIM);
+        /* Ensemble: pattern classifier consults the ML head via max() on
+         * every classify() call. */
+        if (brain->toxicity_classifier) {
+            toxicity_classifier_attach_ml(
+                (toxicity_classifier_t*)brain->toxicity_classifier,
+                tml);
+            LOG_INFO("  - ensembled with pattern classifier (max-merge)");
+        }
+    } else {
+        brain->toxicity_ml = NULL;
+        LOG_WARN("Toxicity ML head creation failed — ensemble disabled");
+    }
+
     return true;
+}
+
+/* Curriculum row used for ML head training. Loaded once on the first
+ * tick that sees a non-null ml head. */
+typedef struct {
+    char  text[256];
+    float label_harm;
+    float label_fair;
+    char  category[32];
+} tox_curriculum_row_t;
+
+/* Load the curriculum file once. Returns malloc'd array via *rows_out and
+ * the count via *n_out. NUL-terminates everything. Caller frees with
+ * nimcp_free. On parse error returns 0 and leaves arrays untouched. */
+static int
+load_tox_curriculum(const char* path,
+                     tox_curriculum_row_t** rows_out, size_t* n_out)
+{
+    if (!rows_out || !n_out) return -1;
+    *rows_out = NULL;
+    *n_out = 0;
+    FILE* f = fopen(path, "r");
+    if (!f) return -1;
+    size_t cap = 64, n = 0;
+    tox_curriculum_row_t* rows = (tox_curriculum_row_t*)nimcp_calloc(cap, sizeof(*rows));
+    if (!rows) { fclose(f); return -1; }
+    char line[1024];
+    while (fgets(line, sizeof(line), f)) {
+        char* p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (!*p || *p == '\n' || *p == '#') continue;
+        size_t L = strlen(line);
+        while (L > 0 && (line[L-1] == '\n' || line[L-1] == '\r')) line[--L] = '\0';
+        if (L == 0) continue;
+        /* split on \t — 5 cols expected but only 4 required */
+        char* fields[5] = {NULL, NULL, NULL, NULL, NULL};
+        int fc = 0;
+        char* cur = line;
+        fields[fc++] = cur;
+        while (*cur && fc < 5) {
+            if (*cur == '\t') { *cur = '\0'; cur++; if (fc < 5) fields[fc++] = cur; continue; }
+            cur++;
+        }
+        if (fc < 4) continue;
+        if (n + 1 >= cap) {
+            size_t nc = cap * 2;
+            tox_curriculum_row_t* np =
+                (tox_curriculum_row_t*)nimcp_calloc(nc, sizeof(*np));
+            if (!np) break;
+            memcpy(np, rows, n * sizeof(*rows));
+            nimcp_free(rows);
+            rows = np; cap = nc;
+        }
+        tox_curriculum_row_t* r = &rows[n];
+        memset(r, 0, sizeof(*r));
+        strncpy(r->text, fields[0], sizeof(r->text) - 1);
+        r->label_harm = (float)atof(fields[1]);
+        r->label_fair = (float)atof(fields[2]);
+        strncpy(r->category, fields[3], sizeof(r->category) - 1);
+        n++;
+    }
+    fclose(f);
+    *rows_out = rows;
+    *n_out = n;
+    return 0;
+}
+
+/* Round-3 fix: cycle registration extracted into a public helper so the
+ * --resume load path can call it too. Without this, the cycle was only
+ * registered on fresh init — on --resume the brain came up with the
+ * toxicity classifier alive but the cycle tick (which runs ML training
+ * and valence decay) never fired. */
+int nimcp_brain_factory_register_toxicity_cycle(brain_t brain)
+{
+    if (!brain) return -1;
+    if (!brain->cycle_coordinator_enabled || !brain->cycle_coordinator) {
+        return -1;
+    }
+    int rc = brain_cycle_coordinator_register_driven(
+        (brain_cycle_coordinator_t*)brain->cycle_coordinator,
+        BRAIN_CYCLE_TOXICITY,
+        1000000ull /* 1s */,
+        nimcp_brain_factory_toxicity_tick,
+        (void*)brain,
+        NULL);
+    if (rc == 0) {
+        LOG_INFO("Toxicity cycle: registered (1Hz observation + ML train + decay)");
+    } else {
+        LOG_WARN("Toxicity cycle: register_driven returned %d "
+                 "(usually means already registered)", rc);
+    }
+    return rc;
+}
+
+/* Cycle-coordinator tick (1Hz). Three jobs:
+ *  1. Emit a periodic heartbeat KG node so monitoring sees liveness.
+ *  2. Train one curriculum row through the ML head per tick (pattern
+ *     classifier as teacher). Round-robin through the curriculum.
+ *  3. Save ML weights every N ticks if training progressed since last save.
+ *  4. Round-2 risk-2: slow valence decay (0.999 per tick).
+ *
+ * IMPORTANT LIMITATIONS (Round-4 documentation):
+ *
+ *  STATIC STATE IS PROCESS-WIDE, NOT PER-BRAIN.
+ *  The s_curriculum / s_curriculum_n / s_curriculum_cursor / s_save_counter /
+ *  s_last_total statics below are file-scope. In a single-brain process
+ *  (production), this is fine. In a multi-brain test, all brains share
+ *  the curriculum (read-only — safe) and the cursor (each brain's training
+ *  step bumps the global cursor, so they take turns through the curriculum
+ *  rather than each going round-robin independently). Moving these into
+ *  the brain struct is an ABI change deferred until multi-brain becomes
+ *  a real use case.
+ *
+ *  DESTROY ORDERING.
+ *  brain_destroy stops the cycle coordinator AS PART OF its destroy
+ *  sequence. Before that, individual subsystems get destroyed and their
+ *  fields zeroed (toxicity_classifier, toxicity_ml, toxicity_response,
+ *  grounded_lang all set to NULL after their destroy calls in
+ *  nimcp_brain_lifecycle.c). The NULL guards at the top of this function
+ *  protect against ticks that fire between subsystem-destroy and
+ *  coordinator-stop. After coordinator-stop the cycle thread is gone, so
+ *  the brain struct itself being freed is safe. */
+static void nimcp_brain_factory_toxicity_tick(void* ctx)
+{
+    struct brain_struct* brain = (struct brain_struct*)ctx;
+    if (!brain || !brain->toxicity_classifier) return;
+
+    static tox_curriculum_row_t* s_curriculum = NULL;
+    static size_t s_curriculum_n = 0;
+    static size_t s_curriculum_cursor = 0;
+    static int    s_curriculum_loaded = 0;
+    static uint64_t s_save_counter = 0;
+    static uint64_t s_last_total = 0;
+
+    /* One-shot curriculum load on first tick. */
+    if (!s_curriculum_loaded) {
+        s_curriculum_loaded = 1;
+        if (load_tox_curriculum("data/safety/toxicity_curriculum.tsv",
+                                 &s_curriculum, &s_curriculum_n) == 0) {
+            LOG_INFO("Toxicity curriculum loaded: %zu rows",
+                     s_curriculum_n);
+        }
+    }
+
+    /* === Job 2: ML head training (one row per tick) === */
+    if (brain->toxicity_ml && s_curriculum && s_curriculum_n > 0) {
+        tox_curriculum_row_t* r =
+            &s_curriculum[s_curriculum_cursor % s_curriculum_n];
+        s_curriculum_cursor++;
+        (void)toxicity_ml_train_step(
+            (toxicity_ml_classifier_t*)brain->toxicity_ml,
+            r->text,
+            r->label_harm, r->label_fair,
+            0.01f /* lr */,
+            0.05f /* dead_zone — skip step when already within 0.05 */);
+
+        /* === Job 3: periodic save (every 60 ticks ≈ 1 minute) ===
+         * Round-4 cleanup: save only when training has progressed since
+         * the last save. The dead-zone in train_step means many ticks
+         * are no-ops (already within 0.05 of target). Saving on those is
+         * wasted disk I/O. We snapshot total_train_steps and only save
+         * when it has incremented since the previous save. */
+        s_save_counter++;
+        if ((s_save_counter % 60) == 0) {
+            static uint64_t s_last_saved_step_count = 0;
+            uint64_t now_step_count = 0;
+            toxicity_ml_get_stats(
+                (toxicity_ml_classifier_t*)brain->toxicity_ml,
+                NULL, &now_step_count, NULL);
+            if (now_step_count > s_last_saved_step_count) {
+                (void)toxicity_ml_save(
+                    (toxicity_ml_classifier_t*)brain->toxicity_ml,
+                    "data/safety/toxicity_ml.bin");
+                s_last_saved_step_count = now_step_count;
+            }
+        }
+    }
+
+    /* === Round-2 risk-2: slow valence decay ===
+     * Multiplies every lexicon entry's valence by 0.999 per tick (1Hz).
+     * Half-life ~11.5 minutes for a saturated +1.0 valence — single
+     * mis-tags relax to neutral within an hour; truly toxic words that
+     * the gate keeps re-tagging hold their negative valence. */
+    if (brain->grounded_lang) {
+        (void)grounded_language_decay_all_valence(brain->grounded_lang, 0.999f);
+    }
+
+    /* === Job 1: heartbeat KG emit === */
+    uint64_t total = 0, matches = 0, blocks = 0;
+    toxicity_classifier_get_stats(
+        (toxicity_classifier_t*)brain->toxicity_classifier,
+        &total, &matches, &blocks);
+
+    if (total > s_last_total) {
+        char hb_excerpt[128];
+        uint64_t mlp = 0, mls = 0;
+        float ml_loss = 0.0f;
+        if (brain->toxicity_ml) {
+            toxicity_ml_get_stats(
+                (toxicity_ml_classifier_t*)brain->toxicity_ml,
+                &mlp, &mls, &ml_loss);
+        }
+        snprintf(hb_excerpt, sizeof(hb_excerpt),
+                 "hb total=%llu match=%llu block=%llu ml_pred=%llu "
+                 "ml_steps=%llu ml_loss=%.4f",
+                 (unsigned long long)total,
+                 (unsigned long long)matches,
+                 (unsigned long long)blocks,
+                 (unsigned long long)mlp,
+                 (unsigned long long)mls,
+                 ml_loss);
+        w11_emit_toxicity_detection(brain, "cycle", "heartbeat",
+                                    0.0f, 0.0f, 0.0f, hb_excerpt);
+        s_last_total = total;
+    }
 }
 
 //=============================================================================

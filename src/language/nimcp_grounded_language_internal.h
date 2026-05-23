@@ -430,6 +430,24 @@ struct grounded_language {
      * NULL means "not wired" — concept_registry_* calls are guarded so
      * the legacy bridge-mirror path still compiles. */
     void*                concept_registry;
+
+    /* Toxicity classifier handle (2026-05-21). Wired from brain init via
+     * grounded_language_set_toxicity_classifier(). NULL means "not wired"
+     * — classify calls are guarded so the produce/respond path stays
+     * functional without it. POLICY: mark, never delete — classification
+     * only annotates; content is never modified. */
+    void*                toxicity_classifier;
+
+    /* Toxicity response engine (Phase 3a, 2026-05-21). Counterclaim
+     * generator used by respond() when input is classified toxic. Wired
+     * from brain init via grounded_language_set_toxicity_response().
+     * NULL means "not wired" — respond falls back to default refusal. */
+    void*                toxicity_response;
+
+    /* Current developmental stage for counterclaim selection (0..3).
+     * Set externally via grounded_language_set_current_stage(); falls
+     * back to gl_internal_get_current_stage() when zero. */
+    int                  current_stage;
 };
 
 /**

@@ -193,6 +193,34 @@ NIMCP_EXPORT void w11_emit_lgss_kb_event(
     const char* rule_description
 );
 
+/**
+ * @brief Toxicity-classifier detection event (2026-05-21).
+ *
+ * Emitted on every match where max_score >= toxicity threshold. Records
+ * source operation (training vs inference), matched category, harm and
+ * fairness scores, plus a clamped text excerpt for audit.
+ *
+ * Node: `toxicity_event_<category>_<ts>`. Parent: `toxicity_module`.
+ * POLICY: mark, never delete — emitting an event does not modify the
+ * content; downstream evaluators read the KG to decide policy.
+ *
+ * @param source           "training" | "inference" | "cycle" | etc.
+ * @param category         Matched pattern category (dehumanization, etc.).
+ * @param harm_score       predicted_harm in [0,1].
+ * @param fairness_score   fairness_violation in [0,1].
+ * @param anti_toxic       anti_toxic_signal in [0,1] (disclaimer-present hint).
+ * @param text_excerpt     Up to ~80 chars of the flagged text (truncated).
+ */
+NIMCP_EXPORT void w11_emit_toxicity_detection(
+    struct brain_struct* brain,
+    const char* source,
+    const char* category,
+    float harm_score,
+    float fairness_score,
+    float anti_toxic,
+    const char* text_excerpt
+);
+
 /* ----------------------------------------------------------------------- *
  * 3. Mental health                                                        *
  * ----------------------------------------------------------------------- */

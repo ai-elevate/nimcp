@@ -135,6 +135,7 @@ typedef enum {
     BRAIN_CYCLE_ENTORHINAL,         /**< Wave 8B-c: spatial/grid cells / MTL (16ms) — PARTIAL */
     BRAIN_CYCLE_CEREBELLUM,         /**< Wave 8B-c: motor-error forward model + bio-msg drain (16ms) */
     BRAIN_CYCLE_BASAL_GANGLIA,      /**< Wave 8B-c: action selection / reward gating (16ms) */
+    BRAIN_CYCLE_TOXICITY,           /**< 2026-05-21: pattern + ML toxicity classifier driver (1s) */
     BRAIN_CYCLE_COUNT               /**< Total number of cycle types */
 } brain_cycle_type_t;
 

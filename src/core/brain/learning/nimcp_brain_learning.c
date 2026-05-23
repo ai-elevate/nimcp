@@ -39,6 +39,8 @@
 /* Cognitive module types for training wiring */
 #include "cognitive/recursive/nimcp_rcog_types.h"
 #include "language/nimcp_concept_registry.h"  /* Slice B */
+#include "security/nimcp_toxicity.h"          /* 2026-05-21: content classifier */
+#include "security/nimcp_toxicity_response.h" /* Phase 3a: counterclaim engine */
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "cognitive/ethics/nimcp_ethics.h"
 #include "cognitive/nimcp_meta_learning.h"
@@ -261,6 +263,7 @@ extern int creative_training_submit_feedback(creative_training_bridge_t* bridge,
 
 // Self-heal engine training
 #include "cognitive/immune/nimcp_self_heal.h"
+#include "cognitive/immune/nimcp_brain_immune.h"  /* 2026-05-21: antigen presentation */
 
 // Intuition system training is declared in nimcp_intuition_integrations.h
 // (included via nimcp_brain_internal.h)
@@ -1059,6 +1062,222 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         _learn_ethics_warn_count++;
     }
 
+    /* === TOXICITY CLASSIFICATION OF TRAINING LABEL (2026-05-21) ===
+     * Runs the content classifier on the training label so the LGSS gate
+     * below sees REAL content semantics in its p_harm / fairness_violation
+     * fields (not just the toy NaN/Inf proxy). POLICY: mark, never delete
+     * — we annotate the training step with toxicity scores AND audit-log
+     * detections, but we DO NOT skip the learning step. The brain must
+     * SEE toxic content WITH its toxicity label to learn to recognize and
+     * refuse it. The existing LGSS DENY path (NaN/Inf adversarial features)
+     * still drops obviously-corrupt training data — toxicity scores only
+     * affect ESCALATE-style rules, not DENY. */
+    float tox_predicted_harm = 0.0f;
+    float tox_fairness_violation = 0.0f;
+    char tox_category[32] = {0};
+    if (label && label[0] != '\0' && brain->toxicity_classifier) {
+        toxicity_classifier_t* tc =
+            (toxicity_classifier_t*)brain->toxicity_classifier;
+        toxicity_result_t tox = {0};
+        if (toxicity_classify(tc, label, &tox) == 0) {
+            tox_predicted_harm = tox.predicted_harm;
+            tox_fairness_violation = tox.fairness_violation;
+            strncpy(tox_category, tox.matched_category,
+                    sizeof(tox_category) - 1);
+            if (tox.would_block) {
+                /* Mark the training step as toxic in the audit log so
+                 * post-hoc review can find every toxic-data exposure. */
+                nimcp_safety_audit_log_event(
+                    NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
+                    "TOXIC training-data MARKED (not filtered): "
+                    "cat=%s harm=%.2f fair=%.2f anti=%.2f label='%.60s'",
+                    tox.matched_category, tox.predicted_harm,
+                    tox.fairness_violation, tox.anti_toxic_signal,
+                    label);
+                /* Emit to W11 safety KG subgraph so downstream evaluators
+                 * (auditors, ML head trainer, immune system) can read the
+                 * detection from the graph. */
+                w11_emit_toxicity_detection(
+                    brain, "training", tox.matched_category,
+                    tox.predicted_harm, tox.fairness_violation,
+                    tox.anti_toxic_signal, label);
+                /* Present antigen to brain_immune so the tolerance / memory
+                 * subsystems track toxic content as a recognized class of
+                 * input. Severity maps max(harm, fair) -> [1..10]. The
+                 * epitope is the matched category name (stable across
+                 * pattern updates), padded into the epitope buffer. */
+                if (brain->immune_system && brain->immune_enabled) {
+                    float worst = tox.predicted_harm > tox.fairness_violation
+                                      ? tox.predicted_harm
+                                      : tox.fairness_violation;
+                    uint32_t sev = (uint32_t)(worst * 10.0f);
+                    if (sev < 1)  sev = 1;
+                    if (sev > 10) sev = 10;
+                    uint8_t epitope[64] = {0};
+                    size_t cat_len = strlen(tox.matched_category);
+                    if (cat_len > sizeof(epitope)) cat_len = sizeof(epitope);
+                    memcpy(epitope, tox.matched_category, cat_len);
+                    uint32_t antigen_id = 0;
+                    (void)brain_immune_present_antigen(
+                        brain->immune_system,
+                        ANTIGEN_SOURCE_MANUAL,
+                        epitope, cat_len,
+                        sev,
+                        0 /* source_node = local */,
+                        &antigen_id);
+                }
+
+                /* === Phase 3b: drive the existing core-directive evaluator ===
+                 * Toxicity isn't a SEPARATE rule — it's content that fails
+                 * the existing Golden Rule policy whose ultimate goal
+                 * (per the core directive in nimcp_ethics.h:422-424) is
+                 * "improving the human condition through empathy,
+                 * compassion, fairness, and respect for human dignity".
+                 * Calling ethics_engine_evaluate_action with proper scores
+                 * is what makes the engine evaluate this content under
+                 * the directive that already exists.
+                 *
+                 * Category -> violation-channel mapping (mirrors the
+                 * categories' linguistic nature; engine reads all fields):
+                 *   dehumanization          -> fairness_violation + harm
+                 *                              (denial of equal personhood
+                 *                               is fundamentally an
+                 *                               unfairness; "harm" captures
+                 *                               its real-world consequence)
+                 *   violence_against_group  -> harm (direct call for harm)
+                 *   misogyny                -> fairness_violation +
+                 *                              autonomy_violation (denial
+                 *                               of agency / equal status)
+                 *   slurs_external          -> fairness_violation + harm
+                 *                              (weaponized dehumanization)
+                 *   other                   -> harm + fairness as scored
+                 *
+                 * The engine returns its allowed/violation_type/explanation,
+                 * which feeds the immune system + audit. We do NOT skip
+                 * the learning step based on this — POLICY is mark, not
+                 * filter; the brain must SEE this content with its
+                 * toxicity label so it can learn to refuse. */
+                if (brain->ethics) {
+                    action_context_t a_tox = {0};
+                    a_tox.features = (float*)features;
+                    a_tox.num_features = num_features;
+                    a_tox.predicted_harm     = tox.predicted_harm;
+                    a_tox.fairness_violation = tox.fairness_violation;
+                    if (strcmp(tox.matched_category, "misogyny") == 0) {
+                        /* Misogyny is denial of agency -> autonomy channel. */
+                        a_tox.autonomy_violation = tox.predicted_harm;
+                    }
+                    ethics_evaluation_t e_tox =
+                        ethics_engine_evaluate_action(brain->ethics, &a_tox);
+                    /* Log the engine's verdict so the audit trail records
+                     * the directive's response, not just the classifier's. */
+                    nimcp_safety_audit_log_event(
+                        NIMCP_SAFETY_AUDIT_LGSS_TRAINING_BLOCKED, 2,
+                        "Ethics directive evaluated toxic training-data: "
+                        "allowed=%d gr_score=%.2f primary_violation=%d "
+                        "explanation='%.80s'",
+                        e_tox.allowed ? 1 : 0,
+                        e_tox.golden_rule_score,
+                        (int)e_tox.primary_violation,
+                        e_tox.explanation);
+                }
+
+                /* === Phase 3c: anti-Hebbian on toxic associations ===
+                 * Drive negative reward into the 3-factor R-STDP machinery
+                 * so the brain LEARNS to anti-associate the toxic content
+                 * with positive-emission directions. The brain still SEES
+                 * the content (the learn_vector weight update still happens
+                 * later) — it just LEARNS to refuse it.
+                 *
+                 * Round-2 risk-1 fix: gentle scale + rate-limit.
+                 *  - Magnitude scaled to 0.3 * max_score (not 1.0). A
+                 *    -1.0 R-STDP signal on every toxic step would degrade
+                 *    adjacent representations co-active with the toxic
+                 *    content. -0.3 gives a clear gradient without
+                 *    dominating normal training.
+                 *  - Rate-limited via static call counter — at most one
+                 *    negative-reward delivery per 5 toxic detections.
+                 *    Combined with the gate's threshold gating, this caps
+                 *    cumulative anti-Hebbian pressure on toxic-adjacent
+                 *    representations. (Counter is per-process; one brain
+                 *    per process in production.) */
+                {
+                    static uint64_t s_neg_reward_skip_counter = 0;
+                    const uint64_t NEG_REWARD_EVERY_N = 5;
+                    if ((s_neg_reward_skip_counter++ % NEG_REWARD_EVERY_N) == 0) {
+                        float worst = tox.predicted_harm > tox.fairness_violation
+                                          ? tox.predicted_harm
+                                          : tox.fairness_violation;
+                        float neg_reward = -0.3f * worst;
+                        if (neg_reward < -1.0f) neg_reward = -1.0f;
+                        (void)brain_apply_reward_learning(brain, neg_reward);
+                    }
+                }
+
+                /* === Phase 3c (Round 1 fix): set affective tags on lexicon
+                 * entries so the produce-side suppression in
+                 * find_words_near_vector actually has signal to act on.
+                 *   1. Toxic input words   -> valence = -worst (negative)
+                 *      arousal = +worst  (high salience)
+                 *   2. Counterclaim words  -> valence = +0.8 (positive,
+                 *      human-condition-aligned), arousal = +0.5
+                 *
+                 * Round-2 risk-2: only apply the tag when toxicity is
+                 * CLEARLY toxic (max_score >= 0.85), stricter than the
+                 * gate's 0.7 threshold. Borderline cases trip the audit /
+                 * immune / KG / ethics machinery (which is reversible)
+                 * but do NOT permanently shift word valences. Combined
+                 * with the cycle's slow decay path, this prevents one-off
+                 * mis-flags from locking in permanent negative valence on
+                 * benign words. */
+                const float TAG_THRESHOLD = 0.85f;
+                float worst_for_tag = tox.predicted_harm > tox.fairness_violation
+                                          ? tox.predicted_harm
+                                          : tox.fairness_violation;
+                if (brain->grounded_lang && worst_for_tag >= TAG_THRESHOLD) {
+                    float worst = worst_for_tag;
+                    /* Tag the toxic input words with negative valence so
+                     * produce damps them. content_only=0: function words
+                     * IN toxic constructions are part of the structure
+                     * (e.g. "are" in "X are subhuman") and acquire the
+                     * negative tag too. */
+                    grounded_language_tag_text_affective(
+                        brain->grounded_lang, label,
+                        -worst,            /* valence (negative) */
+                        worst,             /* arousal (high salience) */
+                        0 /* content_only */);
+
+                    /* Generate + tag the stage-appropriate counterclaim
+                     * with positive valence (human-condition-aligned). */
+                    if (brain->toxicity_response) {
+                        toxicity_response_result_t cr;
+                        memset(&cr, 0, sizeof(cr));
+                        int stage = (int)brain->current_stage;
+                        if (toxicity_response_generate(
+                                (toxicity_response_t*)brain->toxicity_response,
+                                label,
+                                tox.matched_category, stage,
+                                &cr) == 0 && cr.text[0] != '\0') {
+                            /* Also add the counterclaim words to the
+                             * lexicon (so they're available for produce
+                             * to emit). */
+                            grounded_language_learn_from_text(
+                                brain->grounded_lang, cr.text);
+                            grounded_language_tag_text_affective(
+                                brain->grounded_lang, cr.text,
+                                0.8f,    /* positive valence */
+                                0.5f,    /* moderate arousal */
+                                1 /* content_only — skip function words
+                                     so "the/of/are" don't saturate
+                                     positive across thousands of
+                                     detections */);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /* === LGSS TRAINING GUARD: Validate learning data before weight updates ===
      * Prevents adversarial training data from corrupting the model.
      * This is a NON-REMOVABLE safety layer — defense in depth with ethics. */
@@ -1076,6 +1295,18 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
         } else {
             lgss_train_ctx.num_string_fields = 2;
         }
+        /* Add toxicity category as a string field if present (for rule
+         * conditions that match on operation/category). */
+        if (tox_category[0] != '\0' &&
+            lgss_train_ctx.num_string_fields <
+                (sizeof(lgss_train_ctx.string_fields) /
+                 sizeof(lgss_train_ctx.string_fields[0]))) {
+            strncpy(lgss_train_ctx.string_fields[lgss_train_ctx.num_string_fields].key,
+                    "toxicity_category", 63);
+            strncpy(lgss_train_ctx.string_fields[lgss_train_ctx.num_string_fields].value,
+                    tox_category, SAFETY_MAX_VALUE_LEN - 1);
+            lgss_train_ctx.num_string_fields++;
+        }
 
         /* Check training data for NaN/Inf as an anomaly indicator */
         float train_p_harm = 0.0f;
@@ -1087,12 +1318,19 @@ float brain_learn_vector(brain_t brain, const float* features, uint32_t num_feat
             if (isnan(target[i]) || isinf(target[i])) train_nan++;
         }
         if (train_nan > 0) train_p_harm = 0.8f;
+        /* Take the MAX of the NaN-proxy harm and the real toxicity harm —
+         * either signal raises the score for LGSS rule evaluation. */
+        if (tox_predicted_harm > train_p_harm) train_p_harm = tox_predicted_harm;
 
         strncpy(lgss_train_ctx.numeric_fields[0].key, "p_harm", 63);
         lgss_train_ctx.numeric_fields[0].value = train_p_harm;
         strncpy(lgss_train_ctx.numeric_fields[1].key, "num_features", 63);
         lgss_train_ctx.numeric_fields[1].value = (float)num_features;
-        lgss_train_ctx.num_numeric_fields = 2;
+        /* Fairness violation populated from real content classifier so
+         * LGSS rules can match on it. */
+        strncpy(lgss_train_ctx.numeric_fields[2].key, "fairness_violation", 63);
+        lgss_train_ctx.numeric_fields[2].value = tox_fairness_violation;
+        lgss_train_ctx.num_numeric_fields = 3;
 
         lgss_train_ctx.domain_hint = SAFETY_DOMAIN_GOVERNANCE;
         lgss_train_ctx.has_domain_hint = true;

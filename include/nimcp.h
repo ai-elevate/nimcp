@@ -1483,6 +1483,22 @@ nimcp_status_t nimcp_brain_reset_concept_grounding(
     int64_t* out_cleared
 );
 
+/* Classify a text via the toxicity classifier and return the scores. All
+ * out-pointers are optional (pass NULL to skip a field). category buffer is
+ * populated with the matched-category string (cleared to empty on no match).
+ * Returns NIMCP_OK on success; NIMCP_ERROR if the classifier is not
+ * attached or classify failed. (2026-05-21) */
+nimcp_status_t nimcp_brain_classify_toxicity(
+    nimcp_brain_t brain,
+    const char* text,
+    float* out_harm,
+    float* out_fairness,
+    float* out_anti_toxic,
+    int* out_would_block,
+    char* out_category,
+    size_t out_category_len
+);
+
 /* Audit fix — campaign feature flag setters callable from the daemon RPC
  * surface + Python bindings. All have default-OFF semantics; calling with
  * enabled=false reverts to legacy behavior. */

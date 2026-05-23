@@ -8,6 +8,10 @@
 #include "language/nimcp_communication_cascade.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
+#include "security/nimcp_toxicity.h"                        /* 2026-05-21: classifier diag */
+#include "security/nimcp_toxicity_response.h"                /* Phase 3a: counterclaim engine */
+#include "security/nimcp_toxicity_ml.h"                      /* Task 134: ML head */
+#include "security/nimcp_audit_log.h"                        /* 2026-05-22: counterclaim audit */
 
 
 //=============================================================================
@@ -2820,6 +2824,42 @@ nimcp_status_t nimcp_brain_grounded_respond(
     brain_t b = brain->internal_brain;
     if (!b || !b->grounded_lang) return NIMCP_ERROR_NOT_INITIALIZED;
 
+    /* === Toxicity counterclaim interceptor (2026-05-22 fix) ===
+     * MUST run before the cascade-vs-bridge branch. The counterclaim
+     * emission inside grounded_language_respond() only fires on the
+     * non-cascade bridge path; with respond_via_cascade ON (the pod's
+     * default), toxic input would otherwise flow through the cascade
+     * untouched. Intercepting here guarantees toxic input always gets
+     * stage-graded pushback regardless of which downstream path runs.
+     *
+     * Uses brain-level pointers (b->toxicity_classifier / _response),
+     * which the safety wave / resume path populate. NULL-safe: if the
+     * toxicity stack is absent we simply fall through to normal respond. */
+    if (b->toxicity_classifier && b->toxicity_response &&
+        input_text[0] != '\0') {
+        toxicity_result_t tox = {0};
+        if (toxicity_classify((toxicity_classifier_t*)b->toxicity_classifier,
+                              input_text, &tox) == 0 && tox.would_block) {
+            toxicity_response_result_t cr = {0};
+            int stage = (int)b->current_stage;
+            if (stage < 0) stage = 0;
+            if (toxicity_response_generate(
+                    (toxicity_response_t*)b->toxicity_response,
+                    input_text, tox.matched_category, stage, &cr) == 0 &&
+                cr.text[0] != '\0') {
+                strncpy(out_response, cr.text, response_max - 1);
+                out_response[response_max - 1] = '\0';
+                if (out_confidence) *out_confidence = 0.95f;
+                nimcp_safety_audit_log_event(
+                    NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 1,
+                    "Counterclaim emitted (brain-level): cat=%s stage=%d "
+                    "input='%.40s' response='%.60s'",
+                    tox.matched_category, stage, input_text, out_response);
+                return NIMCP_OK;
+            }
+        }
+    }
+
     /* Audit Cat A #1 — cascade-orchestrator path. Opt-in via
      * b->respond_via_cascade (default OFF). When ON, run the full
      * 15-stage cascade with the input as prompt and emit
@@ -4435,6 +4475,37 @@ nimcp_status_t nimcp_brain_reset_concept_grounding(nimcp_brain_t brain,
     int64_t n = grounded_language_reset_concept_grounding(b->grounded_lang);
     if (out_cleared) *out_cleared = n;
     return (n >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
+/* ========== Toxicity classifier diagnostics (2026-05-21) ========== */
+nimcp_status_t nimcp_brain_classify_toxicity(nimcp_brain_t brain,
+                                              const char* text,
+                                              float* out_harm,
+                                              float* out_fairness,
+                                              float* out_anti_toxic,
+                                              int* out_would_block,
+                                              char* out_category,
+                                              size_t out_category_len)
+{
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->toxicity_classifier) return NIMCP_ERROR;
+    if (!text) return NIMCP_ERROR_NULL_ARG;
+    toxicity_result_t r = {0};
+    if (toxicity_classify((toxicity_classifier_t*)b->toxicity_classifier,
+                          text, &r) != 0) {
+        return NIMCP_ERROR;
+    }
+    if (out_harm)         *out_harm         = r.predicted_harm;
+    if (out_fairness)     *out_fairness     = r.fairness_violation;
+    if (out_anti_toxic)   *out_anti_toxic   = r.anti_toxic_signal;
+    if (out_would_block)  *out_would_block  = r.would_block;
+    if (out_category && out_category_len > 0) {
+        strncpy(out_category, r.matched_category, out_category_len - 1);
+        out_category[out_category_len - 1] = '\0';
+    }
+    return NIMCP_OK;
 }
 
 /* ========== Audit fix: campaign feature setter wrappers ========== */
@@ -6296,6 +6367,36 @@ int nimcp_brain_eager_init_cognitive(nimcp_brain_t brain) {
     {
         extern void brain_load_post_init_sidecars(brain_t brain);
         brain_load_post_init_sidecars(b);
+    }
+
+    /* === Toxicity wire-up — FORCED late-binding (2026-05-21 fix) ===
+     * Bug found on first pod deploy: on --resume, brain->language_layer
+     * was already non-NULL from the checkpoint, so INIT_IF_NULL above
+     * SKIPPED init_language_subsystem, so the toxicity wire-up code
+     * inside init_language never ran, so grounded_respond's input-toxicity
+     * check was a no-op (gl->toxicity_classifier was NULL even though
+     * brain->toxicity_classifier was set by my resume path).
+     *
+     * Symptom: classify_toxicity() RPC worked (uses brain->), but
+     * grounded_respond("jews are subhuman") returned the same word as
+     * a benign input — no counterclaim. Verified live on pod.
+     *
+     * Fix: re-wire toxicity_classifier + toxicity_response into
+     * grounded_lang unconditionally here, after all subsystems are
+     * initialized. Idempotent if already wired. */
+    if (b->grounded_lang) {
+        if (b->toxicity_classifier) {
+            extern void grounded_language_set_toxicity_classifier(
+                struct grounded_language*, void*);
+            grounded_language_set_toxicity_classifier(b->grounded_lang,
+                                                      b->toxicity_classifier);
+        }
+        if (b->toxicity_response) {
+            extern void grounded_language_set_toxicity_response(
+                struct grounded_language*, void*);
+            grounded_language_set_toxicity_response(b->grounded_lang,
+                                                    b->toxicity_response);
+        }
     }
 
     return count;

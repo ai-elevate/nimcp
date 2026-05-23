@@ -3435,6 +3435,34 @@ static PyObject* Brain_reset_concept_grounding(BrainObject* self, PyObject* args
     return PyLong_FromLongLong((long long)cleared);
 }
 
+/* Classify a text via the toxicity classifier and return a dict.
+ * Returns None if the classifier is not attached. */
+static PyObject* Brain_classify_toxicity(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        return NULL;
+    }
+    const char* text = NULL;
+    if (!PyArg_ParseTuple(args, "s", &text)) return NULL;
+    float harm = 0.0f, fair = 0.0f, anti = 0.0f;
+    int would_block = 0;
+    char category[64] = {0};
+    nimcp_status_t s = nimcp_brain_classify_toxicity(
+        self->brain, text, &harm, &fair, &anti, &would_block,
+        category, sizeof(category));
+    if (s != NIMCP_OK) {
+        Py_RETURN_NONE;
+    }
+    PyObject* d = PyDict_New();
+    if (!d) return NULL;
+    PyDict_SetItemString(d, "predicted_harm",     PyFloat_FromDouble(harm));
+    PyDict_SetItemString(d, "fairness_violation", PyFloat_FromDouble(fair));
+    PyDict_SetItemString(d, "anti_toxic_signal",  PyFloat_FromDouble(anti));
+    PyDict_SetItemString(d, "would_block",        PyBool_FromLong(would_block));
+    PyDict_SetItemString(d, "category",           PyUnicode_FromString(category));
+    return d;
+}
+
 /* Re-randomize bridge binding weights to break rank-1 collapse. */
 static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* args) {
     if (!self->brain) {
@@ -12852,6 +12880,8 @@ static PyMethodDef Brain_methods[] = {
      "Reset every lexicon entry's distributional embedding — reset_lexicon_distributional(zero_and_mark_uninit: bool, jitter: float) -> int. zero_and_mark_uninit=True zeros every context_vector + flags uninitialized (clean reset). False re-randomizes uniformly in [-jitter, +jitter] keeping initialized=True. Use when comprehend cos ≈ 1.0 across distinct prompts indicates the distributional channel has homogenized. Returns the number of lexicon entries touched."},
     {"reset_concept_grounding", (PyCFunction)Brain_reset_concept_grounding, METH_NOARGS,
      "Reset concept grounding for a clean re-grounding pass — reset_concept_grounding() -> int. Clears every lexicon entry's concept bindings AND wipes the brain's semantic_memory concept store (frees capacity). Returns the number of bindings cleared. Use after the grounding-feature fix to recover from concept collapse (comprehend cosine ≈ 1.0): the prior pipeline fed a prefix-dominated feature vector to find_or_create_concept (0.85 cosine dedup), collapsing every word onto one concept and filling the store to capacity. Re-grounding then rebuilds a diverse store. NOTE: semantic_memory is brain-wide; reset drops all concepts (stale ids resolve to NULL gracefully)."},
+    {"classify_toxicity", (PyCFunction)Brain_classify_toxicity, METH_VARARGS,
+     "Classify a text via the toxicity classifier — classify_toxicity(text: str) -> dict. Returns {predicted_harm, fairness_violation, anti_toxic_signal, would_block, category}. Returns None if the classifier is not attached. POLICY: scores only — never modifies content."},
     /* Audit fix: campaign feature setters accessible from Python + daemon RPC. */
     {"set_da_modulation_enabled", (PyCFunction)Brain_set_da_modulation_enabled, METH_VARARGS,
      "TA-3: toggle dopamine-modulated STDP — set_da_modulation_enabled(enabled: bool) -> None."},

@@ -3151,6 +3151,33 @@ struct brain_struct {
      * audio digest) → canonical concept_pop_id. Created in Wave 27
      * (cognitive_engines). Serialized as a `.concept_registry` sidecar. */
     void*    concept_registry;
+
+    /* === TOXICITY CLASSIFIER (2026-05-20) ===
+     * Opaque pointer (toxicity_classifier_t*). Pattern-based content
+     * classifier that populates predicted_harm + fairness_violation scalars
+     * on the ethics action_context, drives LGSS rule evaluation, and emits
+     * KG events on detection. POLICY: mark, never delete — toxic training
+     * data is NEVER filtered out, only labeled. Created in the safety init
+     * wave alongside LGSS. NULL when the rules file is unreadable (the
+     * classifier becomes a no-op; downstream gates fall back to legacy
+     * proxy scoring). */
+    void*    toxicity_classifier;
+
+    /* === TOXICITY RESPONSE ENGINE (2026-05-21, Phase 3a) ===
+     * Opaque pointer (toxicity_response_t*). Generates Athena's
+     * stage-appropriate counterclaim against detected toxic content. The
+     * counterclaim is the operational expression of the core ethics
+     * directive ("improve the human condition") — not a separate rule.
+     * Loaded from data/safety/toxicity_counterclaims.tsv +
+     * data/safety/toxicity_antiframes.tsv. NULL means engine creation
+     * failed; gates fall back to a default refusal string. */
+    void*    toxicity_response;
+
+    /* === TOXICITY ML HEAD (2026-05-21, Task 134) ===
+     * Opaque pointer (toxicity_ml_classifier_t*). Online-trained MLP that
+     * ensembles with the pattern classifier via max(). NULL until the
+     * head is attached. Optional — system works without it. */
+    void*    toxicity_ml;
 };
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L

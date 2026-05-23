@@ -103,6 +103,50 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
         }
     }
 
+    /* Toxicity classifier — same load-path wiring (2026-05-21). The
+     * checkpoint does not serialize the classifier; it must be re-created
+     * here, then plumbed into grounded_language. NULL-safe on failure
+     * (classify becomes a no-op; the produce path still works). */
+    /* Round-4 cleanup: replaced earlier extern-void* declarations with
+     * proper includes via nimcp_part_core.c (#include'd before this part
+     * in nimcp.c). Now using real typed APIs from
+     * security/nimcp_toxicity_response.h + nimcp_toxicity_ml.h +
+     * language/nimcp_grounded_language.h. The setter and registration
+     * still need an extern declaration since they're defined in C files
+     * that don't have public headers, but the *_create functions do. */
+    {
+        brain_t b = handle->internal_brain;
+        if (!b->toxicity_classifier) {
+            b->toxicity_classifier =
+                toxicity_classifier_create("data/safety/toxicity_rules.tsv", 0);
+        }
+        if (b->toxicity_classifier && b->grounded_lang) {
+            grounded_language_set_toxicity_classifier(b->grounded_lang,
+                                                      b->toxicity_classifier);
+        }
+        /* Phase 3a/3c: response engine + ML head on resume path too. */
+        if (!b->toxicity_response) {
+            b->toxicity_response = toxicity_response_create(
+                "data/safety/toxicity_counterclaims.tsv",
+                "data/safety/toxicity_antiframes.tsv");
+        }
+        if (b->toxicity_response && b->grounded_lang) {
+            grounded_language_set_toxicity_response(b->grounded_lang,
+                                                    b->toxicity_response);
+        }
+        if (!b->toxicity_ml) {
+            b->toxicity_ml = toxicity_ml_create("data/safety/toxicity_ml.bin");
+        }
+        /* Round-3 fix: re-register the toxicity cycle on --resume so the
+         * 1Hz tick (which runs ML training + valence decay + heartbeat KG
+         * emit) fires after a checkpoint reload. Without this, the cycle
+         * was only registered on fresh init. */
+        if (b->toxicity_classifier) {
+            extern int nimcp_brain_factory_register_toxicity_cycle(brain_t);
+            (void)nimcp_brain_factory_register_toxicity_cycle(b);
+        }
+    }
+
     set_error("No error");
     return handle;
 
