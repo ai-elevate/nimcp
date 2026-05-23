@@ -364,7 +364,7 @@ struct grounded_language {
      *     (writers: grounded_language_push_turn,
      *      discourse_rebuild_context_blend)
      *   - phrases[] table + phrase_count
-     *     (writer: _gl_phrase_find_or_create)
+     *     (writer: gl_internal_phrase_find_or_create)
      *
      * Without this lock, concurrent comprehend calls (from RO socket
      * pool + main pool) race on the hash-chain writes — same shape
@@ -461,6 +461,28 @@ struct grounded_language {
 gl_lexicon_entry_t* gl_internal_lexicon_find_or_create(
     grounded_language_t* gl,
     const char* word);
+
+/**
+ * @brief Find an existing compositional phrase by surface form, or create
+ *        a fresh entry (evicting the least-frequent phrase if the table is
+ *        at GL_MAX_PHRASES capacity).
+ *
+ * Used by _gl_track_phrases at learn time and by the persistence sidecar's
+ * load path to rehydrate the phrase table. Takes the gl mutate_lock
+ * internally — callers must NOT already hold it. New entries start at
+ * frequency 0 with semantic_vec = NULL (lazy cache, rebuilt on first
+ * lookup from constituent word vectors). Returns NULL on capacity
+ * thrash (everything freq=0) or if gl/phrases/form is NULL.
+ *
+ * @param gl              Owning grounded-language handle.
+ * @param form            Whitespace-joined surface form (e.g. "tree green").
+ * @param component_words Number of words in the phrase (2 = bigram, 3 = trigram).
+ * @return Pointer into gl->phrases[] (valid until next eviction), or NULL.
+ */
+gl_phrase_t* gl_internal_phrase_find_or_create(
+    grounded_language_t* gl,
+    const char* form,
+    uint8_t component_words);
 
 #ifdef __cplusplus
 }

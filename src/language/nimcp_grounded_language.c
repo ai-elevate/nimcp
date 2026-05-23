@@ -353,7 +353,7 @@ static int _gl_phrase_form(char* out, size_t out_sz,
  * locking in the first 512 ever seen. Returns the slot — never NULL
  * once gl->phrases is allocated. Component_words is recorded on
  * insert (or refresh after eviction). */
-static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
+gl_phrase_t* gl_internal_phrase_find_or_create(grounded_language_t* gl,
                                                 const char* form,
                                                 uint8_t component_words) {
     if (!gl || !gl->phrases || !form) return NULL;
@@ -428,7 +428,7 @@ static void _gl_track_phrases(grounded_language_t* gl,
 
     for (uint32_t i = 0; i + 1 < word_count; i++) {
         if (_gl_phrase_form(buf, sizeof(buf), &words[i], 2)) {
-            gl_phrase_t* p = _gl_phrase_find_or_create(gl, buf, 2);
+            gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, buf, 2);
             if (p) {
                 p->frequency++;
                 /* Vector cache invalidated when components change —
@@ -440,7 +440,7 @@ static void _gl_track_phrases(grounded_language_t* gl,
         }
         if (i + 2 < word_count) {
             if (_gl_phrase_form(buf, sizeof(buf), &words[i], 3)) {
-                gl_phrase_t* p = _gl_phrase_find_or_create(gl, buf, 3);
+                gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, buf, 3);
                 if (p) { p->frequency++; p->vec_initialized = false; }
             }
         }
@@ -6552,7 +6552,7 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
                 if (fread(&comp_n, sizeof(comp_n), 1, f) != 1) break;
                 if (fread(&freq,  sizeof(freq),   1, f) != 1) break;
                 form_buf[GL_MAX_PHRASE_LEN - 1] = '\0';
-                gl_phrase_t* p = _gl_phrase_find_or_create(gl, form_buf, comp_n);
+                gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, form_buf, comp_n);
                 if (p) p->frequency = freq;
             }
         }
