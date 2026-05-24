@@ -4102,7 +4102,8 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
     char    buf[1024] = {0};
     size_t  pos = 0;
-    uint32_t emit = 0;
+    uint32_t emit = 0;          /* CONTENT words — gates min/max + floor */
+    uint32_t fn_inserted = 0;   /* F2 scaffolding function words (not budgeted) */
     float    score_sum = 0.0f;
     while (emit < max_words) {
         int   best_idx   = -1;
@@ -4161,9 +4162,46 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         if (emit > 0 && best_cos < confidence_floor) break;
         used[best_idx] = true;
         const char* w = topk_words[best_idx];
-        size_t flen = strlen(w);
-        if (pos + flen + 2 >= sizeof(buf)) break;
-        if (emit > 0) buf[pos++] = ' ';
+
+        /* F2 (Tier 1 Step F): function-word scaffolding. The candidate pool
+         * excludes function words, so produce emits bare content ("cat sit
+         * mat"). Here we insert a determiner/copula at grammatically
+         * appropriate slots so output reads as phrases ("the cat ... the
+         * mat"). Stage-gated by the same weight as the POS bias (off at
+         * stages 0-1 → byte-identical babble there). Inserted words do NOT
+         * count toward `emit`, so they never eat the content-word budget.
+         *
+         *  - "the" before a noun-phrase head (NOUN or ADJECTIVE) that starts
+         *    the utterance or follows a verb (subject / object position).
+         *  - "is" before a predicate ADJECTIVE following a NOUN
+         *    ("cat is happy"). */
+        const char* fn_word = NULL;
+        if (pos_bias_weight > 0.0f) {
+            gl_word_class_t this_class = GL_CLASS_UNKNOWN;
+            const gl_lexicon_entry_t* ce = lexicon_find(gl, w);
+            if (ce) this_class = ce->learned_class;
+            bool np_start = (emit == 0 || prev_class == GL_CLASS_VERB);
+            if ((this_class == GL_CLASS_NOUN ||
+                 this_class == GL_CLASS_ADJECTIVE) && np_start) {
+                fn_word = "the";
+            } else if (this_class == GL_CLASS_ADJECTIVE &&
+                       prev_class == GL_CLASS_NOUN) {
+                fn_word = "is";
+            }
+        }
+
+        size_t flen  = strlen(w);
+        size_t fnlen = fn_word ? strlen(fn_word) : 0;
+        /* Need room for: [space] fn_word [space] word + NUL. */
+        if (pos + fnlen + flen + 3 >= sizeof(buf)) break;
+
+        if (fn_word) {
+            if (pos > 0) buf[pos++] = ' ';
+            memcpy(buf + pos, fn_word, fnlen);
+            pos += fnlen;
+            fn_inserted++;
+        }
+        if (pos > 0) buf[pos++] = ' ';
         memcpy(buf + pos, w, flen);
         pos += flen;
         score_sum += topk_scores[best_idx];
@@ -4186,7 +4224,10 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     memcpy(result->text, buf, pos);
     result->text[pos] = '\0';
 
-    result->word_count = emit;
+    /* word_count reports the TOTAL surface tokens (content + F2 scaffolding)
+     * so downstream length/telemetry matches the rendered text; relevance
+     * stays a per-CONTENT-word mean (scaffolding has no intent score). */
+    result->word_count = emit + fn_inserted;
     result->fluency    = topk_scores[0];
     result->relevance  = (emit > 0) ? (score_sum / (float)emit) : 0.0f;
     result->creativity = 0.5f;  /* placeholder — refine when sampling lands */

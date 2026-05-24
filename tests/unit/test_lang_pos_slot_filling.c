@@ -130,15 +130,32 @@ static void test_noun_precedes_verb_when_bias_on(void) {
         uint32_t nw = split_words(work, w, 8);
         EXPECT(nw >= 2, "emitted >=2 words (got %u)", nw);
         if (nw >= 2) {
-            /* Core assertion: the verb must NOT lead. Position 0 is a
-             * subject (noun). With tied cosine + bias, both nouns get the
-             * start->NOUN bonus and the verb does not, so position 0 is
-             * deterministically one of the nouns. */
-            EXPECT(strcmp(w[0], "running") != 0,
-                   "verb 'running' must not be emitted first (got '%s')", r.text);
-            EXPECT(class_of(gl, w[0]) == GL_CLASS_NOUN,
-                   "position 0 must be a NOUN (got '%s' = class %d)",
-                   w[0], (int)class_of(gl, w[0]));
+            /* Step F2 may scaffold a leading determiner ("the creation
+             * running ..."), so the subject noun is the first CONTENT word,
+             * not necessarily token 0. Skip leading function/pronoun words
+             * (their class is FUNCTION/PRONOUN, or "the"/"a"/"is" literally
+             * when they aren't yet grounded with a class). */
+            uint32_t ci = 0;
+            while (ci < nw &&
+                   (class_of(gl, w[ci]) == GL_CLASS_FUNCTION ||
+                    class_of(gl, w[ci]) == GL_CLASS_PRONOUN ||
+                    strcmp(w[ci], "the") == 0 ||
+                    strcmp(w[ci], "a") == 0 ||
+                    strcmp(w[ci], "is") == 0)) {
+                ci++;
+            }
+            EXPECT(ci < nw, "found a content word among %u tokens", nw);
+            if (ci < nw) {
+                /* Core assertion: the verb must NOT lead the content words.
+                 * With tied cosine + bias, both nouns get the start->NOUN
+                 * bonus and the verb does not, so the first content word is
+                 * deterministically a noun. */
+                EXPECT(strcmp(w[ci], "running") != 0,
+                       "verb 'running' must not lead content (got '%s')", r.text);
+                EXPECT(class_of(gl, w[ci]) == GL_CLASS_NOUN,
+                       "first content word must be a NOUN (got '%s' = class %d)",
+                       w[ci], (int)class_of(gl, w[ci]));
+            }
         }
     }
     gl_production_result_cleanup(&r);
