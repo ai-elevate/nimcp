@@ -121,6 +121,23 @@ class TrainingIntegration:
             self._running_implanter.set_stage(stage)
         if self._curriculum is not None:
             self._curriculum.advance(step=0)
+        # Propagate to the C brain's developmental gate (Slice E stage
+        # table). The cascade's stage_motor truncates produced utterances
+        # to `kStageTable[brain.current_stage].max_produce_words`, so
+        # without this call the brain stays at stage 0 (1-word cap) for
+        # the entire training run regardless of which run_stage_N the
+        # trainer is in. Older nimcp.so builds may not export
+        # set_active_stage; AttributeError is tolerated (logged once).
+        try:
+            self.brain.set_active_stage(stage)
+        except AttributeError:
+            if not getattr(self, "_warned_set_active_stage", False):
+                log.warning("brain.set_active_stage not available — "
+                            "developmental stage gate frozen at default. "
+                            "Rebuild nimcp.so to enable.")
+                self._warned_set_active_stage = True
+        except Exception as e:
+            log.warning("set_active_stage(%d) failed: %s", stage, e)
         log.info("begin_stage(%d)", stage)
 
     # ---- Per-step hooks ----

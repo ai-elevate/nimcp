@@ -84,8 +84,12 @@ static const char GL_SIDECAR_MAGIC[8] = {
     'N', 'I', 'M', 'C', 'P', '_', 'G', 'L'
 };
 /* v1: original layout with templates_learned in stats + per-template records.
- * v2: templates removed — grammar is now learned emergently via SNN bridge. */
-#define GL_SIDECAR_VERSION 2u
+ * v2: templates removed — grammar is now learned emergently via SNN bridge.
+ * v3: appended compositional phrase table (bigram/trigram surface forms +
+ *     frequency) so the produce-path bigram reranker survives restarts.
+ *     v1/v2 files are still readable — phrase_count stays 0 and phrases get
+ *     re-learned from text. */
+#define GL_SIDECAR_VERSION 3u
 
 /* D5 — hash-fn version byte. Bump this whenever gl_hash_form / hash_word
  * changes. Saved in the low byte of the `reserved` u32 in the v2 header.
@@ -169,6 +173,12 @@ static int read_str(FILE* f, char* out, size_t out_size) {
 static int read_floats(FILE* f, float* arr, size_t n) {
     if (n == 0) return 0;
     return fread(arr, sizeof(float), n, f) == n ? 0 : -1;
+}
+/* Fixed-length raw read — symmetric with write_bytes(). Unlike read_str
+ * there is no length prefix; the caller knows the exact byte count. */
+static int read_bytes(FILE* f, void* buf, size_t n) {
+    if (n == 0) return 0;
+    return fread(buf, 1, n, f) == n ? 0 : -1;
 }
 
 /* ============================================================ stats helpers */
@@ -327,10 +337,26 @@ int gl_persistence_save(const grounded_language_t* gl, const char* path) {
 
     /* v2: no template block — emergent grammar via SNN bridge. */
 
+    /* v3: compositional phrase table (bigrams/trigrams). This is the
+     * substrate the produce-path bigram reranker scores against
+     * (cos + ALPHA*log(1+bigram_freq)); pre-v3 it was wiped on every
+     * daemon restart, degenerating the rerank to cosine-only. Per-phrase
+     * fixed record matches the standalone grounded_language_save layout:
+     *   form[GL_MAX_PHRASE_LEN] | component_words(u8) | frequency(u32)
+     * semantic_vec is NOT persisted — it's a lazy cache rebuilt from
+     * constituent word vectors on first lookup post-load. */
+    if (write_u32(f, gl->phrase_count) != 0) goto fail;
+    for (uint32_t pi = 0; pi < gl->phrase_count; pi++) {
+        const gl_phrase_t* p = &gl->phrases[pi];
+        if (write_bytes(f, p->form, GL_MAX_PHRASE_LEN) != 0) goto fail;
+        if (write_u8(f, p->component_words) != 0) goto fail;
+        if (write_u32(f, p->frequency) != 0) goto fail;
+    }
+
     fclose(f);
     LOG_INFO(LOG_MODULE,
-             "Saved grounded language sidecar to %s (%u words, dim=%u)",
-             path, gl->vocab_count, gl->semantic_dim);
+             "Saved grounded language sidecar to %s (%u words, %u phrases, dim=%u)",
+             path, gl->vocab_count, gl->phrase_count, gl->semantic_dim);
     return 0;
 
 fail:
@@ -374,7 +400,7 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
     if (read_u32(f, &version) != 0 || read_u32(f, &reserved) != 0) {
         goto fail;
     }
-    if (version != 1u && version != 2u) {
+    if (version != 1u && version != 2u && version != 3u) {
         LOG_WARN(LOG_MODULE,
                  "gl_persistence_load: unsupported version=%u (runtime=%u) for %s",
                  version, GL_SIDECAR_VERSION, path);
@@ -529,6 +555,35 @@ int gl_persistence_load(grounded_language_t* gl, const char* path) {
     if (version == 1u) {
         for (uint32_t t = 0; t < legacy_template_count; t++) {
             if (skip_legacy_template_v1(f) != 0) goto fail;
+        }
+    }
+
+    /* ---- v3: compositional phrase table. v1/v2 files end before this
+     * block; phrase_count stays 0 and phrases re-learn from text. We
+     * rehydrate via gl_internal_phrase_find_or_create (same primitive
+     * _gl_track_phrases uses at runtime) so the hash + eviction
+     * invariants hold; then stamp the saved frequency. semantic_vec is
+     * NOT restored — it's a lazy cache rebuilt on first lookup. */
+    if (version >= 3u) {
+        uint32_t saved_phrase_count = 0;
+        if (read_u32(f, &saved_phrase_count) != 0) goto fail;
+        if (saved_phrase_count > GL_MAX_PHRASES) {
+            LOG_WARN(LOG_MODULE,
+                     "gl_persistence_load: phrase_count %u > GL_MAX_PHRASES %u — corrupt",
+                     saved_phrase_count, (unsigned)GL_MAX_PHRASES);
+            goto fail;
+        }
+        for (uint32_t pi = 0; pi < saved_phrase_count; pi++) {
+            char phrase_form[GL_MAX_PHRASE_LEN];
+            uint8_t  comp_n = 0;
+            uint32_t freq   = 0;
+            if (read_bytes(f, phrase_form, GL_MAX_PHRASE_LEN) != 0) goto fail;
+            if (read_u8(f, &comp_n) != 0) goto fail;
+            if (read_u32(f, &freq)  != 0) goto fail;
+            phrase_form[GL_MAX_PHRASE_LEN - 1] = '\0';
+            if (phrase_form[0] == '\0') continue;  /* skip empty slot */
+            gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, phrase_form, comp_n);
+            if (p) p->frequency = freq;
         }
     }
 

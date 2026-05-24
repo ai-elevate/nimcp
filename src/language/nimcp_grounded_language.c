@@ -353,7 +353,7 @@ static int _gl_phrase_form(char* out, size_t out_sz,
  * locking in the first 512 ever seen. Returns the slot — never NULL
  * once gl->phrases is allocated. Component_words is recorded on
  * insert (or refresh after eviction). */
-static gl_phrase_t* _gl_phrase_find_or_create(grounded_language_t* gl,
+gl_phrase_t* gl_internal_phrase_find_or_create(grounded_language_t* gl,
                                                 const char* form,
                                                 uint8_t component_words) {
     if (!gl || !gl->phrases || !form) return NULL;
@@ -428,7 +428,7 @@ static void _gl_track_phrases(grounded_language_t* gl,
 
     for (uint32_t i = 0; i + 1 < word_count; i++) {
         if (_gl_phrase_form(buf, sizeof(buf), &words[i], 2)) {
-            gl_phrase_t* p = _gl_phrase_find_or_create(gl, buf, 2);
+            gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, buf, 2);
             if (p) {
                 p->frequency++;
                 /* Vector cache invalidated when components change —
@@ -440,7 +440,7 @@ static void _gl_track_phrases(grounded_language_t* gl,
         }
         if (i + 2 < word_count) {
             if (_gl_phrase_form(buf, sizeof(buf), &words[i], 3)) {
-                gl_phrase_t* p = _gl_phrase_find_or_create(gl, buf, 3);
+                gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, buf, 3);
                 if (p) { p->frequency++; p->vec_initialized = false; }
             }
         }
@@ -1535,14 +1535,18 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
         if (required_class != GL_CLASS_UNKNOWN && entry->learned_class != required_class) {
             continue;
         }
-        /* Drop function words from "any class" ranking — they're the most
-         * frequently grounded so their bindings outscore content words for
-         * almost any intent, swamping the top-K with the/is/to/etc. Callers
-         * that explicitly want function words can pass GL_CLASS_FUNCTION as
-         * required_class. (Found live 2026-05-20: top-3 of an "any-class"
-         * produce was the,is,to even for prompts about grass.) */
+        /* Drop function words AND pronouns from "any class" ranking. Both
+         * swamp content-bearing produce: function words like "the/is/to"
+         * are grounded everywhere; pronouns ("you/i/it/we/they") leak in
+         * at stage 2+ as "answers" to "what is X?" prompts because they
+         * accumulate generic distributional embeddings. Until grammar
+         * templates (Tier 1 Step C) can place pronouns in syntactically-
+         * appropriate slots, they don't carry content. Callers that
+         * explicitly want function words or pronouns can pass the
+         * matching class as required_class. */
         if (required_class == GL_CLASS_UNKNOWN &&
-            entry->learned_class == GL_CLASS_FUNCTION) {
+            (entry->learned_class == GL_CLASS_FUNCTION ||
+             entry->learned_class == GL_CLASS_PRONOUN)) {
             continue;
         }
         float score = score_word_against_vector(gl, entry, target, dim);
@@ -1869,8 +1873,93 @@ int grounded_language_decay_all_valence(grounded_language_t* gl, float factor) {
 void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage) {
     if (!gl) return;
     if (stage < 0) stage = 0;
-    if (stage > 3) stage = 3;
+    /* Bound widened to 4 (was 3) so the field tracks the brain's
+     * developmental stage table (kStageTable rows 0..4) — used by
+     * produce-side confidence floor as well as counterclaim selection. */
+    if (stage > 4) stage = 4;
     gl->current_stage = stage;
+}
+
+/* Produce-side developmental confidence floor.
+ *
+ * Returns the minimum cosine score a candidate must clear at emit
+ * position > 0 to be appended. Below the floor, produce stops emitting —
+ * length becomes content-determined rather than hard-capped.
+ *
+ * Stage 0 returns 1.0 (no candidate ever exceeds this → length 1 always,
+ * matching newborn babbling). The floor decays monotonically toward 0 as
+ * stage advances; stage 4 returns 0.0 (no early stop → length is purely
+ * content/top-K bound, like an adult speaker). The intermediate values
+ * are tuned so emitted length distribution overlaps the legacy stage
+ * table cap-distribution but isn't bit-identical — a softer ramp by
+ * design (the "gradient" model: kids transition gradually, not
+ * stepwise).
+ */
+static float gl_produce_confidence_floor(const grounded_language_t* gl) {
+    int s = gl ? gl->current_stage : 0;
+    switch (s) {
+        case 0: return 1.0f;
+        case 1: return 0.30f;
+        case 2: return 0.15f;
+        case 3: return 0.05f;
+        default: return 0.0f;  /* stage 4+ → no floor, adult */
+    }
+}
+
+/* Produce-side POS-transition bias weight (Tier 1 Step C, 2026-05-23).
+ *
+ * Scales how strongly the emit loop nudges each next word toward the
+ * content-word class that grammatically follows the previously emitted
+ * one (see gl_pos_expected_next). It is ADDITIVE on top of cosine +
+ * bigram scoring — never a hard gate — so missing/low-confidence POS
+ * tags degrade gracefully (no bias applied) rather than corrupting the
+ * output.
+ *
+ * Stage-scaled to match the developmental gradient: at stages 0-1 the
+ * output is 1-2 words where word order carries no grammatical signal, so
+ * the bias is OFF. It ramps in from stage 2 (telegraphic SVO emerges)
+ * through stage 4 (adult — full structural guidance). The returned
+ * weight is multiplied by the candidate's class_confidence at use, so a
+ * seeded high-confidence tag (0.7-0.9) counts ~2x a heuristic guess
+ * (0.3-0.4). Typical effective bonus at stage 4 is 0.15*0.8 = 0.12,
+ * comparable to the bigram term so it re-orders WITHIN the cosine top-K
+ * rather than overriding relevance. */
+static float gl_produce_pos_bias_weight(const grounded_language_t* gl) {
+    int s = gl ? gl->current_stage : 0;
+    switch (s) {
+        case 0: return 0.0f;   /* single word — no structure */
+        case 1: return 0.0f;   /* two-word telegraphic — order too noisy */
+        case 2: return 0.08f;  /* early SVO emerges */
+        case 3: return 0.12f;
+        default: return 0.15f; /* stage 4+ — adult structural guidance */
+    }
+}
+
+/* Minimal English SVO skeleton over CONTENT words (function words are
+ * filtered from the emission and inserted, if ever, by a separate path).
+ * Given the previously emitted word's class, returns the content-word
+ * class that most naturally follows:
+ *
+ *   (start)    -> NOUN   (subject)
+ *   ADJECTIVE  -> NOUN   (modifier precedes the noun it modifies)
+ *   NOUN       -> VERB   (subject -> predicate)
+ *   VERB       -> NOUN   (verb -> object)
+ *   ADVERB     -> VERB   (adverb attaches to a verb)
+ *
+ * Returns GL_CLASS_UNKNOWN ("no preference") for any class without a
+ * useful successor, so the caller applies no bias there. This is a soft
+ * heuristic skeleton, NOT a grammar — it produces NOUN VERB NOUN (and
+ * ADJ NOUN VERB NOUN) orderings, which is the conspicuous win over a
+ * relevance-only word salad. */
+static gl_word_class_t gl_pos_expected_next(gl_word_class_t prev) {
+    switch (prev) {
+        case GL_CLASS_UNKNOWN:   return GL_CLASS_NOUN;
+        case GL_CLASS_ADJECTIVE: return GL_CLASS_NOUN;
+        case GL_CLASS_NOUN:      return GL_CLASS_VERB;
+        case GL_CLASS_VERB:      return GL_CLASS_NOUN;
+        case GL_CLASS_ADVERB:    return GL_CLASS_VERB;
+        default:                 return GL_CLASS_UNKNOWN;
+    }
 }
 
 /*=============================================================================
@@ -3939,31 +4028,133 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         return -1;
     }
 
-    /* Word-count defaults — short, telegraphic-ish output that the critic
-     * can shape further via reward. (The bridge's min/max_produce_words
-     * knobs are now stranded — the bridge produce path is dead post-rebuild
-     * — and should migrate to a grounded_language config when stage
-     * scaffolding needs per-stage bounds here.) */
-    uint32_t min_words = 1, max_words = 5;
-    if (max_words > GL_PRODUCE_TOPK) max_words = GL_PRODUCE_TOPK;
+    /* Length bounds. Historically this hard-coded max_words=5, which
+     * silently bottlenecked every stage above 2 (the stage table allows
+     * up to 20 at stage 4). The cap is now the top-K capacity itself
+     * (GL_PRODUCE_TOPK=32), letting the cascade's stage_motor truncate
+     * to the per-stage cap as the single source of length truth. min=1
+     * is preserved so callers see a non-degenerate result for
+     * single-relevant-word intents. */
+    uint32_t min_words = 1, max_words = GL_PRODUCE_TOPK;
     if (max_words > n) max_words = n;
     if (min_words > max_words) min_words = max_words;
 
-    /* Build the emission: top scoring words, skipping function words. */
+    /* Build the emission with bigram-conditioned reranking (Tier 1 Step B,
+     * 2026-05-23). Position 0 takes the highest cosine match. Subsequent
+     * positions pick the unused candidate that maximizes
+     *     topk_scores[j] + ALPHA * log(1 + bigram_freq(prev, cand))
+     * where bigram_freq comes from gl->phrases (the gl_phrase_t table that
+     * grounded_language_learn_from_text populates from text co-occurrence).
+     * The phrase table is small (<=512 entries, linear-scan lookup) so the
+     * per-position cost is bounded.
+     *
+     * ALPHA = 0.05 keeps cosine relevance as the primary signal —
+     * adjacent-rank cosine deltas in top-K are typically 0.05-0.10, so the
+     * bigram term re-orders within the top-K instead of overriding it.
+     * When no phrase entry exists for a (prev, cand) pair, log(1+0)=0 and
+     * the candidate is ranked by pure cosine — fully backward-compatible
+     * with the pre-rerank behavior.
+     *
+     * Note: this is NOT autoregressive in the residual-stream sense (the
+     * intent vector isn't evolved between positions). It's a within-top-K
+     * rerank, which is the cheapest way to add bigram coherence without
+     * rebuilding the decoder. Autoregressive intent evolution + larger
+     * top-K is the natural Tier 1 follow-up. */
+    const float GL_BIGRAM_RERANK_ALPHA = 0.05f;
+    /* Developmental confidence floor — per-position stop condition.
+     * Stage 0 returns 1.0 so the loop emits exactly 1 word (newborn).
+     * Stage 4 returns 0.0 so length is bounded only by top-K / phrase
+     * budget (adult-fluent — no developmental cap). Intermediate stages
+     * decay smoothly. Combined with the cascade's stage_motor truncation
+     * (which is still active), this gives a graceful soft length cap on
+     * top of the hard stage cap. As Athena develops the floor approaches
+     * 0 and the gradient effectively dissolves. */
+    const float confidence_floor = gl_produce_confidence_floor(gl);
+    /* POS-transition bias (Tier 1 Step C). Stage-scaled weight; 0 disables
+     * the structural nudge entirely (stages 0-1), so the emit loop is
+     * byte-for-byte the pre-Step-C path there. */
+    const float pos_bias_weight = gl_produce_pos_bias_weight(gl);
+    bool used[GL_PRODUCE_TOPK] = {0};
+    char prev_word[GL_MAX_WORD_LEN] = {0};
+    gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
     char    buf[1024] = {0};
     size_t  pos = 0;
     uint32_t emit = 0;
     float    score_sum = 0.0f;
-    for (uint32_t i = 0; i < n && emit < max_words; i++) {
-        const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[i]);
-        if (e && e->learned_class == GL_CLASS_FUNCTION) continue;
-        size_t flen = strlen(topk_words[i]);
+    while (emit < max_words) {
+        int   best_idx   = -1;
+        float best_score = -1e30f;
+        /* Track the raw cosine of the eventual winner separately from
+         * the combined (cos + bigram_bias) score so the developmental
+         * floor only gates on cosine relevance — bigram inflation
+         * affects ORDER, never STOP. */
+        float best_cos   = -1e30f;
+        for (uint32_t j = 0; j < n; j++) {
+            if (used[j]) continue;
+            const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
+            /* Mirror the find_words_near_vector pronoun+function gate so
+             * any pronoun/function word that slipped through (e.g. a
+             * caller passed required_class explicitly) doesn't reach
+             * the emission buffer. */
+            if (e && (e->learned_class == GL_CLASS_FUNCTION ||
+                      e->learned_class == GL_CLASS_PRONOUN)) continue;
+            float s = topk_scores[j];
+            if (emit > 0 && prev_word[0]) {
+                char key[GL_MAX_PHRASE_LEN];
+                int kn = snprintf(key, sizeof(key), "%s %s",
+                                  prev_word, topk_words[j]);
+                if (kn > 0 && (size_t)kn < sizeof(key)) {
+                    const gl_phrase_t* ph =
+                        grounded_language_lookup_phrase(gl, key);
+                    if (ph && ph->frequency > 0) {
+                        s += GL_BIGRAM_RERANK_ALPHA *
+                             logf(1.0f + (float)ph->frequency);
+                    }
+                }
+            }
+            /* POS-transition bias (Tier 1 Step C): nudge toward the
+             * content-word class that grammatically follows prev_class,
+             * weighted by the candidate's class_confidence so trustworthy
+             * (seeded) tags count more than heuristic guesses. Soft +
+             * additive — UNKNOWN tags or a 0 weight apply nothing. */
+            if (pos_bias_weight > 0.0f && e &&
+                e->learned_class != GL_CLASS_UNKNOWN) {
+                gl_word_class_t want = gl_pos_expected_next(prev_class);
+                if (want != GL_CLASS_UNKNOWN && e->learned_class == want) {
+                    s += pos_bias_weight * e->class_confidence;
+                }
+            }
+            if (s > best_score) {
+                best_score = s;
+                best_cos   = topk_scores[j];
+                best_idx   = (int)j;
+            }
+        }
+        if (best_idx < 0) break;
+        /* Developmental floor: stop emitting if the chosen candidate's
+         * raw cosine drops below the floor. Always emit at least
+         * 1 word (the floor is a stop signal, not a gate on position 0)
+         * — callers that want zero output should not invoke produce. */
+        if (emit > 0 && best_cos < confidence_floor) break;
+        used[best_idx] = true;
+        const char* w = topk_words[best_idx];
+        size_t flen = strlen(w);
         if (pos + flen + 2 >= sizeof(buf)) break;
         if (emit > 0) buf[pos++] = ' ';
-        memcpy(buf + pos, topk_words[i], flen);
+        memcpy(buf + pos, w, flen);
         pos += flen;
-        score_sum += topk_scores[i];
+        score_sum += topk_scores[best_idx];
         emit++;
+        size_t cl = (flen < sizeof(prev_word) - 1)
+                      ? flen : sizeof(prev_word) - 1;
+        memcpy(prev_word, w, cl);
+        prev_word[cl] = '\0';
+        /* Carry the emitted word's class forward so the next position's
+         * POS bias keys off it (NOUN -> prefer VERB, etc.). */
+        {
+            const gl_lexicon_entry_t* be = lexicon_find(gl, w);
+            prev_class = be ? be->learned_class : GL_CLASS_UNKNOWN;
+        }
     }
     if (emit == 0 || emit < min_words) return -1;
 
@@ -6440,7 +6631,7 @@ grounded_language_t* grounded_language_load(const char* path, void* semantic_mem
                 if (fread(&comp_n, sizeof(comp_n), 1, f) != 1) break;
                 if (fread(&freq,  sizeof(freq),   1, f) != 1) break;
                 form_buf[GL_MAX_PHRASE_LEN - 1] = '\0';
-                gl_phrase_t* p = _gl_phrase_find_or_create(gl, form_buf, comp_n);
+                gl_phrase_t* p = gl_internal_phrase_find_or_create(gl, form_buf, comp_n);
                 if (p) p->frequency = freq;
             }
         }

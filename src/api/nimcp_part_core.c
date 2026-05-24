@@ -4950,6 +4950,13 @@ int nimcp_brain_set_active_stage(nimcp_brain_t brain, uint32_t stage) {
     uint32_t max_s = stage_table_max_stage();
     if (stage > max_s) stage = max_s;
     b->current_stage = stage;
+    /* Propagate to grounded_language so the produce-side developmental
+     * confidence floor (gl_produce_confidence_floor) follows the same
+     * curriculum advance. Without this, the brain-level cap moves but
+     * the gl-level soft floor stays at its init value (0). */
+    if (b->grounded_lang) {
+        grounded_language_set_current_stage_int(b->grounded_lang, (int)stage);
+    }
     return 0;
 }
 
