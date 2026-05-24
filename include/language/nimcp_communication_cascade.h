@@ -525,6 +525,17 @@ int communication_cascade_run_recurrent(
 void cascade_state_cleanup(production_cascade_state_t* state);
 
 /**
+ * @brief Tier 1 Step F1 — surface polish on the final utterance.
+ *
+ * Capitalizes the first letter of state->utterance and appends terminal
+ * punctuation (`?` if the utterance's leading word is a wh-word/auxiliary,
+ * else `.`), rewriting state->utterance in place. Idempotent w.r.t.
+ * existing terminal punctuation. No-op on NULL/empty. Called as the last
+ * step of communication_cascade_run; exposed for direct unit testing.
+ */
+void cascade_apply_surface_polish(production_cascade_state_t* state);
+
+/**
  * @brief Wave 2 Item #10 — toggle the cascade self-training hook.
  *
  * When enabled, the orchestrator runs Stage 11

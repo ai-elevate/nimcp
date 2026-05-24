@@ -3403,6 +3403,87 @@ static char* cascade_repair_strdup(const char* s) {
     return out;
 }
 
+/* Tier 1 Step F1 (2026-05-24): surface polish on the final utterance —
+ * capitalize the first letter and append terminal punctuation, so the
+ * returned text reads as written language ("the cat sits" → "The cat
+ * sits."). Applied as the LAST cascade step so internal stages
+ * (self-comprehension, self-feedback) still operate on the unpunctuated
+ * token stream (their tokenizers would strip punctuation anyway, and we
+ * avoid casing perturbing self-match).
+ *
+ * The output's terminal mark is classified from the UTTERANCE ITSELF (its
+ * leading word), NOT the prompt's act_type — a declarative answer to a
+ * question ends in '.', so prompt act type is the wrong signal. A leading
+ * wh-word or auxiliary ⇒ the output is itself interrogative ⇒ '?'.
+ * Everything else ⇒ '.'. ('!' is intentionally avoided — exclamation
+ * detection is noisy and '.' is the safe default.) Idempotent: skips
+ * appending when the text already ends in . ? or !.
+ *
+ * Non-static so the unit test can drive it directly with a known utterance
+ * (declared in nimcp_communication_cascade.h). */
+void cascade_apply_surface_polish(production_cascade_state_t* state) {
+    if (!state || !state->utterance || !state->utterance[0]) return;
+
+    char* u = state->utterance;
+    size_t len = strlen(u);
+
+    /* Position just past the last non-space char. */
+    size_t last = len;
+    while (last > 0 && (u[last-1]==' ' || u[last-1]=='\t' ||
+                        u[last-1]=='\n' || u[last-1]=='\r')) {
+        last--;
+    }
+    if (last == 0) return;  /* whitespace only — nothing to polish */
+    bool has_terminal = (u[last-1]=='.' || u[last-1]=='?' || u[last-1]=='!');
+
+    /* First alphabetic char (skip leading quotes/spaces). */
+    size_t fi = 0;
+    while (fi < len && !((u[fi]>='A'&&u[fi]<='Z') || (u[fi]>='a'&&u[fi]<='z'))) {
+        fi++;
+    }
+
+    /* Classify the output's first word as interrogative or not. */
+    bool interrogative = false;
+    if (fi < len) {
+        char w[12];
+        uint32_t wi = 0;
+        for (size_t p = fi; p < len && wi < sizeof(w)-1; p++) {
+            char c = u[p];
+            if ((c>='A'&&c<='Z') || (c>='a'&&c<='z')) {
+                w[wi++] = (c>='A'&&c<='Z') ? (char)(c-'A'+'a') : c;
+            } else {
+                break;
+            }
+        }
+        w[wi] = '\0';
+        static const char* INTERROG[] = {
+            "what","where","when","who","whom","whose","why","how","which",
+            "is","are","am","was","were","do","does","did","can","could",
+            "will","would","should","shall","may","might","has","have","had",
+            NULL
+        };
+        for (int i = 0; INTERROG[i]; i++) {
+            if (strcmp(w, INTERROG[i]) == 0) { interrogative = true; break; }
+        }
+    }
+    char terminal = interrogative ? '?' : '.';
+
+    /* Rebuild: copy, capitalize first alpha, append terminal if missing.
+     * Trailing whitespace before the appended terminal is trimmed. */
+    size_t extra = has_terminal ? 0u : 1u;
+    char* out = (char*)nimcp_calloc(last + extra + 1u, 1);
+    if (!out) return;
+    memcpy(out, u, last);
+    if (fi < last && out[fi] >= 'a' && out[fi] <= 'z') {
+        out[fi] = (char)(out[fi] - 'a' + 'A');
+    }
+    if (!has_terminal) out[last] = terminal;
+    out[last + extra] = '\0';
+
+    nimcp_free(state->utterance);
+    state->utterance = out;
+}
+
 /* FNV-1a hash of a prompt string — dedup key for the reasoning cache. */
 static uint64_t cascade_prompt_hash(const char* s) {
     uint64_t h = 1469598103934665603ULL;
@@ -3962,6 +4043,12 @@ int communication_cascade_run(
         out_state->fep_precision = 1.0f;
     }
     cascade_fep_recompute_total(out_state);
+
+    /* Tier 1 Step F1: surface polish (capitalize + terminal punctuation) on
+     * the final returned utterance. Runs after every word-sequence stage and
+     * after self-comprehension/self-feedback so only the consumer-facing
+     * text is affected, not the internal token stream. */
+    cascade_apply_surface_polish(out_state);
 
     return 0;
 }
