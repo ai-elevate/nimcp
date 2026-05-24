@@ -874,6 +874,15 @@ static int cascade_stage_content(brain_t brain,
     const float w_episodic = 0.3f;
     const float w_listener = 0.1f;
     const float w_goal     = 0.2f;
+    /* Tier 1 Step D (2026-05-24): working-memory content. Each active WM
+     * item is a feature vector the brain is currently "holding in mind".
+     * Blending it into content_intent makes produce reflect the active
+     * train of thought, not just lexical relevance to the prompt. Weight
+     * sits between episodic (0.3 — retrieved past) and goal (0.2 —
+     * directive) since WM is the immediate cognitive foreground but is
+     * salience-scaled per item below, so the effective contribution of
+     * any single weak chunk stays small. */
+    const float w_working_memory = 0.25f;
 
     /* 1. Seed from prompt comprehend (if provided). */
     if (prompt_intent && prompt_dim > 0) {
@@ -951,6 +960,43 @@ static int cascade_stage_content(brain_t brain,
         for (uint32_t i = 0; i < state->topic_count && i < 8 && i < dim; i++) {
             uint32_t slot = (uint32_t)(state->topic_concept_ids[i] % dim);
             state->content_intent[slot] += w_goal * state->goal_priority;
+        }
+    }
+
+    /* 5b. Working-memory content (Tier 1 Step D, 2026-05-24). Lift the
+     * feature vector of each active WM item and add it to the intent,
+     * scaled by the item's salience. This is the cognitive-foreground
+     * analogue of the episodic blend in step 3: where episodic biases
+     * toward "what I remember", this biases toward "what I'm thinking
+     * about right now". An earlier stage (cascade_stage_pragmatic) only
+     * COUNTED WM items as topic candidates and discarded their feature
+     * vectors — this is where those vectors finally drive production.
+     *
+     * Mirrors the episodic min-copy + isfinite pattern. Salience<0.2 is
+     * skipped (same threshold the pragmatic stage uses) so decayed
+     * chunks don't smear the intent. working_memory_get returns a
+     * READ-ONLY pointer valid for the duration of this call — we never
+     * mutate WM, so no copy is needed. */
+    if (brain->working_memory) {
+        uint32_t wm_size = working_memory_get_size(brain->working_memory);
+        for (uint32_t i = 0; i < wm_size; i++) {
+            float salience = 0.0f;
+            if (!working_memory_get_salience(brain->working_memory, i,
+                                              &salience)) continue;
+            if (!isfinite(salience) || salience < 0.2f) continue;
+
+            uint32_t item_dim = 0;
+            const float* fv = working_memory_get(brain->working_memory, i,
+                                                 &item_dim);
+            if (!fv || item_dim == 0) continue;
+
+            uint32_t copy = (item_dim < dim) ? item_dim : dim;
+            for (uint32_t j = 0; j < copy; j++) {
+                float v = fv[j];
+                if (isfinite(v)) {
+                    state->content_intent[j] += w_working_memory * salience * v;
+                }
+            }
         }
     }
 

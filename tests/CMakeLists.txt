@@ -69,6 +69,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_bigram_rerank
     test_gl_phrase_persistence
     test_lang_pos_slot_filling
+    test_lang_wm_content_intent
     # ============================================================
     # Option-1 rebuild — new slice surface tests
     # ============================================================
