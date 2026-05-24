@@ -3764,6 +3764,27 @@ int communication_cascade_run(
     if (stage_mask & CASCADE_STAGE_SYNTACTIC) {
         cascade_counter_invoke(brain, CASCADE_STAGE_SYNTACTIC);
         cascade_stage_syntactic(brain, out_state);
+
+        /* Tier 1 Step F3: subject-verb / quantifier-noun agreement
+         * correction on the (possibly Broca-rerendered) utterance. Broca's
+         * own inflector is a word_id stub, so this runs a real closed-class
+         * + morphology corrector over the surface text instead. In-place
+         * inflection preserves word_count. No-op when nothing needs fixing
+         * or there's no usable utterance. */
+        if (brain->grounded_lang && out_state->utterance &&
+            out_state->utterance[0]) {
+            char agr[1024];
+            int fixes = gl_apply_svo_agreement(brain->grounded_lang,
+                                               out_state->utterance,
+                                               agr, sizeof(agr));
+            if (fixes > 0) {
+                char* corrected = cascade_repair_strdup(agr);
+                if (corrected) {
+                    nimcp_free(out_state->utterance);
+                    out_state->utterance = corrected;
+                }
+            }
+        }
         /* SLICE 3 — Stage Syntactic PREDICTION: Broca expects the
          * bridge's word sequence to form a valid phrase structure.
          * PE = 1.0 - syntactic_validity (clamped to [0,1]) when the

@@ -3484,6 +3484,153 @@ bool grounded_language_get_recent_turn_vector(const grounded_language_t* gl,
     return true;
 }
 
+/*============================================================================
+ * Tier 1 Step F3 — subject-verb / quantifier-noun agreement correction
+ *==========================================================================*/
+
+/* Lowercase a token into a fixed buffer. */
+static void gl_agr_lower(const char* in, char* out, size_t cap) {
+    size_t i = 0;
+    for (; in[i] && i + 1 < cap; i++) {
+        char c = in[i];
+        out[i] = (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+    }
+    out[i] = '\0';
+}
+
+static bool gl_agr_in_set(const char* w, const char* const* set) {
+    for (int i = 0; set[i]; i++) if (strcmp(w, set[i]) == 0) return true;
+    return false;
+}
+
+/* Already inflected (don't double-apply)? Trailing -s / -ed / -ing. */
+static bool gl_agr_already_inflected(const char* w) {
+    size_t n = strlen(w);
+    if (n >= 1 && w[n-1] == 's') return true;
+    if (n >= 2 && w[n-2]=='e' && w[n-1]=='d') return true;
+    if (n >= 3 && w[n-3]=='i' && w[n-2]=='n' && w[n-1]=='g') return true;
+    return false;
+}
+
+int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
+                           char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+
+    /* Closed-class signal tables (the reliable hooks — see header). */
+    static const char* SUBJ_3SG[]  = {"he","she","it",NULL};
+    static const char* SUBJ_NON3SG[]= {"i","you","we","they","these","those",NULL};
+    static const char* PLURAL_QUANT[]={"two","three","four","five","six","seven",
+        "eight","nine","ten","many","several","few","some","both","various",
+        "multiple","most","these","those",NULL};
+    /* Function-ish words skipped when scanning for the subject/verb slot. */
+    static const char* SKIP_SLOT[] = {"the","a","an","this","that","my","your",
+        "his","her","its","our","their","of","to","in","on","at","with","for",
+        "and","or","but","very","really","quite",NULL};
+
+    enum { MAXTOK = 48, TOKLEN = 64 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    uint32_t nt = 0;
+
+    /* Tokenize on whitespace. */
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) {
+                tok[nt][k++] = in[i++];
+            }
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+
+    int fixes = 0;
+    bool noun_is_plural[MAXTOK];
+    memset(noun_is_plural, 0, sizeof(noun_is_plural));
+
+    /* (1) Quantifier → pluralize the governed noun. The noun is the next
+     * non-skip token (skip determiners/adjectives). */
+    for (uint32_t i = 0; i < nt; i++) {
+        if (!gl_agr_in_set(low[i], PLURAL_QUANT)) continue;
+        for (uint32_t j = i+1; j < nt; j++) {
+            if (gl_agr_in_set(low[j], SKIP_SLOT)) continue;
+            if (!gl_agr_already_inflected(low[j])) {
+                char pl[TOKLEN];
+                if (gl_morph_pluralize(low[j], pl, sizeof(pl)) > 0) {
+                    memcpy(tok[j], pl, strlen(pl)+1);
+                    gl_agr_lower(tok[j], low[j], TOKLEN);
+                    fixes++;
+                }
+            }
+            noun_is_plural[j] = true;  /* governed noun is now plural */
+            break;
+        }
+    }
+
+    /* (2) Subject-verb 3sg agreement. Subject = first content token (skip
+     * determiners). Verb = next content token after it. */
+    uint32_t si = 0;
+    while (si < nt && gl_agr_in_set(low[si], SKIP_SLOT)) si++;
+    if (si < nt) {
+        bool subj_3sg;
+        if (gl_agr_in_set(low[si], SUBJ_NON3SG)) {
+            subj_3sg = false;
+        } else if (gl_agr_in_set(low[si], SUBJ_3SG)) {
+            subj_3sg = true;
+        } else {
+            /* A noun subject: 3sg unless it was pluralized / looks plural. */
+            subj_3sg = !(noun_is_plural[si] || gl_agr_already_inflected(low[si]));
+        }
+
+        if (subj_3sg) {
+            /* Find the verb slot: next content token after the subject. */
+            for (uint32_t j = si+1; j < nt; j++) {
+                if (gl_agr_in_set(low[j], SKIP_SLOT)) continue;
+                if (gl_agr_in_set(low[j], SUBJ_3SG) ||
+                    gl_agr_in_set(low[j], SUBJ_NON3SG)) break;  /* another pronoun, not a verb */
+                if (gl_agr_already_inflected(low[j])) break;    /* already inflected */
+                /* POS guard: skip if confidently a noun (object, not verb). */
+                bool confident_noun = false;
+                if (gl) {
+                    const gl_lexicon_entry_t* e = grounded_language_lookup(gl, low[j]);
+                    /* 0.4 matches the morphology classifier's confidence, so
+                     * suffix-tagged nouns (-tion/-ness/…) are protected too. */
+                    if (e && e->learned_class == GL_CLASS_NOUN &&
+                        e->class_confidence >= 0.4f) confident_noun = true;
+                }
+                if (!confident_noun) {
+                    char v3[TOKLEN];
+                    if (gl_morph_inflect_3sg(low[j], v3, sizeof(v3)) > 0 &&
+                        strcmp(v3, low[j]) != 0) {
+                        memcpy(tok[j], v3, strlen(v3)+1);
+                        gl_agr_lower(tok[j], low[j], TOKLEN);
+                        fixes++;
+                    }
+                }
+                break;  /* only the first verb slot */
+            }
+        }
+    }
+
+    /* Rebuild. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        size_t wl = strlen(tok[i]);
+        if (pos + (i?1:0) + wl + 1 > out_sz) break;
+        if (i) out[pos++] = ' ';
+        memcpy(out+pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return fixes;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;

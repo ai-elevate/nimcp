@@ -1868,6 +1868,42 @@ int gl_morph_normalize(const char* word, char* out, size_t out_sz);
 gl_word_class_t gl_morph_pos_hint(const char* word);
 
 /**
+ * @brief Inflect a base verb to its 3rd-person-singular present form
+ *        (Tier 1 Step F3). run→runs, watch→watches, try→tries, go→goes,
+ *        have→has, be→is. The inverse of gl_morph_normalize's stripping.
+ * @return Length written (>0), or -1 on error/insufficient buffer.
+ */
+int gl_morph_inflect_3sg(const char* verb, char* out, size_t out_sz);
+
+/**
+ * @brief Pluralize a singular noun (Tier 1 Step F3). cat→cats,
+ *        box→boxes, baby→babies, child→children, sheep→sheep.
+ * @return Length written (>0), or -1 on error/insufficient buffer.
+ */
+int gl_morph_pluralize(const char* noun, char* out, size_t out_sz);
+
+/**
+ * @brief Fix subject-verb and quantifier-noun agreement in a generated
+ *        utterance (Tier 1 Step F3). Conservative, closed-class-driven:
+ *        keys off reliably identifiable signals — subject pronouns
+ *        (he/she/it ⇒ 3sg) and plural quantifiers (two/many/… ⇒ plural
+ *        noun) plus position (first content word = subject; the following
+ *        content word = verb) — and inflects the adjacent word via the
+ *        helpers above. Skips words confidently classified as nouns when
+ *        looking for the verb slot, and never double-inflects (-s/-ed/-ing
+ *        endings are left alone). gl is used only for the POS guard.
+ *
+ * @param gl      System handle (for POS lookups; may be NULL → position-only)
+ * @param in      Input utterance (NUL-terminated)
+ * @param out     Caller buffer for the corrected utterance
+ * @param out_sz  Size of out
+ * @return Number of words inflected (>=0), or -1 on error. On success `out`
+ *         holds the corrected text (== `in` when nothing changed).
+ */
+int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
+                           char* out, size_t out_sz);
+
+/**
  * @brief Word-form → integer-token-id callback used by the embedding
  *        bridge. The caller knows their tokenizer's vocab; GL just asks
  *        "what id is this word?" Return 0 for unknown.
