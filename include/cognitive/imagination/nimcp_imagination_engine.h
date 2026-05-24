@@ -564,6 +564,28 @@ void imagination_engine_destroy(imagination_engine_t* engine);
  */
 int imagination_engine_reset(imagination_engine_t* engine);
 
+/**
+ * @brief Copy the active imagined scenario's content vector (Tier 1 Step E).
+ *
+ * Read-only snapshot for the language cascade's content blend: lets
+ * production reflect an active imagined scene. Prefers the scenario's
+ * semantic_buffer (language-space) and falls back to latent_state. The copy
+ * happens under the engine lock so the data stays valid after return (no
+ * borrowed-pointer UAF). Only F32 tensors are copied; non-finite values are
+ * zeroed.
+ *
+ * @param engine        Engine (NULL → returns 0).
+ * @param caller_buf    Destination buffer (caller-owned).
+ * @param caller_cap    Capacity of caller_buf in floats (>0).
+ * @param out_vividness Optional; receives the scenario vividness [0-1].
+ * @return Number of floats copied. 0 means idle (no active/usable scenario).
+ */
+uint32_t imagination_engine_copy_active_vector(
+    imagination_engine_t* engine,
+    float* caller_buf,
+    uint32_t caller_cap,
+    float* out_vividness);
+
 /*============================================================================
  * Brain Factory Integration
  *============================================================================*/

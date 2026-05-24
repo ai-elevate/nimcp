@@ -3461,6 +3461,29 @@ uint8_t grounded_language_get_discourse_turn_count(const grounded_language_t* gl
     return gl->discourse.count;
 }
 
+/* Tier 1 Step E (2026-05-24): read a recent discourse turn's semantic
+ * vector for multi-turn continuity. `back` counts from the newest turn:
+ * back=1 → newest, back=2 → the one before it, etc. Returns false (and
+ * leaves *out_vec / *out_dim untouched) when fewer than `back` turns
+ * exist, the requested slot is empty, or any arg is NULL. The vector is
+ * GL-owned (allocated at gl->semantic_dim) and valid until the next
+ * discourse mutation — READ-ONLY, do not free or retain across turns. */
+bool grounded_language_get_recent_turn_vector(const grounded_language_t* gl,
+                                              uint8_t back,
+                                              const float** out_vec,
+                                              uint32_t* out_dim) {
+    if (!gl || !out_vec || !out_dim || back == 0) return false;
+    if (gl->discourse.count < back) return false;
+    /* Logical position in oldest→newest order. */
+    uint8_t pos = (uint8_t)(gl->discourse.count - back);
+    const gl_discourse_turn_t* t =
+        &gl->discourse.turns[discourse_idx(&gl->discourse, pos)];
+    if (!t->semantic_vector) return false;
+    *out_vec = t->semantic_vector;
+    *out_dim = gl->semantic_dim;
+    return true;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;

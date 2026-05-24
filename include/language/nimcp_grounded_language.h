@@ -765,6 +765,27 @@ uint8_t grounded_language_get_discourse_turn_count(
     const grounded_language_t* gl);
 
 /**
+ * @brief Read a recent discourse turn's semantic vector (Tier 1 Step E).
+ *
+ * For multi-turn continuity: the production cascade blends a recent turn's
+ * topic vector into its content intent so replies stay coherent with the
+ * ongoing conversation, not just the immediate prompt.
+ *
+ * @param gl       System handle.
+ * @param back     1 = newest turn, 2 = the one before it, etc. (>0).
+ * @param out_vec  Receives a GL-owned READ-ONLY pointer (do not free);
+ *                 valid only until the next discourse mutation.
+ * @param out_dim  Receives the vector length (== semantic_dim).
+ * @return true if the requested turn exists and has a vector; false
+ *         otherwise (args untouched). Use to no-op on early turns.
+ */
+bool grounded_language_get_recent_turn_vector(
+    const grounded_language_t* gl,
+    uint8_t back,
+    const float** out_vec,
+    uint32_t* out_dim);
+
+/**
  * @brief Clamp the active discourse capacity. Reductions evict oldest
  *        turns first so the most recent `capacity` turns survive.
  *        Increases just bump the cap; existing turns are untouched.

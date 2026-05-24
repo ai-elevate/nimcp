@@ -3178,6 +3178,28 @@ struct brain_struct {
      * ensembles with the pattern classifier via max(). NULL until the
      * head is attached. Optional — system works without it. */
     void*    toxicity_ml;
+
+    /* === TIER 1 STEP E: CASCADE REASONING CACHE (2026-05-24) ===
+     * The reasoning engine has no cheap "read last conclusion" path — only
+     * a full O(100s-1000s µs) reasoning_engine_reason() invoke. So the
+     * production cascade primes a conclusion vector ONCE per unique prompt
+     * (at the top of communication_cascade_run) and cascade_stage_content
+     * reads it cheaply on every iteration. Append-only fields (ABI-safe).
+     *
+     * cascade_reason_in_content gates the whole feature (default OFF —
+     * opt-in, no behavior change until enabled). cascade_reasoning_vec is
+     * lazily allocated at semantic_dim and reused (never realloc'd smaller),
+     * so the cross-thread read in the RPC pool is UAF-free; cascade_reasoning_dim
+     * == 0 means "no valid cached conclusion" → stage_content no-ops.
+     * prompt_hash dedups recurrent re-entry; in_progress is a re-entrancy
+     * guard against reasoning recursively triggering another respond(). */
+    bool      cascade_reason_in_content;       /* opt-in flag, default OFF */
+    bool      cascade_reasoning_in_progress;   /* re-entrancy guard */
+    float*    cascade_reasoning_vec;           /* lazily alloc'd [cap] floats */
+    uint32_t  cascade_reasoning_cap;           /* allocated capacity */
+    uint32_t  cascade_reasoning_dim;           /* 0 = invalid; else valid len */
+    float     cascade_reasoning_confidence;    /* chain overall_confidence */
+    uint64_t  cascade_reasoning_prompt_hash;   /* dedup key for the prime */
 };
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L

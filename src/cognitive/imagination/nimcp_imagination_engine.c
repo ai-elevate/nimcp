@@ -481,6 +481,61 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
     nimcp_free(engine);
 }
 
+/* Tier 1 Step E (2026-05-24): copy the currently-active imagined scenario's
+ * content vector for the language cascade's content blend, so production can
+ * reflect an active imagined scene. Read-only w.r.t. engine state.
+ *
+ * Prefers the scenario's semantic_buffer (language-space content) and falls
+ * back to latent_state (the core scene representation, more often populated).
+ * Copies up to caller_cap floats into caller_buf UNDER the engine lock, so
+ * the data stays valid after the lock releases even if another thread steps
+ * or ends the scenario (no borrowed-pointer UAF). Only F32 tensors are
+ * copied.
+ *
+ * @return number of floats copied (0 = idle: no active scenario or no usable
+ *         tensor). out_vividness (optional) receives the scenario's vividness
+ *         [0-1] for the caller to weight the blend.
+ */
+uint32_t imagination_engine_copy_active_vector(imagination_engine_t* engine,
+                                               float* caller_buf,
+                                               uint32_t caller_cap,
+                                               float* out_vividness) {
+    if (out_vividness) *out_vividness = 0.0f;
+    if (!engine || !caller_buf || caller_cap == 0 || !engine->mutex) return 0;
+
+    uint32_t copied = 0;
+    nimcp_mutex_lock(engine->mutex);
+
+    if (engine->active_scenarios &&
+        nimcp_darray_size(engine->active_scenarios) > 0) {
+        imagination_scenario_t** ptr =
+            (imagination_scenario_t**)nimcp_darray_at(engine->active_scenarios, 0);
+        imagination_scenario_t* sc = ptr ? *ptr : NULL;
+        if (sc && sc->is_active && !sc->is_paused) {
+            /* Prefer language-space content; fall back to the latent scene. */
+            nimcp_tensor_t* src = sc->semantic_buffer ? sc->semantic_buffer
+                                                       : sc->latent_state;
+            if (src && nimcp_tensor_dtype(src) == NIMCP_DTYPE_F32) {
+                const float* data = (const float*)nimcp_tensor_data_const(src);
+                size_t n = nimcp_tensor_numel(src);
+                if (data && n > 0) {
+                    uint32_t lim = (n < (size_t)caller_cap) ? (uint32_t)n
+                                                            : caller_cap;
+                    for (uint32_t i = 0; i < lim; i++) {
+                        float v = data[i];
+                        caller_buf[i] = isfinite(v) ? v : 0.0f;
+                    }
+                    copied = lim;
+                    if (out_vividness) *out_vividness = sc->vividness;
+                }
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(engine->mutex);
+    return copied;
+}
+
 int imagination_engine_reset(imagination_engine_t* engine) {
     if (!engine) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_engine_reset: engine is NULL");
