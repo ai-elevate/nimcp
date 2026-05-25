@@ -601,7 +601,7 @@ int gl_morph_pluralize(const char* noun, char* out, size_t out_sz) {
         {"child","children"}, {"man","men"}, {"woman","women"},
         {"person","people"}, {"foot","feet"}, {"tooth","teeth"},
         {"goose","geese"}, {"mouse","mice"}, {"sheep","sheep"},
-        {"fish","fish"}, {"deer","deer"}, {"child","children"}, {NULL,NULL}
+        {"fish","fish"}, {"deer","deer"}, {NULL,NULL}
     };
     for (int i = 0; IRR[i].sing; i++) {
         if (strcmp(noun, IRR[i].sing) == 0) {
