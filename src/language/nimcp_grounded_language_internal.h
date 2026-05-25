@@ -403,6 +403,15 @@ struct grounded_language {
     uint64_t             coref_attempts;   /* definite-NP heads observed */
     uint64_t             coref_resolved;   /* repeat mentions matched */
 
+    /* Tier 1 follow-up (2026-05-26) — gl-side autoregressive produce.
+     * When true, grounded_language_produce maintains a running "emitted
+     * context" vector (sum of already-emitted words' context_vectors) and
+     * adds a continuation-coherence bonus cos(emitted_ctx, candidate.ctx)
+     * to each candidate's score, so production is left-to-right conditioned
+     * rather than a fixed-intent rerank. Additive; position 0 and the OFF
+     * state are byte-identical to the pre-AR path. Default false. */
+    bool                 autoregressive_produce;
+
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *
      * `vocab_active_mask` is a heap-allocated bool array sized to

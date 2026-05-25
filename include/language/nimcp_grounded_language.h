@@ -1941,6 +1941,18 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
                         char* out, size_t out_sz);
 
 /**
+ * @brief Enable/disable gl-side autoregressive production (Tier 1 follow-up).
+ *        When ON, grounded_language_produce evolves a running "emitted
+ *        context" vector and adds a cos(emitted_ctx, candidate) continuation
+ *        bonus to each candidate's score — left-to-right conditioning instead
+ *        of the fixed-intent within-top-K rerank. Default OFF (byte-identical
+ *        to the rerank path; position 0 is always identical regardless).
+ */
+void grounded_language_set_autoregressive_produce(grounded_language_t* gl,
+                                                  bool enabled);
+bool grounded_language_get_autoregressive_produce(const grounded_language_t* gl);
+
+/**
  * @brief Word-form → integer-token-id callback used by the embedding
  *        bridge. The caller knows their tokenizer's vocab; GL just asks
  *        "what id is this word?" Return 0 for unknown.

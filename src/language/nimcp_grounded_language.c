@@ -3860,6 +3860,15 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
     return fixes;
 }
 
+void grounded_language_set_autoregressive_produce(grounded_language_t* gl,
+                                                  bool enabled) {
+    if (gl) gl->autoregressive_produce = enabled;
+}
+
+bool grounded_language_get_autoregressive_produce(const grounded_language_t* gl) {
+    return gl ? gl->autoregressive_produce : false;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;
@@ -4473,6 +4482,17 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
      * the structural nudge entirely (stages 0-1), so the emit loop is
      * byte-for-byte the pre-Step-C path there. */
     const float pos_bias_weight = gl_produce_pos_bias_weight(gl);
+    /* Tier 1 follow-up: gl-side autoregressive produce. When enabled, a
+     * running sum of emitted words' context_vectors (emitted_ctx) conditions
+     * each subsequent pick via a cosine continuation bonus. emitted_ctx stays
+     * NULL — and the bonus is skipped — when the flag is off, so production is
+     * byte-identical to the within-top-K rerank path. Position 0 is identical
+     * even when ON (emitted_ctx is all-zero until the first word is emitted). */
+    const float GL_AR_WEIGHT = 0.3f;
+    float* emitted_ctx = NULL;
+    if (gl->autoregressive_produce && gl->semantic_dim > 0) {
+        emitted_ctx = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
+    }
     bool used[GL_PRODUCE_TOPK] = {0};
     char prev_word[GL_MAX_WORD_LEN] = {0};
     gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
@@ -4523,6 +4543,17 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
                 if (want != GL_CLASS_UNKNOWN && e->learned_class == want) {
                     s += pos_bias_weight * e->class_confidence;
                 }
+            }
+            /* Autoregressive continuation bonus (Tier 1 follow-up): reward
+             * candidates similar to what's been said so far. No-op at
+             * position 0 (emitted_ctx all-zero) and when the flag is off
+             * (emitted_ctx NULL) — affects ORDER only, never the stop floor
+             * (which still gates on best_cos = raw prompt cosine). */
+            if (emitted_ctx && emit > 0 && e && e->context_vector &&
+                e->context_initialized) {
+                s += GL_AR_WEIGHT * cosine_similarity(emitted_ctx,
+                                                      e->context_vector,
+                                                      gl->semantic_dim);
             }
             if (s > best_score) {
                 best_score = s;
@@ -4592,7 +4623,17 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
             const gl_lexicon_entry_t* be = lexicon_find(gl, w);
             prev_class = be ? be->learned_class : GL_CLASS_UNKNOWN;
         }
+        /* Accumulate the emitted word's context into the running AR state so
+         * the next position is conditioned on it. */
+        if (emitted_ctx) {
+            const gl_lexicon_entry_t* we = lexicon_find(gl, w);
+            if (we && we->context_vector && we->context_initialized) {
+                for (uint32_t d = 0; d < gl->semantic_dim; d++)
+                    emitted_ctx[d] += we->context_vector[d];
+            }
+        }
     }
+    if (emitted_ctx) { nimcp_free(emitted_ctx); emitted_ctx = NULL; }
     if (emit == 0 || emit < min_words) return -1;
 
     result->text = (char*)nimcp_malloc(pos + 1);
@@ -7215,6 +7256,9 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
      * trigram byte; this-and-later readers try-read the two extra bytes. */
     if (mt_write_u8(f, gl->enable_coref_resolution ? 1u : 0u) != 0) return -1;
     if (mt_write_u8(f, gl->enable_subword_oov_fallback ? 1u : 0u) != 0) return -1;
+    /* Tier 1 follow-up: autoregressive-produce flag (trailing, no version
+     * bump — same forward/backward-compat pattern as the two bytes above). */
+    if (mt_write_u8(f, gl->autoregressive_produce ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7278,6 +7322,11 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     }
     if (mt_read_u8(f, &subword) == 0) {
         grounded_language_set_subword_oov_fallback_enabled(gl, (subword != 0));
+    }
+    /* Tier 1 follow-up: autoregressive-produce flag (trailing, optional). */
+    uint8_t ar = 0;
+    if (mt_read_u8(f, &ar) == 0) {
+        grounded_language_set_autoregressive_produce(gl, (ar != 0));
     }
     return 0;
 }

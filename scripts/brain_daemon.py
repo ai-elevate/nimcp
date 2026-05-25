@@ -459,6 +459,8 @@ def _apply_runtime_lang_config(brain, logger):
         # previously unreachable at runtime (no toggle surfaced).
         ("coref_resolution_enabled",           "set_coref_resolution_enabled",           _bool),
         ("subword_oov_fallback_enabled",       "set_subword_oov_fallback_enabled",       _bool),
+        # Tier 1 follow-up — gl-side autoregressive produce (2026-05-26).
+        ("autoregressive_produce",             "set_autoregressive_produce",             _bool),
     ]
     for key, method, extract in table:
         if key not in cfg:

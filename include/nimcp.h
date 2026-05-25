@@ -1678,6 +1678,13 @@ nimcp_status_t nimcp_brain_get_coref_resolution_enabled(nimcp_brain_t brain, boo
 nimcp_status_t nimcp_brain_set_subword_oov_fallback_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_subword_oov_fallback_enabled(nimcp_brain_t brain, bool* out_enabled);
 
+/** Tier 1 follow-up: gl-side autoregressive produce. Default OFF. When ON,
+ *  grounded_language_produce conditions each emitted word on a running sum of
+ *  prior words' context vectors (continuation-coherence bonus) instead of a
+ *  fixed-intent rerank. Runtime toggle; persisted via the LANC block. */
+nimcp_status_t nimcp_brain_set_autoregressive_produce(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_autoregressive_produce(nimcp_brain_t brain, bool* out_enabled);
+
 /** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect);
