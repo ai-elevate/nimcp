@@ -367,10 +367,22 @@ int nimcp_tokenizer_load(nimcp_tokenizer_t* tok, const char* filepath) {
         float freq;
         char text[128];
         if (fscanf(f, "%u %127s %d %f\n", &id, text, &type, &freq) == 4) {
-            if (id >= tok->vocab_size) {
+            if (id < tok->vocab_size) {
+                /* Token already present at this slot — refresh its frequency.
+                 * The on-disk id is only trustworthy when it indexes an
+                 * already-loaded slot; writing tok->tokens[id] for an
+                 * arbitrary file-supplied id is a heap OOB write. */
+                tok->tokens[id].frequency = freq;
+            } else {
+                /* New token. _add_token ignores the file's id and assigns the
+                 * next sequential slot (tok->vocab_size), so the frequency must
+                 * be written to the slot it actually used, not to tok->tokens[id]. */
+                uint32_t before = tok->vocab_size;
                 _add_token(tok, text, (nimcp_token_type_t)type);
+                if (tok->vocab_size > before) {
+                    tok->tokens[tok->vocab_size - 1].frequency = freq;
+                }
             }
-            tok->tokens[id].frequency = freq;
         }
     }
 
