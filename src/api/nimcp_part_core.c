@@ -3884,6 +3884,13 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         /* Process-global counter (not per-GL-instance) — surfaced so the
          * trainer can tell trigram "stall" from "cold-start ramp". */
         out->next_token_cold_start_skips        = grounded_language_next_token_cold_start_skips();
+        /* NLP-2 coref + NLP-1 subword OOV reachability telemetry. */
+        out->enable_coref_resolution            = grounded_language_get_coref_resolution_enabled(b->grounded_lang) ? 1u : 0u;
+        out->enable_subword_oov_fallback        = grounded_language_get_subword_oov_fallback_enabled(b->grounded_lang) ? 1u : 0u;
+        out->coref_attempts                     = grounded_language_coref_attempts(b->grounded_lang);
+        out->coref_resolved                     = grounded_language_coref_resolved(b->grounded_lang);
+        out->subword_oov_attempts               = grounded_language_subword_oov_attempts(b->grounded_lang);
+        out->subword_oov_resolved               = grounded_language_subword_oov_resolved(b->grounded_lang);
     }
 
     if (b->snn_lang_bridge) {
@@ -4797,6 +4804,61 @@ nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32
     if (s != NIMCP_OK) return s;
     if (!b->grounded_lang) return NIMCP_ERROR;
     grounded_language_set_topic_shift_min_turns(b->grounded_lang, min_turns);
+    return NIMCP_OK;
+}
+
+/*=============================================================================
+ * NLP-2 coref + NLP-1 subword OOV — runtime reachability surface.
+ *
+ * Both features shipped earlier (gl-side impl + flag + counters) but had
+ * NO brain wrapper, so they were unreachable through the Python binding or
+ * daemon RPC — dead in production. These thin wrappers + the matching
+ * Python/RPC rows close that gap (full-walkthrough 2026-05-25).
+ *===========================================================================*/
+nimcp_status_t nimcp_brain_set_coref_resolution_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_coref_resolution_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_coref_resolution_enabled(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_coref_resolution_enabled(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_subword_oov_fallback_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    /* The fallback no-ops without an attached tokenizer. Attach the
+     * brain-native BPE tokenizer on enable when one exists, so flipping the
+     * flag via RPC is sufficient even if brain init didn't run the attach
+     * (e.g. enable_brain_tokenizer was off at init then enabled later).
+     * Borrowed pointer — brain owns the tokenizer lifetime. */
+    if (enabled && b->brain_tokenizer) {
+        grounded_language_attach_subword_tokenizer(
+            b->grounded_lang, (struct nimcp_tokenizer*)b->brain_tokenizer);
+    }
+    grounded_language_set_subword_oov_fallback_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_subword_oov_fallback_enabled(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_subword_oov_fallback_enabled(b->grounded_lang);
     return NIMCP_OK;
 }
 

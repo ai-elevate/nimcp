@@ -6978,6 +6978,14 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
         trigram_on = snn_language_bridge_get_trigram_learning_enabled(gl->snn_bridge);
     }
     if (mt_write_u8(f, trigram_on ? 1u : 0u) != 0) return -1;
+    /* full-walkthrough 2026-05-25: NLP-2 coref + NLP-1 subword OOV flags.
+     * Trailing fields appended after the trigram byte — no version bump
+     * (the strict version-equality check would otherwise reject existing
+     * v1 sidecars on resume). The config block is the last block in the
+     * stream, so a pre-this-change reader stops cleanly at EOF after the
+     * trigram byte; this-and-later readers try-read the two extra bytes. */
+    if (mt_write_u8(f, gl->enable_coref_resolution ? 1u : 0u) != 0) return -1;
+    if (mt_write_u8(f, gl->enable_subword_oov_fallback ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7026,6 +7034,21 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     if (mt_read_u8(f, &trigram) == 0 && gl->snn_bridge) {
         snn_language_bridge_set_trigram_learning_enabled(
             gl->snn_bridge, (trigram != 0));
+    }
+
+    /* full-walkthrough 2026-05-25: NLP-2 coref + NLP-1 subword OOV trailing
+     * bytes (optional). Pre-this-change sidecars stop after the trigram
+     * byte above and these try-reads hit EOF — flags keep their defaults
+     * (both OFF). Route through the public setters so the coref-disable
+     * ring-reset side-effect runs consistently. The subword setter only
+     * flips the flag; the tokenizer attach happens at brain init (which
+     * runs before checkpoint state is applied). */
+    uint8_t coref = 0, subword = 0;
+    if (mt_read_u8(f, &coref) == 0) {
+        grounded_language_set_coref_resolution_enabled(gl, (coref != 0));
+    }
+    if (mt_read_u8(f, &subword) == 0) {
+        grounded_language_set_subword_oov_fallback_enabled(gl, (subword != 0));
     }
     return 0;
 }

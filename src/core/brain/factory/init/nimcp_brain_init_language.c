@@ -733,6 +733,19 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
                                                 brain->grounded_lang);
         }
 
+        /* NLP-1 subword OOV fallback — attach the brain-native BPE
+         * tokenizer so the fallback can segment unknown surface forms.
+         * Attach is unconditional (borrowed pointer, brain owns lifetime);
+         * the per-GL enable_subword_oov_fallback flag (default OFF) still
+         * gates whether the bootstrap actually runs. Without this attach
+         * the feature no-ops even when the flag is flipped on. The edge
+         * init wave (which creates brain_tokenizer) runs before this one. */
+        if (brain->brain_tokenizer) {
+            grounded_language_attach_subword_tokenizer(
+                brain->grounded_lang,
+                (struct nimcp_tokenizer*)brain->brain_tokenizer);
+        }
+
         /* Internal KG self-registration — register grounded_language as
          * a COGNITIVE node so KG analytics + downstream consumers can
          * see the lexicon subsystem exists. Mirrors the surface_geometry

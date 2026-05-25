@@ -455,6 +455,10 @@ def _apply_runtime_lang_config(brain, logger):
         ("sentence_segmentation_enabled",      "set_sentence_segmentation_enabled",      _bool),
         ("speech_act_classification_enabled",  "set_speech_act_classification_enabled",  _bool),
         ("topic_shift_enabled",                "set_topic_shift_enabled",                _bool),
+        # NLP-2 coref + NLP-1 subword OOV (full-walkthrough 2026-05-25) —
+        # previously unreachable at runtime (no toggle surfaced).
+        ("coref_resolution_enabled",           "set_coref_resolution_enabled",           _bool),
+        ("subword_oov_fallback_enabled",       "set_subword_oov_fallback_enabled",       _bool),
     ]
     for key, method, extract in table:
         if key not in cfg:
