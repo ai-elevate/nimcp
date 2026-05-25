@@ -40,6 +40,7 @@
 #include "core/brain/regions/prefrontal/nimcp_prefrontal_adapter.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_theory_of_mind.h"
+#include "cognitive/reasoning/nimcp_reasoning_chain.h"  /* Step E: reasoning prime */
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
 #include "cognitive/memory/nimcp_semantic_memory.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
@@ -265,6 +266,17 @@ extern int cascade_stage_self_comprehension(brain_t brain,
 /* Helper used by stage_goal to look up the Wernicke-extracted SVO words. */
 extern const gl_lexicon_entry_t* lexicon_find_internal(
     const grounded_language_t* gl, const char* word);
+
+/* Step E imagination blend: forward-declared (not #included) because the
+ * imagination engine header redeclares audio_cortex_t / nimcp_gpu_context_t /
+ * spatial_transform_t etc. in ways that clash with headers already pulled
+ * into this TU — same TU-conflict reason cascade_stage_wernicke lives apart.
+ * brain->imagination is `struct imagination_engine*`, so this opaque decl
+ * matches without the header. */
+struct imagination_engine;
+extern uint32_t imagination_engine_copy_active_vector(
+    struct imagination_engine* engine, float* caller_buf,
+    uint32_t caller_cap, float* out_vividness);
 
 /*============================================================================
  * Slice 6 — Thalamic gating helpers.
@@ -874,6 +886,28 @@ static int cascade_stage_content(brain_t brain,
     const float w_episodic = 0.3f;
     const float w_listener = 0.1f;
     const float w_goal     = 0.2f;
+    /* Tier 1 Step D (2026-05-24): working-memory content. Each active WM
+     * item is a feature vector the brain is currently "holding in mind".
+     * Blending it into content_intent makes produce reflect the active
+     * train of thought, not just lexical relevance to the prompt. Weight
+     * sits between episodic (0.3 — retrieved past) and goal (0.2 —
+     * directive) since WM is the immediate cognitive foreground but is
+     * salience-scaled per item below, so the effective contribution of
+     * any single weak chunk stays small. */
+    const float w_working_memory = 0.25f;
+    /* Tier 1 Step E (2026-05-24): three more cognitive/discourse sources.
+     *  - w_discourse: prior-turn topic vector → multi-turn continuity. Kept
+     *    low (0.15) so the answer stays on-topic without parroting the last
+     *    turn over the current prompt.
+     *  - w_imagination: active imagined-scenario latent → produce reflects
+     *    simulated content. Scaled per-scenario by vividness below.
+     *  - w_reasoning: cached inference conclusion vector → produce reflects
+     *    what the brain concluded, not just lexical relevance. Scaled by the
+     *    reasoning chain's overall_confidence below; highest of the three
+     *    because a confident conclusion should steer the answer. */
+    const float w_discourse    = 0.15f;
+    const float w_imagination  = 0.2f;
+    const float w_reasoning    = 0.3f;
 
     /* 1. Seed from prompt comprehend (if provided). */
     if (prompt_intent && prompt_dim > 0) {
@@ -951,6 +985,114 @@ static int cascade_stage_content(brain_t brain,
         for (uint32_t i = 0; i < state->topic_count && i < 8 && i < dim; i++) {
             uint32_t slot = (uint32_t)(state->topic_concept_ids[i] % dim);
             state->content_intent[slot] += w_goal * state->goal_priority;
+        }
+    }
+
+    /* 5b. Working-memory content (Tier 1 Step D, 2026-05-24). Lift the
+     * feature vector of each active WM item and add it to the intent,
+     * scaled by the item's salience. This is the cognitive-foreground
+     * analogue of the episodic blend in step 3: where episodic biases
+     * toward "what I remember", this biases toward "what I'm thinking
+     * about right now". An earlier stage (cascade_stage_pragmatic) only
+     * COUNTED WM items as topic candidates and discarded their feature
+     * vectors — this is where those vectors finally drive production.
+     *
+     * Mirrors the episodic min-copy + isfinite pattern. Salience<0.2 is
+     * skipped (same threshold the pragmatic stage uses) so decayed
+     * chunks don't smear the intent. working_memory_get returns a
+     * READ-ONLY pointer valid for the duration of this call — we never
+     * mutate WM, so no copy is needed. */
+    if (brain->working_memory) {
+        uint32_t wm_size = working_memory_get_size(brain->working_memory);
+        for (uint32_t i = 0; i < wm_size; i++) {
+            float salience = 0.0f;
+            if (!working_memory_get_salience(brain->working_memory, i,
+                                              &salience)) continue;
+            if (!isfinite(salience) || salience < 0.2f) continue;
+
+            uint32_t item_dim = 0;
+            const float* fv = working_memory_get(brain->working_memory, i,
+                                                 &item_dim);
+            if (!fv || item_dim == 0) continue;
+
+            uint32_t copy = (item_dim < dim) ? item_dim : dim;
+            for (uint32_t j = 0; j < copy; j++) {
+                float v = fv[j];
+                if (isfinite(v)) {
+                    state->content_intent[j] += w_working_memory * salience * v;
+                }
+            }
+        }
+    }
+
+    /* 5c. Discourse continuity (Tier 1 Step E, 2026-05-24). communication_
+     * cascade_run comprehends the current prompt FIRST, which pushes it as
+     * the newest discourse turn — so back=2 is the PRIOR turn (the previous
+     * exchange). Blending its topic vector keeps the reply coherent with
+     * what we were just talking about, not only the immediate prompt. Kept
+     * to a soft 0.15 weight so it biases topic without parroting. No-ops
+     * cleanly on the first turn (accessor returns false when <2 turns). */
+    {
+        const float* prior_vec = NULL;
+        uint32_t prior_dim = 0;
+        if (grounded_language_get_recent_turn_vector(brain->grounded_lang, 2u,
+                                                     &prior_vec, &prior_dim) &&
+            prior_vec && prior_dim > 0) {
+            uint32_t copy = (prior_dim < dim) ? prior_dim : dim;
+            for (uint32_t j = 0; j < copy; j++) {
+                float v = prior_vec[j];
+                if (isfinite(v)) {
+                    state->content_intent[j] += w_discourse * v;
+                }
+            }
+        }
+    }
+
+    /* 5d. Imagination (Tier 1 Step E, 2026-05-24). If a scenario is actively
+     * being imagined, blend its content vector (semantic_buffer, falling
+     * back to latent_state) into the intent, scaled by vividness — produce
+     * then reflects the imagined scene. imagination_engine_copy_active_vector
+     * copies under the engine lock (UAF-free) and returns 0 when imagination
+     * is idle, which is the common case during plain Q&A → clean no-op. The
+     * dim<=4096 guard mirrors the FEP snapshot cap below and bounds the
+     * stack copy buffer. */
+    if (brain->imagination && dim <= 4096u) {
+        float imag_buf[4096];
+        float vividness = 0.0f;
+        uint32_t n = imagination_engine_copy_active_vector(
+            brain->imagination, imag_buf, dim, &vividness);
+        if (n > 0 && isfinite(vividness) && vividness > 0.0f) {
+            uint32_t copy = (n < dim) ? n : dim;
+            for (uint32_t j = 0; j < copy; j++) {
+                float v = imag_buf[j];
+                if (isfinite(v)) {
+                    state->content_intent[j] += w_imagination * vividness * v;
+                }
+            }
+        }
+    }
+
+    /* 5e. Reasoning conclusion (Tier 1 Step E, 2026-05-24). Blend the cached
+     * inference-conclusion vector (primed once per prompt in
+     * cascade_prime_reasoning) so produce reflects what the brain CONCLUDED,
+     * not just lexical relevance. Scaled by the reasoning chain's confidence
+     * so a tentative conclusion nudges gently and a confident one steers.
+     * cascade_reasoning_dim == 0 (the default until the opt-in flag is set
+     * and a conclusion is cached) → clean no-op. The cache buffer is
+     * allocated once and never moved, so this read is UAF-free even across
+     * RPC threads; torn values during a concurrent reprime are finite-guarded
+     * and benign for a soft additive bias. */
+    if (brain->cascade_reasoning_dim > 0 && brain->cascade_reasoning_vec) {
+        float rconf = brain->cascade_reasoning_confidence;
+        if (!isfinite(rconf) || rconf < 0.0f) rconf = 0.0f;
+        if (rconf > 1.0f) rconf = 1.0f;
+        uint32_t copy = (brain->cascade_reasoning_dim < dim)
+                          ? brain->cascade_reasoning_dim : dim;
+        for (uint32_t j = 0; j < copy; j++) {
+            float v = brain->cascade_reasoning_vec[j];
+            if (isfinite(v)) {
+                state->content_intent[j] += w_reasoning * rconf * v;
+            }
         }
     }
 
@@ -3261,6 +3403,200 @@ static char* cascade_repair_strdup(const char* s) {
     return out;
 }
 
+/* Tier 1 Step F1 (2026-05-24): surface polish on the final utterance —
+ * capitalize the first letter and append terminal punctuation, so the
+ * returned text reads as written language ("the cat sits" → "The cat
+ * sits."). Applied as the LAST cascade step so internal stages
+ * (self-comprehension, self-feedback) still operate on the unpunctuated
+ * token stream (their tokenizers would strip punctuation anyway, and we
+ * avoid casing perturbing self-match).
+ *
+ * The output's terminal mark is classified from the UTTERANCE ITSELF (its
+ * leading word), NOT the prompt's act_type — a declarative answer to a
+ * question ends in '.', so prompt act type is the wrong signal. A leading
+ * wh-word or auxiliary ⇒ the output is itself interrogative ⇒ '?'.
+ * Everything else ⇒ '.'. ('!' is intentionally avoided — exclamation
+ * detection is noisy and '.' is the safe default.) Idempotent: skips
+ * appending when the text already ends in . ? or !.
+ *
+ * Non-static so the unit test can drive it directly with a known utterance
+ * (declared in nimcp_communication_cascade.h). */
+void cascade_apply_surface_polish(production_cascade_state_t* state) {
+    if (!state || !state->utterance || !state->utterance[0]) return;
+
+    char* u = state->utterance;
+    size_t len = strlen(u);
+
+    /* Position just past the last non-space char. */
+    size_t last = len;
+    while (last > 0 && (u[last-1]==' ' || u[last-1]=='\t' ||
+                        u[last-1]=='\n' || u[last-1]=='\r')) {
+        last--;
+    }
+    if (last == 0) return;  /* whitespace only — nothing to polish */
+    bool has_terminal = (u[last-1]=='.' || u[last-1]=='?' || u[last-1]=='!');
+
+    /* First alphabetic char (skip leading quotes/spaces). */
+    size_t fi = 0;
+    while (fi < len && !((u[fi]>='A'&&u[fi]<='Z') || (u[fi]>='a'&&u[fi]<='z'))) {
+        fi++;
+    }
+
+    /* Classify the output's first word as interrogative or not. */
+    bool interrogative = false;
+    if (fi < len) {
+        char w[12];
+        uint32_t wi = 0;
+        for (size_t p = fi; p < len && wi < sizeof(w)-1; p++) {
+            char c = u[p];
+            if ((c>='A'&&c<='Z') || (c>='a'&&c<='z')) {
+                w[wi++] = (c>='A'&&c<='Z') ? (char)(c-'A'+'a') : c;
+            } else {
+                break;
+            }
+        }
+        w[wi] = '\0';
+        static const char* INTERROG[] = {
+            "what","where","when","who","whom","whose","why","how","which",
+            "is","are","am","was","were","do","does","did","can","could",
+            "will","would","should","shall","may","might","has","have","had",
+            NULL
+        };
+        for (int i = 0; INTERROG[i]; i++) {
+            if (strcmp(w, INTERROG[i]) == 0) { interrogative = true; break; }
+        }
+    }
+    char terminal = interrogative ? '?' : '.';
+
+    /* Rebuild: copy, capitalize first alpha, append terminal if missing.
+     * Trailing whitespace before the appended terminal is trimmed. */
+    size_t extra = has_terminal ? 0u : 1u;
+    char* out = (char*)nimcp_calloc(last + extra + 1u, 1);
+    if (!out) return;
+    memcpy(out, u, last);
+    if (fi < last && out[fi] >= 'a' && out[fi] <= 'z') {
+        out[fi] = (char)(out[fi] - 'a' + 'A');
+    }
+    if (!has_terminal) out[last] = terminal;
+    out[last + extra] = '\0';
+
+    nimcp_free(state->utterance);
+    state->utterance = out;
+}
+
+/* FNV-1a hash of a prompt string — dedup key for the reasoning cache. */
+static uint64_t cascade_prompt_hash(const char* s) {
+    uint64_t h = 1469598103934665603ULL;
+    for (; s && *s; s++) {
+        h ^= (unsigned char)*s;
+        h *= 1099511628211ULL;
+    }
+    return h;
+}
+
+/* Tier 1 Step E (2026-05-24): prime the cascade's reasoning-conclusion
+ * cache. The reasoning engine exposes NO cheap "last conclusion" read —
+ * only a full reasoning_engine_reason() invoke (O(100s-1000s µs) + a mutex)
+ * — so we invoke it at most ONCE per unique prompt here at the top of the
+ * run and let cascade_stage_content read the cached vector cheaply on every
+ * iteration. This is the respond (per-utterance) path, not the per-step
+ * training hot path, so a single invoke per reply is affordable.
+ *
+ * The conclusion text is turned into a vector by AVERAGING its content
+ * words' lexicon context_vectors — deliberately NOT grounded_language_
+ * comprehend(), which would push a spurious is_user discourse turn and
+ * corrupt the Step-E discourse-continuity signal. Function words and
+ * pronouns are skipped via their learned POS class.
+ *
+ * Gated default-OFF by brain->cascade_reason_in_content (opt-in: zero cost
+ * and zero behavior change until enabled). The prompt-hash dedups recurrent
+ * re-entry; the in_progress flag guards against reasoning recursively
+ * triggering another respond()→cascade→prime. The cache buffer is allocated
+ * once at semantic_dim and never moved, so the cross-thread read in the RPC
+ * pool is UAF-free (dim is published last; readers gate on dim>0). */
+static void cascade_prime_reasoning(brain_t brain, const char* prompt) {
+    if (!brain) return;
+    if (!brain->cascade_reason_in_content) return;       /* opt-in, default OFF */
+    if (brain->cascade_reasoning_in_progress) return;    /* re-entrancy guard */
+    if (!brain->reasoning_engine || !brain->reasoning_engine_enabled) return;
+    if (!prompt || !prompt[0] || !brain->grounded_lang) return;
+
+    uint64_t h = cascade_prompt_hash(prompt);
+    if (brain->cascade_reasoning_dim > 0 &&
+        brain->cascade_reasoning_prompt_hash == h) {
+        return;  /* cache hit — recurrent re-entry with the same prompt */
+    }
+
+    uint32_t dim = grounded_language_get_semantic_dim(brain->grounded_lang);
+    if (dim == 0) return;
+
+    brain->cascade_reasoning_in_progress = true;
+    brain->cascade_reasoning_dim = 0;  /* invalidate while recomputing */
+
+    reasoning_chain_t chain;
+    reasoning_chain_init(&chain);
+    reasoning_engine_connect_brain(brain->reasoning_engine, brain);
+    if (reasoning_engine_reason(brain->reasoning_engine, prompt, &chain) == 0 &&
+        chain.num_steps > 0 && chain.conclusion[0]) {
+
+        /* Allocate the cache buffer once at semantic_dim (fixed for the
+         * brain's life → never realloc'd/moved → no read-side UAF). */
+        if (!brain->cascade_reasoning_vec) {
+            brain->cascade_reasoning_vec =
+                (float*)nimcp_calloc(dim, sizeof(float));
+            brain->cascade_reasoning_cap =
+                brain->cascade_reasoning_vec ? dim : 0u;
+        }
+
+        if (brain->cascade_reasoning_vec && brain->cascade_reasoning_cap >= dim) {
+            memset(brain->cascade_reasoning_vec, 0, (size_t)dim * sizeof(float));
+
+            /* Average the conclusion's content-word lexicon vectors. */
+            uint32_t contributing = 0;
+            char tok[64];
+            uint32_t ti = 0;
+            for (const char* p = chain.conclusion; ; p++) {
+                char c = *p;
+                bool is_alpha = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+                if (is_alpha && ti < sizeof(tok) - 1u) {
+                    tok[ti++] = (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+                    continue;
+                }
+                if (ti > 0) {
+                    tok[ti] = '\0';
+                    const gl_lexicon_entry_t* e =
+                        grounded_language_lookup(brain->grounded_lang, tok);
+                    if (e && e->context_initialized && e->context_vector &&
+                        e->learned_class != GL_CLASS_FUNCTION &&
+                        e->learned_class != GL_CLASS_PRONOUN) {
+                        for (uint32_t j = 0; j < dim; j++) {
+                            float v = e->context_vector[j];
+                            if (isfinite(v)) brain->cascade_reasoning_vec[j] += v;
+                        }
+                        contributing++;
+                    }
+                    ti = 0;
+                }
+                if (c == '\0') break;
+            }
+
+            if (contributing > 0) {
+                float inv = 1.0f / (float)contributing;
+                for (uint32_t j = 0; j < dim; j++) {
+                    brain->cascade_reasoning_vec[j] *= inv;
+                }
+                brain->cascade_reasoning_confidence =
+                    isfinite(chain.overall_confidence) ? chain.overall_confidence
+                                                       : 0.0f;
+                brain->cascade_reasoning_prompt_hash = h;
+                brain->cascade_reasoning_dim = dim;  /* publish LAST */
+            }
+        }
+    }
+    reasoning_chain_cleanup(&chain);
+    brain->cascade_reasoning_in_progress = false;
+}
+
 int communication_cascade_run(
     brain_t brain,
     const char* prompt_or_null,
@@ -3279,6 +3615,15 @@ int communication_cascade_run(
         brain->cascade_self_train_reward_ttl_us;
 
     if (stage_mask == 0) stage_mask = CASCADE_STAGE_ALL;
+
+    /* Tier 1 Step E (2026-05-24): prime the reasoning-conclusion cache once
+     * per run, only when the content stage (its sole consumer) is enabled.
+     * Default-OFF via brain->cascade_reason_in_content → true no-op until
+     * opted in. Invokes reasoning at most once per unique prompt (hash-
+     * deduped inside). Runs before the stages so stage_content sees it. */
+    if (stage_mask & CASCADE_STAGE_CONTENT) {
+        cascade_prime_reasoning(brain, prompt_or_null);
+    }
 
     /* Batch K telemetry — entry-point counters. mask-skip counters are
      * bumped per-stage below when the stage bit is missing from mask. */
@@ -3419,6 +3764,27 @@ int communication_cascade_run(
     if (stage_mask & CASCADE_STAGE_SYNTACTIC) {
         cascade_counter_invoke(brain, CASCADE_STAGE_SYNTACTIC);
         cascade_stage_syntactic(brain, out_state);
+
+        /* Tier 1 Step F3: subject-verb / quantifier-noun agreement
+         * correction on the (possibly Broca-rerendered) utterance. Broca's
+         * own inflector is a word_id stub, so this runs a real closed-class
+         * + morphology corrector over the surface text instead. In-place
+         * inflection preserves word_count. No-op when nothing needs fixing
+         * or there's no usable utterance. */
+        if (brain->grounded_lang && out_state->utterance &&
+            out_state->utterance[0]) {
+            char agr[1024];
+            int fixes = gl_apply_svo_agreement(brain->grounded_lang,
+                                               out_state->utterance,
+                                               agr, sizeof(agr));
+            if (fixes > 0) {
+                char* corrected = cascade_repair_strdup(agr);
+                if (corrected) {
+                    nimcp_free(out_state->utterance);
+                    out_state->utterance = corrected;
+                }
+            }
+        }
         /* SLICE 3 — Stage Syntactic PREDICTION: Broca expects the
          * bridge's word sequence to form a valid phrase structure.
          * PE = 1.0 - syntactic_validity (clamped to [0,1]) when the
@@ -3698,6 +4064,12 @@ int communication_cascade_run(
         out_state->fep_precision = 1.0f;
     }
     cascade_fep_recompute_total(out_state);
+
+    /* Tier 1 Step F1: surface polish (capitalize + terminal punctuation) on
+     * the final returned utterance. Runs after every word-sequence stage and
+     * after self-comprehension/self-feedback so only the consumer-facing
+     * text is affected, not the internal token stream. */
+    cascade_apply_surface_polish(out_state);
 
     return 0;
 }

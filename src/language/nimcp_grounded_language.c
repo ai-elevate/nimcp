@@ -3461,6 +3461,176 @@ uint8_t grounded_language_get_discourse_turn_count(const grounded_language_t* gl
     return gl->discourse.count;
 }
 
+/* Tier 1 Step E (2026-05-24): read a recent discourse turn's semantic
+ * vector for multi-turn continuity. `back` counts from the newest turn:
+ * back=1 → newest, back=2 → the one before it, etc. Returns false (and
+ * leaves *out_vec / *out_dim untouched) when fewer than `back` turns
+ * exist, the requested slot is empty, or any arg is NULL. The vector is
+ * GL-owned (allocated at gl->semantic_dim) and valid until the next
+ * discourse mutation — READ-ONLY, do not free or retain across turns. */
+bool grounded_language_get_recent_turn_vector(const grounded_language_t* gl,
+                                              uint8_t back,
+                                              const float** out_vec,
+                                              uint32_t* out_dim) {
+    if (!gl || !out_vec || !out_dim || back == 0) return false;
+    if (gl->discourse.count < back) return false;
+    /* Logical position in oldest→newest order. */
+    uint8_t pos = (uint8_t)(gl->discourse.count - back);
+    const gl_discourse_turn_t* t =
+        &gl->discourse.turns[discourse_idx(&gl->discourse, pos)];
+    if (!t->semantic_vector) return false;
+    *out_vec = t->semantic_vector;
+    *out_dim = gl->semantic_dim;
+    return true;
+}
+
+/*============================================================================
+ * Tier 1 Step F3 — subject-verb / quantifier-noun agreement correction
+ *==========================================================================*/
+
+/* Lowercase a token into a fixed buffer. */
+static void gl_agr_lower(const char* in, char* out, size_t cap) {
+    size_t i = 0;
+    for (; in[i] && i + 1 < cap; i++) {
+        char c = in[i];
+        out[i] = (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+    }
+    out[i] = '\0';
+}
+
+static bool gl_agr_in_set(const char* w, const char* const* set) {
+    for (int i = 0; set[i]; i++) if (strcmp(w, set[i]) == 0) return true;
+    return false;
+}
+
+/* Already inflected (don't double-apply)? Trailing -s / -ed / -ing. */
+static bool gl_agr_already_inflected(const char* w) {
+    size_t n = strlen(w);
+    if (n >= 1 && w[n-1] == 's') return true;
+    if (n >= 2 && w[n-2]=='e' && w[n-1]=='d') return true;
+    if (n >= 3 && w[n-3]=='i' && w[n-2]=='n' && w[n-1]=='g') return true;
+    return false;
+}
+
+int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
+                           char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+
+    /* Closed-class signal tables (the reliable hooks — see header). */
+    static const char* SUBJ_3SG[]  = {"he","she","it",NULL};
+    static const char* SUBJ_NON3SG[]= {"i","you","we","they","these","those",NULL};
+    static const char* PLURAL_QUANT[]={"two","three","four","five","six","seven",
+        "eight","nine","ten","many","several","few","some","both","various",
+        "multiple","most","these","those",NULL};
+    /* Function-ish words skipped when scanning for the subject/verb slot. */
+    static const char* SKIP_SLOT[] = {"the","a","an","this","that","my","your",
+        "his","her","its","our","their","of","to","in","on","at","with","for",
+        "and","or","but","very","really","quite",NULL};
+
+    enum { MAXTOK = 48, TOKLEN = 64 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    uint32_t nt = 0;
+
+    /* Tokenize on whitespace. */
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) {
+                tok[nt][k++] = in[i++];
+            }
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+
+    int fixes = 0;
+    bool noun_is_plural[MAXTOK];
+    memset(noun_is_plural, 0, sizeof(noun_is_plural));
+
+    /* (1) Quantifier → pluralize the governed noun. The noun is the next
+     * non-skip token (skip determiners/adjectives). */
+    for (uint32_t i = 0; i < nt; i++) {
+        if (!gl_agr_in_set(low[i], PLURAL_QUANT)) continue;
+        for (uint32_t j = i+1; j < nt; j++) {
+            if (gl_agr_in_set(low[j], SKIP_SLOT)) continue;
+            if (!gl_agr_already_inflected(low[j])) {
+                char pl[TOKLEN];
+                if (gl_morph_pluralize(low[j], pl, sizeof(pl)) > 0) {
+                    memcpy(tok[j], pl, strlen(pl)+1);
+                    gl_agr_lower(tok[j], low[j], TOKLEN);
+                    fixes++;
+                }
+            }
+            noun_is_plural[j] = true;  /* governed noun is now plural */
+            break;
+        }
+    }
+
+    /* (2) Subject-verb 3sg agreement. Subject = first content token (skip
+     * determiners). Verb = next content token after it. */
+    uint32_t si = 0;
+    while (si < nt && gl_agr_in_set(low[si], SKIP_SLOT)) si++;
+    if (si < nt) {
+        bool subj_3sg;
+        if (gl_agr_in_set(low[si], SUBJ_NON3SG)) {
+            subj_3sg = false;
+        } else if (gl_agr_in_set(low[si], SUBJ_3SG)) {
+            subj_3sg = true;
+        } else {
+            /* A noun subject: 3sg unless it was pluralized / looks plural. */
+            subj_3sg = !(noun_is_plural[si] || gl_agr_already_inflected(low[si]));
+        }
+
+        if (subj_3sg) {
+            /* Find the verb slot: next content token after the subject. */
+            for (uint32_t j = si+1; j < nt; j++) {
+                if (gl_agr_in_set(low[j], SKIP_SLOT)) continue;
+                if (gl_agr_in_set(low[j], SUBJ_3SG) ||
+                    gl_agr_in_set(low[j], SUBJ_NON3SG)) break;  /* another pronoun, not a verb */
+                if (gl_agr_already_inflected(low[j])) break;    /* already inflected */
+                /* POS guard: skip if confidently a noun (object, not verb). */
+                bool confident_noun = false;
+                if (gl) {
+                    const gl_lexicon_entry_t* e = grounded_language_lookup(gl, low[j]);
+                    /* 0.4 matches the morphology classifier's confidence, so
+                     * suffix-tagged nouns (-tion/-ness/…) are protected too. */
+                    if (e && e->learned_class == GL_CLASS_NOUN &&
+                        e->class_confidence >= 0.4f) confident_noun = true;
+                }
+                if (!confident_noun) {
+                    char v3[TOKLEN];
+                    if (gl_morph_inflect_3sg(low[j], v3, sizeof(v3)) > 0 &&
+                        strcmp(v3, low[j]) != 0) {
+                        memcpy(tok[j], v3, strlen(v3)+1);
+                        gl_agr_lower(tok[j], low[j], TOKLEN);
+                        fixes++;
+                    }
+                }
+                break;  /* only the first verb slot */
+            }
+        }
+    }
+
+    /* Rebuild. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        size_t wl = strlen(tok[i]);
+        if (pos + (i?1:0) + wl + 1 > out_sz) break;
+        if (i) out[pos++] = ' ';
+        memcpy(out+pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return fixes;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;
@@ -4079,7 +4249,8 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
     char    buf[1024] = {0};
     size_t  pos = 0;
-    uint32_t emit = 0;
+    uint32_t emit = 0;          /* CONTENT words — gates min/max + floor */
+    uint32_t fn_inserted = 0;   /* F2 scaffolding function words (not budgeted) */
     float    score_sum = 0.0f;
     while (emit < max_words) {
         int   best_idx   = -1;
@@ -4138,9 +4309,46 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
         if (emit > 0 && best_cos < confidence_floor) break;
         used[best_idx] = true;
         const char* w = topk_words[best_idx];
-        size_t flen = strlen(w);
-        if (pos + flen + 2 >= sizeof(buf)) break;
-        if (emit > 0) buf[pos++] = ' ';
+
+        /* F2 (Tier 1 Step F): function-word scaffolding. The candidate pool
+         * excludes function words, so produce emits bare content ("cat sit
+         * mat"). Here we insert a determiner/copula at grammatically
+         * appropriate slots so output reads as phrases ("the cat ... the
+         * mat"). Stage-gated by the same weight as the POS bias (off at
+         * stages 0-1 → byte-identical babble there). Inserted words do NOT
+         * count toward `emit`, so they never eat the content-word budget.
+         *
+         *  - "the" before a noun-phrase head (NOUN or ADJECTIVE) that starts
+         *    the utterance or follows a verb (subject / object position).
+         *  - "is" before a predicate ADJECTIVE following a NOUN
+         *    ("cat is happy"). */
+        const char* fn_word = NULL;
+        if (pos_bias_weight > 0.0f) {
+            gl_word_class_t this_class = GL_CLASS_UNKNOWN;
+            const gl_lexicon_entry_t* ce = lexicon_find(gl, w);
+            if (ce) this_class = ce->learned_class;
+            bool np_start = (emit == 0 || prev_class == GL_CLASS_VERB);
+            if ((this_class == GL_CLASS_NOUN ||
+                 this_class == GL_CLASS_ADJECTIVE) && np_start) {
+                fn_word = "the";
+            } else if (this_class == GL_CLASS_ADJECTIVE &&
+                       prev_class == GL_CLASS_NOUN) {
+                fn_word = "is";
+            }
+        }
+
+        size_t flen  = strlen(w);
+        size_t fnlen = fn_word ? strlen(fn_word) : 0;
+        /* Need room for: [space] fn_word [space] word + NUL. */
+        if (pos + fnlen + flen + 3 >= sizeof(buf)) break;
+
+        if (fn_word) {
+            if (pos > 0) buf[pos++] = ' ';
+            memcpy(buf + pos, fn_word, fnlen);
+            pos += fnlen;
+            fn_inserted++;
+        }
+        if (pos > 0) buf[pos++] = ' ';
         memcpy(buf + pos, w, flen);
         pos += flen;
         score_sum += topk_scores[best_idx];
@@ -4163,7 +4371,10 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     memcpy(result->text, buf, pos);
     result->text[pos] = '\0';
 
-    result->word_count = emit;
+    /* word_count reports the TOTAL surface tokens (content + F2 scaffolding)
+     * so downstream length/telemetry matches the rendered text; relevance
+     * stays a per-CONTENT-word mean (scaffolding has no intent score). */
+    result->word_count = emit + fn_inserted;
     result->fluency    = topk_scores[0];
     result->relevance  = (emit > 0) ? (score_sum / (float)emit) : 0.0f;
     result->creativity = 0.5f;  /* placeholder — refine when sampling lands */

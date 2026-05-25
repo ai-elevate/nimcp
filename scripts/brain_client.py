@@ -463,6 +463,28 @@ class BrainProxy:
             raise RuntimeError(resp["error"])
         return bool(resp.get("enabled", enabled))
 
+    def set_reason_in_content(self, enabled=True):
+        """Tier 1 Step E: toggle reasoning-conclusion blending into the
+        cascade's content intent. When True (and the reasoning engine is
+        enabled), respond invokes the reasoning engine once per prompt and
+        biases production toward the conclusion. Adds reasoning-pass
+        latency; no effect unless respond_via_cascade is also on. Default
+        off in the daemon."""
+        resp = self._send({
+            "cmd": "set_reason_in_content",
+            "enabled": bool(enabled),
+        })
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", enabled))
+
+    def get_reason_in_content(self):
+        """Read the current reason_in_content flag (Tier 1 Step E)."""
+        resp = self._send({"cmd": "get_reason_in_content"})
+        if resp.get("error"):
+            raise RuntimeError(resp["error"])
+        return bool(resp.get("enabled", False))
+
     def set_thalamic_gate_enabled(self, enabled=True):
         """Slice 6: toggle thalamic gating of cascade-stage bandwidth.
 

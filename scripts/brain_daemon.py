@@ -440,6 +440,7 @@ def _apply_runtime_lang_config(brain, logger):
     table = [
         # (cfg-key, method, extractor)
         ("respond_via_cascade",                "set_respond_via_cascade",                _bool),
+        ("reason_in_content",                  "set_reason_in_content",                  _bool),
         ("cascade_self_train_enabled",         "set_cascade_self_train_enabled",         _bool),
         ("lateral_inhibition_enabled",         "set_lateral_inhibition_enabled",         _bool),
         ("thalamic_gate_enabled",              "set_thalamic_gate_enabled",              _bool),
@@ -2788,6 +2789,38 @@ class BrainService:
             return {"error": "get_respond_via_cascade not available — rebuild nimcp.so"}
         except Exception as e:
             return {"error": f"get_respond_via_cascade: {e}"}
+        return {"ok": True, "enabled": bool(enabled)}
+
+    def _cmd_set_reason_in_content(self, req):
+        """Tier 1 Step E: toggle reasoning-conclusion blending into the
+        cascade content intent.
+
+        Request: {"cmd": "set_reason_in_content", "enabled": bool}
+        Returns: {"ok": True, "enabled": bool}.
+
+        When ON (and the reasoning engine is enabled), respond invokes the
+        reasoning engine once per prompt and biases production toward the
+        conclusion. Adds reasoning-pass latency; no effect unless
+        respond_via_cascade is also ON.
+        """
+        enabled = bool(req.get("enabled", False))
+        try:
+            self.brain.set_reason_in_content(enabled)
+        except AttributeError:
+            return {"error": "set_reason_in_content not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"set_reason_in_content: {e}"}
+        return {"ok": True, "enabled": enabled}
+
+    def _cmd_get_reason_in_content(self, req):
+        """Read the current reason_in_content flag (Tier 1 Step E)."""
+        del req
+        try:
+            enabled = self.brain.get_reason_in_content()
+        except AttributeError:
+            return {"error": "get_reason_in_content not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"get_reason_in_content: {e}"}
         return {"ok": True, "enabled": bool(enabled)}
 
     def _cmd_set_thalamic_gate_enabled(self, req):

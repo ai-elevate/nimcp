@@ -4400,6 +4400,33 @@ static PyObject* Brain_get_respond_via_cascade(BrainObject* self, PyObject* args
     return PyBool_FromLong(enabled);
 }
 
+/* Tier 1 Step E — reasoning-conclusion blend opt-in. */
+static PyObject* Brain_set_reason_in_content(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    int enabled = 0;
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;
+    if (nimcp_brain_set_reason_in_content(self->brain, enabled ? true : false) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "set_reason_in_content failed");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* Brain_get_reason_in_content(BrainObject* self, PyObject* args) {
+    (void)args;
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    bool enabled = false;
+    if (nimcp_brain_get_reason_in_content(self->brain, &enabled) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError, "get_reason_in_content failed");
+        return NULL;
+    }
+    return PyBool_FromLong(enabled);
+}
+
 /* Slice 6 — thalamic gating of cascade-stage bandwidth.
  *
  * set_thalamic_gate_enabled(enabled: bool) -> None
@@ -12958,6 +12985,10 @@ static PyMethodDef Brain_methods[] = {
      "Audit Cat A #1: opt-in cascade orchestrator path inside nimcp_brain_grounded_respond. Default OFF (legacy bridge passthrough). When ON, respond runs the full 15-stage cascade. Latency cost ~10x vs the bridge-only path."},
     {"get_respond_via_cascade", (PyCFunction)Brain_get_respond_via_cascade, METH_NOARGS,
      "Read the current respond_via_cascade flag."},
+    {"set_reason_in_content", (PyCFunction)Brain_set_reason_in_content, METH_VARARGS,
+     "Tier 1 Step E: opt-in reasoning-conclusion blend into the cascade content intent — set_reason_in_content(enabled: bool) -> None. Default OFF. When ON (and reasoning_engine_enabled), respond invokes the reasoning engine once per prompt and biases production toward the conclusion. Adds reasoning-pass latency; no effect unless respond_via_cascade is also ON."},
+    {"get_reason_in_content", (PyCFunction)Brain_get_reason_in_content, METH_NOARGS,
+     "Read the current reason_in_content flag (Tier 1 Step E)."},
     {"set_thalamic_gate_enabled", (PyCFunction)Brain_set_thalamic_gate_enabled, METH_VARARGS,
      "Slice 6 — toggle thalamic gating of cascade-stage bandwidth — set_thalamic_gate_enabled(enabled: bool) -> None. Default OFF preserves byte-identical legacy behavior. When ON, the cascade derives per-stage gate weights from arousal (NE) + attention (ACh) state and scales each stage's scaleable contributions accordingly. Models the pulvinar's role as central relay + gain controller."},
     {"get_thalamic_gate_enabled", (PyCFunction)Brain_get_thalamic_gate_enabled, METH_NOARGS,

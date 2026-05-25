@@ -939,6 +939,15 @@ void brain_destroy(brain_t brain)
         brain->reasoning_engine = NULL;
     }
 
+    /* Tier 1 Step E: free the cascade reasoning-conclusion cache buffer
+     * (lazily allocated in cascade_prime_reasoning). NULL-safe. */
+    if (brain->cascade_reasoning_vec) {
+        nimcp_free(brain->cascade_reasoning_vec);
+        brain->cascade_reasoning_vec = NULL;
+        brain->cascade_reasoning_cap = 0;
+        brain->cascade_reasoning_dim = 0;
+    }
+
     // Cleanup Imagination Engine
     if (brain->imagination) {
         imagination_engine_destroy(brain->imagination);

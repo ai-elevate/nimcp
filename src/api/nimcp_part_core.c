@@ -2918,6 +2918,26 @@ nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
+/* Tier 1 Step E — reasoning-conclusion blend opt-in. */
+nimcp_status_t nimcp_brain_set_reason_in_content(nimcp_brain_t brain,
+                                                   bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    b->cascade_reason_in_content = enabled;
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_reason_in_content(nimcp_brain_t brain,
+                                                   bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    *out_enabled = b->cascade_reason_in_content;
+    return NIMCP_OK;
+}
+
 /* Slice 6 — thalamic gating public wrappers. Inline-extern the cascade
  * implementations to avoid the header re-include cycle (cascade.h is
  * already pulled in at the top of this TU). */

@@ -765,6 +765,27 @@ uint8_t grounded_language_get_discourse_turn_count(
     const grounded_language_t* gl);
 
 /**
+ * @brief Read a recent discourse turn's semantic vector (Tier 1 Step E).
+ *
+ * For multi-turn continuity: the production cascade blends a recent turn's
+ * topic vector into its content intent so replies stay coherent with the
+ * ongoing conversation, not just the immediate prompt.
+ *
+ * @param gl       System handle.
+ * @param back     1 = newest turn, 2 = the one before it, etc. (>0).
+ * @param out_vec  Receives a GL-owned READ-ONLY pointer (do not free);
+ *                 valid only until the next discourse mutation.
+ * @param out_dim  Receives the vector length (== semantic_dim).
+ * @return true if the requested turn exists and has a vector; false
+ *         otherwise (args untouched). Use to no-op on early turns.
+ */
+bool grounded_language_get_recent_turn_vector(
+    const grounded_language_t* gl,
+    uint8_t back,
+    const float** out_vec,
+    uint32_t* out_dim);
+
+/**
  * @brief Clamp the active discourse capacity. Reductions evict oldest
  *        turns first so the most recent `capacity` turns survive.
  *        Increases just bump the cap; existing turns are untouched.
@@ -1845,6 +1866,42 @@ int gl_morph_normalize(const char* word, char* out, size_t out_sz);
  *        higher.
  */
 gl_word_class_t gl_morph_pos_hint(const char* word);
+
+/**
+ * @brief Inflect a base verb to its 3rd-person-singular present form
+ *        (Tier 1 Step F3). run→runs, watch→watches, try→tries, go→goes,
+ *        have→has, be→is. The inverse of gl_morph_normalize's stripping.
+ * @return Length written (>0), or -1 on error/insufficient buffer.
+ */
+int gl_morph_inflect_3sg(const char* verb, char* out, size_t out_sz);
+
+/**
+ * @brief Pluralize a singular noun (Tier 1 Step F3). cat→cats,
+ *        box→boxes, baby→babies, child→children, sheep→sheep.
+ * @return Length written (>0), or -1 on error/insufficient buffer.
+ */
+int gl_morph_pluralize(const char* noun, char* out, size_t out_sz);
+
+/**
+ * @brief Fix subject-verb and quantifier-noun agreement in a generated
+ *        utterance (Tier 1 Step F3). Conservative, closed-class-driven:
+ *        keys off reliably identifiable signals — subject pronouns
+ *        (he/she/it ⇒ 3sg) and plural quantifiers (two/many/… ⇒ plural
+ *        noun) plus position (first content word = subject; the following
+ *        content word = verb) — and inflects the adjacent word via the
+ *        helpers above. Skips words confidently classified as nouns when
+ *        looking for the verb slot, and never double-inflects (-s/-ed/-ing
+ *        endings are left alone). gl is used only for the POS guard.
+ *
+ * @param gl      System handle (for POS lookups; may be NULL → position-only)
+ * @param in      Input utterance (NUL-terminated)
+ * @param out     Caller buffer for the corrected utterance
+ * @param out_sz  Size of out
+ * @return Number of words inflected (>=0), or -1 on error. On success `out`
+ *         holds the corrected text (== `in` when nothing changed).
+ */
+int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
+                           char* out, size_t out_sz);
 
 /**
  * @brief Word-form → integer-token-id callback used by the embedding

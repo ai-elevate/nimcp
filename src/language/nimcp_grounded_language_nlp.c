@@ -534,3 +534,82 @@ const gl_lexicon_entry_t* gl_nlp_lookup_chain(grounded_language_t* gl,
     /* Stage 3: fuzzy match. */
     return lexicon_find_fuzzy_external(gl, word);
 }
+
+/*============================================================================
+ * Morphological INFLECTION (generation) — Tier 1 Step F3
+ *
+ * The inverse of gl_morph_normalize (which strips suffixes). These build the
+ * 3rd-person-singular verb form and the plural noun form from a base word,
+ * using standard English orthographic rules + a small irregular table. Pure
+ * functions over lowercase ASCII; used by gl_apply_svo_agreement to fix
+ * generated subject-verb / quantifier-noun agreement.
+ *
+ * Broca's syntax_apply_inflection is a word_id-based demonstration stub
+ * (emits "word_<id>-s"), so it cannot produce real surface forms — these
+ * are the real implementation that gap requires.
+ *==========================================================================*/
+
+static bool gl_is_vowel(char c) {
+    c = (char)tolower((unsigned char)c);
+    return c=='a'||c=='e'||c=='i'||c=='o'||c=='u';
+}
+
+/* Shared -s/-es/-ies sibilant+y orthography for both verbs and nouns. */
+static int gl_morph_add_s(const char* w, char* out, size_t out_sz) {
+    size_t n = strlen(w);
+    if (n == 0 || out_sz < n + 4) { if (out_sz) out[0]='\0'; return -1; }
+    char last  = w[n-1];
+    char prev  = (n >= 2) ? w[n-2] : '\0';
+    /* sibilants → +es: ...s, ...x, ...z, ...ch, ...sh, ...o */
+    bool es = (last=='s'||last=='x'||last=='z'||last=='o') ||
+              (n>=2 && ((prev=='c'&&last=='h') || (prev=='s'&&last=='h')));
+    if (n>=2 && last=='y' && !gl_is_vowel(prev)) {
+        /* consonant + y → -ies */
+        memcpy(out, w, n-1);
+        memcpy(out+n-1, "ies", 4);   /* includes NUL */
+        return (int)(n+2);
+    }
+    memcpy(out, w, n);
+    if (es) { memcpy(out+n, "es", 3); return (int)(n+2); }
+    memcpy(out+n, "s", 2);
+    return (int)(n+1);
+}
+
+int gl_morph_inflect_3sg(const char* verb, char* out, size_t out_sz) {
+    if (!verb || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    /* Common irregular present-tense 3sg. */
+    static const struct { const char* base; const char* form; } IRR[] = {
+        {"be","is"}, {"have","has"}, {"do","does"}, {"go","goes"},
+        {"can","can"}, {"will","will"}, {"may","may"}, {"must","must"},
+        {"shall","shall"}, {"might","might"}, {"would","would"},
+        {"could","could"}, {"should","should"}, {NULL,NULL}
+    };
+    for (int i = 0; IRR[i].base; i++) {
+        if (strcmp(verb, IRR[i].base) == 0) {
+            size_t fl = strlen(IRR[i].form);
+            if (out_sz < fl+1) { out[0]='\0'; return -1; }
+            memcpy(out, IRR[i].form, fl+1);
+            return (int)fl;
+        }
+    }
+    return gl_morph_add_s(verb, out, out_sz);
+}
+
+int gl_morph_pluralize(const char* noun, char* out, size_t out_sz) {
+    if (!noun || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    static const struct { const char* sing; const char* plur; } IRR[] = {
+        {"child","children"}, {"man","men"}, {"woman","women"},
+        {"person","people"}, {"foot","feet"}, {"tooth","teeth"},
+        {"goose","geese"}, {"mouse","mice"}, {"sheep","sheep"},
+        {"fish","fish"}, {"deer","deer"}, {"child","children"}, {NULL,NULL}
+    };
+    for (int i = 0; IRR[i].sing; i++) {
+        if (strcmp(noun, IRR[i].sing) == 0) {
+            size_t pl = strlen(IRR[i].plur);
+            if (out_sz < pl+1) { out[0]='\0'; return -1; }
+            memcpy(out, IRR[i].plur, pl+1);
+            return (int)pl;
+        }
+    }
+    return gl_morph_add_s(noun, out, out_sz);
+}

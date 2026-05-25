@@ -1768,6 +1768,16 @@ nimcp_status_t nimcp_brain_set_respond_via_cascade(nimcp_brain_t brain,
 nimcp_status_t nimcp_brain_get_respond_via_cascade(nimcp_brain_t brain,
                                                      bool* out_enabled);
 
+/** Tier 1 Step E — toggle reasoning-conclusion blending into the cascade's
+ *  content intent. When ON (and the reasoning engine is enabled), respond
+ *  invokes the reasoning engine once per prompt and biases production toward
+ *  the conclusion. Default OFF: the reasoning invoke adds latency, so it's
+ *  opt-in. No effect unless respond_via_cascade is also ON. */
+nimcp_status_t nimcp_brain_set_reason_in_content(nimcp_brain_t brain,
+                                                   bool enabled);
+nimcp_status_t nimcp_brain_get_reason_in_content(nimcp_brain_t brain,
+                                                   bool* out_enabled);
+
 /** Slice 6 — thalamic gating of cascade-stage bandwidth.
  *
  *  Per-stage scalar gain control on the cascade modeled on the pulvinar
