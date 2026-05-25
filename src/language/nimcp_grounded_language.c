@@ -3631,6 +3631,235 @@ int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
     return fixes;
 }
 
+/*============================================================================
+ * Tier 1 Step F4 — production-fluency surface polish
+ *   F4a articles · F4b tense consistency · F4c pronoun case + possessives
+ *==========================================================================*/
+
+/* Resolve a token's word class: trust a confidently-tagged lexicon entry,
+ * else fall back to the morphology hint (so the corrector still works on a
+ * sparsely-grounded lexicon / NULL gl). */
+static gl_word_class_t gl_f4_class(grounded_language_t* gl, const char* low) {
+    if (gl) {
+        const gl_lexicon_entry_t* e = grounded_language_lookup(gl, low);
+        if (e && e->learned_class != GL_CLASS_UNKNOWN &&
+            e->class_confidence >= 0.4f)
+            return e->learned_class;
+    }
+    return gl_morph_pos_hint(low);
+}
+
+/* Surface heuristic: is this token already a past-tense form? (-ed suffix or
+ * a common irregular past). Mirrors gl_agr_already_inflected's role for F3. */
+static bool gl_f4_is_past(const char* low) {
+    size_t n = strlen(low);
+    if (n >= 2 && low[n-2]=='e' && low[n-1]=='d') return true;
+    static const char* P[] = {"was","were","had","did","went","ran","ate","saw",
+        "came","took","made","gave","got","knew","thought","said","told","found",
+        "felt","became","left","brought","bought","caught","taught","stood",
+        "spoke","wrote","held","kept","slept","met","paid","sold","sent","built",
+        "won","lost","fell","fed","heard","sat","sang","swam","drank","began",
+        "understood",NULL};
+    for (int i = 0; P[i]; i++) if (strcmp(low, P[i]) == 0) return true;
+    return false;
+}
+
+int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
+                        char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+
+    /* Developmental gate: fluency polish activates at stage >= 2, matching
+     * Step C / F2 — earlier stages stay telegraphic. (The passes also no-op
+     * naturally on 1-2 word output, but the gate makes intent explicit and
+     * keeps stage 0-1 byte-identical.) NULL gl → ungated (unit tests). */
+    if (gl && gl->current_stage < 2) {
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    static const char* SKIP_SLOT[] = {"the","a","an","this","that","my","your",
+        "his","her","its","our","their","of","to","in","on","at","with","for",
+        "and","or","but","very","really","quite",NULL};
+    static const char* DET[]      = {"the","a","an",NULL};
+    static const char* MODALS[]   = {"can","could","will","would","shall",
+        "should","may","might","must",NULL};
+    /* Pronoun case maps. */
+    static const struct { const char* from; const char* to; } OBJ2SUBJ[] = {
+        {"me","I"},{"him","he"},{"us","we"},{"them","they"},{NULL,NULL} };
+    static const struct { const char* from; const char* to; } SUBJ2OBJ[] = {
+        {"i","me"},{"he","him"},{"we","us"},{"they","them"},{"she","her"},
+        {NULL,NULL} };
+    static const struct { const char* from; const char* to; } POSSDET[] = {
+        {"i","my"},{"he","his"},{"she","her"},{"we","our"},{"they","their"},
+        {"it","its"},{"you","your"},{NULL,NULL} };
+
+    enum { MAXTOK = 48, TOKLEN = 64 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    uint32_t nt = 0;
+
+    /* Tokenize on whitespace (same scheme as F3). */
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) tok[nt][k++] = in[i++];
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+
+    int fixes = 0;
+
+    /* Helper: replace token i with a new surface form + refresh low[i]. */
+    #define GL_F4_SET(i, str) do {                                  \
+        size_t _l = strlen(str);                                    \
+        if (_l < TOKLEN) {                                          \
+            if (strcmp(tok[i], (str)) != 0) fixes++;                \
+            memcpy(tok[i], (str), _l+1);                            \
+            gl_agr_lower(tok[i], low[i], TOKLEN);                   \
+        }                                                           \
+    } while (0)
+
+    /* ---- F4a: article selection -------------------------------------- */
+    /* Track noun lemmas already seen so a re-mention takes "the". */
+    char seen[MAXTOK][TOKLEN]; uint32_t n_seen = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        if (!gl_agr_in_set(low[i], DET)) continue;
+        if (i + 1 >= nt) continue;                 /* dangling determiner */
+        /* Head noun: first NOUN after the determiner, skipping adjectives. */
+        uint32_t hj = nt; bool head_plural = false;
+        for (uint32_t j = i+1; j < nt; j++) {
+            gl_word_class_t c = gl_f4_class(gl, low[j]);
+            if (c == GL_CLASS_ADJECTIVE) continue;
+            if (c == GL_CLASS_NOUN) {
+                hj = j;
+                head_plural = gl_agr_already_inflected(low[j]) &&
+                              low[j][strlen(low[j])-1] == 's';
+                break;
+            }
+            break;  /* non-adjective non-noun → no clear head */
+        }
+        const char* nextlow = low[i+1];            /* phonetics anchor */
+        if (hj < nt && head_plural) {
+            /* a/an can't govern a plural; force definite. */
+            GL_F4_SET(i, "the");
+        } else if (hj < nt) {
+            bool first_mention = true;
+            for (uint32_t s = 0; s < n_seen; s++)
+                if (strcmp(seen[s], low[hj]) == 0) { first_mention = false; break; }
+            if (strcmp(low[i], "the") == 0) {
+                if (first_mention) GL_F4_SET(i, gl_article_for(nextlow));
+                /* re-mention: leave "the" */
+            } else {
+                /* already indefinite → just fix a/an phonetics */
+                GL_F4_SET(i, gl_article_for(nextlow));
+            }
+            if (n_seen < MAXTOK) {
+                size_t hl = strlen(low[hj]);
+                if (hl < TOKLEN) { memcpy(seen[n_seen], low[hj], hl+1); n_seen++; }
+            }
+        } else if (strcmp(low[i], "the") != 0) {
+            /* indefinite with no clear head → still fix phonetics */
+            GL_F4_SET(i, gl_article_for(nextlow));
+        }
+    }
+
+    /* ---- F4b: tense/aspect consistency ------------------------------- */
+    /* Anchor on the first finite verb; if it's past, drag following
+     * present/base verbs into the past so the clause is tense-consistent. */
+    {
+        uint32_t vi = nt;
+        for (uint32_t i = 0; i < nt; i++) {
+            if (gl_agr_in_set(low[i], SKIP_SLOT)) continue;
+            if (gl_f4_class(gl, low[i]) == GL_CLASS_VERB) { vi = i; break; }
+        }
+        if (vi < nt && gl_f4_is_past(low[vi])) {
+            for (uint32_t j = vi+1; j < nt; j++) {
+                if (gl_f4_class(gl, low[j]) != GL_CLASS_VERB) continue;
+                if (gl_agr_in_set(low[j], MODALS)) continue;
+                if (gl_f4_is_past(low[j])) continue;
+                char pt[TOKLEN];
+                if (gl_morph_past_tense(low[j], pt, sizeof(pt)) > 0 &&
+                    strcmp(pt, low[j]) != 0)
+                    GL_F4_SET(j, pt);
+            }
+        }
+    }
+
+    /* ---- F4c: pronoun case + possessives ----------------------------- */
+    /* (1) Subject slot — first content token must be a subject pronoun. */
+    uint32_t si = 0;
+    while (si < nt && gl_agr_in_set(low[si], SKIP_SLOT)) si++;
+    if (si < nt) {
+        for (int m = 0; OBJ2SUBJ[m].from; m++)
+            if (strcmp(low[si], OBJ2SUBJ[m].from) == 0) {
+                GL_F4_SET(si, OBJ2SUBJ[m].to); break;
+            }
+    }
+    /* (2) Object slot — content token right after the first verb. */
+    {
+        uint32_t vk = nt;
+        for (uint32_t i = (si < nt ? si+1 : 0); i < nt; i++)
+            if (gl_f4_class(gl, low[i]) == GL_CLASS_VERB) { vk = i; break; }
+        if (vk < nt) {
+            uint32_t ok = vk + 1;
+            while (ok < nt && gl_agr_in_set(low[ok], SKIP_SLOT)) ok++;
+            if (ok < nt)
+                for (int m = 0; SUBJ2OBJ[m].from; m++)
+                    if (strcmp(low[ok], SUBJ2OBJ[m].from) == 0) {
+                        GL_F4_SET(ok, SUBJ2OBJ[m].to); break;
+                    }
+        }
+    }
+    /* (3) Possessive determiner — bare pronoun immediately before a noun
+     * ("he book" → "his book"). */
+    for (uint32_t i = 0; i + 1 < nt; i++) {
+        if (gl_f4_class(gl, low[i+1]) != GL_CLASS_NOUN) continue;
+        for (int m = 0; POSSDET[m].from; m++)
+            if (strcmp(low[i], POSSDET[m].from) == 0) {
+                GL_F4_SET(i, POSSDET[m].to); break;
+            }
+    }
+    /* (4) Noun-noun possessive 's ("dog tail" → "dog's tail"). Requires BOTH
+     * tokens to resolve to NOUN (confident lexicon tag or morphology hint) so
+     * an N+V pair isn't mangled; first noun must be singular / not already
+     * possessive. The NOUN gate keeps this off bare short words (run/sees),
+     * which classify UNKNOWN. */
+    for (uint32_t i = 0; i + 1 < nt; i++) {
+        if (gl_f4_class(gl, low[i])   != GL_CLASS_NOUN) continue;
+        if (gl_f4_class(gl, low[i+1]) != GL_CLASS_NOUN) continue;
+        size_t al = strlen(tok[i]);
+        if (al == 0 || tok[i][al-1] == 's') continue;     /* skip plural/poss */
+        if (al + 2 < TOKLEN) {
+            char poss[TOKLEN];
+            snprintf(poss, sizeof(poss), "%s's", tok[i]);
+            GL_F4_SET(i, poss);
+        }
+    }
+
+    #undef GL_F4_SET
+
+    /* Rebuild. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        size_t wl = strlen(tok[i]);
+        if (pos + (i?1:0) + wl + 1 > out_sz) break;
+        if (i) out[pos++] = ' ';
+        memcpy(out+pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return fixes;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;
