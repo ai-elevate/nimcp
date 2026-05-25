@@ -154,6 +154,13 @@ from functools import lru_cache
 # thread it through every function signature.
 _training_integration = None
 
+# Module-global mirror of args.probe_drips. The run_stage_* functions are
+# module-level (not nested in main), so they cannot see main()'s local `args`.
+# Referencing `args` there raised NameError at every 200th step — crashing the
+# trainer (exit 1) and bouncing it via supervisord before it could finish a
+# stage, which silently pinned the curriculum at stage 2. main() sets this.
+_PROBE_DRIPS = True
+
 
 @lru_cache(maxsize=4096)
 def generate_visual_frame(description, width=32, height=32, channels=3):
@@ -7292,7 +7299,7 @@ def run_stage_1(brain, composer, parent, clock, source, decoder,
                         print(f"  [Stream:{_kind}] drip failed: {_e}")
             # CE-1..3, 6..10, 19 probe drips — each module decides its own
             # stage-1 behavior (some are no-op, some are active).
-            if batch_end % 200 == 0 and getattr(args, "probe_drips", True):
+            if batch_end % 200 == 0 and _PROBE_DRIPS:
                 _run_probe_drips(brain, stage=1, composer=composer)
 
             # Cognitive training injection
@@ -8086,7 +8093,7 @@ def run_stage_2(brain, composer, parent, clock, source, decoder,
             # CE-1..3, 6..10, 19 probe drips — fire all once at every
             # 200-stimulus mark. Each module decides its own stage-1/2/3
             # gating internally; failures are isolated per-module.
-            if (i + 1) % 200 == 0 and getattr(args, "probe_drips", True):
+            if (i + 1) % 200 == 0 and _PROBE_DRIPS:
                 _run_probe_drips(brain, stage=2, composer=composer)
             # Item 2: Auto-sync checkpoint to Hetzner every 500 steps
             if (i + 1) % 500 == 0:
@@ -8555,7 +8562,7 @@ def run_stage_3(brain, composer, parent, clock, source, decoder,
                 except Exception as _e:
                     print(f"  [Stream:{_kind}] drip failed: {_e}")
         # CE-1..3, 6..10, 19 probe drips — fire all at every 200-stimulus mark.
-        if (i + 1) % 200 == 0 and getattr(args, "probe_drips", True):
+        if (i + 1) % 200 == 0 and _PROBE_DRIPS:
             _run_probe_drips(brain, stage=3, composer=composer)
 
         # Checkpoint every 50 steps (state file only)
@@ -10422,6 +10429,12 @@ def main():
     parser.add_argument("--no-probe-drips", dest="probe_drips",
                         action="store_false")
     args = parser.parse_args()
+
+    # Publish probe-drips toggle so the module-level run_stage_* functions can
+    # gate _run_probe_drips without referencing main()'s local `args` (which
+    # raised NameError every 200 steps and crash-looped the trainer).
+    global _PROBE_DRIPS
+    _PROBE_DRIPS = bool(_PROBE_DRIPS)
 
     # Publish canonical-corpus config so drip hooks inside run_stage_N can
     # read it without threading args through every signature.
