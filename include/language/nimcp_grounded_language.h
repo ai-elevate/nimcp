@@ -1953,6 +1953,27 @@ void grounded_language_set_autoregressive_produce(grounded_language_t* gl,
 bool grounded_language_get_autoregressive_produce(const grounded_language_t* gl);
 
 /**
+ * @brief Enable/disable produce-side pronominalization (Tier 2 anaphora).
+ *        Default OFF. When ON, gl_apply_pronominalization replaces a
+ *        re-mentioned non-person noun (within a recency window, across a
+ *        verb) with it/they (subject) or it/them (object) so replies don't
+ *        repeat the noun. Person nouns are guarded out.
+ */
+void grounded_language_set_produce_pronominalize(grounded_language_t* gl,
+                                                 bool enabled);
+bool grounded_language_get_produce_pronominalize(const grounded_language_t* gl);
+
+/**
+ * @brief Tier 2 produce-side pronominalization pass. Conservative,
+ *        closed-class + position driven; person nouns skipped. Runs after F4
+ *        in the cascade. gl supplies POS class lookups (NULL → morphology
+ *        hint + position). Stage-gated >= 2.
+ * @return Number of nouns pronominalized (>=0), or -1 on error.
+ */
+int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
+                               char* out, size_t out_sz);
+
+/**
  * @brief Word-form → integer-token-id callback used by the embedding
  *        bridge. The caller knows their tokenizer's vocab; GL just asks
  *        "what id is this word?" Return 0 for unknown.

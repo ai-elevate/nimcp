@@ -461,6 +461,8 @@ def _apply_runtime_lang_config(brain, logger):
         ("subword_oov_fallback_enabled",       "set_subword_oov_fallback_enabled",       _bool),
         # Tier 1 follow-up — gl-side autoregressive produce (2026-05-26).
         ("autoregressive_produce",             "set_autoregressive_produce",             _bool),
+        # Tier 2 — produce-side pronominalization (2026-05-26).
+        ("produce_pronominalize",              "set_produce_pronominalize",              _bool),
     ]
     for key, method, extract in table:
         if key not in cfg:

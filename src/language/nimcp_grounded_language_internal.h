@@ -412,6 +412,15 @@ struct grounded_language {
      * state are byte-identical to the pre-AR path. Default false. */
     bool                 autoregressive_produce;
 
+    /* Tier 2 (2026-05-26) — produce-side pronominalization (recency
+     * anaphora). When true, a post-cascade pass replaces a re-mentioned
+     * non-person noun in OBJECT position (after a verb, within a recency
+     * window) with "it"/"them" so replies don't robotically repeat the noun
+     * ("the cat chased the cat" -> "the cat chased it"). Person nouns are
+     * guarded out (gender unknown -> can't safely pronominalize). Default
+     * false. */
+    bool                 produce_pronominalize;
+
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *
      * `vocab_active_mask` is a heap-allocated bool array sized to

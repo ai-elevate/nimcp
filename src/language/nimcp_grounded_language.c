@@ -3869,6 +3869,115 @@ bool grounded_language_get_autoregressive_produce(const grounded_language_t* gl)
     return gl ? gl->autoregressive_produce : false;
 }
 
+void grounded_language_set_produce_pronominalize(grounded_language_t* gl,
+                                                 bool enabled) {
+    if (gl) gl->produce_pronominalize = enabled;
+}
+
+bool grounded_language_get_produce_pronominalize(const grounded_language_t* gl) {
+    return gl ? gl->produce_pronominalize : false;
+}
+
+/*============================================================================
+ * Tier 2 — produce-side pronominalization (recency anaphora)
+ *   A re-mentioned non-person noun becomes it/they (subject) or it/them
+ *   (object) so replies don't robotically repeat the noun. Person nouns are
+ *   guarded out (gender unknown). Conservative, closed-class + position based,
+ *   mirroring the F3/F4 surface-corrector pattern.
+ *==========================================================================*/
+int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
+                               char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    /* Developmental gate (matches Step C/F2/F4): off at stages 0-1. NULL gl
+     * is ungated for unit tests. */
+    if (gl && gl->current_stage < 2) {
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    static const char* DET2[]   = {"the","a","an",NULL};
+    /* Closed-class person/animate guard — pronominalizing these to "it" would
+     * be wrong (they need he/she, gender unknown), so skip them entirely. */
+    static const char* PERSON[] = {"man","woman","men","women","person","people",
+        "child","children","boy","girl","boys","girls","baby","babies","mother",
+        "father","mom","dad","parent","parents","king","queen","lady","guy",
+        "teacher","doctor","friend","friends","someone","everyone","god","he",
+        "she","him","her","i","you","we","they","who",NULL};
+
+    enum { MAXTOK = 48, TOKLEN = 64, WINDOW = 10 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    uint32_t nt = 0;
+
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) tok[nt][k++] = in[i++];
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+
+    int fixes = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        if (gl_f4_class(gl, low[i]) != GL_CLASS_NOUN) continue;
+        if (gl_agr_in_set(low[i], PERSON)) continue;
+        /* Prior mention of the same lemma within the recency window? */
+        uint32_t lo = (i > WINDOW) ? (i - WINDOW) : 0;
+        int prior = -1;
+        for (uint32_t j = lo; j < i; j++)
+            if (low[j][0] && strcmp(low[j], low[i]) == 0) { prior = (int)j; break; }
+        if (prior < 0) continue;
+        /* Require a verb between the two mentions (object / new-clause slot). */
+        bool verb_between = false;
+        for (uint32_t j = (uint32_t)prior + 1; j < i; j++)
+            if (gl_f4_class(gl, low[j]) == GL_CLASS_VERB) { verb_between = true; break; }
+        if (!verb_between) continue;
+
+        /* Object position = nearest preceding content token (skip determiners
+         * / dropped) is a verb. Picks them vs they for plurals; "it" is
+         * case-invariant for singulars. */
+        bool object_pos = false;
+        {
+            int k = (int)i - 1;
+            while (k >= 0 && (low[k][0] == '\0' || gl_agr_in_set(low[k], DET2))) k--;
+            if (k >= 0 && gl_f4_class(gl, low[k]) == GL_CLASS_VERB) object_pos = true;
+        }
+        size_t wl = strlen(low[i]);
+        bool plural = (wl >= 1 && low[i][wl-1] == 's' && gl_agr_already_inflected(low[i]));
+        const char* pro = plural ? (object_pos ? "them" : "they") : "it";
+
+        /* Drop a preceding determiner so "chased the cat" -> "chased it". */
+        if (i > 0 && gl_agr_in_set(low[i-1], DET2)) {
+            tok[i-1][0] = '\0'; low[i-1][0] = '\0';
+        }
+        memcpy(tok[i], pro, strlen(pro) + 1);
+        gl_agr_lower(tok[i], low[i], TOKLEN);
+        fixes++;
+    }
+
+    /* Rebuild, skipping dropped (empty) tokens. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        size_t wl = strlen(tok[i]);
+        if (wl == 0) continue;
+        if (pos + (pos ? 1 : 0) + wl + 1 > out_sz) break;
+        if (pos) out[pos++] = ' ';
+        memcpy(out + pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return fixes;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;
@@ -7259,6 +7368,8 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     /* Tier 1 follow-up: autoregressive-produce flag (trailing, no version
      * bump — same forward/backward-compat pattern as the two bytes above). */
     if (mt_write_u8(f, gl->autoregressive_produce ? 1u : 0u) != 0) return -1;
+    /* Tier 2: produce-side pronominalization flag (trailing). */
+    if (mt_write_u8(f, gl->produce_pronominalize ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7327,6 +7438,11 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t ar = 0;
     if (mt_read_u8(f, &ar) == 0) {
         grounded_language_set_autoregressive_produce(gl, (ar != 0));
+    }
+    /* Tier 2: produce-side pronominalization flag (trailing, optional). */
+    uint8_t pron = 0;
+    if (mt_read_u8(f, &pron) == 0) {
+        grounded_language_set_produce_pronominalize(gl, (pron != 0));
     }
     return 0;
 }

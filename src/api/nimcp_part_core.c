@@ -4853,6 +4853,25 @@ nimcp_status_t nimcp_brain_get_autoregressive_produce(nimcp_brain_t brain, bool*
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_produce_pronominalize(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_pronominalize(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_pronominalize(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_pronominalize(b->grounded_lang);
+    return NIMCP_OK;
+}
+
 nimcp_status_t nimcp_brain_set_subword_oov_fallback_enabled(nimcp_brain_t brain, bool enabled) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);
