@@ -3878,6 +3878,15 @@ bool grounded_language_get_produce_pronominalize(const grounded_language_t* gl) 
     return gl ? gl->produce_pronominalize : false;
 }
 
+void grounded_language_set_produce_discourse_seed(grounded_language_t* gl,
+                                                  bool enabled) {
+    if (gl) gl->produce_discourse_seed = enabled;
+}
+
+bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl) {
+    return gl ? gl->produce_discourse_seed : false;
+}
+
 /*============================================================================
  * Tier 2 — produce-side pronominalization (recency anaphora)
  *   A re-mentioned non-person noun becomes it/they (subject) or it/them
@@ -4602,6 +4611,35 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     if (gl->autoregressive_produce && gl->semantic_dim > 0) {
         emitted_ctx = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     }
+    /* Tier 2: discourse-seeded AR produce. When produce_discourse_seed is on
+     * (and AR is on, and stage >= 2), prime emitted_ctx with a unit-normalized,
+     * decayed copy of the most-recent discourse-turn vector instead of all
+     * zeros. This pulls the *first* produced words toward referential
+     * continuity with what was just said. The seed magnitude (GL_DISCOURSE_
+     * SEED_DECAY ~= one half-strength emitted word) means it dominates only
+     * the opening positions and then fades automatically as real emitted-word
+     * context_vectors accumulate in the running sum. ar_seeded also relaxes
+     * the position-0 bonus guard below so the seed influences word 1.
+     * Off / non-AR / stage<2 → emitted_ctx stays all-zero → byte-identical. */
+    bool ar_seeded = false;
+    if (emitted_ctx && gl->produce_discourse_seed && gl->current_stage >= 2) {
+        const float* prior = NULL;
+        uint32_t pdim = 0;
+        if (grounded_language_get_recent_turn_vector(gl, 1, &prior, &pdim) &&
+            prior && pdim == gl->semantic_dim) {
+            double nrm = 0.0;
+            for (uint32_t d = 0; d < gl->semantic_dim; d++)
+                nrm += (double)prior[d] * (double)prior[d];
+            nrm = sqrt(nrm);
+            if (nrm > 1e-9) {
+                const float GL_DISCOURSE_SEED_DECAY = 0.5f;
+                float scale = GL_DISCOURSE_SEED_DECAY / (float)nrm;
+                for (uint32_t d = 0; d < gl->semantic_dim; d++)
+                    emitted_ctx[d] = prior[d] * scale;
+                ar_seeded = true;
+            }
+        }
+    }
     bool used[GL_PRODUCE_TOPK] = {0};
     char prev_word[GL_MAX_WORD_LEN] = {0};
     gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
@@ -4658,7 +4696,7 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
              * position 0 (emitted_ctx all-zero) and when the flag is off
              * (emitted_ctx NULL) — affects ORDER only, never the stop floor
              * (which still gates on best_cos = raw prompt cosine). */
-            if (emitted_ctx && emit > 0 && e && e->context_vector &&
+            if (emitted_ctx && (emit > 0 || ar_seeded) && e && e->context_vector &&
                 e->context_initialized) {
                 s += GL_AR_WEIGHT * cosine_similarity(emitted_ctx,
                                                       e->context_vector,
@@ -7370,6 +7408,8 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     if (mt_write_u8(f, gl->autoregressive_produce ? 1u : 0u) != 0) return -1;
     /* Tier 2: produce-side pronominalization flag (trailing). */
     if (mt_write_u8(f, gl->produce_pronominalize ? 1u : 0u) != 0) return -1;
+    /* Tier 2: discourse-seeded AR produce flag (trailing). */
+    if (mt_write_u8(f, gl->produce_discourse_seed ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7443,6 +7483,11 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t pron = 0;
     if (mt_read_u8(f, &pron) == 0) {
         grounded_language_set_produce_pronominalize(gl, (pron != 0));
+    }
+    /* Tier 2: discourse-seeded AR produce flag (trailing, optional). */
+    uint8_t dseed = 0;
+    if (mt_read_u8(f, &dseed) == 0) {
+        grounded_language_set_produce_discourse_seed(gl, (dseed != 0));
     }
     return 0;
 }

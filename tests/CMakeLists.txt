@@ -76,6 +76,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_f4_fluency
     test_lang_autoregressive_produce
     test_lang_pronominalization
+    test_lang_discourse_seed
     # ============================================================
     # Option-1 rebuild — new slice surface tests
     # ============================================================

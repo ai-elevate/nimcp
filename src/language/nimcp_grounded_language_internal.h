@@ -421,6 +421,19 @@ struct grounded_language {
      * false. */
     bool                 produce_pronominalize;
 
+    /* Tier 2 (2026-05-26) — discourse-seeded autoregressive produce.
+     * When true AND autoregressive_produce is also on AND stage >= 2,
+     * grounded_language_produce initializes its emitted-context vector with
+     * a unit-normalized, decayed copy of the most-recent discourse-turn
+     * semantic vector (instead of all-zero). This pulls the very first
+     * produced words toward referential continuity with what was just said
+     * ("cross-turn coherence"); the seed's influence fades automatically as
+     * real emitted words accumulate in the running sum. Reuses the AR
+     * continuation bonus (no new scoring term). Default false — when off,
+     * or when autoregressive_produce is off, produce is byte-identical to
+     * the pre-seed path. */
+    bool                 produce_discourse_seed;
+
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *
      * `vocab_active_mask` is a heap-allocated bool array sized to

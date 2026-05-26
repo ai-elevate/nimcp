@@ -1964,6 +1964,20 @@ void grounded_language_set_produce_pronominalize(grounded_language_t* gl,
 bool grounded_language_get_produce_pronominalize(const grounded_language_t* gl);
 
 /**
+ * @brief Enable/disable discourse-seeded autoregressive produce (Tier 2
+ *        cross-turn coherence). Default OFF. Only has effect when
+ *        autoregressive_produce is also ON and stage >= 2: grounded_language_
+ *        produce primes its emitted-context vector with a unit-normalized,
+ *        decayed copy of the most-recent discourse-turn vector so the opening
+ *        words are pulled toward referential continuity with what was just
+ *        said. The seed fades automatically as emitted words accumulate.
+ *        When OFF (or AR off), produce is byte-identical to the pre-seed path.
+ */
+void grounded_language_set_produce_discourse_seed(grounded_language_t* gl,
+                                                  bool enabled);
+bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl);
+
+/**
  * @brief Tier 2 produce-side pronominalization pass. Conservative,
  *        closed-class + position driven; person nouns skipped. Runs after F4
  *        in the cascade. gl supplies POS class lookups (NULL → morphology

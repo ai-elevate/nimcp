@@ -3527,6 +3527,7 @@ AUDIT_BRAIN_BOOL_SETTER(set_coref_resolution_enabled,         nimcp_brain_set_co
 AUDIT_BRAIN_BOOL_SETTER(set_subword_oov_fallback_enabled,     nimcp_brain_set_subword_oov_fallback_enabled)
 AUDIT_BRAIN_BOOL_SETTER(set_autoregressive_produce,           nimcp_brain_set_autoregressive_produce)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_pronominalize,            nimcp_brain_set_produce_pronominalize)
+AUDIT_BRAIN_BOOL_SETTER(set_produce_discourse_seed,           nimcp_brain_set_produce_discourse_seed)
 
 /* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
  * Returns count of bindings strengthened. Non-zero lr_scale gates the
@@ -12963,6 +12964,8 @@ static PyMethodDef Brain_methods[] = {
      "Tier 1 follow-up: toggle gl-side autoregressive production — set_autoregressive_produce(enabled: bool) -> None. Default OFF. When ON, produce conditions each word on a running sum of prior words' context vectors (continuation-coherence bonus) instead of a fixed-intent rerank. Persisted in the LANC block."},
     {"set_produce_pronominalize", (PyCFunction)Brain_set_produce_pronominalize, METH_VARARGS,
      "Tier 2: toggle produce-side pronominalization — set_produce_pronominalize(enabled: bool) -> None. Default OFF. When ON, a re-mentioned non-person noun (recency window, across a verb) becomes it/they/them so replies don't repeat the noun. Person nouns guarded out. Persisted in the LANC block."},
+    {"set_produce_discourse_seed", (PyCFunction)Brain_set_produce_discourse_seed, METH_VARARGS,
+     "Tier 2: toggle discourse-seeded autoregressive produce — set_produce_discourse_seed(enabled: bool) -> None. Default OFF. Effective only with autoregressive_produce ON and stage>=2: seeds the AR emitted-context vector with the decayed most-recent discourse-turn vector so the opening words continue the topic of what was just said. Persisted in the LANC block."},
     {"set_cascade_self_train_enabled", (PyCFunction)Brain_set_cascade_self_train_enabled, METH_VARARGS,
      "Wave 2 Item #10: enable cascade Stage 14 reward-modulated bridge training — set_cascade_self_train_enabled(enabled: bool) -> None. Default OFF. First enable installs default tunables (0.05/1.0)."},
     {"set_cascade_self_train_tunables", (PyCFunction)Brain_set_cascade_self_train_tunables, METH_VARARGS,

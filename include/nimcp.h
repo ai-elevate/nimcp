@@ -1692,6 +1692,14 @@ nimcp_status_t nimcp_brain_get_autoregressive_produce(nimcp_brain_t brain, bool*
 nimcp_status_t nimcp_brain_set_produce_pronominalize(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_pronominalize(nimcp_brain_t brain, bool* out_enabled);
 
+/** Tier 2: discourse-seeded autoregressive produce (cross-turn coherence).
+ *  Default OFF. Only effective when autoregressive_produce is also ON and
+ *  stage >= 2 — primes the AR emitted-context vector with the decayed
+ *  most-recent discourse-turn vector so the opening words continue the topic
+ *  of what was just said. Runtime toggle; persisted via the LANC block. */
+nimcp_status_t nimcp_brain_set_produce_discourse_seed(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool* out_enabled);
+
 /** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect);
