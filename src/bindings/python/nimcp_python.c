@@ -3520,6 +3520,12 @@ AUDIT_BRAIN_BOOL_SETTER(set_sentence_segmentation_enabled,    nimcp_brain_set_se
 AUDIT_BRAIN_BOOL_SETTER(set_speech_act_classification_enabled, nimcp_brain_set_speech_act_classification_enabled)
 AUDIT_BRAIN_BOOL_SETTER(set_topic_shift_enabled,              nimcp_brain_set_topic_shift_enabled)
 AUDIT_BRAIN_FLOAT_SETTER(set_topic_shift_threshold,           nimcp_brain_set_topic_shift_threshold)
+/* NLP-2 coref + NLP-1 subword OOV reachability (full-walkthrough 2026-05-25).
+ * Reads are surfaced through get_grounded_language_diagnostics' dict
+ * (enable_coref_resolution / enable_subword_oov_fallback + counters). */
+AUDIT_BRAIN_BOOL_SETTER(set_coref_resolution_enabled,         nimcp_brain_set_coref_resolution_enabled)
+AUDIT_BRAIN_BOOL_SETTER(set_subword_oov_fallback_enabled,     nimcp_brain_set_subword_oov_fallback_enabled)
+AUDIT_BRAIN_BOOL_SETTER(set_autoregressive_produce,           nimcp_brain_set_autoregressive_produce)
 
 /* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
  * Returns count of bindings strengthened. Non-zero lr_scale gates the
@@ -12948,6 +12954,12 @@ static PyMethodDef Brain_methods[] = {
      "TB-10: tune the topic-shift cosine threshold — set_topic_shift_threshold(t: float) -> None. Clamped [0, 1]."},
     {"set_topic_shift_min_turns", (PyCFunction)Brain_set_topic_shift_min_turns, METH_VARARGS,
      "TB-10: tune the minimum turns before topic-shift detection fires — set_topic_shift_min_turns(n: int) -> None. Clamped [2, GL_DISCOURSE_MAX_TURNS_PUBLIC]."},
+    {"set_coref_resolution_enabled", (PyCFunction)Brain_set_coref_resolution_enabled, METH_VARARGS,
+     "NLP-2: toggle coreference / definite-NP resolution — set_coref_resolution_enabled(enabled: bool) -> None. Default OFF. Disabling clears the mention ring. Read via get_grounded_language_diagnostics()['enable_coref_resolution'] + coref_attempts/coref_resolved."},
+    {"set_subword_oov_fallback_enabled", (PyCFunction)Brain_set_subword_oov_fallback_enabled, METH_VARARGS,
+     "NLP-1: toggle subword / morphological OOV fallback — set_subword_oov_fallback_enabled(enabled: bool) -> None. Default OFF. Enabling attaches the brain-native BPE tokenizer when present (no-ops without one). Read via get_grounded_language_diagnostics()['enable_subword_oov_fallback'] + subword_oov_attempts/subword_oov_resolved."},
+    {"set_autoregressive_produce", (PyCFunction)Brain_set_autoregressive_produce, METH_VARARGS,
+     "Tier 1 follow-up: toggle gl-side autoregressive production — set_autoregressive_produce(enabled: bool) -> None. Default OFF. When ON, produce conditions each word on a running sum of prior words' context vectors (continuation-coherence bonus) instead of a fixed-intent rerank. Persisted in the LANC block."},
     {"set_cascade_self_train_enabled", (PyCFunction)Brain_set_cascade_self_train_enabled, METH_VARARGS,
      "Wave 2 Item #10: enable cascade Stage 14 reward-modulated bridge training — set_cascade_self_train_enabled(enabled: bool) -> None. Default OFF. First enable installs default tunables (0.05/1.0)."},
     {"set_cascade_self_train_tunables", (PyCFunction)Brain_set_cascade_self_train_tunables, METH_VARARGS,

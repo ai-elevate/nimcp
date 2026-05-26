@@ -205,12 +205,72 @@ static void test_partial_state_intermixed(void)
     unlink(path);
 }
 
+/* full-walkthrough 2026-05-25: NLP-2 coref + NLP-1 subword OOV flags were
+ * persisted as trailing LANC bytes (no version bump). Verify they (a) toggle
+ * via the public setters/getters and (b) survive a save/load round-trip. */
+static void test_round_trip_nlp_reachability_flags(void)
+{
+    char path[256];
+    tmp_path(path, sizeof(path), "nlp_reach");
+
+    grounded_language_t* gl = grounded_language_create(0, NULL);
+    EXPECT(gl != NULL, "create save");
+    if (!gl) return;
+
+    /* Defaults must be OFF. */
+    EXPECT(!grounded_language_get_coref_resolution_enabled(gl),
+           "coref default OFF");
+    EXPECT(!grounded_language_get_subword_oov_fallback_enabled(gl),
+           "subword default OFF");
+
+    /* Setter/getter round-trip in-memory. */
+    grounded_language_set_coref_resolution_enabled(gl, true);
+    grounded_language_set_subword_oov_fallback_enabled(gl, true);
+    EXPECT(grounded_language_get_coref_resolution_enabled(gl),
+           "coref ON after set");
+    EXPECT(grounded_language_get_subword_oov_fallback_enabled(gl),
+           "subword ON after set");
+
+    FILE* f = fopen(path, "wb");
+    EXPECT(f != NULL, "fopen save");
+    if (!f) { grounded_language_destroy(gl); return; }
+    int rc = grounded_language_save_multiturn_state(gl, f);
+    fclose(f);
+    EXPECT(rc == 0, "save rc=%d", rc);
+    grounded_language_destroy(gl);
+
+    /* Fresh gl — defaults OFF — then load and verify both flipped ON. */
+    grounded_language_t* gl2 = grounded_language_create(0, NULL);
+    EXPECT(gl2 != NULL, "create load");
+    if (!gl2) { unlink(path); return; }
+    EXPECT(!grounded_language_get_coref_resolution_enabled(gl2),
+           "coref default OFF pre-load");
+    EXPECT(!grounded_language_get_subword_oov_fallback_enabled(gl2),
+           "subword default OFF pre-load");
+
+    f = fopen(path, "rb");
+    EXPECT(f != NULL, "fopen load");
+    if (!f) { grounded_language_destroy(gl2); unlink(path); return; }
+    rc = grounded_language_load_multiturn_state(gl2, f);
+    fclose(f);
+    EXPECT(rc == 0, "load rc=%d", rc);
+
+    EXPECT(grounded_language_get_coref_resolution_enabled(gl2),
+           "coref ON post-load");
+    EXPECT(grounded_language_get_subword_oov_fallback_enabled(gl2),
+           "subword ON post-load");
+
+    grounded_language_destroy(gl2);
+    unlink(path);
+}
+
 int main(void)
 {
     fprintf(stderr, "=== test_lang_config_persist (audit fix) ===\n");
     test_round_trip_all_flags_on();
     test_round_trip_all_flags_off();
     test_partial_state_intermixed();
+    test_round_trip_nlp_reachability_flags();
 
     if (g_failures == 0) {
         fprintf(stderr, "ALL PASS\n");

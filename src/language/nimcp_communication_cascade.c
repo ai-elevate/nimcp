@@ -3784,6 +3784,24 @@ int communication_cascade_run(
                     out_state->utterance = corrected;
                 }
             }
+
+            /* Tier 1 Step F4: production-fluency polish (article a/an,
+             * tense consistency, pronoun case + possessives) over the
+             * (possibly F3-corrected) utterance. Stage-gated to >= 2 inside
+             * the corrector; conservative + no-op when nothing applies. */
+            if (out_state->utterance && out_state->utterance[0]) {
+                char f4[1024];
+                int f4_fixes = gl_apply_f4_fluency(brain->grounded_lang,
+                                                   out_state->utterance,
+                                                   f4, sizeof(f4));
+                if (f4_fixes > 0) {
+                    char* corrected = cascade_repair_strdup(f4);
+                    if (corrected) {
+                        nimcp_free(out_state->utterance);
+                        out_state->utterance = corrected;
+                    }
+                }
+            }
         }
         /* SLICE 3 — Stage Syntactic PREDICTION: Broca expects the
          * bridge's word sequence to form a valid phrase structure.

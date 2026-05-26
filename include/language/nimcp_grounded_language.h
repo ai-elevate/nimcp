@@ -1883,6 +1883,20 @@ int gl_morph_inflect_3sg(const char* verb, char* out, size_t out_sz);
 int gl_morph_pluralize(const char* noun, char* out, size_t out_sz);
 
 /**
+ * @brief Past-tense inflector (Tier 1 Step F4b). love→loved, try→tried,
+ *        go→went, is→was. Irregular table + regular -ed orthography.
+ * @return Length written (>0), or -1 on error/insufficient buffer.
+ */
+int gl_morph_past_tense(const char* verb, char* out, size_t out_sz);
+
+/**
+ * @brief Choose "a" vs "an" for the word that immediately follows the
+ *        article (Tier 1 Step F4a). Agrees with SOUND not spelling:
+ *        "an hour", "a university". Returns a static string; never NULL.
+ */
+const char* gl_article_for(const char* word);
+
+/**
  * @brief Fix subject-verb and quantifier-noun agreement in a generated
  *        utterance (Tier 1 Step F3). Conservative, closed-class-driven:
  *        keys off reliably identifiable signals — subject pronouns
@@ -1902,6 +1916,41 @@ int gl_morph_pluralize(const char* noun, char* out, size_t out_sz);
  */
 int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
                            char* out, size_t out_sz);
+
+/**
+ * @brief Tier 1 Step F4 — production-fluency surface polish. Runs three
+ *        conservative, closed-class-driven correctors over a generated
+ *        utterance, in order, sharing one tokenization:
+ *          F4a  article selection — phonetic a/an agreement + indefinite
+ *               article on a first-mention singular count noun ("a tree",
+ *               "an apple"); definite "the" on a re-mention.
+ *          F4b  tense/aspect consistency — when the first finite verb is
+ *               past, coerce following present/base verbs to past so the
+ *               clause doesn't mix tenses ("sat and ran", not "sat and runs").
+ *          F4c  pronoun case + possessives — subject vs object pronoun form
+ *               by slot (me→I as subject, he→him as object), possessive
+ *               determiner before a noun (he→his), and noun-noun possessive
+ *               's ("dog's tail").
+ *        Each pass no-ops gracefully when its signal is absent and is gated
+ *        to developmental stage >= 2 (matching Step C/F2). gl supplies POS
+ *        class lookups; NULL falls back to morphology hints + position.
+ * @return Number of surface edits applied (>=0), or -1 on error. On success
+ *         `out` holds the corrected text (== `in` when nothing changed).
+ */
+int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
+                        char* out, size_t out_sz);
+
+/**
+ * @brief Enable/disable gl-side autoregressive production (Tier 1 follow-up).
+ *        When ON, grounded_language_produce evolves a running "emitted
+ *        context" vector and adds a cos(emitted_ctx, candidate) continuation
+ *        bonus to each candidate's score — left-to-right conditioning instead
+ *        of the fixed-intent within-top-K rerank. Default OFF (byte-identical
+ *        to the rerank path; position 0 is always identical regardless).
+ */
+void grounded_language_set_autoregressive_produce(grounded_language_t* gl,
+                                                  bool enabled);
+bool grounded_language_get_autoregressive_produce(const grounded_language_t* gl);
 
 /**
  * @brief Word-form → integer-token-id callback used by the embedding

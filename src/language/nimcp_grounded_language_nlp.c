@@ -601,7 +601,7 @@ int gl_morph_pluralize(const char* noun, char* out, size_t out_sz) {
         {"child","children"}, {"man","men"}, {"woman","women"},
         {"person","people"}, {"foot","feet"}, {"tooth","teeth"},
         {"goose","geese"}, {"mouse","mice"}, {"sheep","sheep"},
-        {"fish","fish"}, {"deer","deer"}, {"child","children"}, {NULL,NULL}
+        {"fish","fish"}, {"deer","deer"}, {NULL,NULL}
     };
     for (int i = 0; IRR[i].sing; i++) {
         if (strcmp(noun, IRR[i].sing) == 0) {
@@ -612,4 +612,70 @@ int gl_morph_pluralize(const char* noun, char* out, size_t out_sz) {
         }
     }
     return gl_morph_add_s(noun, out, out_sz);
+}
+
+/* Tier 1 Step F4b — past-tense inflector (the tense analog of _3sg). Irregular
+ * table + regular -ed orthography (love→loved, try→tried, walk→walked). Pure
+ * function over lowercase ASCII; used by the F4 tense-consistency corrector. */
+int gl_morph_past_tense(const char* verb, char* out, size_t out_sz) {
+    if (!verb || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    static const struct { const char* base; const char* past; } IRR[] = {
+        {"be","was"}, {"am","was"}, {"is","was"}, {"are","were"},
+        {"have","had"}, {"has","had"}, {"do","did"}, {"does","did"},
+        {"go","went"}, {"run","ran"}, {"eat","ate"}, {"see","saw"},
+        {"come","came"}, {"take","took"}, {"make","made"}, {"give","gave"},
+        {"get","got"}, {"know","knew"}, {"think","thought"}, {"say","said"},
+        {"tell","told"}, {"find","found"}, {"feel","felt"}, {"become","became"},
+        {"leave","left"}, {"bring","brought"}, {"buy","bought"}, {"catch","caught"},
+        {"teach","taught"}, {"begin","began"}, {"drink","drank"}, {"swim","swam"},
+        {"sing","sang"}, {"sit","sat"}, {"stand","stood"}, {"speak","spoke"},
+        {"write","wrote"}, {"hold","held"}, {"keep","kept"}, {"sleep","slept"},
+        {"meet","met"}, {"pay","paid"}, {"sell","sold"}, {"send","sent"},
+        {"build","built"}, {"understand","understood"}, {"win","won"},
+        {"lose","lost"}, {"fall","fell"}, {"feed","fed"}, {"hear","heard"},
+        {"can","could"}, {"will","would"}, {"shall","should"}, {"may","might"},
+        {NULL,NULL}
+    };
+    for (int i = 0; IRR[i].base; i++) {
+        if (strcmp(verb, IRR[i].base) == 0) {
+            size_t pl = strlen(IRR[i].past);
+            if (out_sz < pl+1) { out[0]='\0'; return -1; }
+            memcpy(out, IRR[i].past, pl+1);
+            return (int)pl;
+        }
+    }
+    /* Regular -ed. */
+    size_t n = strlen(verb);
+    if (n == 0 || out_sz < n + 4) { out[0]='\0'; return -1; }
+    char last = verb[n-1];
+    char prev = (n >= 2) ? verb[n-2] : '\0';
+    if (last == 'e') {                       /* love → loved */
+        memcpy(out, verb, n); memcpy(out+n, "d", 2); return (int)(n+1);
+    }
+    if (last == 'y' && !gl_is_vowel(prev)) { /* try → tried */
+        memcpy(out, verb, n-1); memcpy(out+n-1, "ied", 4); return (int)(n+2);
+    }
+    memcpy(out, verb, n); memcpy(out+n, "ed", 3); return (int)(n+2);
+}
+
+/* Tier 1 Step F4a — indefinite-article selector. Returns the static string
+ * "a" or "an" for the word that immediately FOLLOWS the article (English
+ * agrees with sound, not spelling: "an hour", "a university"). Small
+ * silent-h / vowel-letter-consonant-sound exception list; otherwise keys off
+ * the first letter. Never allocates. */
+const char* gl_article_for(const char* word) {
+    if (!word || !word[0]) return "a";
+    static const char* AN_EXC[] = {"hour","honest","honor","honour","heir",
+                                   "heirloom","honestly","hourly",NULL};
+    static const char* A_EXC[]  = {"university","universe","unicorn","european",
+                                   "union","united","one","once","unit","useful",
+                                   "user","unique","universal","ufo",NULL};
+    char low[64];
+    size_t i = 0;
+    for (; word[i] && i < sizeof(low)-1; i++)
+        low[i] = (char)tolower((unsigned char)word[i]);
+    low[i] = '\0';
+    for (int k = 0; AN_EXC[k]; k++) if (strcmp(low, AN_EXC[k]) == 0) return "an";
+    for (int k = 0; A_EXC[k];  k++) if (strcmp(low, A_EXC[k])  == 0) return "a";
+    return gl_is_vowel(low[0]) ? "an" : "a";
 }

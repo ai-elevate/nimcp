@@ -304,6 +304,44 @@ class BrainProxy:
         resp = self._send({"cmd": "grounded_respond", "text": text})
         return resp.get("result", {})
 
+    # -- Developmental stage control --
+    # These mirror the in-process nimcp.Brain methods of the same name so the
+    # trainer (immerse_athena --daemon, which is a *socket client*, not an
+    # in-process brain) can drive the daemon's developmental gate.
+    #
+    # Without them, TrainingIntegration.begin_stage()'s
+    #   self.brain.set_active_stage(stage)
+    # raised AttributeError on the proxy and was swallowed ("stage gate frozen
+    # at default — rebuild nimcp.so"). The daemon's gl->current_stage then
+    # stayed at its default (0) for the entire run while the curriculum
+    # believed it had advanced — capping produce to the stage-0 confidence
+    # floor (1 word) regardless of training progress. The .so was never the
+    # problem: the trainer is a pure client, so the missing piece was this
+    # 4th-layer client method, not a binding. (See feedback-committed-but-
+    # unreachable: trace a default-OFF/idle feature OUTWARD to the daemon.)
+    def set_active_stage(self, stage):
+        """Set the brain's developmental stage. Drives the produce confidence
+        floor + POS / function-word scaffolding gates (gl->current_stage)."""
+        resp = self._send({"cmd": "set_active_stage", "stage": int(stage)})
+        return resp.get("stage", resp)
+
+    def get_active_stage(self):
+        resp = self._send({"cmd": "get_active_stage"})
+        return resp.get("stage")
+
+    def set_stage_constraints(self, stage):
+        """Slice-E alias — set_active_stage plus install the per-stage vocab
+        mask / produce-word bounds in one call."""
+        return self._send({"cmd": "set_stage_constraints", "stage": int(stage)})
+
+    def get_stage_constraints(self):
+        resp = self._send({"cmd": "get_stage_constraints"})
+        return resp.get("constraints", resp)
+
+    def set_vocab_mask_for_stage(self, stage):
+        return self._send({"cmd": "set_vocab_mask_for_stage",
+                           "stage": int(stage)})
+
     def produce_cascade_recurrent(self, prompt=None, max_iters=8, self_match_eps=0.01):
         """Recurrent / biological-fidelity variant of produce_cascade.
         Iterates the full 15-stage cascade until utterance + self_match

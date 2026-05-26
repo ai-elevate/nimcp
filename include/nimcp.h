@@ -1011,6 +1011,19 @@ typedef struct {
     uint64_t bridge_lateral_inhibition_winner_margin_sum;
     uint64_t bridge_lateral_inhibition_settled_steps_sum;
     uint64_t bridge_lateral_inhibition_nan_fallbacks;
+    /* NLP-1 / NLP-2 reachability telemetry (full-walkthrough 2026-05-25).
+     * Both features were committed but unreachable at runtime (no toggle
+     * surfaced through C/Python/RPC). These let an operator confirm the
+     * flag flip drives the underlying pass, and that the pass actually
+     * resolves (resolved/attempts ratio). coref_* are per-GL counters;
+     * subword_oov_* are per-GL and only climb when a tokenizer is
+     * attached (brain init wires brain_tokenizer when present). */
+    uint8_t  enable_coref_resolution;
+    uint8_t  enable_subword_oov_fallback;
+    uint64_t coref_attempts;
+    uint64_t coref_resolved;
+    uint64_t subword_oov_attempts;
+    uint64_t subword_oov_resolved;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -1650,6 +1663,27 @@ nimcp_status_t nimcp_brain_set_speech_act_classification_enabled(nimcp_brain_t b
 nimcp_status_t nimcp_brain_set_topic_shift_enabled(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_set_topic_shift_threshold(nimcp_brain_t brain, float threshold);
 nimcp_status_t nimcp_brain_set_topic_shift_min_turns(nimcp_brain_t brain, uint32_t min_turns);
+
+/** NLP-2: coreference / definite-NP resolution toggle. Default OFF.
+ *  Runtime-only (re-apply after load) unless persisted via the LANC block.
+ *  Disabling clears the per-GL mention ring so re-enable starts fresh. */
+nimcp_status_t nimcp_brain_set_coref_resolution_enabled(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_coref_resolution_enabled(nimcp_brain_t brain, bool* out_enabled);
+
+/** NLP-1: subword / morphological OOV fallback toggle. Default OFF.
+ *  Enabling attaches the brain-native BPE tokenizer (brain->brain_tokenizer)
+ *  to grounded_language when present — without a tokenizer the fallback
+ *  no-ops gracefully (attempts stay 0). Runtime-only unless persisted via
+ *  the LANC block. */
+nimcp_status_t nimcp_brain_set_subword_oov_fallback_enabled(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_subword_oov_fallback_enabled(nimcp_brain_t brain, bool* out_enabled);
+
+/** Tier 1 follow-up: gl-side autoregressive produce. Default OFF. When ON,
+ *  grounded_language_produce conditions each emitted word on a running sum of
+ *  prior words' context vectors (continuation-coherence bonus) instead of a
+ *  fixed-intent rerank. Runtime toggle; persisted via the LANC block. */
+nimcp_status_t nimcp_brain_set_autoregressive_produce(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_autoregressive_produce(nimcp_brain_t brain, bool* out_enabled);
 
 /** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */
