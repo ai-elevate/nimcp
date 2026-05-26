@@ -165,6 +165,36 @@ static void test_trailing_punct_preserved(void) {
     grounded_language_destroy(gl);
 }
 
+/* C3 (morphology) + plural path: now that "creations" classifies as NOUN via
+ * the new "-tions" plural rule, a plural subject re-mention across a clause
+ * becomes "they". */
+static void test_plural_subject(void) {
+    grounded_language_t* gl = mk_gl();
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    char out[256];
+    gl_apply_pronominalization(gl,
+        "the creations organized. the creations activated", out, sizeof(out));
+    EXPECT(strcmp(out, "the creations organized. they activated") == 0,
+           "plural subject re-mention -> they (got '%s')", out);
+    grounded_language_destroy(gl);
+}
+
+/* C1: a re-mention with a verb between the mentions but NEITHER an adjacent
+ * following verb (subject) NOR preceding verb (object) is left as the full
+ * noun, not guessed into a pronoun by fallthrough. */
+static void test_unanchored_not_pronominalized(void) {
+    grounded_language_t* gl = mk_gl();
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    char out[256];
+    /* second "creation" is preceded by "and" (not a verb) and is utterance-
+     * final (no following verb) -> neither subject nor object -> unchanged. */
+    gl_apply_pronominalization(gl,
+        "the creation organized and the creation", out, sizeof(out));
+    EXPECT(strcmp(out, "the creation organized and the creation") == 0,
+           "unanchored re-mention unchanged (got '%s')", out);
+    grounded_language_destroy(gl);
+}
+
 static void test_safety(void) {
     char out[64];
     EXPECT(gl_apply_pronominalization(NULL, NULL, out, sizeof(out)) == -1, "NULL in -> -1");
@@ -183,6 +213,8 @@ int main(void) {
     test_stage_gate();
     test_punct_cross_clause_subject();
     test_trailing_punct_preserved();
+    test_plural_subject();
+    test_unanchored_not_pronominalized();
     test_safety();
     if (g_failures == 0) { fprintf(stderr, "ALL PASS\n"); return 0; }
     fprintf(stderr, "%d failures\n", g_failures);

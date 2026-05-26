@@ -3503,10 +3503,24 @@ static bool gl_agr_in_set(const char* w, const char* const* set) {
     return false;
 }
 
-/* Already inflected (don't double-apply)? Trailing -s / -ed / -ing. */
+/* Already inflected (don't double-apply)? Trailing -s / -ed / -ing.
+ * The -s test excludes the singular -ss/-us/-is endings (glass, bus, analysis,
+ * process, virus) that are NOT plurals/3sg, so F3 can still inflect them
+ * ("the cat process" -> "processes") and pronominalization doesn't misread a
+ * singular -s noun as plural ("them" instead of "it"). Genuine plurals/3sg of
+ * those stems end in -es ("glasses","buses") and still test true via -ed?no,
+ * via the trailing 's' with preceding 'e'. */
 static bool gl_agr_already_inflected(const char* w) {
     size_t n = strlen(w);
-    if (n >= 1 && w[n-1] == 's') return true;
+    if (n >= 1 && w[n-1] == 's') {
+        if (n >= 2) {
+            char p = w[n-2];
+            /* -ss / -us / -is are typically singular (glass, bus, basis). */
+            if (p != 's' && p != 'u' && p != 'i') return true;
+        } else {
+            return true;
+        }
+    }
     if (n >= 2 && w[n-2]=='e' && w[n-1]=='d') return true;
     if (n >= 3 && w[n-3]=='i' && w[n-2]=='n' && w[n-1]=='g') return true;
     return false;
@@ -3527,7 +3541,12 @@ int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
         "his","her","its","our","their","of","to","in","on","at","with","for",
         "and","or","but","very","really","quite",NULL};
 
-    enum { MAXTOK = 48, TOKLEN = 64 };
+    /* MAXTOK bounds the correctable surface length. These correctors run only
+     * on cascade produce output (never arbitrary user text); produce caps
+     * content at GL_PRODUCE_TOPK (32) + ~1 scaffolding word each (~64 surface
+     * tokens), so 128 gives ~2x headroom and the corrector does not silently
+     * drop produced tokens past the old 48 cap. */
+    enum { MAXTOK = 128, TOKLEN = 64 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
     uint32_t nt = 0;
@@ -3695,7 +3714,12 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
         {"i","my"},{"he","his"},{"she","her"},{"we","our"},{"they","their"},
         {"it","its"},{"you","your"},{NULL,NULL} };
 
-    enum { MAXTOK = 48, TOKLEN = 64 };
+    /* MAXTOK bounds the correctable surface length. These correctors run only
+     * on cascade produce output (never arbitrary user text); produce caps
+     * content at GL_PRODUCE_TOPK (32) + ~1 scaffolding word each (~64 surface
+     * tokens), so 128 gives ~2x headroom and the corrector does not silently
+     * drop produced tokens past the old 48 cap. */
+    enum { MAXTOK = 128, TOKLEN = 64 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
     uint32_t nt = 0;
@@ -3779,7 +3803,12 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
         uint32_t vi = nt;
         for (uint32_t i = 0; i < nt; i++) {
             if (gl_agr_in_set(low[i], SKIP_SLOT)) continue;
-            if (gl_f4_class(gl, low[i]) == GL_CLASS_VERB) { vi = i; break; }
+            /* Anchor on the first finite verb — including irregular pasts that
+             * morphology can't suffix-classify (ran/ate/went/saw), detected via
+             * gl_f4_is_past — so an irregular-led clause still sets the tense
+             * baseline instead of latching onto a later derived verb. */
+            if (gl_f4_class(gl, low[i]) == GL_CLASS_VERB ||
+                gl_f4_is_past(low[i])) { vi = i; break; }
         }
         if (vi < nt && gl_f4_is_past(low[vi])) {
             for (uint32_t j = vi+1; j < nt; j++) {
@@ -3952,7 +3981,10 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
         "teacher","doctor","friend","friends","someone","everyone","god","he",
         "she","him","her","i","you","we","they","who",NULL};
 
-    enum { MAXTOK = 48, TOKLEN = 64, WINDOW = 10 };
+    /* MAXTOK bounds the correctable surface length — see the note in the F3/F4
+     * correctors; 128 gives ~2x headroom over the produce cap so re-mentions
+     * past the old 48-token limit are no longer silently dropped. */
+    enum { MAXTOK = 128, TOKLEN = 64, WINDOW = 10 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
     char lem[MAXTOK][TOKLEN];   /* punctuation-stripped lemma (class + match) */
@@ -4011,7 +4043,12 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
             while (k >= 0 && (lem[k][0] == '\0' || gl_agr_in_set(lem[k], DET2))) k--;
             if (k >= 0 && gl_f4_class(gl, lem[k]) == GL_CLASS_VERB) object_pos = true;
         }
-        (void)object_pos;
+        /* Only pronominalize when the grammatical role is CONFIRMED by an
+         * adjacent verb — subject (following verb -> "they") or object
+         * (preceding verb -> "them"). An unanchored re-mention (neither, e.g.
+         * a list/appositive slot) is left as the full noun rather than guessing
+         * a plural pronoun by fallthrough. Singulars are "it" either way. */
+        if (!subject_pos && !object_pos) continue;
         size_t wl = strlen(lem[i]);
         bool plural = (wl >= 1 && lem[i][wl-1] == 's' && gl_agr_already_inflected(lem[i]));
         const char* pro = plural ? (subject_pos ? "they" : "them") : "it";
