@@ -113,6 +113,30 @@ static void test_trailing_whitespace_trimmed(void) {
            "trailing ws trimmed before terminal, got '%s'", out);
 }
 
+/* Tier 2 coherence touch-up: interior sentence starts (after a terminal mark
+ * + space) get capitalized too — the multi-sentence output that produce-side
+ * pronominalization now generates reads correctly. */
+static void test_interior_sentence_caps(void) {
+    char out[256];
+    polish_into("the creation organized. it activated", out, sizeof(out));
+    fprintf(stderr, "  '%s'\n", out);
+    EXPECT(strcmp(out, "The creation organized. It activated.") == 0,
+           "interior sentence start capitalized, got '%s'", out);
+
+    /* Three sentences, declarative-led (whole-utterance terminal is '.').
+     * Both interior starts get capitalized. */
+    polish_into("the cat sleeps. it dreams. the dog waits", out, sizeof(out));
+    fprintf(stderr, "  '%s'\n", out);
+    EXPECT(strcmp(out, "The cat sleeps. It dreams. The dog waits.") == 0,
+           "two interior caps, got '%s'", out);
+
+    /* No internal space after a dot (abbreviation-like) must NOT trigger. */
+    polish_into("u.s.a is big", out, sizeof(out));
+    fprintf(stderr, "  '%s'\n", out);
+    EXPECT(strcmp(out, "U.s.a is big.") == 0,
+           "no-space dot left alone, got '%s'", out);
+}
+
 static void test_null_and_empty(void) {
     production_cascade_state_t st;
     memset(&st, 0, sizeof(st));
@@ -133,6 +157,7 @@ int main(void) {
     test_aux_gets_question();
     test_idempotent_terminal();
     test_trailing_whitespace_trimmed();
+    test_interior_sentence_caps();
     test_null_and_empty();
 
     if (g_failures == 0) {
