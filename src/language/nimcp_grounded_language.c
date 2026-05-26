@@ -3887,12 +3887,49 @@ bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl)
     return gl ? gl->produce_discourse_seed : false;
 }
 
+/* Strip leading/trailing non-alpha (punctuation) from a lowercased token into
+ * `out`, producing a clean lemma for class lookup + same-word matching. So
+ * "barked." -> "barked", "creation," -> "creation". Internal apostrophes/
+ * hyphens are preserved (only the outer rind is removed). Empty if no alpha. */
+static void gl_pron_lemma(const char* low_tok, char* out, size_t cap) {
+    if (cap == 0) return;
+    size_t n = strlen(low_tok), b = 0, e = n;
+    while (b < e && !(low_tok[b] >= 'a' && low_tok[b] <= 'z')) b++;
+    while (e > b && !(low_tok[e-1] >= 'a' && low_tok[e-1] <= 'z')) e--;
+    size_t len = (e > b) ? (e - b) : 0;
+    if (len > cap - 1) len = cap - 1;
+    memcpy(out, low_tok + b, len);
+    out[len] = '\0';
+}
+
+/* Trailing punctuation rind of a (mixed-case) token: the maximal suffix of
+ * non-alphanumeric chars. So "creation." -> ".", "cat" -> "". Used to re-attach
+ * sentence/clause punctuation after replacing a noun with a pronoun. */
+static const char* gl_pron_trailing_punct(const char* tok) {
+    size_t n = strlen(tok), e = n;
+    while (e > 0) {
+        char c = tok[e-1];
+        bool alnum = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                     (c >= '0' && c <= '9');
+        if (alnum) break;
+        e--;
+    }
+    return tok + e;  /* points at the first trailing-punct char (or the NUL) */
+}
+
 /*============================================================================
  * Tier 2 — produce-side pronominalization (recency anaphora)
  *   A re-mentioned non-person noun becomes it/they (subject) or it/them
  *   (object) so replies don't robotically repeat the noun. Person nouns are
  *   guarded out (gender unknown). Conservative, closed-class + position based,
  *   mirroring the F3/F4 surface-corrector pattern.
+ *
+ *   T2-3 (2026-05-26): class/lemma detection is punctuation-tolerant (so a
+ *   clause-final "barked." is still seen as a verb and "creation." still
+ *   matches "creation"), subject vs object is decided by a following-verb
+ *   lookahead (noun->verb = subject "they"; verb->noun = object "them"), and
+ *   any trailing punctuation on the replaced noun is re-attached to the
+ *   pronoun so sentence boundaries survive.
  *==========================================================================*/
 int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
                                char* out, size_t out_sz) {
@@ -3918,6 +3955,7 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
     enum { MAXTOK = 48, TOKLEN = 64, WINDOW = 10 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
+    char lem[MAXTOK][TOKLEN];   /* punctuation-stripped lemma (class + match) */
     uint32_t nt = 0;
 
     {
@@ -3930,6 +3968,7 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
                    && k < TOKLEN-1) tok[nt][k++] = in[i++];
             tok[nt][k] = '\0';
             gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            gl_pron_lemma(low[nt], lem[nt], TOKLEN);
             nt++;
             while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
         }
@@ -3937,39 +3976,58 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
 
     int fixes = 0;
     for (uint32_t i = 0; i < nt; i++) {
-        if (gl_f4_class(gl, low[i]) != GL_CLASS_NOUN) continue;
-        if (gl_agr_in_set(low[i], PERSON)) continue;
+        /* All class/match work uses the punctuation-stripped lemma so a
+         * clause-final "creation." is still recognized as a re-mentioned
+         * NOUN and "barked." still counts as a verb (T2-3). */
+        if (!lem[i][0]) continue;
+        if (gl_f4_class(gl, lem[i]) != GL_CLASS_NOUN) continue;
+        if (gl_agr_in_set(lem[i], PERSON)) continue;
         /* Prior mention of the same lemma within the recency window? */
         uint32_t lo = (i > WINDOW) ? (i - WINDOW) : 0;
         int prior = -1;
         for (uint32_t j = lo; j < i; j++)
-            if (low[j][0] && strcmp(low[j], low[i]) == 0) { prior = (int)j; break; }
+            if (lem[j][0] && strcmp(lem[j], lem[i]) == 0) { prior = (int)j; break; }
         if (prior < 0) continue;
         /* Require a verb between the two mentions (object / new-clause slot). */
         bool verb_between = false;
         for (uint32_t j = (uint32_t)prior + 1; j < i; j++)
-            if (gl_f4_class(gl, low[j]) == GL_CLASS_VERB) { verb_between = true; break; }
+            if (gl_f4_class(gl, lem[j]) == GL_CLASS_VERB) { verb_between = true; break; }
         if (!verb_between) continue;
 
-        /* Object position = nearest preceding content token (skip determiners
-         * / dropped) is a verb. Picks them vs they for plurals; "it" is
-         * case-invariant for singulars. */
-        bool object_pos = false;
+        /* Subject vs object (T2-3): a re-mention is a SUBJECT if the nearest
+         * FOLLOWING content token (skipping determiners / dropped slots) is a
+         * verb ("the cat ... the cat ran" -> "it ran"), else an OBJECT if the
+         * nearest PRECEDING content token is a verb ("chased the cat" ->
+         * "chased it"). Drives they(subject)/them(object) for plurals; "it" is
+         * case-invariant for singulars either way. */
+        bool subject_pos = false, object_pos = false;
         {
-            int k = (int)i - 1;
-            while (k >= 0 && (low[k][0] == '\0' || gl_agr_in_set(low[k], DET2))) k--;
-            if (k >= 0 && gl_f4_class(gl, low[k]) == GL_CLASS_VERB) object_pos = true;
+            int k = (int)i + 1;
+            while (k < (int)nt && (lem[k][0] == '\0' || gl_agr_in_set(lem[k], DET2))) k++;
+            if (k < (int)nt && gl_f4_class(gl, lem[k]) == GL_CLASS_VERB) subject_pos = true;
         }
-        size_t wl = strlen(low[i]);
-        bool plural = (wl >= 1 && low[i][wl-1] == 's' && gl_agr_already_inflected(low[i]));
-        const char* pro = plural ? (object_pos ? "them" : "they") : "it";
+        if (!subject_pos) {
+            int k = (int)i - 1;
+            while (k >= 0 && (lem[k][0] == '\0' || gl_agr_in_set(lem[k], DET2))) k--;
+            if (k >= 0 && gl_f4_class(gl, lem[k]) == GL_CLASS_VERB) object_pos = true;
+        }
+        (void)object_pos;
+        size_t wl = strlen(lem[i]);
+        bool plural = (wl >= 1 && lem[i][wl-1] == 's' && gl_agr_already_inflected(lem[i]));
+        const char* pro = plural ? (subject_pos ? "they" : "them") : "it";
 
         /* Drop a preceding determiner so "chased the cat" -> "chased it". */
-        if (i > 0 && gl_agr_in_set(low[i-1], DET2)) {
-            tok[i-1][0] = '\0'; low[i-1][0] = '\0';
+        if (i > 0 && gl_agr_in_set(lem[i-1], DET2)) {
+            tok[i-1][0] = '\0'; low[i-1][0] = '\0'; lem[i-1][0] = '\0';
         }
-        memcpy(tok[i], pro, strlen(pro) + 1);
+        /* Re-attach the noun's trailing punctuation to the pronoun so a
+         * sentence/clause boundary survives ("creation." -> "it."). */
+        char repl[TOKLEN];
+        const char* tail = gl_pron_trailing_punct(tok[i]);
+        snprintf(repl, sizeof(repl), "%s%s", pro, tail);
+        memcpy(tok[i], repl, strlen(repl) + 1);
         gl_agr_lower(tok[i], low[i], TOKLEN);
+        gl_pron_lemma(low[i], lem[i], TOKLEN);
         fixes++;
     }
 

@@ -136,6 +136,35 @@ static void test_stage_gate(void) {
     grounded_language_destroy(gl);
 }
 
+/* T2-3: punctuation-tolerant verb detection enables a cross-clause subject
+ * re-mention ("...organized. the creation activated" -> "...organized. it
+ * activated"). Without lemma stripping, "organized." would not register as the
+ * required verb-between and the second "creation" (subject of "activated")
+ * would be left unpronominalized. */
+static void test_punct_cross_clause_subject(void) {
+    grounded_language_t* gl = mk_gl();
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    char out[256];
+    gl_apply_pronominalization(gl,
+        "the creation organized. the creation activated", out, sizeof(out));
+    EXPECT(strcmp(out, "the creation organized. it activated") == 0,
+           "cross-clause subject -> it (got '%s')", out);
+    grounded_language_destroy(gl);
+}
+
+/* T2-3: trailing punctuation on the replaced noun is re-attached to the
+ * pronoun so a sentence boundary survives ("...the creation." -> "...it."). */
+static void test_trailing_punct_preserved(void) {
+    grounded_language_t* gl = mk_gl();
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    char out[256];
+    gl_apply_pronominalization(gl,
+        "the creation organized the creation.", out, sizeof(out));
+    EXPECT(strcmp(out, "the creation organized it.") == 0,
+           "trailing period preserved (got '%s')", out);
+    grounded_language_destroy(gl);
+}
+
 static void test_safety(void) {
     char out[64];
     EXPECT(gl_apply_pronominalization(NULL, NULL, out, sizeof(out)) == -1, "NULL in -> -1");
@@ -152,6 +181,8 @@ int main(void) {
     test_object_remention();
     test_no_ops();
     test_stage_gate();
+    test_punct_cross_clause_subject();
+    test_trailing_punct_preserved();
     test_safety();
     if (g_failures == 0) { fprintf(stderr, "ALL PASS\n"); return 0; }
     fprintf(stderr, "%d failures\n", g_failures);
