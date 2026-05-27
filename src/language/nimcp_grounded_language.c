@@ -3869,6 +3869,182 @@ bool grounded_language_get_autoregressive_produce(const grounded_language_t* gl)
     return gl ? gl->autoregressive_produce : false;
 }
 
+void grounded_language_set_produce_pronominalize(grounded_language_t* gl,
+                                                 bool enabled) {
+    if (gl) gl->produce_pronominalize = enabled;
+}
+
+bool grounded_language_get_produce_pronominalize(const grounded_language_t* gl) {
+    return gl ? gl->produce_pronominalize : false;
+}
+
+void grounded_language_set_produce_discourse_seed(grounded_language_t* gl,
+                                                  bool enabled) {
+    if (gl) gl->produce_discourse_seed = enabled;
+}
+
+bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl) {
+    return gl ? gl->produce_discourse_seed : false;
+}
+
+/* Strip leading/trailing non-alpha (punctuation) from a lowercased token into
+ * `out`, producing a clean lemma for class lookup + same-word matching. So
+ * "barked." -> "barked", "creation," -> "creation". Internal apostrophes/
+ * hyphens are preserved (only the outer rind is removed). Empty if no alpha. */
+static void gl_pron_lemma(const char* low_tok, char* out, size_t cap) {
+    if (cap == 0) return;
+    size_t n = strlen(low_tok), b = 0, e = n;
+    while (b < e && !(low_tok[b] >= 'a' && low_tok[b] <= 'z')) b++;
+    while (e > b && !(low_tok[e-1] >= 'a' && low_tok[e-1] <= 'z')) e--;
+    size_t len = (e > b) ? (e - b) : 0;
+    if (len > cap - 1) len = cap - 1;
+    memcpy(out, low_tok + b, len);
+    out[len] = '\0';
+}
+
+/* Trailing punctuation rind of a (mixed-case) token: the maximal suffix of
+ * non-alphanumeric chars. So "creation." -> ".", "cat" -> "". Used to re-attach
+ * sentence/clause punctuation after replacing a noun with a pronoun. */
+static const char* gl_pron_trailing_punct(const char* tok) {
+    size_t n = strlen(tok), e = n;
+    while (e > 0) {
+        char c = tok[e-1];
+        bool alnum = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                     (c >= '0' && c <= '9');
+        if (alnum) break;
+        e--;
+    }
+    return tok + e;  /* points at the first trailing-punct char (or the NUL) */
+}
+
+/*============================================================================
+ * Tier 2 — produce-side pronominalization (recency anaphora)
+ *   A re-mentioned non-person noun becomes it/they (subject) or it/them
+ *   (object) so replies don't robotically repeat the noun. Person nouns are
+ *   guarded out (gender unknown). Conservative, closed-class + position based,
+ *   mirroring the F3/F4 surface-corrector pattern.
+ *
+ *   T2-3 (2026-05-26): class/lemma detection is punctuation-tolerant (so a
+ *   clause-final "barked." is still seen as a verb and "creation." still
+ *   matches "creation"), subject vs object is decided by a following-verb
+ *   lookahead (noun->verb = subject "they"; verb->noun = object "them"), and
+ *   any trailing punctuation on the replaced noun is re-attached to the
+ *   pronoun so sentence boundaries survive.
+ *==========================================================================*/
+int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
+                               char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    /* Developmental gate (matches Step C/F2/F4): off at stages 0-1. NULL gl
+     * is ungated for unit tests. */
+    if (gl && gl->current_stage < 2) {
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    static const char* DET2[]   = {"the","a","an",NULL};
+    /* Closed-class person/animate guard — pronominalizing these to "it" would
+     * be wrong (they need he/she, gender unknown), so skip them entirely. */
+    static const char* PERSON[] = {"man","woman","men","women","person","people",
+        "child","children","boy","girl","boys","girls","baby","babies","mother",
+        "father","mom","dad","parent","parents","king","queen","lady","guy",
+        "teacher","doctor","friend","friends","someone","everyone","god","he",
+        "she","him","her","i","you","we","they","who",NULL};
+
+    enum { MAXTOK = 48, TOKLEN = 64, WINDOW = 10 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    char lem[MAXTOK][TOKLEN];   /* punctuation-stripped lemma (class + match) */
+    uint32_t nt = 0;
+
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) tok[nt][k++] = in[i++];
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            gl_pron_lemma(low[nt], lem[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+
+    int fixes = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        /* All class/match work uses the punctuation-stripped lemma so a
+         * clause-final "creation." is still recognized as a re-mentioned
+         * NOUN and "barked." still counts as a verb (T2-3). */
+        if (!lem[i][0]) continue;
+        if (gl_f4_class(gl, lem[i]) != GL_CLASS_NOUN) continue;
+        if (gl_agr_in_set(lem[i], PERSON)) continue;
+        /* Prior mention of the same lemma within the recency window? */
+        uint32_t lo = (i > WINDOW) ? (i - WINDOW) : 0;
+        int prior = -1;
+        for (uint32_t j = lo; j < i; j++)
+            if (lem[j][0] && strcmp(lem[j], lem[i]) == 0) { prior = (int)j; break; }
+        if (prior < 0) continue;
+        /* Require a verb between the two mentions (object / new-clause slot). */
+        bool verb_between = false;
+        for (uint32_t j = (uint32_t)prior + 1; j < i; j++)
+            if (gl_f4_class(gl, lem[j]) == GL_CLASS_VERB) { verb_between = true; break; }
+        if (!verb_between) continue;
+
+        /* Subject vs object (T2-3): a re-mention is a SUBJECT if the nearest
+         * FOLLOWING content token (skipping determiners / dropped slots) is a
+         * verb ("the cat ... the cat ran" -> "it ran"), else an OBJECT if the
+         * nearest PRECEDING content token is a verb ("chased the cat" ->
+         * "chased it"). Drives they(subject)/them(object) for plurals; "it" is
+         * case-invariant for singulars either way. */
+        bool subject_pos = false, object_pos = false;
+        {
+            int k = (int)i + 1;
+            while (k < (int)nt && (lem[k][0] == '\0' || gl_agr_in_set(lem[k], DET2))) k++;
+            if (k < (int)nt && gl_f4_class(gl, lem[k]) == GL_CLASS_VERB) subject_pos = true;
+        }
+        if (!subject_pos) {
+            int k = (int)i - 1;
+            while (k >= 0 && (lem[k][0] == '\0' || gl_agr_in_set(lem[k], DET2))) k--;
+            if (k >= 0 && gl_f4_class(gl, lem[k]) == GL_CLASS_VERB) object_pos = true;
+        }
+        (void)object_pos;
+        size_t wl = strlen(lem[i]);
+        bool plural = (wl >= 1 && lem[i][wl-1] == 's' && gl_agr_already_inflected(lem[i]));
+        const char* pro = plural ? (subject_pos ? "they" : "them") : "it";
+
+        /* Drop a preceding determiner so "chased the cat" -> "chased it". */
+        if (i > 0 && gl_agr_in_set(lem[i-1], DET2)) {
+            tok[i-1][0] = '\0'; low[i-1][0] = '\0'; lem[i-1][0] = '\0';
+        }
+        /* Re-attach the noun's trailing punctuation to the pronoun so a
+         * sentence/clause boundary survives ("creation." -> "it."). */
+        char repl[TOKLEN];
+        const char* tail = gl_pron_trailing_punct(tok[i]);
+        snprintf(repl, sizeof(repl), "%s%s", pro, tail);
+        memcpy(tok[i], repl, strlen(repl) + 1);
+        gl_agr_lower(tok[i], low[i], TOKLEN);
+        gl_pron_lemma(low[i], lem[i], TOKLEN);
+        fixes++;
+    }
+
+    /* Rebuild, skipping dropped (empty) tokens. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        size_t wl = strlen(tok[i]);
+        if (wl == 0) continue;
+        if (pos + (pos ? 1 : 0) + wl + 1 > out_sz) break;
+        if (pos) out[pos++] = ' ';
+        memcpy(out + pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return fixes;
+}
+
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
                                                 uint8_t capacity) {
     if (!gl) return;
@@ -4493,6 +4669,35 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     if (gl->autoregressive_produce && gl->semantic_dim > 0) {
         emitted_ctx = (float*)nimcp_calloc(gl->semantic_dim, sizeof(float));
     }
+    /* Tier 2: discourse-seeded AR produce. When produce_discourse_seed is on
+     * (and AR is on, and stage >= 2), prime emitted_ctx with a unit-normalized,
+     * decayed copy of the most-recent discourse-turn vector instead of all
+     * zeros. This pulls the *first* produced words toward referential
+     * continuity with what was just said. The seed magnitude (GL_DISCOURSE_
+     * SEED_DECAY ~= one half-strength emitted word) means it dominates only
+     * the opening positions and then fades automatically as real emitted-word
+     * context_vectors accumulate in the running sum. ar_seeded also relaxes
+     * the position-0 bonus guard below so the seed influences word 1.
+     * Off / non-AR / stage<2 → emitted_ctx stays all-zero → byte-identical. */
+    bool ar_seeded = false;
+    if (emitted_ctx && gl->produce_discourse_seed && gl->current_stage >= 2) {
+        const float* prior = NULL;
+        uint32_t pdim = 0;
+        if (grounded_language_get_recent_turn_vector(gl, 1, &prior, &pdim) &&
+            prior && pdim == gl->semantic_dim) {
+            double nrm = 0.0;
+            for (uint32_t d = 0; d < gl->semantic_dim; d++)
+                nrm += (double)prior[d] * (double)prior[d];
+            nrm = sqrt(nrm);
+            if (nrm > 1e-9) {
+                const float GL_DISCOURSE_SEED_DECAY = 0.5f;
+                float scale = GL_DISCOURSE_SEED_DECAY / (float)nrm;
+                for (uint32_t d = 0; d < gl->semantic_dim; d++)
+                    emitted_ctx[d] = prior[d] * scale;
+                ar_seeded = true;
+            }
+        }
+    }
     bool used[GL_PRODUCE_TOPK] = {0};
     char prev_word[GL_MAX_WORD_LEN] = {0};
     gl_word_class_t prev_class = GL_CLASS_UNKNOWN;  /* drives the POS bias */
@@ -4549,7 +4754,7 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
              * position 0 (emitted_ctx all-zero) and when the flag is off
              * (emitted_ctx NULL) — affects ORDER only, never the stop floor
              * (which still gates on best_cos = raw prompt cosine). */
-            if (emitted_ctx && emit > 0 && e && e->context_vector &&
+            if (emitted_ctx && (emit > 0 || ar_seeded) && e && e->context_vector &&
                 e->context_initialized) {
                 s += GL_AR_WEIGHT * cosine_similarity(emitted_ctx,
                                                       e->context_vector,
@@ -7259,6 +7464,10 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     /* Tier 1 follow-up: autoregressive-produce flag (trailing, no version
      * bump — same forward/backward-compat pattern as the two bytes above). */
     if (mt_write_u8(f, gl->autoregressive_produce ? 1u : 0u) != 0) return -1;
+    /* Tier 2: produce-side pronominalization flag (trailing). */
+    if (mt_write_u8(f, gl->produce_pronominalize ? 1u : 0u) != 0) return -1;
+    /* Tier 2: discourse-seeded AR produce flag (trailing). */
+    if (mt_write_u8(f, gl->produce_discourse_seed ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7327,6 +7536,16 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t ar = 0;
     if (mt_read_u8(f, &ar) == 0) {
         grounded_language_set_autoregressive_produce(gl, (ar != 0));
+    }
+    /* Tier 2: produce-side pronominalization flag (trailing, optional). */
+    uint8_t pron = 0;
+    if (mt_read_u8(f, &pron) == 0) {
+        grounded_language_set_produce_pronominalize(gl, (pron != 0));
+    }
+    /* Tier 2: discourse-seeded AR produce flag (trailing, optional). */
+    uint8_t dseed = 0;
+    if (mt_read_u8(f, &dseed) == 0) {
+        grounded_language_set_produce_discourse_seed(gl, (dseed != 0));
     }
     return 0;
 }

@@ -3477,6 +3477,28 @@ void cascade_apply_surface_polish(production_cascade_state_t* state) {
     if (fi < last && out[fi] >= 'a' && out[fi] <= 'z') {
         out[fi] = (char)(out[fi] - 'a' + 'A');
     }
+    /* Tier 2 coherence touch-up (2026-05-26): capitalize the first alphabetic
+     * char of each INTERIOR sentence — i.e. after a terminal mark (. ? !) that
+     * is followed by whitespace. The leading word was capitalized just above;
+     * this handles the second-and-later sentences that multi-clause production
+     * and produce-side pronominalization now generate ("...organized. it
+     * activated" -> "...organized. It activated"). Requiring a following space
+     * keeps abbreviations without internal spaces (e.g. "U.S.A.") untouched.
+     * Idempotent — an already-uppercase sentence start is left as-is. */
+    {
+        bool at_sentence_start = false;
+        for (size_t p = 0; p < last; p++) {
+            char c = out[p];
+            if (at_sentence_start) {
+                if (c==' '||c=='\t'||c=='\n'||c=='\r'||c=='"'||c=='\'') continue;
+                if (c >= 'a' && c <= 'z') out[p] = (char)(c - 'a' + 'A');
+                at_sentence_start = false;
+            } else if ((c=='.'||c=='?'||c=='!') && p + 1 < last &&
+                       (out[p+1]==' '||out[p+1]=='\t'||out[p+1]=='\n'||out[p+1]=='\r')) {
+                at_sentence_start = true;
+            }
+        }
+    }
     if (!has_terminal) out[last] = terminal;
     out[last + extra] = '\0';
 
@@ -3796,6 +3818,23 @@ int communication_cascade_run(
                                                    f4, sizeof(f4));
                 if (f4_fixes > 0) {
                     char* corrected = cascade_repair_strdup(f4);
+                    if (corrected) {
+                        nimcp_free(out_state->utterance);
+                        out_state->utterance = corrected;
+                    }
+                }
+            }
+
+            /* Tier 2: produce-side pronominalization (recency anaphora) over
+             * the F4-polished utterance. Default-OFF inside the corrector;
+             * picks correct pronoun case itself so it runs AFTER F4. */
+            if (out_state->utterance && out_state->utterance[0]) {
+                char pron[1024];
+                int p_fixes = gl_apply_pronominalization(brain->grounded_lang,
+                                                         out_state->utterance,
+                                                         pron, sizeof(pron));
+                if (p_fixes > 0) {
+                    char* corrected = cascade_repair_strdup(pron);
                     if (corrected) {
                         nimcp_free(out_state->utterance);
                         out_state->utterance = corrected;
