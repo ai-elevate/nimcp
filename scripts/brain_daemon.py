@@ -5626,12 +5626,16 @@ def main():
     # See _activate_cb_default for the rescale-marker idempotency contract.
     _activate_cb_default(brain, logger)
 
-    # CROSS Wave-3 (2026-05-19) — apply runtime language-architecture
-    # config so slice-1..7 flags survive checkpoint reload. WITHOUT this,
-    # every brain start reverts to bridge-only behavior because all the
-    # slice setters are runtime-only and not persisted in brain_save.
-    # See _apply_runtime_lang_config for path resolution.
-    _apply_runtime_lang_config(brain, logger)
+    # CROSS Wave-3 (2026-05-19) — runtime language-architecture config is
+    # applied LATER, immediately after brain.eager_init_cognitive() (see below).
+    # MOVED 2026-05-27: it used to run here, but eager_init_cognitive() is what
+    # creates brain->grounded_lang on a --resume'd brain (and loads the .gl_lang
+    # sidecar via brain_load_post_init_sidecars). Running the config apply here
+    # meant grounded_lang was still NULL, so every gl-routed setter
+    # (autoregressive_produce / produce_pronominalize / produce_discourse_seed /
+    # produce_clause_frame / coref / subword / sentence_segmentation /
+    # speech_act / topic_shift / reconsolidation) silently FAILED with
+    # NIMCP_ERROR — no grounded-language flag ever took effect on the pod.
 
     # One-shot catch-up sleep cycle after resume. Previous sessions ran
     # without enable_sleep_wake_cycle, so 1000s of learn steps accumulated
@@ -5691,6 +5695,20 @@ def main():
         print(f"  [6.5/8] ✓ Eager cognitive init: {count} subsystems created", flush=True)
     except Exception as e:
         print(f"  [6.5/8] ⚠ Eager cognitive init failed: {e} (non-fatal)", flush=True)
+
+    # CROSS Wave-3 (2026-05-19) — apply runtime language-architecture config so
+    # slice-1..7 + Tier-1/2 + FND flags survive checkpoint reload (they are
+    # runtime-only, not persisted in brain_save). MUST run AFTER
+    # eager_init_cognitive(): that call is what creates brain->grounded_lang on a
+    # --resume'd brain and loads the .gl_lang sidecar (brain_load_post_init_
+    # sidecars). Before this move (2026-05-27) the apply ran earlier while
+    # grounded_lang was still NULL, so EVERY gl-routed language setter failed
+    # silently and no grounded-language flag (autoregressive_produce,
+    # produce_pronominalize, produce_discourse_seed, produce_clause_frame, coref,
+    # subword, sentence_segmentation, speech_act, topic_shift, reconsolidation)
+    # ever took effect on the pod. See _apply_runtime_lang_config for path
+    # resolution.
+    _apply_runtime_lang_config(brain, logger)
 
     # Optional base-lexicon bootstrap. Runs only when:
     #   1. --bootstrap-lexicon PATH was supplied, AND
