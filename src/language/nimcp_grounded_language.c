@@ -4678,22 +4678,49 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
  * Production
  *===========================================================================*/
 
-/* FND-1 (2026-05-27): predicate->argument clause frame. Organize the grounded
- * top-K into a canonical SVO clause instead of a bigram/POS-reranked bag:
+/* Append one space-separated token to the clause buffer. Content words count
+ * toward emit + score_sum and the max_content budget; scaffolding (the/is)
+ * counts toward fn only. Returns false (caller stops) when the content budget
+ * is exhausted or the token wouldn't fit. */
+static bool gl_clause_emit_tok(char* buf, size_t buf_sz, size_t* pos,
+                               const char* w, float score, bool content,
+                               uint32_t* emit, uint32_t* fn, float* ssum,
+                               uint32_t max_content) {
+    if (content && *emit >= max_content) return false;
+    size_t wl = strlen(w);
+    if (*pos + wl + 2 >= buf_sz) return false;
+    if (*pos > 0) buf[(*pos)++] = ' ';
+    memcpy(buf + *pos, w, wl); *pos += wl;
+    if (content) { (*emit)++; *ssum += score; }
+    else         { (*fn)++; }
+    return true;
+}
+
+/* FND-1/FND-2 (2026-05-27): predicate->argument clause frame. Organize the
+ * grounded top-K into a real clause instead of a bigram/POS-reranked bag.
  *   - head VERB  = highest grounded-score verb candidate (the predicate)
  *   - SUBJECT    = highest grounded-score noun (agent)
  *   - OBJECT     = next-highest noun (patient), if any
- * rendered "the SUBJECT VERB the OBJECT" (determiners are F2-style scaffolding;
- * verb inflection + a/an are left to the F3/F4 surface correctors downstream).
- * Only the word ORDER is templated (English SVO, a Broca-level parameter) —
- * every slot is filled by the same grounded score the greedy path uses, so WHAT
- * is said stays fully data-driven.
+ *   - ADJECTIVE  = highest grounded-score adjective (modifier or predicate)
+ * Two clause shapes:
+ *   SVO    (a head verb clears the floor): "the [ADJ] SUBJECT VERB [the OBJECT]"
+ *          — the adjective, when present + above floor, modifies the subject NP.
+ *   COPULA (no head verb, but a noun + an above-floor adjective): "the SUBJECT
+ *          is ADJECTIVE" — covers descriptive/stative intents that would
+ *          otherwise fall back to a bag. (FND-2)
+ * Determiners + the copula "is" are F2-style scaffolding; verb inflection +
+ * a/an are left to the F3/F4 surface correctors downstream. Only the word ORDER
+ * is templated (English SVO/copula, a Broca-level parameter) — every slot is
+ * filled by the same grounded score the greedy path uses, so WHAT is said stays
+ * fully data-driven.
  *
  * Writes buf/*pos_io/*fn_io/*score_io and returns the content-word count (>=1)
- * on success, or -1 to tell the caller to fall back to the greedy emit: no head
- * verb, no noun, or the head verb's grounded score is below `floor` (we don't
- * force a clause on weak signal). `max_words` caps content words (subj/verb/obj).
- * Class is taken from gl_f4_class (learned class when confident, else morphology). */
+ * on success, or -1 to fall back to greedy: no subject, or neither a
+ * floor-clearing head verb NOR a floor-clearing predicate adjective (we don't
+ * force a clause on weak signal). Subject is the word-0 analogue (always kept);
+ * object + modifier/predicate adjective are floor-gated like greedy's
+ * subsequent words. `max_words` caps content words. Class is from gl_f4_class
+ * (learned class when confident, else morphology). */
 static int gl_build_clause_frame(grounded_language_t* gl,
                                  const char** topk_words,
                                  const float* topk_scores,
@@ -4701,8 +4728,8 @@ static int gl_build_clause_frame(grounded_language_t* gl,
                                  char* buf, size_t buf_sz,
                                  size_t* pos_io, uint32_t* fn_io, float* score_io) {
     if (!gl || !topk_words || !topk_scores || !buf || buf_sz == 0) return -1;
-    int verb_idx = -1, subj_idx = -1, obj_idx = -1;
-    float verb_best = -1e30f, subj_best = -1e30f, obj_best = -1e30f;
+    int verb_idx = -1, subj_idx = -1, obj_idx = -1, adj_idx = -1;
+    float verb_best = -1e30f, subj_best = -1e30f, obj_best = -1e30f, adj_best = -1e30f;
     for (uint32_t j = 0; j < n; j++) {
         const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
         if (e && (e->learned_class == GL_CLASS_FUNCTION ||
@@ -4719,39 +4746,54 @@ static int gl_build_clause_frame(grounded_language_t* gl,
             } else if (s > obj_best) {
                 obj_best = s; obj_idx = (int)j;
             }
+        } else if (cls == GL_CLASS_ADJECTIVE) {
+            if (s > adj_best) { adj_best = s; adj_idx = (int)j; }
         }
     }
-    /* Need a predicate + at least a subject, and the predicate must clear the
-     * developmental floor (else fall back rather than force a weak clause). */
-    if (verb_idx < 0 || subj_idx < 0 || verb_best < floor) return -1;
+    if (subj_idx < 0) return -1;  /* every clause shape needs a subject head */
+
+    bool have_verb = (verb_idx >= 0 && verb_best >= floor);
+    bool have_adj  = (adj_idx  >= 0 && adj_best  >= floor);
+    if (!have_verb && !have_adj) return -1;  /* no predicate at all → greedy */
+
     /* Floor-gate the OBJECT like the greedy path floor-gates subsequent words
-     * (the greedy loop always emits word 0 but stops once a later word's cosine
-     * drops below the floor). Subject = the obligatory agent (word-0 analogue,
-     * always kept); object = an optional patient — drop it when it's below the
-     * floor so we emit an intransitive "the SUBJECT VERB" rather than pad the
-     * clause with a weakly-relevant noun. (Walkthrough LOW-1.) */
+     * (greedy always emits word 0 but stops once a later word drops below the
+     * floor). Subject = the obligatory head (word-0 analogue, always kept).
+     * (Walkthrough LOW-1.) */
     if (obj_idx >= 0 && obj_best < floor) obj_idx = -1;
 
-    struct { int idx; bool det; } slots[3];
-    int nslots = 0;
-    slots[nslots].idx = subj_idx; slots[nslots].det = true;  nslots++;  /* agent NP */
-    slots[nslots].idx = verb_idx; slots[nslots].det = false; nslots++;  /* predicate */
-    if (obj_idx >= 0) { slots[nslots].idx = obj_idx; slots[nslots].det = true; nslots++; }
-
     size_t pos = 0; uint32_t emit = 0, fn = 0; float ssum = 0.0f;
-    for (int si = 0; si < nslots && emit < max_words; si++) {
-        const char* w = topk_words[slots[si].idx];
-        size_t wl = strlen(w);
-        size_t dl = slots[si].det ? 3u : 0u;  /* "the" */
-        if (pos + dl + wl + 3 >= buf_sz) break;
-        if (slots[si].det) {
-            if (pos > 0) buf[pos++] = ' ';
-            memcpy(buf + pos, "the", 3); pos += 3; fn++;
+    bool ok = true;
+    if (have_verb) {
+        /* SVO: "the [ADJ] SUBJECT VERB [the OBJECT]". The adjective (when above
+         * floor) is a pre-nominal modifier of the subject NP. */
+        ok = gl_clause_emit_tok(buf, buf_sz, &pos, "the", 0.0f, false,
+                                &emit, &fn, &ssum, max_words);
+        if (ok && have_adj)
+            ok = gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[adj_idx],
+                                    adj_best, true, &emit, &fn, &ssum, max_words);
+        if (ok)
+            ok = gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[subj_idx],
+                                    subj_best, true, &emit, &fn, &ssum, max_words);
+        if (ok)
+            ok = gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[verb_idx],
+                                    verb_best, true, &emit, &fn, &ssum, max_words);
+        if (ok && obj_idx >= 0) {
+            gl_clause_emit_tok(buf, buf_sz, &pos, "the", 0.0f, false,
+                               &emit, &fn, &ssum, max_words);
+            gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[obj_idx],
+                               obj_best, true, &emit, &fn, &ssum, max_words);
         }
-        if (pos > 0) buf[pos++] = ' ';
-        memcpy(buf + pos, w, wl); pos += wl;
-        ssum += topk_scores[slots[si].idx];
-        emit++;
+    } else {
+        /* COPULA: "the SUBJECT is ADJECTIVE" (have_adj is guaranteed here). */
+        gl_clause_emit_tok(buf, buf_sz, &pos, "the", 0.0f, false,
+                           &emit, &fn, &ssum, max_words);
+        gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[subj_idx],
+                           subj_best, true, &emit, &fn, &ssum, max_words);
+        gl_clause_emit_tok(buf, buf_sz, &pos, "is", 0.0f, false,
+                           &emit, &fn, &ssum, max_words);
+        gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[adj_idx],
+                           adj_best, true, &emit, &fn, &ssum, max_words);
     }
     if (emit == 0) return -1;
     buf[pos] = '\0';

@@ -166,6 +166,61 @@ static void test_fallback_no_verb(void) {
     grounded_language_destroy(gl);
 }
 
+/* FND-2: copula frame — no head verb but a noun + a predicate adjective ->
+ * "the SUBJECT is ADJECTIVE" instead of falling back to a bag. */
+static void test_copula_frame(void) {
+    grounded_language_t* gl = grounded_language_create(SDIM, NULL);
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    grounded_language_set_current_stage_int(gl, 2);
+    ground_word(gl, "creation", 4u);    /* NOUN (-tion)      */
+    ground_word(gl, "creative", 11u);   /* ADJECTIVE (-ive)  */
+    float intent[SDIM] = {0};
+    intent[4u] = 1.0f; intent[11u] = 1.0f;
+    grounded_language_set_produce_clause_frame(gl, true);
+    gl_production_result_t r = {0};
+    int rc = grounded_language_produce(gl, intent, SDIM, GL_PRODUCE_DESCRIBE, &r);
+    EXPECT(rc == 0 || rc == -1, "copula valid rc (%d)", rc);
+    if (rc == 0 && r.text) {
+        fprintf(stderr, "  copula: '%s'\n", r.text);
+        int pc  = word_pos(r.text, "creation");
+        int pis = word_pos(r.text, "is");
+        int pcr = word_pos(r.text, "creative");
+        EXPECT(pc >= 0 && pis >= 0 && pcr >= 0 && pc < pis && pis < pcr,
+               "copula order subject(%d) < is(%d) < adj(%d) in '%s'",
+               pc, pis, pcr, r.text);
+    }
+    grounded_language_destroy(gl);
+}
+
+/* FND-2: adjective NP modifier in SVO -> "the ADJ SUBJECT VERB ...". */
+static void test_adjective_modifier(void) {
+    grounded_language_t* gl = grounded_language_create(SDIM, NULL);
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    grounded_language_set_current_stage_int(gl, 2);
+    ground_word(gl, "creation", 4u);    /* NOUN (subject)    */
+    ground_word(gl, "activate", 11u);   /* VERB (-ate)       */
+    ground_word(gl, "powerful", 18u);   /* ADJECTIVE (-ful)  */
+    float intent[SDIM] = {0};
+    intent[4u] = 1.0f; intent[11u] = 1.0f; intent[18u] = 1.0f;
+    grounded_language_set_produce_clause_frame(gl, true);
+    gl_production_result_t r = {0};
+    int rc = grounded_language_produce(gl, intent, SDIM, GL_PRODUCE_DESCRIBE, &r);
+    EXPECT(rc == 0 || rc == -1, "adj-mod valid rc (%d)", rc);
+    if (rc == 0 && r.text) {
+        fprintf(stderr, "  adj-mod: '%s'\n", r.text);
+        int pp  = word_pos(r.text, "powerful");
+        int pcr = word_pos(r.text, "creation");
+        int pa  = word_pos(r.text, "activate");
+        /* adjective modifies the subject NP: precedes the subject noun, which
+         * in turn precedes the verb. */
+        if (pp >= 0 && pcr >= 0)
+            EXPECT(pp < pcr, "adjective before subject noun in '%s'", r.text);
+        if (pcr >= 0 && pa >= 0)
+            EXPECT(pcr < pa, "subject before verb in '%s'", r.text);
+    }
+    grounded_language_destroy(gl);
+}
+
 static void test_stage_gate(void) {
     /* Stage 1 + flag ON -> clause frame must not engage; produce path still
      * runs (no crash, valid rc). */
@@ -187,6 +242,8 @@ int main(void) {
     test_persist_round_trip();
     test_clause_shape();
     test_fallback_no_verb();
+    test_copula_frame();
+    test_adjective_modifier();
     test_stage_gate();
     if (g_failures == 0) { fprintf(stderr, "ALL PASS\n"); return 0; }
     fprintf(stderr, "%d failures\n", g_failures);
