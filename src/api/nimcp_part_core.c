@@ -2883,6 +2883,29 @@ nimcp_status_t nimcp_brain_grounded_respond(
                                                         : state.fluency;
                 *out_confidence = conf;
             }
+            /* S1 (walkthrough fix, 2026-05-27): output-side toxicity
+             * defense-in-depth on the cascade-produced utterance. The
+             * respond_via_cascade path returns here WITHOUT calling
+             * grounded_language_respond, which is where the output toxicity
+             * classifier normally runs — so a toxic cascade output would
+             * otherwise get no audit entry and no confidence penalty. Mirror
+             * the gl policy exactly: mark-never-delete (do NOT alter the
+             * text), log a LGSS_ACTION_BLOCKED event, and reduce confidence
+             * proportional to predicted harm. NULL-safe: no classifier → skip. */
+            if (b->toxicity_classifier && out_response[0] != '\0') {
+                toxicity_result_t otox = {0};
+                if (toxicity_classify(
+                        (toxicity_classifier_t*)b->toxicity_classifier,
+                        out_response, &otox) == 0 && otox.would_block) {
+                    nimcp_safety_audit_log_event(
+                        NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 2,
+                        "cascade_produce flagged: cat=%s harm=%.2f fair=%.2f "
+                        "input='%.40s' output='%.40s'",
+                        otox.matched_category, otox.predicted_harm,
+                        otox.fairness_violation, input_text, out_response);
+                    if (out_confidence) *out_confidence *= (1.0f - otox.predicted_harm);
+                }
+            }
             cascade_state_cleanup(&state);
             return NIMCP_OK;
         }

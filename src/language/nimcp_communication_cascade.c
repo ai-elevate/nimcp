@@ -3403,6 +3403,44 @@ static char* cascade_repair_strdup(const char* s) {
     return out;
 }
 
+/* Tier 1/2 surface correctors applied in sequence to out_state->utterance:
+ * F3 agreement -> F4 fluency (a/an, tense, pronoun case) -> T2 pronominalization.
+ * Factored out (C4 walkthrough fix, 2026-05-27) so BOTH the syntactic stage and
+ * the speech-repair retry WINNER get corrected — the retry loop calls
+ * cascade_stage_syntactic directly, which does not itself run these, so a
+ * repaired-and-swapped utterance previously skipped agreement/fluency/pronoun
+ * correction. Each corrector is conservative + no-op when nothing applies;
+ * F4/T2 are stage-gated (>=2) internally. Idempotent, so a second application
+ * on the winner (already corrected once if it came from the main path) is safe. */
+static void cascade_apply_surface_correctors(brain_t brain,
+                                             production_cascade_state_t* out_state) {
+    if (!brain || !brain->grounded_lang || !out_state ||
+        !out_state->utterance || !out_state->utterance[0]) return;
+    char buf[1024];
+    int fixes = gl_apply_svo_agreement(brain->grounded_lang,
+                                       out_state->utterance, buf, sizeof(buf));
+    if (fixes > 0) {
+        char* c = cascade_repair_strdup(buf);
+        if (c) { nimcp_free(out_state->utterance); out_state->utterance = c; }
+    }
+    if (out_state->utterance && out_state->utterance[0]) {
+        int f4 = gl_apply_f4_fluency(brain->grounded_lang,
+                                     out_state->utterance, buf, sizeof(buf));
+        if (f4 > 0) {
+            char* c = cascade_repair_strdup(buf);
+            if (c) { nimcp_free(out_state->utterance); out_state->utterance = c; }
+        }
+    }
+    if (out_state->utterance && out_state->utterance[0]) {
+        int p = gl_apply_pronominalization(brain->grounded_lang,
+                                           out_state->utterance, buf, sizeof(buf));
+        if (p > 0) {
+            char* c = cascade_repair_strdup(buf);
+            if (c) { nimcp_free(out_state->utterance); out_state->utterance = c; }
+        }
+    }
+}
+
 /* Tier 1 Step F1 (2026-05-24): surface polish on the final utterance —
  * capitalize the first letter and append terminal punctuation, so the
  * returned text reads as written language ("the cat sits" → "The cat
@@ -3787,61 +3825,12 @@ int communication_cascade_run(
         cascade_counter_invoke(brain, CASCADE_STAGE_SYNTACTIC);
         cascade_stage_syntactic(brain, out_state);
 
-        /* Tier 1 Step F3: subject-verb / quantifier-noun agreement
-         * correction on the (possibly Broca-rerendered) utterance. Broca's
-         * own inflector is a word_id stub, so this runs a real closed-class
-         * + morphology corrector over the surface text instead. In-place
-         * inflection preserves word_count. No-op when nothing needs fixing
-         * or there's no usable utterance. */
-        if (brain->grounded_lang && out_state->utterance &&
-            out_state->utterance[0]) {
-            char agr[1024];
-            int fixes = gl_apply_svo_agreement(brain->grounded_lang,
-                                               out_state->utterance,
-                                               agr, sizeof(agr));
-            if (fixes > 0) {
-                char* corrected = cascade_repair_strdup(agr);
-                if (corrected) {
-                    nimcp_free(out_state->utterance);
-                    out_state->utterance = corrected;
-                }
-            }
-
-            /* Tier 1 Step F4: production-fluency polish (article a/an,
-             * tense consistency, pronoun case + possessives) over the
-             * (possibly F3-corrected) utterance. Stage-gated to >= 2 inside
-             * the corrector; conservative + no-op when nothing applies. */
-            if (out_state->utterance && out_state->utterance[0]) {
-                char f4[1024];
-                int f4_fixes = gl_apply_f4_fluency(brain->grounded_lang,
-                                                   out_state->utterance,
-                                                   f4, sizeof(f4));
-                if (f4_fixes > 0) {
-                    char* corrected = cascade_repair_strdup(f4);
-                    if (corrected) {
-                        nimcp_free(out_state->utterance);
-                        out_state->utterance = corrected;
-                    }
-                }
-            }
-
-            /* Tier 2: produce-side pronominalization (recency anaphora) over
-             * the F4-polished utterance. Default-OFF inside the corrector;
-             * picks correct pronoun case itself so it runs AFTER F4. */
-            if (out_state->utterance && out_state->utterance[0]) {
-                char pron[1024];
-                int p_fixes = gl_apply_pronominalization(brain->grounded_lang,
-                                                         out_state->utterance,
-                                                         pron, sizeof(pron));
-                if (p_fixes > 0) {
-                    char* corrected = cascade_repair_strdup(pron);
-                    if (corrected) {
-                        nimcp_free(out_state->utterance);
-                        out_state->utterance = corrected;
-                    }
-                }
-            }
-        }
+        /* Tier 1/2 surface correctors (F3 agreement -> F4 fluency -> T2
+         * pronominalization) on the (possibly Broca-rerendered) utterance.
+         * Factored into a helper so the speech-repair retry winner gets the
+         * same treatment (C4 fix). Conservative + no-op when nothing applies;
+         * F4/T2 stage-gated (>=2) internally; word_count preserved. */
+        cascade_apply_surface_correctors(brain, out_state);
         /* SLICE 3 — Stage Syntactic PREDICTION: Broca expects the
          * bridge's word sequence to form a valid phrase structure.
          * PE = 1.0 - syntactic_validity (clamped to [0,1]) when the
@@ -4052,6 +4041,11 @@ int communication_cascade_run(
                     }
                 }
                 out_state->word_count = wc;
+                /* C4 fix: the repair winner came straight out of
+                 * cascade_stage_syntactic (no inline correctors), so run the
+                 * F3/F4/T2 surface correctors on it now — otherwise a repaired
+                 * utterance ships with un-corrected agreement/fluency/pronouns. */
+                cascade_apply_surface_correctors(brain, out_state);
             }
 
             cascade_record_complete(out_state);
