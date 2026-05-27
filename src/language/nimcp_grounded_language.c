@@ -4696,12 +4696,36 @@ static bool gl_clause_emit_tok(char* buf, size_t buf_sz, size_t* pos,
     return true;
 }
 
-/* FND-1/FND-2 (2026-05-27): predicate->argument clause frame. Organize the
- * grounded top-K into a real clause instead of a bigram/POS-reranked bag.
+/* FND-2b: closed-set animacy prior. Animate referents (people, family/role
+ * nouns, common animals) are NOUNS that morphology can't suffix-classify
+ * ("woman"/"dog" have no -tion/-ment ending) — so this both (a) lets them be
+ * recognized as noun candidates and (b) drives the animate-agent preference.
+ * A learned animacy feature would be the fuller solution; this closed prior
+ * mirrors the codebase's other closed-class tables (function words, PERSON
+ * guard). Match is on the lowercased lexicon form. */
+static bool gl_is_animate(const char* w) {
+    static const char* ANIMATE[] = {
+        "man","woman","men","women","person","people","child","children",
+        "boy","girl","boys","girls","baby","babies","mother","father","mom",
+        "dad","parent","parents","king","queen","prince","princess","lady",
+        "guy","teacher","student","doctor","nurse","friend","friends","sister",
+        "brother","son","daughter","family","human","creature","dog","cat",
+        "bird","fish","horse","cow","pig","sheep","lion","tiger","bear",
+        "mouse","rabbit","wolf","fox",NULL };
+    if (!w || !w[0]) return false;
+    for (int i = 0; ANIMATE[i]; i++) if (strcmp(w, ANIMATE[i]) == 0) return true;
+    return false;
+}
+
+/* FND-1/FND-2/FND-2b (2026-05-27): predicate->argument clause frame. Organize
+ * the grounded top-K into a real clause instead of a bigram/POS-reranked bag.
  *   - head VERB  = highest grounded-score verb candidate (the predicate)
- *   - SUBJECT    = highest grounded-score noun (agent)
+ *   - SUBJECT    = highest grounded-score noun (agent); an animate noun is
+ *                  preferred for this role over an inanimate one (FND-2b)
  *   - OBJECT     = next-highest noun (patient), if any
  *   - ADJECTIVE  = highest grounded-score adjective (modifier or predicate)
+ * A word in the animate set counts as a NOUN candidate even when morphology
+ * returns UNKNOWN, so animate-referent intents can form clause subjects.
  * Two clause shapes:
  *   SVO    (a head verb clears the floor): "the [ADJ] SUBJECT VERB [the OBJECT]"
  *          — the adjective, when present + above floor, modifies the subject NP.
@@ -4730,27 +4754,44 @@ static int gl_build_clause_frame(grounded_language_t* gl,
     if (!gl || !topk_words || !topk_scores || !buf || buf_sz == 0) return -1;
     int verb_idx = -1, subj_idx = -1, obj_idx = -1, adj_idx = -1;
     float verb_best = -1e30f, subj_best = -1e30f, obj_best = -1e30f, adj_best = -1e30f;
+    bool subj_anim = false, obj_anim = false;  /* FND-2b: per-slot animacy */
     for (uint32_t j = 0; j < n; j++) {
         const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
         if (e && (e->learned_class == GL_CLASS_FUNCTION ||
                   e->learned_class == GL_CLASS_PRONOUN)) continue;
         gl_word_class_t cls = gl_f4_class(gl, topk_words[j]);
         float s = topk_scores[j];
+        /* FND-2b: an animate-set word is a NOUN candidate even when morphology
+         * leaves it UNKNOWN ("woman"/"dog" have no nominal suffix). */
+        bool anim = gl_is_animate(topk_words[j]);
+        bool is_noun = (cls == GL_CLASS_NOUN) || anim;
         if (cls == GL_CLASS_VERB) {
             if (s > verb_best) { verb_best = s; verb_idx = (int)j; }
-        } else if (cls == GL_CLASS_NOUN) {
-            /* Track the top-2 nouns by score (subject, then object). */
+        } else if (is_noun) {
+            /* Track the top-2 nouns by score (subject, then object), carrying
+             * each one's animacy so roles can be re-arbitrated below. */
             if (s > subj_best) {
-                obj_best = subj_best; obj_idx = subj_idx;
-                subj_best = s;        subj_idx = (int)j;
+                obj_best = subj_best; obj_idx = subj_idx; obj_anim = subj_anim;
+                subj_best = s;        subj_idx = (int)j;  subj_anim = anim;
             } else if (s > obj_best) {
-                obj_best = s; obj_idx = (int)j;
+                obj_best = s; obj_idx = (int)j; obj_anim = anim;
             }
         } else if (cls == GL_CLASS_ADJECTIVE) {
             if (s > adj_best) { adj_best = s; adj_idx = (int)j; }
         }
     }
     if (subj_idx < 0) return -1;  /* every clause shape needs a subject head */
+
+    /* FND-2b: animate-agent preference. If the patient slot is animate and the
+     * agent slot is not, swap their roles so the animate referent is the
+     * subject (animate agents are a cross-linguistic default). Score still
+     * decides WHICH two nouns appear; animacy only arbitrates their roles. */
+    if (obj_idx >= 0 && obj_anim && !subj_anim) {
+        int   ti = subj_idx;  subj_idx  = obj_idx;  obj_idx  = ti;
+        float tb = subj_best; subj_best = obj_best; obj_best = tb;
+        bool  ta = subj_anim; subj_anim = obj_anim; obj_anim = ta;
+    }
+    (void)subj_anim;  /* consumed only by the swap above */
 
     bool have_verb = (verb_idx >= 0 && verb_best >= floor);
     bool have_adj  = (adj_idx  >= 0 && adj_best  >= floor);

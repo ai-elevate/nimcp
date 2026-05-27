@@ -221,6 +221,40 @@ static void test_adjective_modifier(void) {
     grounded_language_destroy(gl);
 }
 
+/* FND-2b: animate-agent preference. An animate word is a noun candidate even
+ * without noun morphology, and wins the subject role over a higher-scoring
+ * inanimate noun. Here "creation" is grounded to outscore "woman", so without
+ * animacy "creation" would be the subject; the swap makes "woman" the subject
+ * ("the woman activate the creation"). */
+static void test_animacy_subject(void) {
+    grounded_language_t* gl = grounded_language_create(SDIM, NULL);
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    grounded_language_set_current_stage_int(gl, 2);
+    ground_word(gl, "creation", 4u);    /* NOUN, will outscore woman */
+    ground_word(gl, "woman",   18u);    /* animate (morphology UNKNOWN) */
+    ground_word(gl, "activate", 11u);   /* VERB */
+    /* Intent matches creation strongly, woman weakly -> creation is the
+     * top-scoring noun; animacy must still promote woman to subject. */
+    float intent[SDIM] = {0};
+    intent[4u] = 1.0f; intent[9u] = 0.4f; intent[11u] = 1.0f; intent[18u] = 0.5f;
+    grounded_language_set_produce_clause_frame(gl, true);
+    gl_production_result_t r = {0};
+    int rc = grounded_language_produce(gl, intent, SDIM, GL_PRODUCE_DESCRIBE, &r);
+    EXPECT(rc == 0 || rc == -1, "animacy valid rc (%d)", rc);
+    if (rc == 0 && r.text) {
+        fprintf(stderr, "  animacy: '%s'\n", r.text);
+        int pw = word_pos(r.text, "woman");
+        int pa = word_pos(r.text, "activate");
+        int pc = word_pos(r.text, "creation");
+        EXPECT(pw >= 0, "animate 'woman' present as a candidate (got '%s')", r.text);
+        if (pw >= 0 && pa >= 0)
+            EXPECT(pw < pa, "animate subject 'woman' precedes verb in '%s'", r.text);
+        if (pc >= 0 && pa >= 0)
+            EXPECT(pc > pa, "inanimate 'creation' is the object (after verb) in '%s'", r.text);
+    }
+    grounded_language_destroy(gl);
+}
+
 static void test_stage_gate(void) {
     /* Stage 1 + flag ON -> clause frame must not engage; produce path still
      * runs (no crash, valid rc). */
@@ -244,6 +278,7 @@ int main(void) {
     test_fallback_no_verb();
     test_copula_frame();
     test_adjective_modifier();
+    test_animacy_subject();
     test_stage_gate();
     if (g_failures == 0) { fprintf(stderr, "ALL PASS\n"); return 0; }
     fprintf(stderr, "%d failures\n", g_failures);
