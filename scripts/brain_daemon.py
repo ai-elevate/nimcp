@@ -465,6 +465,8 @@ def _apply_runtime_lang_config(brain, logger):
         ("produce_pronominalize",              "set_produce_pronominalize",              _bool),
         # Tier 2 — discourse-seeded autoregressive produce (2026-05-26).
         ("produce_discourse_seed",             "set_produce_discourse_seed",             _bool),
+        # FND-1 — SVO clause/argument frame in produce (2026-05-27).
+        ("produce_clause_frame",               "set_produce_clause_frame",               _bool),
     ]
     for key, method, extract in table:
         if key not in cfg:

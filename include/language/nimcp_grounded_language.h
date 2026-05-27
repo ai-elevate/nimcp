@@ -2000,6 +2000,21 @@ void grounded_language_set_produce_discourse_seed(grounded_language_t* gl,
 bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl);
 
 /**
+ * @brief Enable/disable the SVO clause/argument frame in produce (FND-1).
+ *        Default OFF. When ON and stage >= 2, grounded_language_produce builds
+ *        a canonical "the SUBJECT VERB the OBJECT" clause from the grounded
+ *        top-K (best verb = predicate, best two nouns = agent/patient) instead
+ *        of a bigram/POS-reranked bag of content words. Falls back to the
+ *        greedy emit when there's no head verb / no noun, or the head verb's
+ *        grounded score is below the developmental confidence floor (never
+ *        worse than baseline). Word order only is templated; slots are filled
+ *        by the same grounded score the greedy path uses.
+ */
+void grounded_language_set_produce_clause_frame(grounded_language_t* gl,
+                                                bool enabled);
+bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl);
+
+/**
  * @brief Tier 2 produce-side pronominalization pass. Conservative,
  *        closed-class + position driven; person nouns skipped. Runs after F4
  *        in the cascade. gl supplies POS class lookups (NULL → morphology

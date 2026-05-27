@@ -3965,6 +3965,15 @@ bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl)
     return gl ? gl->produce_discourse_seed : false;
 }
 
+void grounded_language_set_produce_clause_frame(grounded_language_t* gl,
+                                                bool enabled) {
+    if (gl) gl->produce_clause_frame = enabled;
+}
+
+bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl) {
+    return gl ? gl->produce_clause_frame : false;
+}
+
 /* Strip leading/trailing non-alpha (punctuation) from a lowercased token into
  * `out`, producing a clean lemma for class lookup + same-word matching. So
  * "barked." -> "barked", "creation," -> "creation". Internal apostrophes/
@@ -4669,6 +4678,80 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
  * Production
  *===========================================================================*/
 
+/* FND-1 (2026-05-27): predicate->argument clause frame. Organize the grounded
+ * top-K into a canonical SVO clause instead of a bigram/POS-reranked bag:
+ *   - head VERB  = highest grounded-score verb candidate (the predicate)
+ *   - SUBJECT    = highest grounded-score noun (agent)
+ *   - OBJECT     = next-highest noun (patient), if any
+ * rendered "the SUBJECT VERB the OBJECT" (determiners are F2-style scaffolding;
+ * verb inflection + a/an are left to the F3/F4 surface correctors downstream).
+ * Only the word ORDER is templated (English SVO, a Broca-level parameter) —
+ * every slot is filled by the same grounded score the greedy path uses, so WHAT
+ * is said stays fully data-driven.
+ *
+ * Writes buf/*pos_io/*fn_io/*score_io and returns the content-word count (>=1)
+ * on success, or -1 to tell the caller to fall back to the greedy emit: no head
+ * verb, no noun, or the head verb's grounded score is below `floor` (we don't
+ * force a clause on weak signal). `max_words` caps content words (subj/verb/obj).
+ * Class is taken from gl_f4_class (learned class when confident, else morphology). */
+static int gl_build_clause_frame(grounded_language_t* gl,
+                                 const char** topk_words,
+                                 const float* topk_scores,
+                                 uint32_t n, float floor, uint32_t max_words,
+                                 char* buf, size_t buf_sz,
+                                 size_t* pos_io, uint32_t* fn_io, float* score_io) {
+    if (!gl || !topk_words || !topk_scores || !buf || buf_sz == 0) return -1;
+    int verb_idx = -1, subj_idx = -1, obj_idx = -1;
+    float verb_best = -1e30f, subj_best = -1e30f, obj_best = -1e30f;
+    for (uint32_t j = 0; j < n; j++) {
+        const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
+        if (e && (e->learned_class == GL_CLASS_FUNCTION ||
+                  e->learned_class == GL_CLASS_PRONOUN)) continue;
+        gl_word_class_t cls = gl_f4_class(gl, topk_words[j]);
+        float s = topk_scores[j];
+        if (cls == GL_CLASS_VERB) {
+            if (s > verb_best) { verb_best = s; verb_idx = (int)j; }
+        } else if (cls == GL_CLASS_NOUN) {
+            /* Track the top-2 nouns by score (subject, then object). */
+            if (s > subj_best) {
+                obj_best = subj_best; obj_idx = subj_idx;
+                subj_best = s;        subj_idx = (int)j;
+            } else if (s > obj_best) {
+                obj_best = s; obj_idx = (int)j;
+            }
+        }
+    }
+    /* Need a predicate + at least a subject, and the predicate must clear the
+     * developmental floor (else fall back rather than force a weak clause). */
+    if (verb_idx < 0 || subj_idx < 0 || verb_best < floor) return -1;
+
+    struct { int idx; bool det; } slots[3];
+    int nslots = 0;
+    slots[nslots].idx = subj_idx; slots[nslots].det = true;  nslots++;  /* agent NP */
+    slots[nslots].idx = verb_idx; slots[nslots].det = false; nslots++;  /* predicate */
+    if (obj_idx >= 0) { slots[nslots].idx = obj_idx; slots[nslots].det = true; nslots++; }
+
+    size_t pos = 0; uint32_t emit = 0, fn = 0; float ssum = 0.0f;
+    for (int si = 0; si < nslots && emit < max_words; si++) {
+        const char* w = topk_words[slots[si].idx];
+        size_t wl = strlen(w);
+        size_t dl = slots[si].det ? 3u : 0u;  /* "the" */
+        if (pos + dl + wl + 3 >= buf_sz) break;
+        if (slots[si].det) {
+            if (pos > 0) buf[pos++] = ' ';
+            memcpy(buf + pos, "the", 3); pos += 3; fn++;
+        }
+        if (pos > 0) buf[pos++] = ' ';
+        memcpy(buf + pos, w, wl); pos += wl;
+        ssum += topk_scores[slots[si].idx];
+        emit++;
+    }
+    if (emit == 0) return -1;
+    buf[pos] = '\0';
+    *pos_io = pos; *fn_io = fn; *score_io = ssum;
+    return (int)emit;
+}
+
 int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                uint32_t intent_dim, gl_production_mode_t mode,
                                gl_production_result_t* result) {
@@ -4810,7 +4893,22 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     uint32_t emit = 0;          /* CONTENT words — gates min/max + floor */
     uint32_t fn_inserted = 0;   /* F2 scaffolding function words (not budgeted) */
     float    score_sum = 0.0f;
-    while (emit < max_words) {
+
+    /* FND-1: try the SVO clause frame first (default OFF, stage>=2). On success
+     * it fills buf/pos/emit/fn_inserted/score_sum and we skip the greedy bag
+     * emit. On -1 (no head verb / no noun, or head verb below the confidence
+     * floor) we fall through to the greedy path — never worse than baseline.
+     * The clause frame doesn't use emitted_ctx (AR is a greedy-path strategy);
+     * emitted_ctx is still freed below regardless. */
+    bool clause_built = false;
+    if (gl->produce_clause_frame && gl->current_stage >= 2) {
+        int ce = gl_build_clause_frame(gl, topk_words, topk_scores, n,
+                                       confidence_floor, max_words,
+                                       buf, sizeof(buf), &pos, &fn_inserted,
+                                       &score_sum);
+        if (ce > 0) { emit = (uint32_t)ce; clause_built = true; }
+    }
+    while (!clause_built && emit < max_words) {
         int   best_idx   = -1;
         float best_score = -1e30f;
         /* Track the raw cosine of the eventual winner separately from
@@ -7574,6 +7672,8 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     if (mt_write_u8(f, gl->produce_pronominalize ? 1u : 0u) != 0) return -1;
     /* Tier 2: discourse-seeded AR produce flag (trailing). */
     if (mt_write_u8(f, gl->produce_discourse_seed ? 1u : 0u) != 0) return -1;
+    /* FND-1: SVO clause-frame flag (trailing). */
+    if (mt_write_u8(f, gl->produce_clause_frame ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7652,6 +7752,11 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t dseed = 0;
     if (mt_read_u8(f, &dseed) == 0) {
         grounded_language_set_produce_discourse_seed(gl, (dseed != 0));
+    }
+    /* FND-1: SVO clause-frame flag (trailing, optional). */
+    uint8_t clause = 0;
+    if (mt_read_u8(f, &clause) == 0) {
+        grounded_language_set_produce_clause_frame(gl, (clause != 0));
     }
     return 0;
 }

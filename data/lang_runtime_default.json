@@ -48,5 +48,8 @@
   "subword_oov_fallback_enabled": false,
   "autoregressive_produce": false,
   "produce_pronominalize": false,
-  "produce_discourse_seed": false
+  "produce_discourse_seed": false,
+
+  "_producer_foundation": "FND-1 (2026-05-27): produce_clause_frame builds a real SVO clause (predicate + agent/patient) from the grounded top-K instead of a reranked content-word bag. Default false; effective at stage>=2, falls back to greedy emit on weak signal. The first 'strengthen the producer foundation' slice.",
+  "produce_clause_frame": false
 }
