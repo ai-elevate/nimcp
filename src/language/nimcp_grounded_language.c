@@ -1083,11 +1083,17 @@ static void mirror_binding_to_bridge(grounded_language_t* gl,
 
     /* Cross-modal binding via concept_registry (Slice B / walkthrough-2):
      * intern the text form so that subsequent visual/audio encodes of the
-     * same referent — interned by brain_learn_vector when (features,
-     * label) arrive together — canonicalize to the same root population.
-     * This is the load-bearing wiring that makes a single SNN population
-     * fire for the image, the spoken word, and the written word of one
-     * referent (Quian Quiroga concept-cell invariant). */
+     * same referent — interned by brain_learn_vector when (features, label)
+     * arrive together — canonicalize to the same root population.
+     *
+     * B3 (walkthrough correction, 2026-05-27): this is NOT yet load-bearing.
+     * The registry correctly accumulates referents + union-find merges and is
+     * persisted, but `concept_registry_canonical` has NO callers in the
+     * produce/comprehend/decode pipeline — nothing reads the binding back to
+     * resolve a word/image to its canonical concept population. So the
+     * Quian-Quiroga concept-cell invariant is PREPARED here (write side) but
+     * not consumed; wiring a reader is the remaining Slice-B work. Today this
+     * intern is write/telemetry-only. */
     if (gl->concept_registry) {
         (void)concept_registry_intern_text(
             (concept_registry_t*)gl->concept_registry, entry->form);

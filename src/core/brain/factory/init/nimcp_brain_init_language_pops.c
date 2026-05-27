@@ -343,28 +343,35 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
         }
 
         /* Explicit opt-in for SNN spike routing. The library default stays
-         * false (see snn_lang_config_default()'s sparsity-collapse note) —
-         * but the brain's own language bridge MUST have it on, otherwise
-         * snn_language_bridge_drain_pop_spikes() is a no-op: brain_tick_language
-         * records zero spike timing and the bridge STDP pass has nothing to
-         * reinforce, so language plasticity stays flat for the whole training
-         * run. activation_tau_ms = 200 is the decay constant guarding the
-         * bridge's activation space against runaway once spikes flow. */
+         * false (see snn_lang_config_default()'s sparsity-collapse note); the
+         * brain's own language bridge turns it on so drain_pop_spikes + tick
+         * run on the hot path and the bridge's activation/timing telemetry is
+         * populated. activation_tau_ms = 200 is the decay constant guarding the
+         * bridge's activation space against runaway once spikes flow.
+         *
+         * B3 (walkthrough correction, 2026-05-27): the downstream consumer is
+         * currently a stub. Post Option-1 rebuild the bridge is TRANSPORT-ONLY —
+         * drain_pop_spikes routes into no-op word_spike/concept_spike handlers
+         * and apply_stdp is a no-op, so enabling routing does NOT drive any
+         * plasticity today (the real word↔concept learning lives in the gl
+         * lexicon, not the bridge). This stays on for the spike-timing
+         * telemetry + forward-compat with a future re-activated STDP pass. */
         if (broca_pop_id >= 0 || wernicke_pop_id >= 0 || arcuate_pop_id >= 0) {
             (void)snn_language_bridge_set_snn_spike_routing(
                 brain->snn_lang_bridge, /*enabled=*/true, /*tau_ms=*/200.0f);
         }
 
         /* Three-factor learning gate — connect the bridge to the brain's
-         * neuromodulator system so apply_stdp's dopamine read is live.
-         * enable_da_modulation defaults true, but without a neuromod pointer
-         * bridge->neuromod stays NULL: the DA gate is inert (da_gated_stdp_passes
-         * never increments, every STDP write runs at the unmodulated identity
-         * LR — no reward-driven consolidation of word↔concept bindings).
-         * nimcp_brain_init_language.c also calls this on the cold path, but it
-         * is gated on neuromod existing AT THAT POINT in init; the daemon's
-         * resume path reaches the bridge only through here. connect_neuromod
-         * just stores the pointer, so calling it on both paths is harmless. */
+         * neuromodulator system so a future re-activated apply_stdp's dopamine
+         * read would be live. connect_neuromod just stores the pointer.
+         * nimcp_brain_init_language.c also calls this on the cold path (gated on
+         * neuromod existing at that point); the daemon's resume path reaches the
+         * bridge only through here, so calling it on both paths is harmless.
+         *
+         * B3 (walkthrough correction, 2026-05-27): inert today — apply_stdp is a
+         * no-op stub post Option-1 rebuild, so the stored neuromod pointer is
+         * never read and da_gated_stdp_passes never increments. Kept for
+         * forward-compat; not active plasticity. */
         if (brain->neuromodulator_system) {
             (void)snn_language_bridge_connect_neuromod(
                 brain->snn_lang_bridge, brain->neuromodulator_system);

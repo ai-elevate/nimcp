@@ -3841,6 +3841,26 @@ static int read_stats_block_v5(FILE* f, snn_lang_stats_t* s_out)
     s_out->beam_hnn_rerank_passes     = fields[i++];
     (void)i;
 
+    /* B4 (walkthrough fix, 2026-05-27): the SNN-language bridge became
+     * transport-only in the Option-1 rebuild — apply_stdp / trigram learning /
+     * comprehend-STDP / echo-correct are all no-op stubs, so these plasticity
+     * counters have NO incrementer anymore. A pre-rebuild checkpoint would
+     * reload nonzero values that then sit frozen forever, making a dead bridge
+     * look like it once learned (and lang_status.plasticity surfacing stale
+     * numbers). Zero them on load so the telemetry reflects the live (no-op)
+     * reality. The live counters above (decode/produce/comprehend calls,
+     * timings, LGSS blocks, length controls, EOS) are preserved. */
+    s_out->total_stdp_updates          = 0;
+    s_out->total_ltp_events            = 0;
+    s_out->total_ltd_events            = 0;
+    s_out->total_trigram_updates       = 0;
+    s_out->da_gated_stdp_passes        = 0;
+    s_out->comprehend_stdp_passes      = 0;
+    s_out->comprehend_stdp_pairs_fired = 0;
+    s_out->echo_correct_calls          = 0;
+    s_out->echo_correct_pairs          = 0;
+    s_out->echo_correct_target_misses  = 0;
+
     /* Skip any trailing bytes belonging to a newer writer. */
     long want = start_pos + (long)block_size;
     long here = ftell(f);
