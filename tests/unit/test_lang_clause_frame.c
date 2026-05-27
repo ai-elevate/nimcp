@@ -255,6 +255,35 @@ static void test_animacy_subject(void) {
     grounded_language_destroy(gl);
 }
 
+/* End-to-end composition: the clause planner emits a BASE-form verb; the
+ * cascade then runs F3 (gl_apply_svo_agreement) over the produce output (Broca
+ * re-render between them is order-preserving, so the clause reaches F3 intact).
+ * Verify produce_clause_frame -> F3 inflects the verb to agree with the 3sg
+ * noun subject: "the creation activate ..." -> "the creation activates ...". */
+static void test_clause_then_f3_inflection(void) {
+    grounded_language_t* gl = mk_clause_gl();  /* creation/instrument/activate, stage 2 */
+    EXPECT(gl != NULL, "create"); if (!gl) return;
+    float intent[SDIM] = {0};
+    intent[4u] = 1.0f; intent[11u] = 1.0f; intent[18u] = 1.0f;
+    grounded_language_set_produce_clause_frame(gl, true);
+    gl_production_result_t r = {0};
+    int rc = grounded_language_produce(gl, intent, SDIM, GL_PRODUCE_DESCRIBE, &r);
+    if (rc == 0 && r.text) {
+        char corrected[256];
+        int fixes = gl_apply_svo_agreement(gl, r.text, corrected, sizeof(corrected));
+        fprintf(stderr, "  produce: '%s'  --F3-->  '%s' (%d fix)\n",
+                r.text, corrected, fixes);
+        /* The clause verb 'activate' should become 'activates' (3sg). */
+        if (word_pos(r.text, "activate") >= 0) {
+            EXPECT(word_pos(corrected, "activates") >= 0,
+                   "F3 inflected clause verb to 'activates' (got '%s')", corrected);
+            EXPECT(word_pos(corrected, "activate") < 0,
+                   "base-form 'activate' replaced (got '%s')", corrected);
+        }
+    }
+    grounded_language_destroy(gl);
+}
+
 static void test_stage_gate(void) {
     /* Stage 1 + flag ON -> clause frame must not engage; produce path still
      * runs (no crash, valid rc). */
@@ -279,6 +308,7 @@ int main(void) {
     test_copula_frame();
     test_adjective_modifier();
     test_animacy_subject();
+    test_clause_then_f3_inflection();
     test_stage_gate();
     if (g_failures == 0) { fprintf(stderr, "ALL PASS\n"); return 0; }
     fprintf(stderr, "%d failures\n", g_failures);
