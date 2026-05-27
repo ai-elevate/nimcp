@@ -1032,15 +1032,18 @@ static int cascade_stage_content(brain_t brain,
      * what we were just talking about, not only the immediate prompt. Kept
      * to a soft 0.15 weight so it biases topic without parroting. No-ops
      * cleanly on the first turn (accessor returns false when <2 turns). */
-    {
-        const float* prior_vec = NULL;
-        uint32_t prior_dim = 0;
-        if (grounded_language_get_recent_turn_vector(brain->grounded_lang, 2u,
-                                                     &prior_vec, &prior_dim) &&
-            prior_vec && prior_dim > 0) {
+    /* X2 (walkthrough fix): copy the prior turn vector under the discourse
+     * lock into a stack buffer rather than reading a raw interior ring pointer
+     * that a concurrent comprehend/push_turn could free mid-blend. Mirrors the
+     * imagination source's copy-under-lock + 4096 stack cap below. */
+    if (dim <= 4096u) {
+        float prior_buf[4096];
+        uint32_t prior_dim = grounded_language_copy_recent_turn_vector(
+            brain->grounded_lang, 2u, prior_buf, dim);
+        if (prior_dim > 0) {
             uint32_t copy = (prior_dim < dim) ? prior_dim : dim;
             for (uint32_t j = 0; j < copy; j++) {
-                float v = prior_vec[j];
+                float v = prior_buf[j];
                 if (isfinite(v)) {
                     state->content_intent[j] += w_discourse * v;
                 }

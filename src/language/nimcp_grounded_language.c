@@ -731,6 +731,18 @@ static void _gl_rebuild_lexicon_hash(grounded_language_t* gl) {
 uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
     if (!gl || n == 0 || gl->vocab_count == 0) return 0;
 
+    /* X1 (walkthrough fix, 2026-05-27): hold mutate_lock for the whole
+     * eviction so the entry frees + vocab_list compaction + hash rebuild are
+     * atomic w.r.t. lexicon_find_or_create and any other mutate_lock holder.
+     * The sole caller (sleep DEEP_NREM hook in the memory bridge) cannot hold
+     * this lock — it's static to this TU — so there's no re-entrant deadlock,
+     * and the evict helpers (_gl_free_entry / _gl_rebuild_lexicon_hash) don't
+     * lock. (produce still reads vocab_list lock-free; that read is kept safe
+     * in production by the daemon's single-writer serialization — eviction and
+     * produce are both write-socket commands under one lock — which this
+     * C-level lock now complements rather than relies on.) */
+    gl_mutate_lock(gl);
+
     /* Pass 1: find the n-th lowest frequency among unpinned entries.
      * For small batches an N×K linear scan is fine — N ≤ vocab_count,
      * K = n. With n ≤ ~256 and vocab ≤ 16384 we're talking 4M ops
@@ -755,7 +767,7 @@ uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
         evicted++;
     }
 
-    if (evicted == 0) return 0;
+    if (evicted == 0) { gl_mutate_unlock(gl); return 0; }
 
     /* Compact vocab_list — shift survivors down to fill the holes. */
     uint32_t write = 0;
@@ -772,6 +784,8 @@ uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
 
     /* Rebuild hash table (probe chains are now stale). */
     _gl_rebuild_lexicon_hash(gl);
+
+    gl_mutate_unlock(gl);
 
     LOG_DEBUG(LOG_MODULE,
               "lexicon eviction: removed %u entries (vocab now %u)",
@@ -3484,6 +3498,35 @@ bool grounded_language_get_recent_turn_vector(const grounded_language_t* gl,
     return true;
 }
 
+uint32_t grounded_language_copy_recent_turn_vector(grounded_language_t* gl,
+                                                   uint8_t back,
+                                                   float* out,
+                                                   uint32_t max_dim) {
+    if (!gl || !out || max_dim == 0 || back == 0) return 0;
+    /* X2 (walkthrough fix, 2026-05-27): lock-guarded COPY variant of
+     * grounded_language_get_recent_turn_vector. The pointer-returning accessor
+     * hands back a raw interior pointer into the discourse ring that push_turn
+     * can nimcp_free() under mutate_lock — a torn-read / use-after-free window
+     * for any caller that doesn't copy it out instantly. This variant copies
+     * under the same mutate_lock so callers (produce discourse-seed, cascade
+     * Step-E content blend) never hold a ring pointer across a possible
+     * concurrent push_turn. Returns floats written (0 = no such turn). */
+    gl_mutate_lock(gl);
+    uint32_t copied = 0;
+    if (gl->discourse.count >= back) {
+        uint8_t pos = (uint8_t)(gl->discourse.count - back);
+        const gl_discourse_turn_t* t =
+            &gl->discourse.turns[discourse_idx(&gl->discourse, pos)];
+        if (t->semantic_vector) {
+            uint32_t d = (gl->semantic_dim < max_dim) ? gl->semantic_dim : max_dim;
+            memcpy(out, t->semantic_vector, (size_t)d * sizeof(float));
+            copied = d;
+        }
+    }
+    gl_mutate_unlock(gl);
+    return copied;
+}
+
 /*============================================================================
  * Tier 1 Step F3 — subject-verb / quantifier-noun agreement correction
  *==========================================================================*/
@@ -4494,6 +4537,16 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
             for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                 center->context_vector[d] = (gl_random(gl) - 0.5f) * 0.1f;
             }
+            /* X3 (walkthrough fix): publish context_initialized=true ONLY after
+             * the vector is fully written, with a release fence, so a lock-free
+             * reader in produce that observes the flag set also sees the vector
+             * (no half-written vector behind a true flag). The residual read of
+             * the float vector itself is an accepted benign race — the buffer is
+             * fixed-size and never freed/realloced while initialized, so a torn
+             * read at worst yields a marginally-off cosine that self-corrects on
+             * the next learning step (no UAF). Adding per-element atomics to the
+             * hot scoring loop would be disproportionate. */
+            __atomic_thread_fence(__ATOMIC_RELEASE);
             center->context_initialized = true;
         }
 
@@ -4596,6 +4649,9 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
     /* Copy features to context vector for distributional similarity */
     uint32_t copy_dim = (feature_dim < gl->semantic_dim) ? feature_dim : gl->semantic_dim;
     memcpy(entry->context_vector, concept_features, copy_dim * sizeof(float));
+    /* X3: publish the flag after the vector write (release fence) — see the
+     * note at the learn_from_text init site. */
+    __atomic_thread_fence(__ATOMIC_RELEASE);
     entry->context_initialized = true;
 
     LOG_DEBUG(LOG_MODULE, "Fast-mapped '%s' -> concept %lu", word, (unsigned long)concept_id);
@@ -4718,20 +4774,25 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
      * Off / non-AR / stage<2 → emitted_ctx stays all-zero → byte-identical. */
     bool ar_seeded = false;
     if (emitted_ctx && gl->produce_discourse_seed && gl->current_stage >= 2) {
-        const float* prior = NULL;
-        uint32_t pdim = 0;
-        if (grounded_language_get_recent_turn_vector(gl, 1, &prior, &pdim) &&
-            prior && pdim == gl->semantic_dim) {
+        /* X2: copy the prior turn vector under the discourse lock straight into
+         * emitted_ctx (no raw ring pointer held across the normalize loop), then
+         * unit-normalize × decay in place. */
+        uint32_t pdim = grounded_language_copy_recent_turn_vector(
+            gl, 1, emitted_ctx, gl->semantic_dim);
+        if (pdim == gl->semantic_dim) {
             double nrm = 0.0;
             for (uint32_t d = 0; d < gl->semantic_dim; d++)
-                nrm += (double)prior[d] * (double)prior[d];
+                nrm += (double)emitted_ctx[d] * (double)emitted_ctx[d];
             nrm = sqrt(nrm);
             if (nrm > 1e-9) {
                 const float GL_DISCOURSE_SEED_DECAY = 0.5f;
                 float scale = GL_DISCOURSE_SEED_DECAY / (float)nrm;
                 for (uint32_t d = 0; d < gl->semantic_dim; d++)
-                    emitted_ctx[d] = prior[d] * scale;
+                    emitted_ctx[d] *= scale;
                 ar_seeded = true;
+            } else {
+                /* zero-norm turn — clear the copy so the seed is a no-op. */
+                memset(emitted_ctx, 0, (size_t)gl->semantic_dim * sizeof(float));
             }
         }
     }
@@ -5004,6 +5065,8 @@ int64_t grounded_language_reset_lexicon_distributional(grounded_language_t* gl,
                 float u = (float)((uint32_t)(r >> 40)) * (1.0f / 16777216.0f);
                 e->context_vector[d] = (u * 2.0f - 1.0f) * jitter;
             }
+            /* X3: publish after the vector write (release fence). */
+            __atomic_thread_fence(__ATOMIC_RELEASE);
             e->context_initialized = true;
         }
         touched++;

@@ -786,6 +786,28 @@ bool grounded_language_get_recent_turn_vector(
     uint32_t* out_dim);
 
 /**
+ * @brief Lock-guarded COPY of a recent discourse turn's semantic vector.
+ *
+ * Thread-safe alternative to grounded_language_get_recent_turn_vector: copies
+ * the turn vector into the caller's buffer under the same mutate_lock that
+ * push_turn holds when it frees evicted turn vectors, so the caller never
+ * holds a raw interior pointer that a concurrent push_turn could free.
+ * Prefer this in any path that may run alongside comprehend/push_turn.
+ *
+ * @param gl       System handle.
+ * @param back     1 = newest turn, 2 = the one before it, etc. (>0).
+ * @param out      Destination buffer (>= max_dim floats).
+ * @param max_dim  Capacity of `out` in floats.
+ * @return number of floats written (min(semantic_dim, max_dim)), or 0 if the
+ *         turn doesn't exist / has no vector / args invalid.
+ */
+uint32_t grounded_language_copy_recent_turn_vector(
+    grounded_language_t* gl,
+    uint8_t back,
+    float* out,
+    uint32_t max_dim);
+
+/**
  * @brief Clamp the active discourse capacity. Reductions evict oldest
  *        turns first so the most recent `capacity` turns survive.
  *        Increases just bump the cap; existing turns are untouched.
