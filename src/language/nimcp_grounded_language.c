@@ -4724,6 +4724,13 @@ static int gl_build_clause_frame(grounded_language_t* gl,
     /* Need a predicate + at least a subject, and the predicate must clear the
      * developmental floor (else fall back rather than force a weak clause). */
     if (verb_idx < 0 || subj_idx < 0 || verb_best < floor) return -1;
+    /* Floor-gate the OBJECT like the greedy path floor-gates subsequent words
+     * (the greedy loop always emits word 0 but stops once a later word's cosine
+     * drops below the floor). Subject = the obligatory agent (word-0 analogue,
+     * always kept); object = an optional patient — drop it when it's below the
+     * floor so we emit an intransitive "the SUBJECT VERB" rather than pad the
+     * clause with a weakly-relevant noun. (Walkthrough LOW-1.) */
+    if (obj_idx >= 0 && obj_best < floor) obj_idx = -1;
 
     struct { int idx; bool det; } slots[3];
     int nslots = 0;
