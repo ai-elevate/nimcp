@@ -10,11 +10,7 @@
   "cascade_self_train_enabled": true,
   "cascade_self_train_tunables": { "alpha": 0.05, "lr_scale": 1.0 },
 
-  "trigram_learning_enabled": true,
-  "ltd_margin": 1.5,
-  "comprehend_stdp_enabled": true,
-  "da_modulation_enabled": true,
-  "da_modulation_gain": 1.0,
+  "_deprecated_option1_rebuild": "trigram_learning_enabled / ltd_margin / comprehend_stdp_enabled / da_modulation_enabled / da_modulation_gain were removed when the SNN-language bridge became transport-only (Option-1 rebuild, 2026-05-19). The daemon no longer applies them (not in _apply_runtime_lang_config) and their RPC handlers return 'deprecated'. Dropped from this file (walkthrough R3, 2026-05-27) so they no longer imply active tuning.",
   "reconsolidation_enabled": false,
   "reconsolidation_decay": 0.05,
 
@@ -44,5 +40,13 @@
   "speech_act_classification_enabled": true,
   "topic_shift_enabled": true,
   "topic_shift_threshold": 0.6,
-  "topic_shift_min_turns": 3
+  "topic_shift_min_turns": 3,
+
+  "_produce_and_nlp_flags": "Default-OFF developmental features (walkthrough R1/R2, 2026-05-27). Previously absent from this file, so they had no enable knob on the pod (the daemon's _apply_runtime_lang_config skips absent keys). Listed here at their current default (false) so an operator can flip them on per-deployment via /etc/athena/runtime_lang_config.json. reason_in_content is Tier-1 Step E; the produce_* trio is Tier-2 coherence; coref/subword are NLP-2/NLP-1. All re-applied from this file every daemon start (runtime-only, not in the checkpoint).",
+  "reason_in_content": false,
+  "coref_resolution_enabled": false,
+  "subword_oov_fallback_enabled": false,
+  "autoregressive_produce": false,
+  "produce_pronominalize": false,
+  "produce_discourse_seed": false
 }

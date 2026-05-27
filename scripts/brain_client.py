@@ -334,8 +334,17 @@ class BrainProxy:
         mask / produce-word bounds in one call."""
         return self._send({"cmd": "set_stage_constraints", "stage": int(stage)})
 
-    def get_stage_constraints(self):
-        resp = self._send({"cmd": "get_stage_constraints"})
+    def get_stage_constraints(self, stage=None):
+        # R4 (walkthrough fix): the daemon defaults stage=0 when the field is
+        # absent, so the bare call only ever read stage-0 constraints. Default
+        # to the daemon's ACTIVE stage (query it) so the trainer sees the
+        # constraints actually in force; an explicit stage still overrides.
+        req = {"cmd": "get_stage_constraints"}
+        if stage is None:
+            stage = self.get_active_stage()
+        if stage is not None:
+            req["stage"] = int(stage)
+        resp = self._send(req)
         return resp.get("constraints", resp)
 
     def set_vocab_mask_for_stage(self, stage):
