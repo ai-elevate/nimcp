@@ -2776,6 +2776,7 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_enable_trigram_learning",   PyBool_FromLong(d.bridge_enable_trigram_learning));
     GLD_SET("bridge_ltd_margin",                PyFloat_FromDouble((double)d.bridge_ltd_margin));
     GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
+    GLD_SET("produce_distributional_weight",    PyFloat_FromDouble((double)d.produce_distributional_weight));
     GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
     GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
@@ -3529,6 +3530,7 @@ AUDIT_BRAIN_BOOL_SETTER(set_autoregressive_produce,           nimcp_brain_set_au
 AUDIT_BRAIN_BOOL_SETTER(set_produce_pronominalize,            nimcp_brain_set_produce_pronominalize)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_discourse_seed,           nimcp_brain_set_produce_discourse_seed)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_clause_frame,             nimcp_brain_set_produce_clause_frame)
+AUDIT_BRAIN_FLOAT_SETTER(set_produce_distributional_weight,   nimcp_brain_set_produce_distributional_weight)
 
 /* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
  * Returns count of bindings strengthened. Non-zero lr_scale gates the
@@ -12969,6 +12971,8 @@ static PyMethodDef Brain_methods[] = {
      "Tier 2: toggle discourse-seeded autoregressive produce — set_produce_discourse_seed(enabled: bool) -> None. Default OFF. Effective only with autoregressive_produce ON and stage>=2: seeds the AR emitted-context vector with the decayed most-recent discourse-turn vector so the opening words continue the topic of what was just said. Persisted in the LANC block."},
     {"set_produce_clause_frame", (PyCFunction)Brain_set_produce_clause_frame, METH_VARARGS,
      "FND-1: toggle the SVO clause/argument frame in produce — set_produce_clause_frame(enabled: bool) -> None. Default OFF. Effective at stage>=2: builds 'the SUBJECT VERB the OBJECT' from the grounded top-K (best verb=predicate, best two nouns=agent/patient) instead of a reranked content-word bag; falls back to greedy emit on weak signal. Word order only is templated; slots are grounded-score filled. Persisted in the LANC block."},
+    {"set_produce_distributional_weight", (PyCFunction)Brain_set_produce_distributional_weight, METH_VARARGS,
+     "Produce-score rebalance: set the weight on the distributional (context-vector) term vs the concept-binding term in produce word scoring — set_produce_distributional_weight(w: float) -> None. raw = w*distributional + (1-w)*concept. Default 0.4 (historical split). Raise toward ~0.7 so intent-correct concrete words outrank broadly-concept-bound abstract words that otherwise monopolize produce. Clamped [0,1]. Persisted in the LANC block."},
     {"set_cascade_self_train_enabled", (PyCFunction)Brain_set_cascade_self_train_enabled, METH_VARARGS,
      "Wave 2 Item #10: enable cascade Stage 14 reward-modulated bridge training — set_cascade_self_train_enabled(enabled: bool) -> None. Default OFF. First enable installs default tunables (0.05/1.0)."},
     {"set_cascade_self_train_tunables", (PyCFunction)Brain_set_cascade_self_train_tunables, METH_VARARGS,

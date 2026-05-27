@@ -467,6 +467,11 @@ def _apply_runtime_lang_config(brain, logger):
         ("produce_discourse_seed",             "set_produce_discourse_seed",             _bool),
         # FND-1 — SVO clause/argument frame in produce (2026-05-27).
         ("produce_clause_frame",               "set_produce_clause_frame",               _bool),
+        # Produce-score rebalance — distributional vs concept-binding weight
+        # in produce word scoring (2026-05-27). Default 0.4 (historical split);
+        # raise toward ~0.7 so concrete intent-correct words outrank broadly-
+        # concept-bound abstract words that otherwise monopolize produce.
+        ("produce_distributional_weight",      "set_produce_distributional_weight",      _f),
     ]
     for key, method, extract in table:
         if key not in cfg:

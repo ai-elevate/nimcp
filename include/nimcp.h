@@ -1024,6 +1024,10 @@ typedef struct {
     uint64_t coref_resolved;
     uint64_t subword_oov_attempts;
     uint64_t subword_oov_resolved;
+    /* Produce-score rebalance (2026-05-27): current distributional weight in
+     * the produce word score (raw = w*distributional + (1-w)*concept).
+     * Default 0.4 = historical 0.4/0.6 split. */
+    float    produce_distributional_weight;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -1706,6 +1710,14 @@ nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool*
  *  signal. Runtime toggle; persisted via the LANC block + runtime config. */
 nimcp_status_t nimcp_brain_set_produce_clause_frame(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* out_enabled);
+
+/** Produce-score rebalance: weight on the distributional (context-vector)
+ *  term vs the concept-binding term in produce word scoring
+ *  (raw = w*distributional + (1-w)*concept). Default 0.4 = historical split;
+ *  raise toward ~0.7 so intent-correct concrete words outrank broadly-
+ *  concept-bound abstract words. Clamped [0,1]. Persisted via LANC + config. */
+nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight);
+nimcp_status_t nimcp_brain_get_produce_distributional_weight(nimcp_brain_t brain, float* out_weight);
 
 /** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */

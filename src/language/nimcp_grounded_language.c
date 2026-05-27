@@ -1492,7 +1492,15 @@ static float score_word_against_vector(const grounded_language_t* gl,
             if (cs > concept_sim) concept_sim = cs;
         }
     }
-    float raw = 0.4f * sim + 0.6f * concept_sim;
+    /* Produce-score rebalance (2026-05-27): the distributional/concept split
+     * is a runtime tunable (default 0.4/0.6 = historical behaviour). Raising
+     * w toward ~0.7 lets a concrete word's strong intent-correct
+     * distributional match outrank the broad abstract cluster whose wide
+     * concept bindings otherwise dominate the concept term for any intent. */
+    float w = gl->produce_distributional_weight;
+    if (!(w >= 0.0f)) w = GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT; /* NaN/neg guard */
+    if (w > 1.0f) w = 1.0f;
+    float raw = w * sim + (1.0f - w) * concept_sim;
 
     /* Phase 3d (2026-05-21): valence-aware suppression at produce.
      * Words whose lexicon entry carries strongly-negative valence are
@@ -1676,6 +1684,10 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
      * conservative default so flipping the toggle Just Works. */
     gl->enable_reconsolidation      = false;
     gl->reconsolidation_decay       = GL_RECONSOLIDATION_DEFAULT_DECAY;
+    /* Produce-score rebalance (2026-05-27) — seeded to the historical 0.4
+     * distributional weight so default produce behaviour is bit-for-bit
+     * unchanged until the trainer/RPC opts into a higher value. */
+    gl->produce_distributional_weight = GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
     /* TB-6 — sentence-boundary segmentation off by default. Trainer
      * opts in once the curriculum benefits from per-sentence discourse
      * pushes / sentence-bounded bigram learning. Preserves bit-for-bit
@@ -3273,6 +3285,19 @@ void grounded_language_set_reconsolidation_decay(grounded_language_t* gl,
 float grounded_language_get_reconsolidation_decay(const grounded_language_t* gl) {
     if (!gl) return 0.0f;
     return gl->reconsolidation_decay;
+}
+
+void grounded_language_set_produce_distributional_weight(grounded_language_t* gl,
+                                                         float weight) {
+    if (!gl) return;
+    if (!isfinite(weight) || weight < 0.0f) weight = 0.0f;
+    if (weight > 1.0f) weight = 1.0f;
+    gl->produce_distributional_weight = weight;
+}
+
+float grounded_language_get_produce_distributional_weight(const grounded_language_t* gl) {
+    if (!gl) return GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
+    return gl->produce_distributional_weight;
 }
 
 /*-----------------------------------------------------------------------------
@@ -7764,6 +7789,10 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     if (mt_write_u8(f, gl->produce_discourse_seed ? 1u : 0u) != 0) return -1;
     /* FND-1: SVO clause-frame flag (trailing). */
     if (mt_write_u8(f, gl->produce_clause_frame ? 1u : 0u) != 0) return -1;
+    /* Produce-score rebalance (2026-05-27): distributional weight (trailing
+     * f32, no version bump — same forward/backward-compat pattern as the
+     * trailing bytes above). */
+    if (mt_write_f32(f, gl->produce_distributional_weight) != 0) return -1;
     return 0;
 }
 
@@ -7847,6 +7876,14 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t clause = 0;
     if (mt_read_u8(f, &clause) == 0) {
         grounded_language_set_produce_clause_frame(gl, (clause != 0));
+    }
+    /* Produce-score rebalance (2026-05-27): distributional weight (trailing
+     * f32, optional). Pre-this-change sidecars stop after the clause byte
+     * and this try-read hits EOF — the weight keeps its init default (0.4).
+     * Route through the clamping setter. */
+    float pdw = 0.0f;
+    if (mt_read_f32(f, &pdw) == 0) {
+        grounded_language_set_produce_distributional_weight(gl, pdw);
     }
     return 0;
 }

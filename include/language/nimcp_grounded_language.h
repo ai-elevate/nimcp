@@ -599,6 +599,14 @@ bool grounded_language_get_negation_enabled(
  *  are needed to fully erode a binding. */
 #define GL_RECONSOLIDATION_DEFAULT_DECAY  0.05f
 
+/** Default weight on the distributional (context-vector) term in the
+ *  produce-time word score, vs the concept-binding term:
+ *  raw = w*distributional_sim + (1-w)*concept_sim. 0.4 reproduces the
+ *  historical 0.4/0.6 split bit-for-bit. Raise toward ~0.7 to let the
+ *  intent-correct distributional signal outrank broadly-concept-bound
+ *  abstract words (produce-collapse fix, 2026-05-27). Range [0,1]. */
+#define GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT  0.4f
+
 /**
  * @brief Toggle TA-5 reconsolidation-on-contradiction. Default OFF.
  *
@@ -628,6 +636,23 @@ void grounded_language_set_reconsolidation_decay(
     float decay);
 
 float grounded_language_get_reconsolidation_decay(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Set the produce-time distributional weight (vs concept-binding).
+ *
+ * score_word_against_vector blends two cosine terms:
+ *   raw = w * distributional_sim + (1 - w) * concept_sim
+ * where w is this weight. Default GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT
+ * (0.4) reproduces the historical 0.4/0.6 split. Raising w toward ~0.7
+ * lets the intent-correct distributional signal outrank broadly-concept-
+ * bound abstract words that otherwise monopolize produce. Clamped [0,1].
+ */
+void grounded_language_set_produce_distributional_weight(
+    grounded_language_t* gl,
+    float weight);
+
+float grounded_language_get_produce_distributional_weight(
     const grounded_language_t* gl);
 
 /**

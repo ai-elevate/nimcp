@@ -446,6 +446,20 @@ struct grounded_language {
      * (never worse than baseline). Default false. */
     bool                 produce_clause_frame;
 
+    /* Produce-score rebalance (2026-05-27) — tunable weight on the
+     * distributional (context-vector cosine) term in
+     * score_word_against_vector, vs the concept-binding cosine term:
+     *   raw = w * distributional_sim + (1 - w) * concept_sim
+     * Default GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT (0.4) reproduces the
+     * historical 0.4/0.6 split bit-for-bit. Raising w toward ~0.7 lets the
+     * intent-correct distributional signal (which a concrete word like "cat"
+     * matches strongly for a concrete intent) outrank a broad cluster of
+     * abstract words whose strong/wide concept bindings otherwise dominate
+     * the 0.6 term for ANY intent (diagnosed 2026-05-27: produce collapsed
+     * to ~20 abstract nouns regardless of intent — a scoring artifact, not
+     * curriculum/comprehend collapse). Clamped to [0,1]. */
+    float                produce_distributional_weight;
+
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *
      * `vocab_active_mask` is a heap-allocated bool array sized to

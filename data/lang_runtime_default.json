@@ -51,5 +51,8 @@
   "produce_discourse_seed": false,
 
   "_producer_foundation": "FND-1 (2026-05-27): produce_clause_frame builds a real SVO clause (predicate + agent/patient) from the grounded top-K instead of a reranked content-word bag. Default false; effective at stage>=2, falls back to greedy emit on weak signal. The first 'strengthen the producer foundation' slice.",
-  "produce_clause_frame": false
+  "produce_clause_frame": false,
+
+  "_produce_score_rebalance": "Produce-score rebalance (2026-05-27): produce_distributional_weight is the weight on the distributional (context-vector) term vs the concept-binding term in produce word scoring (raw = w*distributional + (1-w)*concept). Default 0.4 = historical 0.4/0.6 split. Raise toward ~0.7 so concrete intent-correct words outrank the broad abstract cluster whose wide concept bindings otherwise monopolize produce regardless of intent (diagnosed: produce collapsed to ~20 abstract nouns). Clamped [0,1].",
+  "produce_distributional_weight": 0.4
 }
