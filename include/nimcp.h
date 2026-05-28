@@ -1700,6 +1700,13 @@ nimcp_status_t nimcp_brain_get_produce_pronominalize(nimcp_brain_t brain, bool* 
 nimcp_status_t nimcp_brain_set_produce_discourse_seed(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool* out_enabled);
 
+/** FND-1: SVO clause/argument frame in produce (foundation — real predicate +
+ *  agent/subject + patient/object structure vs. a reranked content-word bag).
+ *  Default OFF; effective at stage >= 2, falls back to greedy emit on weak
+ *  signal. Runtime toggle; persisted via the LANC block + runtime config. */
+nimcp_status_t nimcp_brain_set_produce_clause_frame(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* out_enabled);
+
 /** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */
 nimcp_status_t nimcp_brain_set_dialect(nimcp_brain_t brain, const char* dialect);

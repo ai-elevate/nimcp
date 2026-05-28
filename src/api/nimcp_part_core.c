@@ -2883,6 +2883,29 @@ nimcp_status_t nimcp_brain_grounded_respond(
                                                         : state.fluency;
                 *out_confidence = conf;
             }
+            /* S1 (walkthrough fix, 2026-05-27): output-side toxicity
+             * defense-in-depth on the cascade-produced utterance. The
+             * respond_via_cascade path returns here WITHOUT calling
+             * grounded_language_respond, which is where the output toxicity
+             * classifier normally runs — so a toxic cascade output would
+             * otherwise get no audit entry and no confidence penalty. Mirror
+             * the gl policy exactly: mark-never-delete (do NOT alter the
+             * text), log a LGSS_ACTION_BLOCKED event, and reduce confidence
+             * proportional to predicted harm. NULL-safe: no classifier → skip. */
+            if (b->toxicity_classifier && out_response[0] != '\0') {
+                toxicity_result_t otox = {0};
+                if (toxicity_classify(
+                        (toxicity_classifier_t*)b->toxicity_classifier,
+                        out_response, &otox) == 0 && otox.would_block) {
+                    nimcp_safety_audit_log_event(
+                        NIMCP_SAFETY_AUDIT_LGSS_ACTION_BLOCKED, 2,
+                        "cascade_produce flagged: cat=%s harm=%.2f fair=%.2f "
+                        "input='%.40s' output='%.40s'",
+                        otox.matched_category, otox.predicted_harm,
+                        otox.fairness_violation, input_text, out_response);
+                    if (out_confidence) *out_confidence *= (1.0f - otox.predicted_harm);
+                }
+            }
             cascade_state_cleanup(&state);
             return NIMCP_OK;
         }
@@ -4888,6 +4911,25 @@ nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool*
     if (s != NIMCP_OK) return s;
     if (!b->grounded_lang) return NIMCP_ERROR;
     *out_enabled = grounded_language_get_produce_discourse_seed(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_produce_clause_frame(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_clause_frame(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_clause_frame(b->grounded_lang);
     return NIMCP_OK;
 }
 

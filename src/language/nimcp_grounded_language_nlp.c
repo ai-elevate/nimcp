@@ -187,6 +187,15 @@ typedef struct {
  * want strong, near-deterministic signals here. Edge cases (e.g. -er
  * could be noun "writer" or comparative "faster") deliberately omitted. */
 static const gl_pos_rule_t POS_RULES[] = {
+    /* Plural derived-noun suffixes first — unambiguously nominal (no English
+     * verb ends in -tions/-sions/-ments/-ities), so these are safe to tag NOUN
+     * even though a bare "-s" rule would not be (it collides with 3sg verbs
+     * like "runs"). Closes the morphology gap that left plural nouns UNKNOWN
+     * and defeated the F4 possessive + Tier-2 pronominalization NOUN gates. */
+    {"tions", 5, GL_CLASS_NOUN},
+    {"sions", 5, GL_CLASS_NOUN},
+    {"ments", 5, GL_CLASS_NOUN},
+    {"ities", 5, GL_CLASS_NOUN},
     {"tion",  4, GL_CLASS_NOUN},
     {"sion",  4, GL_CLASS_NOUN},
     {"ness",  4, GL_CLASS_NOUN},

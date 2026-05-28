@@ -434,6 +434,18 @@ struct grounded_language {
      * the pre-seed path. */
     bool                 produce_discourse_seed;
 
+    /* FND-1 (2026-05-27) — predicate->argument clause frame. When true AND
+     * stage >= 2, grounded_language_produce organizes the grounded top-K into
+     * a canonical SVO clause (best VERB as predicate + best two NOUNs as
+     * agent/patient, "the SUBJECT VERB the OBJECT") instead of emitting a
+     * bigram/POS-reranked bag of content words. Only word ORDER is templated
+     * (English SVO — a Broca-level parameter); every slot is filled by the same
+     * grounded score the greedy path uses, so WHAT is said stays data-driven.
+     * Falls back to the greedy emit when there's no head verb / no noun, or the
+     * head verb's grounded score is below the developmental confidence floor
+     * (never worse than baseline). Default false. */
+    bool                 produce_clause_frame;
+
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *
      * `vocab_active_mask` is a heap-allocated bool array sized to

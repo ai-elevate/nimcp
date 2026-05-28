@@ -731,6 +731,18 @@ static void _gl_rebuild_lexicon_hash(grounded_language_t* gl) {
 uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
     if (!gl || n == 0 || gl->vocab_count == 0) return 0;
 
+    /* X1 (walkthrough fix, 2026-05-27): hold mutate_lock for the whole
+     * eviction so the entry frees + vocab_list compaction + hash rebuild are
+     * atomic w.r.t. lexicon_find_or_create and any other mutate_lock holder.
+     * The sole caller (sleep DEEP_NREM hook in the memory bridge) cannot hold
+     * this lock — it's static to this TU — so there's no re-entrant deadlock,
+     * and the evict helpers (_gl_free_entry / _gl_rebuild_lexicon_hash) don't
+     * lock. (produce still reads vocab_list lock-free; that read is kept safe
+     * in production by the daemon's single-writer serialization — eviction and
+     * produce are both write-socket commands under one lock — which this
+     * C-level lock now complements rather than relies on.) */
+    gl_mutate_lock(gl);
+
     /* Pass 1: find the n-th lowest frequency among unpinned entries.
      * For small batches an N×K linear scan is fine — N ≤ vocab_count,
      * K = n. With n ≤ ~256 and vocab ≤ 16384 we're talking 4M ops
@@ -755,7 +767,7 @@ uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
         evicted++;
     }
 
-    if (evicted == 0) return 0;
+    if (evicted == 0) { gl_mutate_unlock(gl); return 0; }
 
     /* Compact vocab_list — shift survivors down to fill the holes. */
     uint32_t write = 0;
@@ -772,6 +784,8 @@ uint32_t grounded_language_evict_lru(grounded_language_t* gl, uint32_t n) {
 
     /* Rebuild hash table (probe chains are now stale). */
     _gl_rebuild_lexicon_hash(gl);
+
+    gl_mutate_unlock(gl);
 
     LOG_DEBUG(LOG_MODULE,
               "lexicon eviction: removed %u entries (vocab now %u)",
@@ -1069,11 +1083,17 @@ static void mirror_binding_to_bridge(grounded_language_t* gl,
 
     /* Cross-modal binding via concept_registry (Slice B / walkthrough-2):
      * intern the text form so that subsequent visual/audio encodes of the
-     * same referent — interned by brain_learn_vector when (features,
-     * label) arrive together — canonicalize to the same root population.
-     * This is the load-bearing wiring that makes a single SNN population
-     * fire for the image, the spoken word, and the written word of one
-     * referent (Quian Quiroga concept-cell invariant). */
+     * same referent — interned by brain_learn_vector when (features, label)
+     * arrive together — canonicalize to the same root population.
+     *
+     * B3 (walkthrough correction, 2026-05-27): this is NOT yet load-bearing.
+     * The registry correctly accumulates referents + union-find merges and is
+     * persisted, but `concept_registry_canonical` has NO callers in the
+     * produce/comprehend/decode pipeline — nothing reads the binding back to
+     * resolve a word/image to its canonical concept population. So the
+     * Quian-Quiroga concept-cell invariant is PREPARED here (write side) but
+     * not consumed; wiring a reader is the remaining Slice-B work. Today this
+     * intern is write/telemetry-only. */
     if (gl->concept_registry) {
         (void)concept_registry_intern_text(
             (concept_registry_t*)gl->concept_registry, entry->form);
@@ -3484,6 +3504,35 @@ bool grounded_language_get_recent_turn_vector(const grounded_language_t* gl,
     return true;
 }
 
+uint32_t grounded_language_copy_recent_turn_vector(grounded_language_t* gl,
+                                                   uint8_t back,
+                                                   float* out,
+                                                   uint32_t max_dim) {
+    if (!gl || !out || max_dim == 0 || back == 0) return 0;
+    /* X2 (walkthrough fix, 2026-05-27): lock-guarded COPY variant of
+     * grounded_language_get_recent_turn_vector. The pointer-returning accessor
+     * hands back a raw interior pointer into the discourse ring that push_turn
+     * can nimcp_free() under mutate_lock — a torn-read / use-after-free window
+     * for any caller that doesn't copy it out instantly. This variant copies
+     * under the same mutate_lock so callers (produce discourse-seed, cascade
+     * Step-E content blend) never hold a ring pointer across a possible
+     * concurrent push_turn. Returns floats written (0 = no such turn). */
+    gl_mutate_lock(gl);
+    uint32_t copied = 0;
+    if (gl->discourse.count >= back) {
+        uint8_t pos = (uint8_t)(gl->discourse.count - back);
+        const gl_discourse_turn_t* t =
+            &gl->discourse.turns[discourse_idx(&gl->discourse, pos)];
+        if (t->semantic_vector) {
+            uint32_t d = (gl->semantic_dim < max_dim) ? gl->semantic_dim : max_dim;
+            memcpy(out, t->semantic_vector, (size_t)d * sizeof(float));
+            copied = d;
+        }
+    }
+    gl_mutate_unlock(gl);
+    return copied;
+}
+
 /*============================================================================
  * Tier 1 Step F3 — subject-verb / quantifier-noun agreement correction
  *==========================================================================*/
@@ -3503,10 +3552,24 @@ static bool gl_agr_in_set(const char* w, const char* const* set) {
     return false;
 }
 
-/* Already inflected (don't double-apply)? Trailing -s / -ed / -ing. */
+/* Already inflected (don't double-apply)? Trailing -s / -ed / -ing.
+ * The -s test excludes the singular -ss/-us/-is endings (glass, bus, analysis,
+ * process, virus) that are NOT plurals/3sg, so F3 can still inflect them
+ * ("the cat process" -> "processes") and pronominalization doesn't misread a
+ * singular -s noun as plural ("them" instead of "it"). Genuine plurals/3sg of
+ * those stems end in -es ("glasses","buses") and still test true via -ed?no,
+ * via the trailing 's' with preceding 'e'. */
 static bool gl_agr_already_inflected(const char* w) {
     size_t n = strlen(w);
-    if (n >= 1 && w[n-1] == 's') return true;
+    if (n >= 1 && w[n-1] == 's') {
+        if (n >= 2) {
+            char p = w[n-2];
+            /* -ss / -us / -is are typically singular (glass, bus, basis). */
+            if (p != 's' && p != 'u' && p != 'i') return true;
+        } else {
+            return true;
+        }
+    }
     if (n >= 2 && w[n-2]=='e' && w[n-1]=='d') return true;
     if (n >= 3 && w[n-3]=='i' && w[n-2]=='n' && w[n-1]=='g') return true;
     return false;
@@ -3527,7 +3590,12 @@ int gl_apply_svo_agreement(grounded_language_t* gl, const char* in,
         "his","her","its","our","their","of","to","in","on","at","with","for",
         "and","or","but","very","really","quite",NULL};
 
-    enum { MAXTOK = 48, TOKLEN = 64 };
+    /* MAXTOK bounds the correctable surface length. These correctors run only
+     * on cascade produce output (never arbitrary user text); produce caps
+     * content at GL_PRODUCE_TOPK (32) + ~1 scaffolding word each (~64 surface
+     * tokens), so 128 gives ~2x headroom and the corrector does not silently
+     * drop produced tokens past the old 48 cap. */
+    enum { MAXTOK = 128, TOKLEN = 64 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
     uint32_t nt = 0;
@@ -3695,7 +3763,12 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
         {"i","my"},{"he","his"},{"she","her"},{"we","our"},{"they","their"},
         {"it","its"},{"you","your"},{NULL,NULL} };
 
-    enum { MAXTOK = 48, TOKLEN = 64 };
+    /* MAXTOK bounds the correctable surface length. These correctors run only
+     * on cascade produce output (never arbitrary user text); produce caps
+     * content at GL_PRODUCE_TOPK (32) + ~1 scaffolding word each (~64 surface
+     * tokens), so 128 gives ~2x headroom and the corrector does not silently
+     * drop produced tokens past the old 48 cap. */
+    enum { MAXTOK = 128, TOKLEN = 64 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
     uint32_t nt = 0;
@@ -3779,7 +3852,12 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
         uint32_t vi = nt;
         for (uint32_t i = 0; i < nt; i++) {
             if (gl_agr_in_set(low[i], SKIP_SLOT)) continue;
-            if (gl_f4_class(gl, low[i]) == GL_CLASS_VERB) { vi = i; break; }
+            /* Anchor on the first finite verb — including irregular pasts that
+             * morphology can't suffix-classify (ran/ate/went/saw), detected via
+             * gl_f4_is_past — so an irregular-led clause still sets the tense
+             * baseline instead of latching onto a later derived verb. */
+            if (gl_f4_class(gl, low[i]) == GL_CLASS_VERB ||
+                gl_f4_is_past(low[i])) { vi = i; break; }
         }
         if (vi < nt && gl_f4_is_past(low[vi])) {
             for (uint32_t j = vi+1; j < nt; j++) {
@@ -3887,6 +3965,15 @@ bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl)
     return gl ? gl->produce_discourse_seed : false;
 }
 
+void grounded_language_set_produce_clause_frame(grounded_language_t* gl,
+                                                bool enabled) {
+    if (gl) gl->produce_clause_frame = enabled;
+}
+
+bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl) {
+    return gl ? gl->produce_clause_frame : false;
+}
+
 /* Strip leading/trailing non-alpha (punctuation) from a lowercased token into
  * `out`, producing a clean lemma for class lookup + same-word matching. So
  * "barked." -> "barked", "creation," -> "creation". Internal apostrophes/
@@ -3952,7 +4039,10 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
         "teacher","doctor","friend","friends","someone","everyone","god","he",
         "she","him","her","i","you","we","they","who",NULL};
 
-    enum { MAXTOK = 48, TOKLEN = 64, WINDOW = 10 };
+    /* MAXTOK bounds the correctable surface length — see the note in the F3/F4
+     * correctors; 128 gives ~2x headroom over the produce cap so re-mentions
+     * past the old 48-token limit are no longer silently dropped. */
+    enum { MAXTOK = 128, TOKLEN = 64, WINDOW = 10 };
     char tok[MAXTOK][TOKLEN];
     char low[MAXTOK][TOKLEN];
     char lem[MAXTOK][TOKLEN];   /* punctuation-stripped lemma (class + match) */
@@ -4011,7 +4101,12 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
             while (k >= 0 && (lem[k][0] == '\0' || gl_agr_in_set(lem[k], DET2))) k--;
             if (k >= 0 && gl_f4_class(gl, lem[k]) == GL_CLASS_VERB) object_pos = true;
         }
-        (void)object_pos;
+        /* Only pronominalize when the grammatical role is CONFIRMED by an
+         * adjacent verb — subject (following verb -> "they") or object
+         * (preceding verb -> "them"). An unanchored re-mention (neither, e.g.
+         * a list/appositive slot) is left as the full noun rather than guessing
+         * a plural pronoun by fallthrough. Singulars are "it" either way. */
+        if (!subject_pos && !object_pos) continue;
         size_t wl = strlen(lem[i]);
         bool plural = (wl >= 1 && lem[i][wl-1] == 's' && gl_agr_already_inflected(lem[i]));
         const char* pro = plural ? (subject_pos ? "they" : "them") : "it";
@@ -4457,6 +4552,16 @@ int grounded_language_learn_from_text(grounded_language_t* gl, const char* text)
             for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                 center->context_vector[d] = (gl_random(gl) - 0.5f) * 0.1f;
             }
+            /* X3 (walkthrough fix): publish context_initialized=true ONLY after
+             * the vector is fully written, with a release fence, so a lock-free
+             * reader in produce that observes the flag set also sees the vector
+             * (no half-written vector behind a true flag). The residual read of
+             * the float vector itself is an accepted benign race — the buffer is
+             * fixed-size and never freed/realloced while initialized, so a torn
+             * read at worst yields a marginally-off cosine that self-corrects on
+             * the next learning step (no UAF). Adding per-element atomics to the
+             * hot scoring loop would be disproportionate. */
+            __atomic_thread_fence(__ATOMIC_RELEASE);
             center->context_initialized = true;
         }
 
@@ -4559,6 +4664,9 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
     /* Copy features to context vector for distributional similarity */
     uint32_t copy_dim = (feature_dim < gl->semantic_dim) ? feature_dim : gl->semantic_dim;
     memcpy(entry->context_vector, concept_features, copy_dim * sizeof(float));
+    /* X3: publish the flag after the vector write (release fence) — see the
+     * note at the learn_from_text init site. */
+    __atomic_thread_fence(__ATOMIC_RELEASE);
     entry->context_initialized = true;
 
     LOG_DEBUG(LOG_MODULE, "Fast-mapped '%s' -> concept %lu", word, (unsigned long)concept_id);
@@ -4569,6 +4677,170 @@ uint64_t grounded_language_fast_map(grounded_language_t* gl, const char* word,
 /*=============================================================================
  * Production
  *===========================================================================*/
+
+/* Append one space-separated token to the clause buffer. Content words count
+ * toward emit + score_sum and the max_content budget; scaffolding (the/is)
+ * counts toward fn only. Returns false (caller stops) when the content budget
+ * is exhausted or the token wouldn't fit. */
+static bool gl_clause_emit_tok(char* buf, size_t buf_sz, size_t* pos,
+                               const char* w, float score, bool content,
+                               uint32_t* emit, uint32_t* fn, float* ssum,
+                               uint32_t max_content) {
+    if (content && *emit >= max_content) return false;
+    size_t wl = strlen(w);
+    if (*pos + wl + 2 >= buf_sz) return false;
+    if (*pos > 0) buf[(*pos)++] = ' ';
+    memcpy(buf + *pos, w, wl); *pos += wl;
+    if (content) { (*emit)++; *ssum += score; }
+    else         { (*fn)++; }
+    return true;
+}
+
+/* FND-2b: closed-set animacy prior. Animate referents (people, family/role
+ * nouns, common animals) are NOUNS that morphology can't suffix-classify
+ * ("woman"/"dog" have no -tion/-ment ending) — so this both (a) lets them be
+ * recognized as noun candidates and (b) drives the animate-agent preference.
+ * A learned animacy feature would be the fuller solution; this closed prior
+ * mirrors the codebase's other closed-class tables (function words, PERSON
+ * guard). Match is on the lowercased lexicon form. */
+static bool gl_is_animate(const char* w) {
+    static const char* ANIMATE[] = {
+        "man","woman","men","women","person","people","child","children",
+        "boy","girl","boys","girls","baby","babies","mother","father","mom",
+        "dad","parent","parents","king","queen","prince","princess","lady",
+        "guy","teacher","student","doctor","nurse","friend","friends","sister",
+        "brother","son","daughter","family","human","creature","dog","cat",
+        "bird","fish","horse","cow","pig","sheep","lion","tiger","bear",
+        "mouse","rabbit","wolf","fox",NULL };
+    if (!w || !w[0]) return false;
+    for (int i = 0; ANIMATE[i]; i++) if (strcmp(w, ANIMATE[i]) == 0) return true;
+    return false;
+}
+
+/* FND-1/FND-2/FND-2b (2026-05-27): predicate->argument clause frame. Organize
+ * the grounded top-K into a real clause instead of a bigram/POS-reranked bag.
+ *   - head VERB  = highest grounded-score verb candidate (the predicate)
+ *   - SUBJECT    = highest grounded-score noun (agent); an animate noun is
+ *                  preferred for this role over an inanimate one (FND-2b)
+ *   - OBJECT     = next-highest noun (patient), if any
+ *   - ADJECTIVE  = highest grounded-score adjective (modifier or predicate)
+ * A word in the animate set counts as a NOUN candidate even when morphology
+ * returns UNKNOWN, so animate-referent intents can form clause subjects.
+ * Two clause shapes:
+ *   SVO    (a head verb clears the floor): "the [ADJ] SUBJECT VERB [the OBJECT]"
+ *          — the adjective, when present + above floor, modifies the subject NP.
+ *   COPULA (no head verb, but a noun + an above-floor adjective): "the SUBJECT
+ *          is ADJECTIVE" — covers descriptive/stative intents that would
+ *          otherwise fall back to a bag. (FND-2)
+ * Determiners + the copula "is" are F2-style scaffolding; verb inflection +
+ * a/an are left to the F3/F4 surface correctors downstream. Only the word ORDER
+ * is templated (English SVO/copula, a Broca-level parameter) — every slot is
+ * filled by the same grounded score the greedy path uses, so WHAT is said stays
+ * fully data-driven.
+ *
+ * Writes buf/*pos_io/*fn_io/*score_io and returns the content-word count (>=1)
+ * on success, or -1 to fall back to greedy: no subject, or neither a
+ * floor-clearing head verb NOR a floor-clearing predicate adjective (we don't
+ * force a clause on weak signal). Subject is the word-0 analogue (always kept);
+ * object + modifier/predicate adjective are floor-gated like greedy's
+ * subsequent words. `max_words` caps content words. Class is from gl_f4_class
+ * (learned class when confident, else morphology). */
+static int gl_build_clause_frame(grounded_language_t* gl,
+                                 const char** topk_words,
+                                 const float* topk_scores,
+                                 uint32_t n, float floor, uint32_t max_words,
+                                 char* buf, size_t buf_sz,
+                                 size_t* pos_io, uint32_t* fn_io, float* score_io) {
+    if (!gl || !topk_words || !topk_scores || !buf || buf_sz == 0) return -1;
+    int verb_idx = -1, subj_idx = -1, obj_idx = -1, adj_idx = -1;
+    float verb_best = -1e30f, subj_best = -1e30f, obj_best = -1e30f, adj_best = -1e30f;
+    bool subj_anim = false, obj_anim = false;  /* FND-2b: per-slot animacy */
+    for (uint32_t j = 0; j < n; j++) {
+        const gl_lexicon_entry_t* e = lexicon_find(gl, topk_words[j]);
+        if (e && (e->learned_class == GL_CLASS_FUNCTION ||
+                  e->learned_class == GL_CLASS_PRONOUN)) continue;
+        gl_word_class_t cls = gl_f4_class(gl, topk_words[j]);
+        float s = topk_scores[j];
+        /* FND-2b: an animate-set word is a NOUN candidate even when morphology
+         * leaves it UNKNOWN ("woman"/"dog" have no nominal suffix). */
+        bool anim = gl_is_animate(topk_words[j]);
+        bool is_noun = (cls == GL_CLASS_NOUN) || anim;
+        if (cls == GL_CLASS_VERB) {
+            if (s > verb_best) { verb_best = s; verb_idx = (int)j; }
+        } else if (is_noun) {
+            /* Track the top-2 nouns by score (subject, then object), carrying
+             * each one's animacy so roles can be re-arbitrated below. */
+            if (s > subj_best) {
+                obj_best = subj_best; obj_idx = subj_idx; obj_anim = subj_anim;
+                subj_best = s;        subj_idx = (int)j;  subj_anim = anim;
+            } else if (s > obj_best) {
+                obj_best = s; obj_idx = (int)j; obj_anim = anim;
+            }
+        } else if (cls == GL_CLASS_ADJECTIVE) {
+            if (s > adj_best) { adj_best = s; adj_idx = (int)j; }
+        }
+    }
+    if (subj_idx < 0) return -1;  /* every clause shape needs a subject head */
+
+    /* FND-2b: animate-agent preference. If the patient slot is animate and the
+     * agent slot is not, swap their roles so the animate referent is the
+     * subject (animate agents are a cross-linguistic default). Score still
+     * decides WHICH two nouns appear; animacy only arbitrates their roles. */
+    if (obj_idx >= 0 && obj_anim && !subj_anim) {
+        int   ti = subj_idx;  subj_idx  = obj_idx;  obj_idx  = ti;
+        float tb = subj_best; subj_best = obj_best; obj_best = tb;
+        bool  ta = subj_anim; subj_anim = obj_anim; obj_anim = ta;
+    }
+    (void)subj_anim;  /* consumed only by the swap above */
+
+    bool have_verb = (verb_idx >= 0 && verb_best >= floor);
+    bool have_adj  = (adj_idx  >= 0 && adj_best  >= floor);
+    if (!have_verb && !have_adj) return -1;  /* no predicate at all → greedy */
+
+    /* Floor-gate the OBJECT like the greedy path floor-gates subsequent words
+     * (greedy always emits word 0 but stops once a later word drops below the
+     * floor). Subject = the obligatory head (word-0 analogue, always kept).
+     * (Walkthrough LOW-1.) */
+    if (obj_idx >= 0 && obj_best < floor) obj_idx = -1;
+
+    size_t pos = 0; uint32_t emit = 0, fn = 0; float ssum = 0.0f;
+    bool ok = true;
+    if (have_verb) {
+        /* SVO: "the [ADJ] SUBJECT VERB [the OBJECT]". The adjective (when above
+         * floor) is a pre-nominal modifier of the subject NP. */
+        ok = gl_clause_emit_tok(buf, buf_sz, &pos, "the", 0.0f, false,
+                                &emit, &fn, &ssum, max_words);
+        if (ok && have_adj)
+            ok = gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[adj_idx],
+                                    adj_best, true, &emit, &fn, &ssum, max_words);
+        if (ok)
+            ok = gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[subj_idx],
+                                    subj_best, true, &emit, &fn, &ssum, max_words);
+        if (ok)
+            ok = gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[verb_idx],
+                                    verb_best, true, &emit, &fn, &ssum, max_words);
+        if (ok && obj_idx >= 0) {
+            gl_clause_emit_tok(buf, buf_sz, &pos, "the", 0.0f, false,
+                               &emit, &fn, &ssum, max_words);
+            gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[obj_idx],
+                               obj_best, true, &emit, &fn, &ssum, max_words);
+        }
+    } else {
+        /* COPULA: "the SUBJECT is ADJECTIVE" (have_adj is guaranteed here). */
+        gl_clause_emit_tok(buf, buf_sz, &pos, "the", 0.0f, false,
+                           &emit, &fn, &ssum, max_words);
+        gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[subj_idx],
+                           subj_best, true, &emit, &fn, &ssum, max_words);
+        gl_clause_emit_tok(buf, buf_sz, &pos, "is", 0.0f, false,
+                           &emit, &fn, &ssum, max_words);
+        gl_clause_emit_tok(buf, buf_sz, &pos, topk_words[adj_idx],
+                           adj_best, true, &emit, &fn, &ssum, max_words);
+    }
+    if (emit == 0) return -1;
+    buf[pos] = '\0';
+    *pos_io = pos; *fn_io = fn; *score_io = ssum;
+    return (int)emit;
+}
 
 int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                uint32_t intent_dim, gl_production_mode_t mode,
@@ -4681,20 +4953,25 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
      * Off / non-AR / stage<2 → emitted_ctx stays all-zero → byte-identical. */
     bool ar_seeded = false;
     if (emitted_ctx && gl->produce_discourse_seed && gl->current_stage >= 2) {
-        const float* prior = NULL;
-        uint32_t pdim = 0;
-        if (grounded_language_get_recent_turn_vector(gl, 1, &prior, &pdim) &&
-            prior && pdim == gl->semantic_dim) {
+        /* X2: copy the prior turn vector under the discourse lock straight into
+         * emitted_ctx (no raw ring pointer held across the normalize loop), then
+         * unit-normalize × decay in place. */
+        uint32_t pdim = grounded_language_copy_recent_turn_vector(
+            gl, 1, emitted_ctx, gl->semantic_dim);
+        if (pdim == gl->semantic_dim) {
             double nrm = 0.0;
             for (uint32_t d = 0; d < gl->semantic_dim; d++)
-                nrm += (double)prior[d] * (double)prior[d];
+                nrm += (double)emitted_ctx[d] * (double)emitted_ctx[d];
             nrm = sqrt(nrm);
             if (nrm > 1e-9) {
                 const float GL_DISCOURSE_SEED_DECAY = 0.5f;
                 float scale = GL_DISCOURSE_SEED_DECAY / (float)nrm;
                 for (uint32_t d = 0; d < gl->semantic_dim; d++)
-                    emitted_ctx[d] = prior[d] * scale;
+                    emitted_ctx[d] *= scale;
                 ar_seeded = true;
+            } else {
+                /* zero-norm turn — clear the copy so the seed is a no-op. */
+                memset(emitted_ctx, 0, (size_t)gl->semantic_dim * sizeof(float));
             }
         }
     }
@@ -4706,7 +4983,22 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     uint32_t emit = 0;          /* CONTENT words — gates min/max + floor */
     uint32_t fn_inserted = 0;   /* F2 scaffolding function words (not budgeted) */
     float    score_sum = 0.0f;
-    while (emit < max_words) {
+
+    /* FND-1: try the SVO clause frame first (default OFF, stage>=2). On success
+     * it fills buf/pos/emit/fn_inserted/score_sum and we skip the greedy bag
+     * emit. On -1 (no head verb / no noun, or head verb below the confidence
+     * floor) we fall through to the greedy path — never worse than baseline.
+     * The clause frame doesn't use emitted_ctx (AR is a greedy-path strategy);
+     * emitted_ctx is still freed below regardless. */
+    bool clause_built = false;
+    if (gl->produce_clause_frame && gl->current_stage >= 2) {
+        int ce = gl_build_clause_frame(gl, topk_words, topk_scores, n,
+                                       confidence_floor, max_words,
+                                       buf, sizeof(buf), &pos, &fn_inserted,
+                                       &score_sum);
+        if (ce > 0) { emit = (uint32_t)ce; clause_built = true; }
+    }
+    while (!clause_built && emit < max_words) {
         int   best_idx   = -1;
         float best_score = -1e30f;
         /* Track the raw cosine of the eventual winner separately from
@@ -4967,6 +5259,8 @@ int64_t grounded_language_reset_lexicon_distributional(grounded_language_t* gl,
                 float u = (float)((uint32_t)(r >> 40)) * (1.0f / 16777216.0f);
                 e->context_vector[d] = (u * 2.0f - 1.0f) * jitter;
             }
+            /* X3: publish after the vector write (release fence). */
+            __atomic_thread_fence(__ATOMIC_RELEASE);
             e->context_initialized = true;
         }
         touched++;
@@ -7468,6 +7762,8 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     if (mt_write_u8(f, gl->produce_pronominalize ? 1u : 0u) != 0) return -1;
     /* Tier 2: discourse-seeded AR produce flag (trailing). */
     if (mt_write_u8(f, gl->produce_discourse_seed ? 1u : 0u) != 0) return -1;
+    /* FND-1: SVO clause-frame flag (trailing). */
+    if (mt_write_u8(f, gl->produce_clause_frame ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7546,6 +7842,11 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t dseed = 0;
     if (mt_read_u8(f, &dseed) == 0) {
         grounded_language_set_produce_discourse_seed(gl, (dseed != 0));
+    }
+    /* FND-1: SVO clause-frame flag (trailing, optional). */
+    uint8_t clause = 0;
+    if (mt_read_u8(f, &clause) == 0) {
+        grounded_language_set_produce_clause_frame(gl, (clause != 0));
     }
     return 0;
 }
