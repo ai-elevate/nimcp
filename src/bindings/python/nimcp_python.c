@@ -2797,6 +2797,30 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_lateral_inhibition_winner_margin_sum", PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_winner_margin_sum));
     GLD_SET("bridge_lateral_inhibition_settled_steps_sum", PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_settled_steps_sum));
     GLD_SET("bridge_lateral_inhibition_nan_fallbacks",     PyLong_FromUnsignedLongLong(d.bridge_lateral_inhibition_nan_fallbacks));
+    /* TF-6 (2026-05-29) tier-feedback telemetry surface. Counters mirror
+     * gl_stats_t.tf_*; knobs mirror the 5 per-setter getters. Operators read
+     * tf_calls / tf_deltas_captured to see whether the cascade is emitting
+     * deltas; tf_outcome_blocked_* to see which gate is rejecting; the per-path
+     * update counters to confirm plasticity is firing. */
+    GLD_SET("tf_calls",                         PyLong_FromUnsignedLongLong(d.tf_calls));
+    GLD_SET("tf_deltas_captured",               PyLong_FromUnsignedLongLong(d.tf_deltas_captured));
+    GLD_SET("tf_outcome_ok",                    PyLong_FromUnsignedLongLong(d.tf_outcome_ok));
+    GLD_SET("tf_outcome_blocked_stage",         PyLong_FromUnsignedLongLong(d.tf_outcome_blocked_stage));
+    GLD_SET("tf_outcome_blocked_master",        PyLong_FromUnsignedLongLong(d.tf_outcome_blocked_master));
+    GLD_SET("tf_outcome_blocked_da",            PyLong_FromUnsignedLongLong(d.tf_outcome_blocked_da));
+    GLD_SET("tf_outcome_blocked_stale",         PyLong_FromUnsignedLongLong(d.tf_outcome_blocked_stale));
+    GLD_SET("tf_outcome_blocked_retry",         PyLong_FromUnsignedLongLong(d.tf_outcome_blocked_retry));
+    GLD_SET("tf_trigram_updates",               PyLong_FromUnsignedLongLong(d.tf_trigram_updates));
+    GLD_SET("tf_distrib_updates",               PyLong_FromUnsignedLongLong(d.tf_distrib_updates));
+    GLD_SET("tf_stdp_updates_pos",              PyLong_FromUnsignedLongLong(d.tf_stdp_updates_pos));
+    GLD_SET("tf_stdp_updates_neg",              PyLong_FromUnsignedLongLong(d.tf_stdp_updates_neg));
+    GLD_SET("produce_corrector_feedback_enabled", PyBool_FromLong(d.produce_corrector_feedback_enabled));
+    GLD_SET("tf_enabled_correctors",            PyLong_FromUnsignedLong((unsigned long)d.tf_enabled_correctors));
+    GLD_SET("tf_lr_trigram",                    PyFloat_FromDouble((double)d.tf_lr_trigram));
+    GLD_SET("tf_lr_distrib",                    PyFloat_FromDouble((double)d.tf_lr_distrib));
+    GLD_SET("tf_lr_bridge_stdp",                PyFloat_FromDouble((double)d.tf_lr_bridge_stdp));
+    /* T3-2 (2026-05-29) — cohesive conjunction insertion flag surface. */
+    GLD_SET("produce_t3_conjunction",           PyBool_FromLong(d.produce_t3_conjunction));
 #undef GLD_SET
     return dict;
 }
@@ -3511,6 +3535,22 @@ static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* ar
         } \
         Py_RETURN_NONE; \
     }
+/* TF-2 (2026-05-28): uint16 bitmask setter — used by set_tf_enabled_correctors.
+ * Python passes a plain int; we clamp to uint16 range so a stray negative or
+ * out-of-range value can't underflow. */
+#define AUDIT_BRAIN_U16_SETTER(NAME, CAPI) \
+    static PyObject* Brain_##NAME(BrainObject* self, PyObject* args) { \
+        if (!self->brain) { \
+            PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; \
+        } \
+        unsigned int v = 0u; \
+        if (!PyArg_ParseTuple(args, "I", &v)) return NULL; \
+        if (v > 0xFFFFu) v = 0xFFFFu; \
+        if (CAPI(self->brain, (uint16_t)v) != NIMCP_OK) { \
+            PyErr_SetString(PyExc_RuntimeError, #NAME " failed"); return NULL; \
+        } \
+        Py_RETURN_NONE; \
+    }
 
 AUDIT_BRAIN_BOOL_SETTER(set_da_modulation_enabled,            nimcp_brain_set_da_modulation_enabled)
 AUDIT_BRAIN_FLOAT_SETTER(set_da_modulation_gain,              nimcp_brain_set_da_modulation_gain)
@@ -3531,6 +3571,13 @@ AUDIT_BRAIN_BOOL_SETTER(set_produce_pronominalize,            nimcp_brain_set_pr
 AUDIT_BRAIN_BOOL_SETTER(set_produce_discourse_seed,           nimcp_brain_set_produce_discourse_seed)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_clause_frame,             nimcp_brain_set_produce_clause_frame)
 AUDIT_BRAIN_FLOAT_SETTER(set_produce_distributional_weight,   nimcp_brain_set_produce_distributional_weight)
+AUDIT_BRAIN_BOOL_SETTER(set_produce_givenness_definite,       nimcp_brain_set_produce_givenness_definite)
+AUDIT_BRAIN_BOOL_SETTER(set_produce_t3_conjunction,           nimcp_brain_set_produce_t3_conjunction)
+AUDIT_BRAIN_BOOL_SETTER(set_produce_corrector_feedback_enabled, nimcp_brain_set_produce_corrector_feedback_enabled)
+AUDIT_BRAIN_U16_SETTER (set_tf_enabled_correctors,            nimcp_brain_set_tf_enabled_correctors)
+AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_trigram,                   nimcp_brain_set_tf_lr_trigram)
+AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_distrib,                   nimcp_brain_set_tf_lr_distrib)
+AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_bridge_stdp,               nimcp_brain_set_tf_lr_bridge_stdp)
 
 /* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
  * Returns count of bindings strengthened. Non-zero lr_scale gates the
@@ -12973,6 +13020,20 @@ static PyMethodDef Brain_methods[] = {
      "FND-1: toggle the SVO clause/argument frame in produce — set_produce_clause_frame(enabled: bool) -> None. Default OFF. Effective at stage>=2: builds 'the SUBJECT VERB the OBJECT' from the grounded top-K (best verb=predicate, best two nouns=agent/patient) instead of a reranked content-word bag; falls back to greedy emit on weak signal. Word order only is templated; slots are grounded-score filled. Persisted in the LANC block."},
     {"set_produce_distributional_weight", (PyCFunction)Brain_set_produce_distributional_weight, METH_VARARGS,
      "Produce-score rebalance: set the weight on the distributional (context-vector) term vs the concept-binding term in produce word scoring — set_produce_distributional_weight(w: float) -> None. raw = w*distributional + (1-w)*concept. Default 0.4 (historical split). Raise toward ~0.7 so intent-correct concrete words outrank broadly-concept-bound abstract words that otherwise monopolize produce. Clamped [0,1]. Persisted in the LANC block."},
+    {"set_produce_givenness_definite", (PyCFunction)Brain_set_produce_givenness_definite, METH_VARARGS,
+     "T3-1: toggle givenness-driven definiteness — set_produce_givenness_definite(enabled: bool) -> None. Default OFF. Effective at stage>=2 in the surface cascade AFTER T2 pronominalization: a NOUN re-mention (recency window) whose preceding token is 'a'/'an' has the article swapped to 'the' (case-preserving). Person nouns and unanchored re-mentions that T2-1 spared get marked given here. Persisted in the LANC block."},
+    {"set_produce_t3_conjunction", (PyCFunction)Brain_set_produce_t3_conjunction, METH_VARARGS,
+     "T3-2: toggle cohesive conjunction insertion — set_produce_t3_conjunction(enabled: bool) -> None. Default ON. Effective at stage>=2 in the surface cascade AFTER T3-1: when the utterance contains an adjacent SVO pair (VERB ... DET-or-NOUN ... VERB) and the boundary token is not already a connective, inserts 'and' before the second clause. Single insert per pass, idempotent on re-run. Persisted in the LANC block."},
+    {"set_produce_corrector_feedback_enabled", (PyCFunction)Brain_set_produce_corrector_feedback_enabled, METH_VARARGS,
+     "TF-2: master switch for Tier-feedback plasticity — set_produce_corrector_feedback_enabled(enabled: bool) -> None. Default OFF. When ON, AND tf_enabled_correctors has bits set, AND the corresponding lr is > 0, the cascade-delta diff feeds back into trigram + distributional EMA + (optionally) bridge STDP at a small lr. Stage-gated >=2. Persisted in the LANC block."},
+    {"set_tf_enabled_correctors", (PyCFunction)Brain_set_tf_enabled_correctors, METH_VARARGS,
+     "TF-2: per-corrector enable bitmask for Tier-feedback — set_tf_enabled_correctors(mask: int) -> None. Bits: 1=F3 agreement, 2=F4 fluency, 4=T2 pronominalize, 8=T3-1 givenness, 16=T3-2 conjunction (when shipped). 0 disables all per-corrector paths even if the master flag is on. High bits ignored."},
+    {"set_tf_lr_trigram", (PyCFunction)Brain_set_tf_lr_trigram, METH_VARARGS,
+     "TF-2: trigram-feedback learning rate — set_tf_lr_trigram(lr: float) -> None. Default 0.002. Clamped [0, 0.05]. Negative or NaN -> 0. Used by TF-3 to nudge trigram counts on cascade deltas."},
+    {"set_tf_lr_distrib", (PyCFunction)Brain_set_tf_lr_distrib, METH_VARARGS,
+     "TF-2: distributional-EMA learning rate — set_tf_lr_distrib(lr: float) -> None. Default 0.01. Clamped [0, 0.1]. Used by TF-4 to nudge lexicon entry.context_vector toward corrected contexts."},
+    {"set_tf_lr_bridge_stdp", (PyCFunction)Brain_set_tf_lr_bridge_stdp, METH_VARARGS,
+     "TF-2: SNN bridge STDP learning rate — set_tf_lr_bridge_stdp(lr: float) -> None. Default 0.0 (SAFETY: even when master is on, leaving this at 0 keeps the SNN bridge weights untouched). Clamped [0, 0.1]. Raise to 0.05 only after TF-5 walkthrough + soak."},
     {"set_cascade_self_train_enabled", (PyCFunction)Brain_set_cascade_self_train_enabled, METH_VARARGS,
      "Wave 2 Item #10: enable cascade Stage 14 reward-modulated bridge training — set_cascade_self_train_enabled(enabled: bool) -> None. Default OFF. First enable installs default tunables (0.05/1.0)."},
     {"set_cascade_self_train_tunables", (PyCFunction)Brain_set_cascade_self_train_tunables, METH_VARARGS,

@@ -3915,6 +3915,31 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         out->coref_resolved                     = grounded_language_coref_resolved(b->grounded_lang);
         out->subword_oov_attempts               = grounded_language_subword_oov_attempts(b->grounded_lang);
         out->subword_oov_resolved               = grounded_language_subword_oov_resolved(b->grounded_lang);
+        /* TF (tier-feedback) counter + knob surface. The 10 counters mirror
+         * gl_stats_t.tf_* fields (set above via grounded_language_get_stats);
+         * the 5 knobs are independent getters on the gl handle. */
+        out->tf_calls                           = gls.tf_calls;
+        out->tf_deltas_captured                 = gls.tf_deltas_captured;
+        out->tf_outcome_ok                      = gls.tf_outcome_ok;
+        out->tf_outcome_blocked_stage           = gls.tf_outcome_blocked_stage;
+        out->tf_outcome_blocked_master          = gls.tf_outcome_blocked_master;
+        out->tf_outcome_blocked_da              = gls.tf_outcome_blocked_da;
+        out->tf_outcome_blocked_stale           = gls.tf_outcome_blocked_stale;
+        out->tf_outcome_blocked_retry           = gls.tf_outcome_blocked_retry;
+        out->tf_trigram_updates                 = gls.tf_trigram_updates;
+        out->tf_distrib_updates                 = gls.tf_distrib_updates;
+        out->tf_stdp_updates_pos                = gls.tf_stdp_updates_pos;
+        out->tf_stdp_updates_neg                = gls.tf_stdp_updates_neg;
+        out->produce_corrector_feedback_enabled =
+            grounded_language_get_produce_corrector_feedback_enabled(b->grounded_lang) ? 1u : 0u;
+        out->tf_enabled_correctors              =
+            grounded_language_get_tf_enabled_correctors(b->grounded_lang);
+        out->tf_lr_trigram                      = grounded_language_get_tf_lr_trigram(b->grounded_lang);
+        out->tf_lr_distrib                      = grounded_language_get_tf_lr_distrib(b->grounded_lang);
+        out->tf_lr_bridge_stdp                  = grounded_language_get_tf_lr_bridge_stdp(b->grounded_lang);
+        /* T3-2 (2026-05-29): cohesive-conjunction-insertion flag. */
+        out->produce_t3_conjunction             =
+            grounded_language_get_produce_t3_conjunction(b->grounded_lang) ? 1u : 0u;
     }
 
     if (b->snn_lang_bridge) {
@@ -4950,6 +4975,142 @@ nimcp_status_t nimcp_brain_get_produce_distributional_weight(nimcp_brain_t brain
     if (s != NIMCP_OK) return s;
     if (!b->grounded_lang) return NIMCP_ERROR;
     *out_weight = grounded_language_get_produce_distributional_weight(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_produce_givenness_definite(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_givenness_definite(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_givenness_definite(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_givenness_definite(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_produce_t3_conjunction(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_t3_conjunction(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_t3_conjunction(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_t3_conjunction(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+/*============================================================================
+ * TF-2 — Tier-feedback flag wrappers.
+ *==========================================================================*/
+nimcp_status_t nimcp_brain_set_produce_corrector_feedback_enabled(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_corrector_feedback_enabled(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_corrector_feedback_enabled(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_corrector_feedback_enabled(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_tf_enabled_correctors(nimcp_brain_t brain, uint16_t mask) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_tf_enabled_correctors(b->grounded_lang, mask);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_tf_enabled_correctors(nimcp_brain_t brain, uint16_t* out_mask) {
+    if (!out_mask) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_mask = grounded_language_get_tf_enabled_correctors(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_tf_lr_trigram(nimcp_brain_t brain, float lr) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_tf_lr_trigram(b->grounded_lang, lr);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_tf_lr_trigram(nimcp_brain_t brain, float* out_lr) {
+    if (!out_lr) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_lr = grounded_language_get_tf_lr_trigram(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_tf_lr_distrib(nimcp_brain_t brain, float lr) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_tf_lr_distrib(b->grounded_lang, lr);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_tf_lr_distrib(nimcp_brain_t brain, float* out_lr) {
+    if (!out_lr) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_lr = grounded_language_get_tf_lr_distrib(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_tf_lr_bridge_stdp(nimcp_brain_t brain, float lr) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_tf_lr_bridge_stdp(b->grounded_lang, lr);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_tf_lr_bridge_stdp(nimcp_brain_t brain, float* out_lr) {
+    if (!out_lr) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_lr = grounded_language_get_tf_lr_bridge_stdp(b->grounded_lang);
     return NIMCP_OK;
 }
 

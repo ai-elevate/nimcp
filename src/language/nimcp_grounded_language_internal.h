@@ -446,6 +446,52 @@ struct grounded_language {
      * (never worse than baseline). Default false. */
     bool                 produce_clause_frame;
 
+    /* T3-1 (2026-05-28) — givenness-driven definiteness. When true AND
+     * stage >= 2, gl_apply_givenness_definite runs after T2 pronominalization
+     * in cascade_apply_surface_correctors: a NOUN re-mention (recency window)
+     * that did NOT get pronominalized (person nouns, unanchored slots) has its
+     * preceding indefinite "a"/"an" swapped to "the" so the second mention is
+     * marked as given ("a cat sat. a cat purred." -> "a cat sat. the cat
+     * purred."). Reuses the same lemma + noun-class helpers as T2-1/T2-3.
+     * Default false. */
+    bool                 produce_givenness_definite;
+
+    /* T3-2 (2026-05-29) — Cohesive conjunction insertion between adjacent SVO
+     * clauses. When true AND stage >= 2, gl_apply_t3_conjunction runs after
+     * T3-1 givenness in cascade_apply_surface_correctors: detects an adjacent
+     * SVO pair (VERB ... DET-or-NOUN ... VERB) without an existing connective
+     * and inserts "and" before the start of the second clause. Skips when the
+     * boundary token is already a conjunction (and/but/so/or/then/while/
+     * because/although). One insert per pass — idempotent on re-run. */
+    bool                 produce_t3_conjunction;
+
+    /* TF-2 (2026-05-28) — Tier-feedback master switch + per-corrector enable
+     * mask + per-plasticity-path learning rates. The whole TF stack is gated
+     * by `produce_corrector_feedback_enabled` (default OFF): when false,
+     * grounded_language_tf_record_diff still bumps observation counters but
+     * NO plasticity fires regardless of the other knobs. When true, TF-3/4/5
+     * walk the deltas and only apply a path if BOTH (a) the corresponding
+     * lr is > 0 AND (b) the delta's source bit is set in
+     * tf_enabled_correctors. Two-key safety:
+     *
+     *   bit 0 = F3 agreement deltas
+     *   bit 1 = F4 fluency deltas (a/an, past-tense, pronoun case)
+     *   bit 2 = T2 pronominalization deltas
+     *   bit 3 = T3-1 givenness deltas
+     *   bit 4 = T3-2 conjunction deltas (when shipped)
+     *
+     * Bridge STDP (TF-5) is additionally gated by tf_lr_bridge_stdp > 0 —
+     * separate from the trigram/distrib lrs because SNN weight mutation is
+     * the highest-risk path; even with the master flag on, leaving the STDP
+     * lr at 0 keeps the bridge inert. Both the master flag and the lrs are
+     * persisted in the LANC config block; the JSON default file mirrors
+     * them so a daemon restart preserves operator intent. */
+    bool                 produce_corrector_feedback_enabled;
+    uint16_t             tf_enabled_correctors;
+    float                tf_lr_trigram;       /* clamped [0, 0.05] */
+    float                tf_lr_distrib;       /* clamped [0, 0.1]  */
+    float                tf_lr_bridge_stdp;   /* clamped [0, 0.1]  */
+
     /* Produce-score rebalance (2026-05-27) — tunable weight on the
      * distributional (context-vector cosine) term in
      * score_word_against_vector, vs the concept-binding cosine term:

@@ -472,6 +472,25 @@ def _apply_runtime_lang_config(brain, logger):
         # raise toward ~0.7 so concrete intent-correct words outrank broadly-
         # concept-bound abstract words that otherwise monopolize produce.
         ("produce_distributional_weight",      "set_produce_distributional_weight",      _f),
+        # T3-1 — givenness-driven definiteness (2026-05-28). Default OFF; when
+        # on, swaps "a"/"an" -> "the" on a NOUN re-mention that T2 did NOT
+        # pronominalize (person nouns, unanchored slots). Stage-gated >=2.
+        ("produce_givenness_definite",         "set_produce_givenness_definite",         _bool),
+        # T3-2 — Cohesive conjunction insertion (2026-05-29). When ON and at
+        # stage>=2, inserts "and" between adjacent SVO clauses that lack a
+        # connective. Single insert per pass, idempotent. Default ON.
+        ("produce_t3_conjunction",             "set_produce_t3_conjunction",             _bool),
+        # TF-2 — Tier-feedback plasticity (2026-05-28). Master switch +
+        # per-corrector bitmask + per-path learning rates. All default safe
+        # (master OFF, mask 0, bridge_stdp lr 0). TF-1 keeps capturing deltas
+        # regardless — these knobs control whether the deltas drive any
+        # plasticity. Bridge STDP is the high-risk path; even with master on
+        # leaving lr=0 keeps the SNN untouched.
+        ("produce_corrector_feedback_enabled", "set_produce_corrector_feedback_enabled", _bool),
+        ("tf_enabled_correctors",              "set_tf_enabled_correctors",              _u),
+        ("tf_lr_trigram",                      "set_tf_lr_trigram",                      _f),
+        ("tf_lr_distrib",                      "set_tf_lr_distrib",                      _f),
+        ("tf_lr_bridge_stdp",                  "set_tf_lr_bridge_stdp",                  _f),
     ]
     for key, method, extract in table:
         if key not in cfg:
@@ -2454,8 +2473,40 @@ class BrainService:
             "last_da_modulation":          float(d.get("bridge_last_da_modulation", 0.0)),
             "next_token_cold_start_skips": int(d.get("next_token_cold_start_skips", 0)),
         }
+        # TF-6 (2026-05-29) — tier-feedback telemetry. Surfaces the cascade-delta
+        # feedback loop end-to-end: emission (calls/deltas), gate decisions
+        # (outcome_*), and per-path plasticity (trigram/distrib/stdp).
+        # Read the per-reason counters to diagnose "TF is quiet": e.g.
+        # outcome_blocked_stage dominating means curriculum stage hasn't reached
+        # 2 yet; outcome_blocked_da dominating means recent reward < 0.
+        tf = {
+            "calls":           int(d.get("tf_calls", 0)),
+            "deltas_captured": int(d.get("tf_deltas_captured", 0)),
+            "outcome": {
+                "ok":              int(d.get("tf_outcome_ok", 0)),
+                "blocked_stage":   int(d.get("tf_outcome_blocked_stage", 0)),
+                "blocked_master":  int(d.get("tf_outcome_blocked_master", 0)),
+                "blocked_da":      int(d.get("tf_outcome_blocked_da", 0)),
+                "blocked_stale":   int(d.get("tf_outcome_blocked_stale", 0)),
+                "blocked_retry":   int(d.get("tf_outcome_blocked_retry", 0)),
+            },
+            "updates": {
+                "trigram":    int(d.get("tf_trigram_updates", 0)),
+                "distrib":    int(d.get("tf_distrib_updates", 0)),
+                "stdp_pos":   int(d.get("tf_stdp_updates_pos", 0)),
+                "stdp_neg":   int(d.get("tf_stdp_updates_neg", 0)),
+            },
+            "config": {
+                "master":                       bool(d.get("produce_corrector_feedback_enabled", False)),
+                "enabled_correctors_mask":      int(d.get("tf_enabled_correctors", 0)),
+                "lr_trigram":                   float(d.get("tf_lr_trigram", 0.0)),
+                "lr_distrib":                   float(d.get("tf_lr_distrib", 0.0)),
+                "lr_bridge_stdp":               float(d.get("tf_lr_bridge_stdp", 0.0)),
+            },
+        }
         return {"ok": True, "flags": flags, "tunables": tunables,
-                "stats": stats, "decode": decode, "plasticity": plasticity}
+                "stats": stats, "decode": decode, "plasticity": plasticity,
+                "tf": tf}
 
     def _cmd_set_dialect(self, req):
         """Audit-2 B13: dialect / accent conditioning. None or empty clears."""
