@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — T3-2 cohesive conjunction insertion (2026-05-29)
+
+Adjacent SVO clauses in cascade output (e.g. "the cat ran the dog jumped")
+now get an "and" connective inserted between them, giving "the cat ran and
+the dog jumped". Single insert per cascade pass, idempotent on re-run
+(detector finds the new "and" at the boundary and bails). Stage-gated >= 2.
+
+- `gl_apply_t3_conjunction` (`src/language/nimcp_grounded_language.c`) —
+  walks the polished utterance, finds the first clause-A VERB, then the
+  first DET/NOUN/PRONOUN clause-B start, then a clause-B VERB; if all
+  three are present and the candidate boundary is not already a connective
+  (and/but/so/or/then/while/because/although), inserts "and" before the
+  boundary. Cold-lexicon-robust via surface verb-detector that mirrors
+  `gl_f4_is_past` plus a pronoun shortlist (he/she/it/they/...).
+- Runtime knob `produce_t3_conjunction` (default **ON**). Full 5-layer
+  reachability: gl setter/getter → `nimcp_brain_*_produce_t3_conjunction` C
+  wrappers → pybind `set_produce_t3_conjunction` method → daemon
+  `lang_config` table row → LANC sidecar trailing byte (forward/back compat).
+  JSON default in `data/lang_runtime_default.json`.
+- Cascade wiring: `cascade_apply_surface_correctors` invokes T3-2 AFTER
+  T3-1 givenness and BEFORE TF-1 record_diff, so the insertion contributes
+  to the TF delta stream.
+- Diagnostic surface: `produce_t3_conjunction` field in
+  `nimcp_grounded_language_diagnostics_t` + Python dict; daemon
+  `lang_status.tf.config` does NOT include T3-2 (it's a corrector switch,
+  not a TF knob — the bit `GL_TF_BIT_T3_CONJUNCTION` in `tf_enabled_correctors`
+  is what gates whether T3-2 deltas drive plasticity).
+- New test `test_lang_t3_conjunction.c` — 10 sub-tests: default-ON, setter
+  round-trip, stage gate, basic insert, idempotent, existing-connective
+  skip (5 connectives), single clause no-change, no-second-verb no-change,
+  NULL/empty safety, pronoun-led clause B.
+- lang_smoke 63/63 PASS.
+
+### Added — TF (Tier-Feedback) plasticity loop (2026-05-28/29, TF-1..TF-6)
+
+Tier 1-3 surface correctors (F3 agreement, F4 fluency, T2-1 pronominalize,
+T3-1 givenness, T3-2 conjunction) emit deterministic post-readout polish.
+TF captures the per-token delta between raw produce output and the
+cascade-corrected output and feeds those deltas back into plasticity at a
+small learning rate — the NN eventually internalizes the corrected form and
+the correctors become scaffolding the network graduates out of. Per-position
+delta, never whole-output imitation; curriculum stays the dominant teacher.
+
+- **TF-1 — delta capture** (`include/language/nimcp_grounded_language_tf.h`,
+  `src/language/nimcp_grounded_language_tf.c`) — LCS-aligned token-level
+  Wagner-Fischer edit script emits `gl_corrector_delta_t` records
+  (SUBSTITUTE / INSERT / DELETE). 96-token diff cap. Trace-back biased
+  toward "same position, different word" (Tier 1-3 typical case).
+  Telemetry: `tf_calls`, `tf_deltas_captured`.
+- **TF-2 — flag plumbing + outcome gate** (master flag
+  `produce_corrector_feedback_enabled`, per-corrector bitmask
+  `tf_enabled_correctors`, per-path lrs `tf_lr_trigram`, `tf_lr_distrib`,
+  `tf_lr_bridge_stdp`). Outcome gate (`gl_tf_outcome_ok_reason`) checks
+  stage ≥ 2, master ON, reward ≥ 0, age ≤ ttl, repair_attempts == 0.
+  Per-reason telemetry: `tf_outcome_blocked_{stage,master,da,stale,retry}`.
+  Full 5-layer reachability (gl → C wrapper → pybind → daemon config →
+  LANC persistence trailing bytes).
+- **TF-3 — trigram feedback** (`gl_tf_apply_trigram`) — drives
+  `grounded_language_learn_next_token_pair/_triple` at `tf_lr_trigram`
+  (default 0.002, ~10× smaller than curriculum) using the CORRECTED
+  context preceding each delta. DELETE deltas skipped. Default ON.
+  Telemetry: `tf_trigram_updates`.
+- **TF-4 — distributional EMA feedback** (`gl_tf_apply_distributional`)
+  — for each SUB/INS delta, compute context mean from a 5-on-each-side
+  neighbor window and EMA-nudge the corrected token's lexicon
+  `entry->context_vector` toward it (`v += lr*(mean - v)`); L2-normalize
+  after each touch. Default lr 0.01, default ON.
+  Telemetry: `tf_distrib_updates`.
+- **TF-5 — lexicon-binding-strength feedback** (`gl_tf_apply_bridge_stdp`,
+  the "bridge STDP" slot retargeted post-Slice-A since bridge weights
+  were removed). Asymmetric: corrected gets `+lr` on top binding,
+  raw gets `-lr*0.5`. Strength clamped to [0, 1].
+  **Default lr 0.0** — path wired-but-inert until operator confidence
+  builds via soak. Telemetry: `tf_stdp_updates_pos / _neg`.
+- **TF-6 — telemetry surface + integration + regression tests + docs**
+  — `lang_status` RPC now returns a `tf` block alongside
+  `flags / tunables / stats / decode / plasticity` with three sub-fields:
+  `tf.outcome.*` (rejection reasons), `tf.updates.*` (per-path counts),
+  `tf.config` (live knob snapshot). 50-turn integration test exercises
+  the gate matrix (clean / DA-blocked / stale-blocked / retry-blocked).
+  Regression test confirms TF-OFF is a bit-identical no-op (no counters,
+  no plasticity, no lexicon growth) under three combinations: master
+  OFF, mask zero, all lrs zero. lang_smoke 62/62 PASS.
+
+The cascade dispatcher (`src/language/nimcp_communication_cascade.c`)
+calls `grounded_language_tf_record_diff` for TF-1 telemetry and
+`grounded_language_tf_apply_cascade_feedback` for plasticity dispatch.
+Reward source: `brain->last_external_reward` + `last_external_reward_us`
+via `nimcp_time_monotonic_us()` for freshness. Repair attempts come from
+`production_cascade_state_t.repair_attempts` to suppress feedback on
+noisy retry passes.
+
+Tests: `test_lang_tf_diff`, `test_lang_tf_gating`, `test_lang_tf_trigram_apply`,
+`test_lang_tf_distrib_apply`, `test_lang_tf_stdp_apply`,
+`test_lang_tf_integration_50turn`, `test_lang_tf_off_no_op` — all under
+the `lang_smoke` ctest label.
+
 ### Fixed — SNN language-bridge plasticity + decode + trainer (2026-05-14/15)
 
 Verified call-graph trace showed `brain_learn_vector` never reaching the

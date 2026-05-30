@@ -365,6 +365,41 @@ typedef struct {
     /* TB-6 — sentence-boundary segmentation telemetry. */
     uint64_t sentences_processed;
     uint64_t multi_sentence_inputs;
+    /* TF-1 — tier-feedback delta capture telemetry. tf_calls counts every
+     * cascade_apply_surface_correctors invocation where the diff was
+     * attempted (raw + corrected both nonempty). tf_deltas_captured is the
+     * cumulative count of edit operations emitted by gl_tf_diff_correctors
+     * across all such calls — non-zero proves the diff is firing on
+     * real cascade output, even before TF-2..TF-5 wire the plasticity. */
+    uint64_t tf_calls;
+    uint64_t tf_deltas_captured;
+    /* TF-2 — outcome-gate counters. Every cascade pass where TF would have
+     * attempted plasticity (master ON + mask != 0 + lr > 0) bumps exactly
+     * one of these; their sum equals the number of cascade passes the
+     * gate evaluated. tf_outcome_ok is the "did fire" count;
+     * tf_outcome_blocked_* are the per-reason "did not fire" counts. */
+    uint64_t tf_outcome_ok;
+    uint64_t tf_outcome_blocked_stage;
+    uint64_t tf_outcome_blocked_master;
+    uint64_t tf_outcome_blocked_da;
+    uint64_t tf_outcome_blocked_stale;
+    uint64_t tf_outcome_blocked_retry;
+    /* TF-3 — trigram-feedback plasticity counter. Bumped once per
+     * grounded_language_learn_next_token_* call that gl_tf_apply_trigram
+     * makes (i.e. per applied update, not per delta — a delta at i<2 makes
+     * no update, so it doesn't bump). */
+    uint64_t tf_trigram_updates;
+    /* TF-4 — distributional EMA feedback counter. Bumped once per applied
+     * EMA nudge (one per SUBSTITUTE/INSERT delta with a non-empty context
+     * window AND non-NULL lexicon entry for the corrected token). */
+    uint64_t tf_distrib_updates;
+    /* TF-5 — lexicon-binding strength feedback counter (the "bridge STDP"
+     * slot from the original plan, retargeted to gl_word_binding.strength
+     * post-Slice-A). Bumped once per applied strength touch — positive
+     * (corrected token strengthen) and negative (raw token weaken) are
+     * counted separately so operators can see both signs of activity. */
+    uint64_t tf_stdp_updates_pos;
+    uint64_t tf_stdp_updates_neg;
 } gl_stats_t;
 
 /**
@@ -599,6 +634,14 @@ bool grounded_language_get_negation_enabled(
  *  are needed to fully erode a binding. */
 #define GL_RECONSOLIDATION_DEFAULT_DECAY  0.05f
 
+/** Default weight on the distributional (context-vector) term in the
+ *  produce-time word score, vs the concept-binding term:
+ *  raw = w*distributional_sim + (1-w)*concept_sim. 0.4 reproduces the
+ *  historical 0.4/0.6 split bit-for-bit. Raise toward ~0.7 to let the
+ *  intent-correct distributional signal outrank broadly-concept-bound
+ *  abstract words (produce-collapse fix, 2026-05-27). Range [0,1]. */
+#define GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT  0.4f
+
 /**
  * @brief Toggle TA-5 reconsolidation-on-contradiction. Default OFF.
  *
@@ -628,6 +671,23 @@ void grounded_language_set_reconsolidation_decay(
     float decay);
 
 float grounded_language_get_reconsolidation_decay(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Set the produce-time distributional weight (vs concept-binding).
+ *
+ * score_word_against_vector blends two cosine terms:
+ *   raw = w * distributional_sim + (1 - w) * concept_sim
+ * where w is this weight. Default GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT
+ * (0.4) reproduces the historical 0.4/0.6 split. Raising w toward ~0.7
+ * lets the intent-correct distributional signal outrank broadly-concept-
+ * bound abstract words that otherwise monopolize produce. Clamped [0,1].
+ */
+void grounded_language_set_produce_distributional_weight(
+    grounded_language_t* gl,
+    float weight);
+
+float grounded_language_get_produce_distributional_weight(
     const grounded_language_t* gl);
 
 /**
@@ -2023,6 +2083,99 @@ bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl);
  */
 int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
                                char* out, size_t out_sz);
+
+/**
+ * @brief Enable/disable givenness-driven definiteness (T3-1). Default OFF.
+ *        When ON and stage >= 2, gl_apply_givenness_definite runs after T2
+ *        pronominalization in the cascade and swaps the preceding "a"/"an"
+ *        to "the" on re-mentioned NOUNs that were NOT pronominalized (person
+ *        nouns, unanchored slots), marking the second mention as given.
+ */
+void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
+                                                      bool enabled);
+bool grounded_language_get_produce_givenness_definite(const grounded_language_t* gl);
+
+/**
+ * @brief T3-1 givenness-definiteness pass. For each NOUN at position i whose
+ *        lemma was already seen within the recency window (and which is NOT
+ *        already a pronoun), if token i-1 is the indefinite article "a" or
+ *        "an", replace it with "the" (case-preserving). Stage-gated >= 2.
+ *        Idempotent: re-running on the polished output is a no-op.
+ * @return Number of articles changed (>=0), or -1 on error.
+ */
+int gl_apply_givenness_definite(grounded_language_t* gl, const char* in,
+                                char* out, size_t out_sz);
+
+/**
+ * @brief T3-2 (2026-05-29) — Cohesive conjunction insertion between adjacent
+ *        SVO clauses. Toggle via produce_t3_conjunction. Default false.
+ *        When ON, gl_apply_t3_conjunction scans the polished utterance for an
+ *        adjacent SVO pair without an existing connective and inserts "and"
+ *        before the second clause's leading determiner / noun. One insert
+ *        per pass — re-running on the polished output finds the connective
+ *        already present and is a no-op.
+ */
+void grounded_language_set_produce_t3_conjunction(grounded_language_t* gl,
+                                                  bool enabled);
+bool grounded_language_get_produce_t3_conjunction(const grounded_language_t* gl);
+
+/**
+ * @brief T3-2 conjunction-insertion pass. Walks the token stream, classifies
+ *        each token via gl_f4_class, and finds the FIRST adjacent SVO pair:
+ *        a VERB token, followed (possibly across an object NOUN) by a DET or
+ *        NOUN that is itself followed later by a VERB. Inserts "and" before
+ *        that DET/NOUN. Skips when the candidate token is already one of
+ *        {and,but,so,or,then,while,because,although}. Stage-gated >= 2.
+ *        Returns the number of conjunctions inserted (>=0; capped at 1 per
+ *        call), or -1 on error.
+ */
+int gl_apply_t3_conjunction(grounded_language_t* gl, const char* in,
+                            char* out, size_t out_sz);
+
+/* TF-2 (2026-05-28) — Tier-feedback plasticity flags.
+ *
+ * Master switch + per-corrector enable mask + per-path learning-rate clamps.
+ * See nimcp_grounded_language_internal.h for the field layout. All five
+ * persist in the LANC config block; the JSON default file mirrors them so
+ * a daemon restart honors operator intent. */
+
+/* Master switch. Default false — TF-1 still captures + counts deltas, but no
+ * plasticity fires until this is true AND tf_enabled_correctors has bits set
+ * AND the corresponding lr is > 0. */
+void grounded_language_set_produce_corrector_feedback_enabled(grounded_language_t* gl,
+                                                              bool enabled);
+bool grounded_language_get_produce_corrector_feedback_enabled(const grounded_language_t* gl);
+
+/* Per-corrector enable mask — bit-OR of TF source bits. Bit assignments:
+ *   bit 0 = F3 agreement, bit 1 = F4 fluency, bit 2 = T2 pronominalize,
+ *   bit 3 = T3-1 givenness, bit 4 = T3-2 conjunction (when shipped). */
+#define GL_TF_BIT_F3_AGREEMENT      (1u << 0)
+#define GL_TF_BIT_F4_FLUENCY        (1u << 1)
+#define GL_TF_BIT_T2_PRONOMINALIZE  (1u << 2)
+#define GL_TF_BIT_T3_GIVENNESS      (1u << 3)
+#define GL_TF_BIT_T3_CONJUNCTION    (1u << 4)
+#define GL_TF_BIT_ALL_CORRECTORS    0x001Fu   /* low 5 bits */
+void     grounded_language_set_tf_enabled_correctors(grounded_language_t* gl,
+                                                     uint16_t mask);
+uint16_t grounded_language_get_tf_enabled_correctors(const grounded_language_t* gl);
+
+/* Per-path learning-rate clamps. Setter clamps NaN/neg to 0 and caps at the
+ * per-path maximum. Trigram + distributional default ON-ish (small +lr) so
+ * once master + corrector-bit flips on, plasticity is immediate. Bridge STDP
+ * defaults to 0.0 so the master flag alone DOES NOT mutate SNN weights —
+ * TF-5 walkthrough required before raising. */
+#define GL_TF_LR_TRIGRAM_MAX       0.05f
+#define GL_TF_LR_DISTRIB_MAX       0.1f
+#define GL_TF_LR_BRIDGE_STDP_MAX   0.1f
+#define GL_TF_LR_TRIGRAM_DEFAULT      0.002f
+#define GL_TF_LR_DISTRIB_DEFAULT      0.01f
+#define GL_TF_LR_BRIDGE_STDP_DEFAULT  0.0f
+void  grounded_language_set_tf_lr_trigram(grounded_language_t* gl, float lr);
+float grounded_language_get_tf_lr_trigram(const grounded_language_t* gl);
+void  grounded_language_set_tf_lr_distrib(grounded_language_t* gl, float lr);
+float grounded_language_get_tf_lr_distrib(const grounded_language_t* gl);
+void  grounded_language_set_tf_lr_bridge_stdp(grounded_language_t* gl, float lr);
+float grounded_language_get_tf_lr_bridge_stdp(const grounded_language_t* gl);
 
 /**
  * @brief Word-form → integer-token-id callback used by the embedding

@@ -17,6 +17,7 @@
 
 #include "language/nimcp_communication_cascade.h"
 #include "language/nimcp_grounded_language.h"
+#include "language/nimcp_grounded_language_tf.h"
 #include "language/nimcp_phonological_loop.h"
 
 #include "core/brain/nimcp_brain_internal.h"
@@ -3419,6 +3420,19 @@ static void cascade_apply_surface_correctors(brain_t brain,
                                              production_cascade_state_t* out_state) {
     if (!brain || !brain->grounded_lang || !out_state ||
         !out_state->utterance || !out_state->utterance[0]) return;
+    /* TF-1 (2026-05-28): snapshot raw utterance pre-correctors so we can
+     * diff against the corrected output at the end. Stack-resident copy —
+     * bounded by the same 1024 buf the correctors use; longer outputs are
+     * truncated symmetrically (the diff just sees the leading prefix).
+     * TF-1 is observation-only: bumps gl_stats counters but takes no
+     * plasticity action. TF-2..TF-5 will gate + apply on the same deltas. */
+    char tf_raw[1024];
+    {
+        size_t L = strlen(out_state->utterance);
+        if (L >= sizeof(tf_raw)) L = sizeof(tf_raw) - 1;
+        memcpy(tf_raw, out_state->utterance, L);
+        tf_raw[L] = '\0';
+    }
     char buf[1024];
     int fixes = gl_apply_svo_agreement(brain->grounded_lang,
                                        out_state->utterance, buf, sizeof(buf));
@@ -3441,6 +3455,67 @@ static void cascade_apply_surface_correctors(brain_t brain,
             char* c = cascade_repair_strdup(buf);
             if (c) { nimcp_free(out_state->utterance); out_state->utterance = c; }
         }
+    }
+    /* T3-1 (2026-05-28): givenness-driven definiteness runs AFTER T2
+     * pronominalization so re-mentions that pronominalize collapse first
+     * (no article in front of "it"/"them"), and only the survivors —
+     * person nouns, unanchored slots — get their indefinite article
+     * promoted to "the". Default OFF + stage-gated >=2 inside the helper. */
+    if (out_state->utterance && out_state->utterance[0] &&
+        brain->grounded_lang &&
+        grounded_language_get_produce_givenness_definite(brain->grounded_lang)) {
+        int g = gl_apply_givenness_definite(brain->grounded_lang,
+                                            out_state->utterance, buf, sizeof(buf));
+        if (g > 0) {
+            char* c = cascade_repair_strdup(buf);
+            if (c) { nimcp_free(out_state->utterance); out_state->utterance = c; }
+        }
+    }
+    /* T3-2 (2026-05-29): cohesive conjunction insertion runs AFTER T3-1 so
+     * the connective sits between the polished clauses (definiteness fixed
+     * first, then we glue them with "and"). Default ON + stage-gated >=2
+     * inside the helper. Single insert per pass, idempotent on re-run —
+     * once an "and" sits at the boundary the next pass detects the
+     * connective and bails. */
+    if (out_state->utterance && out_state->utterance[0] &&
+        brain->grounded_lang &&
+        grounded_language_get_produce_t3_conjunction(brain->grounded_lang)) {
+        int c2 = gl_apply_t3_conjunction(brain->grounded_lang,
+                                          out_state->utterance, buf, sizeof(buf));
+        if (c2 > 0) {
+            char* cc = cascade_repair_strdup(buf);
+            if (cc) { nimcp_free(out_state->utterance); out_state->utterance = cc; }
+        }
+    }
+    /* TF-1: observation-only delta capture. Runs unconditionally — bumping
+     * counters even on zero-delta cascades lets operators compute the
+     * fraction of produce calls that needed correction. Plasticity remains
+     * gated in TF-2/3/4/5, so this call is safe to leave on by default. */
+    if (out_state->utterance && out_state->utterance[0]) {
+        (void)grounded_language_tf_record_diff(brain->grounded_lang,
+                                               tf_raw,
+                                               out_state->utterance,
+                                               NULL, 0);
+        /* TF-3 (2026-05-28): cascade-level plasticity dispatch. Master
+         * flag + mask + outcome gate live inside apply_cascade_feedback
+         * — this call is cheap (early return) when TF is OFF. Reward
+         * freshness uses the brain's last_external_reward time stamp and
+         * the cascade_self_train ttl (which is the same ttl the
+         * cascade_self_train path uses for its own reward freshness
+         * check — keeps the two reward-driven plasticity paths consistent). */
+        uint64_t now_us = nimcp_time_monotonic_us();
+        uint64_t age_us = (brain->last_external_reward_us > 0 &&
+                           now_us > brain->last_external_reward_us)
+                          ? (now_us - brain->last_external_reward_us)
+                          : 0u;
+        (void)grounded_language_tf_apply_cascade_feedback(
+            brain->grounded_lang,
+            tf_raw,
+            out_state->utterance,
+            brain->last_external_reward,
+            age_us,
+            brain->cascade_self_train_reward_ttl_us,
+            out_state->repair_attempts);
     }
 }
 

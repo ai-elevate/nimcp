@@ -1024,6 +1024,38 @@ typedef struct {
     uint64_t coref_resolved;
     uint64_t subword_oov_attempts;
     uint64_t subword_oov_resolved;
+    /* Produce-score rebalance (2026-05-27): current distributional weight in
+     * the produce word score (raw = w*distributional + (1-w)*concept).
+     * Default 0.4 = historical 0.4/0.6 split. */
+    float    produce_distributional_weight;
+    /* TF (tier-feedback) telemetry surface — exposed so operators can see
+     * (a) how often the cascade emits deltas (tf_calls / tf_deltas_captured),
+     * (b) which gate is rejecting (per-reason tf_outcome_blocked_*),
+     * (c) what plasticity actually fired (tf_trigram_updates / tf_distrib_updates
+     *     / tf_stdp_updates_pos / tf_stdp_updates_neg).
+     * Mirrors gl_stats_t fields populated by nimcp_grounded_language_tf.c. */
+    uint64_t tf_calls;
+    uint64_t tf_deltas_captured;
+    uint64_t tf_outcome_ok;
+    uint64_t tf_outcome_blocked_stage;
+    uint64_t tf_outcome_blocked_master;
+    uint64_t tf_outcome_blocked_da;
+    uint64_t tf_outcome_blocked_stale;
+    uint64_t tf_outcome_blocked_retry;
+    uint64_t tf_trigram_updates;
+    uint64_t tf_distrib_updates;
+    uint64_t tf_stdp_updates_pos;
+    uint64_t tf_stdp_updates_neg;
+    /* TF runtime knobs — the same five surfaced by the per-setter wrappers,
+     * mirrored here so a single get_grounded_language_diagnostics() call gives
+     * an operator the complete TF picture. */
+    uint8_t  produce_corrector_feedback_enabled;  /* TF master */
+    uint16_t tf_enabled_correctors;               /* per-corrector bitmask */
+    float    tf_lr_trigram;
+    float    tf_lr_distrib;
+    float    tf_lr_bridge_stdp;
+    /* T3-2 (2026-05-29): cohesive conjunction insertion runtime flag. */
+    uint8_t  produce_t3_conjunction;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -1706,6 +1738,47 @@ nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool*
  *  signal. Runtime toggle; persisted via the LANC block + runtime config. */
 nimcp_status_t nimcp_brain_set_produce_clause_frame(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* out_enabled);
+
+/** Produce-score rebalance: weight on the distributional (context-vector)
+ *  term vs the concept-binding term in produce word scoring
+ *  (raw = w*distributional + (1-w)*concept). Default 0.4 = historical split;
+ *  raise toward ~0.7 so intent-correct concrete words outrank broadly-
+ *  concept-bound abstract words. Clamped [0,1]. Persisted via LANC + config. */
+nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight);
+nimcp_status_t nimcp_brain_get_produce_distributional_weight(nimcp_brain_t brain, float* out_weight);
+
+/** T3-1 (2026-05-28): givenness-driven definiteness — on a NOUN re-mention
+ *  that didn't pronominalize (person nouns, unanchored slots), swap the
+ *  preceding "a"/"an" to "the". Default OFF; stage-gated >=2 inside the
+ *  helper. Runtime toggle; persisted via the LANC block + runtime config. */
+nimcp_status_t nimcp_brain_set_produce_givenness_definite(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_givenness_definite(nimcp_brain_t brain, bool* out_enabled);
+
+/** T3-2 (2026-05-29): cohesive conjunction insertion — when the cascade's
+ *  utterance contains an adjacent SVO pair without an existing connective,
+ *  insert "and" before the second clause. Default ON; stage-gated >=2 inside
+ *  the helper. Runtime toggle; persisted via the LANC block + runtime config. */
+nimcp_status_t nimcp_brain_set_produce_t3_conjunction(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_t3_conjunction(nimcp_brain_t brain, bool* out_enabled);
+
+/** TF-2 (2026-05-28): Tier-feedback plasticity flags.
+ *
+ *  produce_corrector_feedback_enabled is the master switch. Default OFF —
+ *  TF-1 still captures + counts deltas, but no plasticity fires.
+ *  tf_enabled_correctors is a bitmask of source bits (see GL_TF_BIT_*).
+ *  The three lrs clamp at per-path maxima (0.05 / 0.1 / 0.1). Bridge STDP
+ *  default 0.0 even with master on — TF-5 walkthrough flips it.
+ *  All persisted in the LANC block + runtime config JSON. */
+nimcp_status_t nimcp_brain_set_produce_corrector_feedback_enabled(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_corrector_feedback_enabled(nimcp_brain_t brain, bool* out_enabled);
+nimcp_status_t nimcp_brain_set_tf_enabled_correctors(nimcp_brain_t brain, uint16_t mask);
+nimcp_status_t nimcp_brain_get_tf_enabled_correctors(nimcp_brain_t brain, uint16_t* out_mask);
+nimcp_status_t nimcp_brain_set_tf_lr_trigram(nimcp_brain_t brain, float lr);
+nimcp_status_t nimcp_brain_get_tf_lr_trigram(nimcp_brain_t brain, float* out_lr);
+nimcp_status_t nimcp_brain_set_tf_lr_distrib(nimcp_brain_t brain, float lr);
+nimcp_status_t nimcp_brain_get_tf_lr_distrib(nimcp_brain_t brain, float* out_lr);
+nimcp_status_t nimcp_brain_set_tf_lr_bridge_stdp(nimcp_brain_t brain, float lr);
+nimcp_status_t nimcp_brain_get_tf_lr_bridge_stdp(nimcp_brain_t brain, float* out_lr);
 
 /** Audit-2 B13: dialect / accent conditioning. NULL or empty clears.
  *  Truncates to GL_MAX_DIALECT_LEN-1 chars internally. */

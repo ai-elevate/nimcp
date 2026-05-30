@@ -1492,7 +1492,15 @@ static float score_word_against_vector(const grounded_language_t* gl,
             if (cs > concept_sim) concept_sim = cs;
         }
     }
-    float raw = 0.4f * sim + 0.6f * concept_sim;
+    /* Produce-score rebalance (2026-05-27): the distributional/concept split
+     * is a runtime tunable (default 0.4/0.6 = historical behaviour). Raising
+     * w toward ~0.7 lets a concrete word's strong intent-correct
+     * distributional match outrank the broad abstract cluster whose wide
+     * concept bindings otherwise dominate the concept term for any intent. */
+    float w = gl->produce_distributional_weight;
+    if (!(w >= 0.0f)) w = GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT; /* NaN/neg guard */
+    if (w > 1.0f) w = 1.0f;
+    float raw = w * sim + (1.0f - w) * concept_sim;
 
     /* Phase 3d (2026-05-21): valence-aware suppression at produce.
      * Words whose lexicon entry carries strongly-negative valence are
@@ -1676,6 +1684,39 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
      * conservative default so flipping the toggle Just Works. */
     gl->enable_reconsolidation      = false;
     gl->reconsolidation_decay       = GL_RECONSOLIDATION_DEFAULT_DECAY;
+    /* Produce-score rebalance (2026-05-27) — seeded to the historical 0.4
+     * distributional weight so default produce behaviour is bit-for-bit
+     * unchanged until the trainer/RPC opts into a higher value. */
+    gl->produce_distributional_weight = GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
+    /* T3-1 (2026-05-28) — givenness-definiteness default ON. The corrector
+     * is conservative (only swaps a/an->the on a NOUN re-mention within the
+     * recency window, never touches non-noun tokens or already-definite
+     * articles) and idempotent, so enabling it by default tightens output
+     * cohesion without risk of degrading any sane utterance. The stage gate
+     * (>=2) inside the helper still keeps it inert at stages 0-1. */
+    gl->produce_givenness_definite  = true;
+    /* T3-2 (2026-05-29) — Conjunction insertion between adjacent SVO clauses.
+     * Default ON: safe deterministic surface polish that only fires when a
+     * verb-...-NP-...-verb pattern is detected AND the candidate boundary
+     * isn't already a connective. Single insert per pass, idempotent on
+     * re-run. Stage-gated >= 2 inside the helper. */
+    gl->produce_t3_conjunction      = true;
+    /* TF-2 (2026-05-28) — Tier-feedback plasticity defaults. Master flag
+     * ON + all-correctors mask + trigram + distrib at their safe defaults;
+     * bridge STDP STAYS AT 0.0 even with master on (TF-5 walkthrough flips
+     * it to 0.05+ after soak — that's the only path that mutates SNN
+     * weights, the other two only touch trigram counts + distributional
+     * EMA which are robust to small bad signals).
+     *
+     * The outcome gate (stage>=2 + DA>=0 + retries==0 + reward fresh) and
+     * the per-path lrs (~10x lower than curriculum) keep TF a small
+     * secondary nudge; curriculum still dominates. Any deployment that
+     * wants TF inert can flip the JSON master flag false. */
+    gl->produce_corrector_feedback_enabled = true;
+    gl->tf_enabled_correctors              = GL_TF_BIT_ALL_CORRECTORS;
+    gl->tf_lr_trigram                      = GL_TF_LR_TRIGRAM_DEFAULT;
+    gl->tf_lr_distrib                      = GL_TF_LR_DISTRIB_DEFAULT;
+    gl->tf_lr_bridge_stdp                  = GL_TF_LR_BRIDGE_STDP_DEFAULT;
     /* TB-6 — sentence-boundary segmentation off by default. Trainer
      * opts in once the curriculum benefits from per-sentence discourse
      * pushes / sentence-bounded bigram learning. Preserves bit-for-bit
@@ -3275,6 +3316,19 @@ float grounded_language_get_reconsolidation_decay(const grounded_language_t* gl)
     return gl->reconsolidation_decay;
 }
 
+void grounded_language_set_produce_distributional_weight(grounded_language_t* gl,
+                                                         float weight) {
+    if (!gl) return;
+    if (!isfinite(weight) || weight < 0.0f) weight = 0.0f;
+    if (weight > 1.0f) weight = 1.0f;
+    gl->produce_distributional_weight = weight;
+}
+
+float grounded_language_get_produce_distributional_weight(const grounded_language_t* gl) {
+    if (!gl) return GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
+    return gl->produce_distributional_weight;
+}
+
 /*-----------------------------------------------------------------------------
  * TB-9 — speech-act intent classification toggle.
  *---------------------------------------------------------------------------*/
@@ -3974,6 +4028,76 @@ bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl) {
     return gl ? gl->produce_clause_frame : false;
 }
 
+void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
+                                                      bool enabled) {
+    if (gl) gl->produce_givenness_definite = enabled;
+}
+
+bool grounded_language_get_produce_givenness_definite(const grounded_language_t* gl) {
+    return gl ? gl->produce_givenness_definite : false;
+}
+
+void grounded_language_set_produce_t3_conjunction(grounded_language_t* gl,
+                                                  bool enabled) {
+    if (gl) gl->produce_t3_conjunction = enabled;
+}
+
+bool grounded_language_get_produce_t3_conjunction(const grounded_language_t* gl) {
+    return gl ? gl->produce_t3_conjunction : false;
+}
+
+/*============================================================================
+ * TF-2 — Tier-feedback flag plumbing.
+ *==========================================================================*/
+void grounded_language_set_produce_corrector_feedback_enabled(grounded_language_t* gl,
+                                                              bool enabled) {
+    if (gl) gl->produce_corrector_feedback_enabled = enabled;
+}
+
+bool grounded_language_get_produce_corrector_feedback_enabled(const grounded_language_t* gl) {
+    return gl ? gl->produce_corrector_feedback_enabled : false;
+}
+
+void grounded_language_set_tf_enabled_correctors(grounded_language_t* gl,
+                                                 uint16_t mask) {
+    if (gl) gl->tf_enabled_correctors = (uint16_t)(mask & GL_TF_BIT_ALL_CORRECTORS);
+}
+
+uint16_t grounded_language_get_tf_enabled_correctors(const grounded_language_t* gl) {
+    return gl ? gl->tf_enabled_correctors : 0u;
+}
+
+/* Common clamp helper — NaN/neg -> 0, > max -> max. */
+static float tf_clamp_lr(float lr, float max) {
+    if (!(lr >= 0.0f)) return 0.0f;   /* NaN or negative */
+    if (lr > max)     return max;
+    return lr;
+}
+
+void grounded_language_set_tf_lr_trigram(grounded_language_t* gl, float lr) {
+    if (gl) gl->tf_lr_trigram = tf_clamp_lr(lr, GL_TF_LR_TRIGRAM_MAX);
+}
+
+float grounded_language_get_tf_lr_trigram(const grounded_language_t* gl) {
+    return gl ? gl->tf_lr_trigram : GL_TF_LR_TRIGRAM_DEFAULT;
+}
+
+void grounded_language_set_tf_lr_distrib(grounded_language_t* gl, float lr) {
+    if (gl) gl->tf_lr_distrib = tf_clamp_lr(lr, GL_TF_LR_DISTRIB_MAX);
+}
+
+float grounded_language_get_tf_lr_distrib(const grounded_language_t* gl) {
+    return gl ? gl->tf_lr_distrib : GL_TF_LR_DISTRIB_DEFAULT;
+}
+
+void grounded_language_set_tf_lr_bridge_stdp(grounded_language_t* gl, float lr) {
+    if (gl) gl->tf_lr_bridge_stdp = tf_clamp_lr(lr, GL_TF_LR_BRIDGE_STDP_MAX);
+}
+
+float grounded_language_get_tf_lr_bridge_stdp(const grounded_language_t* gl) {
+    return gl ? gl->tf_lr_bridge_stdp : GL_TF_LR_BRIDGE_STDP_DEFAULT;
+}
+
 /* Strip leading/trailing non-alpha (punctuation) from a lowercased token into
  * `out`, producing a clean lemma for class lookup + same-word matching. So
  * "barked." -> "barked", "creation," -> "creation". Internal apostrophes/
@@ -4138,6 +4262,280 @@ int gl_apply_pronominalization(grounded_language_t* gl, const char* in,
     }
     out[pos] = '\0';
     return fixes;
+}
+
+/*============================================================================
+ * T3-1 (2026-05-28) — Givenness-driven definiteness.
+ *
+ * Runs AFTER T2 pronominalization (gl_apply_pronominalization). For every
+ * NOUN token at position i that's a re-mention of an earlier NOUN within the
+ * recency window WINDOW, if the immediately-preceding non-empty token is the
+ * indefinite article "a" or "an", swap it to "the" (case-preserving). Tokens
+ * that T2-1 already replaced with a pronoun are no longer nouns and naturally
+ * skip this pass; person nouns that T2-1 spared (gender unknown) get marked
+ * as given here.
+ *
+ * Conservative idempotent: a "the" preceding the re-mention is left alone, so
+ * a second pass on the polished output is a no-op. Punctuation-tolerant via
+ * gl_pron_lemma so "creation." still matches "creation". Stage-gated >= 2 to
+ * match every other Tier 2/3 produce-side corrector.
+ *==========================================================================*/
+int gl_apply_givenness_definite(grounded_language_t* gl, const char* in,
+                                char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    if (gl && gl->current_stage < 2) {
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    enum { MAXTOK = 128, TOKLEN = 64, WINDOW = 10 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    char lem[MAXTOK][TOKLEN];
+    uint32_t nt = 0;
+
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) tok[nt][k++] = in[i++];
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            gl_pron_lemma(low[nt], lem[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+
+    int fixes = 0;
+    for (uint32_t i = 1; i < nt; i++) {
+        if (!lem[i][0]) continue;
+        if (gl_f4_class(gl, lem[i]) != GL_CLASS_NOUN) continue;
+        /* Prior mention within recency window? */
+        uint32_t lo = (i > WINDOW) ? (i - WINDOW) : 0;
+        bool prior = false;
+        for (uint32_t j = lo; j < i; j++) {
+            if (lem[j][0] && strcmp(lem[j], lem[i]) == 0) { prior = true; break; }
+        }
+        if (!prior) continue;
+        /* Find the immediately-preceding non-empty token. */
+        int p = (int)i - 1;
+        while (p >= 0 && tok[p][0] == '\0') p--;
+        if (p < 0) continue;
+        /* Only fire on "a"/"an" — leave "the"/possessives/etc. alone. */
+        if (!(strcmp(low[p], "a") == 0 || strcmp(low[p], "an") == 0)) continue;
+        /* Case-preserve: leading capital -> "The", else "the". */
+        bool cap = (tok[p][0] >= 'A' && tok[p][0] <= 'Z');
+        const char* repl = cap ? "The" : "the";
+        size_t rl = strlen(repl);
+        if (rl >= TOKLEN) continue;
+        memcpy(tok[p], repl, rl + 1);
+        gl_agr_lower(tok[p], low[p], TOKLEN);
+        gl_pron_lemma(low[p], lem[p], TOKLEN);
+        fixes++;
+    }
+
+    /* Rebuild, skipping dropped (empty) tokens. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        size_t wl = strlen(tok[i]);
+        if (wl == 0) continue;
+        if (pos + (pos ? 1 : 0) + wl + 1 > out_sz) break;
+        if (pos) out[pos++] = ' ';
+        memcpy(out + pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return fixes;
+}
+
+/*=============================================================================
+ * T3-2 (2026-05-29) — Cohesive conjunction insertion.
+ *
+ * Runs AFTER T3-1 givenness. Scans the polished utterance for the first
+ * adjacent SVO pair without an existing connective and inserts "and" before
+ * the second clause's leading determiner / noun / pronoun:
+ *
+ *   "the cat sat the dog ran" -> "the cat sat and the dog ran"
+ *
+ * Detection: clause-A VERB at position v1, then the FIRST candidate clause-B
+ * start at j > v1 (j is a DET word OR NOUN class OR PRONOUN), then a second
+ * VERB at k > j. The candidate is skipped if its lowercased form is already
+ * a connective (and/but/so/or/then/while/because/although).
+ *
+ * Idempotent: re-running on the polished output hits the "and" at position
+ * j (now a connective) → no insert.
+ *
+ * Stage-gated >= 2 to match every other Tier 2/3 produce-side corrector.
+ * Caps at ONE insert per call — multi-clause coordination is left to higher
+ * tiers.
+ *==========================================================================*/
+static bool t3_conj_is_connective(const char* low) {
+    static const char* C[] = {"and","but","so","or","then","while",
+                              "because","although",NULL};
+    for (int i = 0; C[i]; i++) if (strcmp(low, C[i]) == 0) return true;
+    return false;
+}
+
+/* Pronoun shortlist — mirrors gl_apply_pronominalization's surface guard
+ * so cold-lexicon clause detection works without learned class confidence. */
+static bool t3_conj_is_pronoun_surface(const char* low) {
+    static const char* P[] = {"he","she","it","they","we","i","you",
+                              "him","her","them","us","me",
+                              "his","hers","its","their","our","my","your",
+                              NULL};
+    for (int i = 0; P[i]; i++) if (strcmp(low, P[i]) == 0) return true;
+    return false;
+}
+
+/* Verb-detection mirror of gl_f4_is_past + present markers. Production gl
+ * will usually classify via gl_f4_class; the surface fallback catches the
+ * cold-lexicon case where the curriculum hasn't tagged the verb yet. */
+static bool t3_conj_is_verb(grounded_language_t* gl, const char* low) {
+    if (!low || !low[0]) return false;
+    if (gl_f4_class(gl, low) == GL_CLASS_VERB) return true;
+    size_t n = strlen(low);
+    /* -ed past, -ing progressive — same shape gl_f4_is_past covers. */
+    if (n >= 4 && low[n-2]=='e' && low[n-1]=='d') return true;
+    if (n >= 5 && low[n-3]=='i' && low[n-2]=='n' && low[n-1]=='g') return true;
+    /* Common irregular pasts + finite forms that won't carry a suffix.
+     * Same shortlist as gl_apply_f4_fluency::gl_f4_is_past plus present
+     * forms ("is", "are", "has", "does") that anchor a clause. */
+    static const char* V[] = {
+        "was","were","is","are","am","be","been","being","has","have","had",
+        "do","does","did","go","goes","went","gone","run","runs","ran",
+        "make","makes","made","take","takes","took","taken","get","gets",
+        "got","gotten","see","sees","saw","seen","come","comes","came",
+        "ate","saw","said","told","found","felt","became","left","brought",
+        "bought","caught","taught","stood","spoke","wrote","held","kept",
+        "slept","met","paid","sold","sent","built","won","lost","fell",
+        "fed","heard","sat","sang","swam","drank","began","understood",
+        "jumped","barked","purred","walked","talked","wanted","needed",
+        NULL};
+    for (int i = 0; V[i]; i++) if (strcmp(low, V[i]) == 0) return true;
+    return false;
+}
+
+static bool t3_conj_is_clause_start(grounded_language_t* gl,
+                                    const char* low) {
+    if (!low || !low[0]) return false;
+    /* Common determiners (closed-class — the lexicon may not classify them
+     * yet during stage transitions). */
+    if (strcmp(low, "a") == 0 || strcmp(low, "an") == 0 ||
+        strcmp(low, "the") == 0) return true;
+    if (t3_conj_is_pronoun_surface(low)) return true;
+    gl_word_class_t c = gl_f4_class(gl, low);
+    if (c == GL_CLASS_NOUN || c == GL_CLASS_PRONOUN) return true;
+    return false;
+}
+
+int gl_apply_t3_conjunction(grounded_language_t* gl, const char* in,
+                            char* out, size_t out_sz) {
+    if (!in || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
+    if (gl && gl->current_stage < 2) {
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    enum { MAXTOK = 128, TOKLEN = 64 };
+    char tok[MAXTOK][TOKLEN];
+    char low[MAXTOK][TOKLEN];
+    uint32_t nt = 0;
+
+    {
+        size_t i = 0, L = strlen(in);
+        while (i < L && nt < MAXTOK) {
+            while (i < L && (in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+            if (i >= L) break;
+            uint32_t k = 0;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')
+                   && k < TOKLEN-1) tok[nt][k++] = in[i++];
+            tok[nt][k] = '\0';
+            gl_agr_lower(tok[nt], low[nt], TOKLEN);
+            nt++;
+            while (i < L && !(in[i]==' '||in[i]=='\t'||in[i]=='\n'||in[i]=='\r')) i++;
+        }
+    }
+    if (nt < 4) {
+        /* Too short for two clauses. */
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    /* Locate clause-A verb. */
+    int v1 = -1;
+    for (uint32_t i = 1; i < nt; i++) {
+        if (t3_conj_is_verb(gl, low[i])) { v1 = (int)i; break; }
+    }
+    if (v1 < 0 || v1 >= (int)nt - 2) {
+        /* No clause-A verb, or no room after it for clause B. */
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    /* Find first clause-start candidate AFTER v1. */
+    int j = -1;
+    for (uint32_t i = (uint32_t)v1 + 1; i < nt; i++) {
+        if (t3_conj_is_connective(low[i])) {
+            /* Already coordinated — bail. */
+            size_t L = strlen(in);
+            if (L + 1 > out_sz) L = out_sz - 1;
+            memcpy(out, in, L); out[L] = '\0';
+            return 0;
+        }
+        if (t3_conj_is_clause_start(gl, low[i])) { j = (int)i; break; }
+    }
+    if (j < 0) {
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    /* Confirm clause-B exists: a VERB at some k > j. */
+    int v2 = -1;
+    for (uint32_t i = (uint32_t)j + 1; i < nt; i++) {
+        if (t3_conj_is_verb(gl, low[i])) { v2 = (int)i; break; }
+    }
+    if (v2 < 0) {
+        /* Candidate exists but no verb after it — not a real clause B. */
+        size_t L = strlen(in);
+        if (L + 1 > out_sz) L = out_sz - 1;
+        memcpy(out, in, L); out[L] = '\0';
+        return 0;
+    }
+
+    /* Rebuild with "and " inserted before token j. */
+    size_t pos = 0;
+    for (uint32_t i = 0; i < nt; i++) {
+        if ((int)i == j) {
+            const char* conj = "and";
+            size_t cl = 3;
+            if (pos + (pos ? 1 : 0) + cl > out_sz - 1) break;
+            if (pos) out[pos++] = ' ';
+            memcpy(out + pos, conj, cl);
+            pos += cl;
+        }
+        size_t wl = strlen(tok[i]);
+        if (wl == 0) continue;
+        if (pos + (pos ? 1 : 0) + wl + 1 > out_sz) break;
+        if (pos) out[pos++] = ' ';
+        memcpy(out + pos, tok[i], wl);
+        pos += wl;
+    }
+    out[pos] = '\0';
+    return 1;
 }
 
 void grounded_language_set_discourse_capacity(grounded_language_t* gl,
@@ -7764,6 +8162,28 @@ static int mt_save_config(const grounded_language_t* gl, FILE* f) {
     if (mt_write_u8(f, gl->produce_discourse_seed ? 1u : 0u) != 0) return -1;
     /* FND-1: SVO clause-frame flag (trailing). */
     if (mt_write_u8(f, gl->produce_clause_frame ? 1u : 0u) != 0) return -1;
+    /* Produce-score rebalance (2026-05-27): distributional weight (trailing
+     * f32, no version bump — same forward/backward-compat pattern as the
+     * trailing bytes above). */
+    if (mt_write_f32(f, gl->produce_distributional_weight) != 0) return -1;
+    /* T3-1 (2026-05-28): produce-side givenness definiteness flag (trailing). */
+    if (mt_write_u8(f, gl->produce_givenness_definite ? 1u : 0u) != 0) return -1;
+    /* TF-2 (2026-05-28): Tier-feedback master flag + corrector mask + 3 lrs
+     * (trailing, no version bump). Layout:
+     *   u8  produce_corrector_feedback_enabled
+     *   u16 tf_enabled_correctors
+     *   f32 tf_lr_trigram
+     *   f32 tf_lr_distrib
+     *   f32 tf_lr_bridge_stdp
+     * Pre-this-change readers stop after the givenness byte and the mask /
+     * lrs retain their constructor defaults. */
+    if (mt_write_u8(f,  gl->produce_corrector_feedback_enabled ? 1u : 0u) != 0) return -1;
+    if (mt_write_u32(f, (uint32_t)gl->tf_enabled_correctors) != 0) return -1;
+    if (mt_write_f32(f, gl->tf_lr_trigram) != 0) return -1;
+    if (mt_write_f32(f, gl->tf_lr_distrib) != 0) return -1;
+    if (mt_write_f32(f, gl->tf_lr_bridge_stdp) != 0) return -1;
+    /* T3-2 (2026-05-29): conjunction-insertion flag (trailing, optional). */
+    if (mt_write_u8(f, gl->produce_t3_conjunction ? 1u : 0u) != 0) return -1;
     return 0;
 }
 
@@ -7847,6 +8267,51 @@ static int mt_load_config_payload(grounded_language_t* gl, FILE* f,
     uint8_t clause = 0;
     if (mt_read_u8(f, &clause) == 0) {
         grounded_language_set_produce_clause_frame(gl, (clause != 0));
+    }
+    /* Produce-score rebalance (2026-05-27): distributional weight (trailing
+     * f32, optional). Pre-this-change sidecars stop after the clause byte
+     * and this try-read hits EOF — the weight keeps its init default (0.4).
+     * Route through the clamping setter. */
+    float pdw = 0.0f;
+    if (mt_read_f32(f, &pdw) == 0) {
+        grounded_language_set_produce_distributional_weight(gl, pdw);
+    }
+    /* T3-1 (2026-05-28): givenness-definiteness flag (trailing, optional). */
+    uint8_t givn = 0;
+    if (mt_read_u8(f, &givn) == 0) {
+        grounded_language_set_produce_givenness_definite(gl, (givn != 0));
+    }
+    /* TF-2 (2026-05-28): Tier-feedback master flag + corrector mask + 3 lrs
+     * (trailing, optional). Each field is read independently — a partial
+     * sidecar (e.g. only the master byte present) loads what it has and
+     * leaves the rest at constructor defaults. Setters clamp via the public
+     * surface so corrupt sidecars can't push lrs past the per-path max. */
+    uint8_t  tf_master = 0;
+    uint32_t tf_mask   = 0;
+    float    tf_lr_t   = 0.0f;
+    float    tf_lr_d   = 0.0f;
+    float    tf_lr_b   = 0.0f;
+    if (mt_read_u8(f,  &tf_master) == 0) {
+        grounded_language_set_produce_corrector_feedback_enabled(gl, (tf_master != 0));
+    }
+    if (mt_read_u32(f, &tf_mask) == 0) {
+        grounded_language_set_tf_enabled_correctors(gl, (uint16_t)tf_mask);
+    }
+    if (mt_read_f32(f, &tf_lr_t) == 0) {
+        grounded_language_set_tf_lr_trigram(gl, tf_lr_t);
+    }
+    if (mt_read_f32(f, &tf_lr_d) == 0) {
+        grounded_language_set_tf_lr_distrib(gl, tf_lr_d);
+    }
+    if (mt_read_f32(f, &tf_lr_b) == 0) {
+        grounded_language_set_tf_lr_bridge_stdp(gl, tf_lr_b);
+    }
+    /* T3-2 (2026-05-29): conjunction-insertion flag (trailing, optional).
+     * Pre-this-change sidecars stop after the TF stdp lr — that's fine, the
+     * flag keeps its constructor default (true). */
+    uint8_t conj = 0;
+    if (mt_read_u8(f, &conj) == 0) {
+        grounded_language_set_produce_t3_conjunction(gl, (conj != 0));
     }
     return 0;
 }

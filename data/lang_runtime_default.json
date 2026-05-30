@@ -51,5 +51,21 @@
   "produce_discourse_seed": false,
 
   "_producer_foundation": "FND-1 (2026-05-27): produce_clause_frame builds a real SVO clause (predicate + agent/patient) from the grounded top-K instead of a reranked content-word bag. Default false; effective at stage>=2, falls back to greedy emit on weak signal. The first 'strengthen the producer foundation' slice.",
-  "produce_clause_frame": false
+  "produce_clause_frame": false,
+
+  "_produce_score_rebalance": "Produce-score rebalance (2026-05-27): produce_distributional_weight is the weight on the distributional (context-vector) term vs the concept-binding term in produce word scoring (raw = w*distributional + (1-w)*concept). Default 0.4 = historical 0.4/0.6 split. Raise toward ~0.7 so concrete intent-correct words outrank the broad abstract cluster whose wide concept bindings otherwise monopolize produce regardless of intent (diagnosed: produce collapsed to ~20 abstract nouns). Clamped [0,1].",
+  "produce_distributional_weight": 0.4,
+
+  "_t3_givenness_definite": "T3-1 (2026-05-28): produce_givenness_definite, default ON. gl_apply_givenness_definite runs in the surface cascade right AFTER T2 pronominalization and swaps the preceding 'a'/'an' to 'the' on a NOUN re-mention (recency window) that T2-1 did NOT pronominalize (person nouns, unanchored slots). Marks the second mention as given, which is the natural complement to T2-1/T2-3. Stage-gated >=2 inside the helper. Conservative + idempotent so ON-by-default is safe — operators can flip false per-deployment.",
+  "produce_givenness_definite": true,
+
+  "_t3_conjunction": "T3-2 (2026-05-29): produce_t3_conjunction, default ON. gl_apply_t3_conjunction runs AFTER T3-1 in the cascade. Scans for the first adjacent SVO pair (VERB ... DET-or-NOUN ... VERB) and inserts 'and' before the second clause's leading determiner/noun unless that token is already a connective (and/but/so/or/then/while/because/although). Single insert per pass, idempotent on re-run. Stage-gated >=2. Conservative — leaves output unchanged when the pattern isn't detected, so ON-by-default is safe.",
+  "produce_t3_conjunction": true,
+
+  "_tf_feedback": "TF-2 (2026-05-28): Tier-feedback plasticity — the cascade-delta diff feeds back into NN training so the network eventually internalizes the corrected form. produce_corrector_feedback_enabled default true; tf_enabled_correctors default 31 (all five bits: 1=F3, 2=F4, 4=T2-1, 8=T3-1, 16=T3-2). Trigram + distributional EMA fire at their default lrs (0.002 / 0.01) on every cascade pass that the outcome gate (stage>=2, DA>=0, no speech-repair retry, fresh reward) passes. Bridge STDP stays at 0.0 EVEN WHEN MASTER IS ON — TF-5 walkthrough required before raising. Per-path max: trigram 0.05, distrib 0.1, bridge stdp 0.1. Flip the master to false to disable TF entirely.",
+  "produce_corrector_feedback_enabled": true,
+  "tf_enabled_correctors": 31,
+  "tf_lr_trigram": 0.002,
+  "tf_lr_distrib": 0.01,
+  "tf_lr_bridge_stdp": 0.0
 }

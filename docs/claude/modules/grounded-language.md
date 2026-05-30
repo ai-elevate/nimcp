@@ -218,6 +218,159 @@ longer counts against `MAX_RETRIES=5`; it triggers
 to cover the full-init resume of a 2M-neuron checkpoint after a brain
 SIGKILL.
 
+## T3-2 cohesive conjunction insertion (2026-05-29)
+
+Tier 3 closer for the produce surface-corrector stack. Inserts "and"
+between adjacent SVO clauses in the polished utterance so two-clause
+produce output reads with a connective:
+
+```
+the cat ran the dog jumped  →  the cat ran and the dog jumped
+the cat ran he jumped       →  the cat ran and he jumped
+```
+
+**Detection.** Walks the token stream, classifies each via `gl_f4_class`
+with a cold-lexicon surface fallback (`t3_conj_is_verb` mirrors
+`gl_f4_is_past`: `-ed` / `-ing` suffix + irregular-past shortlist;
+`t3_conj_is_pronoun_surface` covers he/she/it/they/...). The first
+sequence VERB → (DET/NOUN/PRONOUN that is NOT a connective) → VERB
+fires a single insert.
+
+**Idempotent.** Re-running on the polished output sees the connective at
+the candidate boundary and bails.
+
+**Cascade position.**
+
+```
+F4 fluency  →  T2 pronominalize  →  T3-1 givenness  →  T3-2 conjunction
+   →  TF-1 record_diff (delta capture)  →  TF-3/4/5 apply  →  F1 polish
+```
+
+T3-2 sits BEFORE the TF diff so the inserted "and" contributes to the
+delta stream — TF-3 trigram and TF-4 distributional feedback learn
+`VERB and DET` patterns over time.
+
+**Runtime knob.** `produce_t3_conjunction`, default **ON**. Stage-gated
+>= 2 inside the helper. Bit assignment for TF feedback gating:
+`GL_TF_BIT_T3_CONJUNCTION = 16` (in `GL_TF_BIT_ALL_CORRECTORS = 31`).
+
+**Test surface.** `test_lang_t3_conjunction.c` — 10 sub-tests covering
+default-ON, setter round-trip, stage gate, basic insert, idempotent,
+existing-connective skip (and/but/so/or/then/while/because/although),
+single-clause no-change, no-second-verb (object follow) no-change,
+NULL/empty safety, pronoun-led clause B.
+
+## Tier-Feedback (TF) plasticity loop (2026-05-28/29)
+
+Tier 1-3 surface correctors (F3 agreement, F4 fluency, T2-1 pronominalize,
+T3-1 givenness, T3-2 conjunction) emit deterministic post-readout polish.
+The TF subsystem captures the per-token delta between raw produce output
+and the cascade-corrected output, then feeds those deltas back into
+plasticity at a small learning rate so the network eventually internalizes
+the corrected form. The correctors graduate to scaffolding the network
+no longer needs.
+
+**Design constraints** — per-position delta (never whole-output imitation),
+small lr (~10× smaller than curriculum), outcome-gated (only fires on
+clean produce + neutral/positive DA + fresh reward + zero repair attempts),
+default ON for trigram + distributional paths, default OFF for binding-STDP.
+
+**File map** —
+- `include/language/nimcp_grounded_language_tf.h` — API surface
+- `src/language/nimcp_grounded_language_tf.c` — implementation (diff +
+  gate + 3 apply paths + cascade dispatcher)
+- `src/language/nimcp_communication_cascade.c` — call sites
+  (`grounded_language_tf_record_diff` for TF-1 telemetry, then
+  `grounded_language_tf_apply_cascade_feedback` for plasticity dispatch)
+
+**API surface** —
+
+| Function | Purpose |
+|---|---|
+| `gl_tf_diff_correctors(raw, corrected, deltas, cap, source)` | Pure LCS-aligned Wagner-Fischer; emits SUBSTITUTE/INSERT/DELETE records. Bounded at 96 tokens. |
+| `grounded_language_tf_record_diff(gl, raw, corrected, deltas, cap)` | Diff + telemetry bump (`tf_calls`, `tf_deltas_captured`). Independent of plasticity. |
+| `gl_tf_outcome_ok_reason(facts) -> enum` | Outcome gate: stage ≥ 2, master ON, reward ≥ 0, age ≤ ttl, repair_attempts == 0. Returns a specific reason on rejection so per-reason telemetry can split. |
+| `gl_tf_apply_trigram(gl, corrected_text, deltas, n)` | TF-3 — drives `learn_next_token_pair/_triple` at `tf_lr_trigram`. DELETE skipped. |
+| `gl_tf_apply_distributional(gl, corrected_text, deltas, n)` | TF-4 — EMA-nudge the corrected token's `context_vector` toward the local window mean; L2-normalize. |
+| `gl_tf_apply_bridge_stdp(gl, deltas, n)` | TF-5 — asymmetric strength touch on the top lexicon binding. Default lr 0.0 (inert). |
+| `grounded_language_tf_apply_cascade_feedback(gl, raw, corrected, reward, age, ttl, repair)` | Cascade dispatcher. Master/mask fast-skip first, then build outcome facts, gate, then dispatch to the three apply paths per their lrs. Sole public entry from cascade. |
+
+**Runtime knobs** (all 5-layer reachable — C/Python/daemon-config/persistence) —
+
+| Knob | Default | Role |
+|---|---|---|
+| `produce_corrector_feedback_enabled` | `true` | TF master |
+| `tf_enabled_correctors` | `0x1F` (all) | Per-corrector bitmask |
+| `tf_lr_trigram` | `0.002` | TF-3 lr |
+| `tf_lr_distrib` | `0.01` | TF-4 lr |
+| `tf_lr_bridge_stdp` | `0.0` | TF-5 lr — wired-but-inert by default |
+
+Bit constants (`GL_TF_BIT_F3_AGREEMENT=1`, `_F4_FLUENCY=2`,
+`_T2_PRONOMINALIZE=4`, `_T3_GIVENNESS=8`, `_T3_CONJUNCTION=16`,
+`_ALL_CORRECTORS=0x1F`) — per-corrector bits gate which surface
+corrector RUNS upstream (not which delta-source is trained on); the
+diff is always aggregate.
+
+**Telemetry surface** — `lang_status` RPC returns a `tf` block:
+
+```json
+{
+  "tf": {
+    "calls":            <int>,   // record_diff invocations (TF-1)
+    "deltas_captured":  <int>,   // total deltas emitted by record_diff
+    "outcome": {
+      "ok":              <int>,
+      "blocked_stage":   <int>,  // curriculum stage < 2
+      "blocked_master":  <int>,  // (always 0 — master fast-skips)
+      "blocked_da":      <int>,  // last_external_reward < 0
+      "blocked_stale":   <int>,  // age > ttl
+      "blocked_retry":   <int>   // repair_attempts > 0
+    },
+    "updates": {
+      "trigram":  <int>,  // tf_lr_trigram applies that returned success
+      "distrib":  <int>,  // tf_lr_distrib EMA nudges applied
+      "stdp_pos": <int>,  // corrected-side strength bumps
+      "stdp_neg": <int>   // raw-side strength bumps (half-lr)
+    },
+    "config": { "master": <bool>, "enabled_correctors_mask": <int>,
+                 "lr_trigram": <float>, "lr_distrib": <float>,
+                 "lr_bridge_stdp": <float> }
+  }
+}
+```
+
+Diagnostic rules of thumb:
+- `tf.outcome.blocked_stage` dominating → curriculum hasn't reached stage 2.
+- `tf.outcome.blocked_da` dominating → recent reward stream is punishing.
+- `tf.outcome.blocked_retry` dominating → speech-repair is firing — TF
+  is correctly suppressing on noisy passes.
+- `tf.updates.trigram` flat with `tf.outcome.ok > 0` → upstream
+  `next_token_cold_start_skips` bouncing (curriculum hasn't bound enough
+  context).
+- `tf.updates.stdp_pos > 0` when no operator has raised
+  `tf_lr_bridge_stdp` → BUG (path is wired-but-inert by spec).
+
+**Mode-collapse risks + soak gates** — TF-4 nudges target's context_vector
+toward LOCAL neighbors; sustained substitution of the same closed-class
+word (e.g. T3-1 "a" → "the") could homogenize function-word embeddings.
+Watch pairwise cosine across {the, a, in, of, with} during soak; if any
+pair > 0.95 the lr is too high. TF-5 strengthens corrected-token top
+bindings; this is why its default lr is 0 — left unattended at default
+0.05 a single dominant closed-class binding could climb the produce-score
+and crowd out content words.
+
+**Test surface** —
+
+| Test | Slice |
+|---|---|
+| `test_lang_tf_diff` | TF-1 — diff correctness |
+| `test_lang_tf_gating` | TF-2 — defaults + clamp + persist + gate matrix + precedence |
+| `test_lang_tf_trigram_apply` | TF-3 — bigram fallback + triple path + counter bumps |
+| `test_lang_tf_distrib_apply` | TF-4 — EMA + L2-normalize + window edges |
+| `test_lang_tf_stdp_apply` | TF-5 — asym pos/neg, clamps, lr=0 inert |
+| `test_lang_tf_integration_50turn` | TF-6 — end-to-end gate matrix, 50 turns + composite |
+| `test_lang_tf_off_no_op` | TF-6 — regression: TF-OFF (3 ways) is bit-identical no-op |
+
 ## Tests
 
 `tests/unit/test_lang_*.c` — 13 standalone-C tests under the
