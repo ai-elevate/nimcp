@@ -73,6 +73,11 @@ static inline void nimcp_fread_ignore(void* ptr, size_t sz, size_t n, FILE* f) {
  * the current floor are skipped entirely. */
 #define GL_MAX_BINDINGS_PER_WORD 128
 
+/* Upper bound on the per-call similarity scan in find_or_create_concept.
+ * Keeps bulk grounding (lexicon loader, mass re-grounding) at O(words ×
+ * CAP) instead of O(words^2). See find_or_create_concept for rationale. */
+#define GL_CONCEPT_SCAN_CAP 2048u
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
 /* IM-3 — forward decls for the brain_immune antigen-presentation API.
@@ -1411,11 +1416,26 @@ static uint64_t find_or_create_concept(grounded_language_t* gl,
     /* Use semantic_memory_find_similar if available */
     semantic_memory_system_t* sm = gl->semantic_memory;
 
-    /* Linear scan for now — find closest concept */
+    /* Bounded linear scan — find closest concept.
+     *
+     * A FULL scan is O(concept_count) per call. The bulk-lexicon loader
+     * (nimcp_internal_load_bulk_lexicon) and any en-masse re-grounding call
+     * this once per word, so a full scan makes startup O(words^2) — a
+     * multi-minute CPU hang at resume once semantic_memory is live (it used
+     * to be a no-op O(1) pseudo-branch when semantic_memory was NULL, which
+     * is why the quadratic was never hit before). Cap the scan to a window
+     * of the most-recently-created concepts: dedup stays exact below the
+     * cap, and above it we may mint a near-duplicate rather than reuse an
+     * older concept — bounded and harmless for the word→concept use here
+     * (distinct words carry distinct vectors and rarely cross the 0.85
+     * reuse threshold anyway). */
     float best_sim = -1.0f;
     uint64_t best_id = 0;
 
-    for (uint32_t i = 0; i < sm->concept_count; i++) {
+    uint32_t total = sm->concept_count;
+    uint32_t scan_start = (total > GL_CONCEPT_SCAN_CAP)
+                              ? (total - GL_CONCEPT_SCAN_CAP) : 0;
+    for (uint32_t i = scan_start; i < total; i++) {
         if (!sm->concepts[i]) continue;
         const semantic_concept_t* c = sm->concepts[i];
         if (c->feature_dim != dim && c->feature_dim != gl->semantic_dim) continue;
@@ -1455,6 +1475,26 @@ static const float* get_concept_features(const grounded_language_t* gl, uint64_t
     return c->features;
 }
 
+/* ---- comprehend pipeline instrumentation (env-gated) -----------------------
+ * Set NIMCP_COMPREHEND_TRACE=1 to enable per-stage stderr trace inside
+ * grounded_language_comprehend. Used to locate where signal dies for the
+ * 2026-05-29 mode-collapse investigation. Zero overhead when env unset
+ * (one env read on first call, then a cached int compare per check). */
+static int _gl_comp_trace_enabled_cached = -1;
+static int gl_comp_trace_enabled(void) {
+    if (_gl_comp_trace_enabled_cached == -1) {
+        const char* v = getenv("NIMCP_COMPREHEND_TRACE");
+        _gl_comp_trace_enabled_cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+    }
+    return _gl_comp_trace_enabled_cached;
+}
+static float _gl_vec_l2(const float* v, uint32_t n) {
+    if (!v || n == 0) return 0.0f;
+    float s = 0.0f;
+    for (uint32_t i = 0; i < n; i++) s += v[i] * v[i];
+    return sqrtf(s);
+}
+
 /*=============================================================================
  * Word Selection for Production
  *===========================================================================*/
@@ -1486,6 +1526,15 @@ static float score_word_against_vector(const grounded_language_t* gl,
     float concept_sim = 0.0f;
     for (uint32_t b = 0; b < entry->binding_count; b++) {
         const float* cf = get_concept_features(gl, entry->bindings[b].concept_id);
+        /* Concept-feature fallback (2026-05-31): semantic_memory is left
+         * NULL by design (avoids an O(N²) grounding hang), so concept_ids
+         * are pseudo and never resolve. Use the word's distributional
+         * context_vector as the concept features — the learned per-word
+         * embedding. Without this concept_sim is always 0 and the produce
+         * score collapses to the distributional term alone. */
+        if (!cf && entry->context_initialized && entry->context_vector) {
+            cf = entry->context_vector;
+        }
         if (cf) {
             float cs = cosine_similarity(target, cf, cmp_dim);
             cs *= entry->bindings[b].strength;
@@ -1629,6 +1678,14 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
  *===========================================================================*/
 
 grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* semantic_memory) {
+    /* 2026-05-30 diagnostic: every binding created when this argument is
+     * NULL gets a pseudo-concept_id (hash | 0x100000000) that never
+     * resolves to real features later — the entire 60% concept term in
+     * comprehend's semantic vector dies. Always log the received pointer
+     * so resume-path NULLs are visible in brain.stderr without trace env. */
+    fprintf(stderr,
+            "[GL_INIT] grounded_language_create: semantic_dim=%u semantic_memory=%p\n",
+            semantic_dim, semantic_memory);
     grounded_language_t* gl = (grounded_language_t*)nimcp_calloc(1, sizeof(grounded_language_t));
     if (!gl) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -2430,7 +2487,33 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
     uint32_t subword_hits = 0;
 
+    /* ---- comprehend trace: per-word pre-state ---- */
+    float _gct_norm_at_word_start = 0.0f;
+    int   _gct_on = gl_comp_trace_enabled();
+    if (_gct_on) {
+        /* One-shot registry-state header per comprehend call. Lets us
+         * compare per-word first_null_cid against the live concept
+         * registry's (current_count, ever_allocated). Three signatures:
+         *   cid > next_id  → binding came from a different allocator
+         *   cid <= count   → linear scan miss (corruption / stale)
+         *   count < cid <= next_id → allocated then dropped (persistence skew) */
+        uint32_t _gct_reg_count = 0;
+        uint64_t _gct_reg_next  = 0;
+        if (gl->semantic_memory) {
+            const semantic_memory_system_t* _gct_sm = gl->semantic_memory;
+            _gct_reg_count = _gct_sm->concept_count;
+            _gct_reg_next  = _gct_sm->next_concept_id;
+        }
+        fprintf(stderr,
+            "[COMP_TRACE] === comprehend('%s'): word_count=%u semantic_dim=%u "
+            "reg_count=%u reg_next_id=%llu ===\n",
+            text, word_count, gl->semantic_dim,
+            _gct_reg_count, (unsigned long long)_gct_reg_next);
+    }
     for (uint32_t w = 0; w < word_count; w++) {
+        if (_gct_on) {
+            _gct_norm_at_word_start = _gl_vec_l2(result->semantic_vector, gl->semantic_dim);
+        }
         const gl_lexicon_entry_t* entry = gl_nlp_lookup_chain(gl, words[w]);
         if (!entry) {
             /* NLP-1: First, try subword bootstrap — segment the unknown
@@ -2498,9 +2581,18 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
         /* Activate all bound concepts */
         const float polarity = negate_word[w] ? -1.0f : 1.0f;
+        /* Trace: count concept-feature lookup hits vs NULLs and capture the
+         * first failing concept_id for this word. Distinguishes
+         * "concept missing from registry" from "concept stored with NULL
+         * features" once a follow-up registry-dump RPC is wired. */
+        uint32_t _gct_cf_hit = 0;
+        uint32_t _gct_cf_null = 0;
+        uint32_t _gct_pruned = 0;
+        uint64_t _gct_first_null_cid = 0;
+        uint64_t _gct_first_hit_cid = 0;
         for (uint32_t b = 0; b < entry->binding_count && concept_count < GL_MAX_ACTIVE_CONCEPTS; b++) {
             const gl_word_binding_t* binding = &entry->bindings[b];
-            if (binding->strength < GL_ASSOC_PRUNE_THRESHOLD) continue;
+            if (binding->strength < GL_ASSOC_PRUNE_THRESHOLD) { _gct_pruned++; continue; }
 
             /* Sense weight: 1.0 for the chosen binding when WSD is on,
              * GL_SENSE_OFF_DAMP for the others; 1.0 unconditionally
@@ -2538,11 +2630,32 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
              * The activation list is the canonical "what was meant"
              * channel and that's where the sign flip lives. */
             const float* cf = get_concept_features(gl, binding->concept_id);
+            /* Concept-feature fallback (2026-05-31): when the binding's
+             * concept_id does not resolve in semantic_memory — which is the
+             * common case, since the registry is intentionally left NULL to
+             * avoid an O(N²) grounding hang at resume, so every binding holds
+             * a pseudo-id — use the word's own distributional context_vector
+             * as the concept features. The context_vector is the learned
+             * per-word semantic embedding, i.e. exactly what the concept
+             * would have encoded. Without this the dominant concept term of
+             * the semantic vector is identically zero for every word, which
+             * is the mode-collapse root cause (comprehend returns the same
+             * abstract word for every input). */
+            if (!cf && entry->context_initialized && entry->context_vector) {
+                cf = entry->context_vector;
+            }
             if (cf) {
                 float weight = effective / (float)word_count;
                 for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                     result->semantic_vector[d] += cf[d] * weight;
                 }
+                if (_gct_on) {
+                    if (_gct_cf_hit == 0) _gct_first_hit_cid = binding->concept_id;
+                    _gct_cf_hit++;
+                }
+            } else if (_gct_on) {
+                if (_gct_cf_null == 0) _gct_first_null_cid = binding->concept_id;
+                _gct_cf_null++;
             }
         }
 
@@ -2560,13 +2673,62 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
          * file doesn't need to know the tokenizer's vocab. */
         extern int gl_nlp_embedding_lookup(grounded_language_t*, const char*, float*);
         float emb_buf[1024];
+        int _gct_emb_hit = 0;
+        float _gct_emb_norm = 0.0f;
         if (gl->semantic_dim <= 1024 &&
             gl_nlp_embedding_lookup(gl, words[w], emb_buf) == 0) {
             float emb_weight = 0.2f / (float)word_count;
             for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                 result->semantic_vector[d] += emb_buf[d] * emb_weight;
             }
+            if (_gct_on) {
+                _gct_emb_hit = 1;
+                _gct_emb_norm = _gl_vec_l2(emb_buf, gl->semantic_dim);
+            }
         }
+
+        /* ---- comprehend trace: per-word end-of-loop summary ----
+         * Reports what THIS word contributed to the semantic vector.
+         * - bindings:  binding_count (the multiplier on per-binding cf adds)
+         * - top_str:   max strength across this word's bindings
+         * - ctx_init:  was entry->context_vector blended?
+         * - ctx_norm:  ||entry->context_vector|| (the distrib signal magnitude)
+         * - emb_hit:   was a NLP embedding folded in?
+         * - emb_norm:  ||emb_buf|| (the GloVe signal magnitude)
+         * - sv_delta:  ||sv after this word|| - ||sv before this word||
+         * If a word looks up cleanly but sv_delta is ~0, the signal is
+         * being added to a noisy distribution and self-cancels. */
+        if (_gct_on) {
+            float _gct_norm_at_word_end =
+                _gl_vec_l2(result->semantic_vector, gl->semantic_dim);
+            float _gct_ctx_norm = (entry && entry->context_initialized && entry->context_vector)
+                ? _gl_vec_l2(entry->context_vector, gl->semantic_dim) : 0.0f;
+            fprintf(stderr,
+                "[COMP_TRACE]   word='%s' bindings=%u top_str=%.3f ctx_init=%d ctx_norm=%.3f "
+                "emb_hit=%d emb_norm=%.3f sv_norm=%.3f sv_delta=%+.3f "
+                "cf_hit=%u cf_null=%u pruned=%u first_hit_cid=%llu first_null_cid=%llu\n",
+                words[w] ? words[w] : "(null)",
+                entry ? entry->binding_count : 0,
+                (double)top_strength,
+                (entry && entry->context_initialized) ? 1 : 0,
+                (double)_gct_ctx_norm,
+                _gct_emb_hit,
+                (double)_gct_emb_norm,
+                (double)_gct_norm_at_word_end,
+                (double)(_gct_norm_at_word_end - _gct_norm_at_word_start),
+                _gct_cf_hit, _gct_cf_null, _gct_pruned,
+                (unsigned long long)_gct_first_hit_cid,
+                (unsigned long long)_gct_first_null_cid);
+        }
+    }
+    if (_gct_on) {
+        fprintf(stderr,
+            "[COMP_TRACE] post-word-loop: sv_norm=%.3f concept_count=%u total_activation=%.3f known_words=%u subword_hits=%u\n",
+            (double)_gl_vec_l2(result->semantic_vector, gl->semantic_dim),
+            concept_count,
+            (double)total_activation,
+            known_words,
+            subword_hits);
     }
 
     /* Tier-1 #2: rule-based anaphora resolution. Disabled by default; opt-in
@@ -6222,6 +6384,135 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {
              "rebind_all_to_snn_bridge: mirrored %llu bindings across %u words",
              (unsigned long long)mirrored, gl->vocab_count);
     return mirrored;
+}
+
+/* Pseudo-concept-id remap (2026-05-30).
+ *
+ * Bindings created when gl->semantic_memory was NULL hold pseudo-concept_ids
+ * of the form (feature_hash | 0x100000000ULL) — see find_or_create_concept's
+ * NULL-semantic-memory branch. These IDs never resolve in
+ * semantic_memory_get_concept (the registry has no entry for them), so the
+ * concept-feature path in comprehend's semantic_vector accumulation is
+ * permanently zero for every such binding.
+ *
+ * This was the root cause of the 2026-05-29 pod-side mode collapse: the
+ * daemon's --resume path triggers lazy_init_mode (>100K neurons), which
+ * skips init_working_memory_subsystem, which means brain->semantic_memory
+ * was NULL at every grounding event in the brain's training history.
+ *
+ * Migration strategy: for each binding whose concept_id has bit 32 set,
+ * if the entry has a learned distributional context_vector, mint a fresh
+ * real concept_id by calling semantic_memory_create_concept with that
+ * vector as features, and replace the binding's concept_id. The freshly-
+ * minted concept's features will equal context_vector — so the concept
+ * path through get_concept_features now contributes a non-zero signal
+ * (equivalent in direction to context_vector itself; downstream
+ * score_word_against_vector's 0.4·sim + 0.6·concept_sim becomes
+ * cos(target, context_vector) instead of zero).
+ *
+ * Words whose entry has context_initialized=0 (no distributional embedding
+ * yet — e.g. peace/hope in the current pod checkpoint) get their
+ * pseudo-binding marker preserved; they'll re-ground organically when
+ * the trainer next sees them with semantic_memory available. We could
+ * fall back to GloVe lookup here, but that path needs the NLP embedding
+ * subsystem wired and isn't always available. Keep the migration narrow.
+ *
+ * NULL-safe on both gl and gl->semantic_memory. Returns count of bindings
+ * remapped (or 0 if nothing was eligible). */
+uint64_t grounded_language_remap_pseudo_concept_ids(grounded_language_t* gl) {
+    if (!gl) return 0;
+    if (!gl->semantic_memory) return 0;
+    if (!gl->vocab_list || gl->vocab_count == 0) return 0;
+
+    uint64_t remapped        = 0;   /* bindings repointed to a real concept */
+    uint64_t still_pseudo    = 0;   /* pseudo bindings left (no context vec) */
+    uint64_t already_real    = 0;   /* bindings that were already real */
+    uint64_t words_migrated  = 0;   /* distinct words that got a new concept */
+    uint64_t create_failed   = 0;   /* semantic_memory_create_concept == 0 */
+
+    /* Mint ONE concept per WORD (seeded from its distributional
+     * context_vector) and repoint ALL of that word's pseudo bindings at it.
+     *
+     * The earlier per-binding version called semantic_memory_create_concept
+     * once per binding — millions of calls, each emitting a KG
+     * concept-created event with an O(KG) integrity-checksum recompute.
+     * That turned the migration into an O(bindings × KG) CPU hang during
+     * resume. Per-word collapses it to O(words) creates (a few × 10^4) and
+     * keeps the semantics right: a word denotes one concept, not one
+     * concept per co-occurrence binding. */
+    gl_mutate_lock(gl);
+    for (uint32_t v = 0; v < gl->vocab_count; v++) {
+        gl_lexicon_entry_t* entry = gl->vocab_list[v];
+        if (!entry || entry->binding_count == 0) continue;
+
+        /* Does this word have any pseudo binding worth migrating? */
+        bool has_pseudo = false;
+        for (uint32_t b = 0; b < entry->binding_count; b++) {
+            if (entry->bindings[b].concept_id & 0x100000000ULL) {
+                has_pseudo = true;
+                break;
+            }
+        }
+        if (!has_pseudo) {
+            already_real += entry->binding_count;
+            continue;
+        }
+
+        /* Need a feature vector to seed the new concept. The word's
+         * distributional context_vector is the best available proxy for
+         * the semantic content the original grounding carried — it's been
+         * trained over many co-occurrences. Without it, leave the pseudo
+         * bindings as-is (counted) rather than minting a zero concept. */
+        if (!entry->context_initialized || !entry->context_vector) {
+            for (uint32_t b = 0; b < entry->binding_count; b++) {
+                if (entry->bindings[b].concept_id & 0x100000000ULL)
+                    still_pseudo++;
+                else
+                    already_real++;
+            }
+            continue;
+        }
+
+        uint64_t new_cid = semantic_memory_create_concept(
+            gl->semantic_memory,
+            entry->context_vector,
+            gl->semantic_dim,
+            entry->form,
+            CONCEPT_OBJECT);
+        if (new_cid == 0) {
+            /* Registry full or alloc failure — leave pseudo bindings. */
+            for (uint32_t b = 0; b < entry->binding_count; b++) {
+                if (entry->bindings[b].concept_id & 0x100000000ULL)
+                    create_failed++;
+                else
+                    already_real++;
+            }
+            continue;
+        }
+        words_migrated++;
+
+        for (uint32_t b = 0; b < entry->binding_count; b++) {
+            if (entry->bindings[b].concept_id & 0x100000000ULL) {
+                entry->bindings[b].concept_id = new_cid;
+                remapped++;
+            } else {
+                already_real++;
+            }
+        }
+    }
+    gl_mutate_unlock(gl);
+
+    fprintf(stderr,
+            "[GL_REMAP] pseudo-concept-id migration: words_migrated=%llu "
+            "bindings_remapped=%llu still_pseudo_no_ctx=%llu already_real=%llu "
+            "create_failed=%llu (words=%u)\n",
+            (unsigned long long)words_migrated,
+            (unsigned long long)remapped,
+            (unsigned long long)still_pseudo,
+            (unsigned long long)already_real,
+            (unsigned long long)create_failed,
+            gl->vocab_count);
+    return remapped;
 }
 
 /* Phase 2C: GL→Broca lexicon mirror.

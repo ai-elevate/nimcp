@@ -1389,6 +1389,36 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(
     grounded_language_t* gl);
 
 /**
+ * @brief Pseudo-concept-id migration (2026-05-30).
+ *
+ * Walks all lexicon entries and, for each binding whose concept_id has
+ * the pseudo-concept marker bit (0x100000000ULL) set, mints a fresh
+ * real concept_id by calling semantic_memory_create_concept with the
+ * entry's distributional context_vector as features. Replaces the
+ * binding's concept_id with the new value.
+ *
+ * Pseudo-concept-ids are stamped by find_or_create_concept when
+ * gl->semantic_memory was NULL at grounding time. They never resolve
+ * via semantic_memory_get_concept, so every comprehend call on a
+ * checkpoint with pseudo-IDs has a zero concept-feature contribution
+ * to its semantic vector — the root cause of the 2026-05-29 pod-side
+ * mode collapse.
+ *
+ * No-op when gl->semantic_memory is NULL (still in pseudo-id mode),
+ * lexicon is empty, or no bindings carry the marker bit. Entries
+ * without an initialized context_vector are skipped (they need
+ * fresh grounding from sensory features, not a context-vector proxy).
+ *
+ * Safe to call at any time, but intended for one-shot use right after
+ * gl_persistence_load during checkpoint resume.
+ *
+ * @param gl  Grounded language handle
+ * @return    Count of bindings successfully remapped to real concept_ids
+ */
+uint64_t grounded_language_remap_pseudo_concept_ids(
+    grounded_language_t* gl);
+
+/**
  * @brief PA-4: train the bridge with a single (prev, next) bigram via a
  *        next-token contrastive update.
  *

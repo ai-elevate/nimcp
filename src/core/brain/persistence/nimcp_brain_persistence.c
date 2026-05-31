@@ -2452,6 +2452,8 @@ void brain_load_post_init_sidecars(brain_t brain)
                                        const char* path);
         extern uint64_t grounded_language_rebind_all_to_snn_bridge(
             struct grounded_language* gl);
+        extern uint64_t grounded_language_remap_pseudo_concept_ids(
+            struct grounded_language* gl);
         char gl_path[NIMCP_METRICS_PATH_SIZE];
         snprintf(gl_path, sizeof(gl_path), "%s.gl_lang", filepath);
         if (gl_persistence_load(brain->grounded_lang, gl_path) == 0) {
@@ -2465,6 +2467,18 @@ void brain_load_post_init_sidecars(brain_t brain)
             fprintf(stderr,
                     "[INFO] Re-mirrored %llu lexicon bindings into SNN bridge\n",
                     (unsigned long long)mirrored);
+            /* Pseudo-concept-id migration (2026-05-30): legacy bindings on
+             * checkpoints grounded while brain->semantic_memory was NULL
+             * carry pseudo-IDs (high bit 0x100000000ULL set) that never
+             * resolve in semantic_memory_get_concept. Remap them now so
+             * the concept-feature path in comprehend's semantic vector
+             * has signal. Emits a [GL_REMAP] line with the count. */
+            uint64_t remapped =
+                grounded_language_remap_pseudo_concept_ids(brain->grounded_lang);
+            fprintf(stderr,
+                    "[INFO] Remapped %llu pseudo-concept-id bindings to real "
+                    "registry entries\n",
+                    (unsigned long long)remapped);
         } else {
             fprintf(stderr, "[INFO] gl_persistence_load: no sidecar at %s — "
                     "lexicon starts from seeded vocabulary only\n", gl_path);

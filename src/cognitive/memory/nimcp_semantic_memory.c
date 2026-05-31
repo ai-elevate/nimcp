@@ -716,10 +716,25 @@ uint64_t semantic_memory_create_concept(
     system->stats.total_concepts_formed++;
     if (system->mutex) nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
 
-    /* W6: emit KG event for concept creation */
-    memory_kg_emit_concept_created(
-        memory_kg_events_get_registered_brain(),
-        concept->id, concept->label);
+    /* W6: emit KG event for concept creation — but ONLY for the first
+     * SEMANTIC_KG_EMIT_LIMIT concepts.
+     *
+     * Each emit adds a "_event_" node to the internal KG. brain_kg_add_node
+     * does a linear free-slot scan and, once the KG fills, an O(node_capacity)
+     * + O(edge_capacity) LRU-eviction sweep PER add. Bulk concept creation
+     * (the ~50K-word WordNet lexicon loader and the pseudo-id remap on resume)
+     * therefore turns into an O(N²) KG-eviction storm that wedges daemon
+     * startup for many minutes. (This was latent: it only fires now that
+     * semantic_memory is non-NULL at grounding time — previously every
+     * create_concept call was short-circuited to a pseudo-id and this code
+     * never ran.) Cap the telemetry to the early concepts; bulk creation
+     * stays silent. */
+    #define SEMANTIC_KG_EMIT_LIMIT 512u
+    if (system->concept_count <= SEMANTIC_KG_EMIT_LIMIT) {
+        memory_kg_emit_concept_created(
+            memory_kg_events_get_registered_brain(),
+            concept->id, concept->label);
+    }
 
     return concept->id;
 }
