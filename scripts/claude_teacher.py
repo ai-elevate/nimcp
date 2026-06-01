@@ -326,6 +326,7 @@ class ClaudeTeacher:
                 text=True,
                 timeout=self.timeout,
                 env=env,
+                stdin=subprocess.DEVNULL,  # don't wait 3s for stdin (rc=1 in daemonized trainer)
             )
             if result.returncode != 0:
                 stderr = result.stderr.strip()

@@ -4452,6 +4452,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                      "--system-prompt", "",
                      "--setting-sources", "", "--allowed-tools", ""],
                     capture_output=True, text=True, timeout=20,
+                    stdin=_sp.DEVNULL,  # don't wait 3s for stdin (rc=1 in daemonized trainer)
                     env={k: v for k, v in os.environ.items()
                          if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}
                 )
