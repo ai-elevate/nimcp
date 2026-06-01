@@ -4194,6 +4194,13 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
             char poss[TOKLEN];
             snprintf(poss, sizeof(poss), "%s's", tok[i]);
             GL_F4_SET(i, poss);
+            /* RC2 (2026-06-01): exactly one possessive per utterance. A produced
+             * run of adjacent abstract nouns ("thought belief problem ...") must
+             * not cascade into "thought's belief's problem's ..." — only the
+             * first noun-noun pair is treated as genitive. The real fix for the
+             * noun-run itself is structural (clause planner); this caps the
+             * surface damage. "dog tail" -> "dog's tail" still works. */
+            break;
         }
     }
 
