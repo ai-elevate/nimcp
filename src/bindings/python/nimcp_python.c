@@ -2777,6 +2777,7 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_ltd_margin",                PyFloat_FromDouble((double)d.bridge_ltd_margin));
     GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
     GLD_SET("produce_distributional_weight",    PyFloat_FromDouble((double)d.produce_distributional_weight));
+    GLD_SET("produce_frequency_penalty",        PyFloat_FromDouble((double)d.produce_frequency_penalty));
     GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
     GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
@@ -3535,6 +3536,19 @@ static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* ar
         } \
         Py_RETURN_NONE; \
     }
+/* Float getter mirror of AUDIT_BRAIN_FLOAT_SETTER. CAPI signature is
+ * nimcp_status_t CAPI(nimcp_brain_t, float* out). METH_NOARGS. */
+#define AUDIT_BRAIN_FLOAT_GETTER(NAME, CAPI) \
+    static PyObject* Brain_##NAME(BrainObject* self, PyObject* Py_UNUSED(ignored)) { \
+        if (!self->brain) { \
+            PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; \
+        } \
+        float v = 0.0f; \
+        if (CAPI(self->brain, &v) != NIMCP_OK) { \
+            PyErr_SetString(PyExc_RuntimeError, #NAME " failed"); return NULL; \
+        } \
+        return PyFloat_FromDouble((double)v); \
+    }
 /* TF-2 (2026-05-28): uint16 bitmask setter — used by set_tf_enabled_correctors.
  * Python passes a plain int; we clamp to uint16 range so a stray negative or
  * out-of-range value can't underflow. */
@@ -3571,6 +3585,9 @@ AUDIT_BRAIN_BOOL_SETTER(set_produce_pronominalize,            nimcp_brain_set_pr
 AUDIT_BRAIN_BOOL_SETTER(set_produce_discourse_seed,           nimcp_brain_set_produce_discourse_seed)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_clause_frame,             nimcp_brain_set_produce_clause_frame)
 AUDIT_BRAIN_FLOAT_SETTER(set_produce_distributional_weight,   nimcp_brain_set_produce_distributional_weight)
+AUDIT_BRAIN_FLOAT_GETTER(get_produce_distributional_weight,   nimcp_brain_get_produce_distributional_weight)
+AUDIT_BRAIN_FLOAT_SETTER(set_produce_frequency_penalty,       nimcp_brain_set_produce_frequency_penalty)
+AUDIT_BRAIN_FLOAT_GETTER(get_produce_frequency_penalty,       nimcp_brain_get_produce_frequency_penalty)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_givenness_definite,       nimcp_brain_set_produce_givenness_definite)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_t3_conjunction,           nimcp_brain_set_produce_t3_conjunction)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_corrector_feedback_enabled, nimcp_brain_set_produce_corrector_feedback_enabled)
@@ -13020,6 +13037,12 @@ static PyMethodDef Brain_methods[] = {
      "FND-1: toggle the SVO clause/argument frame in produce — set_produce_clause_frame(enabled: bool) -> None. Default OFF. Effective at stage>=2: builds 'the SUBJECT VERB the OBJECT' from the grounded top-K (best verb=predicate, best two nouns=agent/patient) instead of a reranked content-word bag; falls back to greedy emit on weak signal. Word order only is templated; slots are grounded-score filled. Persisted in the LANC block."},
     {"set_produce_distributional_weight", (PyCFunction)Brain_set_produce_distributional_weight, METH_VARARGS,
      "Produce-score rebalance: set the weight on the distributional (context-vector) term vs the concept-binding term in produce word scoring — set_produce_distributional_weight(w: float) -> None. raw = w*distributional + (1-w)*concept. Default 0.4 (historical split). Raise toward ~0.7 so intent-correct concrete words outrank broadly-concept-bound abstract words that otherwise monopolize produce. Clamped [0,1]. Persisted in the LANC block."},
+    {"get_produce_distributional_weight", (PyCFunction)Brain_get_produce_distributional_weight, METH_NOARGS,
+     "Produce-score rebalance: read the current distributional-vs-concept weight used in produce word scoring — get_produce_distributional_weight() -> float. Mirror of set_produce_distributional_weight; reflects the live value (JSON default applied at daemon start, or any runtime set). Also surfaced in get_grounded_language_diagnostics()['produce_distributional_weight']."},
+    {"set_produce_frequency_penalty", (PyCFunction)Brain_set_produce_frequency_penalty, METH_VARARGS,
+     "Produce-score frequency penalty: set the IDF-style damping of high-frequency words in produce scoring — set_produce_frequency_penalty(p: float) -> None. raw *= 1/(1 + p*log1p(frequency)). Default 0.0 = OFF (produce unchanged). Raise (~0.1-0.3) so distributionally-central technical-corpus vocab stops monopolizing produce filler positions (word-salad contamination). p<0 clamped to 0. Runtime-only (applied from JSON at daemon start; not LANC-persisted)."},
+    {"get_produce_frequency_penalty", (PyCFunction)Brain_get_produce_frequency_penalty, METH_NOARGS,
+     "Produce-score frequency penalty: read the current value — get_produce_frequency_penalty() -> float. 0.0 = OFF. Also surfaced in get_grounded_language_diagnostics()['produce_frequency_penalty']."},
     {"set_produce_givenness_definite", (PyCFunction)Brain_set_produce_givenness_definite, METH_VARARGS,
      "T3-1: toggle givenness-driven definiteness — set_produce_givenness_definite(enabled: bool) -> None. Default OFF. Effective at stage>=2 in the surface cascade AFTER T2 pronominalization: a NOUN re-mention (recency window) whose preceding token is 'a'/'an' has the article swapped to 'the' (case-preserving). Person nouns and unanchored re-mentions that T2-1 spared get marked given here. Persisted in the LANC block."},
     {"set_produce_t3_conjunction", (PyCFunction)Brain_set_produce_t3_conjunction, METH_VARARGS,

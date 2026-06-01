@@ -1028,6 +1028,9 @@ typedef struct {
      * the produce word score (raw = w*distributional + (1-w)*concept).
      * Default 0.4 = historical 0.4/0.6 split. */
     float    produce_distributional_weight;
+    /* Produce-score frequency penalty (2026-06-01): current IDF-style penalty
+     * applied in produce scoring (raw *= 1/(1+p*log1p(freq))). 0.0 = OFF. */
+    float    produce_frequency_penalty;
     /* TF (tier-feedback) telemetry surface — exposed so operators can see
      * (a) how often the cascade emits deltas (tf_calls / tf_deltas_captured),
      * (b) which gate is rejecting (per-reason tf_outcome_blocked_*),
@@ -1746,6 +1749,14 @@ nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* o
  *  concept-bound abstract words. Clamped [0,1]. Persisted via LANC + config. */
 nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight);
 nimcp_status_t nimcp_brain_get_produce_distributional_weight(nimcp_brain_t brain, float* out_weight);
+
+/** Produce-score frequency penalty (2026-06-01): IDF-style damping of
+ *  high-frequency words in produce scoring — raw *= 1/(1 + p*log1p(freq)).
+ *  Default 0.0 = OFF. Raise (~0.1-0.3) to stop distributionally-central
+ *  technical vocab monopolizing produce filler positions. Runtime-only
+ *  (applied from JSON at start; not LANC-persisted). penalty<0 clamped to 0. */
+nimcp_status_t nimcp_brain_set_produce_frequency_penalty(nimcp_brain_t brain, float penalty);
+nimcp_status_t nimcp_brain_get_produce_frequency_penalty(nimcp_brain_t brain, float* out_penalty);
 
 /** T3-1 (2026-05-28): givenness-driven definiteness — on a NOUN re-mention
  *  that didn't pronominalize (person nouns, unanchored slots), swap the

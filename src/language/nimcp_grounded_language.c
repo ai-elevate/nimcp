@@ -1574,6 +1574,19 @@ static float score_word_against_vector(const grounded_language_t* gl,
         float factor = 1.0f + (v * 0.5f);
         raw *= factor;
     }
+
+    /* Produce-score frequency penalty (2026-06-01): IDF-style damping of
+     * high-frequency words so distributionally-central technical-corpus vocab
+     * (gpu/impedance/lidar/...) stops monopolizing produce filler positions
+     * (word-salad contamination). factor in (0,1]: 1.0 when the penalty is OFF
+     * (default 0.0) or the word is unseen; decreasing with log(frequency). The
+     * intent word still wins its head position on the strong distributional
+     * match; this only suppresses ubiquitous fillers. */
+    float fp = gl->produce_frequency_penalty;
+    if (fp > 0.0f && entry->frequency > 0u) {
+        float factor = 1.0f / (1.0f + fp * log1pf((float)entry->frequency));
+        raw *= factor;
+    }
     return raw;
 }
 
@@ -1775,6 +1788,9 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
      * distributional weight so default produce behaviour is bit-for-bit
      * unchanged until the trainer/RPC opts into a higher value. */
     gl->produce_distributional_weight = GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
+    /* Produce-score frequency penalty (2026-06-01) — default OFF (0.0) so
+     * produce scoring is unchanged until the JSON/RPC opts into a penalty. */
+    gl->produce_frequency_penalty = GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT;
     /* T3-1 (2026-05-28) — givenness-definiteness default ON. The corrector
      * is conservative (only swaps a/an->the on a NOUN re-mention within the
      * recency window, never touches non-noun tokens or already-definite
@@ -3519,6 +3535,18 @@ void grounded_language_set_produce_distributional_weight(grounded_language_t* gl
 float grounded_language_get_produce_distributional_weight(const grounded_language_t* gl) {
     if (!gl) return GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
     return gl->produce_distributional_weight;
+}
+
+void grounded_language_set_produce_frequency_penalty(grounded_language_t* gl,
+                                                     float penalty) {
+    if (!gl) return;
+    if (!isfinite(penalty) || penalty < 0.0f) penalty = 0.0f;
+    gl->produce_frequency_penalty = penalty;
+}
+
+float grounded_language_get_produce_frequency_penalty(const grounded_language_t* gl) {
+    if (!gl) return GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT;
+    return gl->produce_frequency_penalty;
 }
 
 /*-----------------------------------------------------------------------------

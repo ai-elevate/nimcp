@@ -506,6 +506,15 @@ struct grounded_language {
      * curriculum/comprehend collapse). Clamped to [0,1]. */
     float                produce_distributional_weight;
 
+    /* Produce-score frequency penalty (2026-06-01): IDF-style damping of
+     * high-frequency words in produce scoring — raw *= 1/(1 + p*log1p(freq)).
+     * Default 0.0 = OFF (no change). Raising p suppresses distributionally-
+     * central technical-corpus vocab (gpu/impedance/lidar/...) from
+     * monopolizing produce filler positions (the word-salad contamination
+     * diagnosed 2026-06-01). Runtime-only: applied from JSON at daemon start,
+     * NOT persisted in the LANC block (avoids checkpoint-format churn). */
+    float                produce_frequency_penalty;
+
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *
      * `vocab_active_mask` is a heap-allocated bool array sized to

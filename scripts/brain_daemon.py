@@ -472,6 +472,10 @@ def _apply_runtime_lang_config(brain, logger):
         # raise toward ~0.7 so concrete intent-correct words outrank broadly-
         # concept-bound abstract words that otherwise monopolize produce.
         ("produce_distributional_weight",      "set_produce_distributional_weight",      _f),
+        # Produce-score frequency penalty — IDF-style damping of high-frequency
+        # words so distributionally-central technical-corpus vocab stops
+        # monopolizing produce filler positions (2026-06-01). Default 0.0 (OFF).
+        ("produce_frequency_penalty",          "set_produce_frequency_penalty",          _f),
         # T3-1 — givenness-driven definiteness (2026-05-28). Default OFF; when
         # on, swaps "a"/"an" -> "the" on a NOUN re-mention that T2 did NOT
         # pronominalize (person nouns, unanchored slots). Stage-gated >=2.

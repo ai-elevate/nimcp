@@ -642,6 +642,12 @@ bool grounded_language_get_negation_enabled(
  *  abstract words (produce-collapse fix, 2026-05-27). Range [0,1]. */
 #define GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT  0.4f
 
+/** Produce-score frequency penalty (2026-06-01). Default 0.0 = OFF (produce
+ *  scoring unchanged). Raising it damps high-frequency words via
+ *  raw *= 1/(1 + p*log1p(freq)) so distributionally-central technical-corpus
+ *  vocabulary stops monopolizing produce filler positions. Range [0,inf). */
+#define GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT  0.0f
+
 /**
  * @brief Toggle TA-5 reconsolidation-on-contradiction. Default OFF.
  *
@@ -688,6 +694,22 @@ void grounded_language_set_produce_distributional_weight(
     float weight);
 
 float grounded_language_get_produce_distributional_weight(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Set/get the produce-score frequency penalty (default 0.0 = OFF).
+ *
+ * Damps high-frequency words in score_word_against_vector via
+ *   raw *= 1 / (1 + penalty * log1p(entry->frequency))
+ * so distributionally-central, high-exposure technical vocabulary stops
+ * winning produce filler positions (word-salad contamination). penalty<0 is
+ * clamped to 0. Range [0, inf); ~0.1-0.3 is a reasonable starting band.
+ */
+void grounded_language_set_produce_frequency_penalty(
+    grounded_language_t* gl,
+    float penalty);
+
+float grounded_language_get_produce_frequency_penalty(
     const grounded_language_t* gl);
 
 /**
