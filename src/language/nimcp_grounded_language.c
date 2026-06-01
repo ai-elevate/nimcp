@@ -1601,7 +1601,20 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
     uint32_t count = 0;
     float best_seen = 0.0f;
 
-    for (uint32_t w = 0; w < gl->vocab_count && count < max_words; w++) {
+    /* Scan the ENTIRE vocabulary, keeping the top-`max_words` by score via the
+     * insertion sort below. The old loop condition `count < max_words`
+     * terminated the scan as soon as max_words candidates had been *collected*,
+     * not ranked — so produce only ever saw the first max_words entries in
+     * vocab_list. Those are the seed/function/abstract concept words added at
+     * create time (low indices); every bulk-loaded or later-trained content
+     * word (cat, dog, water, ...) sat past that cutoff and was NEVER scored.
+     * Result: produce returned the same ~max_words abstract words for every
+     * intent regardless of relevance (the "intent-miss collapse"). A concrete
+     * word scoring 0.88 for its own intent never appeared because the scan
+     * stopped at the seed block. Scan everything; the insertion sort keeps the
+     * best K. Cost is O(vocab) per produce, which is what a top-K search must
+     * pay anyway. */
+    for (uint32_t w = 0; w < gl->vocab_count; w++) {
         const gl_lexicon_entry_t* entry = gl->vocab_list[w];
         if (!entry) continue;
         /* Skip only when there is truly no signal — same loosened gate as
@@ -1645,6 +1658,23 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
             }
             out_words[insert_pos] = entry->form;
             out_scores[insert_pos] = score;
+        }
+    }
+
+    /* Produce-ranking trace (env NIMCP_PRODUCE_TRACE=1) — dump the top
+     * candidates + score so we can see WHY a given intent ranks the words
+     * it does (hubness / frequency / class diagnosis). Zero cost when off. */
+    if (count > 0) {
+        const char* _pt = getenv("NIMCP_PRODUCE_TRACE");
+        if (_pt && _pt[0] && _pt[0] != '0') {
+            fprintf(stderr, "[PRODUCE_TRACE] class=%d best=%.4f top:",
+                    (int)required_class, best_seen);
+            for (uint32_t i = 0; i < count && i < 8; i++) {
+                const gl_lexicon_entry_t* te = grounded_language_lookup(gl, out_words[i]);
+                fprintf(stderr, " %s(s=%.3f,f=%u)", out_words[i], out_scores[i],
+                        te ? te->frequency : 0u);
+            }
+            fprintf(stderr, "\n");
         }
     }
 
