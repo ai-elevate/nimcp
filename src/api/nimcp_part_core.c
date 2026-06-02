@@ -5013,7 +5013,7 @@ nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float 
     int bid = snn_network_find_pop_by_name(b->snn_network, "broca_substrate");
     if (wid < 0 || bid < 0) return NIMCP_ERROR;   /* pops or projection absent */
     int updated = snn_language_bridge_warmstart_projection(
-        b->snn_lang_bridge, b->snn_network, wid, bid, k);
+        b->snn_lang_bridge, b->snn_network, wid, bid, k, 1.0f /* overwrite */);
     if (out_updated) *out_updated = updated;
     return (updated >= 0) ? NIMCP_OK : NIMCP_ERROR;
 }

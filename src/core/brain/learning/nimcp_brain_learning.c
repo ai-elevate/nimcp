@@ -198,6 +198,7 @@ static void brain_enforce_dales_law(brain_t brain)
 #include "snn/nimcp_snn_fno.h"
 #include "snn/nimcp_snn_config.h"
 #include "snn/nimcp_snn_network.h"
+#include "snn/bridges/nimcp_snn_language_bridge.h"   /* Phase-3 projection training */
 /* Forward-declare R-STDP reward setter (full snn_training.h conflicts
  * with snn_backprop.h due to duplicate snn_surrogate_config_t typedef) */
 extern void snn_rstdp_set_reward(snn_training_ctx_t* ctx, float reward);
@@ -355,6 +356,37 @@ void brain_train_cognitive_subsystems_sequential(
         (void)grounded_language_learn_text_bigrams(brain->grounded_lang,
                                                     label, 0.02f);
         brain->cognitive_stats.grounded_lang_steps++;
+
+        /* === 1b. Phase 3 (2026-06-02): ONLINE concept→word SNN projection
+         * training. Env-gated (NIMCP_TRAIN_SNN_PROJECTION=1) + throttled. Blends
+         * the Wernicke→Broca projection weights toward the lexicon's current
+         * concept↔word binding strengths (lr EMA). The lexicon is shaped by the
+         * distributional/syntax/trigram learning just above AND the cognitive/TF
+         * feedback elsewhere — so THIS is the feedback path from the rest of the
+         * system into the SNN's own synapses (the architecture's learning loop).
+         * No-op when the projection wasn't created (NIMCP_LANG_PROJECTION off →
+         * 0 Wernicke-sourced synapses → 0 updated). The vocab scan is why it's
+         * throttled. Learn runs single-threaded under the write lock, so the
+         * static step counter needs no atomics. */
+        if (brain->snn_lang_bridge && brain->snn_network) {
+            static int      s_proj_train_on = -1;   /* -1=unknown 0=off 1=on */
+            static uint64_t s_proj_train_step = 0;
+            if (s_proj_train_on < 0) {
+                const char* e = getenv("NIMCP_TRAIN_SNN_PROJECTION");
+                s_proj_train_on = (e && e[0] == '1') ? 1 : 0;
+            }
+            if (s_proj_train_on == 1 && (s_proj_train_step++ % 500u) == 0u) {
+                int wid = snn_network_find_pop_by_name(brain->snn_network,
+                                                       "wernicke_substrate");
+                int bid = snn_network_find_pop_by_name(brain->snn_network,
+                                                       "broca_substrate");
+                if (wid >= 0 && bid >= 0) {
+                    (void)snn_language_bridge_warmstart_projection(
+                        brain->snn_lang_bridge, brain->snn_network, wid, bid,
+                        1.0f /*k: target = binding strength*/, 0.05f /*lr EMA*/);
+                }
+            }
+        }
     }
 
     /* === 2. KNOWLEDGE SYSTEM — concept learning from text === */

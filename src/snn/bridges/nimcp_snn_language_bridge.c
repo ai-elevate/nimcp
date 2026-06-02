@@ -762,8 +762,17 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
                                              struct snn_network_s* net,
                                              int wernicke_pop_id,
                                              int broca_pop_id,
-                                             float k)
+                                             float k, float lr)
 {
+    /* lr is the blend toward the lexicon target k*strength:
+     *   lr >= 1.0 → overwrite (one-shot warm-start, Phase 2 step 3),
+     *   0 < lr < 1 → incremental EMA toward the target (Phase 3 online
+     *                training — the projection TRACKS the lexicon as it
+     *                learns, so distributional/trigram/TF/cognitive feedback
+     *                that shapes the lexicon flows into the SNN synapses).
+     * Clamp lr to (0,1]. */
+    if (!(lr > 0.0f)) lr = 1.0f;
+    if (lr > 1.0f) lr = 1.0f;
     if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
         wernicke_pop_id < 0 || broca_pop_id < 0 || !bridge->grounded_lang) {
         return -1;
@@ -808,9 +817,14 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
                 if (inc[e].src_pop != (uint32_t)wernicke_pop_id) continue;
                 for (uint32_t j2 = 0; j2 < SNN_LANG_NEURONS_PER_POP; j2++) {
                     if (inc[e].src_neuron == cens[j2]) {
-                        inc[e].weight = wval;
+                        /* Blend toward the lexicon target: overwrite when lr=1
+                         * (warm-start), EMA when lr<1 (online training). */
+                        float nw = inc[e].weight + lr * (wval - inc[e].weight);
+                        if (nw < 0.0f) nw = 0.0f;
+                        if (nw > 2.0f) nw = 2.0f;
+                        inc[e].weight = nw;
                         if (csr->weights && (bdx + e) < csr->n_synapses) {
-                            csr->weights[bdx + e] = wval;
+                            csr->weights[bdx + e] = nw;
                         }
                         updated++;
                         break;

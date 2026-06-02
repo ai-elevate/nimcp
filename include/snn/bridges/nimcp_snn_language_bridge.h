@@ -749,7 +749,7 @@ int snn_language_bridge_warmstart_projection(
     struct snn_network_s* net,
     int wernicke_pop_id,
     int broca_pop_id,
-    float k);
+    float k, float lr);   /* lr>=1: overwrite (warm-start); 0<lr<1: EMA (online train) */
 
 /** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
  *
