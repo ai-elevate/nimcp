@@ -9,7 +9,20 @@
 #     runs from an ISOLATED workdir with its own empty checkpoints/athena/.
 #   * It runs CPU-only (CUDA_VISIBLE_DEVICES="") so it never contends for the
 #     GPU the production brain holds (no GPU OOM). It WILL use CPU + ~40GB RAM,
-#     so expect production training to slow while it runs. Pod has ~85GB RAM.
+#     so expect production training to slow while it runs.
+#
+#   *** MAINTENANCE WINDOW REQUIRED (learned 2026-06-02): ***
+#   The hierarchical SNN architecture is FIXED at ~1.8M neurons — --snn-neuron-count
+#   sets config.snn_target_neurons but the builder ignores it, so the throwaway is
+#   always the FULL ~40GB brain. Running it ALONGSIDE production OOM-killed the
+#   throwaway during the language-pop wave: full-throwaway(~40GB) + production(~20GB)
+#   + projection-wave spike exceeded the ~85.7GB cgroup memory.max (silent SIGKILL,
+#   no crash log). PRODUCTION WAS UNHARMED (isolated workdir, no clobber), but the
+#   projection never wired. => Run this ONLY with production PAUSED:
+#       supervisorctl stop athena-training athena-brain   # free the cgroup budget
+#       bash scripts/soak_lang_projection.sh              # full throwaway fits now
+#       supervisorctl start athena-brain athena-training  # restore production
+#   (SNN_N below is left for reference but does NOT shrink the hierarchy.)
 #   * It is a FRESH cold-init (projection is created at cold init only). It never
 #     touches the production socket or checkpoints.
 #
