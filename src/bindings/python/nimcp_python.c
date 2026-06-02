@@ -2778,6 +2778,7 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
     GLD_SET("produce_distributional_weight",    PyFloat_FromDouble((double)d.produce_distributional_weight));
     GLD_SET("produce_frequency_penalty",        PyFloat_FromDouble((double)d.produce_frequency_penalty));
+    GLD_SET("produce_via_snn",                  PyBool_FromLong(d.produce_via_snn));
     GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
     GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
@@ -3584,6 +3585,7 @@ AUDIT_BRAIN_BOOL_SETTER(set_autoregressive_produce,           nimcp_brain_set_au
 AUDIT_BRAIN_BOOL_SETTER(set_produce_pronominalize,            nimcp_brain_set_produce_pronominalize)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_discourse_seed,           nimcp_brain_set_produce_discourse_seed)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_clause_frame,             nimcp_brain_set_produce_clause_frame)
+AUDIT_BRAIN_BOOL_SETTER(set_produce_via_snn,                  nimcp_brain_set_produce_via_snn)
 AUDIT_BRAIN_FLOAT_SETTER(set_produce_distributional_weight,   nimcp_brain_set_produce_distributional_weight)
 AUDIT_BRAIN_FLOAT_GETTER(get_produce_distributional_weight,   nimcp_brain_get_produce_distributional_weight)
 AUDIT_BRAIN_FLOAT_SETTER(set_produce_frequency_penalty,       nimcp_brain_set_produce_frequency_penalty)
@@ -13033,6 +13035,8 @@ static PyMethodDef Brain_methods[] = {
      "Tier 2: toggle produce-side pronominalization — set_produce_pronominalize(enabled: bool) -> None. Default OFF. When ON, a re-mentioned non-person noun (recency window, across a verb) becomes it/they/them so replies don't repeat the noun. Person nouns guarded out. Persisted in the LANC block."},
     {"set_produce_discourse_seed", (PyCFunction)Brain_set_produce_discourse_seed, METH_VARARGS,
      "Tier 2: toggle discourse-seeded autoregressive produce — set_produce_discourse_seed(enabled: bool) -> None. Default OFF. Effective only with autoregressive_produce ON and stage>=2: seeds the AR emitted-context vector with the decayed most-recent discourse-turn vector so the opening words continue the topic of what was just said. Persisted in the LANC block."},
+    {"set_produce_via_snn", (PyCFunction)Brain_set_produce_via_snn, METH_VARARGS,
+     "Increment-1: SNN-as-generator A/B switch — set_produce_via_snn(enabled: bool) -> None. Default OFF. When ON, grounded_language_produce sources candidate words from the SNN language bridge's per-tick Broca spike cache (decode_spikes_cached) instead of find_words_near_vector, falling back to the lexicon producer when the SNN yields no signal. Read back via get_grounded_language_diagnostics()['produce_via_snn']. Runtime-only (applied from JSON at daemon start)."},
     {"set_produce_clause_frame", (PyCFunction)Brain_set_produce_clause_frame, METH_VARARGS,
      "FND-1: toggle the SVO clause/argument frame in produce — set_produce_clause_frame(enabled: bool) -> None. Default OFF. Effective at stage>=2: builds 'the SUBJECT VERB the OBJECT' from the grounded top-K (best verb=predicate, best two nouns=agent/patient) instead of a reranked content-word bag; falls back to greedy emit on weak signal. Word order only is templated; slots are grounded-score filled. Persisted in the LANC block."},
     {"set_produce_distributional_weight", (PyCFunction)Brain_set_produce_distributional_weight, METH_VARARGS,

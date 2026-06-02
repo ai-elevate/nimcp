@@ -1791,6 +1791,9 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     /* Produce-score frequency penalty (2026-06-01) — default OFF (0.0) so
      * produce scoring is unchanged until the JSON/RPC opts into a penalty. */
     gl->produce_frequency_penalty = GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT;
+    /* Increment-1 (2026-06-02) — SNN-as-generator A/B switch, default OFF so
+     * produce is byte-identical to the lexicon path until opted in. */
+    gl->produce_via_snn = false;
     /* T3-1 (2026-05-28) — givenness-definiteness default ON. The corrector
      * is conservative (only swaps a/an->the on a NOUN re-mention within the
      * recency window, never touches non-noun tokens or already-definite
@@ -4255,6 +4258,14 @@ bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl) {
     return gl ? gl->produce_clause_frame : false;
 }
 
+void grounded_language_set_produce_via_snn(grounded_language_t* gl, bool enabled) {
+    if (gl) gl->produce_via_snn = enabled;
+}
+
+bool grounded_language_get_produce_via_snn(const grounded_language_t* gl) {
+    return gl ? gl->produce_via_snn : false;
+}
+
 void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
                                                       bool enabled) {
     if (gl) gl->produce_givenness_definite = enabled;
@@ -5467,6 +5478,34 @@ static int gl_build_clause_frame(grounded_language_t* gl,
     return (int)emit;
 }
 
+/* Increment-1 (2026-06-02): SNN-derived produce candidates. Pulls top-K word
+ * activations from the SNN bridge's per-tick Broca spike cache into the produce
+ * top-K buffers (word_form borrowed from the bridge's registered word table,
+ * which == lexicon forms; valid for this produce call). Returns the candidate
+ * count, or 0 when the SNN has no signal (caller falls back to the lexicon
+ * producer). Opt-in only — reached when gl->produce_via_snn is ON. */
+static uint32_t gl_produce_candidates_via_snn(grounded_language_t* gl,
+                                              const float* intent, uint32_t intent_dim,
+                                              const char** out_words, float* out_scores,
+                                              uint32_t max_words) {
+    if (!gl || !gl->snn_bridge || !out_words || !out_scores || max_words == 0) return 0;
+    if (max_words > 32) max_words = 32;
+    snn_lang_word_result_t res[32];
+    uint32_t nres = 0;
+    if (snn_language_bridge_decode_spikes_cached(gl->snn_bridge, intent, intent_dim,
+                                                 res, max_words, &nres) != 0) {
+        return 0;
+    }
+    uint32_t out = 0;
+    for (uint32_t i = 0; i < nres && out < max_words; i++) {
+        if (!res[i].word_form || res[i].word_form[0] == '\0') continue;
+        out_words[out]  = res[i].word_form;
+        out_scores[out] = res[i].activation;
+        out++;
+    }
+    return out;
+}
+
 int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                uint32_t intent_dim, gl_production_mode_t mode,
                                gl_production_result_t* result) {
@@ -5499,10 +5538,23 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     memset(topk_words, 0, sizeof(topk_words));
     memset(topk_scores, 0, sizeof(topk_scores));
 
-    uint32_t n = find_words_near_vector(gl, intent, intent_dim,
-                                         GL_CLASS_UNKNOWN /* any class */,
-                                         topk_words, topk_scores,
-                                         GL_PRODUCE_TOPK);
+    /* Increment-1 (2026-06-02): SNN-as-generator A/B. When produce_via_snn is
+     * ON, source candidates from the SNN bridge's Broca spike cache; on no SNN
+     * signal (0 candidates) fall through to the lexicon producer (permanent
+     * fallback). Default OFF → the lexicon path runs unchanged. `intent` here
+     * is the cascade's cognitively-integrated content_intent, so every cognitive
+     * module that reaches content_intent drives the SNN readout too. */
+    uint32_t n = 0;
+    if (gl->produce_via_snn && gl->snn_bridge) {
+        n = gl_produce_candidates_via_snn(gl, intent, intent_dim,
+                                          topk_words, topk_scores, GL_PRODUCE_TOPK);
+    }
+    if (n == 0) {
+        n = find_words_near_vector(gl, intent, intent_dim,
+                                   GL_CLASS_UNKNOWN /* any class */,
+                                   topk_words, topk_scores,
+                                   GL_PRODUCE_TOPK);
+    }
     if (n == 0) {
         /* No usable candidate — caller's IDK gate emits "I don't know".
          * Honest answer for an undertrained or under-grounded lexicon. */

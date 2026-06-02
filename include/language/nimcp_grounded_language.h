@@ -2126,6 +2126,13 @@ void grounded_language_set_produce_clause_frame(grounded_language_t* gl,
                                                 bool enabled);
 bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl);
 
+/** Increment-1 (2026-06-02): SNN-as-generator A/B switch. When ON, produce
+ *  sources candidate words from the SNN bridge's per-tick Broca spike cache,
+ *  falling back to the lexicon producer when the SNN yields no signal. Default
+ *  OFF (produce byte-identical to the lexicon path). Runtime-only. */
+void grounded_language_set_produce_via_snn(grounded_language_t* gl, bool enabled);
+bool grounded_language_get_produce_via_snn(const grounded_language_t* gl);
+
 /**
  * @brief Tier 2 produce-side pronominalization pass. Conservative,
  *        closed-class + position driven; person nouns skipped. Runs after F4

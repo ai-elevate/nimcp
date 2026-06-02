@@ -713,12 +713,28 @@ int snn_language_bridge_register_word(
     uint32_t word_pop,
     const char* word_form);
 
-/** Decode spike patterns to word activations (population vector decoding) */
+/** Decode spike patterns to word activations (population vector decoding).
+ *  NOTE: transport-only stub since Slice A (returns 0) — kept stubbed so the
+ *  on-training-path bigram-learning callers are unchanged. For the opt-in
+ *  SNN produce readout use snn_language_bridge_decode_spikes_cached below. */
 int snn_language_bridge_decode_spikes(
     snn_language_bridge_t* bridge,
     const float* concept_rates,    // Firing rates per concept pop [num_concept_pops]
     uint32_t num_concept_pops,
     snn_lang_word_result_t* results, // Output: top-k words
+    uint32_t max_results,
+    uint32_t* num_results);
+
+/** Increment-1 (2026-06-02): opt-in SNN-derived produce readout. Ranks words by
+ *  summed Broca spike activity over each word's deterministic neuron ensemble,
+ *  read from the per-tick spike cache. Returns 0 results when there is no SNN
+ *  signal (caller falls back to the lexicon producer). Used only by the
+ *  produce_via_snn path — does NOT affect default training/produce. */
+int snn_language_bridge_decode_spikes_cached(
+    snn_language_bridge_t* bridge,
+    const float* concept_rates,
+    uint32_t num_concept_pops,
+    snn_lang_word_result_t* results,
     uint32_t max_results,
     uint32_t* num_results);
 

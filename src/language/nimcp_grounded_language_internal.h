@@ -446,6 +446,15 @@ struct grounded_language {
      * (never worse than baseline). Default false. */
     bool                 produce_clause_frame;
 
+    /* Increment-1 (2026-06-02) — SNN-as-generator A/B switch. When true,
+     * grounded_language_produce sources its candidate words from the SNN
+     * language bridge's per-tick Broca spike cache
+     * (snn_language_bridge_decode_spikes_cached) instead of find_words_near_vector,
+     * falling back to find_words_near_vector when the SNN yields no signal.
+     * Default false → produce is byte-identical to the lexicon path. Runtime-only
+     * (applied from JSON at daemon start; not LANC-persisted). */
+    bool                 produce_via_snn;
+
     /* T3-1 (2026-05-28) — givenness-driven definiteness. When true AND
      * stage >= 2, gl_apply_givenness_definite runs after T2 pronominalization
      * in cascade_apply_surface_correctors: a NOUN re-mention (recency window)

@@ -163,6 +163,14 @@ struct snn_language_bridge {
     // Current time
     float current_time_ms;
 
+    /* Increment-1 (2026-06-02): cached latest Broca (WORD-role) spike_output,
+     * copied each tick by drain_pop_spikes. decode_spikes reads this to rank
+     * words from the running SNN's activity WITHOUT a synchronous full-SNN step
+     * or a network handle (the main SNN is only stepped during training). Lazily
+     * sized to the WORD pop's n_neurons. Borrowed-data-free: owns its buffer. */
+    float*   broca_spike_cache;
+    uint32_t broca_spike_cache_cap;
+
     /* TA-4: runtime-only flag (NOT persisted) gating trigram next-token
      * training in grounded_language_learn_text_bigrams. Default false →
      * PA-4 behavior is preserved bit-for-bit. Callers opt in via
@@ -493,6 +501,7 @@ void snn_language_bridge_destroy(snn_language_bridge_t* bridge)
     nimcp_free(bridge->word_emb_cache);
     nimcp_free(bridge->word_emb_cached);
     nimcp_free(bridge->word_emb_norm);
+    nimcp_free(bridge->broca_spike_cache);
 
     bridge->magic = 0;
     nimcp_free(bridge);
@@ -621,6 +630,25 @@ int snn_language_bridge_register_word(snn_language_bridge_t* bridge,
     return 0;
 }
 
+/* Increment-1 (2026-06-02): deterministic word↔neuron ensemble map. Each word_pop
+ * index owns E = SNN_LANG_NEURONS_PER_POP neurons in a pop of `n_neurons`, chosen
+ * by a splitmix64 hash of the index (stable across runs, no storage). Replaces the
+ * lossy `neuron_idx % cap` aliasing for the produce-side readout: a word's E
+ * neurons are spread by an odd stride so they stay disjoint within the pop, and
+ * distinct words map to distinct ensembles until the pop saturates (n_neurons/E
+ * fully-disjoint ensembles, graceful overlap beyond). */
+static uint32_t lang_ensemble_neuron(uint32_t pop_idx, uint32_t j, uint32_t n_neurons)
+{
+    if (n_neurons == 0) return 0;
+    uint64_t z = (uint64_t)pop_idx * 0x9E3779B97F4A7C15ULL + 0xD1B54A32D192ED03ULL;
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    z =  z ^ (z >> 31);
+    uint32_t base   = (uint32_t)(z % n_neurons);
+    uint32_t stride = (uint32_t)((z >> 17) % n_neurons) | 1u;  /* odd → coprime-ish ring walk */
+    return (uint32_t)(((uint64_t)base + (uint64_t)j * stride) % n_neurons);
+}
+
 int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
                                        const float* concept_rates,
                                        uint32_t num_concept_pops,
@@ -634,21 +662,89 @@ int snn_language_bridge_decode_spikes(snn_language_bridge_t* bridge,
             "snn_language_bridge_decode_spikes: bridge, concept_rates, results, or num_results is NULL");
         return -1;
     }
-
     bridge->stats.total_decode_calls++;
     *num_results = 0;
     (void)num_concept_pops; (void)max_results;
-    /* Option-1 (Slice A): the bridge no longer holds a concept_pop × word_pop
-     * weight matrix, so it cannot rank words from concept_rates on its own.
-     * Decode is now a transport-only stub — returns zero results. The real
-     * concept→word mapping moves to the SNN's projection synapses (Slice B
-     * concept_registry) and is exercised by route_concept_to_word(). The
-     * caller (produce / cascade) handles "no candidates" by falling through
-     * to its own selection path or returning an empty utterance.
-     *
-     * TODO(slice-B): once concept_registry is in place, replace this with a
-     * call to route_concept_to_word + lexicon lookup for the word_form.
-     */
+    /* Option-1 (Slice A): transport-only stub — returns zero results. KEPT a
+     * stub on purpose: existing on-training-path callers (next-token bigram
+     * learning, learn_text_bigrams) rely on this returning 0 so their target-
+     * rank lookup stays -1; changing it would alter default-ON learning. The
+     * Increment-1 SNN readout lives in the separate
+     * snn_language_bridge_decode_spikes_cached() below, used only by the opt-in
+     * produce_via_snn path. */
+    (void)concept_rates;
+    return 0;
+}
+
+/* Increment-1 (2026-06-02): opt-in SNN-derived produce readout. Ranks words by
+ * summed Broca spike activity over each word's deterministic neuron ensemble,
+ * read from the cache populated by drain_pop_spikes each tick. Returns 0 results
+ * (caller falls back to the lexicon producer) when there is no SNN signal. This
+ * is SEPARATE from the stubbed decode_spikes so it cannot perturb the default
+ * training/produce paths — only grounded_language_produce_via_snn calls it. */
+int snn_language_bridge_decode_spikes_cached(snn_language_bridge_t* bridge,
+                                       const float* concept_rates,
+                                       uint32_t num_concept_pops,
+                                       snn_lang_word_result_t* results,
+                                       uint32_t max_results,
+                                       uint32_t* num_results)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !concept_rates ||
+        !results || !num_results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_language_bridge_decode_spikes_cached: bridge, concept_rates, results, or num_results is NULL");
+        return -1;
+    }
+
+    bridge->stats.total_decode_calls++;
+    *num_results = 0;
+    (void)concept_rates; (void)num_concept_pops;
+
+    /* Increment-1 readout: rank words by summed Broca spike activity over each
+     * word's deterministic neuron ensemble, read from the cache populated by
+     * drain_pop_spikes each tick. This is the SNN-derived candidate signal; the
+     * caller (grounded_language_produce_via_snn) blends it with lexicon scoring
+     * and falls through to find_words_near_vector when this returns 0 (no SNN
+     * signal yet — e.g. spike routing off, or a cold Broca pop). No concept→word
+     * projection exists yet (Phase 2), so concept_rates is not consulted here. */
+    const float*   cache = bridge->broca_spike_cache;
+    const uint32_t ncap  = bridge->broca_spike_cache_cap;
+    if (!cache || ncap == 0 || max_results == 0) return 0;
+
+    const uint32_t nwords = bridge->num_word_pops;
+    uint32_t filled = 0;
+    for (uint32_t w = 0; w < nwords; w++) {
+        if (!bridge->word_pops[w].registered) continue;
+        float act = 0.0f;
+        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+            act += cache[lang_ensemble_neuron(w, j, ncap)];
+        }
+        if (!(act > 0.0f)) continue;
+
+        /* Insertion sort into the top-`max_results` by activation (desc). */
+        if (filled < max_results) {
+            uint32_t p = filled;
+            while (p > 0 && results[p-1].activation < act) {
+                results[p] = results[p-1]; p--;
+            }
+            results[p].word_pop    = w;
+            results[p].word_form   = bridge->word_pops[w].word_form;
+            results[p].activation  = act;
+            results[p].confidence  = act / (float)SNN_LANG_NEURONS_PER_POP;
+            filled++;
+        } else if (act > results[max_results-1].activation) {
+            uint32_t p = max_results - 1;
+            while (p > 0 && results[p-1].activation < act) {
+                results[p] = results[p-1]; p--;
+            }
+            results[p].word_pop    = w;
+            results[p].word_form   = bridge->word_pops[w].word_form;
+            results[p].activation  = act;
+            results[p].confidence  = act / (float)SNN_LANG_NEURONS_PER_POP;
+        }
+    }
+
+    *num_results = filled;
     return 0;
 }
 
@@ -1714,6 +1810,20 @@ int snn_language_bridge_drain_pop_spikes(snn_language_bridge_t* bridge,
      * collision; same pattern as the existing form_hash mirror). STDP
      * trace updates merge near-time spikes naturally. */
     if (role == SNN_LANG_POP_ROLE_WORD) {
+        /* Increment-1 (2026-06-02): cache the raw Broca spike_output so
+         * decode_spikes can rank words by per-ensemble activity at produce time
+         * (the main SNN is not stepped on the produce path). Lazily (re)allocate
+         * to the pop width; Broca width is stable so this allocates once. */
+        if (!bridge->broca_spike_cache || bridge->broca_spike_cache_cap < n_neurons) {
+            if (bridge->broca_spike_cache) nimcp_free(bridge->broca_spike_cache);
+            bridge->broca_spike_cache = (float*)nimcp_calloc(n_neurons, sizeof(float));
+            bridge->broca_spike_cache_cap =
+                bridge->broca_spike_cache ? n_neurons : 0u;
+        }
+        if (bridge->broca_spike_cache && bridge->broca_spike_cache_cap >= n_neurons) {
+            memcpy(bridge->broca_spike_cache, spike_output,
+                   (size_t)n_neurons * sizeof(float));
+        }
         const uint32_t cap = bridge->word_pops_capacity > 0
                               ? bridge->word_pops_capacity
                               : SNN_LANG_MAX_WORD_POPS;

@@ -3941,6 +3941,8 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         /* T3-2 (2026-05-29): cohesive-conjunction-insertion flag. */
         out->produce_t3_conjunction             =
             grounded_language_get_produce_t3_conjunction(b->grounded_lang) ? 1u : 0u;
+        out->produce_via_snn                    =
+            grounded_language_get_produce_via_snn(b->grounded_lang) ? 1u : 0u;
     }
 
     if (b->snn_lang_bridge) {
@@ -4957,6 +4959,25 @@ nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* o
     if (s != NIMCP_OK) return s;
     if (!b->grounded_lang) return NIMCP_ERROR;
     *out_enabled = grounded_language_get_produce_clause_frame(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_produce_via_snn(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_via_snn(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_via_snn(b->grounded_lang);
     return NIMCP_OK;
 }
 

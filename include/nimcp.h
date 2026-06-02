@@ -1059,6 +1059,9 @@ typedef struct {
     float    tf_lr_bridge_stdp;
     /* T3-2 (2026-05-29): cohesive conjunction insertion runtime flag. */
     uint8_t  produce_t3_conjunction;
+    /* Increment-1 (2026-06-02): SNN-as-generator A/B switch. 1 = produce sources
+     * candidates from the SNN Broca spike cache (lexicon fallback). Default 0. */
+    uint8_t  produce_via_snn;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -1741,6 +1744,12 @@ nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool*
  *  signal. Runtime toggle; persisted via the LANC block + runtime config. */
 nimcp_status_t nimcp_brain_set_produce_clause_frame(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* out_enabled);
+
+/** Increment-1 (2026-06-02): SNN-as-generator A/B switch. When ON, produce
+ *  sources candidate words from the SNN bridge's Broca spike cache, with the
+ *  lexicon producer as permanent fallback. Default OFF. Runtime-only. */
+nimcp_status_t nimcp_brain_set_produce_via_snn(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_enabled);
 
 /** Produce-score rebalance: weight on the distributional (context-vector)
  *  term vs the concept-binding term in produce word scoring
