@@ -1606,6 +1606,27 @@ static float score_word_against_vector(const grounded_language_t* gl,
  */
 #define GL_DIVERSITY_MIN_TOPSCORE 0.05f
 
+/* Emission guard (2026-06-02): a clearly-malformed double-inflection surface
+ * form that must never be emitted, even if it leaked into the lexicon via the
+ * pre-RC1 produce->self-train feedback loop ("preventinged" = preventing+ed,
+ * "filteringed", "usinged", "movinged", "somethinged", "headinged"). The
+ * "-inged" suffix is unambiguous — no valid English word ends in a gerund's
+ * -ing followed by -ed. Narrow on purpose: participle+s forms ("throwns") are
+ * left to the RC1 generator guards + vocab decay, since a safe suffix test for
+ * them collides with valid words (towns, crowns, downs). Refusing to RANK these
+ * also starves the self-train loop that re-learns whatever produce emits. */
+static bool gl_form_is_malformed_inflection(const char* form) {
+    if (!form) return false;
+    size_t n = strlen(form);
+    if (n >= 5) {
+        const char* t = form + (n - 5);   /* trailing "inged", case-insensitive */
+        if ((t[0]=='i'||t[0]=='I') && (t[1]=='n'||t[1]=='N') &&
+            (t[2]=='g'||t[2]=='G') && (t[3]=='e'||t[3]=='E') &&
+            (t[4]=='d'||t[4]=='D')) return true;
+    }
+    return false;
+}
+
 static uint32_t find_words_near_vector(const grounded_language_t* gl,
                                         const float* target, uint32_t dim,
                                         gl_word_class_t required_class,
@@ -1650,6 +1671,13 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
         if (required_class == GL_CLASS_UNKNOWN &&
             (entry->learned_class == GL_CLASS_FUNCTION ||
              entry->learned_class == GL_CLASS_PRONOUN)) {
+            continue;
+        }
+        /* Emission guard: never rank a clearly-malformed double-inflection
+         * ("preventinged") even if it polluted the lexicon. Complements the RC1
+         * generator guards (which stop NEW ones) by refusing to emit the
+         * historical ones, which also starves the self-train re-learning loop. */
+        if (gl_form_is_malformed_inflection(entry->form)) {
             continue;
         }
         float score = score_word_against_vector(gl, entry, target, dim);
