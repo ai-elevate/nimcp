@@ -57,7 +57,7 @@
   "produce_distributional_weight": 0.7,
 
   "_produce_frequency_penalty": "Produce-score frequency penalty (2026-06-01): IDF-style damping of high-frequency words in produce scoring (raw *= 1/(1 + p*log1p(frequency))). Default 0.0 = OFF. Raise (~0.1-0.3) so distributionally-central technical-corpus vocab (gpu/impedance/lidar/...) stops monopolizing produce filler positions — the word-salad contamination diagnosed 2026-06-01. Runtime-only (applied from this file at daemon start; not LANC-persisted). p<0 clamped to 0.",
-  "produce_frequency_penalty": 0.0,
+  "produce_frequency_penalty": 0.1,
 
   "_produce_via_snn": "Increment-1 (2026-06-02): SNN-as-generator A/B switch. Default false. When true, grounded_language_produce sources candidate words from the SNN language bridge's per-tick Broca spike cache (decode_spikes_cached) instead of find_words_near_vector, with the lexicon producer as permanent fallback when the SNN yields no signal. The intent it decodes against is the cascade's cognitively-integrated content_intent, so all cognitive modules that reach content_intent drive SNN generation. Runtime-only (applied at daemon start).",
   "produce_via_snn": false,
