@@ -565,6 +565,16 @@ int snn_network_finalize_connections(snn_network_t* network);
 snn_population_t* snn_network_get_population(snn_network_t* network,
                                              uint32_t pop_id);
 
+/** Phase-2 (2026-06-02): mark a pop EXEMPT from the global homeostasis / R-STDP
+ *  / intrinsic-reward auto-enrollment loops (set on the language projection pops
+ *  so their warm-started weights aren't rescaled/reward-modulated and a
+ *  burst-driven language pop can't poison global reward). Default false.
+ *  Returns 0 on success, -1 on invalid pop. */
+int snn_network_set_pop_exclude_from_plasticity(snn_network_t* network,
+                                                uint32_t pop_id, bool exclude);
+bool snn_network_get_pop_exclude_from_plasticity(const snn_network_t* network,
+                                                 uint32_t pop_id);
+
 /**
  * @brief Find population index by exact name match
  *

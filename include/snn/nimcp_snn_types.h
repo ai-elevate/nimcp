@@ -390,6 +390,16 @@ struct snn_population_s {
      * When lightweight=true, neurons are NOT in the neural_network_t.
      * All state lives in population tensors + CSR storage. */
     bool lightweight;                        /**< true = CSR mode, false = legacy */
+    /* Phase-2 (2026-06-02) language-projection guard. When true, this pop is
+     * EXEMPT from the three global auto-enrollment loops that otherwise sweep
+     * every lightweight CSR pop: homeostatic synaptic scaling
+     * (snn_homeostatic_apply), lightweight CSR R-STDP, and intrinsic-reward
+     * aggregation (snn_compute_intrinsic_reward). Set on the Wernicke/Broca
+     * language pops so the concept->word projection's warm-started weights are
+     * neither rescaled toward the 3% rate target nor reward-modulated, and so a
+     * burst-driven language pop cannot poison the global reward that trains the
+     * rest of the brain. Default false → unchanged behavior for all other pops. */
+    bool exclude_from_plasticity;            /**< true = skip global homeo/R-STDP/reward */
     float* external_current;                 /**< [n_neurons] input currents */
     struct snn_csr_storage_s* incoming_csr;  /**< CSR incoming synapses (owned) */
 

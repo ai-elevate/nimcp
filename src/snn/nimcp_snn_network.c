@@ -4680,6 +4680,25 @@ snn_population_t* snn_network_get_population(snn_network_t* network,
     return network->populations[pop_id];
 }
 
+int snn_network_set_pop_exclude_from_plasticity(snn_network_t* network,
+                                                uint32_t pop_id, bool exclude) {
+    if (!network || pop_id >= network->n_populations ||
+        !network->populations[pop_id]) {
+        return -1;
+    }
+    network->populations[pop_id]->exclude_from_plasticity = exclude;
+    return 0;
+}
+
+bool snn_network_get_pop_exclude_from_plasticity(const snn_network_t* network,
+                                                 uint32_t pop_id) {
+    if (!network || pop_id >= network->n_populations ||
+        !network->populations[pop_id]) {
+        return false;
+    }
+    return network->populations[pop_id]->exclude_from_plasticity;
+}
+
 int snn_network_find_pop_by_name(const snn_network_t* network, const char* name) {
     if (!network || !name) return -1;
     for (uint32_t i = 0; i < network->n_populations; i++) {
