@@ -155,11 +155,29 @@ static void test_metacog_floor_modulation(void) {
     grounded_language_destroy(gl);
 }
 
+static void test_warmstart_collect_bindings(void) {
+    grounded_language_t* gl = grounded_language_create(64, NULL);
+    EXPECT(gl != NULL, "create gl"); if (!gl) return;
+
+    /* Empty lexicon → 0 bindings collected, no crash. */
+    gl_warmstart_binding_t out[8];
+    uint32_t n = grounded_language_collect_warmstart_bindings(gl, out, 8);
+    EXPECT(n == 0, "empty lexicon -> 0 bindings, got %u", n);
+
+    /* NULL-safe. */
+    EXPECT(grounded_language_collect_warmstart_bindings(NULL, out, 8) == 0, "NULL gl -> 0");
+    EXPECT(grounded_language_collect_warmstart_bindings(gl, NULL, 8) == 0, "NULL out -> 0");
+    EXPECT(grounded_language_collect_warmstart_bindings(gl, out, 0) == 0, "max 0 -> 0");
+
+    grounded_language_destroy(gl);
+}
+
 int main(void) {
     test_decode_cached_ranks_fired_word();
     test_decode_cached_no_signal();
     test_produce_via_snn_flag();
     test_metacog_floor_modulation();
+    test_warmstart_collect_bindings();
     if (g_failures == 0) {
         printf("test_lang_snn_decode: ALL PASS\n");
         return 0;

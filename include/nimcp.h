@@ -1760,6 +1760,14 @@ nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_en
 nimcp_status_t nimcp_brain_set_metacog_gates_produce(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* out_enabled);
 
+/** Phase-2 step 3 (2026-06-02): warm-start the SNN concept→word projection from
+ *  the lexicon — sets each projection synapse weight to k*binding_strength.
+ *  No-op-ish (returns 0 updated) when the projection wasn't built
+ *  (NIMCP_LANG_PROJECTION off) or the lexicon is empty. out_updated receives
+ *  the #synapses set. Call after the lexicon is populated (resume / training). */
+nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float k,
+                                                     int* out_updated);
+
 /** Produce-score rebalance: weight on the distributional (context-vector)
  *  term vs the concept-binding term in produce word scoring
  *  (raw = w*distributional + (1-w)*concept). Default 0.4 = historical split;

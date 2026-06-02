@@ -1090,6 +1090,7 @@ class BrainService:
         'train_batch_text',
         'save', 'sleep_run_cycle', 'retrofit_synapse_metadata',
         'ground_word', 'set_grounding_emotion', 'learn_language_pair',
+        'warmstart_lang_projection',
     })
 
     def handle_readonly(self, req):
@@ -1504,6 +1505,19 @@ class BrainService:
         except Exception as e:
             return {"error": f"get_immune_state: {e}"}
         return {"immune": state}
+
+    def _cmd_warmstart_lang_projection(self, req):
+        """Phase-2 step 3: warm-start the SNN concept->word projection from the
+        lexicon. Mutates SNN synapse weights → WRITE command. Returns 0 updated
+        when the projection wasn't built (NIMCP_LANG_PROJECTION off)."""
+        try:
+            k = float(req.get("k", 1.0))
+            updated = self.brain.warmstart_lang_projection(k)
+        except AttributeError:
+            return {"error": "warmstart_lang_projection not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"warmstart_lang_projection: {e}"}
+        return {"updated": int(updated)}
 
     def _cmd_get_grounded_language_diagnostics(self, _req):
         try:

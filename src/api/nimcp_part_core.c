@@ -5,6 +5,7 @@
 #include "training/nimcp_cortex_cnn.h"
 #include "snn/nimcp_snn_types.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "snn/nimcp_snn_network.h"   /* Phase-2 warm-start: find_pop_by_name */
 #include "language/nimcp_communication_cascade.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
@@ -5000,6 +5001,21 @@ nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* 
     if (!b->grounded_lang) return NIMCP_ERROR;
     *out_enabled = grounded_language_get_metacog_gates_produce(b->grounded_lang);
     return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float k,
+                                                     int* out_updated) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge || !b->snn_network) return NIMCP_ERROR;
+    int wid = snn_network_find_pop_by_name(b->snn_network, "wernicke_substrate");
+    int bid = snn_network_find_pop_by_name(b->snn_network, "broca_substrate");
+    if (wid < 0 || bid < 0) return NIMCP_ERROR;   /* pops or projection absent */
+    int updated = snn_language_bridge_warmstart_projection(
+        b->snn_lang_bridge, b->snn_network, wid, bid, k);
+    if (out_updated) *out_updated = updated;
+    return (updated >= 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
 nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight) {

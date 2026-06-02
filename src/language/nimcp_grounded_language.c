@@ -4336,6 +4336,27 @@ float grounded_language_get_metacog_floor_adjust(const grounded_language_t* gl) 
     return gl ? gl->metacog_floor_adjust : 0.0f;
 }
 
+uint32_t grounded_language_collect_warmstart_bindings(
+    const grounded_language_t* gl, gl_warmstart_binding_t* out, uint32_t max) {
+    if (!gl || !out || max == 0 || !gl->vocab_list) return 0;
+    uint32_t n = 0;
+    for (uint32_t v = 0; v < gl->vocab_count && n < max; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e || e->binding_count == 0 || !e->bindings) continue;
+        /* Strongest binding for this word. */
+        const gl_word_binding_t* top = &e->bindings[0];
+        for (uint32_t b = 1; b < e->binding_count; b++) {
+            if (e->bindings[b].strength > top->strength) top = &e->bindings[b];
+        }
+        if (!(top->strength > 0.0f)) continue;
+        out[n].form_hash  = e->form_hash;
+        out[n].concept_id = top->concept_id;
+        out[n].strength   = top->strength;
+        n++;
+    }
+    return n;
+}
+
 void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
                                                       bool enabled) {
     if (gl) gl->produce_givenness_definite = enabled;

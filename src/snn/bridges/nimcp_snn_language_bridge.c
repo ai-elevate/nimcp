@@ -32,6 +32,8 @@
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "snn/nimcp_snn_network.h"   /* Phase-2 warm-start: pop + CSR access */
+#include "snn/nimcp_snn_synapse.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -746,6 +748,84 @@ int snn_language_bridge_decode_spikes_cached(snn_language_bridge_t* bridge,
 
     *num_results = filled;
     return 0;
+}
+
+/* Phase-2 step 3 (2026-06-02): warm-start the concept→word projection from the
+ * lexicon. For each word's strongest concept binding, set the weight of the
+ * projection synapses linking that concept's Wernicke ensemble to the word's
+ * Broca ensemble to k*strength (clamped to the AMPA range). Updates both the
+ * CSR entries[] and the parallel flat weights[] (line-195 invariant), then
+ * syncs H→D so the running SNN sees it. Runtime-safe: only mutates existing
+ * synapse weights (no topology/receptor-table change → no CB-GPU-7 hazard).
+ * Returns #synapses updated, or -1 on invalid args / unfinalized CSR. */
+int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
+                                             struct snn_network_s* net,
+                                             int wernicke_pop_id,
+                                             int broca_pop_id,
+                                             float k)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
+        wernicke_pop_id < 0 || broca_pop_id < 0 || !bridge->grounded_lang) {
+        return -1;
+    }
+    snn_population_t* broca = snn_network_get_population(net, (uint32_t)broca_pop_id);
+    snn_population_t* wern  = snn_network_get_population(net, (uint32_t)wernicke_pop_id);
+    if (!broca || !wern || !broca->incoming_csr || !broca->incoming_csr->finalized) {
+        return -1;
+    }
+    snn_csr_storage_t* csr = broca->incoming_csr;
+    const uint32_t broca_n = broca->n_neurons;
+    const uint32_t wern_n  = wern->n_neurons;
+    if (broca_n == 0 || wern_n == 0) return -1;
+
+    const uint32_t cap = SNN_LANG_MAX_WORD_POPS;
+    gl_warmstart_binding_t* binds =
+        (gl_warmstart_binding_t*)nimcp_calloc(cap, sizeof(*binds));
+    if (!binds) return -1;
+    const uint32_t nb =
+        grounded_language_collect_warmstart_bindings(bridge->grounded_lang, binds, cap);
+
+    int updated = 0;
+    for (uint32_t i = 0; i < nb; i++) {
+        const uint32_t word_pop    = binds[i].form_hash % SNN_LANG_MAX_WORD_POPS;
+        const uint32_t concept_pop =
+            (uint32_t)(binds[i].concept_id % SNN_LANG_MAX_CONCEPT_POPS);
+        float wval = k * binds[i].strength;   /* w_base = 0 (silent until set) */
+        if (!(wval > 0.0f)) continue;
+        if (wval > 2.0f) wval = 2.0f;          /* AMPA excitatory clamp */
+
+        uint32_t cens[SNN_LANG_NEURONS_PER_POP];
+        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+            cens[j] = lang_ensemble_neuron(concept_pop, j, wern_n);
+        }
+        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+            const uint32_t dst = lang_ensemble_neuron(word_pop, j, broca_n);
+            uint32_t cnt = 0;
+            snn_csr_synapse_t* inc = snn_csr_get_incoming(csr, dst, &cnt);
+            if (!inc || cnt == 0) continue;
+            const uint32_t bdx = (uint32_t)(inc - csr->entries);
+            for (uint32_t e = 0; e < cnt; e++) {
+                if (inc[e].src_pop != (uint32_t)wernicke_pop_id) continue;
+                for (uint32_t j2 = 0; j2 < SNN_LANG_NEURONS_PER_POP; j2++) {
+                    if (inc[e].src_neuron == cens[j2]) {
+                        inc[e].weight = wval;
+                        if (csr->weights && (bdx + e) < csr->n_synapses) {
+                            csr->weights[bdx + e] = wval;
+                        }
+                        updated++;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    nimcp_free(binds);
+    (void)snn_csr_sync_weights_to_gpu(csr);  /* H->D so the running SNN sees it */
+    LOG_INFO(LOG_MODULE,
+             "warmstart_projection: %u lexicon bindings → %d projection synapses set "
+             "(wernicke=%d→broca=%d, k=%.3f)",
+             nb, updated, wernicke_pop_id, broca_pop_id, (double)k);
+    return updated;
 }
 
 #if 0  /* Old decode_spikes body — retained only for reference; Slice B will

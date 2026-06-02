@@ -738,6 +738,19 @@ int snn_language_bridge_decode_spikes_cached(
     uint32_t max_results,
     uint32_t* num_results);
 
+/** Phase-2 step 3 (2026-06-02): warm-start the concept→word projection from the
+ *  grounded-language lexicon. Sets the weight of each (concept ensemble →
+ *  word ensemble) projection synapse to k*binding_strength (AMPA-clamped),
+ *  updating CSR host weights + GPU. Runtime-safe (weights only, no rewire).
+ *  Requires a finalized Broca incoming CSR and a connected grounded_lang.
+ *  Returns #synapses updated, or -1 on error. */
+int snn_language_bridge_warmstart_projection(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id,
+    int broca_pop_id,
+    float k);
+
 /** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
  *
  * Pulls the standard top-K from snn_language_bridge_decode_spikes (cosine

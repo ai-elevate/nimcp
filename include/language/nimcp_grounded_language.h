@@ -200,6 +200,16 @@ typedef struct {
 
 } gl_lexicon_entry_t;
 
+/** Phase-2 step 3 (2026-06-02): one (word, top-concept, strength) tuple for
+ *  warm-starting the SNN concept→word projection. form_hash maps to the Broca
+ *  word_pop (form_hash % SNN_LANG_MAX_WORD_POPS) and concept_id to the Wernicke
+ *  concept_pop, matching mirror_binding_to_bridge's index math. */
+typedef struct {
+    uint32_t form_hash;
+    uint64_t concept_id;
+    float    strength;
+} gl_warmstart_binding_t;
+
 /**
  * @brief Speech-act intent label (TB-9).
  *
@@ -406,6 +416,13 @@ typedef struct {
  * @brief Grounded language system (opaque handle)
  */
 typedef struct grounded_language grounded_language_t;
+
+/** Phase-2 step 3: collect each vocab word's strongest concept binding into
+ *  `out` (up to `max`). Returns the number written. Skips words with no
+ *  bindings or zero strength. Read-only; used by
+ *  snn_language_bridge_warmstart_projection. */
+uint32_t grounded_language_collect_warmstart_bindings(
+    const grounded_language_t* gl, gl_warmstart_binding_t* out, uint32_t max);
 
 /*=============================================================================
  * Lifecycle

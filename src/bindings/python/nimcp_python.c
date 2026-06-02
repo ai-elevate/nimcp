@@ -3600,6 +3600,23 @@ AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_trigram,                   nimcp_brain_set_tf
 AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_distrib,                   nimcp_brain_set_tf_lr_distrib)
 AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_bridge_stdp,               nimcp_brain_set_tf_lr_bridge_stdp)
 
+/* Phase-2 step 3: warm-start the SNN concept→word projection from the lexicon.
+ * warmstart_lang_projection(k: float = 1.0) -> int (#synapses set). */
+static PyObject* Brain_warmstart_lang_projection(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float k = 1.0f;
+    if (!PyArg_ParseTuple(args, "|f", &k)) return NULL;
+    int updated = 0;
+    if (nimcp_brain_warmstart_lang_projection(self->brain, k, &updated) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "warmstart_lang_projection failed (projection not built or no lexicon?)");
+        return NULL;
+    }
+    return PyLong_FromLong((long)updated);
+}
+
 /* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
  * Returns count of bindings strengthened. Non-zero lr_scale gates the
  * caller's per-call magnitude. */
@@ -13037,6 +13054,8 @@ static PyMethodDef Brain_methods[] = {
      "Tier 2: toggle produce-side pronominalization — set_produce_pronominalize(enabled: bool) -> None. Default OFF. When ON, a re-mentioned non-person noun (recency window, across a verb) becomes it/they/them so replies don't repeat the noun. Person nouns guarded out. Persisted in the LANC block."},
     {"set_produce_discourse_seed", (PyCFunction)Brain_set_produce_discourse_seed, METH_VARARGS,
      "Tier 2: toggle discourse-seeded autoregressive produce — set_produce_discourse_seed(enabled: bool) -> None. Default OFF. Effective only with autoregressive_produce ON and stage>=2: seeds the AR emitted-context vector with the decayed most-recent discourse-turn vector so the opening words continue the topic of what was just said. Persisted in the LANC block."},
+    {"warmstart_lang_projection", (PyCFunction)Brain_warmstart_lang_projection, METH_VARARGS,
+     "Phase-2: warm-start the SNN concept→word projection from the lexicon — warmstart_lang_projection(k: float = 1.0) -> int (#synapses set). Sets each projection synapse weight to k*binding_strength. Returns 0 when the projection wasn't built (NIMCP_LANG_PROJECTION off) or the lexicon is empty. Call after the lexicon is populated."},
     {"set_metacog_gates_produce", (PyCFunction)Brain_set_metacog_gates_produce, METH_VARARGS,
      "Metacognitive produce-floor modulation — set_metacog_gates_produce(enabled: bool) -> None. Default OFF. When ON, the cascade shifts the produce confidence floor from world-model surprise (FEP prediction-error trajectory), so the brain is more conservative (more 'I don't know') when its predictive model is surprised and more willing when it converged. The correct integration for modulatory cognitive modules (emotion/introspection/world-model) which carry no semantic content vector. Read back via get_grounded_language_diagnostics()['metacog_gates_produce']."},
     {"set_produce_via_snn", (PyCFunction)Brain_set_produce_via_snn, METH_VARARGS,
