@@ -504,9 +504,17 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
      * (CB-GPU-7), safe only before the step loop starts. */
     {
         const char* lang_proj_env = getenv("NIMCP_LANG_PROJECTION");
+        /* Unconditional diagnostic so a soak can tell "flag off" from "flag on
+         * but wiring returned 0" from "branch never reached" — the 2026-06-02
+         * soak couldn't disambiguate. */
+        LOG_INFO(LOG_MODULE,
+                 "PROJ-DIAG: NIMCP_LANG_PROJECTION=%s wernicke_id=%d broca_id=%d",
+                 lang_proj_env ? lang_proj_env : "(unset)", wernicke_id, broca_id);
         if (lang_proj_env && lang_proj_env[0] == '1') {
             uint64_t proj_syn = connect_pop_pair(snn, wernicke_id, broca_id,
                                                  0.0015f, 0.0f, 0.005f);
+            LOG_INFO(LOG_MODULE, "PROJ-DIAG: connect_pop_pair(wernicke→broca) "
+                     "returned %llu synapses", (unsigned long long)proj_syn);
             if (proj_syn > 0) {
                 syn_total += proj_syn;
                 (void)snn_network_set_pop_exclude_from_plasticity(
