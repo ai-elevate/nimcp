@@ -1062,6 +1062,8 @@ typedef struct {
     /* Increment-1 (2026-06-02): SNN-as-generator A/B switch. 1 = produce sources
      * candidates from the SNN Broca spike cache (lexicon fallback). Default 0. */
     uint8_t  produce_via_snn;
+    /* Metacognitive produce-floor modulation flag (2026-06-02). */
+    uint8_t  metacog_gates_produce;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -1750,6 +1752,13 @@ nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* o
  *  lexicon producer as permanent fallback. Default OFF. Runtime-only. */
 nimcp_status_t nimcp_brain_set_produce_via_snn(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_enabled);
+
+/** Metacognitive produce-floor modulation (2026-06-02): when ON, the cascade
+ *  shifts the produce confidence floor from world-model surprise / wellbeing
+ *  distress / introspection confidence (modulatory cognitive modules gate
+ *  willingness-to-assert rather than inject content). Default OFF. Runtime-only. */
+nimcp_status_t nimcp_brain_set_metacog_gates_produce(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* out_enabled);
 
 /** Produce-score rebalance: weight on the distributional (context-vector)
  *  term vs the concept-binding term in produce word scoring

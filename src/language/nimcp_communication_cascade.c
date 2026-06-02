@@ -1100,6 +1100,30 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
+    /* 5f. Metacognitive produce-floor modulation (2026-06-02). The modulatory
+     * cognitive modules (world-model, introspection, emotion) carry no semantic
+     * content vector, so instead of blending into content_intent they shift the
+     * produce confidence floor — how willing the brain is to assert vs say "I
+     * don't know". Driven here from world-model SURPRISE: the FEP prediction-
+     * error trajectory over the recurrent settle. A model that converged
+     * (terminal << initial) is confident → lower the floor slightly; one that
+     * stayed surprised (terminal ~ initial) → raise it. Bounded + gated;
+     * default-OFF flag keeps the base stage floor unchanged. Introspection
+     * confidence + wellbeing distress fold into the same adjust as follow-ons. */
+    if (brain->grounded_lang &&
+        grounded_language_get_metacog_gates_produce(brain->grounded_lang)) {
+        float adjust = 0.0f;
+        float fep_init = brain->fep_pe_initial, fep_term = brain->fep_pe_terminal;
+        if (isfinite(fep_init) && isfinite(fep_term) && fep_init > 1e-6f) {
+            float ratio = fep_term / fep_init;   /* ~0 converged, ~1+ still surprised */
+            if (!isfinite(ratio)) ratio = 0.5f;
+            if (ratio < 0.0f) ratio = 0.0f;
+            if (ratio > 2.0f) ratio = 2.0f;
+            adjust = (ratio - 0.5f) * 0.20f;     /* center 0.5 → bounded ~[-0.10,+0.30] */
+        }
+        grounded_language_set_metacog_floor_adjust(brain->grounded_lang, adjust);
+    }
+
     /* SLICE 3 — Stage Content's PREDICTION of what content_intent
      * "should" be is the upstream-driven blend computed in steps 1..5.
      * We snapshot it BEFORE step 6 (arcuate feedback). The OBSERVED

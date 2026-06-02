@@ -128,10 +128,38 @@ static void test_produce_via_snn_flag(void) {
     grounded_language_destroy(gl);
 }
 
+static void test_metacog_floor_modulation(void) {
+    grounded_language_t* gl = grounded_language_create(64, NULL);
+    EXPECT(gl != NULL, "create gl"); if (!gl) return;
+
+    /* Flag default OFF, round-trips. */
+    EXPECT(grounded_language_get_metacog_gates_produce(gl) == false, "metacog flag default OFF");
+    grounded_language_set_metacog_gates_produce(gl, true);
+    EXPECT(grounded_language_get_metacog_gates_produce(gl) == true, "metacog flag ON");
+
+    /* Adjust default 0, round-trips, clamps to [-1,1], NaN-safe. */
+    EXPECT(grounded_language_get_metacog_floor_adjust(gl) == 0.0f, "adjust default 0");
+    grounded_language_set_metacog_floor_adjust(gl, 0.2f);
+    EXPECT(grounded_language_get_metacog_floor_adjust(gl) == 0.2f, "adjust 0.2 round-trips");
+    grounded_language_set_metacog_floor_adjust(gl, 5.0f);
+    EXPECT(grounded_language_get_metacog_floor_adjust(gl) == 1.0f, "adjust clamps >1 -> 1");
+    grounded_language_set_metacog_floor_adjust(gl, -5.0f);
+    EXPECT(grounded_language_get_metacog_floor_adjust(gl) == -1.0f, "adjust clamps <-1 -> -1");
+
+    /* NULL-safe. */
+    EXPECT(grounded_language_get_metacog_gates_produce(NULL) == false, "NULL flag getter");
+    EXPECT(grounded_language_get_metacog_floor_adjust(NULL) == 0.0f, "NULL adjust getter");
+    grounded_language_set_metacog_gates_produce(NULL, true);  /* must not crash */
+    grounded_language_set_metacog_floor_adjust(NULL, 0.5f);   /* must not crash */
+
+    grounded_language_destroy(gl);
+}
+
 int main(void) {
     test_decode_cached_ranks_fired_word();
     test_decode_cached_no_signal();
     test_produce_via_snn_flag();
+    test_metacog_floor_modulation();
     if (g_failures == 0) {
         printf("test_lang_snn_decode: ALL PASS\n");
         return 0;

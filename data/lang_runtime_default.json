@@ -62,6 +62,9 @@
   "_produce_via_snn": "Increment-1 (2026-06-02): SNN-as-generator A/B switch. Default false. When true, grounded_language_produce sources candidate words from the SNN language bridge's per-tick Broca spike cache (decode_spikes_cached) instead of find_words_near_vector, with the lexicon producer as permanent fallback when the SNN yields no signal. The intent it decodes against is the cascade's cognitively-integrated content_intent, so all cognitive modules that reach content_intent drive SNN generation. Runtime-only (applied at daemon start).",
   "produce_via_snn": false,
 
+  "_metacog_gates_produce": "Metacognitive produce-floor modulation (2026-06-02). Default false. When true, cascade_stage_content shifts the produce confidence floor from world-model surprise (FEP prediction-error trajectory fep_pe_terminal/fep_pe_initial): a converged model lowers the floor (more willing to assert), a still-surprised model raises it (more 'I don't know'). This is the correct integration for the modulatory cognitive modules (emotion/introspection/world-model) which carry no semantic content vector for content_intent. Introspection confidence + wellbeing distress fold into the same adjust as follow-ons. Runtime-only.",
+  "metacog_gates_produce": false,
+
   "_t3_givenness_definite": "T3-1 (2026-05-28): produce_givenness_definite, default ON. gl_apply_givenness_definite runs in the surface cascade right AFTER T2 pronominalization and swaps the preceding 'a'/'an' to 'the' on a NOUN re-mention (recency window) that T2-1 did NOT pronominalize (person nouns, unanchored slots). Marks the second mention as given, which is the natural complement to T2-1/T2-3. Stage-gated >=2 inside the helper. Conservative + idempotent so ON-by-default is safe — operators can flip false per-deployment.",
   "produce_givenness_definite": true,
 

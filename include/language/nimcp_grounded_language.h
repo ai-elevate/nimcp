@@ -2133,6 +2133,16 @@ bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl);
 void grounded_language_set_produce_via_snn(grounded_language_t* gl, bool enabled);
 bool grounded_language_get_produce_via_snn(const grounded_language_t* gl);
 
+/** Metacognitive produce-floor modulation (2026-06-02). The flag (config,
+ *  default OFF) enables it; the cascade sets the adjust per-produce from
+ *  world-model surprise / wellbeing distress / introspection confidence.
+ *  adjust>0 raises the produce confidence floor (more "I don't know"),
+ *  adjust<0 lowers it. Clamped [-1,1]; floor re-clamped [0,1] at use. */
+void grounded_language_set_metacog_gates_produce(grounded_language_t* gl, bool enabled);
+bool grounded_language_get_metacog_gates_produce(const grounded_language_t* gl);
+void grounded_language_set_metacog_floor_adjust(grounded_language_t* gl, float adjust);
+float grounded_language_get_metacog_floor_adjust(const grounded_language_t* gl);
+
 /**
  * @brief Tier 2 produce-side pronominalization pass. Conservative,
  *        closed-class + position driven; person nouns skipped. Runs after F4

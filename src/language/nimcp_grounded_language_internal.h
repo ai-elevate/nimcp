@@ -455,6 +455,18 @@ struct grounded_language {
      * (applied from JSON at daemon start; not LANC-persisted). */
     bool                 produce_via_snn;
 
+    /* Metacognitive produce-floor modulation (2026-06-02). When
+     * metacog_gates_produce is true, gl_produce_confidence_floor adds
+     * metacog_floor_adjust (set per-produce by the cascade from world-model
+     * surprise / wellbeing distress / introspection confidence) to the stage
+     * floor, so modulatory cognitive state shifts willingness-to-assert. This
+     * is the correct integration for the modulatory cognitive modules (emotion,
+     * introspection, world-model) which carry no semantic content vector for
+     * content_intent. Default OFF / 0.0 → base stage floor unchanged. The
+     * adjust is runtime-set (not persisted); the flag is config (runtime-only). */
+    bool                 metacog_gates_produce;
+    float                metacog_floor_adjust;
+
     /* T3-1 (2026-05-28) — givenness-driven definiteness. When true AND
      * stage >= 2, gl_apply_givenness_definite runs after T2 pronominalization
      * in cascade_apply_surface_correctors: a NOUN re-mention (recency window)

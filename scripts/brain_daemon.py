@@ -469,6 +469,8 @@ def _apply_runtime_lang_config(brain, logger):
         ("produce_clause_frame",               "set_produce_clause_frame",               _bool),
         # Increment-1 (2026-06-02): SNN-as-generator A/B switch. Default OFF.
         ("produce_via_snn",                    "set_produce_via_snn",                    _bool),
+        # Metacognitive produce-floor modulation (2026-06-02). Default OFF.
+        ("metacog_gates_produce",              "set_metacog_gates_produce",              _bool),
         # Produce-score rebalance — distributional vs concept-binding weight
         # in produce word scoring (2026-05-27). Default 0.4 (historical split);
         # raise toward ~0.7 so concrete intent-correct words outrank broadly-

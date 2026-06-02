@@ -3943,6 +3943,8 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
             grounded_language_get_produce_t3_conjunction(b->grounded_lang) ? 1u : 0u;
         out->produce_via_snn                    =
             grounded_language_get_produce_via_snn(b->grounded_lang) ? 1u : 0u;
+        out->metacog_gates_produce              =
+            grounded_language_get_metacog_gates_produce(b->grounded_lang) ? 1u : 0u;
     }
 
     if (b->snn_lang_bridge) {
@@ -4978,6 +4980,25 @@ nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_en
     if (s != NIMCP_OK) return s;
     if (!b->grounded_lang) return NIMCP_ERROR;
     *out_enabled = grounded_language_get_produce_via_snn(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_metacog_gates_produce(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_metacog_gates_produce(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_metacog_gates_produce(b->grounded_lang);
     return NIMCP_OK;
 }
 

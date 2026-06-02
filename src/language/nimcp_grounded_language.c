@@ -1822,6 +1822,9 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
     /* Increment-1 (2026-06-02) — SNN-as-generator A/B switch, default OFF so
      * produce is byte-identical to the lexicon path until opted in. */
     gl->produce_via_snn = false;
+    /* Metacognitive produce-floor modulation (2026-06-02) — default OFF / 0. */
+    gl->metacog_gates_produce = false;
+    gl->metacog_floor_adjust  = 0.0f;
     /* T3-1 (2026-05-28) — givenness-definiteness default ON. The corrector
      * is conservative (only swaps a/an->the on a NOUN re-mention within the
      * recency window, never touches non-noun tokens or already-definite
@@ -2092,13 +2095,29 @@ void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage)
  */
 static float gl_produce_confidence_floor(const grounded_language_t* gl) {
     int s = gl ? gl->current_stage : 0;
+    float floor;
     switch (s) {
-        case 0: return 1.0f;
-        case 1: return 0.30f;
-        case 2: return 0.15f;
-        case 3: return 0.05f;
-        default: return 0.0f;  /* stage 4+ → no floor, adult */
+        case 0: floor = 1.0f;  break;
+        case 1: floor = 0.30f; break;
+        case 2: floor = 0.15f; break;
+        case 3: floor = 0.05f; break;
+        default: floor = 0.0f; break;  /* stage 4+ → no floor, adult */
     }
+    /* Metacognitive modulation (2026-06-02): the brain's modulatory cognitive
+     * state shifts the produce floor — i.e. how willing it is to assert vs say
+     * "I don't know". metacog_floor_adjust is set per-produce by the cascade
+     * from world-model surprise (brain->fep_pe), wellbeing distress, and
+     * introspection (un)confidence: high surprise/distress / low confidence →
+     * positive adjust → higher floor → more conservative; the inverse lowers
+     * it. This is the correct integration for those MODULATORY modules (they
+     * carry no semantic content vector, so they gate willingness, not content).
+     * Default 0.0 / flag OFF → base stage floor, bit-for-bit unchanged. */
+    if (gl && gl->metacog_gates_produce) {
+        floor += gl->metacog_floor_adjust;
+        if (floor < 0.0f) floor = 0.0f;
+        if (floor > 1.0f) floor = 1.0f;
+    }
+    return floor;
 }
 
 /* Produce-side POS-transition bias weight (Tier 1 Step C, 2026-05-23).
@@ -4292,6 +4311,29 @@ void grounded_language_set_produce_via_snn(grounded_language_t* gl, bool enabled
 
 bool grounded_language_get_produce_via_snn(const grounded_language_t* gl) {
     return gl ? gl->produce_via_snn : false;
+}
+
+void grounded_language_set_metacog_gates_produce(grounded_language_t* gl, bool enabled) {
+    if (gl) gl->metacog_gates_produce = enabled;
+}
+
+bool grounded_language_get_metacog_gates_produce(const grounded_language_t* gl) {
+    return gl ? gl->metacog_gates_produce : false;
+}
+
+/* Runtime per-produce setter (called by the cascade from brain modulatory
+ * state). Clamped to [-1, 1]; the floor itself is re-clamped to [0,1] at use.
+ * Positive raises the floor (more conservative), negative lowers it. */
+void grounded_language_set_metacog_floor_adjust(grounded_language_t* gl, float adjust) {
+    if (!gl) return;
+    if (!isfinite(adjust)) adjust = 0.0f;
+    if (adjust < -1.0f) adjust = -1.0f;
+    if (adjust >  1.0f) adjust =  1.0f;
+    gl->metacog_floor_adjust = adjust;
+}
+
+float grounded_language_get_metacog_floor_adjust(const grounded_language_t* gl) {
+    return gl ? gl->metacog_floor_adjust : 0.0f;
 }
 
 void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
