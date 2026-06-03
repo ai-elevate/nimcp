@@ -87,7 +87,8 @@ def call_claude(prompt, max_tokens=2048, timeout=120):
            if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}
 
     result = subprocess.run(cmd, capture_output=True, text=True,
-                           timeout=timeout, env=env)
+                           timeout=timeout, env=env,
+                           stdin=subprocess.DEVNULL)  # don't wait 3s for stdin (rc=1 headless)
     if result.returncode != 0:
         raise RuntimeError(f"claude CLI failed (rc={result.returncode}): {result.stderr.strip()}")
     text = result.stdout.strip()

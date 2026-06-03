@@ -408,6 +408,8 @@ float snn_compute_intrinsic_reward(snn_network_t* network) {
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
         if (!pop) continue;
+        if (pop->exclude_from_plasticity) continue;  /* Phase-2: language pops don't
+                                                       * poison the global reward */
         if (pop->rate_samples < 10) continue;  /* warmup — rate EMA not trustworthy */
         /* Each pop gauged against its own per-class target (see #4
          * structural fix: input pops at 5%, others at 3%). */
@@ -889,6 +891,8 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* dst_pop = network->populations[p];
         if (!dst_pop || !dst_pop->lightweight || !dst_pop->incoming_csr) continue;
+        if (dst_pop->exclude_from_plasticity) continue;  /* Phase-2: keep the
+                                          * language projection out of global R-STDP */
         if (!dst_pop->spike_output) continue;
         /* Warm-up gate: skip R-STDP on populations that haven't collected
          * enough firing-rate samples for homeostasis to engage. During the
@@ -1221,6 +1225,8 @@ uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) 
     for (uint32_t p = 0; p < network->n_populations; p++) {
         snn_population_t* pop = network->populations[p];
         if (!pop || !pop->lightweight || !pop->incoming_csr) continue;
+        if (pop->exclude_from_plasticity) continue;  /* Phase-2: don't homeostatically
+                                  * rescale the warm-started language projection weights */
 
         /* Warm-up gate: don't scale until EMA has enough samples to be
          * trustworthy. Prevents scaling on transient startup activity. */

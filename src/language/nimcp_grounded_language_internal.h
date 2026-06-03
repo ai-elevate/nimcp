@@ -446,6 +446,27 @@ struct grounded_language {
      * (never worse than baseline). Default false. */
     bool                 produce_clause_frame;
 
+    /* Increment-1 (2026-06-02) — SNN-as-generator A/B switch. When true,
+     * grounded_language_produce sources its candidate words from the SNN
+     * language bridge's per-tick Broca spike cache
+     * (snn_language_bridge_decode_spikes_cached) instead of find_words_near_vector,
+     * falling back to find_words_near_vector when the SNN yields no signal.
+     * Default false → produce is byte-identical to the lexicon path. Runtime-only
+     * (applied from JSON at daemon start; not LANC-persisted). */
+    bool                 produce_via_snn;
+
+    /* Metacognitive produce-floor modulation (2026-06-02). When
+     * metacog_gates_produce is true, gl_produce_confidence_floor adds
+     * metacog_floor_adjust (set per-produce by the cascade from world-model
+     * surprise / wellbeing distress / introspection confidence) to the stage
+     * floor, so modulatory cognitive state shifts willingness-to-assert. This
+     * is the correct integration for the modulatory cognitive modules (emotion,
+     * introspection, world-model) which carry no semantic content vector for
+     * content_intent. Default OFF / 0.0 → base stage floor unchanged. The
+     * adjust is runtime-set (not persisted); the flag is config (runtime-only). */
+    bool                 metacog_gates_produce;
+    float                metacog_floor_adjust;
+
     /* T3-1 (2026-05-28) — givenness-driven definiteness. When true AND
      * stage >= 2, gl_apply_givenness_definite runs after T2 pronominalization
      * in cascade_apply_surface_correctors: a NOUN re-mention (recency window)
@@ -505,6 +526,15 @@ struct grounded_language {
      * to ~20 abstract nouns regardless of intent — a scoring artifact, not
      * curriculum/comprehend collapse). Clamped to [0,1]. */
     float                produce_distributional_weight;
+
+    /* Produce-score frequency penalty (2026-06-01): IDF-style damping of
+     * high-frequency words in produce scoring — raw *= 1/(1 + p*log1p(freq)).
+     * Default 0.0 = OFF (no change). Raising p suppresses distributionally-
+     * central technical-corpus vocab (gpu/impedance/lidar/...) from
+     * monopolizing produce filler positions (the word-salad contamination
+     * diagnosed 2026-06-01). Runtime-only: applied from JSON at daemon start,
+     * NOT persisted in the LANC block (avoids checkpoint-format churn). */
+    float                produce_frequency_penalty;
 
     /* Slice E (2026-05-19) — developmental-stage vocabulary mask.
      *

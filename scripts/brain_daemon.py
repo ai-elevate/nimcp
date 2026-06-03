@@ -467,11 +467,19 @@ def _apply_runtime_lang_config(brain, logger):
         ("produce_discourse_seed",             "set_produce_discourse_seed",             _bool),
         # FND-1 — SVO clause/argument frame in produce (2026-05-27).
         ("produce_clause_frame",               "set_produce_clause_frame",               _bool),
+        # Increment-1 (2026-06-02): SNN-as-generator A/B switch. Default OFF.
+        ("produce_via_snn",                    "set_produce_via_snn",                    _bool),
+        # Metacognitive produce-floor modulation (2026-06-02). Default OFF.
+        ("metacog_gates_produce",              "set_metacog_gates_produce",              _bool),
         # Produce-score rebalance — distributional vs concept-binding weight
         # in produce word scoring (2026-05-27). Default 0.4 (historical split);
         # raise toward ~0.7 so concrete intent-correct words outrank broadly-
         # concept-bound abstract words that otherwise monopolize produce.
         ("produce_distributional_weight",      "set_produce_distributional_weight",      _f),
+        # Produce-score frequency penalty — IDF-style damping of high-frequency
+        # words so distributionally-central technical-corpus vocab stops
+        # monopolizing produce filler positions (2026-06-01). Default 0.0 (OFF).
+        ("produce_frequency_penalty",          "set_produce_frequency_penalty",          _f),
         # T3-1 — givenness-driven definiteness (2026-05-28). Default OFF; when
         # on, swaps "a"/"an" -> "the" on a NOUN re-mention that T2 did NOT
         # pronominalize (person nouns, unanchored slots). Stage-gated >=2.
@@ -1082,6 +1090,7 @@ class BrainService:
         'train_batch_text',
         'save', 'sleep_run_cycle', 'retrofit_synapse_metadata',
         'ground_word', 'set_grounding_emotion', 'learn_language_pair',
+        'warmstart_lang_projection',
     })
 
     def handle_readonly(self, req):
@@ -1496,6 +1505,19 @@ class BrainService:
         except Exception as e:
             return {"error": f"get_immune_state: {e}"}
         return {"immune": state}
+
+    def _cmd_warmstart_lang_projection(self, req):
+        """Phase-2 step 3: warm-start the SNN concept->word projection from the
+        lexicon. Mutates SNN synapse weights → WRITE command. Returns 0 updated
+        when the projection wasn't built (NIMCP_LANG_PROJECTION off)."""
+        try:
+            k = float(req.get("k", 1.0))
+            updated = self.brain.warmstart_lang_projection(k)
+        except AttributeError:
+            return {"error": "warmstart_lang_projection not available — rebuild nimcp.so"}
+        except Exception as e:
+            return {"error": f"warmstart_lang_projection: {e}"}
+        return {"updated": int(updated)}
 
     def _cmd_get_grounded_language_diagnostics(self, _req):
         try:

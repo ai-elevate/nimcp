@@ -487,6 +487,53 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
     syn_total += connect_pop_pair(snn, broca_id, arcuate_id,
                                   CONN_INTERNAL_FB,  LANG_W_MEAN, LANG_W_STD);
 
+    /* Phase-2 (2026-06-02): DIRECT concept→word projection (Wernicke → Broca).
+     * The indirect Wernicke↔Arcuate↔Broca loop above is the comprehension/relay
+     * path; THIS is the production association path — the Slice-B core that lets
+     * the SNN carry learned concept↔word associations in its own synapses so it
+     * can GENERATE words from concept activation (decode_spikes_cached reads the
+     * resulting Broca activity). Gated default-OFF via NIMCP_LANG_PROJECTION=1:
+     * we build it dormant here; enabling + lexicon warm-start (step 3) + soak
+     * validation (step 4) are separate, monitored steps. Sparse (~0.15%) keeps
+     * the synapse count bounded (64K×64K×0.0015 ≈ 6M). w_mean=0 keeps untrained
+     * pairs silent until warm-start sets real weights. Both pops are marked
+     * exclude_from_plasticity so the global homeostasis/R-STDP/intrinsic-reward
+     * loops leave the warm-started weights alone and a burst-driven Broca can't
+     * poison the global reward training the rest of the brain. Init-only:
+     * connect_populations frees the device receptor-table mirror unguarded
+     * (CB-GPU-7), safe only before the step loop starts. */
+    {
+        const char* lang_proj_env = getenv("NIMCP_LANG_PROJECTION");
+        /* Unconditional diagnostic so a soak can tell "flag off" from "flag on
+         * but wiring returned 0" from "branch never reached" — the 2026-06-02
+         * soak couldn't disambiguate. */
+        LOG_INFO(LOG_MODULE,
+                 "PROJ-DIAG: NIMCP_LANG_PROJECTION=%s wernicke_id=%d broca_id=%d",
+                 lang_proj_env ? lang_proj_env : "(unset)", wernicke_id, broca_id);
+        if (lang_proj_env && lang_proj_env[0] == '1') {
+            uint64_t proj_syn = connect_pop_pair(snn, wernicke_id, broca_id,
+                                                 0.0015f, 0.0f, 0.005f);
+            LOG_INFO(LOG_MODULE, "PROJ-DIAG: connect_pop_pair(wernicke→broca) "
+                     "returned %llu synapses", (unsigned long long)proj_syn);
+            if (proj_syn > 0) {
+                syn_total += proj_syn;
+                (void)snn_network_set_pop_exclude_from_plasticity(
+                    snn, (uint32_t)wernicke_id, true);
+                (void)snn_network_set_pop_exclude_from_plasticity(
+                    snn, (uint32_t)broca_id, true);
+                LOG_INFO(LOG_MODULE,
+                         "Phase-2 concept→word projection wired: wernicke=%d → "
+                         "broca=%d, %llu synapses (~0.15%% sparse); both pops "
+                         "excluded from global homeostasis/R-STDP/reward",
+                         wernicke_id, broca_id, (unsigned long long)proj_syn);
+            } else {
+                LOG_WARN(LOG_MODULE,
+                         "Phase-2 concept→word projection wiring returned 0 — "
+                         "skipped");
+            }
+        }
+    }
+
     /* Broca → motor route (L5_exec → L6_project). */
     syn_total += connect_pop_to_prefix(snn, broca_id, "L5_exec_",
                                        CONN_HIERARCHY_TAP, LANG_W_MEAN, LANG_W_STD);

@@ -5,6 +5,7 @@
 #include "training/nimcp_cortex_cnn.h"
 #include "snn/nimcp_snn_types.h"
 #include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "snn/nimcp_snn_network.h"   /* Phase-2 warm-start: find_pop_by_name */
 #include "language/nimcp_communication_cascade.h"
 #include "cognitive/grounded_language/nimcp_stage_table.h"  /* Slice E */
 #include "language/nimcp_concept_registry.h"                /* Slice B / walkthrough-2 */
@@ -3903,6 +3904,7 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         out->enable_anaphora_resolution         = grounded_language_get_anaphora_enabled(b->grounded_lang) ? 1u : 0u;
         out->reconsolidation_decay              = grounded_language_get_reconsolidation_decay(b->grounded_lang);
         out->produce_distributional_weight      = grounded_language_get_produce_distributional_weight(b->grounded_lang);
+        out->produce_frequency_penalty          = grounded_language_get_produce_frequency_penalty(b->grounded_lang);
         out->topic_shift_threshold              = grounded_language_get_topic_shift_threshold(b->grounded_lang);
         out->topic_shift_min_turns              = grounded_language_get_topic_shift_min_turns(b->grounded_lang);
         /* Process-global counter (not per-GL-instance) — surfaced so the
@@ -3940,6 +3942,10 @@ nimcp_status_t nimcp_brain_get_grounded_language_diagnostics(
         /* T3-2 (2026-05-29): cohesive-conjunction-insertion flag. */
         out->produce_t3_conjunction             =
             grounded_language_get_produce_t3_conjunction(b->grounded_lang) ? 1u : 0u;
+        out->produce_via_snn                    =
+            grounded_language_get_produce_via_snn(b->grounded_lang) ? 1u : 0u;
+        out->metacog_gates_produce              =
+            grounded_language_get_metacog_gates_produce(b->grounded_lang) ? 1u : 0u;
     }
 
     if (b->snn_lang_bridge) {
@@ -4959,6 +4965,59 @@ nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* o
     return NIMCP_OK;
 }
 
+nimcp_status_t nimcp_brain_set_produce_via_snn(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_via_snn(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_produce_via_snn(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_metacog_gates_produce(nimcp_brain_t brain, bool enabled) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_metacog_gates_produce(b->grounded_lang, enabled);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* out_enabled) {
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_enabled = grounded_language_get_metacog_gates_produce(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float k,
+                                                     int* out_updated) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge || !b->snn_network) return NIMCP_ERROR;
+    int wid = snn_network_find_pop_by_name(b->snn_network, "wernicke_substrate");
+    int bid = snn_network_find_pop_by_name(b->snn_network, "broca_substrate");
+    if (wid < 0 || bid < 0) return NIMCP_ERROR;   /* pops or projection absent */
+    int updated = snn_language_bridge_warmstart_projection(
+        b->snn_lang_bridge, b->snn_network, wid, bid, k, 1.0f /* overwrite */);
+    if (out_updated) *out_updated = updated;
+    return (updated >= 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);
@@ -4975,6 +5034,25 @@ nimcp_status_t nimcp_brain_get_produce_distributional_weight(nimcp_brain_t brain
     if (s != NIMCP_OK) return s;
     if (!b->grounded_lang) return NIMCP_ERROR;
     *out_weight = grounded_language_get_produce_distributional_weight(b->grounded_lang);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_set_produce_frequency_penalty(nimcp_brain_t brain, float penalty) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    grounded_language_set_produce_frequency_penalty(b->grounded_lang, penalty);
+    return NIMCP_OK;
+}
+
+nimcp_status_t nimcp_brain_get_produce_frequency_penalty(nimcp_brain_t brain, float* out_penalty) {
+    if (!out_penalty) return NIMCP_ERROR_INVALID_PARAM;
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->grounded_lang) return NIMCP_ERROR;
+    *out_penalty = grounded_language_get_produce_frequency_penalty(b->grounded_lang);
     return NIMCP_OK;
 }
 

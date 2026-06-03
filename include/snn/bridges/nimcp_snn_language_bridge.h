@@ -713,7 +713,10 @@ int snn_language_bridge_register_word(
     uint32_t word_pop,
     const char* word_form);
 
-/** Decode spike patterns to word activations (population vector decoding) */
+/** Decode spike patterns to word activations (population vector decoding).
+ *  NOTE: transport-only stub since Slice A (returns 0) — kept stubbed so the
+ *  on-training-path bigram-learning callers are unchanged. For the opt-in
+ *  SNN produce readout use snn_language_bridge_decode_spikes_cached below. */
 int snn_language_bridge_decode_spikes(
     snn_language_bridge_t* bridge,
     const float* concept_rates,    // Firing rates per concept pop [num_concept_pops]
@@ -721,6 +724,32 @@ int snn_language_bridge_decode_spikes(
     snn_lang_word_result_t* results, // Output: top-k words
     uint32_t max_results,
     uint32_t* num_results);
+
+/** Increment-1 (2026-06-02): opt-in SNN-derived produce readout. Ranks words by
+ *  summed Broca spike activity over each word's deterministic neuron ensemble,
+ *  read from the per-tick spike cache. Returns 0 results when there is no SNN
+ *  signal (caller falls back to the lexicon producer). Used only by the
+ *  produce_via_snn path — does NOT affect default training/produce. */
+int snn_language_bridge_decode_spikes_cached(
+    snn_language_bridge_t* bridge,
+    const float* concept_rates,
+    uint32_t num_concept_pops,
+    snn_lang_word_result_t* results,
+    uint32_t max_results,
+    uint32_t* num_results);
+
+/** Phase-2 step 3 (2026-06-02): warm-start the concept→word projection from the
+ *  grounded-language lexicon. Sets the weight of each (concept ensemble →
+ *  word ensemble) projection synapse to k*binding_strength (AMPA-clamped),
+ *  updating CSR host weights + GPU. Runtime-safe (weights only, no rewire).
+ *  Requires a finalized Broca incoming CSR and a connected grounded_lang.
+ *  Returns #synapses updated, or -1 on error. */
+int snn_language_bridge_warmstart_projection(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id,
+    int broca_pop_id,
+    float k, float lr);   /* lr>=1: overwrite (warm-start); 0<lr<1: EMA (online train) */
 
 /** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
  *

@@ -79,6 +79,9 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_lang_discourse_seed
     test_lang_clause_frame
     test_lang_produce_distributional_weight
+    test_lang_produce_frequency_penalty
+    test_lang_inflection_guards
+    test_lang_snn_decode
     test_lang_givenness_definite
     test_lang_t3_conjunction
     test_lang_tf_diff

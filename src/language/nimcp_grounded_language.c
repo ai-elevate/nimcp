@@ -73,6 +73,11 @@ static inline void nimcp_fread_ignore(void* ptr, size_t sz, size_t n, FILE* f) {
  * the current floor are skipped entirely. */
 #define GL_MAX_BINDINGS_PER_WORD 128
 
+/* Upper bound on the per-call similarity scan in find_or_create_concept.
+ * Keeps bulk grounding (lexicon loader, mass re-grounding) at O(words ×
+ * CAP) instead of O(words^2). See find_or_create_concept for rationale. */
+#define GL_CONCEPT_SCAN_CAP 2048u
+
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(grounded_language)
 
 /* IM-3 — forward decls for the brain_immune antigen-presentation API.
@@ -1411,11 +1416,26 @@ static uint64_t find_or_create_concept(grounded_language_t* gl,
     /* Use semantic_memory_find_similar if available */
     semantic_memory_system_t* sm = gl->semantic_memory;
 
-    /* Linear scan for now — find closest concept */
+    /* Bounded linear scan — find closest concept.
+     *
+     * A FULL scan is O(concept_count) per call. The bulk-lexicon loader
+     * (nimcp_internal_load_bulk_lexicon) and any en-masse re-grounding call
+     * this once per word, so a full scan makes startup O(words^2) — a
+     * multi-minute CPU hang at resume once semantic_memory is live (it used
+     * to be a no-op O(1) pseudo-branch when semantic_memory was NULL, which
+     * is why the quadratic was never hit before). Cap the scan to a window
+     * of the most-recently-created concepts: dedup stays exact below the
+     * cap, and above it we may mint a near-duplicate rather than reuse an
+     * older concept — bounded and harmless for the word→concept use here
+     * (distinct words carry distinct vectors and rarely cross the 0.85
+     * reuse threshold anyway). */
     float best_sim = -1.0f;
     uint64_t best_id = 0;
 
-    for (uint32_t i = 0; i < sm->concept_count; i++) {
+    uint32_t total = sm->concept_count;
+    uint32_t scan_start = (total > GL_CONCEPT_SCAN_CAP)
+                              ? (total - GL_CONCEPT_SCAN_CAP) : 0;
+    for (uint32_t i = scan_start; i < total; i++) {
         if (!sm->concepts[i]) continue;
         const semantic_concept_t* c = sm->concepts[i];
         if (c->feature_dim != dim && c->feature_dim != gl->semantic_dim) continue;
@@ -1455,6 +1475,26 @@ static const float* get_concept_features(const grounded_language_t* gl, uint64_t
     return c->features;
 }
 
+/* ---- comprehend pipeline instrumentation (env-gated) -----------------------
+ * Set NIMCP_COMPREHEND_TRACE=1 to enable per-stage stderr trace inside
+ * grounded_language_comprehend. Used to locate where signal dies for the
+ * 2026-05-29 mode-collapse investigation. Zero overhead when env unset
+ * (one env read on first call, then a cached int compare per check). */
+static int _gl_comp_trace_enabled_cached = -1;
+static int gl_comp_trace_enabled(void) {
+    if (_gl_comp_trace_enabled_cached == -1) {
+        const char* v = getenv("NIMCP_COMPREHEND_TRACE");
+        _gl_comp_trace_enabled_cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+    }
+    return _gl_comp_trace_enabled_cached;
+}
+static float _gl_vec_l2(const float* v, uint32_t n) {
+    if (!v || n == 0) return 0.0f;
+    float s = 0.0f;
+    for (uint32_t i = 0; i < n; i++) s += v[i] * v[i];
+    return sqrtf(s);
+}
+
 /*=============================================================================
  * Word Selection for Production
  *===========================================================================*/
@@ -1486,6 +1526,15 @@ static float score_word_against_vector(const grounded_language_t* gl,
     float concept_sim = 0.0f;
     for (uint32_t b = 0; b < entry->binding_count; b++) {
         const float* cf = get_concept_features(gl, entry->bindings[b].concept_id);
+        /* Concept-feature fallback (2026-05-31): semantic_memory is left
+         * NULL by design (avoids an O(N²) grounding hang), so concept_ids
+         * are pseudo and never resolve. Use the word's distributional
+         * context_vector as the concept features — the learned per-word
+         * embedding. Without this concept_sim is always 0 and the produce
+         * score collapses to the distributional term alone. */
+        if (!cf && entry->context_initialized && entry->context_vector) {
+            cf = entry->context_vector;
+        }
         if (cf) {
             float cs = cosine_similarity(target, cf, cmp_dim);
             cs *= entry->bindings[b].strength;
@@ -1525,6 +1574,19 @@ static float score_word_against_vector(const grounded_language_t* gl,
         float factor = 1.0f + (v * 0.5f);
         raw *= factor;
     }
+
+    /* Produce-score frequency penalty (2026-06-01): IDF-style damping of
+     * high-frequency words so distributionally-central technical-corpus vocab
+     * (gpu/impedance/lidar/...) stops monopolizing produce filler positions
+     * (word-salad contamination). factor in (0,1]: 1.0 when the penalty is OFF
+     * (default 0.0) or the word is unseen; decreasing with log(frequency). The
+     * intent word still wins its head position on the strong distributional
+     * match; this only suppresses ubiquitous fillers. */
+    float fp = gl->produce_frequency_penalty;
+    if (fp > 0.0f && entry->frequency > 0u) {
+        float factor = 1.0f / (1.0f + fp * log1pf((float)entry->frequency));
+        raw *= factor;
+    }
     return raw;
 }
 
@@ -1544,6 +1606,27 @@ static float score_word_against_vector(const grounded_language_t* gl,
  */
 #define GL_DIVERSITY_MIN_TOPSCORE 0.05f
 
+/* Emission guard (2026-06-02): a clearly-malformed double-inflection surface
+ * form that must never be emitted, even if it leaked into the lexicon via the
+ * pre-RC1 produce->self-train feedback loop ("preventinged" = preventing+ed,
+ * "filteringed", "usinged", "movinged", "somethinged", "headinged"). The
+ * "-inged" suffix is unambiguous — no valid English word ends in a gerund's
+ * -ing followed by -ed. Narrow on purpose: participle+s forms ("throwns") are
+ * left to the RC1 generator guards + vocab decay, since a safe suffix test for
+ * them collides with valid words (towns, crowns, downs). Refusing to RANK these
+ * also starves the self-train loop that re-learns whatever produce emits. */
+static bool gl_form_is_malformed_inflection(const char* form) {
+    if (!form) return false;
+    size_t n = strlen(form);
+    if (n >= 5) {
+        const char* t = form + (n - 5);   /* trailing "inged", case-insensitive */
+        if ((t[0]=='i'||t[0]=='I') && (t[1]=='n'||t[1]=='N') &&
+            (t[2]=='g'||t[2]=='G') && (t[3]=='e'||t[3]=='E') &&
+            (t[4]=='d'||t[4]=='D')) return true;
+    }
+    return false;
+}
+
 static uint32_t find_words_near_vector(const grounded_language_t* gl,
                                         const float* target, uint32_t dim,
                                         gl_word_class_t required_class,
@@ -1552,7 +1635,20 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
     uint32_t count = 0;
     float best_seen = 0.0f;
 
-    for (uint32_t w = 0; w < gl->vocab_count && count < max_words; w++) {
+    /* Scan the ENTIRE vocabulary, keeping the top-`max_words` by score via the
+     * insertion sort below. The old loop condition `count < max_words`
+     * terminated the scan as soon as max_words candidates had been *collected*,
+     * not ranked — so produce only ever saw the first max_words entries in
+     * vocab_list. Those are the seed/function/abstract concept words added at
+     * create time (low indices); every bulk-loaded or later-trained content
+     * word (cat, dog, water, ...) sat past that cutoff and was NEVER scored.
+     * Result: produce returned the same ~max_words abstract words for every
+     * intent regardless of relevance (the "intent-miss collapse"). A concrete
+     * word scoring 0.88 for its own intent never appeared because the scan
+     * stopped at the seed block. Scan everything; the insertion sort keeps the
+     * best K. Cost is O(vocab) per produce, which is what a top-K search must
+     * pay anyway. */
+    for (uint32_t w = 0; w < gl->vocab_count; w++) {
         const gl_lexicon_entry_t* entry = gl->vocab_list[w];
         if (!entry) continue;
         /* Skip only when there is truly no signal — same loosened gate as
@@ -1577,6 +1673,13 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
              entry->learned_class == GL_CLASS_PRONOUN)) {
             continue;
         }
+        /* Emission guard: never rank a clearly-malformed double-inflection
+         * ("preventinged") even if it polluted the lexicon. Complements the RC1
+         * generator guards (which stop NEW ones) by refusing to emit the
+         * historical ones, which also starves the self-train re-learning loop. */
+        if (gl_form_is_malformed_inflection(entry->form)) {
+            continue;
+        }
         float score = score_word_against_vector(gl, entry, target, dim);
         if (score > best_seen) best_seen = score;
 
@@ -1596,6 +1699,23 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
             }
             out_words[insert_pos] = entry->form;
             out_scores[insert_pos] = score;
+        }
+    }
+
+    /* Produce-ranking trace (env NIMCP_PRODUCE_TRACE=1) — dump the top
+     * candidates + score so we can see WHY a given intent ranks the words
+     * it does (hubness / frequency / class diagnosis). Zero cost when off. */
+    if (count > 0) {
+        const char* _pt = getenv("NIMCP_PRODUCE_TRACE");
+        if (_pt && _pt[0] && _pt[0] != '0') {
+            fprintf(stderr, "[PRODUCE_TRACE] class=%d best=%.4f top:",
+                    (int)required_class, best_seen);
+            for (uint32_t i = 0; i < count && i < 8; i++) {
+                const gl_lexicon_entry_t* te = grounded_language_lookup(gl, out_words[i]);
+                fprintf(stderr, " %s(s=%.3f,f=%u)", out_words[i], out_scores[i],
+                        te ? te->frequency : 0u);
+            }
+            fprintf(stderr, "\n");
         }
     }
 
@@ -1629,6 +1749,14 @@ static uint32_t find_words_near_vector(const grounded_language_t* gl,
  *===========================================================================*/
 
 grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* semantic_memory) {
+    /* 2026-05-30 diagnostic: every binding created when this argument is
+     * NULL gets a pseudo-concept_id (hash | 0x100000000) that never
+     * resolves to real features later — the entire 60% concept term in
+     * comprehend's semantic vector dies. Always log the received pointer
+     * so resume-path NULLs are visible in brain.stderr without trace env. */
+    fprintf(stderr,
+            "[GL_INIT] grounded_language_create: semantic_dim=%u semantic_memory=%p\n",
+            semantic_dim, semantic_memory);
     grounded_language_t* gl = (grounded_language_t*)nimcp_calloc(1, sizeof(grounded_language_t));
     if (!gl) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
@@ -1688,6 +1816,15 @@ grounded_language_t* grounded_language_create(uint32_t semantic_dim, void* seman
      * distributional weight so default produce behaviour is bit-for-bit
      * unchanged until the trainer/RPC opts into a higher value. */
     gl->produce_distributional_weight = GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT;
+    /* Produce-score frequency penalty (2026-06-01) — default OFF (0.0) so
+     * produce scoring is unchanged until the JSON/RPC opts into a penalty. */
+    gl->produce_frequency_penalty = GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT;
+    /* Increment-1 (2026-06-02) — SNN-as-generator A/B switch, default OFF so
+     * produce is byte-identical to the lexicon path until opted in. */
+    gl->produce_via_snn = false;
+    /* Metacognitive produce-floor modulation (2026-06-02) — default OFF / 0. */
+    gl->metacog_gates_produce = false;
+    gl->metacog_floor_adjust  = 0.0f;
     /* T3-1 (2026-05-28) — givenness-definiteness default ON. The corrector
      * is conservative (only swaps a/an->the on a NOUN re-mention within the
      * recency window, never touches non-noun tokens or already-definite
@@ -1958,13 +2095,29 @@ void grounded_language_set_current_stage_int(grounded_language_t* gl, int stage)
  */
 static float gl_produce_confidence_floor(const grounded_language_t* gl) {
     int s = gl ? gl->current_stage : 0;
+    float floor;
     switch (s) {
-        case 0: return 1.0f;
-        case 1: return 0.30f;
-        case 2: return 0.15f;
-        case 3: return 0.05f;
-        default: return 0.0f;  /* stage 4+ → no floor, adult */
+        case 0: floor = 1.0f;  break;
+        case 1: floor = 0.30f; break;
+        case 2: floor = 0.15f; break;
+        case 3: floor = 0.05f; break;
+        default: floor = 0.0f; break;  /* stage 4+ → no floor, adult */
     }
+    /* Metacognitive modulation (2026-06-02): the brain's modulatory cognitive
+     * state shifts the produce floor — i.e. how willing it is to assert vs say
+     * "I don't know". metacog_floor_adjust is set per-produce by the cascade
+     * from world-model surprise (brain->fep_pe), wellbeing distress, and
+     * introspection (un)confidence: high surprise/distress / low confidence →
+     * positive adjust → higher floor → more conservative; the inverse lowers
+     * it. This is the correct integration for those MODULATORY modules (they
+     * carry no semantic content vector, so they gate willingness, not content).
+     * Default 0.0 / flag OFF → base stage floor, bit-for-bit unchanged. */
+    if (gl && gl->metacog_gates_produce) {
+        floor += gl->metacog_floor_adjust;
+        if (floor < 0.0f) floor = 0.0f;
+        if (floor > 1.0f) floor = 1.0f;
+    }
+    return floor;
 }
 
 /* Produce-side POS-transition bias weight (Tier 1 Step C, 2026-05-23).
@@ -2430,7 +2583,33 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
     uint32_t subword_hits = 0;
 
+    /* ---- comprehend trace: per-word pre-state ---- */
+    float _gct_norm_at_word_start = 0.0f;
+    int   _gct_on = gl_comp_trace_enabled();
+    if (_gct_on) {
+        /* One-shot registry-state header per comprehend call. Lets us
+         * compare per-word first_null_cid against the live concept
+         * registry's (current_count, ever_allocated). Three signatures:
+         *   cid > next_id  → binding came from a different allocator
+         *   cid <= count   → linear scan miss (corruption / stale)
+         *   count < cid <= next_id → allocated then dropped (persistence skew) */
+        uint32_t _gct_reg_count = 0;
+        uint64_t _gct_reg_next  = 0;
+        if (gl->semantic_memory) {
+            const semantic_memory_system_t* _gct_sm = gl->semantic_memory;
+            _gct_reg_count = _gct_sm->concept_count;
+            _gct_reg_next  = _gct_sm->next_concept_id;
+        }
+        fprintf(stderr,
+            "[COMP_TRACE] === comprehend('%s'): word_count=%u semantic_dim=%u "
+            "reg_count=%u reg_next_id=%llu ===\n",
+            text, word_count, gl->semantic_dim,
+            _gct_reg_count, (unsigned long long)_gct_reg_next);
+    }
     for (uint32_t w = 0; w < word_count; w++) {
+        if (_gct_on) {
+            _gct_norm_at_word_start = _gl_vec_l2(result->semantic_vector, gl->semantic_dim);
+        }
         const gl_lexicon_entry_t* entry = gl_nlp_lookup_chain(gl, words[w]);
         if (!entry) {
             /* NLP-1: First, try subword bootstrap — segment the unknown
@@ -2498,9 +2677,18 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
 
         /* Activate all bound concepts */
         const float polarity = negate_word[w] ? -1.0f : 1.0f;
+        /* Trace: count concept-feature lookup hits vs NULLs and capture the
+         * first failing concept_id for this word. Distinguishes
+         * "concept missing from registry" from "concept stored with NULL
+         * features" once a follow-up registry-dump RPC is wired. */
+        uint32_t _gct_cf_hit = 0;
+        uint32_t _gct_cf_null = 0;
+        uint32_t _gct_pruned = 0;
+        uint64_t _gct_first_null_cid = 0;
+        uint64_t _gct_first_hit_cid = 0;
         for (uint32_t b = 0; b < entry->binding_count && concept_count < GL_MAX_ACTIVE_CONCEPTS; b++) {
             const gl_word_binding_t* binding = &entry->bindings[b];
-            if (binding->strength < GL_ASSOC_PRUNE_THRESHOLD) continue;
+            if (binding->strength < GL_ASSOC_PRUNE_THRESHOLD) { _gct_pruned++; continue; }
 
             /* Sense weight: 1.0 for the chosen binding when WSD is on,
              * GL_SENSE_OFF_DAMP for the others; 1.0 unconditionally
@@ -2538,11 +2726,32 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
              * The activation list is the canonical "what was meant"
              * channel and that's where the sign flip lives. */
             const float* cf = get_concept_features(gl, binding->concept_id);
+            /* Concept-feature fallback (2026-05-31): when the binding's
+             * concept_id does not resolve in semantic_memory — which is the
+             * common case, since the registry is intentionally left NULL to
+             * avoid an O(N²) grounding hang at resume, so every binding holds
+             * a pseudo-id — use the word's own distributional context_vector
+             * as the concept features. The context_vector is the learned
+             * per-word semantic embedding, i.e. exactly what the concept
+             * would have encoded. Without this the dominant concept term of
+             * the semantic vector is identically zero for every word, which
+             * is the mode-collapse root cause (comprehend returns the same
+             * abstract word for every input). */
+            if (!cf && entry->context_initialized && entry->context_vector) {
+                cf = entry->context_vector;
+            }
             if (cf) {
                 float weight = effective / (float)word_count;
                 for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                     result->semantic_vector[d] += cf[d] * weight;
                 }
+                if (_gct_on) {
+                    if (_gct_cf_hit == 0) _gct_first_hit_cid = binding->concept_id;
+                    _gct_cf_hit++;
+                }
+            } else if (_gct_on) {
+                if (_gct_cf_null == 0) _gct_first_null_cid = binding->concept_id;
+                _gct_cf_null++;
             }
         }
 
@@ -2560,13 +2769,62 @@ int grounded_language_comprehend(grounded_language_t* gl, const char* text,
          * file doesn't need to know the tokenizer's vocab. */
         extern int gl_nlp_embedding_lookup(grounded_language_t*, const char*, float*);
         float emb_buf[1024];
+        int _gct_emb_hit = 0;
+        float _gct_emb_norm = 0.0f;
         if (gl->semantic_dim <= 1024 &&
             gl_nlp_embedding_lookup(gl, words[w], emb_buf) == 0) {
             float emb_weight = 0.2f / (float)word_count;
             for (uint32_t d = 0; d < gl->semantic_dim; d++) {
                 result->semantic_vector[d] += emb_buf[d] * emb_weight;
             }
+            if (_gct_on) {
+                _gct_emb_hit = 1;
+                _gct_emb_norm = _gl_vec_l2(emb_buf, gl->semantic_dim);
+            }
         }
+
+        /* ---- comprehend trace: per-word end-of-loop summary ----
+         * Reports what THIS word contributed to the semantic vector.
+         * - bindings:  binding_count (the multiplier on per-binding cf adds)
+         * - top_str:   max strength across this word's bindings
+         * - ctx_init:  was entry->context_vector blended?
+         * - ctx_norm:  ||entry->context_vector|| (the distrib signal magnitude)
+         * - emb_hit:   was a NLP embedding folded in?
+         * - emb_norm:  ||emb_buf|| (the GloVe signal magnitude)
+         * - sv_delta:  ||sv after this word|| - ||sv before this word||
+         * If a word looks up cleanly but sv_delta is ~0, the signal is
+         * being added to a noisy distribution and self-cancels. */
+        if (_gct_on) {
+            float _gct_norm_at_word_end =
+                _gl_vec_l2(result->semantic_vector, gl->semantic_dim);
+            float _gct_ctx_norm = (entry && entry->context_initialized && entry->context_vector)
+                ? _gl_vec_l2(entry->context_vector, gl->semantic_dim) : 0.0f;
+            fprintf(stderr,
+                "[COMP_TRACE]   word='%s' bindings=%u top_str=%.3f ctx_init=%d ctx_norm=%.3f "
+                "emb_hit=%d emb_norm=%.3f sv_norm=%.3f sv_delta=%+.3f "
+                "cf_hit=%u cf_null=%u pruned=%u first_hit_cid=%llu first_null_cid=%llu\n",
+                words[w] ? words[w] : "(null)",
+                entry ? entry->binding_count : 0,
+                (double)top_strength,
+                (entry && entry->context_initialized) ? 1 : 0,
+                (double)_gct_ctx_norm,
+                _gct_emb_hit,
+                (double)_gct_emb_norm,
+                (double)_gct_norm_at_word_end,
+                (double)(_gct_norm_at_word_end - _gct_norm_at_word_start),
+                _gct_cf_hit, _gct_cf_null, _gct_pruned,
+                (unsigned long long)_gct_first_hit_cid,
+                (unsigned long long)_gct_first_null_cid);
+        }
+    }
+    if (_gct_on) {
+        fprintf(stderr,
+            "[COMP_TRACE] post-word-loop: sv_norm=%.3f concept_count=%u total_activation=%.3f known_words=%u subword_hits=%u\n",
+            (double)_gl_vec_l2(result->semantic_vector, gl->semantic_dim),
+            concept_count,
+            (double)total_activation,
+            known_words,
+            subword_hits);
     }
 
     /* Tier-1 #2: rule-based anaphora resolution. Disabled by default; opt-in
@@ -3329,6 +3587,18 @@ float grounded_language_get_produce_distributional_weight(const grounded_languag
     return gl->produce_distributional_weight;
 }
 
+void grounded_language_set_produce_frequency_penalty(grounded_language_t* gl,
+                                                     float penalty) {
+    if (!gl) return;
+    if (!isfinite(penalty) || penalty < 0.0f) penalty = 0.0f;
+    gl->produce_frequency_penalty = penalty;
+}
+
+float grounded_language_get_produce_frequency_penalty(const grounded_language_t* gl) {
+    if (!gl) return GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT;
+    return gl->produce_frequency_penalty;
+}
+
 /*-----------------------------------------------------------------------------
  * TB-9 — speech-act intent classification toggle.
  *---------------------------------------------------------------------------*/
@@ -3974,6 +4244,13 @@ int gl_apply_f4_fluency(grounded_language_t* gl, const char* in,
             char poss[TOKLEN];
             snprintf(poss, sizeof(poss), "%s's", tok[i]);
             GL_F4_SET(i, poss);
+            /* RC2 (2026-06-01): exactly one possessive per utterance. A produced
+             * run of adjacent abstract nouns ("thought belief problem ...") must
+             * not cascade into "thought's belief's problem's ..." — only the
+             * first noun-noun pair is treated as genitive. The real fix for the
+             * noun-run itself is structural (clause planner); this caps the
+             * surface damage. "dog tail" -> "dog's tail" still works. */
+            break;
         }
     }
 
@@ -4026,6 +4303,58 @@ void grounded_language_set_produce_clause_frame(grounded_language_t* gl,
 
 bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl) {
     return gl ? gl->produce_clause_frame : false;
+}
+
+void grounded_language_set_produce_via_snn(grounded_language_t* gl, bool enabled) {
+    if (gl) gl->produce_via_snn = enabled;
+}
+
+bool grounded_language_get_produce_via_snn(const grounded_language_t* gl) {
+    return gl ? gl->produce_via_snn : false;
+}
+
+void grounded_language_set_metacog_gates_produce(grounded_language_t* gl, bool enabled) {
+    if (gl) gl->metacog_gates_produce = enabled;
+}
+
+bool grounded_language_get_metacog_gates_produce(const grounded_language_t* gl) {
+    return gl ? gl->metacog_gates_produce : false;
+}
+
+/* Runtime per-produce setter (called by the cascade from brain modulatory
+ * state). Clamped to [-1, 1]; the floor itself is re-clamped to [0,1] at use.
+ * Positive raises the floor (more conservative), negative lowers it. */
+void grounded_language_set_metacog_floor_adjust(grounded_language_t* gl, float adjust) {
+    if (!gl) return;
+    if (!isfinite(adjust)) adjust = 0.0f;
+    if (adjust < -1.0f) adjust = -1.0f;
+    if (adjust >  1.0f) adjust =  1.0f;
+    gl->metacog_floor_adjust = adjust;
+}
+
+float grounded_language_get_metacog_floor_adjust(const grounded_language_t* gl) {
+    return gl ? gl->metacog_floor_adjust : 0.0f;
+}
+
+uint32_t grounded_language_collect_warmstart_bindings(
+    const grounded_language_t* gl, gl_warmstart_binding_t* out, uint32_t max) {
+    if (!gl || !out || max == 0 || !gl->vocab_list) return 0;
+    uint32_t n = 0;
+    for (uint32_t v = 0; v < gl->vocab_count && n < max; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e || e->binding_count == 0 || !e->bindings) continue;
+        /* Strongest binding for this word. */
+        const gl_word_binding_t* top = &e->bindings[0];
+        for (uint32_t b = 1; b < e->binding_count; b++) {
+            if (e->bindings[b].strength > top->strength) top = &e->bindings[b];
+        }
+        if (!(top->strength > 0.0f)) continue;
+        out[n].form_hash  = e->form_hash;
+        out[n].concept_id = top->concept_id;
+        out[n].strength   = top->strength;
+        n++;
+    }
+    return n;
 }
 
 void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
@@ -5240,6 +5569,34 @@ static int gl_build_clause_frame(grounded_language_t* gl,
     return (int)emit;
 }
 
+/* Increment-1 (2026-06-02): SNN-derived produce candidates. Pulls top-K word
+ * activations from the SNN bridge's per-tick Broca spike cache into the produce
+ * top-K buffers (word_form borrowed from the bridge's registered word table,
+ * which == lexicon forms; valid for this produce call). Returns the candidate
+ * count, or 0 when the SNN has no signal (caller falls back to the lexicon
+ * producer). Opt-in only — reached when gl->produce_via_snn is ON. */
+static uint32_t gl_produce_candidates_via_snn(grounded_language_t* gl,
+                                              const float* intent, uint32_t intent_dim,
+                                              const char** out_words, float* out_scores,
+                                              uint32_t max_words) {
+    if (!gl || !gl->snn_bridge || !out_words || !out_scores || max_words == 0) return 0;
+    if (max_words > 32) max_words = 32;
+    snn_lang_word_result_t res[32];
+    uint32_t nres = 0;
+    if (snn_language_bridge_decode_spikes_cached(gl->snn_bridge, intent, intent_dim,
+                                                 res, max_words, &nres) != 0) {
+        return 0;
+    }
+    uint32_t out = 0;
+    for (uint32_t i = 0; i < nres && out < max_words; i++) {
+        if (!res[i].word_form || res[i].word_form[0] == '\0') continue;
+        out_words[out]  = res[i].word_form;
+        out_scores[out] = res[i].activation;
+        out++;
+    }
+    return out;
+}
+
 int grounded_language_produce(grounded_language_t* gl, const float* intent,
                                uint32_t intent_dim, gl_production_mode_t mode,
                                gl_production_result_t* result) {
@@ -5272,10 +5629,23 @@ int grounded_language_produce(grounded_language_t* gl, const float* intent,
     memset(topk_words, 0, sizeof(topk_words));
     memset(topk_scores, 0, sizeof(topk_scores));
 
-    uint32_t n = find_words_near_vector(gl, intent, intent_dim,
-                                         GL_CLASS_UNKNOWN /* any class */,
-                                         topk_words, topk_scores,
-                                         GL_PRODUCE_TOPK);
+    /* Increment-1 (2026-06-02): SNN-as-generator A/B. When produce_via_snn is
+     * ON, source candidates from the SNN bridge's Broca spike cache; on no SNN
+     * signal (0 candidates) fall through to the lexicon producer (permanent
+     * fallback). Default OFF → the lexicon path runs unchanged. `intent` here
+     * is the cascade's cognitively-integrated content_intent, so every cognitive
+     * module that reaches content_intent drives the SNN readout too. */
+    uint32_t n = 0;
+    if (gl->produce_via_snn && gl->snn_bridge) {
+        n = gl_produce_candidates_via_snn(gl, intent, intent_dim,
+                                          topk_words, topk_scores, GL_PRODUCE_TOPK);
+    }
+    if (n == 0) {
+        n = find_words_near_vector(gl, intent, intent_dim,
+                                   GL_CLASS_UNKNOWN /* any class */,
+                                   topk_words, topk_scores,
+                                   GL_PRODUCE_TOPK);
+    }
     if (n == 0) {
         /* No usable candidate — caller's IDK gate emits "I don't know".
          * Honest answer for an undertrained or under-grounded lexicon. */
@@ -6222,6 +6592,135 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(grounded_language_t* gl) {
              "rebind_all_to_snn_bridge: mirrored %llu bindings across %u words",
              (unsigned long long)mirrored, gl->vocab_count);
     return mirrored;
+}
+
+/* Pseudo-concept-id remap (2026-05-30).
+ *
+ * Bindings created when gl->semantic_memory was NULL hold pseudo-concept_ids
+ * of the form (feature_hash | 0x100000000ULL) — see find_or_create_concept's
+ * NULL-semantic-memory branch. These IDs never resolve in
+ * semantic_memory_get_concept (the registry has no entry for them), so the
+ * concept-feature path in comprehend's semantic_vector accumulation is
+ * permanently zero for every such binding.
+ *
+ * This was the root cause of the 2026-05-29 pod-side mode collapse: the
+ * daemon's --resume path triggers lazy_init_mode (>100K neurons), which
+ * skips init_working_memory_subsystem, which means brain->semantic_memory
+ * was NULL at every grounding event in the brain's training history.
+ *
+ * Migration strategy: for each binding whose concept_id has bit 32 set,
+ * if the entry has a learned distributional context_vector, mint a fresh
+ * real concept_id by calling semantic_memory_create_concept with that
+ * vector as features, and replace the binding's concept_id. The freshly-
+ * minted concept's features will equal context_vector — so the concept
+ * path through get_concept_features now contributes a non-zero signal
+ * (equivalent in direction to context_vector itself; downstream
+ * score_word_against_vector's 0.4·sim + 0.6·concept_sim becomes
+ * cos(target, context_vector) instead of zero).
+ *
+ * Words whose entry has context_initialized=0 (no distributional embedding
+ * yet — e.g. peace/hope in the current pod checkpoint) get their
+ * pseudo-binding marker preserved; they'll re-ground organically when
+ * the trainer next sees them with semantic_memory available. We could
+ * fall back to GloVe lookup here, but that path needs the NLP embedding
+ * subsystem wired and isn't always available. Keep the migration narrow.
+ *
+ * NULL-safe on both gl and gl->semantic_memory. Returns count of bindings
+ * remapped (or 0 if nothing was eligible). */
+uint64_t grounded_language_remap_pseudo_concept_ids(grounded_language_t* gl) {
+    if (!gl) return 0;
+    if (!gl->semantic_memory) return 0;
+    if (!gl->vocab_list || gl->vocab_count == 0) return 0;
+
+    uint64_t remapped        = 0;   /* bindings repointed to a real concept */
+    uint64_t still_pseudo    = 0;   /* pseudo bindings left (no context vec) */
+    uint64_t already_real    = 0;   /* bindings that were already real */
+    uint64_t words_migrated  = 0;   /* distinct words that got a new concept */
+    uint64_t create_failed   = 0;   /* semantic_memory_create_concept == 0 */
+
+    /* Mint ONE concept per WORD (seeded from its distributional
+     * context_vector) and repoint ALL of that word's pseudo bindings at it.
+     *
+     * The earlier per-binding version called semantic_memory_create_concept
+     * once per binding — millions of calls, each emitting a KG
+     * concept-created event with an O(KG) integrity-checksum recompute.
+     * That turned the migration into an O(bindings × KG) CPU hang during
+     * resume. Per-word collapses it to O(words) creates (a few × 10^4) and
+     * keeps the semantics right: a word denotes one concept, not one
+     * concept per co-occurrence binding. */
+    gl_mutate_lock(gl);
+    for (uint32_t v = 0; v < gl->vocab_count; v++) {
+        gl_lexicon_entry_t* entry = gl->vocab_list[v];
+        if (!entry || entry->binding_count == 0) continue;
+
+        /* Does this word have any pseudo binding worth migrating? */
+        bool has_pseudo = false;
+        for (uint32_t b = 0; b < entry->binding_count; b++) {
+            if (entry->bindings[b].concept_id & 0x100000000ULL) {
+                has_pseudo = true;
+                break;
+            }
+        }
+        if (!has_pseudo) {
+            already_real += entry->binding_count;
+            continue;
+        }
+
+        /* Need a feature vector to seed the new concept. The word's
+         * distributional context_vector is the best available proxy for
+         * the semantic content the original grounding carried — it's been
+         * trained over many co-occurrences. Without it, leave the pseudo
+         * bindings as-is (counted) rather than minting a zero concept. */
+        if (!entry->context_initialized || !entry->context_vector) {
+            for (uint32_t b = 0; b < entry->binding_count; b++) {
+                if (entry->bindings[b].concept_id & 0x100000000ULL)
+                    still_pseudo++;
+                else
+                    already_real++;
+            }
+            continue;
+        }
+
+        uint64_t new_cid = semantic_memory_create_concept(
+            gl->semantic_memory,
+            entry->context_vector,
+            gl->semantic_dim,
+            entry->form,
+            CONCEPT_OBJECT);
+        if (new_cid == 0) {
+            /* Registry full or alloc failure — leave pseudo bindings. */
+            for (uint32_t b = 0; b < entry->binding_count; b++) {
+                if (entry->bindings[b].concept_id & 0x100000000ULL)
+                    create_failed++;
+                else
+                    already_real++;
+            }
+            continue;
+        }
+        words_migrated++;
+
+        for (uint32_t b = 0; b < entry->binding_count; b++) {
+            if (entry->bindings[b].concept_id & 0x100000000ULL) {
+                entry->bindings[b].concept_id = new_cid;
+                remapped++;
+            } else {
+                already_real++;
+            }
+        }
+    }
+    gl_mutate_unlock(gl);
+
+    fprintf(stderr,
+            "[GL_REMAP] pseudo-concept-id migration: words_migrated=%llu "
+            "bindings_remapped=%llu still_pseudo_no_ctx=%llu already_real=%llu "
+            "create_failed=%llu (words=%u)\n",
+            (unsigned long long)words_migrated,
+            (unsigned long long)remapped,
+            (unsigned long long)still_pseudo,
+            (unsigned long long)already_real,
+            (unsigned long long)create_failed,
+            gl->vocab_count);
+    return remapped;
 }
 
 /* Phase 2C: GL→Broca lexicon mirror.

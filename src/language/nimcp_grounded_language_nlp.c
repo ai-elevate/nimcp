@@ -584,6 +584,25 @@ static int gl_morph_add_s(const char* w, char* out, size_t out_sz) {
     return (int)(n+1);
 }
 
+/* RC1 guard (2026-06-01): is `w` already a past/participle surface form that
+ * must NOT be re-inflected as if it were a base verb? Re-suffixing these is
+ * what produced "throwns" (thrown+s) and "preventeded"-style double pasts.
+ * -ed is matched by suffix; irregular past participles have no reliable suffix
+ * (bare -en/-n collide with common nouns — kitchen, garden, sun, man) so they
+ * are enumerated. (-ing gerunds are refused separately, only in past_tense.) */
+static bool gl_morph_is_past_or_participle(const char* w) {
+    if (!w) return false;
+    size_t n = strlen(w);
+    if (n >= 3 && w[n-2]=='e' && w[n-1]=='d') return true;   /* -ed past */
+    static const char* PART[] = {
+        "thrown","grown","shown","drawn","blown","flown","known","sewn","mown",
+        "given","taken","eaten","broken","spoken","chosen","frozen","stolen",
+        "woven","driven","written","ridden","fallen","hidden","bitten","beaten",
+        "forgotten","gotten","seen","worn","torn","born","sworn", NULL };
+    for (int i = 0; PART[i]; i++) if (strcmp(w, PART[i]) == 0) return true;
+    return false;
+}
+
 int gl_morph_inflect_3sg(const char* verb, char* out, size_t out_sz) {
     if (!verb || !out || out_sz == 0) { if (out && out_sz) out[0]='\0'; return -1; }
     /* Common irregular present-tense 3sg. */
@@ -600,6 +619,15 @@ int gl_morph_inflect_3sg(const char* verb, char* out, size_t out_sz) {
             memcpy(out, IRR[i].form, fl+1);
             return (int)fl;
         }
+    }
+    /* RC1 guard: never 3sg an already-past/participle form (thrown -> throwns).
+     * Return it unchanged so the F3 caller's strcmp(result, input) check skips
+     * it. -ing gerunds are intentionally NOT refused here (sing -> sings). */
+    if (gl_morph_is_past_or_participle(verb)) {
+        size_t nn = strlen(verb);
+        if (out_sz < nn+1) { out[0]='\0'; return -1; }
+        memcpy(out, verb, nn+1);
+        return (int)nn;
     }
     return gl_morph_add_s(verb, out, out_sz);
 }
@@ -653,6 +681,21 @@ int gl_morph_past_tense(const char* verb, char* out, size_t out_sz) {
             return (int)pl;
         }
     }
+    /* RC1 guard: never form a past tense by suffixing a gerund (-ing) or an
+     * already-past/participle form. Leaving it unchanged makes the F4b caller's
+     * strcmp(result, input) check skip it — this is the "preventing+ed ->
+     * preventinged" / "moving+ed -> movinged" fix. Runs AFTER the irregular
+     * table so real irregulars (sing->sang, run->ran) are still produced. */
+    {
+        size_t gn = strlen(verb);
+        if ((gn >= 4 && verb[gn-3]=='i' && verb[gn-2]=='n' && verb[gn-1]=='g') ||
+            gl_morph_is_past_or_participle(verb)) {
+            if (out_sz < gn+1) { out[0]='\0'; return -1; }
+            memcpy(out, verb, gn+1);
+            return (int)gn;
+        }
+    }
+
     /* Regular -ed. */
     size_t n = strlen(verb);
     if (n == 0 || out_sz < n + 4) { out[0]='\0'; return -1; }

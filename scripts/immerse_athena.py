@@ -4408,7 +4408,7 @@ class Parent:
             print(f"  [Parent] Cache load failed: {e}")
 
         # Calculate how many of each type we need
-        n_narrations = min(num_stimuli, 200)  # one per stimulus, cap at 200
+        n_narrations = min(num_stimuli, 60)  # variety pool, cycled across stimuli; one big-JSON call must finish < timeout
         n_encouragements = 60
         n_morals = max(5, num_stimuli // 2000)
         n_speech = max(10, num_stimuli // 300)
@@ -4452,6 +4452,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
                      "--system-prompt", "",
                      "--setting-sources", "", "--allowed-tools", ""],
                     capture_output=True, text=True, timeout=20,
+                    stdin=_sp.DEVNULL,  # don't wait 3s for stdin (rc=1 in daemonized trainer)
                     env={k: v for k, v in os.environ.items()
                          if k not in ("CLAUDECODE", "CUDA_VISIBLE_DEVICES")}
                 )
@@ -4463,7 +4464,7 @@ IMPORTANT: Return actual arrays with the requested number of strings, not descri
             # Single Claude call with generous token budget.
             # Pre-gen is a one-time cost per stage — allow 5 min for large JSON.
             old_timeout = self.teacher.timeout
-            self.teacher.timeout = 300
+            self.teacher.timeout = 600  # one-time per-stage cost; headroom for the big-JSON generation
             try:
                 raw = self.teacher._call_claude(prompt, max_tokens=4096)
             finally:

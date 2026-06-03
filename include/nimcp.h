@@ -1028,6 +1028,9 @@ typedef struct {
      * the produce word score (raw = w*distributional + (1-w)*concept).
      * Default 0.4 = historical 0.4/0.6 split. */
     float    produce_distributional_weight;
+    /* Produce-score frequency penalty (2026-06-01): current IDF-style penalty
+     * applied in produce scoring (raw *= 1/(1+p*log1p(freq))). 0.0 = OFF. */
+    float    produce_frequency_penalty;
     /* TF (tier-feedback) telemetry surface — exposed so operators can see
      * (a) how often the cascade emits deltas (tf_calls / tf_deltas_captured),
      * (b) which gate is rejecting (per-reason tf_outcome_blocked_*),
@@ -1056,6 +1059,11 @@ typedef struct {
     float    tf_lr_bridge_stdp;
     /* T3-2 (2026-05-29): cohesive conjunction insertion runtime flag. */
     uint8_t  produce_t3_conjunction;
+    /* Increment-1 (2026-06-02): SNN-as-generator A/B switch. 1 = produce sources
+     * candidates from the SNN Broca spike cache (lexicon fallback). Default 0. */
+    uint8_t  produce_via_snn;
+    /* Metacognitive produce-floor modulation flag (2026-06-02). */
+    uint8_t  metacog_gates_produce;
 } nimcp_grounded_language_diagnostics_t;
 
 /**
@@ -1739,6 +1747,27 @@ nimcp_status_t nimcp_brain_get_produce_discourse_seed(nimcp_brain_t brain, bool*
 nimcp_status_t nimcp_brain_set_produce_clause_frame(nimcp_brain_t brain, bool enabled);
 nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* out_enabled);
 
+/** Increment-1 (2026-06-02): SNN-as-generator A/B switch. When ON, produce
+ *  sources candidate words from the SNN bridge's Broca spike cache, with the
+ *  lexicon producer as permanent fallback. Default OFF. Runtime-only. */
+nimcp_status_t nimcp_brain_set_produce_via_snn(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_produce_via_snn(nimcp_brain_t brain, bool* out_enabled);
+
+/** Metacognitive produce-floor modulation (2026-06-02): when ON, the cascade
+ *  shifts the produce confidence floor from world-model surprise / wellbeing
+ *  distress / introspection confidence (modulatory cognitive modules gate
+ *  willingness-to-assert rather than inject content). Default OFF. Runtime-only. */
+nimcp_status_t nimcp_brain_set_metacog_gates_produce(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* out_enabled);
+
+/** Phase-2 step 3 (2026-06-02): warm-start the SNN concept→word projection from
+ *  the lexicon — sets each projection synapse weight to k*binding_strength.
+ *  No-op-ish (returns 0 updated) when the projection wasn't built
+ *  (NIMCP_LANG_PROJECTION off) or the lexicon is empty. out_updated receives
+ *  the #synapses set. Call after the lexicon is populated (resume / training). */
+nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float k,
+                                                     int* out_updated);
+
 /** Produce-score rebalance: weight on the distributional (context-vector)
  *  term vs the concept-binding term in produce word scoring
  *  (raw = w*distributional + (1-w)*concept). Default 0.4 = historical split;
@@ -1746,6 +1775,14 @@ nimcp_status_t nimcp_brain_get_produce_clause_frame(nimcp_brain_t brain, bool* o
  *  concept-bound abstract words. Clamped [0,1]. Persisted via LANC + config. */
 nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight);
 nimcp_status_t nimcp_brain_get_produce_distributional_weight(nimcp_brain_t brain, float* out_weight);
+
+/** Produce-score frequency penalty (2026-06-01): IDF-style damping of
+ *  high-frequency words in produce scoring — raw *= 1/(1 + p*log1p(freq)).
+ *  Default 0.0 = OFF. Raise (~0.1-0.3) to stop distributionally-central
+ *  technical vocab monopolizing produce filler positions. Runtime-only
+ *  (applied from JSON at start; not LANC-persisted). penalty<0 clamped to 0. */
+nimcp_status_t nimcp_brain_set_produce_frequency_penalty(nimcp_brain_t brain, float penalty);
+nimcp_status_t nimcp_brain_get_produce_frequency_penalty(nimcp_brain_t brain, float* out_penalty);
 
 /** T3-1 (2026-05-28): givenness-driven definiteness — on a NOUN re-mention
  *  that didn't pronominalize (person nouns, unanchored slots), swap the

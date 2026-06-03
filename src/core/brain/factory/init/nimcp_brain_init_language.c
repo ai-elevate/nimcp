@@ -32,6 +32,7 @@
 #include "generation/nimcp_embedding.h"
 #include "training/nimcp_cortex_cnn.h"
 #include "language/nimcp_grounded_language.h"
+#include "cognitive/memory/nimcp_semantic_memory.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 
@@ -571,9 +572,32 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
      * Creates the grounded lexicon that maps words to semantic concepts
      * through cross-modal Hebbian binding rather than token statistics.
      */
+    /* CRITICAL 2026-05-30: brain->semantic_memory must be non-NULL when
+     * grounded_language_create runs. Otherwise every Hebbian binding
+     * gets a pseudo-concept_id (hash | 0x100000000ULL) that never
+     * resolves to features in get_concept_features → the 60% concept
+     * term in comprehend's semantic vector is permanently zero →
+     * downstream "mode collapse". The brain factory skips
+     * init_working_memory_subsystem under lazy_init_mode (set
+     * automatically for any brain > 100K neurons in
+     * nimcp_brain_create_with_neurons), so working_memory + semantic_memory
+     * never get created before this point on the daemon's resume path.
+     * Force-init it here on demand. */
+    /* NOTE (2026-05-31): we deliberately do NOT force-create
+     * brain->semantic_memory here. Doing so makes find_or_create_concept
+     * take its O(concept_count) similarity-scan branch for every word the
+     * bulk lexicon loader grounds (~30K words) → O(N²) → multi-minute
+     * resume hang (measured: 0.03s with NULL vs 5s+ with a live registry,
+     * far worse on the larger trained lexicon). The mode-collapse fix that
+     * USED to require a populated registry now lives in comprehend/produce
+     * scoring: when a binding's concept_id does not resolve, the
+     * concept-feature term falls back to the word's distributional
+     * context_vector (see score_word_against_vector + the comprehend
+     * semantic-vector loop). So a NULL registry is fine — every binding
+     * gets a pseudo-id, and the fallback supplies real per-word signal. */
     brain->grounded_lang = grounded_language_create(
         128, /* semantic_dim — matches brain embedding dim */
-        brain->semantic_memory
+        brain->semantic_memory  /* may be NULL — fallback handles it */
     );
 
     if (brain->grounded_lang) {

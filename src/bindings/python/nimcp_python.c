@@ -2777,6 +2777,9 @@ static PyObject* Brain_get_grounded_language_diagnostics(BrainObject* self, PyOb
     GLD_SET("bridge_ltd_margin",                PyFloat_FromDouble((double)d.bridge_ltd_margin));
     GLD_SET("reconsolidation_decay",            PyFloat_FromDouble(d.reconsolidation_decay));
     GLD_SET("produce_distributional_weight",    PyFloat_FromDouble((double)d.produce_distributional_weight));
+    GLD_SET("produce_frequency_penalty",        PyFloat_FromDouble((double)d.produce_frequency_penalty));
+    GLD_SET("produce_via_snn",                  PyBool_FromLong(d.produce_via_snn));
+    GLD_SET("metacog_gates_produce",            PyBool_FromLong(d.metacog_gates_produce));
     GLD_SET("topic_shift_threshold",            PyFloat_FromDouble(d.topic_shift_threshold));
     GLD_SET("topic_shift_min_turns",            PyLong_FromUnsignedLong(d.topic_shift_min_turns));
     GLD_SET("bridge_decode_total_ns",           PyLong_FromUnsignedLongLong(d.bridge_decode_total_ns));
@@ -3535,6 +3538,19 @@ static PyObject* Brain_reset_lang_bridge_weights(BrainObject* self, PyObject* ar
         } \
         Py_RETURN_NONE; \
     }
+/* Float getter mirror of AUDIT_BRAIN_FLOAT_SETTER. CAPI signature is
+ * nimcp_status_t CAPI(nimcp_brain_t, float* out). METH_NOARGS. */
+#define AUDIT_BRAIN_FLOAT_GETTER(NAME, CAPI) \
+    static PyObject* Brain_##NAME(BrainObject* self, PyObject* Py_UNUSED(ignored)) { \
+        if (!self->brain) { \
+            PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL; \
+        } \
+        float v = 0.0f; \
+        if (CAPI(self->brain, &v) != NIMCP_OK) { \
+            PyErr_SetString(PyExc_RuntimeError, #NAME " failed"); return NULL; \
+        } \
+        return PyFloat_FromDouble((double)v); \
+    }
 /* TF-2 (2026-05-28): uint16 bitmask setter — used by set_tf_enabled_correctors.
  * Python passes a plain int; we clamp to uint16 range so a stray negative or
  * out-of-range value can't underflow. */
@@ -3570,7 +3586,12 @@ AUDIT_BRAIN_BOOL_SETTER(set_autoregressive_produce,           nimcp_brain_set_au
 AUDIT_BRAIN_BOOL_SETTER(set_produce_pronominalize,            nimcp_brain_set_produce_pronominalize)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_discourse_seed,           nimcp_brain_set_produce_discourse_seed)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_clause_frame,             nimcp_brain_set_produce_clause_frame)
+AUDIT_BRAIN_BOOL_SETTER(set_produce_via_snn,                  nimcp_brain_set_produce_via_snn)
+AUDIT_BRAIN_BOOL_SETTER(set_metacog_gates_produce,            nimcp_brain_set_metacog_gates_produce)
 AUDIT_BRAIN_FLOAT_SETTER(set_produce_distributional_weight,   nimcp_brain_set_produce_distributional_weight)
+AUDIT_BRAIN_FLOAT_GETTER(get_produce_distributional_weight,   nimcp_brain_get_produce_distributional_weight)
+AUDIT_BRAIN_FLOAT_SETTER(set_produce_frequency_penalty,       nimcp_brain_set_produce_frequency_penalty)
+AUDIT_BRAIN_FLOAT_GETTER(get_produce_frequency_penalty,       nimcp_brain_get_produce_frequency_penalty)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_givenness_definite,       nimcp_brain_set_produce_givenness_definite)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_t3_conjunction,           nimcp_brain_set_produce_t3_conjunction)
 AUDIT_BRAIN_BOOL_SETTER(set_produce_corrector_feedback_enabled, nimcp_brain_set_produce_corrector_feedback_enabled)
@@ -3578,6 +3599,23 @@ AUDIT_BRAIN_U16_SETTER (set_tf_enabled_correctors,            nimcp_brain_set_tf
 AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_trigram,                   nimcp_brain_set_tf_lr_trigram)
 AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_distrib,                   nimcp_brain_set_tf_lr_distrib)
 AUDIT_BRAIN_FLOAT_SETTER(set_tf_lr_bridge_stdp,               nimcp_brain_set_tf_lr_bridge_stdp)
+
+/* Phase-2 step 3: warm-start the SNN concept→word projection from the lexicon.
+ * warmstart_lang_projection(k: float = 1.0) -> int (#synapses set). */
+static PyObject* Brain_warmstart_lang_projection(BrainObject* self, PyObject* args) {
+    if (!self->brain) {
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;
+    }
+    float k = 1.0f;
+    if (!PyArg_ParseTuple(args, "|f", &k)) return NULL;
+    int updated = 0;
+    if (nimcp_brain_warmstart_lang_projection(self->brain, k, &updated) != NIMCP_OK) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "warmstart_lang_projection failed (projection not built or no lexicon?)");
+        return NULL;
+    }
+    return PyLong_FromLong((long)updated);
+}
 
 /* Echo-correct: comprehend(parent_text) → strengthen target_word bindings.
  * Returns count of bindings strengthened. Non-zero lr_scale gates the
@@ -13016,10 +13054,22 @@ static PyMethodDef Brain_methods[] = {
      "Tier 2: toggle produce-side pronominalization — set_produce_pronominalize(enabled: bool) -> None. Default OFF. When ON, a re-mentioned non-person noun (recency window, across a verb) becomes it/they/them so replies don't repeat the noun. Person nouns guarded out. Persisted in the LANC block."},
     {"set_produce_discourse_seed", (PyCFunction)Brain_set_produce_discourse_seed, METH_VARARGS,
      "Tier 2: toggle discourse-seeded autoregressive produce — set_produce_discourse_seed(enabled: bool) -> None. Default OFF. Effective only with autoregressive_produce ON and stage>=2: seeds the AR emitted-context vector with the decayed most-recent discourse-turn vector so the opening words continue the topic of what was just said. Persisted in the LANC block."},
+    {"warmstart_lang_projection", (PyCFunction)Brain_warmstart_lang_projection, METH_VARARGS,
+     "Phase-2: warm-start the SNN concept→word projection from the lexicon — warmstart_lang_projection(k: float = 1.0) -> int (#synapses set). Sets each projection synapse weight to k*binding_strength. Returns 0 when the projection wasn't built (NIMCP_LANG_PROJECTION off) or the lexicon is empty. Call after the lexicon is populated."},
+    {"set_metacog_gates_produce", (PyCFunction)Brain_set_metacog_gates_produce, METH_VARARGS,
+     "Metacognitive produce-floor modulation — set_metacog_gates_produce(enabled: bool) -> None. Default OFF. When ON, the cascade shifts the produce confidence floor from world-model surprise (FEP prediction-error trajectory), so the brain is more conservative (more 'I don't know') when its predictive model is surprised and more willing when it converged. The correct integration for modulatory cognitive modules (emotion/introspection/world-model) which carry no semantic content vector. Read back via get_grounded_language_diagnostics()['metacog_gates_produce']."},
+    {"set_produce_via_snn", (PyCFunction)Brain_set_produce_via_snn, METH_VARARGS,
+     "Increment-1: SNN-as-generator A/B switch — set_produce_via_snn(enabled: bool) -> None. Default OFF. When ON, grounded_language_produce sources candidate words from the SNN language bridge's per-tick Broca spike cache (decode_spikes_cached) instead of find_words_near_vector, falling back to the lexicon producer when the SNN yields no signal. Read back via get_grounded_language_diagnostics()['produce_via_snn']. Runtime-only (applied from JSON at daemon start)."},
     {"set_produce_clause_frame", (PyCFunction)Brain_set_produce_clause_frame, METH_VARARGS,
      "FND-1: toggle the SVO clause/argument frame in produce — set_produce_clause_frame(enabled: bool) -> None. Default OFF. Effective at stage>=2: builds 'the SUBJECT VERB the OBJECT' from the grounded top-K (best verb=predicate, best two nouns=agent/patient) instead of a reranked content-word bag; falls back to greedy emit on weak signal. Word order only is templated; slots are grounded-score filled. Persisted in the LANC block."},
     {"set_produce_distributional_weight", (PyCFunction)Brain_set_produce_distributional_weight, METH_VARARGS,
      "Produce-score rebalance: set the weight on the distributional (context-vector) term vs the concept-binding term in produce word scoring — set_produce_distributional_weight(w: float) -> None. raw = w*distributional + (1-w)*concept. Default 0.4 (historical split). Raise toward ~0.7 so intent-correct concrete words outrank broadly-concept-bound abstract words that otherwise monopolize produce. Clamped [0,1]. Persisted in the LANC block."},
+    {"get_produce_distributional_weight", (PyCFunction)Brain_get_produce_distributional_weight, METH_NOARGS,
+     "Produce-score rebalance: read the current distributional-vs-concept weight used in produce word scoring — get_produce_distributional_weight() -> float. Mirror of set_produce_distributional_weight; reflects the live value (JSON default applied at daemon start, or any runtime set). Also surfaced in get_grounded_language_diagnostics()['produce_distributional_weight']."},
+    {"set_produce_frequency_penalty", (PyCFunction)Brain_set_produce_frequency_penalty, METH_VARARGS,
+     "Produce-score frequency penalty: set the IDF-style damping of high-frequency words in produce scoring — set_produce_frequency_penalty(p: float) -> None. raw *= 1/(1 + p*log1p(frequency)). Default 0.0 = OFF (produce unchanged). Raise (~0.1-0.3) so distributionally-central technical-corpus vocab stops monopolizing produce filler positions (word-salad contamination). p<0 clamped to 0. Runtime-only (applied from JSON at daemon start; not LANC-persisted)."},
+    {"get_produce_frequency_penalty", (PyCFunction)Brain_get_produce_frequency_penalty, METH_NOARGS,
+     "Produce-score frequency penalty: read the current value — get_produce_frequency_penalty() -> float. 0.0 = OFF. Also surfaced in get_grounded_language_diagnostics()['produce_frequency_penalty']."},
     {"set_produce_givenness_definite", (PyCFunction)Brain_set_produce_givenness_definite, METH_VARARGS,
      "T3-1: toggle givenness-driven definiteness — set_produce_givenness_definite(enabled: bool) -> None. Default OFF. Effective at stage>=2 in the surface cascade AFTER T2 pronominalization: a NOUN re-mention (recency window) whose preceding token is 'a'/'an' has the article swapped to 'the' (case-preserving). Person nouns and unanchored re-mentions that T2-1 spared get marked given here. Persisted in the LANC block."},
     {"set_produce_t3_conjunction", (PyCFunction)Brain_set_produce_t3_conjunction, METH_VARARGS,

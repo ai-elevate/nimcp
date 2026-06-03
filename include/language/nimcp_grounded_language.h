@@ -200,6 +200,16 @@ typedef struct {
 
 } gl_lexicon_entry_t;
 
+/** Phase-2 step 3 (2026-06-02): one (word, top-concept, strength) tuple for
+ *  warm-starting the SNN concept→word projection. form_hash maps to the Broca
+ *  word_pop (form_hash % SNN_LANG_MAX_WORD_POPS) and concept_id to the Wernicke
+ *  concept_pop, matching mirror_binding_to_bridge's index math. */
+typedef struct {
+    uint32_t form_hash;
+    uint64_t concept_id;
+    float    strength;
+} gl_warmstart_binding_t;
+
 /**
  * @brief Speech-act intent label (TB-9).
  *
@@ -406,6 +416,13 @@ typedef struct {
  * @brief Grounded language system (opaque handle)
  */
 typedef struct grounded_language grounded_language_t;
+
+/** Phase-2 step 3: collect each vocab word's strongest concept binding into
+ *  `out` (up to `max`). Returns the number written. Skips words with no
+ *  bindings or zero strength. Read-only; used by
+ *  snn_language_bridge_warmstart_projection. */
+uint32_t grounded_language_collect_warmstart_bindings(
+    const grounded_language_t* gl, gl_warmstart_binding_t* out, uint32_t max);
 
 /*=============================================================================
  * Lifecycle
@@ -642,6 +659,12 @@ bool grounded_language_get_negation_enabled(
  *  abstract words (produce-collapse fix, 2026-05-27). Range [0,1]. */
 #define GL_PRODUCE_DISTRIBUTIONAL_DEFAULT_WEIGHT  0.4f
 
+/** Produce-score frequency penalty (2026-06-01). Default 0.0 = OFF (produce
+ *  scoring unchanged). Raising it damps high-frequency words via
+ *  raw *= 1/(1 + p*log1p(freq)) so distributionally-central technical-corpus
+ *  vocabulary stops monopolizing produce filler positions. Range [0,inf). */
+#define GL_PRODUCE_FREQUENCY_PENALTY_DEFAULT  0.0f
+
 /**
  * @brief Toggle TA-5 reconsolidation-on-contradiction. Default OFF.
  *
@@ -688,6 +711,22 @@ void grounded_language_set_produce_distributional_weight(
     float weight);
 
 float grounded_language_get_produce_distributional_weight(
+    const grounded_language_t* gl);
+
+/**
+ * @brief Set/get the produce-score frequency penalty (default 0.0 = OFF).
+ *
+ * Damps high-frequency words in score_word_against_vector via
+ *   raw *= 1 / (1 + penalty * log1p(entry->frequency))
+ * so distributionally-central, high-exposure technical vocabulary stops
+ * winning produce filler positions (word-salad contamination). penalty<0 is
+ * clamped to 0. Range [0, inf); ~0.1-0.3 is a reasonable starting band.
+ */
+void grounded_language_set_produce_frequency_penalty(
+    grounded_language_t* gl,
+    float penalty);
+
+float grounded_language_get_produce_frequency_penalty(
     const grounded_language_t* gl);
 
 /**
@@ -1389,6 +1428,36 @@ uint64_t grounded_language_rebind_all_to_snn_bridge(
     grounded_language_t* gl);
 
 /**
+ * @brief Pseudo-concept-id migration (2026-05-30).
+ *
+ * Walks all lexicon entries and, for each binding whose concept_id has
+ * the pseudo-concept marker bit (0x100000000ULL) set, mints a fresh
+ * real concept_id by calling semantic_memory_create_concept with the
+ * entry's distributional context_vector as features. Replaces the
+ * binding's concept_id with the new value.
+ *
+ * Pseudo-concept-ids are stamped by find_or_create_concept when
+ * gl->semantic_memory was NULL at grounding time. They never resolve
+ * via semantic_memory_get_concept, so every comprehend call on a
+ * checkpoint with pseudo-IDs has a zero concept-feature contribution
+ * to its semantic vector — the root cause of the 2026-05-29 pod-side
+ * mode collapse.
+ *
+ * No-op when gl->semantic_memory is NULL (still in pseudo-id mode),
+ * lexicon is empty, or no bindings carry the marker bit. Entries
+ * without an initialized context_vector are skipped (they need
+ * fresh grounding from sensory features, not a context-vector proxy).
+ *
+ * Safe to call at any time, but intended for one-shot use right after
+ * gl_persistence_load during checkpoint resume.
+ *
+ * @param gl  Grounded language handle
+ * @return    Count of bindings successfully remapped to real concept_ids
+ */
+uint64_t grounded_language_remap_pseudo_concept_ids(
+    grounded_language_t* gl);
+
+/**
  * @brief PA-4: train the bridge with a single (prev, next) bigram via a
  *        next-token contrastive update.
  *
@@ -2073,6 +2142,23 @@ bool grounded_language_get_produce_discourse_seed(const grounded_language_t* gl)
 void grounded_language_set_produce_clause_frame(grounded_language_t* gl,
                                                 bool enabled);
 bool grounded_language_get_produce_clause_frame(const grounded_language_t* gl);
+
+/** Increment-1 (2026-06-02): SNN-as-generator A/B switch. When ON, produce
+ *  sources candidate words from the SNN bridge's per-tick Broca spike cache,
+ *  falling back to the lexicon producer when the SNN yields no signal. Default
+ *  OFF (produce byte-identical to the lexicon path). Runtime-only. */
+void grounded_language_set_produce_via_snn(grounded_language_t* gl, bool enabled);
+bool grounded_language_get_produce_via_snn(const grounded_language_t* gl);
+
+/** Metacognitive produce-floor modulation (2026-06-02). The flag (config,
+ *  default OFF) enables it; the cascade sets the adjust per-produce from
+ *  world-model surprise / wellbeing distress / introspection confidence.
+ *  adjust>0 raises the produce confidence floor (more "I don't know"),
+ *  adjust<0 lowers it. Clamped [-1,1]; floor re-clamped [0,1] at use. */
+void grounded_language_set_metacog_gates_produce(grounded_language_t* gl, bool enabled);
+bool grounded_language_get_metacog_gates_produce(const grounded_language_t* gl);
+void grounded_language_set_metacog_floor_adjust(grounded_language_t* gl, float adjust);
+float grounded_language_get_metacog_floor_adjust(const grounded_language_t* gl);
 
 /**
  * @brief Tier 2 produce-side pronominalization pass. Conservative,
