@@ -507,29 +507,33 @@ bool nimcp_brain_factory_init_language_pops(brain_t brain) {
         /* Unconditional diagnostic so a soak can tell "flag off" from "flag on
          * but wiring returned 0" from "branch never reached" — the 2026-06-02
          * soak couldn't disambiguate. */
-        LOG_INFO(LOG_MODULE,
-                 "PROJ-DIAG: NIMCP_LANG_PROJECTION=%s wernicke_id=%d broca_id=%d",
+        /* NOTE: LOG_INFO/LOG_WARN take the FORMAT STRING first — passing
+         * LOG_MODULE first (as the rest of this file mistakenly does) makes the
+         * module name the format and DROPS the message. Put the tag inside the
+         * string so PROJ-DIAG actually renders. ASCII-only (no arrow). */
+        LOG_INFO("[BRAIN_INIT_LANG_POPS] PROJ-DIAG: NIMCP_LANG_PROJECTION=%s "
+                 "wernicke_id=%d broca_id=%d",
                  lang_proj_env ? lang_proj_env : "(unset)", wernicke_id, broca_id);
         if (lang_proj_env && lang_proj_env[0] == '1') {
             uint64_t proj_syn = connect_pop_pair(snn, wernicke_id, broca_id,
                                                  0.0015f, 0.0f, 0.005f);
-            LOG_INFO(LOG_MODULE, "PROJ-DIAG: connect_pop_pair(wernicke→broca) "
-                     "returned %llu synapses", (unsigned long long)proj_syn);
+            LOG_INFO("[BRAIN_INIT_LANG_POPS] PROJ-DIAG: connect_pop_pair("
+                     "wernicke->broca) returned %llu synapses",
+                     (unsigned long long)proj_syn);
             if (proj_syn > 0) {
                 syn_total += proj_syn;
                 (void)snn_network_set_pop_exclude_from_plasticity(
                     snn, (uint32_t)wernicke_id, true);
                 (void)snn_network_set_pop_exclude_from_plasticity(
                     snn, (uint32_t)broca_id, true);
-                LOG_INFO(LOG_MODULE,
-                         "Phase-2 concept→word projection wired: wernicke=%d → "
-                         "broca=%d, %llu synapses (~0.15%% sparse); both pops "
-                         "excluded from global homeostasis/R-STDP/reward",
+                LOG_INFO("[BRAIN_INIT_LANG_POPS] Phase-2 concept->word projection "
+                         "wired: wernicke=%d -> broca=%d, %llu synapses (~0.15%% "
+                         "sparse); both pops excluded from global homeostasis/"
+                         "R-STDP/reward",
                          wernicke_id, broca_id, (unsigned long long)proj_syn);
             } else {
-                LOG_WARN(LOG_MODULE,
-                         "Phase-2 concept→word projection wiring returned 0 — "
-                         "skipped");
+                LOG_WARN("[BRAIN_INIT_LANG_POPS] Phase-2 concept->word projection "
+                         "wiring returned 0 - skipped");
             }
         }
     }
