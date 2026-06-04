@@ -424,6 +424,13 @@ typedef struct grounded_language grounded_language_t;
 uint32_t grounded_language_collect_warmstart_bindings(
     const grounded_language_t* gl, gl_warmstart_binding_t* out, uint32_t max);
 
+/** Phase-2 produce-step: top-`max` DISTINCT concept_ids whose words best match
+ *  the intent vector (by distributional cosine). These are seeded into Wernicke
+ *  to drive SNN generation through the concept→word projection. Returns count. */
+uint32_t grounded_language_top_concepts_for_intent(
+    const grounded_language_t* gl, const float* intent, uint32_t dim,
+    uint64_t* out_concept_ids, uint32_t max);
+
 /*=============================================================================
  * Lifecycle
  *===========================================================================*/

@@ -5018,6 +5018,29 @@ nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float 
     return (updated >= 0) ? NIMCP_OK : NIMCP_ERROR;
 }
 
+nimcp_status_t nimcp_brain_snn_language_generate_step(nimcp_brain_t brain,
+                                                      const float* intent,
+                                                      uint32_t dim,
+                                                      uint32_t n_steps) {
+    brain_t b = NULL;
+    nimcp_status_t s = _gl_diag_validate(brain, &b);
+    if (s != NIMCP_OK) return s;
+    if (!b->snn_lang_bridge || !b->snn_network || !b->grounded_lang || !intent) {
+        return NIMCP_ERROR;
+    }
+    int wid = snn_network_find_pop_by_name(b->snn_network, "wernicke_substrate");
+    int bid = snn_network_find_pop_by_name(b->snn_network, "broca_substrate");
+    if (wid < 0 || bid < 0) return NIMCP_ERROR;   /* projection/pops absent */
+    uint64_t concept_ids[32];
+    uint32_t nc = grounded_language_top_concepts_for_intent(
+        b->grounded_lang, intent, dim, concept_ids, 32);
+    if (nc == 0) return NIMCP_ERROR;              /* no concept seed → caller falls back */
+    int rc = snn_language_bridge_generate_step(
+        b->snn_lang_bridge, b->snn_network, wid, bid,
+        concept_ids, nc, n_steps, 1.0f);
+    return (rc == 0) ? NIMCP_OK : NIMCP_ERROR;
+}
+
 nimcp_status_t nimcp_brain_set_produce_distributional_weight(nimcp_brain_t brain, float weight) {
     brain_t b = NULL;
     nimcp_status_t s = _gl_diag_validate(brain, &b);

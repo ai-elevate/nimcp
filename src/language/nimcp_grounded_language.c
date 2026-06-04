@@ -4357,6 +4357,49 @@ uint32_t grounded_language_collect_warmstart_bindings(
     return n;
 }
 
+uint32_t grounded_language_top_concepts_for_intent(
+    const grounded_language_t* gl, const float* intent, uint32_t dim,
+    uint64_t* out_concept_ids, uint32_t max) {
+    if (!gl || !intent || !out_concept_ids || max == 0 || !gl->vocab_list) return 0;
+    /* Score every word's distributional context_vector against the intent and
+     * keep the top-`max` DISTINCT concept_ids (each word's strongest binding).
+     * These are the concepts to seed into Wernicke for SNN generation: the
+     * concept→word projection then drives Broca toward the associated words.
+     * Mirrors find_words_near_vector's scoring but returns concepts, not words. */
+    uint32_t cmp = (dim < gl->semantic_dim) ? dim : gl->semantic_dim;
+    uint64_t best_ids[64];
+    float    best_sc[64];
+    uint32_t cnt = 0;
+    if (max > 64) max = 64;
+    for (uint32_t v = 0; v < gl->vocab_count; v++) {
+        const gl_lexicon_entry_t* e = gl->vocab_list[v];
+        if (!e || !e->context_initialized || !e->context_vector ||
+            e->binding_count == 0 || !e->bindings) continue;
+        float sim = cosine_similarity(intent, e->context_vector, cmp);
+        if (!(sim > 0.0f)) continue;
+        const gl_word_binding_t* top = &e->bindings[0];
+        for (uint32_t b = 1; b < e->binding_count; b++)
+            if (e->bindings[b].strength > top->strength) top = &e->bindings[b];
+        uint64_t cid = top->concept_id;
+        /* Skip if this concept_id is already collected (distinct). */
+        bool dup = false;
+        for (uint32_t k = 0; k < cnt; k++) if (best_ids[k] == cid) { dup = true; break; }
+        if (dup) continue;
+        /* Insertion sort by sim, keep top-max. */
+        if (cnt < max) {
+            uint32_t p = cnt;
+            while (p > 0 && best_sc[p-1] < sim) { best_ids[p]=best_ids[p-1]; best_sc[p]=best_sc[p-1]; p--; }
+            best_ids[p] = cid; best_sc[p] = sim; cnt++;
+        } else if (sim > best_sc[max-1]) {
+            uint32_t p = max-1;
+            while (p > 0 && best_sc[p-1] < sim) { best_ids[p]=best_ids[p-1]; best_sc[p]=best_sc[p-1]; p--; }
+            best_ids[p] = cid; best_sc[p] = sim;
+        }
+    }
+    for (uint32_t k = 0; k < cnt; k++) out_concept_ids[k] = best_ids[k];
+    return cnt;
+}
+
 void grounded_language_set_produce_givenness_definite(grounded_language_t* gl,
                                                       bool enabled) {
     if (gl) gl->produce_givenness_definite = enabled;

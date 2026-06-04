@@ -835,11 +835,84 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
     }
     nimcp_free(binds);
     (void)snn_csr_sync_weights_to_gpu(csr);  /* H->D so the running SNN sees it */
-    LOG_INFO(LOG_MODULE,
-             "warmstart_projection: %u lexicon bindings → %d projection synapses set "
-             "(wernicke=%d→broca=%d, k=%.3f)",
+    LOG_INFO("[snn_lang_bridge] warmstart_projection: %u lexicon bindings -> %d "
+             "projection synapses set (wernicke=%d->broca=%d, k=%.3f)",
              nb, updated, wernicke_pop_id, broca_pop_id, (double)k);
     return updated;
+}
+
+/* Phase-2 produce-time SNN generation step (2026-06-03). THE generator: seed the
+ * intent's concepts into the Wernicke concept ensembles (external_current), step
+ * the whole SNN n_steps times so the concept->word projection drives Broca, then
+ * copy Broca's spike_output into broca_spike_cache for decode_spikes_cached to
+ * read. This is what makes the SNN GENERATE from intent (vs reading stale cached
+ * training activity). Clears the injected current on exit so it doesn't bleed
+ * into subsequent ticks.
+ *
+ * COST: there is no scoped stepper — snn_network_step advances the ENTIRE ~2M-
+ * neuron network, so this adds n_steps * (~full-step latency) to produce. Use a
+ * small n_steps (4-8). Default-OFF, opt-in only.
+ *
+ * UNVALIDATED: written against the documented APIs but never executed end-to-end
+ * (no runnable full-brain env this session). Returns 0 on success, -1 on error. */
+int snn_language_bridge_generate_step(snn_language_bridge_t* bridge,
+                                      struct snn_network_s* net,
+                                      int wernicke_pop_id, int broca_pop_id,
+                                      const uint64_t* concept_ids, uint32_t n_concepts,
+                                      uint32_t n_steps, float inject_current)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
+        wernicke_pop_id < 0 || broca_pop_id < 0 || !concept_ids || n_concepts == 0) {
+        return -1;
+    }
+    snn_population_t* wern  = snn_network_get_population(net, (uint32_t)wernicke_pop_id);
+    snn_population_t* broca = snn_network_get_population(net, (uint32_t)broca_pop_id);
+    if (!wern || !broca || !wern->external_current || !broca->spike_output) return -1;
+    const uint32_t wern_n  = wern->n_neurons;
+    const uint32_t broca_n = broca->n_neurons;
+    if (wern_n == 0 || broca_n == 0) return -1;
+    if (n_steps == 0) n_steps = 4;
+    if (!(inject_current > 0.0f)) inject_current = 1.0f;
+
+    /* 1. Seed the concept ensembles into Wernicke's external_current. Track the
+     * touched neurons so we can clear exactly those afterwards. */
+    enum { MAXC = 64 };
+    if (n_concepts > MAXC) n_concepts = MAXC;
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        uint32_t concept_pop = (uint32_t)(concept_ids[c] % SNN_LANG_MAX_CONCEPT_POPS);
+        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+            uint32_t nrn = lang_ensemble_neuron(concept_pop, j, wern_n);
+            wern->external_current[nrn] = inject_current;
+        }
+    }
+
+    /* 2. Step the whole network so the projection propagates concept->word. */
+    for (uint32_t s = 0; s < n_steps; s++) {
+        (void)snn_network_step(net, 1.0f /* dt_ms */);
+    }
+
+    /* 3. Copy Broca's resulting spikes into the decode cache. */
+    const float* spikes = (const float*)nimcp_tensor_data(broca->spike_output);
+    if (spikes) {
+        if (!bridge->broca_spike_cache || bridge->broca_spike_cache_cap < broca_n) {
+            if (bridge->broca_spike_cache) nimcp_free(bridge->broca_spike_cache);
+            bridge->broca_spike_cache = (float*)nimcp_calloc(broca_n, sizeof(float));
+            bridge->broca_spike_cache_cap = bridge->broca_spike_cache ? broca_n : 0u;
+        }
+        if (bridge->broca_spike_cache && bridge->broca_spike_cache_cap >= broca_n) {
+            memcpy(bridge->broca_spike_cache, spikes, (size_t)broca_n * sizeof(float));
+        }
+    }
+
+    /* 4. Clear the injected current so it doesn't drive subsequent ticks. */
+    for (uint32_t c = 0; c < n_concepts; c++) {
+        uint32_t concept_pop = (uint32_t)(concept_ids[c] % SNN_LANG_MAX_CONCEPT_POPS);
+        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+            uint32_t nrn = lang_ensemble_neuron(concept_pop, j, wern_n);
+            wern->external_current[nrn] = 0.0f;
+        }
+    }
+    return (spikes != NULL) ? 0 : -1;
 }
 
 #if 0  /* Old decode_spikes body — retained only for reference; Slice B will

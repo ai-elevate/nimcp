@@ -751,6 +751,18 @@ int snn_language_bridge_warmstart_projection(
     int broca_pop_id,
     float k, float lr);   /* lr>=1: overwrite (warm-start); 0<lr<1: EMA (online train) */
 
+/** Phase-2 produce-time SNN generation step (2026-06-03): seed `concept_ids` into
+ *  Wernicke, step the whole SNN n_steps, copy Broca spikes into the decode cache
+ *  (then decode_spikes_cached reads intent-driven activity). Clears injection on
+ *  exit. COST: snn_network_step advances the FULL network — keep n_steps small.
+ *  Default-OFF / opt-in. Returns 0 on success, -1 on error. */
+int snn_language_bridge_generate_step(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id, int broca_pop_id,
+    const uint64_t* concept_ids, uint32_t n_concepts,
+    uint32_t n_steps, float inject_current);
+
 /** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
  *
  * Pulls the standard top-K from snn_language_bridge_decode_spikes (cosine

@@ -1768,6 +1768,17 @@ nimcp_status_t nimcp_brain_get_metacog_gates_produce(nimcp_brain_t brain, bool* 
 nimcp_status_t nimcp_brain_warmstart_lang_projection(nimcp_brain_t brain, float k,
                                                      int* out_updated);
 
+/** Phase-2 produce-time SNN generation step (2026-06-03): seed the intent's
+ *  concepts into Wernicke, step the SNN n_steps, leave Broca's spikes in the
+ *  decode cache for produce_via_snn to read. The step that makes the SNN
+ *  GENERATE from intent. COST: steps the full network — small n_steps only.
+ *  Returns NIMCP_ERROR (caller falls back to lexicon) when projection/pops
+ *  absent or no concept seed. */
+nimcp_status_t nimcp_brain_snn_language_generate_step(nimcp_brain_t brain,
+                                                      const float* intent,
+                                                      uint32_t dim,
+                                                      uint32_t n_steps);
+
 /** Produce-score rebalance: weight on the distributional (context-vector)
  *  term vs the concept-binding term in produce word scoring
  *  (raw = w*distributional + (1-w)*concept). Default 0.4 = historical split;

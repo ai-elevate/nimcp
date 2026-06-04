@@ -29,6 +29,7 @@
  * supervised plasticity API to apply (self_match - baseline) reward to
  * every produced word's (intent → word_pop) binding. */
 #include "snn/bridges/nimcp_snn_language_bridge.h"
+#include "snn/nimcp_snn_network.h"   /* produce-time SNN generation step */
 
 /* Speech-repair (disfluency cleaner) — applied to brain's own utterance
  * before Stage 8 (self-comprehension) so self_match measures intent vs.
@@ -1308,6 +1309,35 @@ static int cascade_stage_lexical(brain_t brain,
      * meaningfully different from grounded_respond — the intent has
      * been shaped by drive + episodic + (eventually) listener +
      * goal stages. */
+    /* Produce-time SNN generation step (2026-06-03). When produce_via_snn is ON,
+     * seed the cognitively-integrated content_intent's concepts into Wernicke and
+     * step the SNN so the concept->word projection drives Broca; produce then
+     * reads that fresh intent-driven Broca activity (decode_spikes_cached) instead
+     * of stale training spikes. This is what makes the SNN GENERATE the output.
+     * Gated additionally on NIMCP_LANG_PRODUCE_STEPS>0 (the whole-network step is
+     * expensive) so it's fully opt-in. On any failure produce falls back to the
+     * lexicon path as before — never blocks output. */
+    if (grounded_language_get_produce_via_snn(brain->grounded_lang) &&
+        brain->snn_lang_bridge && brain->snn_network) {
+        const char* steps_env = getenv("NIMCP_LANG_PRODUCE_STEPS");
+        uint32_t n_steps = (steps_env && steps_env[0]) ? (uint32_t)atoi(steps_env) : 0u;
+        if (n_steps > 0u && n_steps <= 64u) {
+            int wid = snn_network_find_pop_by_name(brain->snn_network, "wernicke_substrate");
+            int bid = snn_network_find_pop_by_name(brain->snn_network, "broca_substrate");
+            if (wid >= 0 && bid >= 0) {
+                uint64_t cids[32];
+                uint32_t nc = grounded_language_top_concepts_for_intent(
+                    brain->grounded_lang, state->content_intent,
+                    state->content_dim, cids, 32);
+                if (nc > 0) {
+                    (void)snn_language_bridge_generate_step(
+                        brain->snn_lang_bridge, brain->snn_network, wid, bid,
+                        cids, nc, n_steps, 1.0f);
+                }
+            }
+        }
+    }
+
     gl_production_result_t prod = {0};
     int rc = grounded_language_produce(brain->grounded_lang,
                                         state->content_intent,
