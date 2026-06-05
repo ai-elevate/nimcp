@@ -99,6 +99,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_concept_registry_live_binding  # Walkthrough-2: gl→registry live wiring
     test_lang_stage_scaffolding     # Slice E: stage constraints
     test_snn_negative_da            # Slice F: SNN STDP under negative DA
+    test_snn_generate_step          # Produce-time SNN step: inject→step→decode
     # ============================================================
     # REMOVED in walkthrough-1 (Option-1 rebuild) — these asserted
     # bridge STDP / weight-matrix / produce-from-bindings behavior

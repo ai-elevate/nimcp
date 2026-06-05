@@ -874,33 +874,46 @@ int snn_language_bridge_generate_step(snn_language_bridge_t* bridge,
     if (n_steps == 0) n_steps = 4;
     if (!(inject_current > 0.0f)) inject_current = 1.0f;
 
-    /* 1. Seed the concept ensembles into Wernicke's external_current. Track the
-     * touched neurons so we can clear exactly those afterwards. */
+    /* Ensure the Broca decode cache exists and is zeroed before the window —
+     * we ACCUMULATE spike counts across all n_steps into it (see below). */
+    if (!bridge->broca_spike_cache || bridge->broca_spike_cache_cap < broca_n) {
+        if (bridge->broca_spike_cache) nimcp_free(bridge->broca_spike_cache);
+        bridge->broca_spike_cache = (float*)nimcp_calloc(broca_n, sizeof(float));
+        bridge->broca_spike_cache_cap = bridge->broca_spike_cache ? broca_n : 0u;
+    }
+    float* bcache = (bridge->broca_spike_cache &&
+                     bridge->broca_spike_cache_cap >= broca_n)
+                  ? bridge->broca_spike_cache : NULL;
+    if (bcache) memset(bcache, 0, (size_t)broca_n * sizeof(float));
+
+    /* 1+2+3. Drive + step + accumulate. Two physics facts shape this loop:
+     *   - snn_network_step ZEROES external_current at the end of each step
+     *     (it's consumed within the step), so the concept seed must be
+     *     RE-INJECTED before every step to keep Wernicke firing across the
+     *     window — inject-once drives only step 1 and Broca never sustains.
+     *   - Broca's spike_output is a single-step snapshot: on any given step a
+     *     just-fired neuron is in reset/refractory and reads 0. Snapshotting
+     *     only the LAST step therefore loses most of the produced activity
+     *     (validated: last-step snapshot yields decode=0). So accumulate the
+     *     per-neuron spike COUNT over the whole window — that's the Broca
+     *     firing-rate signal decode_spikes_cached actually wants. */
     enum { MAXC = 64 };
     if (n_concepts > MAXC) n_concepts = MAXC;
-    for (uint32_t c = 0; c < n_concepts; c++) {
-        uint32_t concept_pop = (uint32_t)(concept_ids[c] % SNN_LANG_MAX_CONCEPT_POPS);
-        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
-            uint32_t nrn = lang_ensemble_neuron(concept_pop, j, wern_n);
-            wern->external_current[nrn] = inject_current;
-        }
-    }
-
-    /* 2. Step the whole network so the projection propagates concept->word. */
+    int any_spikes = 0;
     for (uint32_t s = 0; s < n_steps; s++) {
-        (void)snn_network_step(net, 1.0f /* dt_ms */);
-    }
-
-    /* 3. Copy Broca's resulting spikes into the decode cache. */
-    const float* spikes = (const float*)nimcp_tensor_data(broca->spike_output);
-    if (spikes) {
-        if (!bridge->broca_spike_cache || bridge->broca_spike_cache_cap < broca_n) {
-            if (bridge->broca_spike_cache) nimcp_free(bridge->broca_spike_cache);
-            bridge->broca_spike_cache = (float*)nimcp_calloc(broca_n, sizeof(float));
-            bridge->broca_spike_cache_cap = bridge->broca_spike_cache ? broca_n : 0u;
+        for (uint32_t c = 0; c < n_concepts; c++) {
+            uint32_t concept_pop = (uint32_t)(concept_ids[c] % SNN_LANG_MAX_CONCEPT_POPS);
+            for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+                uint32_t nrn = lang_ensemble_neuron(concept_pop, j, wern_n);
+                wern->external_current[nrn] = inject_current;
+            }
         }
-        if (bridge->broca_spike_cache && bridge->broca_spike_cache_cap >= broca_n) {
-            memcpy(bridge->broca_spike_cache, spikes, (size_t)broca_n * sizeof(float));
+        (void)snn_network_step(net, 1.0f /* dt_ms */);
+        const float* spikes = (const float*)nimcp_tensor_data(broca->spike_output);
+        if (spikes && bcache) {
+            for (uint32_t n = 0; n < broca_n; n++) {
+                if (spikes[n] > 0.5f) { bcache[n] += 1.0f; any_spikes = 1; }
+            }
         }
     }
 
@@ -912,7 +925,8 @@ int snn_language_bridge_generate_step(snn_language_bridge_t* bridge,
             wern->external_current[nrn] = 0.0f;
         }
     }
-    return (spikes != NULL) ? 0 : -1;
+    (void)any_spikes;  /* 0 spikes is a valid (cold) result, not an error */
+    return (bcache != NULL) ? 0 : -1;
 }
 
 #if 0  /* Old decode_spikes body — retained only for reference; Slice B will
