@@ -441,6 +441,13 @@ def _apply_runtime_lang_config(brain, logger):
         # (cfg-key, method, extractor)
         ("respond_via_cascade",                "set_respond_via_cascade",                _bool),
         ("reason_in_content",                  "set_reason_in_content",                  _bool),
+        # Non-SNN networks → language content_intent (2026-06-05). Every network
+        # except the FNO feeds the SNN language generator via the cascade content
+        # stage. All default OFF; file-applied at daemon start (no live RPC).
+        ("ann_in_content",                     "set_ann_in_content",                     _bool),
+        ("lnn_in_content",                     "set_lnn_in_content",                     _bool),
+        ("hnn_in_content",                     "set_hnn_in_content",                     _bool),
+        ("cnn_in_content",                     "set_cnn_in_content",                     _bool),
         ("cascade_self_train_enabled",         "set_cascade_self_train_enabled",         _bool),
         ("lateral_inhibition_enabled",         "set_lateral_inhibition_enabled",         _bool),
         ("thalamic_gate_enabled",              "set_thalamic_gate_enabled",              _bool),

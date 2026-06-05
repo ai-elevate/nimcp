@@ -4523,6 +4523,37 @@ static PyObject* Brain_get_reason_in_content(BrainObject* self, PyObject* args) 
     return PyBool_FromLong(enabled);
 }
 
+/* Non-SNN networks → language content_intent (2026-06-05). One set/get pair per
+ * network, all sharing the reason_in_content shape via a macro. */
+#define NIMCP_PY_CASCADE_NET_GATE(NAME)                                          \
+static PyObject* Brain_set_##NAME(BrainObject* self, PyObject* args) {            \
+    if (!self->brain) {                                                          \
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;\
+    }                                                                            \
+    int enabled = 0;                                                            \
+    if (!PyArg_ParseTuple(args, "p", &enabled)) return NULL;                     \
+    if (nimcp_brain_set_##NAME(self->brain, enabled ? true : false) != NIMCP_OK){ \
+        PyErr_SetString(PyExc_RuntimeError, "set_" #NAME " failed"); return NULL; \
+    }                                                                            \
+    Py_RETURN_NONE;                                                             \
+}                                                                                \
+static PyObject* Brain_get_##NAME(BrainObject* self, PyObject* args) {            \
+    (void)args;                                                                  \
+    if (!self->brain) {                                                          \
+        PyErr_SetString(PyExc_RuntimeError, "Brain not initialized"); return NULL;\
+    }                                                                            \
+    bool enabled = false;                                                       \
+    if (nimcp_brain_get_##NAME(self->brain, &enabled) != NIMCP_OK) {             \
+        PyErr_SetString(PyExc_RuntimeError, "get_" #NAME " failed"); return NULL; \
+    }                                                                            \
+    return PyBool_FromLong(enabled);                                            \
+}
+NIMCP_PY_CASCADE_NET_GATE(ann_in_content)
+NIMCP_PY_CASCADE_NET_GATE(lnn_in_content)
+NIMCP_PY_CASCADE_NET_GATE(hnn_in_content)
+NIMCP_PY_CASCADE_NET_GATE(cnn_in_content)
+#undef NIMCP_PY_CASCADE_NET_GATE
+
 /* Slice 6 — thalamic gating of cascade-stage bandwidth.
  *
  * set_thalamic_gate_enabled(enabled: bool) -> None
@@ -13125,6 +13156,24 @@ static PyMethodDef Brain_methods[] = {
      "Tier 1 Step E: opt-in reasoning-conclusion blend into the cascade content intent — set_reason_in_content(enabled: bool) -> None. Default OFF. When ON (and reasoning_engine_enabled), respond invokes the reasoning engine once per prompt and biases production toward the conclusion. Adds reasoning-pass latency; no effect unless respond_via_cascade is also ON."},
     {"get_reason_in_content", (PyCFunction)Brain_get_reason_in_content, METH_NOARGS,
      "Read the current reason_in_content flag (Tier 1 Step E)."},
+    /* Non-SNN networks → language content_intent (2026-06-05). All default OFF;
+     * no effect unless respond_via_cascade is also ON. */
+    {"set_ann_in_content", (PyCFunction)Brain_set_ann_in_content, METH_VARARGS,
+     "Opt-in: blend the main ANN's last decision output_vector into the cascade content intent — set_ann_in_content(enabled: bool) -> None. Default OFF."},
+    {"get_ann_in_content", (PyCFunction)Brain_get_ann_in_content, METH_NOARGS,
+     "Read the ann_in_content flag."},
+    {"set_lnn_in_content", (PyCFunction)Brain_set_lnn_in_content, METH_VARARGS,
+     "Opt-in: blend the LNN liquid (temporal-context) state into the cascade content intent — set_lnn_in_content(enabled: bool) -> None. Default OFF."},
+    {"get_lnn_in_content", (PyCFunction)Brain_get_lnn_in_content, METH_NOARGS,
+     "Read the lnn_in_content flag."},
+    {"set_hnn_in_content", (PyCFunction)Brain_set_hnn_in_content, METH_VARARGS,
+     "Opt-in: HNN energy-deviation modulates the produce confidence floor (HNN has no semantic vector) — set_hnn_in_content(enabled: bool) -> None. Default OFF."},
+    {"get_hnn_in_content", (PyCFunction)Brain_get_hnn_in_content, METH_NOARGS,
+     "Read the hnn_in_content flag."},
+    {"set_cnn_in_content", (PyCFunction)Brain_set_cnn_in_content, METH_VARARGS,
+     "Opt-in: blend the visual cortex's cached feature embedding into the cascade content intent (no-op until vision is driven) — set_cnn_in_content(enabled: bool) -> None. Default OFF."},
+    {"get_cnn_in_content", (PyCFunction)Brain_get_cnn_in_content, METH_NOARGS,
+     "Read the cnn_in_content flag."},
     {"set_thalamic_gate_enabled", (PyCFunction)Brain_set_thalamic_gate_enabled, METH_VARARGS,
      "Slice 6 — toggle thalamic gating of cascade-stage bandwidth — set_thalamic_gate_enabled(enabled: bool) -> None. Default OFF preserves byte-identical legacy behavior. When ON, the cascade derives per-stage gate weights from arousal (NE) + attention (ACh) state and scales each stage's scaleable contributions accordingly. Models the pulvinar's role as central relay + gain controller."},
     {"get_thalamic_gate_enabled", (PyCFunction)Brain_get_thalamic_gate_enabled, METH_NOARGS,

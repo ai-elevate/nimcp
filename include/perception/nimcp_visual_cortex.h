@@ -1119,6 +1119,25 @@ int visual_cortex_extract_features_tensor(
 uint32_t visual_cortex_get_feature_dim(const visual_cortex_t* cortex);
 
 /**
+ * @brief Copy the last-computed normalized feature embedding (no image needed).
+ *
+ * WHAT: Return the cached final feature vector from the most recent
+ *       visual_cortex_process(). WHY: consumers like the language cascade want
+ *       the cortex's current perceptual state but have no image at call time.
+ *       HOW: memcpy up to min(feature_dim, max_out) floats; *out_n receives the
+ *       count (0 when the cortex has never processed an image → caller no-ops).
+ *
+ * @param cortex  Visual cortex instance
+ * @param out     Destination buffer
+ * @param max_out Capacity of out (floats)
+ * @param out_n   Receives number of floats written
+ * @return 0 on success (incl. idle 0-count), -1 on NULL args
+ */
+int visual_cortex_get_cached_features(const visual_cortex_t* cortex,
+                                      float* out, uint32_t max_out,
+                                      uint32_t* out_n);
+
+/**
  * @brief Enable/disable activation caching for training
  *
  * WHAT: Toggle caching of intermediate activations

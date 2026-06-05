@@ -30,6 +30,7 @@
  * every produced word's (intent → word_pop) binding. */
 #include "snn/bridges/nimcp_snn_language_bridge.h"
 #include "snn/nimcp_snn_network.h"   /* produce-time SNN generation step */
+#include "lnn/nimcp_lnn.h"           /* lnn_get_state — LNN liquid state → intent */
 
 /* Speech-repair (disfluency cleaner) — applied to brain's own utterance
  * before Stage 8 (self-comprehension) so self_match measures intent vs.
@@ -910,6 +911,16 @@ static int cascade_stage_content(brain_t brain,
     const float w_discourse    = 0.15f;
     const float w_imagination  = 0.2f;
     const float w_reasoning    = 0.3f;
+    /* Non-SNN networks → content_intent (2026-06-05, directive: every network
+     * except FNO feeds the language generator). ANN holds the brain's learned
+     * decision representation (highest, 0.25); LNN the liquid temporal-context
+     * state (0.2, relevant to sequential generation); CNN the perceptual
+     * embedding (0.1 — lowest, and usually idle/no-op until vision is driven).
+     * HNN carries no semantic vector and instead modulates the produce floor
+     * (see the metacog block below), so it has no weight here. All default-OFF. */
+    const float w_ann          = 0.25f;
+    const float w_lnn          = 0.2f;
+    const float w_cnn          = 0.1f;
 
     /* 1. Seed from prompt comprehend (if provided). */
     if (prompt_intent && prompt_dim > 0) {
@@ -1101,6 +1112,68 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
+    /* 5g. ANN (main feed-forward net) → content_intent. The brain's most
+     * recent decision output_vector is its learned classification/decision
+     * representation of the current input — "what the brain just judged this
+     * to be". Blending it biases production toward concepts consistent with
+     * that judgment. last_decision is the cached pointer to the most recent
+     * brain_decide() result; NULL (no decision yet) → clean no-op. The vector
+     * is finite-guarded; a stale value from an earlier decide is acceptable as
+     * a soft bias (same "current cognitive state" semantics as WM/discourse).
+     * Default-OFF via cascade_ann_in_content. */
+    if (brain->cascade_ann_in_content &&
+        brain->last_decision &&
+        brain->last_decision->output_vector &&
+        brain->last_decision->output_size > 0) {
+        uint32_t copy = (brain->last_decision->output_size < dim)
+                          ? brain->last_decision->output_size : dim;
+        for (uint32_t j = 0; j < copy; j++) {
+            float v = brain->last_decision->output_vector[j];
+            if (isfinite(v)) state->content_intent[j] += w_ann * v;
+        }
+    }
+
+    /* 5h. LNN (liquid net) → content_intent. The liquid state is the network's
+     * temporal-context reservoir — what it is "currently holding" from the
+     * input sequence. Directly relevant to sequential/autoregressive
+     * generation. lnn_get_state CLONES a tensor under the network lock (UAF-
+     * free); we copy out the flattened state, then destroy the clone. Idle or
+     * absent LNN → clean no-op. Default-OFF via cascade_lnn_in_content. */
+    if (brain->cascade_lnn_in_content && brain->lnn_network) {
+        nimcp_tensor_t* lstate = NULL;
+        if (lnn_get_state(brain->lnn_network, &lstate) == 0 && lstate) {
+            const float* sd = (const float*)nimcp_tensor_data(lstate);
+            uint32_t n = (uint32_t)nimcp_tensor_numel(lstate);
+            if (sd && n > 0) {
+                uint32_t copy = (n < dim) ? n : dim;
+                for (uint32_t j = 0; j < copy; j++) {
+                    float v = sd[j];
+                    if (isfinite(v)) state->content_intent[j] += w_lnn * v;
+                }
+            }
+            nimcp_tensor_destroy(lstate);
+        }
+    }
+
+    /* 5i. CNN (visual cortex) → content_intent. The cached feature embedding
+     * is the cortex's perceptual representation of the last image it processed.
+     * In text-only training the cortex is rarely driven, so the cache is empty
+     * and the getter returns out_n=0 → clean no-op; when vision IS active this
+     * grounds production in what the brain is seeing. dim<=4096 guard bounds
+     * the stack buffer. Default-OFF via cascade_cnn_in_content. */
+    if (brain->cascade_cnn_in_content && brain->visual_cortex && dim <= 4096u) {
+        float cnn_buf[4096];
+        uint32_t cn = 0;
+        if (visual_cortex_get_cached_features(brain->visual_cortex,
+                                              cnn_buf, dim, &cn) == 0 && cn > 0) {
+            uint32_t copy = (cn < dim) ? cn : dim;
+            for (uint32_t j = 0; j < copy; j++) {
+                float v = cnn_buf[j];
+                if (isfinite(v)) state->content_intent[j] += w_cnn * v;
+            }
+        }
+    }
+
     /* 5f. Metacognitive produce-floor modulation (2026-06-02). The modulatory
      * cognitive modules (world-model, introspection, emotion) carry no semantic
      * content vector, so instead of blending into content_intent they shift the
@@ -1109,12 +1182,22 @@ static int cascade_stage_content(brain_t brain,
      * error trajectory over the recurrent settle. A model that converged
      * (terminal << initial) is confident → lower the floor slightly; one that
      * stayed surprised (terminal ~ initial) → raise it. Bounded + gated;
-     * default-OFF flag keeps the base stage floor unchanged. TWO modulatory
+     * default-OFF flag keeps the base stage floor unchanged. THREE modulatory
      * signals fold into the adjust: world-model SURPRISE (FEP prediction-error
-     * trajectory) and INTROSPECTION distress (wellbeing self-assessment). */
+     * trajectory), INTROSPECTION distress (wellbeing self-assessment), and —
+     * when cascade_hnn_in_content is on — HNN energy-deviation: the Hamiltonian
+     * net carries no semantic vector, so its conservation drift modulates
+     * assertiveness instead. Well-conserved dynamics (low deviation) → confident
+     * → lower the floor; large drift (unstable) → raise it. The block runs if
+     * EITHER metacog gating OR the HNN flag is on, so HNN can drive the floor
+     * even with metacog off. */
     if (brain->grounded_lang &&
-        grounded_language_get_metacog_gates_produce(brain->grounded_lang)) {
+        (grounded_language_get_metacog_gates_produce(brain->grounded_lang) ||
+         brain->cascade_hnn_in_content)) {
         float adjust = 0.0f;
+        const bool metacog_on =
+            grounded_language_get_metacog_gates_produce(brain->grounded_lang);
+        if (metacog_on) {
         /* (i) World-model surprise: FEP PE terminal/initial over the recurrent
          * settle. Converged (terminal << initial) → confident → lower the floor;
          * still-surprised (terminal ~ initial) → raise it. */
@@ -1136,6 +1219,20 @@ static int cascade_stage_content(brain_t brain,
         if (isfinite(distress) && distress > 0.0f) {
             if (distress > 1.0f) distress = 1.0f;
             adjust += distress * 0.15f;
+        }
+        }  /* end if (metacog_on) */
+
+        /* (iii) HNN energy-deviation → assertiveness. |H(t)-H(0)|/|H(0)| from
+         * the Hamiltonian layer, cached on network_metrics by the learn loop.
+         * Near 0 == well conserved (stable dynamics) → small negative nudge
+         * (confident, lower floor); large drift → positive nudge (raise floor).
+         * Centered at 0.25 and bounded to ~[-0.05,+0.15]. Absent HNN leaves the
+         * metric at 0 → a tiny confident nudge, harmless and flag-gated. */
+        if (brain->cascade_hnn_in_content) {
+            float dev = brain->network_metrics.hnn_energy_deviation;
+            if (!isfinite(dev) || dev < 0.0f) dev = 0.0f;
+            if (dev > 1.0f) dev = 1.0f;
+            adjust += (dev - 0.25f) * 0.20f;
         }
         grounded_language_set_metacog_floor_adjust(brain->grounded_lang, adjust);
     }

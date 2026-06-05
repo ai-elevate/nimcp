@@ -1955,6 +1955,26 @@ nimcp_status_t nimcp_brain_set_reason_in_content(nimcp_brain_t brain,
 nimcp_status_t nimcp_brain_get_reason_in_content(nimcp_brain_t brain,
                                                    bool* out_enabled);
 
+/** Non-SNN networks → language content_intent (2026-06-05). Per the directive
+ *  that every network except the FNO feeds the SNN language generator, these
+ *  four default-OFF gates each route one network into the cascade content
+ *  stage (which seeds the Wernicke concept pop):
+ *   - ann_in_content: blend the main ANN's last decision output_vector
+ *   - lnn_in_content: blend the LNN liquid (temporal-context) state
+ *   - cnn_in_content: blend the visual cortex's cached feature embedding
+ *                     (no-op until vision is actually driven)
+ *   - hnn_in_content: HNN has no semantic vector — its energy-deviation
+ *                     modulates the produce confidence floor instead
+ *  All default OFF; no effect unless respond_via_cascade is also ON. */
+nimcp_status_t nimcp_brain_set_ann_in_content(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_ann_in_content(nimcp_brain_t brain, bool* out_enabled);
+nimcp_status_t nimcp_brain_set_lnn_in_content(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_lnn_in_content(nimcp_brain_t brain, bool* out_enabled);
+nimcp_status_t nimcp_brain_set_hnn_in_content(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_hnn_in_content(nimcp_brain_t brain, bool* out_enabled);
+nimcp_status_t nimcp_brain_set_cnn_in_content(nimcp_brain_t brain, bool enabled);
+nimcp_status_t nimcp_brain_get_cnn_in_content(nimcp_brain_t brain, bool* out_enabled);
+
 /** Slice 6 — thalamic gating of cascade-stage bandwidth.
  *
  *  Per-stage scalar gain control on the cascade modeled on the pulvinar

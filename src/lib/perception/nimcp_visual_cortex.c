@@ -738,6 +738,8 @@ struct visual_cortex_struct {
     uint32_t cached_conv_size;                    /**< Size of cached conv output */
     float* cached_pool_output;                    /**< Cached pooled output for gradient feedback */
     uint32_t cached_pool_size;                    /**< Size of cached pool output */
+    float* cached_feature_output;                 /**< Cached final normalized feature_dim embedding (last process) */
+    uint32_t cached_feature_size;                 /**< Size of cached feature embedding (== feature_dim when valid) */
     float last_confidence;                        /**< Last computed visual confidence */
     float last_novelty;                           /**< Last computed novelty score */
     uint64_t last_process_timestamp;              /**< Timestamp of last processing */
@@ -1053,6 +1055,8 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     cortex->cached_conv_size = 0;
     cortex->cached_pool_output = NULL;
     cortex->cached_pool_size = 0;
+    cortex->cached_feature_output = NULL;
+    cortex->cached_feature_size = 0;
     cortex->last_confidence = 0.0F;
     cortex->last_novelty = 0.0F;
     cortex->last_process_timestamp = 0;
@@ -1164,6 +1168,10 @@ void visual_cortex_destroy(visual_cortex_t* cortex)
     if (cortex->cached_pool_output) {
         nimcp_free(cortex->cached_pool_output);
         cortex->cached_pool_output = NULL;
+    }
+    if (cortex->cached_feature_output) {
+        nimcp_free(cortex->cached_feature_output);
+        cortex->cached_feature_output = NULL;
     }
 
     nimcp_free(cortex);
@@ -1351,6 +1359,24 @@ bool visual_cortex_process(
                 }
             }
         }
+    }
+
+    /* Cache the final normalized feature embedding so consumers that have no
+     * image to push (e.g. the language cascade reading the cortex's current
+     * perceptual state) can retrieve the last-computed features via
+     * visual_cortex_get_cached_features(). Grow the buffer on first use /
+     * dim change; this is the same lifetime as the cortex. */
+    if (cortex->cached_feature_size != cortex->feature_dim) {
+        if (cortex->cached_feature_output) nimcp_free(cortex->cached_feature_output);
+        cortex->cached_feature_output =
+            (float*)nimcp_calloc(cortex->feature_dim, sizeof(float));
+        cortex->cached_feature_size =
+            cortex->cached_feature_output ? cortex->feature_dim : 0u;
+    }
+    if (cortex->cached_feature_output &&
+        cortex->cached_feature_size == cortex->feature_dim) {
+        memcpy(cortex->cached_feature_output, features,
+               cortex->feature_dim * sizeof(float));
     }
 
     // Update statistics
@@ -2746,6 +2772,45 @@ uint32_t visual_cortex_get_feature_dim(const visual_cortex_t* cortex)
         return 0;
     }
     return cortex->feature_dim;
+}
+
+/**
+ * @brief Copy the last-computed normalized feature embedding.
+ *
+ * WHAT: Return the cached final feature vector from the most recent
+ *       visual_cortex_process(), without requiring an image to be re-pushed.
+ * WHY:  Consumers like the language cascade want the cortex's CURRENT
+ *       perceptual state as a vector but have no image at call time. The
+ *       feature embedding is cached at the end of each process().
+ * HOW:  memcpy up to min(feature_dim, max_out) floats into out; write the
+ *       count to *out_n. Returns 0 on success (including a clean 0-count
+ *       when the cortex has never processed an image — out_n=0), -1 on bad
+ *       args. A 0-count result is the common idle case → caller no-ops.
+ *
+ * @param cortex   Visual cortex instance
+ * @param out      Destination buffer
+ * @param max_out  Capacity of out (floats)
+ * @param out_n    Receives number of floats written
+ * @return 0 on success, -1 on NULL args
+ */
+int visual_cortex_get_cached_features(const visual_cortex_t* cortex,
+                                      float* out, uint32_t max_out,
+                                      uint32_t* out_n)
+{
+    if (!cortex || !out || !out_n) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "visual_cortex_get_cached_features: NULL arg");
+        return -1;
+    }
+    *out_n = 0;
+    if (!cortex->cached_feature_output || cortex->cached_feature_size == 0) {
+        return 0;  /* never processed an image yet — clean idle no-op */
+    }
+    uint32_t n = cortex->cached_feature_size;
+    if (n > max_out) n = max_out;
+    memcpy(out, cortex->cached_feature_output, n * sizeof(float));
+    *out_n = n;
+    return 0;
 }
 
 /**
