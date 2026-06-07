@@ -841,6 +841,81 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
     return updated;
 }
 
+/* Train ONE concept<->word association — the per-pair primitive the training
+ * loop calls for each taught pair (the bulk lexicon variant is
+ * warmstart_projection above). Strengthens the projection synapses linking
+ * concept_id's Wernicke ensemble to word_pop's Broca ensemble toward w_target
+ * via EMA blend lr. Like warm-start it can only SET weights on synapses that
+ * already exist (targeted or dense projection topology), so a concept with no
+ * wired pathway to its word ensemble updates nothing (returns 0). */
+int snn_language_bridge_learn_pair(snn_language_bridge_t* bridge,
+                                   struct snn_network_s* net,
+                                   int wernicke_pop_id, int broca_pop_id,
+                                   uint64_t concept_id, uint32_t word_pop,
+                                   float w_target, float lr)
+{
+    if (!(lr > 0.0f)) lr = 1.0f;
+    if (lr > 1.0f) lr = 1.0f;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
+        wernicke_pop_id < 0 || broca_pop_id < 0) {
+        return -1;
+    }
+    /* Clamp to SNN_LANG_PROJ_W_MAX, NOT the 2.0 generic-AMPA cap: only
+     * SNN_LANG_NEURONS_PER_POP (8) synapses converge on each word neuron, so at
+     * 2.0 the ensemble delivers 8*2.0=16 — below the 20mV LIF gap — and the word
+     * never fires (validated 2026-06-07: Broca silent at clamp 2.0). A small
+     * dedicated ensemble must carry a higher per-synapse weight to be
+     * supra-threshold; the projection is excluded from global plasticity so this
+     * doesn't perturb the rest of the brain. */
+    if (w_target < 0.0f) w_target = 0.0f;
+    if (w_target > SNN_LANG_PROJ_W_MAX) w_target = SNN_LANG_PROJ_W_MAX;
+
+    snn_population_t* broca = snn_network_get_population(net, (uint32_t)broca_pop_id);
+    snn_population_t* wern  = snn_network_get_population(net, (uint32_t)wernicke_pop_id);
+    if (!broca || !wern || !broca->incoming_csr || !broca->incoming_csr->finalized) {
+        return -1;
+    }
+    snn_csr_storage_t* csr = broca->incoming_csr;
+    const uint32_t broca_n = broca->n_neurons;
+    const uint32_t wern_n  = wern->n_neurons;
+    if (broca_n == 0 || wern_n == 0) return -1;
+
+    /* Same concept-pop mapping generate_step uses to SEED, so the synapses we
+     * strengthen are exactly the ones a later generate_step(concept_id) drives. */
+    const uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
+    uint32_t cens[SNN_LANG_NEURONS_PER_POP];
+    for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+        cens[j] = lang_ensemble_neuron(concept_pop, j, wern_n);
+    }
+
+    int updated = 0;
+    for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+        const uint32_t dst = lang_ensemble_neuron(word_pop, j, broca_n);
+        uint32_t cnt = 0;
+        snn_csr_synapse_t* inc = snn_csr_get_incoming(csr, dst, &cnt);
+        if (!inc || cnt == 0) continue;
+        const uint32_t bdx = (uint32_t)(inc - csr->entries);
+        for (uint32_t e = 0; e < cnt; e++) {
+            if (inc[e].src_pop != (uint32_t)wernicke_pop_id) continue;
+            for (uint32_t j2 = 0; j2 < SNN_LANG_NEURONS_PER_POP; j2++) {
+                if (inc[e].src_neuron == cens[j2]) {
+                    float nw = inc[e].weight + lr * (w_target - inc[e].weight);
+                    if (nw < 0.0f) nw = 0.0f;
+                    if (nw > SNN_LANG_PROJ_W_MAX) nw = SNN_LANG_PROJ_W_MAX;
+                    inc[e].weight = nw;
+                    if (csr->weights && (bdx + e) < csr->n_synapses) {
+                        csr->weights[bdx + e] = nw;
+                    }
+                    updated++;
+                    break;
+                }
+            }
+        }
+    }
+    (void)snn_csr_sync_weights_to_gpu(csr);  /* H->D so the running SNN sees it */
+    return updated;
+}
+
 /* Phase-2 produce-time SNN generation step (2026-06-03). THE generator: seed the
  * intent's concepts into the Wernicke concept ensembles (external_current), step
  * the whole SNN n_steps times so the concept->word projection drives Broca, then
