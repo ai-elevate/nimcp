@@ -911,16 +911,23 @@ static int cascade_stage_content(brain_t brain,
     const float w_discourse    = 0.15f;
     const float w_imagination  = 0.2f;
     const float w_reasoning    = 0.3f;
-    /* Non-SNN networks → content_intent (2026-06-05, directive: every network
-     * except FNO feeds the language generator). ANN holds the brain's learned
-     * decision representation (highest, 0.25); LNN the liquid temporal-context
-     * state (0.2, relevant to sequential generation); CNN the perceptual
-     * embedding (0.1 — lowest, and usually idle/no-op until vision is driven).
-     * HNN carries no semantic vector and instead modulates the produce floor
-     * (see the metacog block below), so it has no weight here. All default-OFF. */
-    const float w_ann          = 0.25f;
-    const float w_lnn          = 0.2f;
-    const float w_cnn          = 0.1f;
+    /* Non-SNN networks → content_intent (2026-06-05; REDESIGNED 2026-06-06).
+     * Directive: every network except FNO feeds the language generator. The
+     * first cut blended each network's RAW vector (w·v). That regressed produce
+     * hard (A/B: 5% vs 55% intent-fidelity) because last_decision (ANN) and the
+     * LNN liquid state are ~CONSTANT across a produce sweep and far larger in
+     * magnitude than the prompt seed, so under cosine scoring they became a DC
+     * bias that overwrote the intent direction — every prompt collapsed to one
+     * salad. Redesign: each network is UNIT-NORMALIZED then scaled to at most
+     * a_net × ||intent-so-far|| (the anchor), and only blended when an anchor
+     * exists (seed_norm > 0). So a network can never dominate the prompt+
+     * cognitive intent — it's a bounded tilt — and with no anchor it contributes
+     * nothing (kills the unanchored-salad case). a_ann highest (the decision is
+     * the brain's judgment), a_cnn lowest (usually idle). HNN has no vector — it
+     * modulates the produce floor (metacog block below). All default-OFF. */
+    const float a_ann          = 0.15f;  /* fraction of anchor magnitude */
+    const float a_lnn          = 0.12f;
+    const float a_cnn          = 0.08f;
 
     /* 1. Seed from prompt comprehend (if provided). */
     if (prompt_intent && prompt_dim > 0) {
@@ -1112,64 +1119,89 @@ static int cascade_stage_content(brain_t brain,
         }
     }
 
-    /* 5g. ANN (main feed-forward net) → content_intent. The brain's most
-     * recent decision output_vector is its learned classification/decision
-     * representation of the current input — "what the brain just judged this
-     * to be". Blending it biases production toward concepts consistent with
-     * that judgment. last_decision is the cached pointer to the most recent
-     * brain_decide() result; NULL (no decision yet) → clean no-op. The vector
-     * is finite-guarded; a stale value from an earlier decide is acceptable as
-     * a soft bias (same "current cognitive state" semantics as WM/discourse).
-     * Default-OFF via cascade_ann_in_content. */
-    if (brain->cascade_ann_in_content &&
+    /* Anchor magnitude = ||content_intent|| after prompt + all cognitive
+     * sources but BEFORE any network blend. Each network below is unit-
+     * normalized then scaled to a fraction of this anchor, so none can dominate
+     * the assembled intent direction. No anchor (seed_norm ~ 0, e.g. no prompt
+     * and no cognitive signal) → networks contribute nothing, which is what
+     * keeps a stale constant network vector from manufacturing salad out of an
+     * empty intent. */
+    float seed_norm = 0.0f;
+    for (uint32_t i = 0; i < dim; i++)
+        seed_norm += state->content_intent[i] * state->content_intent[i];
+    seed_norm = sqrtf(seed_norm);
+    const float net_eps = 1e-6f;
+
+    /* 5g. ANN (main feed-forward net) → content_intent. last_decision is the
+     * brain's learned judgment of the current input. Unit-normalized and scaled
+     * to a_ann × seed_norm, so a stale or large decision is a bounded bias, not
+     * a dominator (this is the fix for the raw-blend collapse). NULL decision or
+     * no anchor → clean no-op. Default-OFF via cascade_ann_in_content. */
+    if (brain->cascade_ann_in_content && seed_norm > net_eps &&
         brain->last_decision &&
         brain->last_decision->output_vector &&
         brain->last_decision->output_size > 0) {
         uint32_t copy = (brain->last_decision->output_size < dim)
                           ? brain->last_decision->output_size : dim;
+        float nrm = 0.0f;
         for (uint32_t j = 0; j < copy; j++) {
             float v = brain->last_decision->output_vector[j];
-            if (isfinite(v)) state->content_intent[j] += w_ann * v;
+            if (isfinite(v)) nrm += v * v;
+        }
+        nrm = sqrtf(nrm);
+        if (nrm > net_eps) {
+            float scale = a_ann * seed_norm / nrm;
+            for (uint32_t j = 0; j < copy; j++) {
+                float v = brain->last_decision->output_vector[j];
+                if (isfinite(v)) state->content_intent[j] += scale * v;
+            }
         }
     }
 
-    /* 5h. LNN (liquid net) → content_intent. The liquid state is the network's
-     * temporal-context reservoir — what it is "currently holding" from the
-     * input sequence. Directly relevant to sequential/autoregressive
-     * generation. lnn_get_state CLONES a tensor under the network lock (UAF-
-     * free); we copy out the flattened state, then destroy the clone. Idle or
-     * absent LNN → clean no-op. Default-OFF via cascade_lnn_in_content. */
-    if (brain->cascade_lnn_in_content && brain->lnn_network) {
+    /* 5h. LNN (liquid net) → content_intent. The liquid state is the temporal-
+     * context reservoir. lnn_get_state CLONES under the network lock (UAF-free);
+     * we copy out, then destroy. Unit-normalized + scaled to a_lnn × seed_norm.
+     * Idle, absent, or no-anchor → clean no-op. Default-OFF. */
+    if (brain->cascade_lnn_in_content && seed_norm > net_eps && brain->lnn_network) {
         nimcp_tensor_t* lstate = NULL;
         if (lnn_get_state(brain->lnn_network, &lstate) == 0 && lstate) {
             const float* sd = (const float*)nimcp_tensor_data(lstate);
             uint32_t n = (uint32_t)nimcp_tensor_numel(lstate);
             if (sd && n > 0) {
                 uint32_t copy = (n < dim) ? n : dim;
-                for (uint32_t j = 0; j < copy; j++) {
-                    float v = sd[j];
-                    if (isfinite(v)) state->content_intent[j] += w_lnn * v;
+                float nrm = 0.0f;
+                for (uint32_t j = 0; j < copy; j++)
+                    if (isfinite(sd[j])) nrm += sd[j] * sd[j];
+                nrm = sqrtf(nrm);
+                if (nrm > net_eps) {
+                    float scale = a_lnn * seed_norm / nrm;
+                    for (uint32_t j = 0; j < copy; j++)
+                        if (isfinite(sd[j])) state->content_intent[j] += scale * sd[j];
                 }
             }
             nimcp_tensor_destroy(lstate);
         }
     }
 
-    /* 5i. CNN (visual cortex) → content_intent. The cached feature embedding
-     * is the cortex's perceptual representation of the last image it processed.
-     * In text-only training the cortex is rarely driven, so the cache is empty
-     * and the getter returns out_n=0 → clean no-op; when vision IS active this
-     * grounds production in what the brain is seeing. dim<=4096 guard bounds
-     * the stack buffer. Default-OFF via cascade_cnn_in_content. */
-    if (brain->cascade_cnn_in_content && brain->visual_cortex && dim <= 4096u) {
+    /* 5i. CNN (visual cortex) → content_intent. Cached perceptual embedding of
+     * the last image. Empty cache (text-only training) → out_n=0 → no-op. Unit-
+     * normalized + scaled to a_cnn × seed_norm. dim<=4096 bounds the stack
+     * buffer; no-anchor → no-op. Default-OFF via cascade_cnn_in_content. */
+    if (brain->cascade_cnn_in_content && seed_norm > net_eps &&
+        brain->visual_cortex && dim <= 4096u) {
         float cnn_buf[4096];
         uint32_t cn = 0;
         if (visual_cortex_get_cached_features(brain->visual_cortex,
                                               cnn_buf, dim, &cn) == 0 && cn > 0) {
             uint32_t copy = (cn < dim) ? cn : dim;
-            for (uint32_t j = 0; j < copy; j++) {
-                float v = cnn_buf[j];
-                if (isfinite(v)) state->content_intent[j] += w_cnn * v;
+            float nrm = 0.0f;
+            for (uint32_t j = 0; j < copy; j++)
+                if (isfinite(cnn_buf[j])) nrm += cnn_buf[j] * cnn_buf[j];
+            nrm = sqrtf(nrm);
+            if (nrm > net_eps) {
+                float scale = a_cnn * seed_norm / nrm;
+                for (uint32_t j = 0; j < copy; j++)
+                    if (isfinite(cnn_buf[j])) state->content_intent[j] += scale * cnn_buf[j];
             }
         }
     }
