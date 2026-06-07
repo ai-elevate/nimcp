@@ -121,7 +121,7 @@ int main(void) {
      * post-finalize edits don't reliably reach (sync gap) — a real PRODUCTION
      * issue tracked separately, not what this mechanism test validates. Set
      * before nimcp_init so the auto GPU context sees no device. */
-    setenv("CUDA_VISIBLE_DEVICES", "", 1);
+    if (!getenv("NIMCP_TEST_ALLOW_GPU")) setenv("CUDA_VISIBLE_DEVICES", "", 1);
     nimcp_init();
     snn_tune_set_noise_rate_hz(0.0f);  /* determinism — only the projection drives Broca */
 
