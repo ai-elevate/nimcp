@@ -916,6 +916,47 @@ int snn_language_bridge_learn_pair(snn_language_bridge_t* bridge,
     return updated;
 }
 
+/* Wire the TARGETED concept→word projection for ONE pair — the scalable
+ * topology builder. Adds the 8×8 ensemble cross-product (concept Wernicke
+ * ensemble → word Broca ensemble) via snn_csr_add_entry, which REQUIRES the
+ * Broca incoming CSR to be pre-finalize. Only registered pairs get synapses,
+ * so a 32K-word vocab costs ~vocab×64 synapses (bounded) with EXACT coverage,
+ * vs a random sweep that connects a given concept ensemble to its word ensemble
+ * with ~0.1 expected synapses. learn_pair / warmstart then set the weights. */
+int snn_language_bridge_wire_concept_word(snn_language_bridge_t* bridge,
+                                          struct snn_network_s* net,
+                                          int wernicke_pop_id, int broca_pop_id,
+                                          uint64_t concept_id, uint32_t word_pop,
+                                          float w_init)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
+        wernicke_pop_id < 0 || broca_pop_id < 0) {
+        return -1;
+    }
+    snn_population_t* broca = snn_network_get_population(net, (uint32_t)broca_pop_id);
+    snn_population_t* wern  = snn_network_get_population(net, (uint32_t)wernicke_pop_id);
+    if (!broca || !wern || !broca->incoming_csr) return -1;
+    if (broca->incoming_csr->finalized) return -1;   /* must add pre-finalize */
+    const uint32_t broca_n = broca->n_neurons;
+    const uint32_t wern_n  = wern->n_neurons;
+    if (broca_n == 0 || wern_n == 0) return -1;
+    if (w_init < 0.0f) w_init = 0.0f;
+    if (w_init > SNN_LANG_PROJ_W_MAX) w_init = SNN_LANG_PROJ_W_MAX;
+
+    const uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
+    int added = 0;
+    for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+        uint32_t src = lang_ensemble_neuron(concept_pop, j, wern_n);
+        for (uint32_t k = 0; k < SNN_LANG_NEURONS_PER_POP; k++) {
+            uint32_t dst = lang_ensemble_neuron(word_pop, k, broca_n);
+            if (snn_csr_add_entry(broca->incoming_csr, dst,
+                                  (uint32_t)wernicke_pop_id, src, w_init) == 0)
+                added++;
+        }
+    }
+    return added;
+}
+
 /* Phase-2 produce-time SNN generation step (2026-06-03). THE generator: seed the
  * intent's concepts into the Wernicke concept ensembles (external_current), step
  * the whole SNN n_steps times so the concept->word projection drives Broca, then

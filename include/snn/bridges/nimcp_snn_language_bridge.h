@@ -775,6 +775,23 @@ int snn_language_bridge_learn_pair(
     uint64_t concept_id, uint32_t word_pop,
     float w_target, float lr);
 
+/** Wire the TARGETED concept→word projection for ONE pair (2026-06-07): add the
+ *  SNN_LANG_NEURONS_PER_POP × SNN_LANG_NEURONS_PER_POP ensemble cross-product
+ *  synapses linking concept_id's Wernicke ensemble to word_pop's Broca ensemble,
+ *  at initial weight w_init. This is the SCALABLE topology — only registered
+ *  pairs get synapses, so coverage is exact at vocab scale, vs the ~0.1-synapse-
+ *  per-pair of a 0.15% random sweep (which left ~90% of pairs unwired and made
+ *  warmstart/learn_pair no-ops). MUST run BEFORE the Broca incoming CSR is
+ *  finalized (snn_csr_add_entry requirement) — i.e. at init / pre-finalize.
+ *  Returns #synapses added, or -1 on error. */
+int snn_language_bridge_wire_concept_word(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id,
+    int broca_pop_id,
+    uint64_t concept_id, uint32_t word_pop,
+    float w_init);
+
 /** Phase-2 produce-time SNN generation step (2026-06-03): seed `concept_ids` into
  *  Wernicke, step the whole SNN n_steps, copy Broca spikes into the decode cache
  *  (then decode_spikes_cached reads intent-driven activity). Clears injection on
