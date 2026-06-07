@@ -801,7 +801,7 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
             (uint32_t)(binds[i].concept_id % SNN_LANG_MAX_CONCEPT_POPS);
         float wval = k * binds[i].strength;   /* w_base = 0 (silent until set) */
         if (!(wval > 0.0f)) continue;
-        if (wval > 2.0f) wval = 2.0f;          /* AMPA excitatory clamp */
+        if (wval > SNN_LANG_PROJ_W_MAX) wval = SNN_LANG_PROJ_W_MAX;  /* projection cap (supra-threshold) */
 
         uint32_t cens[SNN_LANG_NEURONS_PER_POP];
         for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
@@ -821,7 +821,7 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
                          * (warm-start), EMA when lr<1 (online training). */
                         float nw = inc[e].weight + lr * (wval - inc[e].weight);
                         if (nw < 0.0f) nw = 0.0f;
-                        if (nw > 2.0f) nw = 2.0f;
+                        if (nw > SNN_LANG_PROJ_W_MAX) nw = SNN_LANG_PROJ_W_MAX;
                         inc[e].weight = nw;
                         if (csr->weights && (bdx + e) < csr->n_synapses) {
                             csr->weights[bdx + e] = nw;
