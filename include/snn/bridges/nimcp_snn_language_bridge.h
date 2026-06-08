@@ -804,6 +804,26 @@ int snn_language_bridge_generate_step(
     const uint64_t* concept_ids, uint32_t n_concepts,
     uint32_t n_steps, float inject_current);
 
+/** Store the borrowed SNN network + Wernicke/Broca pop ids (2026-06-07) so the
+ *  produce path can drive generation via generate_and_decode without
+ *  re-discovering them. Call once at init. Returns 0 / -1. */
+int snn_language_bridge_connect_network(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id, int broca_pop_id);
+
+/** Produce-time: seed concept_ids into Wernicke, step the SNN, decode fresh
+ *  Broca activity into ranked words — using the handles from connect_network.
+ *  This is how the SNN GENERATES from the cascade's content_intent concepts.
+ *  -1 if not connected/error; 0 with *num_results (0 = cold/uncovered → caller
+ *  falls back to the lexicon producer). */
+int snn_language_bridge_generate_and_decode(
+    snn_language_bridge_t* bridge,
+    const uint64_t* concept_ids, uint32_t n_concepts,
+    uint32_t n_steps, float inject_current,
+    snn_lang_word_result_t* results,
+    uint32_t max_results, uint32_t* num_results);
+
 /** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
  *
  * Pulls the standard top-K from snn_language_bridge_decode_spikes (cosine

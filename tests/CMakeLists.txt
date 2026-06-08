@@ -102,6 +102,7 @@ set(NIMCP_STANDALONE_LANG_TESTS
     test_snn_generate_step          # Produce-time SNN step: inject→step→decode
     test_snn_lang_learn_discriminate # SNN learns + generates + discriminates concept→word
     test_snn_lang_targeted_projection # scalable targeted concept→word topology (128 syn, not 1M)
+    test_snn_lang_generate_and_decode # produce-path bridge call: connect_network + generate_and_decode
     test_lang_networks_into_content # ANN/LNN/HNN/CNN → content_intent (default-OFF)
     # ============================================================
     # REMOVED in walkthrough-1 (Option-1 rebuild) — these asserted

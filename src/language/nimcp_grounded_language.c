@@ -5622,12 +5622,33 @@ static uint32_t gl_produce_candidates_via_snn(grounded_language_t* gl,
                                               const float* intent, uint32_t intent_dim,
                                               const char** out_words, float* out_scores,
                                               uint32_t max_words) {
-    if (!gl || !gl->snn_bridge || !out_words || !out_scores || max_words == 0) return 0;
+    if (!gl || !gl->snn_bridge || !intent || !out_words || !out_scores || max_words == 0)
+        return 0;
     if (max_words > 32) max_words = 32;
+
+    /* (1) Map the cascade's content_intent → the concepts to SEED into Wernicke.
+     * Because content_intent already aggregates the non-FNO networks (ANN/LNN/
+     * CNN) AND every cognitive module (emotion/ToM/introspection/world-model/
+     * reasoning/imagination/WM via the cascade), seeding generation from it makes
+     * all of them drive the SNN's word production — the directive's convergence
+     * point. */
+    uint64_t concept_ids[8];
+    uint32_t n_concepts = grounded_language_top_concepts_for_intent(
+        gl, intent, intent_dim, concept_ids, 8);
+    if (n_concepts == 0) return 0;   /* no grounded concept → lexicon fallback */
+
+    /* (2) Seed → step → decode via the bridge's stored network handles
+     * (connect_network). This makes the SNN GENERATE from the intent's concepts
+     * (concept→word projection drives Broca), vs reading stale ambient cache.
+     * n_steps small (full-SNN steps are costly); inject high so the small
+     * Wernicke ensemble fires (validated supra-threshold requirement). Returns
+     * -1 if the bridge isn't network-connected, or 0 results on a cold/uncovered
+     * projection → either way the caller falls back to the lexicon producer. */
     snn_lang_word_result_t res[32];
     uint32_t nres = 0;
-    if (snn_language_bridge_decode_spikes_cached(gl->snn_bridge, intent, intent_dim,
-                                                 res, max_words, &nres) != 0) {
+    if (snn_language_bridge_generate_and_decode(gl->snn_bridge, concept_ids, n_concepts,
+                                                8 /*n_steps*/, 100.0f /*inject*/,
+                                                res, max_words, &nres) != 0) {
         return 0;
     }
     uint32_t out = 0;

@@ -342,6 +342,16 @@ static void attach_lang_adapters_to_substrate(brain_t brain,
                                                       SNN_LANG_POP_ROLE_CONCEPT);
         }
 
+        /* Store the network + Wernicke/Broca pop ids so the produce path can
+         * drive SNN generation (generate_and_decode). attached_pops[] can't tell
+         * Wernicke from Arcuate (both CONCEPT-role), so the bridge needs the
+         * explicit ids. Borrowed handle — the brain owns the network. */
+        if (wernicke_pop_id >= 0 && broca_pop_id >= 0) {
+            (void)snn_language_bridge_connect_network(brain->snn_lang_bridge,
+                                                      snn, wernicke_pop_id,
+                                                      broca_pop_id);
+        }
+
         /* Explicit opt-in for SNN spike routing. The library default stays
          * false (see snn_lang_config_default()'s sparsity-collapse note); the
          * brain's own language bridge turns it on so drain_pop_spikes + tick

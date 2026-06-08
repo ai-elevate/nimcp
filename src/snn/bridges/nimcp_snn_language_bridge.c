@@ -135,6 +135,15 @@ struct snn_language_bridge {
     } attached_pops[SNN_LANG_MAX_ATTACHED_POPS];
     uint32_t                n_attached_pops;
 
+    /* Borrowed SNN handles for produce-time generation (set by
+     * connect_network). generate_step needs the network + the Wernicke/Broca
+     * pop ids, and attached_pops[] can't distinguish Wernicke from Arcuate
+     * (both CONCEPT-role), so the produce path can't recover them itself.
+     * Borrowed pointer — not owned, not freed. -1 ids = not connected. */
+    struct snn_network_s*   gen_net;
+    int                     gen_wernicke_pop_id;
+    int                     gen_broca_pop_id;
+
     /* Walkthrough round 2: PA-2 × PA-5 interaction fix. The autoregressive
      * decoder evolves concept_acts into binding space (state drifts toward
      * encode_word(picked) bindings). The GloVe cosine in decode_spikes uses
@@ -474,6 +483,12 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
         bridge->attached_pops[i].snn_pop_id = -1;
     }
     bridge->n_attached_pops = 0;
+
+    /* Not connected to a network for produce-time generation until
+     * snn_language_bridge_connect_network is called (at init). */
+    bridge->gen_net = NULL;
+    bridge->gen_wernicke_pop_id = -1;
+    bridge->gen_broca_pop_id = -1;
 
     bbb_register_module("snn_language_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
@@ -1043,6 +1058,52 @@ int snn_language_bridge_generate_step(snn_language_bridge_t* bridge,
     }
     (void)any_spikes;  /* 0 spikes is a valid (cold) result, not an error */
     return (bcache != NULL) ? 0 : -1;
+}
+
+/* Store the borrowed network + Wernicke/Broca pop ids so the produce path can
+ * drive generation without re-discovering them. Called once at init from
+ * attach_lang_adapters_to_substrate. */
+int snn_language_bridge_connect_network(snn_language_bridge_t* bridge,
+                                        struct snn_network_s* net,
+                                        int wernicke_pop_id, int broca_pop_id)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->gen_net = net;
+    bridge->gen_wernicke_pop_id = wernicke_pop_id;
+    bridge->gen_broca_pop_id = broca_pop_id;
+    return 0;
+}
+
+/* Produce-time convenience: seed `concept_ids` into Wernicke, step the SNN, and
+ * decode the fresh Broca activity into ranked words — using the network + pop
+ * ids stored by connect_network. This is the call the produce path makes to let
+ * the SNN GENERATE from the cascade's content_intent concepts (vs reading stale
+ * ambient cache). Returns -1 if not connected or on error; 0 with *num_results
+ * (possibly 0 — a cold/uncovered projection yields nothing and the caller falls
+ * back to the lexicon producer). */
+int snn_language_bridge_generate_and_decode(snn_language_bridge_t* bridge,
+                                            const uint64_t* concept_ids,
+                                            uint32_t n_concepts,
+                                            uint32_t n_steps, float inject_current,
+                                            snn_lang_word_result_t* results,
+                                            uint32_t max_results,
+                                            uint32_t* num_results)
+{
+    if (num_results) *num_results = 0;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !bridge->gen_net ||
+        bridge->gen_wernicke_pop_id < 0 || bridge->gen_broca_pop_id < 0 ||
+        !concept_ids || n_concepts == 0 || !results || !num_results) {
+        return -1;
+    }
+    if (snn_language_bridge_generate_step(bridge, bridge->gen_net,
+            bridge->gen_wernicke_pop_id, bridge->gen_broca_pop_id,
+            concept_ids, n_concepts, n_steps, inject_current) != 0) {
+        return -1;
+    }
+    /* decode_spikes_cached ignores its concept_rates arg; pass a dummy. */
+    float dummy[1] = { 0.0f };
+    return snn_language_bridge_decode_spikes_cached(bridge, dummy, 1,
+                                                    results, max_results, num_results);
 }
 
 #if 0  /* Old decode_spikes body — retained only for reference; Slice B will
