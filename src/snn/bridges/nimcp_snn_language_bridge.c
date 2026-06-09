@@ -135,6 +135,15 @@ struct snn_language_bridge {
     } attached_pops[SNN_LANG_MAX_ATTACHED_POPS];
     uint32_t                n_attached_pops;
 
+    /* Borrowed SNN handles for produce-time generation (set by
+     * connect_network). generate_step needs the network + the Wernicke/Broca
+     * pop ids, and attached_pops[] can't distinguish Wernicke from Arcuate
+     * (both CONCEPT-role), so the produce path can't recover them itself.
+     * Borrowed pointer — not owned, not freed. -1 ids = not connected. */
+    struct snn_network_s*   gen_net;
+    int                     gen_wernicke_pop_id;
+    int                     gen_broca_pop_id;
+
     /* Walkthrough round 2: PA-2 × PA-5 interaction fix. The autoregressive
      * decoder evolves concept_acts into binding space (state drifts toward
      * encode_word(picked) bindings). The GloVe cosine in decode_spikes uses
@@ -475,6 +484,12 @@ snn_language_bridge_t* snn_language_bridge_create(const snn_lang_config_t* confi
     }
     bridge->n_attached_pops = 0;
 
+    /* Not connected to a network for produce-time generation until
+     * snn_language_bridge_connect_network is called (at init). */
+    bridge->gen_net = NULL;
+    bridge->gen_wernicke_pop_id = -1;
+    bridge->gen_broca_pop_id = -1;
+
     bbb_register_module("snn_language_bridge", BBB_MODULE_TYPE_COGNITIVE);
 
     LOG_INFO(LOG_MODULE, "SNN language bridge created (concepts=%u, words=%u, blend=%.2f)",
@@ -801,7 +816,7 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
             (uint32_t)(binds[i].concept_id % SNN_LANG_MAX_CONCEPT_POPS);
         float wval = k * binds[i].strength;   /* w_base = 0 (silent until set) */
         if (!(wval > 0.0f)) continue;
-        if (wval > 2.0f) wval = 2.0f;          /* AMPA excitatory clamp */
+        if (wval > SNN_LANG_PROJ_W_MAX) wval = SNN_LANG_PROJ_W_MAX;  /* projection cap (supra-threshold) */
 
         uint32_t cens[SNN_LANG_NEURONS_PER_POP];
         for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
@@ -821,7 +836,7 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
                          * (warm-start), EMA when lr<1 (online training). */
                         float nw = inc[e].weight + lr * (wval - inc[e].weight);
                         if (nw < 0.0f) nw = 0.0f;
-                        if (nw > 2.0f) nw = 2.0f;
+                        if (nw > SNN_LANG_PROJ_W_MAX) nw = SNN_LANG_PROJ_W_MAX;
                         inc[e].weight = nw;
                         if (csr->weights && (bdx + e) < csr->n_synapses) {
                             csr->weights[bdx + e] = nw;
@@ -839,6 +854,122 @@ int snn_language_bridge_warmstart_projection(snn_language_bridge_t* bridge,
              "projection synapses set (wernicke=%d->broca=%d, k=%.3f)",
              nb, updated, wernicke_pop_id, broca_pop_id, (double)k);
     return updated;
+}
+
+/* Train ONE concept<->word association — the per-pair primitive the training
+ * loop calls for each taught pair (the bulk lexicon variant is
+ * warmstart_projection above). Strengthens the projection synapses linking
+ * concept_id's Wernicke ensemble to word_pop's Broca ensemble toward w_target
+ * via EMA blend lr. Like warm-start it can only SET weights on synapses that
+ * already exist (targeted or dense projection topology), so a concept with no
+ * wired pathway to its word ensemble updates nothing (returns 0). */
+int snn_language_bridge_learn_pair(snn_language_bridge_t* bridge,
+                                   struct snn_network_s* net,
+                                   int wernicke_pop_id, int broca_pop_id,
+                                   uint64_t concept_id, uint32_t word_pop,
+                                   float w_target, float lr)
+{
+    if (!(lr > 0.0f)) lr = 1.0f;
+    if (lr > 1.0f) lr = 1.0f;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
+        wernicke_pop_id < 0 || broca_pop_id < 0) {
+        return -1;
+    }
+    /* Clamp to SNN_LANG_PROJ_W_MAX, NOT the 2.0 generic-AMPA cap: only
+     * SNN_LANG_NEURONS_PER_POP (8) synapses converge on each word neuron, so at
+     * 2.0 the ensemble delivers 8*2.0=16 — below the 20mV LIF gap — and the word
+     * never fires (validated 2026-06-07: Broca silent at clamp 2.0). A small
+     * dedicated ensemble must carry a higher per-synapse weight to be
+     * supra-threshold; the projection is excluded from global plasticity so this
+     * doesn't perturb the rest of the brain. */
+    if (w_target < 0.0f) w_target = 0.0f;
+    if (w_target > SNN_LANG_PROJ_W_MAX) w_target = SNN_LANG_PROJ_W_MAX;
+
+    snn_population_t* broca = snn_network_get_population(net, (uint32_t)broca_pop_id);
+    snn_population_t* wern  = snn_network_get_population(net, (uint32_t)wernicke_pop_id);
+    if (!broca || !wern || !broca->incoming_csr || !broca->incoming_csr->finalized) {
+        return -1;
+    }
+    snn_csr_storage_t* csr = broca->incoming_csr;
+    const uint32_t broca_n = broca->n_neurons;
+    const uint32_t wern_n  = wern->n_neurons;
+    if (broca_n == 0 || wern_n == 0) return -1;
+
+    /* Same concept-pop mapping generate_step uses to SEED, so the synapses we
+     * strengthen are exactly the ones a later generate_step(concept_id) drives. */
+    const uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
+    uint32_t cens[SNN_LANG_NEURONS_PER_POP];
+    for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+        cens[j] = lang_ensemble_neuron(concept_pop, j, wern_n);
+    }
+
+    int updated = 0;
+    for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+        const uint32_t dst = lang_ensemble_neuron(word_pop, j, broca_n);
+        uint32_t cnt = 0;
+        snn_csr_synapse_t* inc = snn_csr_get_incoming(csr, dst, &cnt);
+        if (!inc || cnt == 0) continue;
+        const uint32_t bdx = (uint32_t)(inc - csr->entries);
+        for (uint32_t e = 0; e < cnt; e++) {
+            if (inc[e].src_pop != (uint32_t)wernicke_pop_id) continue;
+            for (uint32_t j2 = 0; j2 < SNN_LANG_NEURONS_PER_POP; j2++) {
+                if (inc[e].src_neuron == cens[j2]) {
+                    float nw = inc[e].weight + lr * (w_target - inc[e].weight);
+                    if (nw < 0.0f) nw = 0.0f;
+                    if (nw > SNN_LANG_PROJ_W_MAX) nw = SNN_LANG_PROJ_W_MAX;
+                    inc[e].weight = nw;
+                    if (csr->weights && (bdx + e) < csr->n_synapses) {
+                        csr->weights[bdx + e] = nw;
+                    }
+                    updated++;
+                    break;
+                }
+            }
+        }
+    }
+    (void)snn_csr_sync_weights_to_gpu(csr);  /* H->D so the running SNN sees it */
+    return updated;
+}
+
+/* Wire the TARGETED concept→word projection for ONE pair — the scalable
+ * topology builder. Adds the 8×8 ensemble cross-product (concept Wernicke
+ * ensemble → word Broca ensemble) via snn_csr_add_entry, which REQUIRES the
+ * Broca incoming CSR to be pre-finalize. Only registered pairs get synapses,
+ * so a 32K-word vocab costs ~vocab×64 synapses (bounded) with EXACT coverage,
+ * vs a random sweep that connects a given concept ensemble to its word ensemble
+ * with ~0.1 expected synapses. learn_pair / warmstart then set the weights. */
+int snn_language_bridge_wire_concept_word(snn_language_bridge_t* bridge,
+                                          struct snn_network_s* net,
+                                          int wernicke_pop_id, int broca_pop_id,
+                                          uint64_t concept_id, uint32_t word_pop,
+                                          float w_init)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !net ||
+        wernicke_pop_id < 0 || broca_pop_id < 0) {
+        return -1;
+    }
+    snn_population_t* broca = snn_network_get_population(net, (uint32_t)broca_pop_id);
+    snn_population_t* wern  = snn_network_get_population(net, (uint32_t)wernicke_pop_id);
+    if (!broca || !wern || !broca->incoming_csr) return -1;
+    if (broca->incoming_csr->finalized) return -1;   /* must add pre-finalize */
+    const uint32_t broca_n = broca->n_neurons;
+    const uint32_t wern_n  = wern->n_neurons;
+    if (broca_n == 0 || wern_n == 0) return -1;
+    if (w_init < 0.0f) w_init = 0.0f;
+    if (w_init > SNN_LANG_PROJ_W_MAX) w_init = SNN_LANG_PROJ_W_MAX;
+
+    const uint32_t concept_pop = (uint32_t)(concept_id % SNN_LANG_MAX_CONCEPT_POPS);
+    int added = 0;
+    for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+        uint32_t src = lang_ensemble_neuron(concept_pop, j, wern_n);
+        for (uint32_t k = 0; k < SNN_LANG_NEURONS_PER_POP; k++) {
+            uint32_t dst = lang_ensemble_neuron(word_pop, k, broca_n);
+            if (snn_csr_add_entry(broca->incoming_csr, dst,
+                                  (uint32_t)wernicke_pop_id, src, w_init) == 0)
+                added++;
+        }
+    }
+    return added;
 }
 
 /* Phase-2 produce-time SNN generation step (2026-06-03). THE generator: seed the
@@ -874,33 +1005,46 @@ int snn_language_bridge_generate_step(snn_language_bridge_t* bridge,
     if (n_steps == 0) n_steps = 4;
     if (!(inject_current > 0.0f)) inject_current = 1.0f;
 
-    /* 1. Seed the concept ensembles into Wernicke's external_current. Track the
-     * touched neurons so we can clear exactly those afterwards. */
+    /* Ensure the Broca decode cache exists and is zeroed before the window —
+     * we ACCUMULATE spike counts across all n_steps into it (see below). */
+    if (!bridge->broca_spike_cache || bridge->broca_spike_cache_cap < broca_n) {
+        if (bridge->broca_spike_cache) nimcp_free(bridge->broca_spike_cache);
+        bridge->broca_spike_cache = (float*)nimcp_calloc(broca_n, sizeof(float));
+        bridge->broca_spike_cache_cap = bridge->broca_spike_cache ? broca_n : 0u;
+    }
+    float* bcache = (bridge->broca_spike_cache &&
+                     bridge->broca_spike_cache_cap >= broca_n)
+                  ? bridge->broca_spike_cache : NULL;
+    if (bcache) memset(bcache, 0, (size_t)broca_n * sizeof(float));
+
+    /* 1+2+3. Drive + step + accumulate. Two physics facts shape this loop:
+     *   - snn_network_step ZEROES external_current at the end of each step
+     *     (it's consumed within the step), so the concept seed must be
+     *     RE-INJECTED before every step to keep Wernicke firing across the
+     *     window — inject-once drives only step 1 and Broca never sustains.
+     *   - Broca's spike_output is a single-step snapshot: on any given step a
+     *     just-fired neuron is in reset/refractory and reads 0. Snapshotting
+     *     only the LAST step therefore loses most of the produced activity
+     *     (validated: last-step snapshot yields decode=0). So accumulate the
+     *     per-neuron spike COUNT over the whole window — that's the Broca
+     *     firing-rate signal decode_spikes_cached actually wants. */
     enum { MAXC = 64 };
     if (n_concepts > MAXC) n_concepts = MAXC;
-    for (uint32_t c = 0; c < n_concepts; c++) {
-        uint32_t concept_pop = (uint32_t)(concept_ids[c] % SNN_LANG_MAX_CONCEPT_POPS);
-        for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
-            uint32_t nrn = lang_ensemble_neuron(concept_pop, j, wern_n);
-            wern->external_current[nrn] = inject_current;
-        }
-    }
-
-    /* 2. Step the whole network so the projection propagates concept->word. */
+    int any_spikes = 0;
     for (uint32_t s = 0; s < n_steps; s++) {
-        (void)snn_network_step(net, 1.0f /* dt_ms */);
-    }
-
-    /* 3. Copy Broca's resulting spikes into the decode cache. */
-    const float* spikes = (const float*)nimcp_tensor_data(broca->spike_output);
-    if (spikes) {
-        if (!bridge->broca_spike_cache || bridge->broca_spike_cache_cap < broca_n) {
-            if (bridge->broca_spike_cache) nimcp_free(bridge->broca_spike_cache);
-            bridge->broca_spike_cache = (float*)nimcp_calloc(broca_n, sizeof(float));
-            bridge->broca_spike_cache_cap = bridge->broca_spike_cache ? broca_n : 0u;
+        for (uint32_t c = 0; c < n_concepts; c++) {
+            uint32_t concept_pop = (uint32_t)(concept_ids[c] % SNN_LANG_MAX_CONCEPT_POPS);
+            for (uint32_t j = 0; j < SNN_LANG_NEURONS_PER_POP; j++) {
+                uint32_t nrn = lang_ensemble_neuron(concept_pop, j, wern_n);
+                wern->external_current[nrn] = inject_current;
+            }
         }
-        if (bridge->broca_spike_cache && bridge->broca_spike_cache_cap >= broca_n) {
-            memcpy(bridge->broca_spike_cache, spikes, (size_t)broca_n * sizeof(float));
+        (void)snn_network_step(net, 1.0f /* dt_ms */);
+        const float* spikes = (const float*)nimcp_tensor_data(broca->spike_output);
+        if (spikes && bcache) {
+            for (uint32_t n = 0; n < broca_n; n++) {
+                if (spikes[n] > 0.5f) { bcache[n] += 1.0f; any_spikes = 1; }
+            }
         }
     }
 
@@ -912,7 +1056,54 @@ int snn_language_bridge_generate_step(snn_language_bridge_t* bridge,
             wern->external_current[nrn] = 0.0f;
         }
     }
-    return (spikes != NULL) ? 0 : -1;
+    (void)any_spikes;  /* 0 spikes is a valid (cold) result, not an error */
+    return (bcache != NULL) ? 0 : -1;
+}
+
+/* Store the borrowed network + Wernicke/Broca pop ids so the produce path can
+ * drive generation without re-discovering them. Called once at init from
+ * attach_lang_adapters_to_substrate. */
+int snn_language_bridge_connect_network(snn_language_bridge_t* bridge,
+                                        struct snn_network_s* net,
+                                        int wernicke_pop_id, int broca_pop_id)
+{
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC) return -1;
+    bridge->gen_net = net;
+    bridge->gen_wernicke_pop_id = wernicke_pop_id;
+    bridge->gen_broca_pop_id = broca_pop_id;
+    return 0;
+}
+
+/* Produce-time convenience: seed `concept_ids` into Wernicke, step the SNN, and
+ * decode the fresh Broca activity into ranked words — using the network + pop
+ * ids stored by connect_network. This is the call the produce path makes to let
+ * the SNN GENERATE from the cascade's content_intent concepts (vs reading stale
+ * ambient cache). Returns -1 if not connected or on error; 0 with *num_results
+ * (possibly 0 — a cold/uncovered projection yields nothing and the caller falls
+ * back to the lexicon producer). */
+int snn_language_bridge_generate_and_decode(snn_language_bridge_t* bridge,
+                                            const uint64_t* concept_ids,
+                                            uint32_t n_concepts,
+                                            uint32_t n_steps, float inject_current,
+                                            snn_lang_word_result_t* results,
+                                            uint32_t max_results,
+                                            uint32_t* num_results)
+{
+    if (num_results) *num_results = 0;
+    if (!bridge || bridge->magic != SNN_LANG_MAGIC || !bridge->gen_net ||
+        bridge->gen_wernicke_pop_id < 0 || bridge->gen_broca_pop_id < 0 ||
+        !concept_ids || n_concepts == 0 || !results || !num_results) {
+        return -1;
+    }
+    if (snn_language_bridge_generate_step(bridge, bridge->gen_net,
+            bridge->gen_wernicke_pop_id, bridge->gen_broca_pop_id,
+            concept_ids, n_concepts, n_steps, inject_current) != 0) {
+        return -1;
+    }
+    /* decode_spikes_cached ignores its concept_rates arg; pass a dummy. */
+    float dummy[1] = { 0.0f };
+    return snn_language_bridge_decode_spikes_cached(bridge, dummy, 1,
+                                                    results, max_results, num_results);
 }
 
 #if 0  /* Old decode_spikes body — retained only for reference; Slice B will

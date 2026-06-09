@@ -441,6 +441,13 @@ def _apply_runtime_lang_config(brain, logger):
         # (cfg-key, method, extractor)
         ("respond_via_cascade",                "set_respond_via_cascade",                _bool),
         ("reason_in_content",                  "set_reason_in_content",                  _bool),
+        # Non-SNN networks → language content_intent (2026-06-05). Every network
+        # except the FNO feeds the SNN language generator via the cascade content
+        # stage. All default OFF; file-applied at daemon start (no live RPC).
+        ("ann_in_content",                     "set_ann_in_content",                     _bool),
+        ("lnn_in_content",                     "set_lnn_in_content",                     _bool),
+        ("hnn_in_content",                     "set_hnn_in_content",                     _bool),
+        ("cnn_in_content",                     "set_cnn_in_content",                     _bool),
         ("cascade_self_train_enabled",         "set_cascade_self_train_enabled",         _bool),
         ("lateral_inhibition_enabled",         "set_lateral_inhibition_enabled",         _bool),
         ("thalamic_gate_enabled",              "set_thalamic_gate_enabled",              _bool),
@@ -575,6 +582,45 @@ def _apply_runtime_lang_config(brain, logger):
 
     logger.info("[lang_config] applied %d setting(s) from %s "
                 "(skipped=%d, errors=%d)", applied, cfg_path, skipped, errors)
+
+
+def _assert_training_flags(brain, logger):
+    """Force the per-network training ablation flags to their intended boot
+    state. Runs unconditionally after brain load so a stray runtime
+    set_train_*/set_network_ablation RPC can't leave a network permanently
+    ablated across the daemon's lifetime.
+
+    Default: ANN/CNN/SNN/LNN training all ON (matches the C config defaults in
+    nimcp_brain_init_config.c lines 415-417). These flags are NOT persisted in
+    the checkpoint, so without this assertion a one-off debug toggle silently
+    survives every --resume. (Root-caused 2026-06-08: train_snn had been left
+    false on a 30h daemon, so the SNN never stepped — total_spikes stuck at 0.)
+
+    Explicit override: set any of
+        {"train_cnn": 0.0, "train_snn": 0.0, "train_lnn": 0.0}
+    in SNN_TUNE_PERSIST_PATH to keep that network ablated on boot.
+    """
+    desired = {"cnn": True, "snn": True, "lnn": True}
+    try:
+        if os.path.exists(SNN_TUNE_PERSIST_PATH):
+            with open(SNN_TUNE_PERSIST_PATH) as f:
+                overrides = json.load(f)
+            if isinstance(overrides, dict):
+                for net in ("cnn", "snn", "lnn"):
+                    key = "train_" + net
+                    if key in overrides:
+                        desired[net] = float(overrides[key]) != 0.0
+    except Exception as e:
+        logger.warning("[train-flags] failed reading persistent override "
+                       "(proceeding with all-ON default): %s", e)
+    try:
+        brain.set_train_cnn(desired["cnn"])
+        brain.set_train_snn(desired["snn"])
+        brain.set_train_lnn(desired["lnn"])
+        logger.info("[train-flags] asserted at boot: cnn=%s snn=%s lnn=%s",
+                    desired["cnn"], desired["snn"], desired["lnn"])
+    except Exception as e:
+        logger.error("[train-flags] failed to assert training flags: %s", e)
 
 
 def _activate_cb_default(brain, logger):
@@ -3580,7 +3626,12 @@ class BrainService:
                 try:
                     val = float(val)
                     if key == "sparsity":
-                        self.brain.set_network_ablation(sparsity_target=val)
+                        # No direct runtime sparsity-target API exists
+                        # (set_network_ablation only toggles train_cnn/snn/lnn).
+                        # Record like the config-level knobs below so
+                        # learn_vector can pick it up; the prior
+                        # set_network_ablation(sparsity_target=...) call raised
+                        # TypeError and was silently swallowed.
                         applied[key] = val
                     elif key == "grad_clip":
                         # Set via brain config (internal)
@@ -5703,6 +5754,11 @@ def main():
     # so a --fresh daemon also gets the natural-saturation runaway defense.
     # See _activate_cb_default for the rescale-marker idempotency contract.
     _activate_cb_default(brain, logger)
+
+    # Assert per-network training flags ON at boot (CNN/SNN/LNN). These are not
+    # persisted in the checkpoint and can be silently flipped off by a stray
+    # runtime RPC; without this a one-off debug toggle survives every --resume.
+    _assert_training_flags(brain, logger)
 
     # CROSS Wave-3 (2026-05-19) — runtime language-architecture config is
     # applied LATER, immediately after brain.eager_init_cognitive() (see below).

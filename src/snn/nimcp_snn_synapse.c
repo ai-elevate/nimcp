@@ -165,6 +165,61 @@ int snn_csr_finalize(snn_csr_storage_t* csr)
     return 0;
 }
 
+/* Re-open a finalized CSR so more snn_csr_add_entry calls can append, then the
+ * caller re-finalizes (and re-prepares/uploads). This is the core of runtime
+ * synaptogenesis. finalize() compacts entries[] IN PLACE from 16-byte COO
+ * (coo_tagged_entry_t) to 12-byte CSR (snn_csr_synapse_t), and add_entry assumes
+ * 16-byte COO slots — so we must RE-EXPAND back to COO first, recovering each
+ * synapse's dst_neuron from row_ptr. We also invalidate the derived host arrays
+ * (weights/flat_col_idx/src_pop_idx — rebuilt by snn_csr_prepare_gpu after
+ * re-finalize) and release the GPU mirror (re-uploaded lazily on the next step).
+ *
+ * CONCURRENCY: this mutates topology + frees the GPU mirror. The caller MUST
+ * ensure no SNN step is in flight (hold the step lock / run in the write-locked,
+ * between-steps window — same CB-GPU-7 invariant as connect_populations).
+ * Returns 0, or -1 on error. */
+int snn_csr_reopen(snn_csr_storage_t* csr)
+{
+    if (!csr) return -1;
+    if (!csr->finalized) return 0;   /* already in COO/build mode */
+
+    const uint32_t nnz = csr->n_synapses;
+    if (nnz > 0) {
+        /* Re-expand compact 12-byte entries → 16-byte COO. A fresh buffer is
+         * required: an in-place 12→16 grow would overwrite source bytes not yet
+         * read. dst_neuron is recovered from row_ptr (entries are sorted by dst
+         * post-finalize, so row n owns indices [row_ptr[n], row_ptr[n+1])). */
+        coo_tagged_entry_t* coo = (coo_tagged_entry_t*)
+            nimcp_malloc((size_t)nnz * sizeof(coo_tagged_entry_t));
+        if (!coo) return -1;
+        const snn_csr_synapse_t* compact = (const snn_csr_synapse_t*)csr->entries;
+        uint32_t idx = 0;
+        for (uint32_t n = 0; n < csr->n_neurons && idx < nnz; n++) {
+            const uint32_t s = csr->row_ptr[n];
+            const uint32_t e = csr->row_ptr[n + 1];
+            for (uint32_t i = s; i < e && idx < nnz; i++) {
+                coo[idx].dst_neuron = n;
+                coo[idx].syn = compact[i];
+                idx++;
+            }
+        }
+        nimcp_free(csr->entries);
+        csr->entries  = coo;
+        csr->capacity = nnz;   /* now counted in coo_tagged_entry_t units */
+    }
+
+    /* Derived host arrays are stale — free + NULL so prepare_gpu rebuilds them. */
+    nimcp_free(csr->weights);      csr->weights = NULL;
+    nimcp_free(csr->flat_col_idx); csr->flat_col_idx = NULL;
+    nimcp_free(csr->src_pop_idx);  csr->src_pop_idx = NULL;
+
+    /* GPU mirror is stale — free device buffers so the next step re-uploads. */
+    snn_csr_release_gpu(csr);
+
+    csr->finalized = false;
+    return 0;
+}
+
 int snn_csr_prepare_gpu(snn_csr_storage_t* csr,
                         const uint32_t* pop_offsets,
                         uint32_t n_populations)

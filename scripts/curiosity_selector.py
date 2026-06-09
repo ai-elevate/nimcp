@@ -40,6 +40,22 @@ class CuriositySelector:
         self._curiosity_hits = 0
         self._fallback_hits = 0
 
+    def __getattr__(self, name):
+        """Transparently forward any attribute the selector doesn't define to
+        the wrapped source, so CuriositySelector is a true drop-in for a raw
+        stimulus source (e.g. callers that read source.ADVANCED_TOPICS).
+
+        __getattr__ only fires on normal-lookup failure. Read `source` from
+        __dict__ directly to avoid recursion if it's accessed before __init__
+        finishes setting it.
+        """
+        if name.startswith('__') and name.endswith('__'):
+            raise AttributeError(name)
+        source = self.__dict__.get('source')
+        if source is None:
+            raise AttributeError(name)
+        return getattr(source, name)
+
     # ---- Public API ----
 
     def get_object(self) -> tuple[str, str]:

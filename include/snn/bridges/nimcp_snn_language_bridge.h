@@ -53,6 +53,12 @@ extern "C" {
 #define SNN_LANG_MAX_WORD_POPS        32768
 #define SNN_LANG_MAX_ATTACHED_POPS    8
 #define SNN_LANG_NEURONS_PER_POP      8
+/* Max per-synapse weight for the concept→word projection. Higher than the 2.0
+ * generic-AMPA cap because only SNN_LANG_NEURONS_PER_POP synapses converge on a
+ * word neuron: at 2.0 the ensemble delivers 16 < the 20mV LIF gap and never
+ * fires. The projection is excluded from global plasticity, so a higher cap here
+ * doesn't affect the rest of the brain. */
+#define SNN_LANG_PROJ_W_MAX           50.0f
 #define SNN_LANG_DEFAULT_STDP_TAU     50.0f   // ms (wider than standard 20ms)
 #define SNN_LANG_DEFAULT_STDP_A_PLUS  0.008f
 #define SNN_LANG_DEFAULT_STDP_A_MINUS 0.0084f // Slight LTD bias for sparsity
@@ -751,6 +757,41 @@ int snn_language_bridge_warmstart_projection(
     int broca_pop_id,
     float k, float lr);   /* lr>=1: overwrite (warm-start); 0<lr<1: EMA (online train) */
 
+/** Train ONE concept↔word association into the SNN projection (2026-06-07): the
+ *  unit of "the SNN learns language". Strengthens the projection synapses from
+ *  `concept_id`'s Wernicke ensemble to `word_pop`'s Broca ensemble toward
+ *  `w_target` (AMPA-clamped) via EMA blend `lr` (lr>=1 = overwrite). Operates on
+ *  EXISTING incoming-CSR synapses of the word ensemble — a targeted or dense
+ *  projection must already provide them (warm-start/STDP can only set weights,
+ *  not create topology). Updates CSR host weights + GPU mirror; runtime-safe
+ *  (weights only, no rewire). This is the per-pair primitive the training loop
+ *  calls for each taught concept↔word; warmstart_projection is the bulk variant.
+ *  Returns #synapses updated, or -1 on error. */
+int snn_language_bridge_learn_pair(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id,
+    int broca_pop_id,
+    uint64_t concept_id, uint32_t word_pop,
+    float w_target, float lr);
+
+/** Wire the TARGETED concept→word projection for ONE pair (2026-06-07): add the
+ *  SNN_LANG_NEURONS_PER_POP × SNN_LANG_NEURONS_PER_POP ensemble cross-product
+ *  synapses linking concept_id's Wernicke ensemble to word_pop's Broca ensemble,
+ *  at initial weight w_init. This is the SCALABLE topology — only registered
+ *  pairs get synapses, so coverage is exact at vocab scale, vs the ~0.1-synapse-
+ *  per-pair of a 0.15% random sweep (which left ~90% of pairs unwired and made
+ *  warmstart/learn_pair no-ops). MUST run BEFORE the Broca incoming CSR is
+ *  finalized (snn_csr_add_entry requirement) — i.e. at init / pre-finalize.
+ *  Returns #synapses added, or -1 on error. */
+int snn_language_bridge_wire_concept_word(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id,
+    int broca_pop_id,
+    uint64_t concept_id, uint32_t word_pop,
+    float w_init);
+
 /** Phase-2 produce-time SNN generation step (2026-06-03): seed `concept_ids` into
  *  Wernicke, step the whole SNN n_steps, copy Broca spikes into the decode cache
  *  (then decode_spikes_cached reads intent-driven activity). Clears injection on
@@ -762,6 +803,26 @@ int snn_language_bridge_generate_step(
     int wernicke_pop_id, int broca_pop_id,
     const uint64_t* concept_ids, uint32_t n_concepts,
     uint32_t n_steps, float inject_current);
+
+/** Store the borrowed SNN network + Wernicke/Broca pop ids (2026-06-07) so the
+ *  produce path can drive generation via generate_and_decode without
+ *  re-discovering them. Call once at init. Returns 0 / -1. */
+int snn_language_bridge_connect_network(
+    snn_language_bridge_t* bridge,
+    struct snn_network_s* net,
+    int wernicke_pop_id, int broca_pop_id);
+
+/** Produce-time: seed concept_ids into Wernicke, step the SNN, decode fresh
+ *  Broca activity into ranked words — using the handles from connect_network.
+ *  This is how the SNN GENERATES from the cascade's content_intent concepts.
+ *  -1 if not connected/error; 0 with *num_results (0 = cold/uncovered → caller
+ *  falls back to the lexicon producer). */
+int snn_language_bridge_generate_and_decode(
+    snn_language_bridge_t* bridge,
+    const uint64_t* concept_ids, uint32_t n_concepts,
+    uint32_t n_steps, float inject_current,
+    snn_lang_word_result_t* results,
+    uint32_t max_results, uint32_t* num_results);
 
 /** Slice 4: Decode + competitive lateral inhibition over top-K candidates.
  *

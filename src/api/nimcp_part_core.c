@@ -2962,6 +2962,33 @@ nimcp_status_t nimcp_brain_get_reason_in_content(nimcp_brain_t brain,
     return NIMCP_OK;
 }
 
+/* Non-SNN networks → language content_intent (2026-06-05). Four default-OFF
+ * gates; each toggles one network's contribution to the cascade content stage
+ * (ANN/LNN/CNN blend a vector into content_intent; HNN modulates the produce
+ * floor from its energy-deviation). Same validate/get/set shape as the
+ * reason_in_content pair above. */
+#define NIMCP_DEFINE_CASCADE_NET_GATE(NAME, FIELD)                            \
+nimcp_status_t nimcp_brain_set_##NAME(nimcp_brain_t brain, bool enabled) {     \
+    brain_t b = NULL;                                                          \
+    nimcp_status_t s = _gl_diag_validate(brain, &b);                           \
+    if (s != NIMCP_OK) return s;                                               \
+    b->FIELD = enabled;                                                        \
+    return NIMCP_OK;                                                           \
+}                                                                             \
+nimcp_status_t nimcp_brain_get_##NAME(nimcp_brain_t brain, bool* out_enabled){ \
+    if (!out_enabled) return NIMCP_ERROR_INVALID_PARAM;                        \
+    brain_t b = NULL;                                                          \
+    nimcp_status_t s = _gl_diag_validate(brain, &b);                           \
+    if (s != NIMCP_OK) return s;                                               \
+    *out_enabled = b->FIELD;                                                   \
+    return NIMCP_OK;                                                           \
+}
+NIMCP_DEFINE_CASCADE_NET_GATE(ann_in_content, cascade_ann_in_content)
+NIMCP_DEFINE_CASCADE_NET_GATE(lnn_in_content, cascade_lnn_in_content)
+NIMCP_DEFINE_CASCADE_NET_GATE(hnn_in_content, cascade_hnn_in_content)
+NIMCP_DEFINE_CASCADE_NET_GATE(cnn_in_content, cascade_cnn_in_content)
+#undef NIMCP_DEFINE_CASCADE_NET_GATE
+
 /* Slice 6 — thalamic gating public wrappers. Inline-extern the cascade
  * implementations to avoid the header re-include cycle (cascade.h is
  * already pulled in at the top of this TU). */

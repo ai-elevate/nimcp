@@ -161,6 +161,21 @@ int snn_csr_add_entry(snn_csr_storage_t* csr,
  */
 int snn_csr_finalize(snn_csr_storage_t* csr);
 
+/**
+ * @brief Re-open a finalized CSR so more snn_csr_add_entry calls can append
+ *        (runtime synaptogenesis), then the caller re-finalizes.
+ *
+ * Re-expands the compacted CSR entries back to COO (so add_entry's 16-byte
+ * layout assumption holds), invalidates the derived host arrays
+ * (weights/flat_col_idx/src_pop_idx) + the GPU mirror. Caller MUST re-finalize
+ * (and re-prepare/upload) afterward, and MUST ensure no SNN step is in flight
+ * (CB-GPU-7 invariant — same as connect_populations).
+ *
+ * @param csr Finalized storage to re-open (no-op if already in build mode)
+ * @return 0 on success, -1 on error
+ */
+int snn_csr_reopen(snn_csr_storage_t* csr);
+
 /* ========================================================================= */
 /* Query phase (CSR mode — after finalize)                                    */
 /* ========================================================================= */

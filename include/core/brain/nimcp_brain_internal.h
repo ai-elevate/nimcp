@@ -3200,6 +3200,24 @@ struct brain_struct {
     uint32_t  cascade_reasoning_dim;           /* 0 = invalid; else valid len */
     float     cascade_reasoning_confidence;    /* chain overall_confidence */
     uint64_t  cascade_reasoning_prompt_hash;   /* dedup key for the prime */
+
+    /* === Non-SNN networks → language content_intent (2026-06-05) ===========
+     * Per directive: every network except the FNO feeds the SNN language
+     * generator. They converge, like the cognitive sources above, on
+     * content_intent (which seeds the Wernicke concept pop). Each is a
+     * default-OFF, gated, soft-additive contributor so the shipped path is
+     * byte-identical until a flag is flipped.
+     *
+     * ANN / LNN / CNN carry a real vector → blended into content_intent.
+     * HNN has NO semantic vector (it is a layer-mode inside the LNN exposing
+     * only energy scalars), so it instead MODULATES the produce confidence
+     * floor from its energy-deviation: well-conserved (stable) dynamics →
+     * more assertive; large deviation (unstable) → less assertive. Wiring it
+     * as a fake content vector would just duplicate the LNN state. */
+    bool      cascade_ann_in_content;          /* opt-in: ANN output → intent  */
+    bool      cascade_lnn_in_content;          /* opt-in: LNN state  → intent  */
+    bool      cascade_hnn_in_content;          /* opt-in: HNN energy → floor   */
+    bool      cascade_cnn_in_content;          /* opt-in: CNN feats  → intent  */
 };
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L

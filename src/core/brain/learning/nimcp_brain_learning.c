@@ -381,9 +381,49 @@ void brain_train_cognitive_subsystems_sequential(
                 int bid = snn_network_find_pop_by_name(brain->snn_network,
                                                        "broca_substrate");
                 if (wid >= 0 && bid >= 0) {
-                    (void)snn_language_bridge_warmstart_projection(
-                        brain->snn_lang_bridge, brain->snn_network, wid, bid,
-                        1.0f /*k: target = binding strength*/, 0.05f /*lr EMA*/);
+                    /* Per-pair online training (2026-06-07): drive each concept↔
+                     * word projection toward a SUPRA-THRESHOLD weight via
+                     * learn_pair, scaled by the lexicon binding strength. The old
+                     * warmstart path targeted w = k*strength ∈ [0,1] and clamps
+                     * to 2.0 — both BELOW the ~40 an 8-neuron ensemble needs to
+                     * cross the LIF gap (validated 2026-06-07), so trained pairs
+                     * could never fire. Scaling strength by SNN_LANG_PROJ_W_MAX
+                     * makes a confident binding (strength≳0.8) supra-threshold
+                     * while weak bindings stay quiet; the EMA lr ramps over
+                     * exposures so the SNN's concept→word map LEARNS from the
+                     * lexicon (itself shaped by distributional/syntax/trigram + TF
+                     * + cognitive feedback — the architecture's learning loop).
+                     * No-op for pairs whose projection synapses don't exist yet
+                     * (targeted wiring / runtime synaptogenesis is the coverage
+                     * half — the projection must have the ensemble synapses). */
+                    const uint32_t cap = SNN_LANG_MAX_WORD_POPS;
+                    gl_warmstart_binding_t* binds = (gl_warmstart_binding_t*)
+                        nimcp_calloc(cap, sizeof(*binds));
+                    if (binds) {
+                        const uint32_t nb =
+                            grounded_language_collect_warmstart_bindings(
+                                brain->grounded_lang, binds, cap);
+                        int trained = 0;
+                        for (uint32_t i = 0; i < nb; i++) {
+                            const uint32_t word_pop =
+                                binds[i].form_hash % SNN_LANG_MAX_WORD_POPS;
+                            const float w_target =
+                                binds[i].strength * SNN_LANG_PROJ_W_MAX;
+                            if (snn_language_bridge_learn_pair(
+                                    brain->snn_lang_bridge, brain->snn_network,
+                                    wid, bid, binds[i].concept_id, word_pop,
+                                    w_target, 0.05f /*lr EMA*/) > 0) {
+                                trained++;
+                            }
+                        }
+                        nimcp_free(binds);
+                        if (trained > 0 && (s_proj_train_step % 50000u) < 500u) {
+                            NIMCP_LOGGING_INFO(
+                                "[snn-lang] projection training: %d/%u concept→"
+                                "word pairs strengthened (supra-threshold)",
+                                trained, nb);
+                        }
+                    }
                 }
             }
         }

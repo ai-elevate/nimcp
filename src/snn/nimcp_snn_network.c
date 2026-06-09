@@ -919,6 +919,23 @@ int snn_network_reset(snn_network_t* network) {
         pop->mean_rate = 0.0f;
     }
 
+    /* Reset the GPU LIF membrane too. The per-pop host membrane_v reset above
+     * does NOT touch the device-resident gpu_lif_state the GPU step kernel
+     * integrates, so without this the previous run's charged neurons bleed
+     * across a reset — validated as GPU cross-seed contamination in language
+     * generation (seeding concept B still fired concept A's word ensemble
+     * because its neurons stayed charged on-device). Resetting v to v_rest is
+     * the dominant carry-over; i_syn/spikes are recomputed/overwritten each
+     * step. No-op when running CPU-only (gpu_lif_state NULL). */
+    if (network->gpu_lif_state && network->gpu_ctx) {
+        nimcp_lif_state_t* lif = (nimcp_lif_state_t*)network->gpu_lif_state;
+        if (lif->v) {
+            (void)nimcp_gpu_snn_reset_state(
+                (nimcp_gpu_context_t*)network->gpu_ctx,
+                lif->v, network->config.v_rest);
+        }
+    }
+
     /* Reset simulation context */
     if (network->sim) {
         network->sim->current_time_us = 0;

@@ -1763,11 +1763,13 @@ def _check_hp_overrides(brain, lr_scheduler, step):
 
         elif param == 'sparsity':
             _hp_state['sparsity'] = max(0.02, min(0.30, new_val))
-            try:
-                brain.set_network_ablation(sparsity_target=_hp_state['sparsity'])
-            except Exception:
-                pass
-            print(f"    [HP] sparsity → {_hp_state['sparsity']:.3f}")
+            # No runtime sparsity-target API exists on the brain / BrainProxy
+            # (set_network_ablation only toggles train_cnn/snn/lnn). The prior
+            # call raised AttributeError/TypeError and was silently swallowed,
+            # so this knob never did anything. Record state only until a real
+            # sparsity-control API is wired.
+            print(f"    [HP] sparsity → {_hp_state['sparsity']:.3f} "
+                  f"(recorded only — no runtime sparsity API)")
 
         elif param == 'diversity_weight':
             _hp_state['diversity_weight'] = max(0.0, min(1.0, new_val))
